@@ -1,0 +1,34 @@
+packages/cli/src/utils/__tests__/container-limits.test.ts
+  s_1c3454caac6e1f::t_4d11c98f82365f 1-44
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1c3454caac6e1f::t_ef4e130d3092fe 63
+  s_1c3454caac6e1f::t_33d0ac2563588f 1778
+  s_1c3454caac6e1f::t_16566b6ba5b7fc 1799-1800
+packages/cli/src/utils/container-limits.ts
+  s_1c3454caac6e1f::t_6876f4347c0222 1-46
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1c3454caac6e1f::t_da686cfab8ff2d 3550-3563
+  s_1c3454caac6e1f::t_0c0e6433557654 3626-3627
+  s_1c3454caac6e1f::t_4adc0c572c8a81 46-52
+packages/cli/src/scaling/worker-status.service.ee.ts
+  s_1c3454caac6e1f::t_560b74f8f84179 11
+  s_1c3454caac6e1f::t_03bb5c1f51834b 64
+packages/@n8n/telemetry/src/events/instance.ts
+  s_1c3454caac6e1f::t_6d8006b5adadc6 45-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec42a2d9f6103116f982994f9f7d69c53e6a9960",
+  "prompts": {},
+  "sessions": {
+    "s_1c3454caac6e1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d254c449-dcec-42ba-b84b-c9e5c08ccf70",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
