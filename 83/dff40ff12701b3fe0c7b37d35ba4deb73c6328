@@ -1,0 +1,79 @@
+packages/nodes-base/nodes/Zendesk/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_21b3929c0f1631 61,88-97
+  s_2e1fa95fc44f8f::t_5036cd01eef673 58-60
+  s_2e1fa95fc44f8f::t_d3c5bc9317fe49 62-64
+  s_2e1fa95fc44f8f::t_963ab6d4d8f3a8 98
+  s_0f34e61c0d2ecc::t_e40960436c876d 1-2,44,56-57,65-66,74,105-116
+packages/nodes-base/nodes/Xero/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_577d558a9bf431 1-24
+packages/nodes-base/nodes/Zoho/__test__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_56ea868800f243 60-75
+  s_2dd6068abbadea::t_45ff4f1269fad3 2,53
+packages/nodes-base/nodes/Zoho/ZohoCrm.node.ts
+  s_2e1fa95fc44f8f::t_564a8a319b5a72 9
+  s_9074de412cd97f::t_6edd7b344b06bc 172,181,187-191,199,208,375,384,394,407,424,442-447,473,482,492,505,522,540-545,572,581,590,602,619-624,642-647,678,687,697,710,727,749-754,781,790,799,810,819,840-845,863-868,894,903,913,926,943,961-966,998-1003,1012,1022,1035-1041,1058,1080-1085,1116,1125-1129,1138,1150,1167-1172,1192-1197,1227-1232,1241,1251,1264-1270,1287,1309-1314,1340,1349,1359,1372,1389,1407-1412
+packages/nodes-base/nodes/Wufoo/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_68b97ff00a0d3c 8-9,11,16,23,28
+packages/nodes-base/nodes/Wufoo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3028c1749c5789 1-25
+packages/nodes-base/nodes/Wufoo/WufooTrigger.node.ts
+  s_2e1fa95fc44f8f::t_2834b4cad4d705 12,74,111,130
+packages/nodes-base/nodes/Xero/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_79cd7288f10e5e 8-10,12,17,21,24,32,52
+packages/nodes-base/nodes/Yourls/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_aae263da586110 8,10,24,28
+packages/nodes-base/nodes/Zendesk/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_10e091edee7cd9 8-9,11,30-32,34,41,46,58,62,92
+packages/nodes-base/nodes/Xero/Xero.node.ts
+  s_9074de412cd97f::t_b3f02964f61086 11-12,76,94-101,119,122,142,160-167,184,319,416-421,427-434,460,469,579,588-595,618,627,736-744
+packages/nodes-base/nodes/Xero/test/Xero.node.test.ts
+  s_2dd6068abbadea::t_51308611bcaf16 56-58
+packages/nodes-base/nodes/Zendesk/Zendesk.node.ts
+  s_9074de412cd97f::t_64976ef0a02797 11,137,155-160,175,191-196,216,236,255,338-340,410-417,426-428,455-456,480-482,493,510,523,534,567-569,594-601,607-612,627,634,644,661,668-674,681-686,695,735,743-748,753-758,767,781,788-794,804,840
+packages/nodes-base/nodes/Zendesk/ZendeskTrigger.node.ts
+  s_9074de412cd97f::t_74b8a51e7e4a81 11,165,184-189,204-209,249,275-280,394-396,404,416-421,431-435,443-448,457-461
+packages/nodes-base/nodes/Zendesk/__tests__/ZendeskTrigger.node.test.ts
+  s_0f34e61c0d2ecc::t_24e02f75474a25 2,84-87,110,190
+packages/nodes-base/nodes/Zoho/GenericFunctions.ts
+  s_0f34e61c0d2ecc::t_12645eb816c450 11-13,15,53,56,60,66,101,127,385,420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83dff40ff12701b3fe0c7b37d35ba4deb73c6328",
+  "prompts": {},
+  "sessions": {
+    "s_0f34e61c0d2ecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6bbfaf0c713f71a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2dd6068abbadea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5ca9d3eadcf574b0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_9074de412cd97f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af6fdf04429ffdb49",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

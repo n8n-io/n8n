@@ -1,0 +1,45 @@
+packages/nodes-base/nodes/Lemlist/test/Lemlist.workflow.test.ts
+  s_2e1fa95fc44f8f::t_bc57f6a55c84bf 1-73
+  s_2e1fa95fc44f8f::t_d317d5e1c5fdda 74-76
+packages/nodes-base/nodes/Line/test/Line.workflow.test.ts
+  s_2e1fa95fc44f8f::t_de0272c840755b 1-30
+packages/nodes-base/nodes/Keap/__tests__/Keap.workflow.test.ts
+  s_2e1fa95fc44f8f::t_2a62366cae0382 46
+  s_2e1fa95fc44f8f::t_e0e4f57a63cfdf 1-45,47-60
+packages/nodes-base/nodes/Jira/__test__/Jira.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a72019c3a43ac5 1-65
+packages/nodes-base/nodes/Jira/__test__/requests.workflow.json
+  s_01cb885e0ad060::t_1c989fe48f9c02 1-691
+packages/nodes-base/nodes/Keap/__tests__/requests.workflow.json
+  s_01cb885e0ad060::t_6e887cba513668 1-475
+packages/nodes-base/nodes/Lemlist/test/requests-v1.workflow.json
+  s_01cb885e0ad060::t_b3d7d82ae9ebdb 1-253
+packages/nodes-base/nodes/Lemlist/test/requests.workflow.json
+  s_01cb885e0ad060::t_676985059ed971 1-415
+packages/nodes-base/nodes/Line/test/requests.workflow.json
+  s_01cb885e0ad060::t_f4bb5d8deb17ca 1-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd253fdec502a5802d9d77cfc27e78d32af88d80",
+  "prompts": {},
+  "sessions": {
+    "s_01cb885e0ad060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7ddd85cc749261b8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+packages/nodes-base/credentials/WekanApi.credentials.ts
+  s_2e1fa95fc44f8f::t_5a7a9631167981 1-8
+  s_2e1fa95fc44f8f::t_87da2c8f254aba 56
+packages/nodes-base/credentials/GithubAppApi.credentials.ts
+  s_2e1fa95fc44f8f::t_2bd5570712d50e 3-10
+  s_2e1fa95fc44f8f::t_d7465285bfac54 67
+  s_2e1fa95fc44f8f::t_c518c72438981f 91
+packages/nodes-base/credentials/test/GithubAppApi.credentials.test.ts
+  s_2e1fa95fc44f8f::t_f2f9b710d1a492 74-90
+packages/nodes-base/credentials/FormIoApi.credentials.ts
+  s_2e1fa95fc44f8f::t_6ec09bdac80d59 1-10
+  s_2e1fa95fc44f8f::t_1f43d591dc0b8f 90
+  s_2e1fa95fc44f8f::t_dd9adffab70d70 93
+packages/nodes-base/credentials/CiscoUmbrellaApi.credentials.ts
+  s_2e1fa95fc44f8f::t_7cad3661cb48b9 59-60
+packages/nodes-base/credentials/BaserowApi.credentials.ts
+  s_2e1fa95fc44f8f::t_edbf0cd4a700e4 1-8
+  s_2e1fa95fc44f8f::t_e04435a248d664 64
+packages/nodes-base/credentials/VenafiTlsProtectDatacenterApi.credentials.ts
+  s_2e1fa95fc44f8f::t_bd94b3af7be816 73-74
+  s_2e1fa95fc44f8f::t_9407f242d7570a 1-9
+packages/nodes-base/credentials/test/WekanApi.credentials.test.ts
+  s_2e1fa95fc44f8f::t_a90f332e740911 27-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af7e04fa20b11769a0607d82aa95b25d592bb2d9",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

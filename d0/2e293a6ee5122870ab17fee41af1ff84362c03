@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Databricks/test/Databricks.node.test.ts
+  s_2e1fa95fc44f8f::t_985a09cce328b9 837-840
+  s_2e1fa95fc44f8f::t_0005dfa120a1d2 762-836,841-847
+packages/nodes-base/nodes/Databricks/test/request-urls.workflow.json
+  s_de2c00e6233f17::t_10c048395061bd 1-502
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d02e293a6ee5122870ab17fee41af1ff84362c03",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_de2c00e6233f17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a77576dbb68b5b9b9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,199 @@
+packages/nodes-base/nodes/Plivo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_eb73b107364378 2,15-16
+  s_2e1fa95fc44f8f::t_923b4a75fbb761 1,3-14,17-19
+  s_2e1fa95fc44f8f::t_8a3824e4860a45 20-21
+packages/nodes-base/nodes/Postmark/test/PostmarkTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_5f4878fc69e5a5 58-68
+packages/nodes-base/nodes/ProfitWell/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_6334709b7039e2 1,3-14,17-19
+  s_2e1fa95fc44f8f::t_eb73b107364378 2,15-16
+  s_2e1fa95fc44f8f::t_019aa734cc2a40 20-21
+packages/nodes-base/nodes/Pipedrive/test/v2/transport.test.ts
+  s_2e1fa95fc44f8f::t_3ec842f34c77e0 47-64,119,135-137,139,151,253,271,289,356,366,380,383,473
+  s_2e1fa95fc44f8f::t_605236ca67f621 3,37,42,75,86,99,114-118,134,138,170,192,202,216,304-309,341,357-361,367-368,381-382,384-385,405,441,474-475
+packages/nodes-base/nodes/Pipedrive/test/v1/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_3b89f50064eee4 1-19
+packages/nodes-base/nodes/PostHog/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_f3ffc059042efb 1,3-17,20-22
+  s_2e1fa95fc44f8f::t_eb73b107364378 2,18-19
+packages/nodes-base/nodes/Pipedrive/v1/PipedriveV1.node.ts
+  s_2e1fa95fc44f8f::t_e7344c8c627d12 11,13,3823-3828,3853,3870-3875,3890,3912,3920-3925,3937,3948,3964-3969,3985,4001-4006,4023-4028,4057-4062,4090-4095,4105-4110,4122,4163,4191,4204,4219,4229,4254,4263,4275,4299,4308,4317,4332,4341,4384,4411,4422,4438,4448,4458,4469,4493,4503,4512,4521,4531,4544,4553,4560,4576,4631,4642,4653,4673,4713,4722,4735,4744,4768,4777,4810,4819,4832,4841,4868,4900,4909,4931
+packages/nodes-base/nodes/Pipedrive/v2/actions/activity/create.operation.ts
+  s_2e1fa95fc44f8f::t_a0f59ee14abb83 7,164-169
+packages/nodes-base/nodes/Pipedrive/v2/actions/activity/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_e2b927b97967e1 7,183,188-194
+packages/nodes-base/nodes/Pipedrive/v2/actions/deal/get.operation.ts
+  s_2e1fa95fc44f8f::t_fc64133d402dc9 7,49-54
+packages/nodes-base/nodes/Pipedrive/v2/actions/deal/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_ab05fbbcef7128 7,166-172,174
+packages/nodes-base/nodes/Pipedrive/v2/actions/deal/search.operation.ts
+  s_2e1fa95fc44f8f::t_44e5dab2753228 7,183,188-197
+packages/nodes-base/nodes/Pipedrive/v2/actions/deal/update.operation.ts
+  s_2e1fa95fc44f8f::t_faa0c455da7375 7,225-230
+packages/nodes-base/nodes/Pipedrive/v2/actions/lead/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_aa2d7ed49e41db 7,122-128,130
+packages/nodes-base/nodes/Pipedrive/v2/actions/note/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_5b41545e971864 7,174-180,182
+packages/nodes-base/nodes/Pipedrive/v2/actions/organization/create.operation.ts
+  s_2e1fa95fc44f8f::t_1bfeb9961d9d0d 7,95-100
+packages/nodes-base/nodes/Pipedrive/v2/actions/organization/delete.operation.ts
+  s_2e1fa95fc44f8f::t_b3e778ad23c021 7,40-45
+packages/nodes-base/nodes/Pipedrive/v2/actions/organization/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_3bd25dbad8917c 7,116,121-127
+packages/nodes-base/nodes/Pipedrive/v2/actions/person/create.operation.ts
+  s_2e1fa95fc44f8f::t_3778d911d45d4c 7,197-202
+packages/nodes-base/nodes/Pipedrive/v2/actions/person/get.operation.ts
+  s_2e1fa95fc44f8f::t_05fccb94160605 7,49-54
+packages/nodes-base/nodes/Pipedrive/v2/actions/person/search.operation.ts
+  s_2e1fa95fc44f8f::t_6f162a05c144af 7,154,159-168
+packages/nodes-base/nodes/Pipedrive/v2/actions/product/create.operation.ts
+  s_2e1fa95fc44f8f::t_86d2c998ef5ba0 7,155-160
+packages/nodes-base/nodes/Pipedrive/v2/actions/product/search.operation.ts
+  s_2e1fa95fc44f8f::t_a4ac9f1c037c29 7,134,139-148
+packages/nodes-base/nodes/Pipedrive/v2/methods/loadOptions.ts
+  s_2e1fa95fc44f8f::t_623d6b2866ffc5 1-2,17,48,70,90,119,129,142-147,158,170,196,202,210,223,233
+packages/nodes-base/nodes/PostHog/PostHog.node.ts
+  s_2e1fa95fc44f8f::t_6a91f859df8974 9,118,170-172,216,272
+packages/nodes-base/nodes/ProfitWell/ProfitWell.node.ts
+  s_2e1fa95fc44f8f::t_9f17cca38d423a 10,74,98-102,128-134
+packages/nodes-base/nodes/Pipedrive/PipedriveTrigger.node.ts
+  s_2c3598ca776ad8::t_f62d62458e6434 12,293,323,367
+packages/nodes-base/nodes/Pipedrive/test/PipedriveTrigger.node.test.ts
+  s_2c3598ca776ad8::t_d895166e427cff 2,128,156
+packages/nodes-base/nodes/Pipedrive/test/v2/dateNormalisation.test.ts
+  s_3bd5fd0ef4a52e::t_ba94d7950f65c1 60,80,102,122
+packages/nodes-base/nodes/Pipedrive/test/v2/personIdParticipants.test.ts
+  s_3bd5fd0ef4a52e::t_c6dd58c039cd93 59,76
+packages/nodes-base/nodes/Pipedrive/test/v2/userIdRemap.test.ts
+  s_3bd5fd0ef4a52e::t_005f3d3149ad32 70,91,114,137,158,181
+packages/nodes-base/nodes/Pipedrive/v1/GenericFunctions.ts
+  s_0b340cbcd99bee::t_c8c3959555e60e 10-11,13,36,44,50,108,148-153
+packages/nodes-base/nodes/Pipedrive/v2/actions/activity/delete.operation.ts
+  s_2c3598ca776ad8::t_ae33e287937a17 7,40
+packages/nodes-base/nodes/Pipedrive/v2/actions/activity/get.operation.ts
+  s_2c3598ca776ad8::t_e50444baa62f2d 7,52
+packages/nodes-base/nodes/Pipedrive/v2/actions/activity/update.operation.ts
+  s_2c3598ca776ad8::t_b16d915357d761 7,190
+packages/nodes-base/nodes/Pipedrive/v2/actions/deal/create.operation.ts
+  s_2c3598ca776ad8::t_c33572222f41e4 7,271
+packages/nodes-base/nodes/Pipedrive/v2/actions/deal/delete.operation.ts
+  s_2c3598ca776ad8::t_a942c7cfc972bc 7,40
+packages/nodes-base/nodes/Pipedrive/v2/actions/deal/duplicate.operation.ts
+  s_2c3598ca776ad8::t_6a773e930ccece 7,43
+packages/nodes-base/nodes/Pipedrive/v2/actions/dealProduct/add.operation.ts
+  s_2c3598ca776ad8::t_69d17bb39a7a00 7,145
+packages/nodes-base/nodes/Pipedrive/v2/actions/dealProduct/getAll.operation.ts
+  s_2c3598ca776ad8::t_de19cf2fbcbada 7,75,83
+packages/nodes-base/nodes/Pipedrive/v2/actions/dealProduct/remove.operation.ts
+  s_2c3598ca776ad8::t_0648d79f942775 7,53
+packages/nodes-base/nodes/Pipedrive/v2/actions/dealProduct/update.operation.ts
+  s_2c3598ca776ad8::t_e761dc665b2490 7,146
+packages/nodes-base/nodes/Pipedrive/v2/actions/file/create.operation.ts
+  s_2c3598ca776ad8::t_d0ce034d6626af 7,116
+packages/nodes-base/nodes/Pipedrive/v2/actions/file/delete.operation.ts
+  s_2c3598ca776ad8::t_6fccca3b291d7e 7,43
+packages/nodes-base/nodes/Pipedrive/v2/actions/file/download.operation.ts
+  s_2c3598ca776ad8::t_a1aaa77601e8bc 2,47
+packages/nodes-base/nodes/Pipedrive/v2/actions/file/get.operation.ts
+  s_2c3598ca776ad8::t_ce39e950e2ea13 7,43
+packages/nodes-base/nodes/Pipedrive/v2/actions/file/update.operation.ts
+  s_2c3598ca776ad8::t_22ed10a621ac42 7,72
+packages/nodes-base/nodes/Pipedrive/v2/actions/lead/create.operation.ts
+  s_2c3598ca776ad8::t_e2baec4a78f735 7,223
+packages/nodes-base/nodes/Pipedrive/v2/actions/lead/delete.operation.ts
+  s_2c3598ca776ad8::t_de79c73b8db7e1 7,43
+packages/nodes-base/nodes/Pipedrive/v2/actions/lead/get.operation.ts
+  s_2c3598ca776ad8::t_cfe6969defcf09 7,43
+packages/nodes-base/nodes/Pipedrive/v2/actions/lead/update.operation.ts
+  s_2c3598ca776ad8::t_0eef044370a97e 7,169
+packages/nodes-base/nodes/Pipedrive/v2/actions/note/create.operation.ts
+  s_2c3598ca776ad8::t_977f45fabca75d 7,126
+packages/nodes-base/nodes/Pipedrive/v2/actions/note/delete.operation.ts
+  s_2c3598ca776ad8::t_60dddd89265e11 7,43
+packages/nodes-base/nodes/Pipedrive/v2/actions/note/get.operation.ts
+  s_2c3598ca776ad8::t_eef9ef9f504d4f 7,43
+packages/nodes-base/nodes/Pipedrive/v2/actions/note/update.operation.ts
+  s_2c3598ca776ad8::t_59d909b3f59055 7,132
+packages/nodes-base/nodes/Pipedrive/v2/actions/organization/get.operation.ts
+  s_2c3598ca776ad8::t_954d6ecbf2f6bf 7,52
+packages/nodes-base/nodes/Pipedrive/v2/actions/organization/search.operation.ts
+  s_2c3598ca776ad8::t_0329ff4895aece 7,127,135
+packages/nodes-base/nodes/Pipedrive/v2/actions/organization/update.operation.ts
+  s_2c3598ca776ad8::t_1b5e289a852afb 7,110
+packages/nodes-base/nodes/Pipedrive/v2/actions/person/delete.operation.ts
+  s_2c3598ca776ad8::t_b7950ba1f73cfb 7,40
+packages/nodes-base/nodes/Pipedrive/v2/actions/person/getAll.operation.ts
+  s_2c3598ca776ad8::t_e5761ce939dbde 7,115,120
+packages/nodes-base/nodes/Pipedrive/v2/actions/person/update.operation.ts
+  s_2c3598ca776ad8::t_cfdbd92c708bb3 7,212
+packages/nodes-base/nodes/Pipedrive/v2/actions/product/delete.operation.ts
+  s_2c3598ca776ad8::t_e944150bafaf82 7,40
+packages/nodes-base/nodes/Pipedrive/v2/actions/product/get.operation.ts
+  s_2c3598ca776ad8::t_708201c05581c8 7,52
+packages/nodes-base/nodes/Pipedrive/v2/actions/product/getAll.operation.ts
+  s_2c3598ca776ad8::t_42f9e9606331f4 7,78,83
+packages/nodes-base/nodes/Pipedrive/v2/actions/product/update.operation.ts
+  s_2c3598ca776ad8::t_3138162ad37247 7,164
+packages/nodes-base/nodes/Pipedrive/v2/transport/pipedrive.api.ts
+  s_0b340cbcd99bee::t_09f61a470b3426 10-11,13,35,43,49-52,101,131,176-181,184-185
+packages/nodes-base/nodes/Plivo/GenericFunctions.ts
+  s_27e8773386a129::t_882b323962dbc9 8-9,11,20,29,36
+packages/nodes-base/nodes/Plivo/Plivo.node.ts
+  s_27e8773386a129::t_22b7a9c0199382 8,96,117,139
+packages/nodes-base/nodes/PostHog/GenericFunctions.ts
+  s_27e8773386a129::t_205b53ecadb424 8-9,11,16,26,33
+packages/nodes-base/nodes/Postmark/GenericFunctions.ts
+  s_27e8773386a129::t_e73b752ab8fbe9 10-11,13,18,22,29
+packages/nodes-base/nodes/Postmark/PostmarkTrigger.node.ts
+  s_27e8773386a129::t_296a63cbfd0fe7 9,135,161,232
+packages/nodes-base/nodes/ProfitWell/GenericFunctions.ts
+  s_27e8773386a129::t_116179dcd653c5 9-10,12,17,24,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e7478bf9c60bbf6e847c5c0b188d4e096c0165d",
+  "prompts": {},
+  "sessions": {
+    "s_0b340cbcd99bee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac6763e23459042a2",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_27e8773386a129": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0096ceb206f131bf",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2c3598ca776ad8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaa618e8a9dae7bec",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_3bd5fd0ef4a52e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4cd846362f8d8557",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

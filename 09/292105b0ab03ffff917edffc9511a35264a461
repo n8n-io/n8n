@@ -1,0 +1,22 @@
+biome.jsonc
+  s_f7f2d4e1621430::t_f7da07096492fc 21
+  s_f7f2d4e1621430::t_502efcdf6da3ae 22,24
+packages/@n8n/hooks-api/scripts/check-api.mjs
+  s_f7f2d4e1621430::t_27c78895b1f063 53-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09292105b0ab03ffff917edffc9511a35264a461",
+  "prompts": {},
+  "sessions": {
+    "s_f7f2d4e1621430": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a2560a7a-eba7-4d0a-9535-29bf549f1650",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

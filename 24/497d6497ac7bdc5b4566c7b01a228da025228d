@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/Airtable/test/AirtableTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_8e2c1034ddfe50 2-16,18-39
+  s_2e1fa95fc44f8f::t_0591c4b36e7e88 1
+  s_2e1fa95fc44f8f::t_9ce83a7b2ba6c3 17
+packages/nodes-base/nodes/Airtable/test/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_9f4fb1b0e18d4b 1-76,78-224,227-387
+  s_2e1fa95fc44f8f::t_13d7cadb020e2e 226
+  s_2e1fa95fc44f8f::t_6a81f7bd3a468f 77
+  s_2e1fa95fc44f8f::t_350bf706163830 225
+  s_2e1fa95fc44f8f::t_e33350817e1f54 388-390
+  s_31cebdf9d3ffe1::t_65fe056dbd4a22 391-399
+packages/nodes-base/nodes/Airtable/test/requestUrls.workflow.test.ts
+  s_2e1fa95fc44f8f::t_d724d23806fd47 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24497d6497ac7bdc5b4566c7b01a228da025228d",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_31cebdf9d3ffe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a29c3b63139d7fbed",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

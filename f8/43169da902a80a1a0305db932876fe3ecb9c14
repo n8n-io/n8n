@@ -1,0 +1,27 @@
+packages/@n8n/instance-ai/src/workflow-loop/workflow-loop-state.ts
+  s_3c534142b2065c::t_b11aaa5476bc3a 436
+  s_3c534142b2065c::t_74efbcf9f00f42 433-434
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_3c534142b2065c::t_89cfbd1103737f 1632-1635,1644-1655,1660-1668,1671
+  s_3c534142b2065c::t_f45c7bcf1e1200 1615-1631,1636-1643,1656-1659,1669-1670,1672-1677
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_3c534142b2065c::t_3cc5b1d9d771e0 1486,1488-1495,1498-1502,1577
+packages/@n8n/instance-ai/src/tools/workflows/workflow-file-bindings.ts
+  s_3c534142b2065c::t_8331f415c5dbef 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f843169da902a80a1a0305db932876fe3ecb9c14",
+  "prompts": {},
+  "sessions": {
+    "s_3c534142b2065c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdc79e9e-95fa-4aec-bf3d-916979e7d2a4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

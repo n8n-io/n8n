@@ -1,0 +1,21 @@
+packages/cli/src/credentials/credential-data-merge.ts
+  s_b2c2d6568c927f::t_87ce7c800d2119 66-68,81
+packages/cli/src/credentials/__tests__/credential-data-merge.test.ts
+  s_b2c2d6568c927f::t_d26192011ab339 44-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ba53fa6ea31ccd6627faef1d153a7bf21f455c1",
+  "prompts": {},
+  "sessions": {
+    "s_b2c2d6568c927f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e4633b4-2c50-4ff2-b286-7dfd12019df9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

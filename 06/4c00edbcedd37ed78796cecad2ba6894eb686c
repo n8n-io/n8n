@@ -1,0 +1,31 @@
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_5af63b805b3deb::t_0e6fbffdecc55d 179-181
+  s_5af63b805b3deb::t_fc39775ca420b9 7,175,177-178,182-203,205-237
+  s_5af63b805b3deb::t_6c5e0486a2164a 176
+  s_5af63b805b3deb::t_7bf1ef8f27ba38 204
+  s_5af63b805b3deb::t_de20a08dd05c98 238
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_5af63b805b3deb::t_6c5e0486a2164a 205-206,210
+packages/@n8n/agents/src/runtime/model/native-tool-deferral.ts
+  s_5af63b805b3deb::t_6c5e0486a2164a 2,13
+packages/@n8n/agents/docs/prompt-caching.md
+  s_5af63b805b3deb::t_6c5e0486a2164a 102-104
+packages/@n8n/agents/src/runtime/model/native-tool-deferral/anthropic.ts
+  s_5af63b805b3deb::t_6c5e0486a2164a 1-2,14-18,39,51-88,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "064c00edbcedd37ed78796cecad2ba6894eb686c",
+  "prompts": {},
+  "sessions": {
+    "s_5af63b805b3deb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12fb6-49d7-72f2-be9b-f4dc5396a6e1",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

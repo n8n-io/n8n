@@ -1,0 +1,45 @@
+packages/nodes-base/nodes/Clearbit/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_099f618545c77e 1-27
+packages/nodes-base/nodes/CircleCi/__tests__/workflow/workflow.json
+  s_011c996fdfa425::t_2906ef12b71d10 1-122
+packages/nodes-base/nodes/CircleCi/__tests__/workflow/workflow.test.ts
+  s_011c996fdfa425::t_e14feeab1f4450 1-23
+packages/nodes-base/nodes/Cisco/Webex/__tests__/workflow/workflow.json
+  s_011c996fdfa425::t_be812552a8d5fc 1-305
+packages/nodes-base/nodes/Cisco/Webex/__tests__/workflow/workflow.test.ts
+  s_011c996fdfa425::t_a059494ca1f0d5 1-64
+packages/nodes-base/nodes/Clearbit/__tests__/workflow/workflow.json
+  s_011c996fdfa425::t_fbc761e839c7bd 1-115
+packages/nodes-base/nodes/ClickUp/__tests__/workflow/workflow.json
+  s_011c996fdfa425::t_bdb9089d4a25ea 1-2136
+packages/nodes-base/nodes/ClickUp/__tests__/workflow/workflow.test.ts
+  s_011c996fdfa425::t_cb5152e0a84e42 1-149
+packages/nodes-base/nodes/Clockify/__tests__/workflow/workflow.json
+  s_011c996fdfa425::t_248bebbd748c83 1-816
+packages/nodes-base/nodes/Clockify/__tests__/workflow/workflow.test.ts
+  s_011c996fdfa425::t_af3cf46c402776 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03822a278e0aa34a176ba230c27ce099eb62b9ea",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

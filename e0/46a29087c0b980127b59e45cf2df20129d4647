@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Supabase/tests/workflow/Supabase.workflow.test.ts
+  s_2e1fa95fc44f8f::t_82e85a7d1dc1e7 25
+  s_2e1fa95fc44f8f::t_e4f0315cb2d763 22
+  s_2e1fa95fc44f8f::t_4ffcdecd78a1df 26-27
+packages/nodes-base/nodes/Supabase/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_33b206f6fd0ca4 53,58-62
+  s_2e1fa95fc44f8f::t_9bb25e650b3b61 55-57
+  s_2e1fa95fc44f8f::t_b08601d8a70790 54
+  s_2e1fa95fc44f8f::t_00e05e7b0ac305 93-97
+packages/nodes-base/nodes/Supabase/tests/Supabase.node.test.ts
+  s_2e1fa95fc44f8f::t_d102c987471254 2
+  s_2e1fa95fc44f8f::t_384dc1b5ef57e8 296-331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e046a29087c0b980127b59e45cf2df20129d4647",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+packages/nodes-base/nodes/Emelia/EmeliaTrigger.node.ts
+  s_2e1fa95fc44f8f::t_d46b865ee26c8a 3
+  s_011c996fdfa425::t_de81438a2bbab3 131,152-157,171
+packages/nodes-base/nodes/Egoi/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_25cee8fdcc3b31 1-23
+packages/nodes-base/nodes/Eventbrite/EventbriteTrigger.node.ts
+  s_2e1fa95fc44f8f::t_f8ee4517c2693d 286
+  s_9ad2ddf902ab5e::t_330b268d76d9e2 12,197,218,241,269,333
+packages/nodes-base/nodes/Eventbrite/__tests__/EventbriteTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_641d07b6a3c4a5 210-223
+packages/nodes-base/nodes/Egoi/Egoi.node.ts
+  s_011c996fdfa425::t_c34a71136bed7e 10,12,494,509-513,529,588,600,610,622-623,627,630-631,634,666,675,718,728,738
+packages/nodes-base/nodes/Egoi/GenericFunctions.ts
+  s_9ad2ddf902ab5e::t_96524eda748582 9-10,12,27,35,43,62,70
+packages/nodes-base/nodes/Elastic/ElasticSecurity/ElasticSecurity.node.ts
+  s_011c996fdfa425::t_f0e96d0b5ef7a4 10,23,94-98,103,210-215,224-230,243,270,278-282,305,312-317,334,357,363-368,379,401,407-412,437,454,465,477,498,502,556
+packages/nodes-base/nodes/Elastic/ElasticSecurity/GenericFunctions.ts
+  s_60ced84f4534d4::t_4817c1f760b413 8-9,11,17-18,24,33,37,63,88,116,133
+packages/nodes-base/nodes/Elastic/ElasticSecurity/tests/GenericFunctions.test.ts
+  s_9ad2ddf902ab5e::t_a3902a3afabc1f 1-2,4,6,9,11-31
+packages/nodes-base/nodes/Elastic/Elasticsearch/Elasticsearch.node.ts
+  s_011c996fdfa425::t_2cdaa016764c17 10,104,125,183,195,259,262,305,335,350,372,384
+packages/nodes-base/nodes/Elastic/Elasticsearch/GenericFunctions.ts
+  s_011c996fdfa425::t_a1650722041cb9 7-8,10,20,24,58,65,69,98,103,120-126,142-148,160
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/GenericFunctions.test.ts
+  s_9ad2ddf902ab5e::t_f66dc86584fda9 1-7,43,51,66,76,88,95,109,114,145-158
+packages/nodes-base/nodes/Emelia/GenericFunctions.ts
+  s_9ad2ddf902ab5e::t_55e2e519b80c73 13-14,16,24,30,37,55
+packages/nodes-base/nodes/Eventbrite/GenericFunctions.ts
+  s_9ad2ddf902ab5e::t_b641a69f4ae250 10-11,13,24,30,35,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8416e8b0d7907b9c086b4448aab654855c8a75bd",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_60ced84f4534d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9ffba14b3ec9d434",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_9ad2ddf902ab5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a847cf65c598fe6ab",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Zulip/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_19d3d274ae5e24 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91d99ab7fed3beaeb8cec83ef1896d58f58c9499",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

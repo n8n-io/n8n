@@ -1,0 +1,32 @@
+packages/cli/src/services/pruning/executions-pruning.service.ts
+  s_68b6de0f101099::t_1b2a6eb59f4148 49-52,55,60-66,74,77,79-81
+  s_68b6de0f101099::t_15e7bedaed6891 109
+  s_68b6de0f101099::t_46affabfb97b1d 86-89
+  s_68b6de0f101099::t_e67a9a4a2bee2b 11-12
+packages/cli/test/integration/executions-pruning.service.test.ts
+  s_68b6de0f101099::t_46affabfb97b1d 517-519
+  s_68b6de0f101099::t_20c1cb253cfcbc 504-516,520-522
+packages/cli/src/services/pruning/__tests__/executions-pruning.service.test.ts
+  s_68b6de0f101099::t_c8cb66798c70fb 37-48
+  s_68b6de0f101099::t_fb9fda17eedc7d 171-174,176-184,186-195,197-205,207-208
+  s_68b6de0f101099::t_998ba6de787702 175,185,196,206
+  s_68b6de0f101099::t_35e972f9804552 30,32
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_68b6de0f101099::t_68d93689e00abc 736,745
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2334b8e0a36431e99b468752b11752fd04b2e20f",
+  "prompts": {},
+  "sessions": {
+    "s_68b6de0f101099": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d4c5996-3493-437e-b26f-8a1167254e1c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

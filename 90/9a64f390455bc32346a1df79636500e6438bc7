@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Facebook/__tests__/FacebookTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_5c9b1d2de91083 75-121
+  s_2e1fa95fc44f8f::t_52d0a23d794f4a 3
+  s_2e1fa95fc44f8f::t_7b7454cbed691a 122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "909a64f390455bc32346a1df79636500e6438bc7",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

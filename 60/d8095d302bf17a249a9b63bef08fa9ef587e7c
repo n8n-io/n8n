@@ -1,0 +1,33 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f01b1ac3173a25::t_025f95abffef47 4663,4694,4699-4700,4702,4705-4706,4710,4713
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrateWorkflowModal.test.ts
+  s_f01b1ac3173a25::t_2080d2ae486499 197-198
+  s_f01b1ac3173a25::t_a72c8f5e479e20 67-74,79,192-196,199-278
+  s_f01b1ac3173a25::t_95993094562883 279
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_f01b1ac3173a25::t_0a70fb91f1f90c 498-545,589
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrateWorkflowModal.vue
+  s_f01b1ac3173a25::t_fdd8a950bd7389 25-26,38-39,41-49,52,54-91,94-95,97-103,105-119,121-122,126-139,148-158,398
+  s_f01b1ac3173a25::t_186acd9f9d6542 178,208-235,239-243,250-268,270-282,291-301,317,322,325-327,331-341,344-357,394-397
+  s_f01b1ac3173a25::t_21c98cef0d7d30 244-249
+  s_f01b1ac3173a25::t_ca9c22e38af438 399
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_f01b1ac3173a25::t_21c98cef0d7d30 276-278
+  s_f01b1ac3173a25::t_954faa38f9c5d1 273,281,286,804,826-832
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60d8095d302bf17a249a9b63bef08fa9ef587e7c",
+  "prompts": {},
+  "sessions": {
+    "s_f01b1ac3173a25": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d1c09b5-152f-4518-8625-303dca3009fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

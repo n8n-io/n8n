@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_adc3aa5f3ee5fa::t_ae4f5ce3aafcc2 209
+  s_adc3aa5f3ee5fa::t_0880c1d7aa01be 3
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_adc3aa5f3ee5fa::t_26a0896a85a9f2 146-147
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactionRegistry.ts
+  s_adc3aa5f3ee5fa::t_dc2806ec5ba185 260-262
+  s_adc3aa5f3ee5fa::t_cb6fa71d532cdb 177-207
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_adc3aa5f3ee5fa::t_75932fa6b58dc2 1577-1589
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_adc3aa5f3ee5fa::t_94e59826ff337e 261-263
+  s_adc3aa5f3ee5fa::t_0880c1d7aa01be 17
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/hostEventRenderers.test.ts
+  s_adc3aa5f3ee5fa::t_49eb7b82064502 236-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "179903a3b929dc0e302a5c34e825cda2cca8447a",
+  "prompts": {},
+  "sessions": {
+    "s_adc3aa5f3ee5fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ae8fb7d-c339-403a-9aec-205bf00ec318",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/transport/index.ts
+  s_2e1fa95fc44f8f::t_75cbaaf0c084b1 8,205,263
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/index.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 2,76
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 10,70,125,245,250
+  s_2e1fa95fc44f8f::t_ac07f270128b0f 7
+  s_2e1fa95fc44f8f::t_b6ae17d5f219a1 65
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/delete.operation.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 2,68
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/file/update.operation.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 2,112,124
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/create.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,23
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/get.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,94,126,147,219
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/columns.test.ts
+  s_2e1fa95fc44f8f::t_93e029dcef00bd 512-514
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 3,299
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/get.operation.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 2,86
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 2,138
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/folder/index.ts
+  s_2e1fa95fc44f8f::t_b6ae17d5f219a1 51
+  s_2e1fa95fc44f8f::t_b195632cc6822a 2
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/index.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,48,66,109
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/get.operation.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 2,73
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/file/index.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 7,66
+  s_2e1fa95fc44f8f::t_ac07f270128b0f 1-6
+  s_2e1fa95fc44f8f::t_b6ae17d5f219a1 54
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/file/download.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,81
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/file.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,60
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/update.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,29,141,150,186,304,358
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/getAll.operation.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 2,53
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/delete.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,68
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/transport/index.test.ts
+  s_2e1fa95fc44f8f::t_f5b0e7d3e010af 2,166,193,226,260,292,309,337,362,381
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/create.operation.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 7,68
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/columns.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 8,125
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/file/upload.test.ts
+  s_2e1fa95fc44f8f::t_2447ed682b2b10 79,94
+  s_2e1fa95fc44f8f::t_93e029dcef00bd 95-97
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,80,205
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/file/update.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,28
+  s_2e1fa95fc44f8f::t_2447ed682b2b10 90
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/folder.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,58,171
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/index.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,24
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/helpers/graphSearch.ts
+  s_2e1fa95fc44f8f::t_b6ae17d5f219a1 1-6,16,81
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/file/upload.operation.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 2,82
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/upsert.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,29,111,120,227
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/file/download.operation.ts
+  s_2e1fa95fc44f8f::t_b195632cc6822a 7,89
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/get.test.ts
+  s_2e1fa95fc44f8f::t_ee14f5d7ee614d 2,121,150,210
+  s_2e1fa95fc44f8f::t_93e029dcef00bd 184-186
+  s_2e1fa95fc44f8f::t_c403efef8d9894 216-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f2c4c6b0bae2431ca9ba9255d6c8b205f216960",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

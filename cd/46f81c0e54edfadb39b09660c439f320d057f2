@@ -1,0 +1,14 @@
+packages/cli/src/modules/inbound-auth-core/public-api-oauth.strategy.ts
+  h_435b1d7d3e52c0 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd46f81c0e54edfadb39b09660c439f320d057f2",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

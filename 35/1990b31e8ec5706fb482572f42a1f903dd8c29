@@ -1,0 +1,85 @@
+packages/nodes-base/nodes/Mailjet/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_d71a7798f51558 1-28
+packages/nodes-base/nodes/Marketstack/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_f8351f9c85193c 22-24,26
+  s_2e1fa95fc44f8f::t_994b55cd063d42 7-8,10,15,48
+packages/nodes-base/nodes/Marketstack/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_1f83f7a1fdf3a4 1-25
+packages/nodes-base/nodes/MailerLite/tests/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b459b95fbef48e 131-146
+  s_2e1fa95fc44f8f::t_2ae18e74bcccc3 7-8,37,55,65,83,91,109,117,168,195
+packages/nodes-base/nodes/MailerLite/GenericFunctions.ts
+  s_0c8ab979236670::t_3a40d14b1999ab 10-11,13,20,25,31-32,49,80
+packages/nodes-base/nodes/MailerLite/v1/MailerLiteTriggerV1.node.ts
+  s_0c8ab979236670::t_9e1a53899b28a3 10,123,139,159
+packages/nodes-base/nodes/MailerLite/v1/MailerLiteV1.node.ts
+  s_01cb885e0ad060::t_22f53a915eac9c 9,108-113,122,137,144-150,183
+packages/nodes-base/nodes/MailerLite/v2/MailerLiteTriggerV2.node.ts
+  s_0c8ab979236670::t_a7f8ad429a04e6 10,119,140,165
+packages/nodes-base/nodes/MailerLite/v2/MailerLiteV2.node.ts
+  s_01cb885e0ad060::t_d6805eee4e7699 9,110-115,125,144,151-157,191
+packages/nodes-base/nodes/Mailjet/GenericFunctions.ts
+  s_0c8ab979236670::t_c4daecd0987972 8-9,11,16,20,39,47,61,74
+packages/nodes-base/nodes/Mailjet/Mailjet.node.ts
+  s_01cb885e0ad060::t_d2fefe4c7aab81 10,82-86,205,300,317-322
+packages/nodes-base/nodes/Mailjet/MailjetTrigger.node.ts
+  s_0c8ab979236670::t_a9176c5dabff14 9,81,102,115
+packages/nodes-base/nodes/Mailjet/test/Mailjet.node.test.ts
+  s_12e7f256626c98::t_c5faa80f851226 3,96,132,168,205,240,280,346,382,419,456,523,536
+packages/nodes-base/nodes/Mandrill/GenericFunctions.ts
+  s_0c8ab979236670::t_cfbcc24e3b509b 10-11,13,17,19,28,31
+packages/nodes-base/nodes/Mandrill/Mandrill.node.ts
+  s_01cb885e0ad060::t_b27b794510a62f 14,693-698,879,881,885-891
+packages/nodes-base/nodes/Mandrill/test/GenericFunctions.test.ts
+  s_76b58d8bdcd1c4::t_60a7c8d447685a 1-4,9,14-34
+packages/nodes-base/nodes/Marketstack/Marketstack.node.ts
+  s_0c8ab979236670::t_790f53de3c4a7b 7,9,119,122,124,133,147,158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "351990b31e8ec5706fb482572f42a1f903dd8c29",
+  "prompts": {},
+  "sessions": {
+    "s_01cb885e0ad060": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7ddd85cc749261b8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_0c8ab979236670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5725a58c20a2e923",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_12e7f256626c98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a286d667b0e666e1e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_76b58d8bdcd1c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acd72c17579f542b9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

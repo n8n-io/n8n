@@ -1,0 +1,34 @@
+packages/nodes-base/nodes/Bubble/test/workflow/Bubble.workflow.test.ts
+  s_2e1fa95fc44f8f::t_78da2eac7ad3cd 1-77
+  s_2e1fa95fc44f8f::t_ddc19957f8d45f 78-79
+packages/nodes-base/nodes/Bubble/test/workflow/development.workflow.json
+  s_de2c00e6233f17::t_cb978db096bc88 1-53
+packages/nodes-base/nodes/Bubble/test/workflow/hosted.workflow.json
+  s_de2c00e6233f17::t_7ba4c4c205b0e3 1-195
+packages/nodes-base/nodes/Bubble/test/workflow/self-hosted.workflow.json
+  s_de2c00e6233f17::t_818fe256fc8a92 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6292f758e2f5a2178b6bf4ae8562b7f0f2597f8",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_de2c00e6233f17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a77576dbb68b5b9b9",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

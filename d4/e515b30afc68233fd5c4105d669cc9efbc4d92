@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Google/BigQuery/test/v1/node/record.workflow.json
+  s_2e1fa95fc44f8f::t_18ffbc13669189 1-146
+packages/nodes-base/nodes/Google/BigQuery/test/v1/node/record.test.ts
+  s_2e1fa95fc44f8f::t_b032b87aed6bfb 1-33
+  s_2e1fa95fc44f8f::t_348d5963d8267b 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4e515b30afc68233fd5c4105d669cc9efbc4d92",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

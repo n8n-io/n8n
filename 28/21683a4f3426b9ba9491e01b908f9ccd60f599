@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8661479fcacbbd::t_76515c882dd061 1195-1199
+  s_8661479fcacbbd::t_c138a93bcd36a7 68
+  s_8661479fcacbbd::t_0b0d1535e24b37 273,1200-1201
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8661479fcacbbd::t_acf9ec3ab5d039 60,2923-2925
+packages/@n8n/instance-ai/src/skills/materialize-runtime-skills.ts
+  s_8661479fcacbbd::t_57787adf8956d4 561
+  s_8661479fcacbbd::t_fc1f85acd454a5 72,74-79,89-90,594,603-607,615,622,629-634,637,639,641,646-668,671,704-711
+packages/@n8n/instance-ai/src/skills/__tests__/materialize-runtime-skills.test.ts
+  s_8661479fcacbbd::t_b199ea453d12c3 363-404,436-477
+  s_8661479fcacbbd::t_fb9c7bf8019859 29-34,405-435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2821683a4f3426b9ba9491e01b908f9ccd60f599",
+  "prompts": {}
+}

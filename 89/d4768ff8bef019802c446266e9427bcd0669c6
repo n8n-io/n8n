@@ -1,0 +1,110 @@
+packages/nodes-base/nodes/Gitlab/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_c74ad24377c8f7 39-41,44
+  s_2e1fa95fc44f8f::t_acdf2bdc4bbef4 36-38
+  s_2e1fa95fc44f8f::t_ecf07a901ff34d 42-43
+  s_2e1fa95fc44f8f::t_9a74c1c1aefef2 45
+  s_c59331e96b0204::t_1e13c8edfba659 8-9,11,20,23,26,29-35,59
+packages/nodes-base/nodes/FreshworksCrm/FreshworksCrm.node.ts
+  s_2e1fa95fc44f8f::t_a4973420b6b3ca 10
+  s_5bf7980c253492::t_9b1f4a225f5733 131,138-142,159,168,201,231,280,293,305,317-321,340,391-396,407,419,443-449,493,523-528,539,551,563-567,586,615-620,631,642-646,657,679,704-709,720,743,781-788,799,811,821,856,881-887,915-921,953-958,969,980-984,1010,1040
+packages/nodes-base/nodes/Gitlab/Gitlab.node.ts
+  s_2e1fa95fc44f8f::t_450b04b00c350d 8
+  s_12e7f256626c98::t_d464fe1a72353a 10,1380,1391,1396,1403,1423,1434,1453,1463,1475,1489,1502,1515,1534,1552,1562,1578,1588,1642,1669,1689,1706
+packages/nodes-base/nodes/Freshservice/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_fef3525d539292 2,6
+  s_2e1fa95fc44f8f::t_267f0deec81329 60-78
+packages/nodes-base/nodes/Freshservice/Freshservice.node.ts
+  s_5bf7980c253492::t_d1334a51c3ae4e 10,12,194-198,205-209,216,226,238,255,263-267,274-278,327-332,339-343,350-354,367,384,408-413,420,428,435,449,463-467,473,509-514,521,530,537,560,590-595,605,616,630,647,671-676,684,692,699,713,744-749,759,767-771,798,815,845-850,857,865,879,899,923-928,935,943,950,964,992-997,1004,1012,1019,1033,1057-1062,1070,1078,1085,1097,1125-1130,1137,1145,1152,1164,1195-1200,1207,1215,1229,1250,1276,1285,1293,1300,1314,1340-1345,1352,1360,1367,1381,1415-1420,1430,1438-1442,1450,1454,1456,1476
+packages/nodes-base/nodes/Freshservice/GenericFunctions.ts
+  s_93035ae9b819fc::t_0bafa1dcc97e26 10-11,13,28,35,42,82,105
+packages/nodes-base/nodes/FreshworksCrm/GenericFunctions.ts
+  s_0c8ab979236670::t_e60a1434a562b9 9-10,12,25,31,35,72,87,109,136
+packages/nodes-base/nodes/FreshworksCrm/test/GenericFunctions.test.ts
+  s_5bf7980c253492::t_a3c2169cff9d69 1-25
+packages/nodes-base/nodes/GetResponse/GenericFunctions.ts
+  s_5bf7980c253492::t_141c1fb54ca817 10-11,13,18,22,26,33,55,66-68
+packages/nodes-base/nodes/GetResponse/GetResponse.node.ts
+  s_5bf7980c253492::t_b9b5677f967a21 11,93,106,119-123,177-182,197,215,267,273-279,309
+packages/nodes-base/nodes/GetResponse/GetResponseTrigger.node.ts
+  s_5bf7980c253492::t_543e5dff7b1ac0 12,145-149,169-174,189,208,214
+packages/nodes-base/nodes/GetResponse/test/GenericFunctions.test.ts
+  s_5bf7980c253492::t_4813527f3675ea 1-25
+packages/nodes-base/nodes/Ghost/GenericFunctions.ts
+  s_12e7f256626c98::t_ce0237f16f856d 8-9,11,16,37,40,52
+packages/nodes-base/nodes/Ghost/Ghost.node.ts
+  s_5bf7980c253492::t_bc3df79ab518ba 11,93-98,111-116,155,157,176,182-188,250,260-264,279,281,299,305-311,354,376
+packages/nodes-base/nodes/Ghost/test/GenericFunctions.test.ts
+  s_5bf7980c253492::t_80511071e8d968 1-29
+packages/nodes-base/nodes/Gitlab/GitlabTrigger.node.ts
+  s_94422d44c623aa::t_5b3acbe41b2170 10,192,239,281
+packages/nodes-base/nodes/Gitlab/__tests__/GenericFunctions.test.ts
+  s_5bf7980c253492::t_e0541fe6a7a95f 1-32
+packages/nodes-base/nodes/Gitlab/__tests__/Gitlab.file.create.test.ts
+  s_5bf7980c253492::t_24fa3d6480f0f0 95-97,149-151,182-184,263-265
+packages/nodes-base/nodes/Gitlab/__tests__/Gitlab.node.test.ts
+  s_0c8ab979236670::t_e6aa2e57addec7 89,110,240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89d4768ff8bef019802c446266e9427bcd0669c6",
+  "prompts": {},
+  "sessions": {
+    "s_0c8ab979236670": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5725a58c20a2e923",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_12e7f256626c98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a286d667b0e666e1e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_5bf7980c253492": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2d9978c40da345a8",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_93035ae9b819fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac3698ad351421391",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_94422d44c623aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3060691ca30bf421",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c59331e96b0204": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a406bf384a0b0661a",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

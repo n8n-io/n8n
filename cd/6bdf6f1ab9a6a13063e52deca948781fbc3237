@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/entities/agent.entity.ts
+  s_09ebfe5a5b97ab::t_c33e0d8aeb1e2f 44-45
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_09ebfe5a5b97ab::t_2cb17a56d43197 1521-1523
+packages/cli/src/modules/agents/agents.service.ts
+  s_09ebfe5a5b97ab::t_d640d2ba8fd1f0 42
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_09ebfe5a5b97ab::t_b8d5be8e21f772 516
+  s_09ebfe5a5b97ab::t_e998f97e0d9ebe 545
+  s_09ebfe5a5b97ab::t_6cc4de768f6b70 393-399
+  s_09ebfe5a5b97ab::t_a098d03723e54c 694,727,757,850,863
+  s_09ebfe5a5b97ab::t_c8eb8694dfaea1 36-37
+  s_09ebfe5a5b97ab::t_f521f3b33e43a5 392
+  s_09ebfe5a5b97ab::t_df5f17bdbe414f 506
+packages/cli/src/modules/agents/utils/get-agent-or-throw.ts
+  s_09ebfe5a5b97ab::t_4d04101e603510 1,13-14
+packages/cli/test/integration/database/repositories/agent-instance-scope.repository.test.ts
+  s_09ebfe5a5b97ab::t_8bf0e433ec1843 95-97,104
+  s_09ebfe5a5b97ab::t_c8a633c5716f06 75-94,98-103,105-121
+  s_09ebfe5a5b97ab::t_6ad04045d889ef 3,167,169
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_09ebfe5a5b97ab::t_6ad04045d889ef 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cd6bdf6f1ab9a6a13063e52deca948781fbc3237",
+  "prompts": {},
+  "sessions": {
+    "s_09ebfe5a5b97ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26e89b9d-8656-45aa-98cc-1e020586a4fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

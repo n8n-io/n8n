@@ -1,0 +1,503 @@
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-arm-template.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.openapi.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 81-120
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 7
+packages/cli/src/credentials/__tests__/credential-data-merge.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-311
+packages/cli/src/modules/oauth-server/__tests__/oauth-session.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 6
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 67
+packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-190
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 324
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 41,43,62-66,168
+packages/cli/src/modules/agents/agent-whatsapp-integrations.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-67
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 543,572
+packages/cli/src/modules/type-availability-policies/credential-type-policy-instance.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 159
+packages/cli/src/commands/__tests__/start.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 35
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3-10,564-576
+packages/@n8n/api-types/src/agents/whatsapp/types.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-35
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 14
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3,114
+packages/modules/quick-connect/backend/src/index.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1,4-7,9-10,12,14-16,18,20-21,23-28,30,32-41
+packages/cli/src/modules/modules.manifest.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 9
+packages/cli/src/modules/promotions.ee/promotion-binding-preflight.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 153-154,158-174
+packages/cli/test/integration/oidc/oidc.service.ee.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 31
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 25-26,165-190
+packages/cli/test/integration/agents/agent.repository.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-47
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/replaceNodeTypePolicyAttachments.generated.yml
+  ai_agent 8,40-42,45,130-131
+packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 32-39
+packages/modules/quick-connect/backend/src/__tests__/quick-connect.controller.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-73
+packages/modules/quick-connect/backend/src/handlers/handler.interface.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-26
+packages/cli/src/public-api/v1/handlers/discover/__tests__/discover.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 4
+packages/modules/quick-connect/backend/tsconfig.json
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-17
+packages/cli/src/commands/webhook.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 14
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policy.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 689,707,723,737,749-766,778,814,836,856
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3408-3409,9581,9588-9590
+packages/@n8n/mcp-browser-extension/manifest.json
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 18
+packages/@n8n/api-types/src/agents/whatsapp/index.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1
+packages/cli/src/modules/scim/__tests__/scim-token.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  ai_agent 48
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/image/generate.operation.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 10-18,276-329
+packages/cli/scripts/build.mjs
+  s_925dcfedebf0c9::t_690b2abd8c02c1 78-79,82,84,87,89-90,92-94,96-97,100-101,122,132-133,135,137,141,143-144
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  ai_agent 1098-1122
+packages/modules/quick-connect/backend/test/setup-test-folder.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-19
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 223-247
+packages/cli/src/services/user.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3
+packages/cli/test/integration/policy/type-availability-policy-instance.controller.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 10,107,366-369,391,499-502,511-551,572-575
+packages/modules/quick-connect/backend/src/quick-connect.module.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-34
+packages/cli/package.json
+  s_925dcfedebf0c9::t_690b2abd8c02c1 162
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5-8,173-181,240-242,333-334,400,584-585
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-authorization.api.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 19
+packages/cli/test/integration/controllers/invitation/invitation.controller.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1
+packages/cli/src/modules/agents/integrations/platforms/__tests__/whatsapp/whatsapp-credential-check.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-314
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 11,193-209
+packages/@n8n/api-types/src/dto/type-availability-policies/__tests__/replace-attachments.dto.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5-13,19,31,46,62,70
+packages/modules/quick-connect/backend/tsconfig.build.json
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-10
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  ai_agent 173-232
+packages/cli/src/modules/agents/agent-channel-media-retention.task.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-63
+packages/cli/src/modules/scim/scim-token.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5
+packages/cli/src/controllers/users.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 35
+packages/cli/src/services/public-api-key.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 27
+packages/cli/src/commands/worker.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 24
+packages/cli/src/auth/__tests__/auth-service-browser-id-whitelist.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 7
+packages/frontend/editor-ui/src/features/ndv/runData/components/ai/utils.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 2-8,13-26
+packages/@n8n/mcp-browser-extension/package.json
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 209-210
+packages/modules/quick-connect/backend/README.md
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-25
+packages/cli/test/integration/policy/type-availability-policy-project.controller.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 263,279-282,300,316,353
+packages/@n8n/mcp-browser-extension/src/ui/components/RememberedHosts.vue
+  s_925dcfedebf0c9::t_690b2abd8c02c1 48,59,75-76
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-2,8,18-19,22,26-27,34,40-41,46-47,54-142
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 80-176
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 6-7,12-13,141-163,406-407
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 34
+packages/cli/src/public-api/v1/openapi.yml
+  s_925dcfedebf0c9::t_690b2abd8c02c1 81
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3437,3508
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/analyze.operation.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 11,200
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 95
+packages/cli/src/services/api-key-auth.strategy.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 11
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 10
+packages/modules/quick-connect/backend/oxlint.config.mts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-8
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/image/edit.operation.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 29-37,748-836
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_925dcfedebf0c9::t_690b2abd8c02c1 237-238
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 23
+packages/cli/test/integration/policy/credential-type-policy-instance.controller.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 247-250,275
+packages/cli/src/public-api/media-types/request-body/multipart.request-body.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 16,26
+packages/@n8n/backend-services/src/errors/rest-error-classifier.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 49
+packages/cli/tsconfig.json
+  s_925dcfedebf0c9::t_690b2abd8c02c1 44
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-arm-template.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 25
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/replaceCredentialTypePolicyAttachments.generated.yml
+  ai_agent 8,40-42,45,143-144
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generate.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3-5,7,10-11,13,15-16,26-28,31-35,37-51,54-71,73,75-80,83-86,89-96,99-102,104-112,116-117,119,121-123,126-127,130-133,136-144
+packages/@n8n/config/src/configs/agents.config.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 116-123
+packages/cli/src/modules/__tests__/modules.manifest.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-23
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 265-364
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 9,32,82-86,97,633,734,771-778,917,921,924,926-928
+packages/cli/src/modules/agents/integrations/platforms/__tests__/whatsapp/synthetic-integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-5,31,360-364,401-402,408,435,1072-1129,1137-1138,1153,1157-1158,1173,1215-1258
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 175,197
+packages/@n8n/cli/docs/commands/promotions.md
+  s_925dcfedebf0c9::t_690b2abd8c02c1 297,303-307,328-337
+packages/cli/src/modules/oauth-server/oauth-session.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  ai_agent 5
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1408
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 294,963,1054-1060
+packages/cli/src/modules/token-exchange/services/__tests__/token-exchange.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 7
+packages/cli/src/services/__tests__/public-api-key.service.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 14
+packages/modules/quick-connect/backend/src/handlers/firecrawl.handler.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-42,44-48,50-51
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 9
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 146-172,421,424-426,428,430,433,440,442,446,449,452-455,457,459,462,469-471,473,477-491
+packages/cli/src/public-api/index.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1,158-162,168,173,177,193
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 170
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_925dcfedebf0c9::t_690b2abd8c02c1 17,55-58
+packages/cli/src/modules/oauth-server/__tests__/signing-key-fixtures.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 8
+packages/frontend/editor-ui/src/features/ndv/runData/components/ai/utils.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-78
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 64-72,74-81,107-116
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 7-10,16,127,231-243
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  ai_agent 5,41
+pnpm-lock.yaml
+  ai_agent 1886-1891,1911-1913,4829-4831,7555-7623
+packages/cli/src/services/__tests__/deployment-signing-secrets.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 10
+packages/@n8n/mcp-browser-extension/src/ui/components/InfoRow.vue
+  s_925dcfedebf0c9::t_690b2abd8c02c1 40-41,53
+packages/cli/src/modules/scim/database/scim-api-key.repository.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5
+packages/@n8n/api-types/src/dto/promotions/promotion-binding-preflight.dto.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 138,168-172
+packages/@n8n/mcp-browser-extension/src/ui/tokens.scss
+  s_925dcfedebf0c9::t_690b2abd8c02c1 30
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 107
+packages/modules/quick-connect/backend/src/__tests__/quick-connect.module.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-149
+packages/@n8n/backend-services/src/index.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 58-70
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 263-318
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 7
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 107
+packages/cli/src/modules/oauth-server/__tests__/oauth-signing-key.service.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 10
+packages/modules/quick-connect/backend/src/handlers/__tests__/firecrawl.handler.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-160
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3,7-14,60-115,128-131
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3,8-12,57-58,61,85-93
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 7
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-5,217-289
+packages/cli/src/modules/agents/__tests__/agent-channel-media-retention.task.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-190
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 44-58,172-183
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.repository.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-16,19-37
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/bindings.fixtures.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 51-56
+packages/modules/quick-connect/backend/src/__tests__/quick-connect.config.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-255
+.agents/skills/public-api/reference.md
+  s_925dcfedebf0c9::t_690b2abd8c02c1 125-128
+packages/cli/src/modules/agents/integrations/platforms/whatsapp/whatsapp-integration.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-5,16,20,23-24,27-32,37-44,69-75,196,209-217,242-244,248-272,300-301,308-316,483-489
+packages/@n8n/backend-services/oxlint.config.mts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 9-32
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 6
+packages/@n8n/backend-services/src/services/__tests__/jwt.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 8
+packages/@n8n/backend-services/eslint.config.mjs
+  s_925dcfedebf0c9::t_690b2abd8c02c1 9-27
+packages/cli/src/modules/agents/agents.module.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 35,102,214-221
+packages/@n8n/cli/src/commands/promotion-connection/apply-continue.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 9,22
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-setup.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 7
+packages/frontend/editor-ui/src/features/ndv/runData/components/ai/RunDataAiContent.vue
+  s_925dcfedebf0c9::t_690b2abd8c02c1 13-16,45-46,121-131
+packages/cli/src/modules/agents/__tests__/agent-whatsapp-integrations.controller.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-120
+packages/cli/test/integration/policy/node-type-policy.store-reads.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 106,231,246
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 26
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 10,17,232-245,253,272,302-306,395-399,402,420,472-480,508-510
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 75,157
+packages/modules/quick-connect/backend/src/quick-connect.errors.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1,4,6-14
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/interfaces.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 87-94
+packages/@n8n/backend-services/src/services/jwt.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 9
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 11-14,42,92-99,159-161
+packages/cli/test/integration/password-reset.api.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 21
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 110-114
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/actions/image/analyze.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 13-21,931-987
+packages/modules/quick-connect/backend/src/quick-connect.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-61
+packages/cli/src/modules/agents/integrations/platforms/__tests__/whatsapp/whatsapp-webhook-verification.store.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-3,5,7-9,11-14,17-19,22-24,26-27,29-30,32,34-38,41-57,60-70,74-88
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 851-865,885-918,1002-1005
+packages/frontend/editor-ui/src/features/ndv/runData/components/ai/RunDataAiContent.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-60
+packages/cli/src/modules/agents/integrations/platforms/whatsapp/whatsapp-webhook-verification.store.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-65
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 19,77-81
+packages/cli/src/credentials/credential-data-merge.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-113
+packages/cli/src/commands/__tests__/webhook.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 14
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 148-149,177,281
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 124-125
+packages/cli/src/public-api/v1/public-api-error-response.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3,9-10
+packages/cli/src/public-api/types.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 10-11
+packages/@n8n/mcp-browser-extension/src/ui/App.vue
+  s_925dcfedebf0c9::t_690b2abd8c02c1 152,154,180,190,195-196,210,226,229
+packages/modules/quick-connect/backend/src/index.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1
+packages/cli/src/public-api/v1/openapi-gen/generate.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 21-23,26,40,149-150,166,209,214-221,223,228-229,231-233,235-247,249,251-254,256-257,261,264
+packages/cli/test/integration/public-api/node-type-policies.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 88-90,121-123,375-378,555-558,567-593,605-608,634,645,654,674-677
+packages/@n8n/backend-services/src/services/token-purposes.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-81
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/generate.operation.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 9-10,118-124,133
+packages/cli/src/auth/auth.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 18
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 18-19,175-222
+packages/cli/src/public-api/v1/controllers/node-type-policies.public.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 349,354,366
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-574
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindings.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 43,47-53,133-134,136-139,143,235,269-270
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 8
+packages/modules/quick-connect/backend/vitest.config.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-18
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1240
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_925dcfedebf0c9::t_690b2abd8c02c1 47-48,121-134,283-300,302,312,450,454
+packages/modules/quick-connect/backend/package.json
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-74
+packages/cli/src/services/__tests__/api-key-auth.strategy.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 17
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 17
+packages/modules/quick-connect/backend/src/quick-connect.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1,3,5,7-9,11-19
+packages/cli/src/commands/start.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3
+packages/cli/src/modules/type-availability-policies/type-availability-policy-instance.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 159
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 595-596,599-603
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 6
+packages/@n8n/backend-services/package.json
+  s_925dcfedebf0c9::t_690b2abd8c02c1 32,39-40,52
+packages/cli/src/public-api/v1/controllers/credential-type-policies.public.controller.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 340,345,357
+packages/@n8n/mcp-browser-extension/src/ui/components/TabItem.vue
+  s_925dcfedebf0c9::t_690b2abd8c02c1 71,82-83
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-conflict-policy.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-363
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_925dcfedebf0c9::t_f7b88bcc1b7415 11,34,54-71,89-125,131-139,220,305-313
+packages/cli/src/modules/oauth-server/oauth-signing-key.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 15
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 2,43-54
+packages/cli/src/services/__tests__/public-api-key.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 9
+packages/cli/src/modules/agents/__tests__/agents.module.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 14,32,117,121
+packages/cli/src/modules/n8n-packages/engine/__tests__/package-layout.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 71,73,76,79,88,92
+packages/cli/src/modules/n8n-packages/engine/__tests__/credential-save-policy.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 52-53
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.credentials.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-271
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 107-132,135-143
+packages/cli/src/public-api/v1/__tests__/scope-parity.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1,6,26-29
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 164
+packages/@n8n/api-types/src/dto/type-availability-policies/replace-attachments.dto.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5-6,15
+packages/cli/test/integration/public-api/unmatched-routes.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-63
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/edit.operation.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 12-13,691-693
+packages/cli/test/integration/policy/node-type-policy.fan-out.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 85
+packages/@n8n/backend-services/vitest.config.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 6
+packages/cli/src/public-api/media-types/request-body/multipart-parser.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 5
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 691-692,694,700,711-714
+packages/@n8n/cli/src/commands/promotion-connection/apply-command.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 2-6,72,81-86,94-98,102-105
+packages/cli/src/controllers/__tests__/users.controller.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 7
+packages/@n8n/cli/src/client.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 139-145
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/validate-value-against-schema.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 705-713
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 3
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 2123-2188
+packages/cli/src/modules/promotions.ee/__tests__/promotion-binding-preflight.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 358-362,459-465
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/token-usage.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-48
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.integration.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 12
+packages/cli/src/public-api/media-types/content-type.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 13-14
+packages/cli/test/integration/auth.api.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-2,13,29,44-46,53-55,93,396-623
+packages/@n8n/api-types/src/agents/index.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 18
+packages/@n8n/backend-services/test/setup-test-folder.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-12
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/token-usage.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-127
+packages/@n8n/config/test/config.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 754
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 385-436
+packages/cli/src/modules/agents/integrations/platforms/whatsapp/whatsapp-credential-check.service.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-6,8-11,13-14,16,18-19,22-24,26,28-29,31,33-35,38-76,79-81,83-106,108-114,116-148,150-156,158,161-181,183-188,190-200,202
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 6-13,45,69,120-128,147,160-162,303-308,333-335,351
+.agents/skills/public-api/SKILL.md
+  s_925dcfedebf0c9::t_690b2abd8c02c1 24
+packages/cli/test/integration/public-api/credential-type-policies.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 93-95,126-128,384-387,587-590,599-625,641-644,670,681,690,710-713,762-765
+packages/cli/src/modules/agents/integrations/__tests__/helpers/whatsapp/replay-test-context.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 21-22,142,152,291,301-304
+packages/cli/src/modules/token-exchange/services/scoped-jwt.strategy.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 8
+packages/modules/quick-connect/backend/src/quick-connect.config.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-66
+packages/core/src/execution-engine/node-execution-context/utils/validate-value-against-schema.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 222-225
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 19
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 2
+packages/modules/quick-connect/backend/src/__tests__/quick-connect.service.test.ts
+  s_925dcfedebf0c9::t_690b2abd8c02c1 1-179
+OWNERS
+  s_925dcfedebf0c9::t_690b2abd8c02c1 33,124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ed3d79dbe330bfc91b59af7654f2baa6acb6451e",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

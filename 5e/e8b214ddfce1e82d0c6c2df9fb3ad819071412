@@ -1,0 +1,55 @@
+packages/nodes-base/nodes/Toggl/test/TogglTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_efee77bc543283 1-17,19-24
+  s_2e1fa95fc44f8f::t_3127e9ea1f9caa 18
+packages/nodes-base/nodes/TheHive/test/workflow/TheHive.workflow.test.ts
+  s_2e1fa95fc44f8f::t_180f2aa934f622 22
+  s_2e1fa95fc44f8f::t_e129a27cddcebc 1-21,23-47
+packages/nodes-base/nodes/TheHive/test/workflow/requests.workflow.json
+  s_2e1fa95fc44f8f::t_993998156831d8 1-482
+  s_2e1fa95fc44f8f::t_307ed9696454db 483-485
+  s_2dd6068abbadea::t_8d697be0b75801 486-558
+packages/nodes-base/nodes/Todoist/test/workflow/Todoist.workflow.test.ts
+  s_2e1fa95fc44f8f::t_ff41ecbdadae7e 16
+  s_2e1fa95fc44f8f::t_b6ead8dd132958 1-15,17-34
+packages/nodes-base/nodes/TheHiveProject/test/requests.workflow.test.ts
+  s_2e1fa95fc44f8f::t_d69d31a8dcb6a0 40
+  s_2e1fa95fc44f8f::t_4bd03603b41a7a 1-19,21-22,24-26,28-39,41-43,46,48-56
+  s_2e1fa95fc44f8f::t_d5cc1b59b32a23 44-45
+  s_2e1fa95fc44f8f::t_9ce8a2e0f2a9f7 20
+  s_2e1fa95fc44f8f::t_3c5d43b06eaa3d 47
+  s_2e1fa95fc44f8f::t_e6fdcbbbd02e50 27
+  s_2e1fa95fc44f8f::t_23b81bdd320de3 23
+packages/nodes-base/nodes/TravisCi/test/workflow/TravisCi.workflow.test.ts
+  s_2e1fa95fc44f8f::t_ed0e7457666f8a 1-32
+  s_2e1fa95fc44f8f::t_b7bc49cf0bbc40 33-35
+packages/nodes-base/nodes/TheHiveProject/test/requests.workflow.json
+  s_2dd6068abbadea::t_f131022750282e 1-952
+packages/nodes-base/nodes/Todoist/test/workflow/requests.workflow.json
+  s_2dd6068abbadea::t_09c9a276250f6c 1-275
+packages/nodes-base/nodes/TravisCi/test/workflow/requests.workflow.json
+  s_2dd6068abbadea::t_96a7ac4bf72e26 1-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ee8b214ddfce1e82d0c6c2df9fb3ad819071412",
+  "prompts": {},
+  "sessions": {
+    "s_2dd6068abbadea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5ca9d3eadcf574b0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 9,26,41
+  s_0da9a0f82cfb04::t_4b6fcc6f0014ae 3-8
+packages/cli/src/eventbus/message-event-bus/event-bus-unsent-message-flush.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,20
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 3-4,19,34
+packages/cli/src/telemetry/telemetry-buffer-flush.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,17
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 1-2,19
+packages/cli/src/services/pruning/workflow-history-pruning.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 3-4,15,30
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_0da9a0f82cfb04::t_c78bed0a4aec8e 13-16,43-58
+packages/cli/src/telemetry/telemetry-pulse.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,16,29
+packages/cli/src/modules/agents/agent-interrupted-execution-sweep.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 1-2,18,21
+packages/cli/src/public-api/idempotency-key-cleanup.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 4-5,16
+  s_0da9a0f82cfb04::t_a6b720d3824f4d 15
+packages/@n8n/decorators/src/system-task/types.ts
+  s_0da9a0f82cfb04::t_edea5a62648d3c 54
+  s_0da9a0f82cfb04::t_b200c2afa18c52 39-53,55-74,125
+packages/cli/src/credentials/pending-authorization-cleanup.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 4-5,22,29
+packages/cli/src/modules/external-secrets.ee/external-secrets-refresh.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 1-2,17
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 1-2,20,23
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,20
+packages/cli/src/services/pruning/execution-pruning-soft-delete.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 3-4,20,31
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,19,26
+packages/cli/src/services/pruning/execution-pruning-hard-delete.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 3-4,21,32
+packages/@n8n/decorators/src/system-task/index.ts
+  s_0da9a0f82cfb04::t_9ef7fe125c36b7 8
+  s_0da9a0f82cfb04::t_c78bed0a4aec8e 4-5,17-18,20
+packages/cli/src/services/workflow-statistics-rollup.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 3-4,23,29
+packages/@n8n/decorators/src/system-task/__tests__/targets.test.ts
+  s_0da9a0f82cfb04::t_89ac1a1ab2f8f2 1-57
+packages/cli/src/license/license-renewal.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,18,31
+packages/cli/src/modules/instance-registry/instance-registry-heartbeat.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 1-2,19
+packages/cli/src/modules/data-table/data-table-file-cleanup.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,19
+packages/modules/insights/backend/src/insights-compaction.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,20,29
+packages/modules/insights/backend/src/insights-pruning.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 3-4,21,33
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,20
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,22,31
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,13,16
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 2-3,21,24
+packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 1-2,19
+packages/cli/src/services/pruning/activity-pruning.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 5-6,22,31
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  s_0da9a0f82cfb04::t_e5efa9c7bddd11 3-4,22,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c042678b7bac1f0fa8592dba25dae785d5bf3c1b",
+  "prompts": {},
+  "sessions": {
+    "s_0da9a0f82cfb04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a04656e9-973e-4dbe-9e41-125badf6ebae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Supabase/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_f596ca550a0b71 459
+  s_2e1fa95fc44f8f::t_bc3d9b7a3d2e1e 12-13,15
+  s_2e1fa95fc44f8f::t_5ceec0d212270f 481,487
+  s_2e1fa95fc44f8f::t_79eecfebc37e71 56,59,67,74,83-87
+  s_2e1fa95fc44f8f::t_58d4562aefce2d 468
+  s_2e1fa95fc44f8f::t_3bff33f3c7185b 125
+packages/nodes-base/nodes/Supabase/Supabase.node.ts
+  s_2e1fa95fc44f8f::t_80d8fa123690f5 14,21,171,236,260,272,339,360,386,418,445,477
+packages/nodes-base/nodes/Supabase/tests/Supabase.node.test.ts
+  s_c188bef911fee8::t_e7851ec5cd847d 11-12,223-224,349,394,426,451,480,514,538,568
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0cc841a74091963d01c292bef43a69565258e07",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c188bef911fee8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8d07fd80c4321377",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

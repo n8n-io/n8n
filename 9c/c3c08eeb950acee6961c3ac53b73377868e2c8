@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/AgileCrm/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_89a25cba68814d 1-28
+packages/nodes-base/nodes/AgileCrm/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_3fc7a8a46d54e8 12
+  s_2e1fa95fc44f8f::t_ebc66bca53e572 95
+  s_2e1fa95fc44f8f::t_3bd84f0a282b74 106
+  s_2e1fa95fc44f8f::t_2fd7097347f2ee 36
+  s_2e1fa95fc44f8f::t_f36dcf0fdce5a7 9-10,20,26,60,70,96,118,130,139,150
+packages/nodes-base/nodes/AgileCrm/AgileCrm.node.ts
+  s_07471f89218761::t_307570ba1fb433 8,99,104,168,178,348,519,524,528,579,626
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9cc3c08eeb950acee6961c3ac53b73377868e2c8",
+  "prompts": {},
+  "sessions": {
+    "s_07471f89218761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6bf88bb756ab931c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,74 @@
+packages/nodes-base/nodes/Copper/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_8977c8190d5cf4 1-24
+packages/nodes-base/nodes/ConvertKit/ConvertKit.node.ts
+  s_2e1fa95fc44f8f::t_814c8b15cc2725 10
+  s_2e1fa95fc44f8f::t_491ddf67233531 105,121,138,172,180-184,189-193,198-202,217-224,265,274,298,348,357,381,406,412,455,470,490
+packages/nodes-base/nodes/CustomerIo/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_7797cac93bdf81 1-25
+  s_2e1fa95fc44f8f::t_a7862ee947f26d 26-28
+  s_2e1fa95fc44f8f::t_913853142c225a 29-31
+packages/nodes-base/nodes/Cortex/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_9a0fbaf2679728 1-25
+packages/nodes-base/nodes/ConvertKit/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_dc8be0be7e71de 1-24
+packages/nodes-base/nodes/ConvertKit/ConvertKitTrigger.node.ts
+  s_60ced84f4534d4::t_c3978c7b548031 12,181,201,222,259,316
+packages/nodes-base/nodes/ConvertKit/GenericFunctions.ts
+  s_011c996fdfa425::t_f5a9dd7bab9b60 9-10,12,17,21,28
+packages/nodes-base/nodes/Copper/CopperTrigger.node.ts
+  s_2e63c578eedb67::t_06e79fe564354e 9,111,124,142
+packages/nodes-base/nodes/Copper/GenericFunctions.ts
+  s_011c996fdfa425::t_e6b0220e5abb7b 14-15,17,32,35,37,44,145,148,156,170,179
+packages/nodes-base/nodes/Cortex/GenericFunctions.ts
+  s_011c996fdfa425::t_4fafc7728c73cb 9-10,12,17,21,25,29
+packages/nodes-base/nodes/CustomerIo/CustomerIo.node.ts
+  s_2e63c578eedb67::t_5a5fe64ca625db 7,9,92,99,129,132,195,207,260,304,320,323,325
+packages/nodes-base/nodes/CustomerIo/CustomerIoTrigger.node.ts
+  s_2e63c578eedb67::t_8899e6c978abff 8,223,253,271
+packages/nodes-base/nodes/CustomerIo/GenericFunctions.ts
+  s_011c996fdfa425::t_f3708d40f24051 8-9,11,16,22,24,30-33
+packages/nodes-base/nodes/Copper/Copper.node.ts
+  s_2e1fa95fc44f8f::t_b632c247aab33c 8,152,162-166,176-180,195-200,220,234,258,268-272,282,295,312-317,337-342,355,369,385-390,410,436,446-450,460-464,477-482,499-504,528,538-542,552-556,571-576,593-598,622,632-636,646,661,678-683,695
+packages/nodes-base/nodes/Cortex/Cortex.node.ts
+  s_2e1fa95fc44f8f::t_795e302c283da7 13,83,101,120,140,211,224,234,247,253-257,367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d3d56a804a38554e39b062c9c5ea4eb0bc6fbcc",
+  "prompts": {},
+  "sessions": {
+    "s_011c996fdfa425": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab6cdd889fabef339",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e63c578eedb67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5a4e105bc6f439cf",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_60ced84f4534d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9ffba14b3ec9d434",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/nodes-base/nodes/Microsoft/ToDo/test/credentials.ts
+  s_2e1fa95fc44f8f::t_5ebfef5a91346c 7-12
+packages/nodes-base/nodes/Microsoft/ToDo/test/requestUrls.workflow.test.ts
+  s_2e1fa95fc44f8f::t_7cb73b8f2c6a44 1-67
+  s_2e1fa95fc44f8f::t_c8833dd63b69fb 68
+packages/nodes-base/nodes/Microsoft/ToDo/test/requestUrls.workflow.json
+  s_29fe1f61565b6f::t_f301344ea455ac 1-568
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eebe6a7abc8d95f907d1fea2225dc4cb7006ea76",
+  "prompts": {},
+  "sessions": {
+    "s_29fe1f61565b6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad2b09f5b20b4c7e5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Hunter/__tests__/Hunter.workflow.test.ts
+  s_2e1fa95fc44f8f::t_88e2809769a455 1-49
+packages/nodes-base/nodes/Intercom/__tests__/Intercom.workflow.test.ts
+  s_2e1fa95fc44f8f::t_e370871ad9da3b 1-55
+packages/nodes-base/nodes/InvoiceNinja/__tests__/InvoiceNinja.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a8f8a19ac80aa8 1-113
+packages/nodes-base/nodes/Iterable/__tests__/Iterable.workflow.test.ts
+  s_2e1fa95fc44f8f::t_e551df1e2a95fe 1-37
+packages/nodes-base/nodes/Hunter/__tests__/requests.workflow.json
+  s_94422d44c623aa::t_624590ee9637a9 1-161
+packages/nodes-base/nodes/Intercom/__tests__/requests.workflow.json
+  s_94422d44c623aa::t_4174c2862b215b 1-402
+packages/nodes-base/nodes/InvoiceNinja/__tests__/requests.workflow.json
+  s_94422d44c623aa::t_13977d6b7fb223 1-1059
+packages/nodes-base/nodes/Iterable/__tests__/requests.workflow.json
+  s_94422d44c623aa::t_639e44984ff869 1-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ee2aac1b8a66756c0c873ea528ff08d65c65aae",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_94422d44c623aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3060691ca30bf421",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

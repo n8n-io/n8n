@@ -1,0 +1,158 @@
+packages/nodes-base/nodes/Google/Gmail/test/v2/GmailV2.node.test.ts
+  s_2e1fa95fc44f8f::t_18851929dee8c8 342-344
+packages/nodes-base/nodes/Google/Contacts/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_0ad6fb54fd1b26 1-29
+packages/nodes-base/nodes/Google/Gmail/test/utils/replyToEmail.encode.test.ts
+  s_2e1fa95fc44f8f::t_cf28f528c89d5b 109
+packages/nodes-base/nodes/Google/Gmail/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_926dbc5c8ab6de 1-6
+  s_2e1fa95fc44f8f::t_d66a4572c04a9a 7-25,27-35
+  s_2e1fa95fc44f8f::t_5900bf96c47e0e 26
+packages/nodes-base/nodes/Google/CloudNaturalLanguage/GoogleCloudNaturalLanguage.node.ts
+  s_2e1fa95fc44f8f::t_ea836fda690c8f 3
+  s_73ec84e43b4c38::t_41f3355880dbbc 296
+packages/nodes-base/nodes/Google/Gmail/v1/GmailV1.node.ts
+  s_2e1fa95fc44f8f::t_e06350ea3558fe 4
+  s_2e1fa95fc44f8f::t_52a00287d6d582 157,173,188,197,207,227,239,328,401,439,467,507,516,540,567,659,684,718,734,743,767
+packages/nodes-base/nodes/Google/GSuiteAdmin/GSuiteAdmin.node.ts
+  s_2e1fa95fc44f8f::t_6e14416557823d 175,177
+  s_2e1fa95fc44f8f::t_015268fd479a4f 10-15,84,103,118,229,252,267,285-290,299-304,318,386,395,418,439,464,569,584,617,702,711,745,865
+packages/nodes-base/nodes/Google/GSuiteAdmin/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_75fa0cce089c70 1-31
+packages/nodes-base/nodes/Google/Docs/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_8194c5df1c7a9a 1-31
+packages/nodes-base/nodes/Google/Contacts/GoogleContacts.node.ts
+  s_2e1fa95fc44f8f::t_857e371937416b 238
+  s_2e1fa95fc44f8f::t_4a844260a10060 11,73,100,104,251,268-274,291-293,319,329,363,519
+packages/nodes-base/nodes/Google/Books/test/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_e6b9ddc624e36a 1-30
+packages/nodes-base/nodes/Google/GSuiteAdmin/SearchFunctions.ts
+  s_2e1fa95fc44f8f::t_ba361930a3a3ec 7
+  s_2e1fa95fc44f8f::t_55718305fe5369 20,48,75
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_06ce1ed9782e92 1-2
+  s_2e1fa95fc44f8f::t_2640da1a36ff82 19
+  s_2e1fa95fc44f8f::t_558da4fe4837d0 3-18,20-33
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_2e1fa95fc44f8f::t_c68e61ffb9db52 11,302,409,643
+packages/nodes-base/nodes/Google/Gmail/utils/replyToEmail.ts
+  s_2e1fa95fc44f8f::t_cbad2145efc19d 2-7,63,87,154
+packages/nodes-base/nodes/Google/Gmail/v2/utils/draft.ts
+  s_2e1fa95fc44f8f::t_1cb59d838c9b51 2,41
+packages/nodes-base/nodes/Google/Books/GenericFunctions.ts
+  s_7cfdda65c751ad::t_8bdd7f3ad85772 8-10,12,19,22,30,37,75
+packages/nodes-base/nodes/Google/Books/GoogleBooks.node.ts
+  s_2e1fa95fc44f8f::t_52750acbb467e5 8,364-369,378,380,383,388,404,406,416,418,446,456,467,469,497,511
+packages/nodes-base/nodes/Google/CloudNaturalLanguage/GenericFunctions.ts
+  s_2a3f813a064159::t_31ac0a685d2620 8-10,12,17,21,23,31
+packages/nodes-base/nodes/Google/Contacts/GenericFunctions.ts
+  s_583f3daf84dd86::t_7fb78d947f46ff 8-10,12,17,21,24,31,52
+packages/nodes-base/nodes/Google/Contacts/test/GenericFunctions.test.ts
+  s_37c824fcd51735::t_6b2ad3e93563df 3,46,57,65,72,102,119,129-134,141,160,167,178-182,193,202,214,260,284,303,324,356,381,397
+packages/nodes-base/nodes/Google/Docs/GenericFunctions.ts
+  s_2e51334c8587a2::t_15f41c6732ea51 8-10,12,19,22,30,37,64,67
+packages/nodes-base/nodes/Google/Docs/GoogleDocs.node.ts
+  s_2e1fa95fc44f8f::t_686ecc22729544 11,142,145,183,186,232,235,247-251,501
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/GenericFunctions.ts
+  s_2e51334c8587a2::t_2a97c1cbf750db 9,18,63
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/GoogleFirebaseCloudFirestore.node.ts
+  s_a97c61fdd2e9f3::t_eaa63c517743db 10,159,345,378,421,430
+packages/nodes-base/nodes/Google/GSuiteAdmin/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_8e2670f6640262 8-10,12,17,20,23,30,54
+packages/nodes-base/nodes/Google/GSuiteAdmin/test/GSuiteAdmin.node.test.ts
+  s_768442b837c256::t_cf37d24f5cbc60 2,377,435,486,568,687,730,774,900
+packages/nodes-base/nodes/Google/GSuiteAdmin/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_ce46ced7afef19 2,26,32,46,60-62,87,99,110,121,137,154,168
+packages/nodes-base/nodes/Google/GSuiteAdmin/test/SearchFunctions.test.ts
+  s_768442b837c256::t_3341e776e4709d 2,33,88
+packages/nodes-base/nodes/Google/Gmail/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_cf7e535f327f73 16-18,20,36,39,41,49,262,516-520,553
+packages/nodes-base/nodes/Google/Gmail/test/utils/replyToEmail.test.ts
+  s_2e1fa95fc44f8f::t_d4b0c5cacee24d 3,97,101-105,110,213,362
+packages/nodes-base/nodes/Google/Gmail/test/v2/sendAndWait.operation.test.ts
+  s_2e1fa95fc44f8f::t_77101cddf3b64b 8,102
+packages/nodes-base/nodes/Google/Gmail/v2/GmailV2.node.ts
+  s_2e1fa95fc44f8f::t_3ec38c7de80c1e 10-15,191,238,245,253,260-264,322,343,360,404,413,437,463,472,484,497,509,599,607,633,650,659,676,703,712,753,762,784,792,800,812
+packages/nodes-base/nodes/Google/Gmail/v2/loadOptions.ts
+  s_2e1fa95fc44f8f::t_edd03837e70b47 2,15,34-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c3a834a7628de96eec7a5ec74885d2012399292",
+  "prompts": {},
+  "sessions": {
+    "s_2a3f813a064159": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5e0368e57ba0bf51",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e51334c8587a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ada4cc67fcbf99ea5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_37c824fcd51735": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af6a986a752076dde",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_583f3daf84dd86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a95339e7aeb200f99",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_73ec84e43b4c38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9d7a31cf5c0e577d",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_768442b837c256": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a37cacb013e37b4c4",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7cfdda65c751ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9defdf3b8c9471ba",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_a97c61fdd2e9f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a57a718523a20d30d",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

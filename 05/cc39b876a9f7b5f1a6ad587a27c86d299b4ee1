@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBudgetModals.test.ts
+  h_f8b427917eda26 3,57-59,61-70,80,133
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalExamplesSlider.test.ts
+  h_f8b427917eda26 36-47
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalExamplesSlider.vue
+  h_f8b427917eda26 9,127-131,153,161-164,166-168,171,275-276,278
+packages/frontend/editor-ui/src/features/agents/components/BudgetAlertSlider.vue
+  h_f8b427917eda26 2,6,15-16,21-23,25-27,29,38
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ConcurrencySlider/ConcurrencySlider.vue
+  h_f8b427917eda26 2,5,11,22-33,37-40,43-46,48-49,55-57
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/EvaluationsView.vue
+  h_f8b427917eda26 237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "05cc39b876a9f7b5f1a6ad587a27c86d299b4ee1",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

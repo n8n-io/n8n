@@ -1,0 +1,45 @@
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/listSearch/getIssues.ts
+  s_e7c80b8acd2d6f::t_5420cc82ed62bc 6,36
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/listSearch/getRepositories.ts
+  s_e7c80b8acd2d6f::t_c8de841422efac 6,34
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/listSearch/getUsers.ts
+  s_e7c80b8acd2d6f::t_2ff8aae2ddcb24 6,33
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/shared/transport.ts
+  s_e7c80b8acd2d6f::t_f1a1fab00c4776 9-10,12,17,23,27
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/nodes/ExampleChatModel/ExampleChatModel.node.ts
+  s_7cfdda65c751ad::t_e4937baa82b0cc 6,73,88
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/nodes/ExampleChatModel/model.ts
+  s_37c824fcd51735::t_9aa0d7657d3fe1 1-2,324,330,373,454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb0a60427cf2386716b4b6c3c13a53f58f3dcc06",
+  "prompts": {},
+  "sessions": {
+    "s_37c824fcd51735": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-af6a986a752076dde",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_7cfdda65c751ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9defdf3b8c9471ba",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_e7c80b8acd2d6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4e1094085df3a7b0",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+packages/@n8n/nodes-langchain/nodes/vendors/Moonshot/test/request-urls.workflow.json
+  s_2e1fa95fc44f8f::t_50b1a10f40c563 1-48
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/request-urls.workflow.json
+  s_2e1fa95fc44f8f::t_3cf3a2a418adb1 1-100
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/test/request-urls.workflow.json
+  s_2e1fa95fc44f8f::t_5622d80948f90b 1-48
+packages/@n8n/nodes-langchain/nodes/vendors/Moonshot/test/Moonshot.workflow.test.ts
+  s_2e1fa95fc44f8f::t_b76b935d24f25c 1-56
+packages/@n8n/nodes-langchain/nodes/vendors/Ollama/test/Ollama.workflow.test.ts
+  s_2e1fa95fc44f8f::t_a290af3693b00c 1-51
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v1/OpenAI.workflow.test.ts
+  s_2e1fa95fc44f8f::t_5114f0dccbbb25 3
+  s_2e1fa95fc44f8f::t_c819373b14fd54 80-139
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v1/request-urls.workflow.json
+  s_2e1fa95fc44f8f::t_7428c76f8fb940 1-93
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/request-urls.workflow.json
+  s_2e1fa95fc44f8f::t_22fdf9829c5820 1-174
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/v2/OpenAI.workflow.test.ts
+  s_2e1fa95fc44f8f::t_36729394543829 1-15,27-144
+  s_2e1fa95fc44f8f::t_d104283e5ce3bf 18-19
+  s_2e1fa95fc44f8f::t_4d3ace4acfb367 16-17,20-26
+packages/@n8n/nodes-langchain/nodes/vendors/MiniMax/test/MiniMax.workflow.test.ts
+  s_2e1fa95fc44f8f::t_329ad45d73305e 1-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc025f7cbb6d98cbe09d6b65fa31baa5cd4d0d75",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

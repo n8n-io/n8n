@@ -1,0 +1,26 @@
+packages/cli/src/modules/inbound-auth-core/__tests__/public-api-oauth.strategy.test.ts
+  s_4326108884f490::t_3b170bedc0bb05 1
+packages/cli/test/integration/public-api/oauth-consent-scopes.test.ts
+  s_4326108884f490::t_3b170bedc0bb05 2-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79472edd30a3c751f2e7cbb246f186bd2f24769c",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4326108884f490": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "096da2e0-d58a-4276-98bc-ddfa6e32bc5f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

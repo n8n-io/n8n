@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/LinkedIn/LinkedIn.node.ts
+  s_2e1fa95fc44f8f::t_95d97cdf1f7016 10-15
+  s_ff532e800b4a79::t_e940c192319e38 106,110,198,262,299
+packages/nodes-base/nodes/LinkedIn/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_8d6d1a0e3fd8c8 8-9,11,23,37,45-51
+packages/nodes-base/nodes/LinkedIn/LinkedIn.node.test.ts
+  s_c4ea191f2fdc3d::t_c9aa5046942f01 1,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "440a1e99b713f9ebef55d6c207e19dd3fb6d7560",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_c4ea191f2fdc3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac1ccf2bc7116125f",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_ff532e800b4a79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a242be8843b813c46",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,71 @@
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_b561300a0bab45::t_fa1325ff5d64ba 217-220
+  s_b561300a0bab45::t_207449551badd1 186,214-216,221,224
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_b561300a0bab45::t_85e74a95360476 216,230,235,237,268,274,301-307,338-344,350-356,394-400,429-435
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_b561300a0bab45::t_5e4ec403deda1b 739
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  ai_agent 70,210
+packages/@n8n/cli/docs/commands/package.md
+  s_b561300a0bab45::t_fa1325ff5d64ba 80
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_b561300a0bab45::t_5e4ec403deda1b 411
+  s_b561300a0bab45::t_207449551badd1 409,414-420
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  s_b561300a0bab45::t_027f0e6b92d209 57,88-98,108
+  s_b561300a0bab45::t_fa1325ff5d64ba 66,84
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_b561300a0bab45::t_2c5dda27a00386 208
+packages/cli/src/modules/n8n-packages/entities/credential/credential-missing-mode.ts
+  s_b561300a0bab45::t_fa1325ff5d64ba 60
+  s_b561300a0bab45::t_207449551badd1 63,68
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_b561300a0bab45::t_08f592b366c183 2401,2561-2562
+  s_b561300a0bab45::t_fa1325ff5d64ba 2425
+  s_b561300a0bab45::t_8303d47e3035f7 2560,2563-2732
+  s_b561300a0bab45::t_fbda9612246eaa 59
+  s_b561300a0bab45::t_8bb9f7cca35172 1866-1871,2228-2233,2454-2459,2543-2548
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_b561300a0bab45::t_dc9bf4dbf91c19 121
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_b561300a0bab45::t_2c5dda27a00386 229,253,279
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_b561300a0bab45::t_2b62d36441e7e6 261,534
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_b561300a0bab45::t_b509211bfc9837 58-60
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_b561300a0bab45::t_845d74b904a835 259,281,372,637,664,724
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_b561300a0bab45::t_207449551badd1 720,722
+  s_b561300a0bab45::t_dc9bf4dbf91c19 723
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  ai_agent 46
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-import.types.ts
+  s_b561300a0bab45::t_207449551badd1 129
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_b561300a0bab45::t_2b62d36441e7e6 18,28,36,149-157,163
+  s_b561300a0bab45::t_fa1325ff5d64ba 42
+  s_b561300a0bab45::t_1d24b781c66f17 249-250
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publishing-policy.types.ts
+  s_b561300a0bab45::t_dc9bf4dbf91c19 33-36
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_b561300a0bab45::t_2b62d36441e7e6 31-32
+  s_b561300a0bab45::t_fa1325ff5d64ba 28-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4f4459493f07c718d53264f014adc65d21496f87",
+  "prompts": {},
+  "sessions": {
+    "s_b561300a0bab45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f3343d5d-335c-4adc-8a88-e32a15f80a03",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

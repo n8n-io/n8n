@@ -1,0 +1,43 @@
+packages/cli/test/integration/public-api/executions.test.ts
+  s_7295da4de38bc8::t_4e3e5365deb12f 1020
+  s_7295da4de38bc8::t_2c2578bd51e2dd 11
+  s_7295da4de38bc8::t_8f9f11de2fbd5a 1013,1037,1044
+  s_7295da4de38bc8::t_1c3f40cb83440c 1002,1005-1006
+  s_7295da4de38bc8::t_8409bd1cc4c8a7 1007-1012,1014-1019,1021-1026,1028-1036,1038-1043,1045-1055
+  s_7295da4de38bc8::t_4bd5d4a497afe4 1001
+  s_7295da4de38bc8::t_d6e9d35f579ca3 1003-1004
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_7295da4de38bc8::t_1e50d083cb3872 48
+  s_7295da4de38bc8::t_98ebbe728fc2cc 54
+packages/@n8n/backend-services/src/services/workflow-sharing.service.ts
+  s_7295da4de38bc8::t_1e50d083cb3872 58
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_7295da4de38bc8::t_b7d67025b6484f 90-104,106-115
+  s_7295da4de38bc8::t_4b00299c381d9b 105
+packages/cli/test/integration/workflows/workflow-sharing.service.test.ts
+  s_7295da4de38bc8::t_b2972b370ef3e6 133
+  s_7295da4de38bc8::t_d2728a8f125eab 118-122,136-138,140-141,144
+  s_7295da4de38bc8::t_bc125db45a3eb4 123-125,130-132
+  s_7295da4de38bc8::t_a2135ec21b3172 134-135
+  s_7295da4de38bc8::t_68a2df44e5c19a 139
+  s_7295da4de38bc8::t_06f3070e55ca3a 142-143
+  s_7295da4de38bc8::t_0e5abaedc64d7f 126-129
+packages/@n8n/backend-services/src/services/__tests__/workflow-sharing.service.test.ts
+  s_7295da4de38bc8::t_b9bacabb876d45 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "daa802753221a12ddbd12afb68ae0c0cd4bee179",
+  "prompts": {},
+  "sessions": {
+    "s_7295da4de38bc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f5562-983e-4f64-8730-a6e4e36c3d8f",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

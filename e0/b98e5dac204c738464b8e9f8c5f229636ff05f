@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/Google/YouTube/YouTube.node.ts
+  s_2e1fa95fc44f8f::t_72120207e8ccb4 10
+  s_2e1fa95fc44f8f::t_9b9eb443e7c15a 11-13
+  s_6ba58fba7d49bc::t_1ad8b18cba34c3 14-15,110,149,174,225-231,271,280,389,411,424,457,490,499,545,593,614,641,671,680,733,754,801,807-813,844-850,904,1015-1021,1036-1041,1058,1078
+packages/nodes-base/nodes/Google/YouTube/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_2aa98b80d38fb5 8-9,11,16,20,22,29
+  s_2e1fa95fc44f8f::t_95b8256bc3330c 49
+packages/nodes-base/nodes/Google/YouTube/__test__/node/video.upload.test.ts
+  s_2e1fa95fc44f8f::t_d6e50fda58e9fe 4
+  s_2e1fa95fc44f8f::t_75551ec3c96aa5 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0b98e5dac204c738464b8e9f8c5f229636ff05f",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_6ba58fba7d49bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3fc4c89db18073c3",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-handler.test.ts
+  ai_agent 148-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8177460aceaf0c4c45bd972e76a2b1f7cf29b80c",
+  "prompts": {}
+}

@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nSlider/Slider.vue
+  s_8fa8214e6c710b::t_0fe0d67db4d108 2,156-170,237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d20e4d8afaa5e6a9d770cfd253cd48c2238cb36",
+  "prompts": {},
+  "sessions": {
+    "s_8fa8214e6c710b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a12fc2-65de-7643-b592-f7570dc2eec9",
+        "model": "unknown"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

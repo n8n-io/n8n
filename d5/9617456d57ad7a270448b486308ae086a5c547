@@ -1,0 +1,82 @@
+packages/nodes-base/nodes/Reddit/Reddit.node.ts
+  s_2e1fa95fc44f8f::t_4cd766ecb02284 8,10
+  s_2e1fa95fc44f8f::t_27a40b848bff7f 125,141,151,166,170,194,197,200,231,242,258,275,294-300,307-312,317-318,351,373,384,394,412
+packages/nodes-base/nodes/Rocketchat/Rocketchat.node.ts
+  s_2e1fa95fc44f8f::t_e33d7c0b6c8cd3 8
+  s_2e1fa95fc44f8f::t_1ece615ba8d6e6 586,596,607-615,627,637
+packages/nodes-base/nodes/Reddit/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_b44cf1d22ce063 1-22
+packages/nodes-base/nodes/Rundeck/__tests__/RundeckApi.test.ts
+  s_2e1fa95fc44f8f::t_0750b18c6c66e9 2
+  s_2e1fa95fc44f8f::t_bf363920d2f607 27-41
+packages/nodes-base/nodes/Raindrop/__tests__/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_af911e745baf39 1-23
+packages/nodes-base/nodes/Raindrop/GenericFunctions.ts
+  s_2c3598ca776ad8::t_b0418d83605ba0 9-10,12,20,23,25,30
+packages/nodes-base/nodes/Raindrop/Raindrop.node.ts
+  s_e2b41a166130bc::t_d85a9a4b485b69 11,86-92,146,155,163,173,216,251-257,265,273,285-286,321,342,349,367,371,389,398,407,414
+packages/nodes-base/nodes/Reddit/GenericFunctions.ts
+  s_cce0fb24602098::t_a2520d5243434b 8-9,11,19,28,31-32,62,80,105
+packages/nodes-base/nodes/Rocketchat/GenericFunctions.ts
+  s_cce0fb24602098::t_3c0ef1d76fc833 7-8,10,14,24,28,41
+packages/nodes-base/nodes/Rocketchat/tests/GenericFunctions.test.ts
+  s_9ca2cec972bfbf::t_f5ed506aa60e7f 2,69,83,92-111,119,138,179,215
+packages/nodes-base/nodes/Rundeck/RundeckApi.ts
+  s_8c267bec53484d::t_8ae3740596c374 7-8,10,40,46,50,94,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d59617456d57ad7a270448b486308ae086a5c547",
+  "prompts": {},
+  "sessions": {
+    "s_2c3598ca776ad8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aaa618e8a9dae7bec",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8c267bec53484d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a746eb8acd8948e9b",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_9ca2cec972bfbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad35c1cadf1921810",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_cce0fb24602098": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a26e01be8e32b516e",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_e2b41a166130bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7db73013db86d7c5",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/Zammad/GenericFunctions.ts
+  s_2e1fa95fc44f8f::t_57c2f4d3bd87ba 23-30,34,36,39-43
+  s_07471f89218761::t_d835a67a858426 9-10,12,19,72,120-124
+packages/nodes-base/nodes/Zammad/Zammad.node.ts
+  s_2e1fa95fc44f8f::t_fe7cd05b139af7 12
+  s_07471f89218761::t_6f3cc937a77038 14,199-203,215,225-229,241-245,251-255,264,271-275,280-284,295,313,315,346,348,413,444-449,459,471,498,512,541-546,575-580,590,602-606,622,655,684-689,699,711,726,784,791,836-841,851,863,867,884
+packages/nodes-base/nodes/Zammad/test/GenericFunctions.test.ts
+  s_2e1fa95fc44f8f::t_e0cb33591466cc 1-29
+packages/nodes-base/nodes/Zammad/test/Zammad.node.test.ts
+  s_07471f89218761::t_d779f57b0a7a56 7,132,170,244-247,265,283,305-308,328,373,404,462-465,491,524,556,615-627,629,674-688,690,749-759,761,792-798,836-842,875,918,953,1026,1062-1068
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78779b98d2a25f86837f8b125ca0dd1346c739d7",
+  "prompts": {},
+  "sessions": {
+    "s_07471f89218761": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6bf88bb756ab931c",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Slack/test/v2/node/requestUrls.test.ts
+  s_2e1fa95fc44f8f::t_bfa037b69d834f 1-31
+packages/nodes-base/nodes/Slack/test/v1/node/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_d491c3821fecb1 1-149
+packages/nodes-base/nodes/Slack/test/v1/node/requestUrls.test.ts
+  s_2e1fa95fc44f8f::t_1f4d0630a7aade 1-31
+packages/nodes-base/nodes/Slack/test/v2/node/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_ab828597be0e06 1-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a7331095377246736a6085fbf1c15a0519558a8",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+packages/nodes-base/nodes/Stackby/__tests__/workflow/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_f70543e777e10d 1-161
+packages/nodes-base/nodes/Strava/__tests__/StravaTrigger.node.test.ts
+  s_2e1fa95fc44f8f::t_83834f4b349de4 1-48
+packages/nodes-base/nodes/Spotify/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_dc8d9de66b2ba8 4
+  s_2e1fa95fc44f8f::t_fd79d3c72fcb79 17-63
+packages/nodes-base/nodes/Storyblok/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_c59d7933fa34e1 1-42
+packages/nodes-base/nodes/Strapi/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_255cabc6ac2fd2 30-33,38
+  s_2e1fa95fc44f8f::t_05b2e7e1060207 1-29,34-37,39-43
+  s_2e1fa95fc44f8f::t_0d528c2786244b 44-45
+packages/nodes-base/nodes/Stackby/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_8c0f1d9ff41747 1-37
+packages/nodes-base/nodes/Strava/__tests__/workflow/workflow.test.ts
+  s_2e1fa95fc44f8f::t_a495678e3610b5 1-41
+packages/nodes-base/nodes/Spotify/__tests__/workflow/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_f70543e777e10d 1-324
+packages/nodes-base/nodes/Strapi/__tests__/workflow/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_f70543e777e10d 1-266
+packages/nodes-base/nodes/Strava/__tests__/workflow/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_f70543e777e10d 1-250
+packages/nodes-base/nodes/Storyblok/__tests__/workflow/requestUrls.workflow.json
+  s_2e1fa95fc44f8f::t_f70543e777e10d 1-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c42af05a258d26608a0ecb51bc3313009b47f6b",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

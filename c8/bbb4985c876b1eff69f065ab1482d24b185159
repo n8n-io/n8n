@@ -1,0 +1,20 @@
+packages/@n8n/decorators/src/controller/types.ts
+  s_8631ec10eb1199::t_5bab70b06e8683 116
+  s_8631ec10eb1199::t_063b0b5b3d027c 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8bbb4985c876b1eff69f065ab1482d24b185159",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Google/CloudStorage/test/workflow/object.workflow.json
+  s_2e1fa95fc44f8f::t_404c18dced6904 1
+  s_2e1fa95fc44f8f::t_6b88b95ffc17cb 2-120
+packages/nodes-base/nodes/Google/CloudStorage/test/workflow/object.workflow.test.ts
+  s_2e1fa95fc44f8f::t_9db9917d54e669 1-13,15-31,33-36,38-54,56-57
+  s_2e1fa95fc44f8f::t_4d01211bf19613 14
+  s_2e1fa95fc44f8f::t_7f5fbd4de0f725 55
+  s_2e1fa95fc44f8f::t_8a91461ed765a1 32,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6917f964c21a4a3b191f4576587e2264f95275c",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.test.ts
+  s_fb30b1b6ca962d::t_1c658e028269f5 5,489-538
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionRedaction.test.ts
+  s_fb30b1b6ca962d::t_9c480f826f5922 16,118,211-227,236-276
+packages/frontend/editor-ui/src/features/execution/executions/composables/useExecutionRedaction.ts
+  s_fb30b1b6ca962d::t_e1d00350f29edc 1,82-92,98-99,107,109,112,115-116,121-127
+packages/@n8n/telemetry/src/events/credentials.ts
+  s_fb30b1b6ca962d::t_e31e68e4698562 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43fb9aed01990181dffcb57233d5da495064ae8e",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

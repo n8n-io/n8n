@@ -1,0 +1,49 @@
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/requestUrlEncoding.test.ts
+  s_2e1fa95fc44f8f::t_e2e41d6b688a7d 26-28
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/GenericFunctions.ts
+  s_9ebcc4a5bcd65f::t_7edb383d4749ce 10-11,13,20,23,25,35,65,69,85-98
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/GoogleFirebaseCloudFirestore.node.ts
+  s_deeb0320f0a5cd::t_99610520108876 10,17,111,114,210,243,250,296
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/GenericFunctions.test.ts
+  s_62540c5d35c424::t_351f28272b7042 3,7,68,76,93,106,122-128,140,143-150,181,206-208,215-217,230-232,241-245,252-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dddf6e1cf861504f1307303ad9146b76252e8bfb",
+  "prompts": {},
+  "sessions": {
+    "s_2e1fa95fc44f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3fd5fc70-0180-4ad9-9868-d8cfa17b6bc9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_62540c5d35c424": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a273c1246bb6b9cc7",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_9ebcc4a5bcd65f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab04a536cee7fa137",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_deeb0320f0a5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5d46f28701a1c020",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

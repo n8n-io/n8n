@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ndv/runData/components/ai/utils.ts
+  s_ec600d2173900f::t_385103a99569e7 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89465278a639fde92608a4eb169adda495dcb220",
+  "prompts": {},
+  "sessions": {
+    "s_ec600d2173900f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09d1ff41-9e69-42c8-b7d0-443a98e154f1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

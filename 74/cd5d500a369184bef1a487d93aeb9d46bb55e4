@@ -1,0 +1,23 @@
+packages/core/src/execution-engine/node-execution-context/supply-data-context.ts
+  s_fb30b1b6ca962d::t_fe0ff18e7dd9b8 61,416,420-421,423-427
+  s_fb30b1b6ca962d::t_425f417ddab06c 302,422,448-451
+  s_fb30b1b6ca962d::t_e6031411f86666 428,452-453
+packages/core/src/execution-engine/node-execution-context/__tests__/supply-data-context.test.ts
+  s_fb30b1b6ca962d::t_ee1f1033512796 713,839-877
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74cd5d500a369184bef1a487d93aeb9d46bb55e4",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

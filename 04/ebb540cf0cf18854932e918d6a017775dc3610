@@ -1,0 +1,35 @@
+packages/@n8n/api-types/src/dto/trusted-source/__tests__/create-trusted-source.dto.test.ts
+  s_9d6e86e783864c::t_ff51e62ec9af85 36-40,62,68
+  s_9d6e86e783864c::t_1e7476904cb540 35
+packages/@n8n/api-types/src/dto/trusted-source/create-trusted-source.dto.ts
+  s_9d6e86e783864c::t_ff51e62ec9af85 31
+packages/cli/src/modules/inbound-auth-core/trusted-source.controller.ts
+  s_9d6e86e783864c::t_32138a50a27cce 121-123
+  s_9d6e86e783864c::t_bb9ca0ba589021 15,118-120,124,127,164,177
+packages/cli/src/events/maps/relay.event-map.ts
+  s_9d6e86e783864c::t_bb9ca0ba589021 1017,1023,1029
+packages/cli/test/integration/inbound-auth-core/trusted-source.api.test.ts
+  s_9d6e86e783864c::t_ea42d3ddeefc6d 193-202,220,351,510
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_9d6e86e783864c::t_1e6d67ed8d86fa 3551,3553-3559,3568-3576
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_9d6e86e783864c::t_bb9ca0ba589021 1608-1609,1612,1616-1617,1620,1624-1625,1628
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_9d6e86e783864c::t_b8c53c5f57d234 27,40-41,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04ebb540cf0cf18854932e918d6a017775dc3610",
+  "prompts": {},
+  "sessions": {
+    "s_9d6e86e783864c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82991bb8-d868-4063-a38b-36762cccb4c7",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
