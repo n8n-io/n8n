@@ -1,0 +1,38 @@
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_a82b90cd60e3b1::t_2531750af03cb6 731-734,743,751
+  s_a82b90cd60e3b1::t_bff5e3de1dfbae 682
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/test/outputSchemas.test.ts
+  s_a82b90cd60e3b1::t_a2cf10e7946401 1-28
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v1.0.0/image/analyze.simplify-false.json
+  s_a82b90cd60e3b1::t_34b9e3fdb129d4 1-57
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_a82b90cd60e3b1::t_6e73b82f7db53e 186
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v1.0.0/image/analyze.json
+  s_a82b90cd60e3b1::t_9bdbd78ee47b66 1-11
+packages/@n8n/workflow-sdk/src/generate-types/schema-dir-index.test.ts
+  s_a82b90cd60e3b1::t_441655d0360de7 88-102
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v2.0.0/image/analyze.json
+  s_a82b90cd60e3b1::t_f8a941c98d196a 1-60
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v2/actions/image/analyze.operation.ts
+  s_a82b90cd60e3b1::t_565e456db475a8 124-127
+  s_a82b90cd60e3b1::t_b878988700f016 79-80,82
+  s_a82b90cd60e3b1::t_87502ac3b9fe94 81
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/__schema__/v2.0.0/image/analyze.simplify-false.json
+  s_a82b90cd60e3b1::t_154bfa0f6786b5 1-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d6889b0d30325f83a4dc45117ab04cd4211b1ca",
+  "prompts": {},
+  "sessions": {
+    "s_a82b90cd60e3b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72117c39-b48e-4ab1-9bf0-e6225664a8dd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
