@@ -1,0 +1,19 @@
+.github/workflows/test-evals-instance-ai.yml
+  s_86a963c4aad335::t_7cbe80cf89d851 529-531,533-535
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c7fc1974c4a71e86bc163056fd0634949b95ca7",
+  "prompts": {},
+  "sessions": {
+    "s_86a963c4aad335": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8dba9e5-b2a5-4ba5-9e3e-65930509b55f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
