@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatPageLayout.vue
+  s_3fa2237c26c14a::t_d143e18463244f 84
+  s_3fa2237c26c14a::t_5c575b422759fe 30-33,81-82
+  s_3fa2237c26c14a::t_22496b96802870 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf877423d077091edc5d22b9f70111804f29206c",
+  "prompts": {},
+  "sessions": {
+    "s_3fa2237c26c14a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0ee459b-3e0e-4dd9-a5b3-8dbf6825501d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
