@@ -1,3 +1,25 @@
+packages/@n8n/agents/package.json
+  s_71fde24149b9db::t_f79520c3c1cda8 119
+pnpm-lock.yaml
+  ai_agent 1252-1254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9910b6e5215ee5710e6028715151ab41215960e4",
+  "prompts": {},
+  "sessions": {
+    "s_71fde24149b9db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f71bd56d-a432-4323-a999-6a6b83977c41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}
+
 pnpm-lock.yaml
   ai_agent 887-888,890-891,893-894,896-897,954,1257,2739,3757,4205,4370
 ---

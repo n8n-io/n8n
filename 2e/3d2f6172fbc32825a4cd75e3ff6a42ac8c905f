@@ -1,0 +1,89 @@
+packages/frontend/editor-ui/src/app/components/MainSidebarSourceControl.test.ts
+  s_ba2ae60894487d::t_385d3dc3660685 8-9
+  s_ba2ae60894487d::t_3682dba336c936 69-89
+packages/frontend/editor-ui/src/features/shared/promotions/usePromotionsEnabled.test.ts
+  s_ba2ae60894487d::t_5d4e353ab14306 6,14-22,30,35-36,38,42-45,47-58,62-63,65
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.test.ts
+  s_ba2ae60894487d::t_22a647a241d580 1-70
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue
+  s_ba2ae60894487d::t_de44ca1968a618 10-11
+  s_ba2ae60894487d::t_4f5f2ca9cb0c06 42-43
+  s_ba2ae60894487d::t_e69c658de2dea4 299-314
+packages/frontend/editor-ui/src/app/router.ts
+  s_ba2ae60894487d::t_0ce6c06c0dc36e 30-31
+  s_ba2ae60894487d::t_ef98b5def2a5be 974-975
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/module.descriptor.ts
+  s_ba2ae60894487d::t_7895ab2e75521c 20,22
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_ba2ae60894487d::t_65760908b6c6d4 133
+packages/frontend/editor-ui/src/app/components/MainSidebarSourceControl.vue
+  s_ba2ae60894487d::t_856e180eaf204a 8
+  s_ba2ae60894487d::t_c5fe8ac8210998 46
+  s_ba2ae60894487d::t_6b69f5fdad53c2 18
+packages/frontend/editor-ui/src/app/composables/useWorkflowDiffRouting.ts
+  s_ba2ae60894487d::t_52f09ad12df94f 11
+  s_ba2ae60894487d::t_55c00a3300ab3f 22
+  s_ba2ae60894487d::t_82bdc0bb554492 114-116
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.types.ts
+  s_ba2ae60894487d::t_b1d77e9fb4dfe4 12
+packages/frontend/editor-ui/src/features/shared/promotions/usePromotionsEnabled.ts
+  s_ba2ae60894487d::t_be4ab332312f62 4,7-9,13,16,19-21,23
+packages/frontend/editor-ui/src/features/shared/promotions/useEnvironmentsVersionSwitch.ts
+  s_ba2ae60894487d::t_acd9474e592112 1-50
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  s_ba2ae60894487d::t_af9476967d7c2b 52
+  s_ba2ae60894487d::t_410cfeae7dd3b7 217-232
+  s_ba2ae60894487d::t_5c4d190e8888c5 28
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_ba2ae60894487d::t_5b72d0762675af 31
+  ai_agent 299-302
+  s_ba2ae60894487d::t_782650cc6dd573 80
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/views/SettingsSourceControl.test.ts
+  s_ba2ae60894487d::t_3763dfd047150f 78-89,93-94
+  s_ba2ae60894487d::t_c6acd93fe7134e 90-92
+  s_ba2ae60894487d::t_2645e25361299d 14-18
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ba2ae60894487d::t_2775aaeae6efd8 4856-4862
+  s_ba2ae60894487d::t_2d8a1b77cfb204 4230
+  s_ba2ae60894487d::t_db7d141bdf52fd 4152
+  s_ba2ae60894487d::t_d28c1f92e986a8 4268-4273
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.test.ts
+  s_ba2ae60894487d::t_8bcf409dcb89ec 106
+  s_ba2ae60894487d::t_2b89c4f50f5001 219-220,224,227-237,239-240
+  s_ba2ae60894487d::t_192fec365eb500 19
+  s_ba2ae60894487d::t_eaa1a5b325e459 93
+  s_ba2ae60894487d::t_3054231ce81485 71-77
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.test.ts
+  s_ba2ae60894487d::t_c6bfe755b13303 101-115
+  s_ba2ae60894487d::t_85bfcf74d7fdb3 2,6,8
+  s_ba2ae60894487d::t_4548c492a1c35c 37-41
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/module.descriptor.test.ts
+  s_ba2ae60894487d::t_1b13582800bde2 68-72,77
+  s_ba2ae60894487d::t_9e20903e18b9f0 8
+  s_ba2ae60894487d::t_2dab936bf5e9e0 45,47,53
+  s_ba2ae60894487d::t_33b76fff6271ac 31-38
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_ba2ae60894487d::t_0264cf0fc56205 400-425
+  s_ba2ae60894487d::t_de9a205f89b8fd 7-8
+packages/frontend/editor-ui/src/app/composables/useWorkflowDiffRouting.test.ts
+  s_ba2ae60894487d::t_c6535f64bc6048 40-45,51-60
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_ba2ae60894487d::t_b971abe3fbce30 15
+  s_ba2ae60894487d::t_09a0627eeef6d2 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2e3d2f6172fbc32825a4cd75e3ff6a42ac8c905f",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
