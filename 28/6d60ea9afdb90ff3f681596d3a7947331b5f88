@@ -1,3 +1,11 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "286d60ea9afdb90ff3f681596d3a7947331b5f88",
+  "prompts": {}
+}
+
 packages/cli/test/integration/public-api/log-streaming.test.ts
   s_f237da1bec2829::t_d2dfd6d7cdb12f 1,6,10,175-177,194-199,203-209,218-222
   ai_agent 178-193,200-202,210-217
