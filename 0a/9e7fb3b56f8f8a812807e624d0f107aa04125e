@@ -1,0 +1,16 @@
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/n8n.svg
+  h_434a0dd003c3fd 1-9
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/n8n-trigger.svg
+  h_434a0dd003c3fd 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a9e7fb3b56f8f8a812807e624d0f107aa04125e",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
