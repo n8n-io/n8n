@@ -2,7 +2,7 @@
     "name": "n8n-core",
     "version": "0.1.0",
     "description": "Core functionality of n8n",
-    "license": "SEE LICENSE IN LICENSE",
+    "license": "SEE LICENSE IN LICENSE.md",
     "author": {
         "name": "Jan Oberhauser",
         "email": "jan@n8n.io"
