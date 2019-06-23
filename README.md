@@ -4,6 +4,8 @@
 
 n8n is a tool which allows to easily and fast automate different taks.
 
+<a href="https://n8n.io/n8n-screenshot.png"><img src="https://n8n.io/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
+
 Is still in beta so can not guarantee that everything works perfectly. Also
 is there currently not much documentation. That will hopefully change soon.
 
