@@ -10,7 +10,7 @@ is there currently not much documentation. That will hopefully change soon.
 
 ## Usage
 
-Information about how to install and use it can be found in the cli package [here](packages/cli/README)
+Information about how to install and use it can be found in the cli package [here](packages/cli/README.md)
 
 And information about how to run it in Docker [here](docker/images/n8n/README.md)
 
