@@ -7,6 +7,10 @@
     "name": "Jan Oberhauser",
     "email": "jan@n8n.io"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n8n-io/n8n.git"
+  },
   "scripts": {
     "serve": "VUE_APP_URL_BASE_API=http://localhost:5678/ vue-cli-service serve",
     "build": "vue-cli-service build",
