@@ -24,5 +24,5 @@ services:
     volumes:
       - ~/.n8n:/root/.n8n
     # Wait 5 seconds to start n8n to make sure that MongoDB is ready
-		# when n8n tries to connect to it
+    # when n8n tries to connect to it
     command: /bin/sh -c "sleep 5; n8n start --NODE_CONFIG='{\"database\":{\"type\":\"mongodb\", \"mongodbConfig\":{\"url\":\"mongodb://n8nuser:${MONGO_NON_ROOT_PASSWORD}@mongo:27017/${MONGO_INITDB_DATABASE}\"}}}'"
