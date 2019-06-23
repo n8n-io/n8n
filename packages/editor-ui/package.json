@@ -2,7 +2,7 @@
   "name": "n8n-editor-ui",
   "version": "0.1.1",
   "description": "Workflow Editor UI for n8n",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "SEE LICENSE IN LICENSE.md",
   "author": {
     "name": "Jan Oberhauser",
     "email": "jan@n8n.io"

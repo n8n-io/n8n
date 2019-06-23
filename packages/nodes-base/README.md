@@ -11,4 +11,4 @@ npm install n8n-nodes-base -g
 
 ## License
 
-[Apache 2.0 with Commons Clause](LICENSE)
+[Apache 2.0 with Commons Clause](LICENSE.md)

@@ -38,4 +38,4 @@ Creates new basic credentials or node of the selected type to have a first start
 
 ## License
 
-[Apache 2.0 with Commons Clause](LICENSE)
+[Apache 2.0 with Commons Clause](LICENSE.md)

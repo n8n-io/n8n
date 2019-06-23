@@ -30,4 +30,4 @@ Execute: `npm run start`
 
 ## License
 
-[Apache 2.0 with Commons Clause](LICENSE)
+[Apache 2.0 with Commons Clause](LICENSE.md)
