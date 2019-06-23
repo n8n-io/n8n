@@ -22,7 +22,7 @@ module.exports = {
 
 	nodes: {
 		// Nodes not to load even if found
-		// exclude: [],
+		// exclude: ['n8n-nodes-base.executeCommand'],
 		errorTriggerType: 'n8n-nodes-base.errorTrigger',
 	},
 
