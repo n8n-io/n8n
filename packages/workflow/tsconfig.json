@@ -1,0 +1,35 @@
+{
+	"compilerOptions": {
+		"lib": [
+			"dom",
+			"es2017"
+		],
+		"types": [
+			"node",
+			"jest"
+		],
+		"module": "commonjs",
+		"noImplicitAny": true,
+		"removeComments": true,
+		"strictNullChecks": true,
+		"forceConsistentCasingInFileNames": true,
+		"noImplicitReturns": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"preserveConstEnums": true,
+		"declaration": true,
+		"outDir": "./dist/",
+		"target": "es2017",
+		"sourceMap": true
+	},
+	"include": [
+		"**/*.d.ts",
+		"src/**/*",
+		"test/**/*",
+	],
+	"exclude": [
+		"dist/**/*",
+		"node_modules/**/*",
+		"**/*.spec.ts"
+	]
+}

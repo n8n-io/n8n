@@ -1,0 +1,30 @@
+{
+	"compilerOptions": {
+		"lib": [
+			"es2017"
+		],
+		"types": [
+			"node",
+			"jest"
+		],
+		"module": "commonjs",
+		"noImplicitAny": true,
+		"removeComments": true,
+		"strictNullChecks": true,
+		"strict": true,
+		"preserveConstEnums": true,
+		"declaration": true,
+		"outDir": "./dist/",
+		"target": "es2017",
+		"sourceMap": true
+	},
+	"include": [
+		"credentials/**/*",
+		"src/**/*",
+		"nodes/**/*",
+		"test/**/*",
+	],
+	"exclude": [
+		"**/*.spec.ts"
+	]
+}

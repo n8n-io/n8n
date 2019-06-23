@@ -1,0 +1,33 @@
+/tests/
+/src
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw*
+
+.browserslistrc
+.editorconfig
+.eslintrc.js
+babel.config.js
+cypress.json
+jest.config.js
+postcss.config.js
+tsconfig.json
+tslint.json
+vue.config.js
+dist/report.html
+dist/**/*.map
+public/

@@ -1,0 +1,540 @@
+<template>
+	<div class="node-settings" @keydown.stop>
+		<div class="header-side-menu">
+			<span v-if="node">
+				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
+			</span>
+			<span v-else>No node active</span>
+		</div>
+		<div class="node-is-not-valid" v-if="node && !nodeValid">
+			The node is not valid as its type "{{node.type}}" is unknown.
+		</div>
+		<div class="node-parameters-wrapper" v-if="node && nodeValid">
+			<el-tabs stretch>
+				<el-tab-pane label="Parameters">
+					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
+					<node-webhooks :node="node" :nodeType="nodeType" />
+					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+					<div v-if="parametersNoneSetting.length === 0">
+						The node does not have any parameters.
+					</div>
+				</el-tab-pane>
+				<el-tab-pane label="Node">
+
+					<parameter-input-full
+						:parameter="nodeSettingsParameterColor"
+						:value="nodeValues.color"
+						:displayOptions="false"
+						path="color"
+						@valueChanged="valueChanged"
+					/>
+					<div v-if="!isColorDefaultValue" class="color-reset-button-wrapper">
+						<font-awesome-icon icon="redo" @click="resetColor('color')" class="color-reset-button clickable" title="Reset node color" />
+					</div>
+
+					<parameter-input-full
+						:parameter="nodeSettingsParameterNotes"
+						:value="nodeValues.notes"
+						:displayOptions="false"
+						path="notes"
+						@valueChanged="valueChanged"
+					/>
+
+					<parameter-input-full
+						:parameter="nodeSettingsParameterContinueOnFail"
+						:value="nodeValues.continueOnFail"
+						:displayOptions="false"
+						path="continueOnFail"
+						@valueChanged="valueChanged"
+					/>
+
+					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				</el-tab-pane>
+			</el-tabs>
+		</div>
+	</div>
+</template>
+
+<script lang="ts">
+import Vue from 'vue';
+import {
+	INodeIssues,
+	INodeIssueData,
+	INodeIssueObjectProperty,
+	INodeTypeDescription,
+	INodeParameters,
+	INodeProperties,
+	NodeHelpers,
+	NodeParameterValue,
+} from 'n8n-workflow';
+import {
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IUpdateInformation,
+} from '@/Interface';
+
+import DisplayWithChange from '@/components/DisplayWithChange.vue';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
+import NodeCredentials from '@/components/NodeCredentials.vue';
+import NodeWebhooks from '@/components/NodeWebhooks.vue';
+import { get } from 'lodash';
+
+import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+
+import mixins from 'vue-typed-mixins';
+
+export default mixins(
+	genericHelpers,
+	nodeHelpers,
+)
+
+	.extend({
+		name: 'NodeSettings',
+		components: {
+			DisplayWithChange,
+			NodeCredentials,
+			ParameterInputFull,
+			ParameterInputList,
+			NodeWebhooks,
+		},
+		computed: {
+			nodeType (): INodeTypeDescription | null {
+				const activeNode = this.node;
+
+				if (this.node) {
+					return this.$store.getters.nodeType(this.node.type);
+				}
+
+				return null;
+			},
+			headerStyle (): object {
+				if (!this.node) {
+					return {};
+				}
+
+				return {
+					'background-color': this.node.color,
+				};
+			},
+			node (): INodeUi {
+				return this.$store.getters.activeNode;
+			},
+			parametersSetting (): INodeProperties[] {
+				return this.parameters.filter((item) => {
+					return item.isNodeSetting;
+				});
+			},
+			parametersNoneSetting (): INodeProperties[] {
+				return this.parameters.filter((item) => {
+					return !item.isNodeSetting;
+				});
+			},
+			parameters (): INodeProperties[] {
+				if (this.nodeType === null) {
+					return [];
+				}
+
+				return this.nodeType.properties;
+			},
+			isColorDefaultValue (): boolean {
+				if (this.nodeType === null) {
+					return false;
+				}
+
+				return this.node.color === this.nodeType.defaults.color;
+			},
+			workflowRunning (): boolean {
+				return this.$store.getters.isActionActive('workflowRunning');
+			},
+		},
+		data () {
+			return {
+				nodeValid: true,
+				nodeColor: null,
+				nodeValues: {
+					color: '#ff0000',
+					continueOnFail: false,
+					notes: '',
+					parameters: {},
+				} as INodeParameters,
+				nodeSettingsParameterNotes: {
+					displayName: 'Notes',
+					name: 'notes',
+					type: 'string',
+					typeOptions: {
+						rows: 5,
+					},
+					default: '',
+					description: 'Notes to save with the node.',
+				} as INodeProperties,
+
+				nodeSettingsParameterColor: {
+					displayName: 'Node Color',
+					name: 'color',
+					type: 'color',
+					default: '',
+					description: 'The color of the node in the flow.',
+				} as INodeProperties,
+
+				nodeSettingsParameterContinueOnFail: {
+					displayName: 'Continue On Fail',
+					name: 'continueOnFail',
+					type: 'boolean',
+					default: false,
+					description: 'If set and the node fails the workflow will simply continue running.<br />It will then simply pass through the input data so the workflow has<br />to be set up to handle the case that different data gets returned.',
+				} as INodeProperties,
+
+			};
+		},
+		watch: {
+			node (newNode, oldNode) {
+				this.setNodeValues();
+			},
+		},
+		methods: {
+			noOp () {},
+			resetColor () {
+				const activeNode = this.node as INodeUi;
+				const activeNodeType = this.nodeType;
+				if (activeNodeType !== null) {
+					this.setValue('color', activeNodeType.defaults.color as NodeParameterValue);
+					this.valueChanged({ name: 'color', value: activeNodeType.defaults.color } as IUpdateInformation);
+				}
+			},
+			setValue (name: string, value: NodeParameterValue) {
+				const nameParts = name.split('.');
+				let lastNamePart: string | undefined = nameParts.pop();
+
+				let isArray = false;
+				if (lastNamePart !== undefined && lastNamePart.includes('[')) {
+					// It incldues an index so we have to extract it
+					const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
+					if (lastNameParts) {
+						nameParts.push(lastNameParts[1]);
+						lastNamePart = lastNameParts[2];
+						isArray = true;
+					}
+				}
+
+				// Set the value via Vue.set that everything updates correctly in the UI
+				if (nameParts.length === 0) {
+					// Data is on top level
+					if (value === null) {
+						// Property should be deleted
+						// @ts-ignore
+						Vue.delete(this.nodeValues, lastNamePart);
+					} else {
+						// Value should be set
+						// @ts-ignore
+						Vue.set(this.nodeValues, lastNamePart, value);
+					}
+				} else {
+					// Data is on lewer level
+					if (value === null) {
+						// Property should be deleted
+						// @ts-ignore
+						let tempValue = get(this.nodeValues, nameParts.join('.')) as INodeParameters | NodeParameters[];
+						Vue.delete(tempValue as object, lastNamePart as string);
+
+						if (isArray === true && (tempValue as INodeParameters[]).length === 0) {
+							// If a value from an array got delete and no values are left
+							// delete also the parent
+							lastNamePart = nameParts.pop();
+							tempValue = get(this.nodeValues, nameParts.join('.')) as INodeParameters;
+							Vue.delete(tempValue as object, lastNamePart as string);
+						}
+					} else {
+						// Value should be set
+						if (typeof value === 'object') {
+							// @ts-ignore
+							Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, JSON.parse(JSON.stringify(value)));
+						} else {
+							// @ts-ignore
+							Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, value);
+						}
+					}
+				}
+			},
+			updateNodeCredentialIssues (node: INodeUi): void {
+				const fullNodeIssues: INodeIssues | null = this.getNodeCredentialIssues(node);
+
+				let newIssues: INodeIssueObjectProperty | null = null;
+				if (fullNodeIssues !== null) {
+					newIssues = fullNodeIssues.credentials!;
+				}
+
+				this.$store.commit('setNodeIssue', {
+					node: node.name,
+					type: 'credentials',
+					value: newIssues,
+				} as INodeIssueData);
+			},
+			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
+				// Update the values on the node
+				this.$store.commit('updateNodeProperties', updateInformation);
+
+				const node = this.$store.getters.nodeByName(updateInformation.name);
+
+				// Update the issues
+				this.updateNodeCredentialIssues(node);
+			},
+			valueChanged (parameterData: IUpdateInformation) {
+				let newValue: NodeParameterValue;
+				if (parameterData.hasOwnProperty('value')) {
+					// New value is given
+					newValue = parameterData.value;
+				} else {
+					// Get new value from nodeData where it is set already
+					newValue = get(this.nodeValues, parameterData.name) as NodeParameterValue;
+				}
+
+				if (newValue !== undefined) {
+					// Save the node name before we commit the change because
+					// we need the old name to rename the node properly
+					const nodeNameBefore = parameterData.node || this.node.name;
+					const node = this.$store.getters.nodeByName(nodeNameBefore);
+
+					this.setValue(parameterData.name, newValue);
+
+					const updateInformation = {
+						name: node.name,
+						key: parameterData.name,
+						value: newValue,
+					};
+
+					if (parameterData.name === 'name') {
+						// Name of node changed so we have to set also the new node name as active
+
+						const sendData = {
+							value: newValue,
+							oldValue: nodeNameBefore,
+							name: parameterData.name,
+						};
+						this.$emit('valueChanged', sendData);
+
+						this.$store.commit('setActiveNode', newValue);
+					} else {
+						// For all changes except renames we commit the change. For
+						// renames that happens in NodeView
+						this.$store.commit('setNodeParameter', updateInformation);
+
+						const nodeType = this.$store.getters.nodeType(node.type);
+						const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
+
+						let newIssues: INodeIssueObjectProperty | null = null;
+						if (fullNodeIssues !== null) {
+							newIssues = fullNodeIssues.parameters!;
+						}
+
+						this.$store.commit('setNodeIssue', {
+							node: node.name,
+							type: 'parameters',
+							value: newIssues,
+						} as INodeIssueData);
+
+						this.updateNodeCredentialIssues(node);
+					}
+				}
+			},
+			/**
+			 * Sets the values of the active node in the internal settings variables
+			 */
+			setNodeValues () {
+				if (!this.node) {
+					// No node selected
+					return;
+				}
+
+				if (this.nodeType !== null) {
+					this.nodeValid = true;
+
+					if (this.node.color) {
+						Vue.set(this.nodeValues, 'color', this.node.color);
+					} else {
+						Vue.set(this.nodeValues, 'color', '#ff0000');
+					}
+
+					if (this.node.notes) {
+						Vue.set(this.nodeValues, 'notes', this.node.notes);
+					}
+
+					if (this.node.continueOnFail) {
+						Vue.set(this.nodeValues, 'continueOnFail', this.node.continueOnFail);
+					}
+
+					Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
+				} else {
+					this.nodeValid = false;
+				}
+			},
+		},
+		mounted () {
+			this.setNodeValues();
+		},
+	});
+</script>
+
+<style lang="scss">
+
+.node-settings {
+	position: absolute;
+	left: 0;
+	width: 350px;
+	height: 100%;
+	border: none;
+	z-index: 200;
+	font-size: 0.8em;
+	color: #555;
+	border-radius: 2px 0 0 2px;
+
+	textarea {
+		font-size: 0.9em;
+		line-height: 1.5em;
+		margin: 0.2em 0;
+
+	}
+	textarea:hover {
+		line-height: 1.5em;
+	}
+
+	.header-side-menu {
+		padding: 1em 0 1em 1.8em;
+		font-size: 1.35em;
+		background-color: $--custom-window-sidebar-top;
+		color: #555;
+	}
+
+	.node-is-not-valid {
+		padding: 10px;
+	}
+
+	.node-parameters-wrapper {
+		height: calc(100% - 110px);
+
+		.el-tabs__header {
+			background-color: #fff5f2;
+			line-height: 2em;
+		}
+
+		.el-tabs {
+			height: 100%;
+			.el-tabs__content {
+				height: calc(100% - 17px);
+				overflow-y: auto;
+
+				.el-tab-pane {
+					margin: 0 1em;
+				}
+			}
+		}
+
+		.el-tabs__nav {
+			padding-bottom: 1em;
+		}
+
+		.add-option > .el-input input::placeholder {
+			color: #fff;
+			font-weight: 600;
+		}
+
+		.el-button,
+		.add-option > .el-input .el-input__inner,
+		.add-option > .el-input .el-input__inner:hover
+		{
+			background-color: $--color-primary;
+			color: #fff;
+			text-align: center;
+			height: 38px;
+		}
+
+		.el-button,
+		.add-option > .el-input .el-input__inner
+		{
+			border: 1px solid $--color-primary;
+			border-radius: 17px;
+			height: 38px;
+		}
+	}
+
+	.el-input-number,
+	input.el-input__inner {
+		font-size: 0.9em;
+		line-height: 28px;
+		height: 28px;
+	}
+	.el-input-number {
+		padding: 0 10px;
+	}
+
+	.el-input--prefix .el-input__inner {
+		padding: 0 28px;
+	}
+
+	.el-input__prefix {
+		left: 2px;
+		top: 1px;
+	}
+
+	.el-select.add-option .el-input .el-select__caret {
+		color: #fff;
+	}
+}
+
+.parameter-content {
+	font-size: 0.9em;
+	margin-right: -15px;
+	margin-left: -15px;
+	input {
+		width: calc(100% - 35px);
+		padding: 5px;
+	}
+	select {
+		width: calc(100% - 20px);
+		padding: 5px;
+	}
+
+	&:before {
+		display: table;
+		content: " ";
+		position: relative;
+		box-sizing: border-box;
+		clear: both;
+	}
+}
+
+.parameter-wrapper {
+	line-height: 2.7em;
+	padding: 0 1em;
+}
+.parameter-name {
+	line-height: 2.7em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.color-reset-button-wrapper {
+	position: relative;
+
+}
+.color-reset-button {
+	position: absolute;
+	right: 7px;
+	top: -25px;
+}
+
+.parameter-value {
+	input.expression {
+		border-style: dashed;
+		border-color: #ff9600;
+		display: inline-block;
+		position: relative;
+		width: 100%;
+		box-sizing:border-box;
+		background-color: #793300;
+	}
+}
+
+</style>

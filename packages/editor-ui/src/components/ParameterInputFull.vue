@@ -1,0 +1,96 @@
+<template>
+	<el-row class="parameter-wrapper">
+		<el-col :span="isMultiLineParameter ? 24 : 10" class="parameter-name" :class="{'multi-line': isMultiLineParameter}">
+			<span class="title" :title="parameter.displayName">{{parameter.displayName}}</span>:
+			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
+				<div slot="content" v-html="parameter.description"></div>
+				<font-awesome-icon icon="question-circle" />
+			</el-tooltip>
+		</el-col>
+		<el-col :span="isMultiLineParameter ? 24 : 14" class="parameter-value">
+			<parameter-input :parameter="parameter" :value="value" :displayOptions="displayOptions" :path="path" @valueChanged="valueChanged" />
+		</el-col>
+	</el-row>
+</template>
+
+<script lang="ts">
+import Vue from 'vue';
+
+import {
+	IUpdateInformation,
+} from '@/Interface';
+
+import ParameterInput from '@/components/ParameterInput.vue';
+
+export default Vue
+	.extend({
+		name: 'ParameterInputFull',
+		components: {
+			ParameterInput,
+		},
+		computed: {
+			isMultiLineParameter () {
+				const rows = this.getArgument('rows');
+				if (rows !== undefined && rows > 1) {
+					return true;
+				}
+
+				return false;
+			},
+		},
+		props: [
+			'displayOptions',
+			'parameter',
+			'path',
+			'value',
+		],
+		methods: {
+			getArgument (argumentName: string): string | number | boolean | undefined {
+				if (this.parameter.typeOptions === undefined) {
+					return undefined;
+				}
+
+				if (this.parameter.typeOptions[argumentName] === undefined) {
+					return undefined;
+				}
+
+				return this.parameter.typeOptions[argumentName];
+			},
+			valueChanged (parameterData: IUpdateInformation) {
+				this.$emit('valueChanged', parameterData);
+			},
+		},
+	});
+</script>
+
+<style lang="scss">
+
+.parameter-wrapper {
+	line-height: 2.5em;
+
+	.option {
+		margin: 1em;
+	}
+
+	.parameter-info {
+		display: none;
+	}
+
+	.parameter-name {
+		&:hover {
+			.parameter-info {
+				display: inline;
+			}
+		}
+
+		&.multi-line {
+			line-height: 1.5em;
+		}
+	}
+
+	.title {
+		font-weight: 400;
+	}
+}
+
+</style>

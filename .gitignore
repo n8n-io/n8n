@@ -1,0 +1,11 @@
+node_modules
+.DS_Store
+.tmp
+tmp
+dist
+npm-debug.log*
+lerna-debug.log
+package-lock.json
+yarn.lock
+google-generated-credentials.json
+_START_PACKAGE

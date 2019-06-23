@@ -1,0 +1,14 @@
+{
+	"name": "n8n",
+	"private": true,
+	"scripts": {
+		"bootstrap": "lerna bootstrap --hoist --no-ci",
+		"build": "lerna exec npm run build",
+		"start": "cd packages/cli && node dist/index.js start",
+		"watch": "lerna run --parallel watch"
+	},
+	"devDependencies": {
+		"lerna": "^3.13.1"
+	},
+	"postcss": {}
+}

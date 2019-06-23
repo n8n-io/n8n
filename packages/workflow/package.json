@@ -1,0 +1,52 @@
+{
+    "name": "n8n-workflow",
+    "version": "0.1.0",
+    "description": "Workflow base code of n8n",
+    "license": "SEE LICENSE IN LICENSE",
+    "author": {
+        "name": "Jan Oberhauser",
+        "email": "jan@n8n.io"
+    },
+    "main": "dist/src/index",
+    "types": "dist/src/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "tslint": "tslint -p tsconfig.json -c tslint.json",
+        "watch": "tsc --watch",
+        "test": "jest"
+    },
+    "files": [
+        "dist"
+    ],
+    "devDependencies": {
+        "@types/express": "^4.16.1",
+        "@types/jest": "^23.3.2",
+        "@types/lodash.get": "^4.4.5",
+        "@types/node": "^10.10.1",
+        "jest": "^23.6.0",
+        "ts-jest": "^23.10.1",
+        "tslint": "^5.11.0",
+        "typescript": "~3.3.0"
+    },
+    "dependencies": {
+        "lodash.get": "^4.4.2",
+        "riot-tmpl": "^3.0.8"
+    },
+    "jest": {
+        "transform": {
+            "^.+\\.tsx?$": "ts-jest"
+        },
+        "testURL": "http://localhost/",
+        "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+        "testPathIgnorePatterns": [
+            "/dist/",
+            "/node_modules/"
+        ],
+        "moduleFileExtensions": [
+            "ts",
+            "tsx",
+            "js",
+            "json"
+        ]
+    }
+}
