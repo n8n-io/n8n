@@ -30,7 +30,7 @@ function execPromise(command: string): Promise<IExecReturnData> {
 	};
 
 	return new Promise((resolve, reject) => {
-		exec(command, (error, stdout, stderr) => {
+		exec(command, { cwd: process.cwd() }, (error, stdout, stderr) => {
 			returnData.stdout = stdout.trim();
 			returnData.stderr = stderr.trim();
 
