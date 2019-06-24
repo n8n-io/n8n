@@ -42,7 +42,7 @@
 		"n8n-core": "^0.1.0",
 		"n8n-workflow": "^0.1.0",
         "replace-in-file": "^4.1.0",
-        "typescript": "~3.3.0",
+        "typescript": "~3.5.2",
         "vorpal": "^1.12.0"
     }
 }

@@ -62,15 +62,13 @@ export default mixins(nodeBase).extend({
 		NodeIcon,
 	},
 	computed: {
-		workflowResultDataNode (): ITaskData[] | null {
-			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
-		},
 		workflowDataItems () {
-			if (this.workflowResultDataNode === null) {
+			const workflowResultDataNode = this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
+			if (workflowResultDataNode === null) {
 				return 0;
 			}
 
-			return this.workflowResultDataNode.length;
+			return workflowResultDataNode.length;
 		},
 		isExecuting (): boolean {
 			return this.$store.getters.executingNode === this.data.name;

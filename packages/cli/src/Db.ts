@@ -61,8 +61,12 @@ export async function init(): Promise<IDatabaseCollections> {
 
 	await createConnection(connectionOptions);
 
+	// TODO: Fix that properly
+	// @ts-ignore
 	collections.Credentials = getRepository(entities.CredentialsEntity);
+	// @ts-ignore
 	collections.Execution = getRepository(entities.ExecutionEntity);
+	// @ts-ignore
 	collections.Workflow = getRepository(entities.WorkflowEntity);
 
 	return collections;
