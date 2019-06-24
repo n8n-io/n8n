@@ -69,18 +69,18 @@ n8n start \
 ```
 
 Or you can provide a custom configuration file by copying the default
-configuration file [(config/defaults.ts)](https://github.com/n8n-io/n8n/blob/master/packages/cli/config/default.ts) and then set the
-path to it as environment variable `NODE_CONFIG_DIR`.
+configuration file [(config/defaults.ts)](https://github.com/n8n-io/n8n/blob/master/packages/cli/config/default.ts).
+Make sure the file is also called `default.ts` and then set the path of the
+parent directory as environment variable `NODE_CONFIG_DIR`.
 
 For example like this:
 ```bash
-export NODE_CONFIG_DIR=/path-to-my-config
+export NODE_CONFIG_DIR=/directory-containing-config-file
 ```
 
-In the file change then the
-setting under `database.type` from `sqlite` to `mongodb` and adjust the Mongo
-connection URL  `database.mongodbConfig` accordingly.
-
+Change in the config file the value under `database.type` from `sqlite`
+to `mongodb` and adjust the Mongo connection URL
+`database.mongodbConfig` accordingly.
 
 n8n will then read your custom configuration and use MongoDB instead.
 
