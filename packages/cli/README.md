@@ -2,7 +2,7 @@
 
 ![n8n.io - Workflow Automation](https://n8n.io/n8n-logo.png)
 
-n8n is a tool which allows to easily and fast automate different taks.
+n8n is a tool which allows to easily and fast automate different tasks.
 
 <a href="https://n8n.io/n8n-screenshot.png"><img src="https://n8n.io/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
@@ -69,7 +69,7 @@ n8n start \
 ```
 
 Or you can provide a custom configuration file by copying the default
-configuration file [(config/defaults.ts)](config/default.ts) and then set the
+configuration file [(config/defaults.ts)](https://github.com/n8n-io/n8n/blob/master/packages/cli/config/default.ts) and then set the
 path to it as environment variable `NODE_CONFIG_DIR`.
 
 For example like this:
@@ -104,7 +104,7 @@ n8n execute --file <WORKFLOW_FILE>
 
 ## License
 
-[Apache 2.0 with Commons Clause](LICENSE.md)
+[Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
 
 
 ## Development

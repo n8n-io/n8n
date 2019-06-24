@@ -2,7 +2,7 @@
 
 ![n8n.io - Workflow Automation](https://n8n.io/n8n-logo.png)
 
-n8n is a tool which allows to easily and fast automate different taks.
+n8n is a tool which allows to easily and fast automate different tasks.
 
 <a href="https://n8n.io/n8n-screenshot.png"><img src="https://n8n.io/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
@@ -12,9 +12,9 @@ is there currently not much documentation. That will hopefully change soon.
 
 ## Usage
 
-Information about how to install and use it can be found in the cli package [here](packages/cli/README.md)
+Information about how to install and use it can be found in the cli package [here](https://github.com/n8n-io/n8n/tree/master/packages/cli)
 
-And information about how to run it in Docker [here](docker/images/n8n/README.md)
+And information about how to run it in Docker [here](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n)
 
 
 ## Development Setup
@@ -32,4 +32,4 @@ Execute: `npm run start`
 
 ## License
 
-[Apache 2.0 with Commons Clause](LICENSE.md)
+[Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
