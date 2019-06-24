@@ -88,7 +88,6 @@ module.exports = (vorpal: Vorpal) => {
 					GenericHelpers.logOutput(`The workflow with the id "${workflowId}" does not exist.`);
 					return;
 				}
-
 			}
 
 			// Make sure the settings exist
@@ -136,7 +135,7 @@ module.exports = (vorpal: Vorpal) => {
 				const executionId = await workflowExecute.run(workflowInstance);
 
 				const activeExecutions = ActiveExecutions.getInstance();
-				const data = activeExecutions.getPostExecutePromise(executionId);
+				const data = await activeExecutions.getPostExecutePromise(executionId);
 
 				console.log('Execution was successfull:');
 				console.log('====================================');
