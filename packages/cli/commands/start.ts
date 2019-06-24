@@ -1,6 +1,5 @@
 import Vorpal = require('vorpal');
 import { Args } from 'vorpal';
-import { randomBytes } from 'crypto';
 import * as config from 'config';
 
 const open = require('open');
