@@ -68,7 +68,7 @@
         "mongodb": "^3.2.3",
         "n8n-core": "^0.1.0",
         "n8n-editor-ui": "^0.1.0",
-        "n8n-nodes-base": "^0.1.0",
+        "n8n-nodes-base": "^0.2.1",
         "n8n-workflow": "^0.1.0",
         "open": "^6.1.0",
         "request-promise-native": "^1.0.7",
