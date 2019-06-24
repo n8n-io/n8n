@@ -10,12 +10,21 @@ import {
 	IN8nConfigNodes,
 } from './';
 
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import * as glob from 'glob-promise';
-
 import * as config from 'config';
+import {
+	access as fsAccess,
+	readdir as fsReaddir,
+	readFile as fsReadFile,
+	stat as fsStat,
+ } from 'fs';
+import * as glob from 'glob-promise';
+import * as path from 'path';
+import { promisify } from "util";
 
+const fsAccessAsync = promisify(fsAccess);
+const fsReaddirAsync = promisify(fsReaddir);
+const fsReadFileAsync = promisify(fsReadFile);
+const fsStatAsync = promisify(fsStat);
 
 
 class LoadNodesAndCredentialsClass {
@@ -43,7 +52,7 @@ class LoadNodesAndCredentialsClass {
 		];
 		for (const checkPath of checkPaths) {
 			try {
-				await fs.access(checkPath);
+				await fsAccessAsync(checkPath);
 				// Folder exists, so use it.
 				this.nodeModulesPath = path.dirname(checkPath);
 				break;
@@ -96,13 +105,13 @@ class LoadNodesAndCredentialsClass {
 	 */
 	async getN8nNodePackages(): Promise<string[]> {
 		const packages: string[] = [];
-		for (const file of await fs.readdir(this.nodeModulesPath)) {
+		for (const file of await fsReaddirAsync(this.nodeModulesPath)) {
 			if (file.indexOf('n8n-nodes-') !== 0) {
 				continue;
 			}
 
 			// Check if it is really a folder
-			if (!(await fs.stat(path.join(this.nodeModulesPath, file))).isDirectory()) {
+			if (!(await fsStatAsync(path.join(this.nodeModulesPath, file))).isDirectory()) {
 				continue;
 			}
 
@@ -219,7 +228,7 @@ class LoadNodesAndCredentialsClass {
 		const packagePath = path.join(this.nodeModulesPath, packageName);
 
 		// Read the data from the package.json file to see if any n8n data is defiend
-		const packageFileString = await fs.readFile(path.join(packagePath, 'package.json'), 'utf8');
+		const packageFileString = await fsReadFileAsync(path.join(packagePath, 'package.json'), 'utf8');
 		const packageFile = JSON.parse(packageFileString);
 		if (!packageFile.hasOwnProperty('n8n')) {
 			return;
