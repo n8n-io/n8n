@@ -1,8 +1,12 @@
 <template>
 	<div @keydown.stop class="credentials-input-wrapper">
 		<el-row>
-			<el-col :span="6">
-				Preset Name:
+			<el-col :span="6" class="headline-regular">
+				Credentials Name:
+				<el-tooltip class="credentials-info" placement="top" effect="light">
+					<div slot="content" v-html="helpTexts.credentialsName"></div>
+					<font-awesome-icon icon="question-circle" />
+				</el-tooltip>
 			</el-col>
 			<el-col :span="18">
 				<el-input size="small" type="text" v-model="name"></el-input>
@@ -12,6 +16,10 @@
 		<br />
 		<div class="headline">
 			Credential Data:
+			<el-tooltip class="credentials-info" placement="top" effect="light">
+				<div slot="content" v-html="helpTexts.credentialsData"></div>
+				<font-awesome-icon icon="question-circle" />
+			</el-tooltip>
 		</div>
 		<el-row v-for="parameter in credentialTypeData.properties" :key="parameter.name" class="parameter-wrapper">
 			<el-col :span="6">
@@ -25,6 +33,10 @@
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
 				Nodes with access:
+				<el-tooltip class="credentials-info" placement="top" effect="light">
+					<div slot="content" v-html="helpTexts.nodesWithAccess"></div>
+					<font-awesome-icon icon="question-circle" />
+				</el-tooltip>
 			</el-col>
 			<el-col :span="18">
 				<el-transfer
@@ -92,6 +104,11 @@ export default mixins(
 	},
 	data () {
 		return {
+			helpTexts: {
+				credentialsData: 'The credentials to set.',
+				credentialsName: 'The name the credentials should be saved as. Use a name<br />which makes it clear to what exactly they give access to.<br />For credentials of an Email account that could be the Email address itself.',
+				nodesWithAccess: 'The nodes which allowed to use this credentials.',
+			},
 			nodesAccess: [] as string[],
 			name: '',
 			propertyValue: {} as ICredentialDataDecryptedObject,
@@ -265,6 +282,18 @@ export default mixins(
 	.parameter-wrapper {
 		line-height: 3em;
 	}
+
+	.credentials-info {
+		display: none;
+	}
+
+	.headline:hover,
+	.headline-regular:hover {
+		.credentials-info {
+			display: inline;
+		}
+	}
+
 }
 
 </style>
