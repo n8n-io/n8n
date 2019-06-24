@@ -21,7 +21,7 @@ export class Pipedrive implements INodeType {
 		icon: 'file:pipedrive.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Access and edit Asana tasks',
+		description: 'Create and edit data in Pipedrive',
 		defaults: {
 			name: 'Pipedrive',
 			color: '#227722',
