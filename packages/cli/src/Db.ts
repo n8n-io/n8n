@@ -19,7 +19,7 @@ import * as config from 'config';
 import {
 	MongoDb,
 	SQLite,
-} from './db';
+} from './databases';
 
 export let collections: IDatabaseCollections = {
 	Credentials: null,
