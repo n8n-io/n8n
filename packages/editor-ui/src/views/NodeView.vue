@@ -84,7 +84,16 @@
 			>
 				<font-awesome-icon icon="stop" :class="{'fa-spin': stopExecutionInProgress}"/>
 			</el-button>
-
+			<el-button
+				v-if="!isReadOnly && workflowExecution && !workflowRunning"
+				circle
+				type="text"
+				@click.stop="clearExecutionData()"
+				class="clear-execution"
+				title="Deletes the current Execution Data."
+			>
+				<font-awesome-icon icon="trash" class="clear-execution-icon" />
+			</el-button>
 		</div>
 	</div>
 </template>
@@ -225,6 +234,9 @@ export default mixins(
 				}
 				return returnClasses;
 			},
+			workflowExecution (): IExecutionResponse | null {
+				return this.$store.getters.getWorkflowExecution;
+			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
 			},
@@ -258,6 +270,10 @@ export default mixins(
 				}
 				// @ts-ignore
 				await this.debouncedFunctions[functionName].apply(this, inputParameters);
+			},
+			clearExecutionData () {
+				this.$store.commit('setWorkflowExecutionData', null);
+				this.updateNodesExecutionIssues();
 			},
 			openNodeCreator () {
 				this.createNodeActive = true;

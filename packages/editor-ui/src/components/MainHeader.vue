@@ -29,10 +29,6 @@
 
 				</div>
 
-				<div class="clear-execution clickable" v-if="!isReadOnly && workflowExecution && !workflowRunning" @click="clearExecutionData()" title="Deletes the current Execution Data.">
-					<font-awesome-icon icon="trash" class="clear-execution-icon" />
-				</div>
-
 				<div class="push-connection-lost" v-if="!isPushConnectionActive">
 					<el-tooltip placement="bottom-end" effect="light">
 						<div slot="content">
@@ -158,10 +154,6 @@ export default mixins(
 			},
 		},
 		methods: {
-			clearExecutionData () {
-				this.$store.commit('setWorkflowExecutionData', null);
-				this.updateNodesExecutionIssues();
-			},
 			async openWorkflow (workflowId: string) {
 				// Change to other workflow
 				this.$router.push({
@@ -286,29 +278,6 @@ export default mixins(
 
 .menu-separator-top {
 	border-top: 1px solid #707070;
-}
-
-.clear-execution {
-	position: absolute;
-	top: calc(50% - 19px);
-	line-height: 65px;
-	right: 200px;
-	width: 38px;
-	height: 38px;
-	line-height: 38px;
-	font-size: 18px;
-	text-align: center;
-	border-radius: 19px;
-	background-color: $--color-primary-light;
-	color: $--color-primary;
-
-	&:hover {
-		transform: scale(1.1);
-	}
-
-	.clear-execution-icon {
-		color: #f56c6c;
-	}
 }
 
 </style>
