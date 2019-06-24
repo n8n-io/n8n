@@ -24,7 +24,7 @@ import {
 
 module.exports = (vorpal: Vorpal) => {
 	return vorpal
-		.command('run')
+		.command('execute')
 		// @ts-ignore
 		.description('Executes a given workflow')
 		.option('--file <workflow-file>',
