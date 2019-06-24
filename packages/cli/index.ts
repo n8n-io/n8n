@@ -29,8 +29,8 @@ const command = process.argv[2];
 
 // Check if the command the user did enter is supported else stop
 const supportedCommands = [
+	'execute',
 	'help',
-	'run',
 	'start',
 ];
 
@@ -41,7 +41,7 @@ if (!supportedCommands.includes(command)) {
 
 const vorpal = new Vorpal();
 vorpal
-	.use(require('./commands/run.js'))
+	.use(require('./commands/execute.js'))
 	.use(require('./commands/start.js'))
 	.delimiter('')
 	.show()
