@@ -85,6 +85,23 @@ connection URL  `database.mongodbConfig` accordingly.
 n8n will then read your custom configuration and use MongoDB instead.
 
 
+## Execute Workflow from CLI
+
+Workflows can not just be started by triggers, webhooks or manually via the
+Editor it is also possible to run them directly via the CLI.
+
+Execute a saved workflow by its ID:
+
+```bash
+n8n run --id <ID>
+```
+
+Execute a workflow from a workflow file:
+```bash
+n8n run --file <WORKFLOW_FILE>
+```
+
+
 ## License
 
 [Apache 2.0 with Commons Clause](LICENSE.md)
