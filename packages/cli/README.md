@@ -102,6 +102,15 @@ n8n execute --file <WORKFLOW_FILE>
 ```
 
 
+## Create Custom Nodes
+
+It is very easy to create own nodes for n8n. More information about that can
+be found in the documentation of "n8n-node-dev" which is a small CLI which
+helps with n8n-node-development.
+
+[To n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev)
+
+
 ## License
 
 [Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
