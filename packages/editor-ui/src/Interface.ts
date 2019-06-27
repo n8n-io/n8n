@@ -32,10 +32,15 @@ declare module 'jsplumb' {
 		// bind(event: string, (connection: Connection): void;): void; // tslint:disable-line:no-any
 		bind(event: string, callback: Function): void; // tslint:disable-line:no-any
 		removeOverlay(name: string): void;
+		removeOverlays(): void;
 		setParameter(name: string, value: any): void; // tslint:disable-line:no-any
 		setPaintStyle(arg0: PaintStyle): void;
 		addOverlay(arg0: any[]): void; // tslint:disable-line:no-any
 		setConnector(arg0: any[]): void; // tslint:disable-line:no-any
+	}
+
+	interface Endpoint {
+		getOverlay(name: string): any; // tslint:disable-line:no-any
 	}
 
 	interface Overlay {

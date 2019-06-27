@@ -207,6 +207,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 					newEndpointData.overlays = [
 						['Label',
 							{
+								id: 'output-name-label',
 								location: [0.5, 1.5],
 								label: nodeTypeData.outputNames[index],
 								cssClass: 'node-endpoint-label',

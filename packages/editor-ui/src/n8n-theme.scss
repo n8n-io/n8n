@@ -12,7 +12,7 @@ body {
 	font-weight: 300;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
-	background-color: #faf9fe;
+	background-color: $--custom-node-view-background;
 	margin: 0;
 	padding: 0;
 }
