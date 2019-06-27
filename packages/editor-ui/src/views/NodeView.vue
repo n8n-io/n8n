@@ -977,6 +977,16 @@ export default mixins(
 				});
 
 				this.instance.bind('connection', (info: OnConnectionBindInfo) => {
+					// @ts-ignore
+					const sourceInfo = info.sourceEndpoint.getParameters();
+					// @ts-ignore
+					const targetInfo = info.targetEndpoint.getParameters();
+
+					const sourceNodeName = this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex);
+					const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
+
+					const sourceNode = this.$store.getters.nodeByName(sourceNodeName);
+
 					// TODO: That should happen after each move (only the setConnector part)
 					if (info.sourceEndpoint.anchor.lastReturnValue[1] >= info.targetEndpoint.anchor.lastReturnValue[1]) {
 						// When the source is underneath the target it will make sure that
@@ -1038,20 +1048,47 @@ export default mixins(
 						},
 					]);
 
+					// Display output names if they exist on connection
+					const sourceNodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(sourceNode.type);
+					if (sourceNodeTypeData.outputNames !== undefined) {
+						for (const output of sourceNodeTypeData.outputNames) {
+							const outputName = sourceNodeTypeData.outputNames[sourceInfo.index];
+
+							if (info.connection.getOverlay('output-name-label')) {
+								// Make sure that it does not get added multiple times
+								continue;
+							}
+
+							// @ts-ignore
+							info.connection.addOverlay([
+								'Label',
+								{
+									id: 'output-name-label',
+									label: outputName,
+									cssClass: 'connection-output-name-label',
+									location: 0.3,
+								},
+							]);
+						}
+					}
+
+					// When connection gets made the output name get displayed as overlay
+					// on the connection. So the one on the endpoint can be hidden.
 					// @ts-ignore
-					const sourceInfo = info.sourceEndpoint.getParameters();
-					// @ts-ignore
-					const targetInfo = info.targetEndpoint.getParameters();
+					const outputNameOverlay = info.connection.endpoints[0].getOverlay('output-name-label');
+					if (outputNameOverlay !== null) {
+						outputNameOverlay.setVisible(false);
+					}
 
 					this.$store.commit('addConnection', {
 						connection: [
 							{
-								node: this.$store.getters.getNodeNameByIndex(sourceInfo.nodeIndex),
+								node: sourceNodeName,
 								type: sourceInfo.type,
 								index: sourceInfo.index,
 							},
 							{
-								node: this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex),
+								node: targetNodeName,
 								type: targetInfo.type,
 								index: targetInfo.index,
 							},
@@ -1086,9 +1123,22 @@ export default mixins(
 
 					// Make sure to remove the overlay else after the second move
 					// it visibly stays behind free floating without a connection.
-					info.connection.removeOverlay('remove-connection');
+					info.connection.removeOverlays();
 				});
+
 				this.instance.bind('connectionDetached', (info) => {
+					const sourceEndpoint = info.connection.endpoints[0];
+
+					// If the source endpoint is not connected to anything else anymore
+					// display the output-name overlays on the endpoint if any exist
+					if (sourceEndpoint !== undefined && sourceEndpoint.connections!.length === 1) {
+						const outputNameOverlay = sourceEndpoint.getOverlay('output-name-label');
+						if (outputNameOverlay !== null) {
+							outputNameOverlay.setVisible(true);
+						}
+					}
+
+					info.connection.removeOverlays();
 					this.__removeConnectionByConnectionInfo(info, false);
 				});
 			},
@@ -1807,6 +1857,12 @@ export default mixins(
 
 <style lang="scss">
 
+.connection-output-name-label {
+	background-color: $--custom-node-view-background;
+	line-height: 1.3em;
+	font-size: 0.8em;
+}
+
 .remove-connection-label {
 	font-size: 12px;
 	color: #fff;
@@ -1838,6 +1894,7 @@ export default mixins(
 
 .node-endpoint-label {
 	font-size: 10px;
+	background-color: $--custom-node-view-background;
 }
 
 .button-white {
