@@ -94,9 +94,13 @@ export default Vue.extend({
 		position: relative;
 		width: 80%;
 		height: 80%;
-		margin: 8em auto;
+		margin: 6em auto;
 		background-color: #fff;
 		border-radius: 2px;
+		@media (max-height: 720px) {
+			margin: 1em auto;
+			height: 95%;
+		}
 	}
 }
 
