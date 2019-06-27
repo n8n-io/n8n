@@ -259,6 +259,18 @@ h1, h2, h3, h4, h5, h6 {
 // Select input
 .el-select {
 	width: 100%;
+	.el-tag {
+		color: $--custom-input-font;
+
+		.el-tag__close.el-icon-close {
+			background-color: $--custom-input-font;
+
+			&:hover {
+				background-color: $--custom-input-font;
+				transform: scale(0.8);
+			}
+		}
+	}
 }
 .el-switch__label {
 	color: #fff;
