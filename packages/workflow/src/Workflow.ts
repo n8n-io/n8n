@@ -456,9 +456,7 @@ export class Workflow {
 			return currentHighest;
 		}
 
-		if (checkedNodes === undefined) {
-			checkedNodes = [];
-		}
+		checkedNodes = checkedNodes || [];
 
 		if (checkedNodes!.includes(nodeName)) {
 			// Node got checked already before
@@ -537,9 +535,7 @@ export class Workflow {
 			return [];
 		}
 
-		if (checkedNodes === undefined) {
-			checkedNodes = [];
-		}
+		checkedNodes = checkedNodes || [];
 
 		if (checkedNodes!.includes(nodeName)) {
 			// Node got checked already before
@@ -583,6 +579,70 @@ export class Workflow {
 		});
 
 		return returnNodes;
+	}
+
+
+
+	/**
+	 * Returns via which output of the parent-node the node
+	 * is connected to.
+	 *
+	 * @param {string} nodeName The node to check how it is connected with parent node
+	 * @param {string} parentNodeName The parent node to get the output index of
+	 * @param {string} [type='main']
+	 * @param {*} [depth=-1]
+	 * @param {string[]} [checkedNodes]
+	 * @returns {(number | undefined)}
+	 * @memberof Workflow
+	 */
+	getNodeConnectionOutputIndex(nodeName: string, parentNodeName: string, type = 'main', depth = -1, checkedNodes?: string[]): number | undefined {
+		depth = depth === -1 ? -1 : depth;
+		const newDepth = depth === -1 ? depth : depth - 1;
+		if (depth === 0) {
+			// Reached max depth
+			return undefined;
+		}
+
+		if (!this.connectionsByDestinationNode.hasOwnProperty(nodeName)) {
+			// Node does not have incoming connections
+			return undefined;
+		}
+
+		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(type)) {
+			// Node does not have incoming connections of given type
+			return undefined;
+		}
+
+		checkedNodes = checkedNodes || [];
+
+		if (checkedNodes!.includes(nodeName)) {
+			// Node got checked already before
+			return undefined;
+		}
+
+		checkedNodes!.push(nodeName);
+
+		let outputIndex: number | undefined;
+		for (const connectionsByIndex of this.connectionsByDestinationNode[nodeName][type]) {
+			for (const connection of connectionsByIndex) {
+				if (parentNodeName === connection.node) {
+					return connection.index;
+				}
+
+				if (checkedNodes!.includes(connection.node)) {
+					// Node got checked already before
+					return;
+				}
+
+				outputIndex = this.getNodeConnectionOutputIndex(connection.node, parentNodeName, type, newDepth, checkedNodes);
+
+				if (outputIndex !== undefined) {
+					return outputIndex;
+				}
+			}
+		}
+
+		return undefined;
 	}
 
 

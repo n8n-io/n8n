@@ -150,9 +150,20 @@ export class WorkflowDataProxy {
 							throw new Error(`No data found from "main" input.`);
 						}
 
-						// Currently it is only possible to reference data from the first input
-						// so we hardcode it.
-						executionData = taskData.main[0] as INodeExecutionData[];
+						// Check from which output to read the data.
+						// Depends on how the nodes are connected.
+						// (example "IF" node. If node is connected to "true" or to "false" output)
+						const outputIndex = that.workflow.getNodeConnectionOutputIndex(that.activeNodeName, nodeName, 'main');
+
+						if (outputIndex === undefined) {
+							throw new Error(`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`);
+						}
+
+						if (taskData.main.length < outputIndex) {
+							throw new Error(`No data found from "main" input with index "${outputIndex}" via which node is connected with.`);
+						}
+
+						executionData = taskData.main[outputIndex] as INodeExecutionData[];
 					} else {
 						// Short syntax got used to return data from active node
 

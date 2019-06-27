@@ -15,9 +15,9 @@
 import Vue from 'vue';
 
 import {
+	GenericValue,
 	IContextObject,
 	IDataObject,
-	GenericValue,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -28,6 +28,7 @@ import {
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
 import {
 	IExecutionResponse,
+	INodeUi,
 	IVariableItemSelected,
 	IVariableSelectorOption,
 } from '@/Interface';
@@ -417,7 +418,12 @@ export default mixins(
 			getFilterResults (filterText: string, itemIndex: number): IVariableSelectorOption[] {
 				const inputName = 'main';
 
-				const activeNode = this.$store.getters.activeNode;
+				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+
+				if (activeNode === null) {
+					return [];
+				}
+
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 				let parentNode = this.workflow.getParentNodes(activeNode.name, inputName, 1);
 				let runData = this.$store.getters.getWorkflowRunData as IRunData | null;
@@ -453,7 +459,14 @@ export default mixins(
 
 				if (parentNode.length) {
 					// If the node has an input node add the input data
-					tempOutputData = this.getNodeOutputData(runData, parentNode[0], filterText, itemIndex) as IVariableSelectorOption[];
+
+					// Check from which output to read the data.
+					// Depends on how the nodes are connected.
+					// (example "IF" node. If node is connected to "true" or to "false" output)
+					const outputIndex = this.workflow.getNodeConnectionOutputIndex(activeNode.name, parentNode[0], 'main');
+
+					tempOutputData = this.getNodeOutputData(runData, parentNode[0], filterText, itemIndex, 0, 'main', outputIndex) as IVariableSelectorOption[];
+
 					if (tempOutputData) {
 						currentNodeData.push(
 							{
