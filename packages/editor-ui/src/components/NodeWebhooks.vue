@@ -115,7 +115,7 @@ export default mixins(
 		},
 		watch: {
 			node () {
-				this.isMinimized = false;
+				this.isMinimized = true;
 			},
 		},
 	});
