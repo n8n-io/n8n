@@ -1076,7 +1076,7 @@ export default mixins(
 					// on the connection. So the one on the endpoint can be hidden.
 					// @ts-ignore
 					const outputNameOverlay = info.connection.endpoints[0].getOverlay('output-name-label');
-					if (outputNameOverlay !== null) {
+					if (![null, undefined].includes(outputNameOverlay)) {
 						outputNameOverlay.setVisible(false);
 					}
 
@@ -1133,7 +1133,7 @@ export default mixins(
 					// display the output-name overlays on the endpoint if any exist
 					if (sourceEndpoint !== undefined && sourceEndpoint.connections!.length === 1) {
 						const outputNameOverlay = sourceEndpoint.getOverlay('output-name-label');
-						if (outputNameOverlay !== null) {
+						if (![null, undefined].includes(outputNameOverlay)) {
 							outputNameOverlay.setVisible(true);
 						}
 					}
