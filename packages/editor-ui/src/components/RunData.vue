@@ -32,20 +32,18 @@
 				</el-popover>
 				<span v-if="maxOutputIndex > 0">
 					| Output:
-					<select v-model="outputIndex" @click.stop>
-						<option v-for="option in (maxOutputIndex + 1)" :value="option -1" :key="option">
-							{{ getOutputName(option-1) }}
-						</option>
-					</select>
+					<el-select v-model="outputIndex" @click.stop>
+						<el-option v-for="option in (maxOutputIndex + 1)" :label="getOutputName(option-1)" :value="option -1" :key="option">
+						</el-option>
+					</el-select>
 				</span>
 				<span v-if="maxRunIndex > 0">
 					| Data of Execution:
-					<select v-model="runIndex" @click.stop>
-						<option v-for="option in (maxRunIndex + 1)" :value="option-1" :key="option">
-							{{ option }}
-						</option>
-					</select>
-					/{{maxRunIndex+1}}
+					<el-select v-model="runIndex" @click.stop>
+						<el-option v-for="option in (maxRunIndex + 1)" :label="option + '/' + (maxRunIndex+1)" :value="option-1" :key="option">
+						</el-option>
+					</el-select>
+
 				</span>
 			</div>
 			<div v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name) && !workflowRunData[node.name][runIndex].error" class="title-data-display-selector" @click.stop>
@@ -585,7 +583,7 @@ export default mixins(
 		top: 10px;
 		right: 10px;
 		height: 30px;
-		width: 130px;
+		width: 140px;
 		padding: 7px;
 		border-radius: 13px;
 		color: $--color-primary;
@@ -620,6 +618,24 @@ export default mixins(
 
 			.entry.active {
 				font-weight: bold;
+			}
+		}
+
+		.el-select {
+			width: 80px;
+			z-index: 1;
+
+			.el-input__suffix-inner {
+				// TODO: Not sure why I have to do that. Invesigate when I have some time
+				position: absolute;
+				top: -5px;
+				right: 0;
+			}
+
+			input.el-input__inner {
+				border: 1px solid $--color-primary;
+				height: 25px;
+				line-height: 25px;
 			}
 		}
 	}
