@@ -1,8 +1,27 @@
-## n8n
+## n8n - Workflow Automation
 
 ![n8n.io - Workflow Automation](https://n8n.io/n8n-logo.png)
 
-Run n8n in Docker.
+n8n is a free node based "Open Source" (with Commons Clause)
+Workflow Automation Tool. It can be self-hosted, easily extended, and
+so also used with internal tools.
+
+<a href="https://n8n.io/n8n-screenshot.png"><img src="https://n8n.io/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
+
+Is still in beta so can not guarantee that everything works perfectly. Also
+is there currently not much documentation. That will hopefully change soon.
+
+## Demo
+
+A short demo (< 3 min) which shows how to create a simple workflow which
+automatically sends a new Slack notification every time a Github repository
+received or lost a star:
+
+[https://www.youtube.com/watch?v=ePdcf0yaz1c](https://www.youtube.com/watch?v=ePdcf0yaz1c)
+
+
+
+## Start n8n in Docker
 
 ```
 docker run -it --rm \
