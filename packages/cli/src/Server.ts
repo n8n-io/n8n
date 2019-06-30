@@ -55,8 +55,10 @@ import {
 
 import {
 	FindManyOptions,
+	FindOneOptions,
 	LessThan,
 	LessThanOrEqual,
+	Not,
 } from 'typeorm';
 
 import * as parseUrl from 'parseurl';
@@ -499,6 +501,19 @@ class App {
 				throw new Error('No encryption key got found to encrypt the credentials!');
 			}
 
+			// Check if credentials with the same name and type exist already
+			const findQuery = {
+				where: {
+					name: incomingData.name,
+					type: incomingData.type,
+				},
+			} as FindOneOptions;
+
+			const checkResult = await Db.collections.Credentials!.findOne(findQuery);
+			if (checkResult !== undefined) {
+				throw new ResponseHelper.ReponseError(`Credentials with the same type and name exist already.`, undefined, 400);
+			}
+
 			// Encrypt the data
 			const credentials = new Credentials(incomingData.name, incomingData.type, incomingData.nodesAccess);
 			credentials.setData(incomingData.data, encryptionKey);
@@ -530,6 +545,20 @@ class App {
 				if (!nodeAccess.date) {
 					nodeAccess.date = this.getCurrentDate();
 				}
+			}
+
+			// Check if credentials with the same name and type exist already
+			const findQuery = {
+				where: {
+					id: Not(id),
+					name: incomingData.name,
+					type: incomingData.type,
+				},
+			} as FindOneOptions;
+
+			const checkResult = await Db.collections.Credentials!.findOne(findQuery);
+			if (checkResult !== undefined) {
+				throw new ResponseHelper.ReponseError(`Credentials with the same type and name exist already.`, undefined, 400);
 			}
 
 			const encryptionKey = await UserSettings.getEncryptionKey();

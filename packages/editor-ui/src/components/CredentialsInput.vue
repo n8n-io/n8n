@@ -71,6 +71,8 @@ import Vue from 'vue';
 
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { showMessage } from '@/components/mixins/showMessage';
+
 import { ICredentialsDecryptedResponse, IUpdateInformation } from '@/Interface';
 import {
 	CredentialInformation,
@@ -89,6 +91,7 @@ import mixins from 'vue-typed-mixins';
 export default mixins(
 	nodeHelpers,
 	restApi,
+	showMessage,
 ).extend({
 	name: 'CredentialsInput',
 	props: [
@@ -152,7 +155,7 @@ export default mixins(
 			// @ts-ignore
 			this.propertyValue[name] = parameterData.value;
 		},
-		async createCredentials () {
+		async createCredentials (): Promise<void> {
 			const nodesAccess = this.nodesAccess.map((nodeType) => {
 				return {
 					nodeType,
@@ -166,7 +169,13 @@ export default mixins(
 				data: this.propertyValue,
 			} as ICredentialsDecrypted;
 
-			const result = await this.restApi().createNewCredentials(newCredentials);
+			let result;
+			try {
+				result = await this.restApi().createNewCredentials(newCredentials);
+			} catch (error) {
+				this.$showError(error, 'Problem Creating Credentials', 'There was a problem creating the credentials:');
+				return;
+			}
 
 			// Add also to local store
 			this.$store.commit('addCredentials', result);
@@ -202,7 +211,13 @@ export default mixins(
 				data: this.propertyValue,
 			} as ICredentialsDecrypted;
 
-			const result = await this.restApi().updateCredentials((this.credentialData as ICredentialsDecryptedResponse).id as string, newCredentials);
+			let result;
+			try {
+				result = await this.restApi().updateCredentials((this.credentialData as ICredentialsDecryptedResponse).id as string, newCredentials);
+ 			} catch (error) {
+				this.$showError(error, 'Problem Updating Credentials', 'There was a problem updating the credentials:');
+				return;
+			}
 
 			// Update also in local store
 			this.$store.commit('updateCredentials', result);
