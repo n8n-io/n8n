@@ -214,7 +214,7 @@ export default mixins(
 			let result;
 			try {
 				result = await this.restApi().updateCredentials((this.credentialData as ICredentialsDecryptedResponse).id as string, newCredentials);
- 			} catch (error) {
+			} catch (error) {
 				this.$showError(error, 'Problem Updating Credentials', 'There was a problem updating the credentials:');
 				return;
 			}
