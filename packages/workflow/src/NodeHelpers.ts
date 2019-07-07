@@ -447,6 +447,11 @@ export function getNodeParametersIssues(nodePropertiesArray: INodeProperties[], 
 	const foundIssues: INodeIssues = {};
 	let propertyIssues: INodeIssues;
 
+	if (node.disabled === true) {
+		// Ignore issues on disabled nodes
+		return null;
+	}
+
 	for (const nodeProperty of nodePropertiesArray) {
 		propertyIssues = getParameterIssues(nodeProperty, node.parameters, '');
 		mergeIssues(foundIssues, propertyIssues);
