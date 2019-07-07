@@ -134,6 +134,7 @@ export const workflowHelpers = mixins(
 					node = workflow.nodes[nodeName];
 
 					if (node.disabled === true) {
+						// Ignore issues on disabled nodes
 						continue;
 					}
 

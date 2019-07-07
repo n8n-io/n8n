@@ -49,6 +49,11 @@ export const nodeHelpers = mixins(
 				let nodeIssues: INodeIssues | null = null;
 				ignoreIssues = ignoreIssues || [];
 
+				if (node.disabled === true) {
+					// Ignore issues on disabled nodes
+					return null;
+				}
+
 				if (nodeType === null) {
 					// Node type is not known
 					if (!ignoreIssues.includes('typeUnknown')) {
@@ -127,13 +132,18 @@ export const nodeHelpers = mixins(
 					return null;
 				}
 
+				if (nodeType!.credentials === undefined) {
+					// No credentials defined for node type
+					return null;
+				}
+
 				const foundIssues: INodeIssueObjectProperty = {};
 
 				let userCredentials: ICredentialsResponse[] | null;
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
 				let selectedCredentials: string;
-				for (const credentialTypeDescription of nodeType!.credentials) {
+				for (const credentialTypeDescription of nodeType!.credentials!) {
 					// Check if credentials should be displayed else ignore
 					if (this.displayParameter(node.parameters, credentialTypeDescription, '') !== true) {
 						continue;
