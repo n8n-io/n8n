@@ -867,6 +867,7 @@ export class Pipedrive implements INodeType {
 				displayName: 'Update Fields',
 				name: 'updateFields',
 				type: 'collection',
+				description: 'The fields to update.',
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
