@@ -24,6 +24,7 @@
     ],
     "n8n": {
         "credentials": [
+            "dist/credentials/AirtableApi.credentials.js",
             "dist/credentials/AsanaApi.credentials.js",
             "dist/credentials/ChargebeeApi.credentials.js",
             "dist/credentials/DropboxApi.credentials.js",
@@ -43,6 +44,7 @@
             "dist/credentials/TwilioApi.credentials.js"
         ],
         "nodes": [
+            "dist/nodes/Airtable/Airtable.node.js",
             "dist/nodes/Asana/Asana.node.js",
             "dist/nodes/Asana/AsanaTrigger.node.js",
             "dist/nodes/Chargebee/Chargebee.node.js",
