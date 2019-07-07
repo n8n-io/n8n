@@ -3,6 +3,10 @@
 
 		<div class="parameter-name">
 			{{parameter.displayName}}:
+			<el-tooltip class="parameter-info" placement="top" v-if="parameter.description" effect="light">
+				<div slot="content" v-html="parameter.description"></div>
+				<font-awesome-icon icon="question-circle" />
+			</el-tooltip>
 		</div>
 
 		<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
@@ -145,7 +149,7 @@ export default mixins(genericHelpers)
 }
 
 /deep/ .duplicate-parameter-input-item {
-	margin: 0.5em 0 0.25em 1em;
+	margin: 0.5em 0 0.25em 2em;
 }
 
 /deep/ .duplicate-parameter-item + .duplicate-parameter-item {
