@@ -93,14 +93,14 @@ export class AsanaTrigger implements INodeType {
 
 				const resource = this.getNodeParameter('resource') as string;
 
-				const endpont = `webhooks`;
+				const endpoint = `webhooks`;
 
 				const body = {
 					resource,
 					target: webhookUrl,
 				};
 
-				const responseData = await asanaApiRequest.call(this, 'POST', endpont, body);
+				const responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.data === undefined || responseData.data.id === undefined) {
 					// Required data is missing so was not successful
