@@ -132,18 +132,26 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowI
 							await workflowSavePromise;
 						}
 
-						// For now do not save manual executions
-						// TODO: Later that should be configurable. Think about what to do
-						//       with the workflow.id when not saved yet or currently differes from saved version (save diff?!?!)
-
 						executeErrorWorkflow(workflowData, fullRunData, mode);
 						return;
 					}
 
-					// TODO: Should maybe have different log-modes like
-					//       to save all data, only first input, only last node output, ....
-					//       or depending on success to only save all on error to be
-					//       able to start it again where it ended (but would then also have to save active data)
+					// Check config to know if execution should be saved or not
+					let saveDataErrorExecution = config.get('executions.saveDataErrorExecution') as string;
+					let saveDataSuccessExecution = config.get('executions.saveDataSuccessExecution') as string;
+					if (workflowInstance.settings !== undefined) {
+						saveDataErrorExecution = (workflowInstance.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
+						saveDataSuccessExecution = (workflowInstance.settings.saveDataSuccessExecution as string) || saveDataSuccessExecution;
+					}
+
+					const workflowDidSucceed = !fullRunData.data.resultData.error;
+					if (workflowDidSucceed === true && saveDataSuccessExecution === 'none' ||
+						workflowDidSucceed === false && saveDataErrorExecution === 'none'
+					) {
+						executeErrorWorkflow(workflowData, fullRunData, mode);
+						return;
+					}
+
 					const fullExecutionData: IExecutionDb = {
 						data: fullRunData.data,
 						mode: fullRunData.mode,

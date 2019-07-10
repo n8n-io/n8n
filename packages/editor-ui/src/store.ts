@@ -46,6 +46,8 @@ export const store = new Vuex.Store({
 		executingNode: '' as string | null,
 		executionWaitingForWebhook: false,
 		pushConnectionActive: false,
+		saveDataErrorExecution: 'all',
+		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
 		timezone: 'America/New_York',
 		workflowExecutionData: null as IExecutionResponse | null,
@@ -458,6 +460,12 @@ export const store = new Vuex.Store({
 			Vue.set(state, 'endpointWebhookTest', endpointWebhookTest);
 		},
 
+		setSaveDataErrorExecution(state, newValue: string) {
+			Vue.set(state, 'saveDataErrorExecution', newValue);
+		},
+		setSaveDataSuccessExecution(state, newValue: string) {
+			Vue.set(state, 'saveDataSuccessExecution', newValue);
+		},
 		setSaveManualExecutions (state, saveManualExecutions: boolean) {
 			Vue.set(state, 'saveManualExecutions', saveManualExecutions);
 		},
@@ -551,6 +559,12 @@ export const store = new Vuex.Store({
 			return `${state.urlBaseWebhook}${state.endpointWebhookTest}`;
 		},
 
+		saveDataErrorExecution: (state): string => {
+			return state.saveDataErrorExecution;
+		},
+		saveDataSuccessExecution: (state): string => {
+			return state.saveDataSuccessExecution;
+		},
 		saveManualExecutions: (state): boolean => {
 			return state.saveManualExecutions;
 		},

@@ -22,6 +22,15 @@ module.exports = {
 	},
 
 	executions: {
+		// If a workflow executes all the data gets saved by default. This
+		// could be a problem when a workflow gets executed a lot and processes
+		// a lot of data. To not write the database full it is possible to
+		// not save the execution at all.
+		// Depending on if the execution did succeed or error a different
+		// save behaviour can be set.
+		saveDataErrorExecution: 'all', // Available options: all, none
+		saveDataSuccessExecution: 'all', // Available options: all, none
+
 		// If the executions of workflows which got started via the editor
 		// should be saved. By default they will not be saved as this runs
 		// are normally only for testing and debugging. This setting can

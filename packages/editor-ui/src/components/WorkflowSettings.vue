@@ -42,6 +42,44 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
+						Save Data Error Execution:
+						<el-tooltip class="setting-info" placement="top" effect="light">
+							<div slot="content" v-html="helpTexts.saveDataErrorExecution"></div>
+							<font-awesome-icon icon="question-circle" />
+						</el-tooltip>
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<el-select v-model="workflowSettings.saveDataErrorExecution" placeholder="Select Option" size="small" filterable>
+							<el-option
+								v-for="option of saveDataErrorExecutionOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key">
+							</el-option>
+						</el-select>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						Save Data Success Execution:
+						<el-tooltip class="setting-info" placement="top" effect="light">
+							<div slot="content" v-html="helpTexts.saveDataSuccessExecution"></div>
+							<font-awesome-icon icon="question-circle" />
+						</el-tooltip>
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<el-select v-model="workflowSettings.saveDataSuccessExecution" placeholder="Select Option" size="small" filterable>
+							<el-option
+								v-for="option of saveDataSuccessExecutionOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key">
+							</el-option>
+						</el-select>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
 						Save Manual Executions:
 						<el-tooltip class="setting-info" placement="top" effect="light">
 							<div slot="content" v-html="helpTexts.saveManualExecutions"></div>
@@ -77,8 +115,9 @@ import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import {
-	IWorkflowShortResponse,
 	IWorkflowDataUpdate,
+	IWorkflowSettings,
+	IWorkflowShortResponse,
 } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
@@ -98,12 +137,18 @@ export default mixins(
 			helpTexts: {
 				errorWorkflow: 'The workflow to run in case the current one fails.<br />To function correctly that workflow has to contain an "Error Trigger" node!',
 				timezone: 'The timezone in which the workflow should run. Gets for example used by "Cron" node.',
+				saveDataErrorExecution: 'If data data of executions should be saved in case they failed.',
+				saveDataSuccessExecution: 'If data data of executions should be saved in case they succeed.',
 				saveManualExecutions: 'If data data of executions should be saved when started manually from the editor.',
 			},
 			defaultValues: {
 				timezone: 'America/New_York',
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
 				saveManualExecutions: false,
 			},
+			saveDataErrorExecutionOptions: [] as Array<{ key: string, value: string }>,
+			saveDataSuccessExecutionOptions: [] as Array<{ key: string, value: string }>,
 			saveManualOptions: [] as Array<{ key: string | boolean, value: string }>,
 			timezones: [] as Array<{ key: string, value: string }>,
 			workflowSettings: {},
@@ -124,11 +169,49 @@ export default mixins(
 			this.$emit('closeDialog');
 			return false;
 		},
+		async loadSaveDataErrorExecutionOptions () {
+			this.saveDataErrorExecutionOptions.length = 0;
+			this.saveDataErrorExecutionOptions.push.apply(
+				this.saveDataErrorExecutionOptions, [
+					{
+						key: 'DEFAULT',
+						value: 'Default - ' + (this.defaultValues.saveDataErrorExecution === 'all' ? 'Save' : 'Do not save'),
+					},
+					{
+						key: 'all',
+						value: 'Save',
+					},
+					{
+						key: 'none',
+						value: 'Do not save',
+					}
+				]
+			);
+		},
+		async loadSaveDataSuccessExecutionOptions () {
+			this.saveDataSuccessExecutionOptions.length = 0;
+			this.saveDataSuccessExecutionOptions.push.apply(
+				this.saveDataSuccessExecutionOptions, [
+					{
+						key: 'DEFAULT',
+						value: 'Default - ' + (this.defaultValues.saveDataSuccessExecution === 'all' ? 'Save' : 'Do not save'),
+					},
+					{
+						key: 'all',
+						value: 'Save',
+					},
+					{
+						key: 'none',
+						value: 'Do not save',
+					}
+				]
+			);
+		},
 		async loadSaveManualOptions () {
 			this.saveManualOptions.length = 0;
 			this.saveManualOptions.push({
 				key: 'DEFAULT',
-				value: 'Use default - ' + (this.defaultValues.saveManualExecutions === true ? 'Yes' : 'No'),
+				value: 'Default - ' + (this.defaultValues.saveManualExecutions === true ? 'Yes' : 'No'),
 			});
 			this.saveManualOptions.push({
 				key: true,
@@ -139,6 +222,7 @@ export default mixins(
 				value: 'No',
 			});
 		},
+
 		async loadTimezones () {
 			if (this.timezones.length !== 0) {
 				// Data got already loaded
@@ -196,12 +280,16 @@ export default mixins(
 				return;
 			}
 
+			this.defaultValues.saveDataErrorExecution = this.$store.getters.saveDataErrorExecution;
+			this.defaultValues.saveDataSuccessExecution = this.$store.getters.saveDataSuccessExecution;
 			this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
 			this.defaultValues.timezone = this.$store.getters.timezone;
 
 			this.isLoading = true;
 			const promises = [];
 			promises.push(this.loadWorkflows());
+			promises.push(this.loadSaveDataErrorExecutionOptions());
+			promises.push(this.loadSaveDataSuccessExecutionOptions());
 			promises.push(this.loadSaveManualOptions());
 			promises.push(this.loadTimezones());
 
@@ -215,6 +303,12 @@ export default mixins(
 
 			if (workflowSettings.timezone === undefined) {
 				workflowSettings.timezone = 'DEFAULT';
+			}
+			if (workflowSettings.saveDataErrorExecution === undefined) {
+				workflowSettings.saveDataErrorExecution = 'DEFAULT';
+			}
+			if (workflowSettings.saveDataSuccessExecution === undefined) {
+				workflowSettings.saveDataSuccessExecution = 'DEFAULT';
 			}
 			if (workflowSettings.saveManualExecutions === undefined) {
 				workflowSettings.saveManualExecutions = 'DEFAULT';
@@ -238,7 +332,16 @@ export default mixins(
 				this.isLoading = false;
 				return;
 			}
-			this.$store.commit('setWorkflowSettings', this.workflowSettings);
+
+			// Get the settings without the defaults set for local workflow settings
+			const localWorkflowSettings: IWorkflowSettings = {};
+			for (const key of Object.keys(this.workflowSettings)) {
+				if (this.workflowSettings[key] !== 'DEFAULT') {
+					localWorkflowSettings[key] = this.workflowSettings[key];
+				}
+			}
+
+			this.$store.commit('setWorkflowSettings', localWorkflowSettings);
 
 			this.isLoading = false;
 

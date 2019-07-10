@@ -1674,9 +1674,12 @@ export default mixins(
 			},
 			async loadSettings (): Promise<void> {
 				const settings = await this.restApi().getSettings() as IN8nUISettings;
+
 				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
 				this.$store.commit('setEndpointWebhook', settings.endpointWebhook);
 				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
+				this.$store.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution);
+				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
 				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
 			},
