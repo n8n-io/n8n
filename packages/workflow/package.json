@@ -29,7 +29,7 @@
         "@types/node": "^10.10.1",
         "jest": "^23.6.0",
         "ts-jest": "^23.10.1",
-        "tslint": "^5.11.0",
+        "tslint": "^5.17.0",
         "typescript": "~3.5.2"
     },
     "dependencies": {
