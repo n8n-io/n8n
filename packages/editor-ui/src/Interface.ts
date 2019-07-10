@@ -358,6 +358,8 @@ export interface IPushDataTestWebhook {
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	saveDataErrorExecution: string;
+	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
 	timezone: string;
 	urlBaseWebhook: string;
@@ -365,6 +367,8 @@ export interface IN8nUISettings {
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
+	saveDataErrorExecution?: string;
+	saveDataSuccessExecution?: string;
 	saveManualExecutions?: boolean;
 	timezone?: string;
 }

@@ -189,6 +189,8 @@ export interface IN8nConfigNodes {
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	saveDataErrorExecution: string;
+	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
 	timezone: string;
 	urlBaseWebhook: string;
