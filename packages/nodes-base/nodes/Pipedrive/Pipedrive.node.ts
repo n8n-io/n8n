@@ -81,14 +81,29 @@ export class Pipedrive implements INodeType {
 						description: 'Get data of a deal',
 					},
 					{
-						name: 'Get All Persons',
-						value: 'getAllPersons',
-						description: 'Get data of all persons',
+						name: 'Get Organization',
+						value: 'getOrganization',
+						description: 'Get data of an organization',
 					},
 					{
 						name: 'Get Person',
 						value: 'getPerson',
 						description: 'Get data of a person',
+					},
+					{
+						name: 'Get All Organizations',
+						value: 'getAllOrganizations',
+						description: 'Get data of all organizations',
+					},
+					{
+						name: 'Get All Persons',
+						value: 'getAllPersons',
+						description: 'Get data of all persons',
+					},
+					{
+						name: 'Get All Products',
+						value: 'getAllProducts',
+						description: 'Get data of all products',
 					},
 					{
 						name: 'Update Activity',
@@ -502,6 +517,46 @@ export class Pipedrive implements INodeType {
 
 
 			// ----------------------------------
+			//         getAllOrganizations
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAllOrganizations',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAllOrganizations',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+
+
+			// ----------------------------------
 			//         getAllPersons
 			// ----------------------------------
 			{
@@ -540,6 +595,47 @@ export class Pipedrive implements INodeType {
 				description: 'How many results to return.',
 			},
 
+
+			// ----------------------------------
+			//         getAllProducts
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAllProducts',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAllProducts',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+
+
 			// ----------------------------------
 			//         getActivity
 			// ----------------------------------
@@ -577,6 +673,26 @@ export class Pipedrive implements INodeType {
 				default: 0,
 				required: true,
 				description: 'ID of the deal to get.',
+			},
+
+
+			// ----------------------------------
+			//         getOrganization
+			// ----------------------------------
+			{
+				displayName: 'Organization ID',
+				name: 'organizationId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getOrganization'
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the organization to get.',
 			},
 
 
@@ -1025,6 +1141,20 @@ export class Pipedrive implements INodeType {
 				const personId = this.getNodeParameter('personId', i) as number;
 				endpoint = `/persons/${personId}`;
 
+			} else if (operation === 'getAllOrganizations') {
+				// ----------------------------------
+				//         getAllOrganizations
+				// ----------------------------------
+
+				requestMethod = 'GET';
+
+				returnAll = this.getNodeParameter('returnAll', i) as boolean;
+				if (returnAll === false) {
+					qs.limit = this.getNodeParameter('limit', i) as number;
+				}
+
+				endpoint = `/organizations`;
+
 			} else if (operation === 'getAllPersons') {
 				// ----------------------------------
 				//         getAllPersons
@@ -1038,6 +1168,20 @@ export class Pipedrive implements INodeType {
 				}
 
 				endpoint = `/persons`;
+
+			} else if (operation === 'getAllProducts') {
+				// ----------------------------------
+				//         getAllProducts
+				// ----------------------------------
+
+				requestMethod = 'GET';
+
+				returnAll = this.getNodeParameter('returnAll', i) as boolean;
+				if (returnAll === false) {
+					qs.limit = this.getNodeParameter('limit', i) as number;
+				}
+
+				endpoint = `/products`;
 
 			} else if (operation === 'getActivity') {
 				// ----------------------------------
@@ -1058,6 +1202,16 @@ export class Pipedrive implements INodeType {
 
 				const dealId = this.getNodeParameter('dealId', i) as number;
 				endpoint = `/deals/${dealId}`;
+
+			} else if (operation === 'getOrganization') {
+				// ----------------------------------
+				//         getOrganization
+				// ----------------------------------
+
+				requestMethod = 'GET';
+
+				const organizationId = this.getNodeParameter('organizationId', i) as number;
+				endpoint = `/organizations/${organizationId}`;
 
 			} else if (operation === 'getPerson') {
 				// ----------------------------------
