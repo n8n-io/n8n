@@ -151,9 +151,12 @@ export default mixins(
 	},
 	methods: {
 		valueChanged (parameterData: IUpdateInformation) {
-			const name = parameterData.name.split('.').pop();
-			// @ts-ignore
-			this.propertyValue[name] = parameterData.value;
+			const name = parameterData.name.split('.').pop() as string;
+			// For a currently for me unknown reason can In not simply just
+			// set the value and it has to be this way.
+			const tempValue = JSON.parse(JSON.stringify(this.propertyValue));
+			tempValue[name] = parameterData.value;
+			Vue.set(this, 'propertyValue', tempValue);
 		},
 		async createCredentials (): Promise<void> {
 			const nodesAccess = this.nodesAccess.map((nodeType) => {
