@@ -151,7 +151,7 @@ export default mixins(
 			saveDataSuccessExecutionOptions: [] as Array<{ key: string, value: string }>,
 			saveManualOptions: [] as Array<{ key: string | boolean, value: string }>,
 			timezones: [] as Array<{ key: string, value: string }>,
-			workflowSettings: {},
+			workflowSettings: {} as IWorkflowSettings,
 			workflows: [] as IWorkflowShortResponse[],
 		};
 	},
@@ -171,7 +171,7 @@ export default mixins(
 		},
 		async loadSaveDataErrorExecutionOptions () {
 			this.saveDataErrorExecutionOptions.length = 0;
-			this.saveDataErrorExecutionOptions.push.apply(
+			this.saveDataErrorExecutionOptions.push.apply( // eslint-disable-line no-useless-call
 				this.saveDataErrorExecutionOptions, [
 					{
 						key: 'DEFAULT',
@@ -184,13 +184,13 @@ export default mixins(
 					{
 						key: 'none',
 						value: 'Do not save',
-					}
+					},
 				]
 			);
 		},
 		async loadSaveDataSuccessExecutionOptions () {
 			this.saveDataSuccessExecutionOptions.length = 0;
-			this.saveDataSuccessExecutionOptions.push.apply(
+			this.saveDataSuccessExecutionOptions.push.apply( // eslint-disable-line no-useless-call
 				this.saveDataSuccessExecutionOptions, [
 					{
 						key: 'DEFAULT',
@@ -203,7 +203,7 @@ export default mixins(
 					{
 						key: 'none',
 						value: 'Do not save',
-					}
+					},
 				]
 			);
 		},

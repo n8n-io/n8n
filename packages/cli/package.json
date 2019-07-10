@@ -53,7 +53,7 @@
         "nodemon": "^1.19.1",
         "sails-disk": "^1.0.1",
         "ts-jest": "^23.10.1",
-        "tslint": "^5.11.0",
+        "tslint": "^5.17.0",
         "typescript": "~3.5.2"
     },
     "dependencies": {
