@@ -73,7 +73,7 @@ class App {
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
-	saveManualRuns: boolean;
+	saveManualExecutions: boolean;
 	timezone: string;
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 	push: Push.Push;
@@ -83,7 +83,7 @@ class App {
 
 		this.endpointWebhook = config.get('urls.endpointWebhook') as string;
 		this.endpointWebhookTest = config.get('urls.endpointWebhookTest') as string;
-		this.saveManualRuns = config.get('executions.saveManualRuns') as boolean;
+		this.saveManualExecutions = config.get('executions.saveManualExecutions') as boolean;
 		this.timezone = config.get('timezone') as string;
 
 		this.config();
@@ -271,9 +271,9 @@ class App {
 					// Do not save the default timezone
 					delete newWorkflowData.settings.timezone;
 				}
-				if (newWorkflowData.settings.saveManualRuns === 'DEFAULT') {
+				if (newWorkflowData.settings.saveManualExecutions === 'DEFAULT') {
 					// Do not save when default got set
-					delete newWorkflowData.settings.saveManualRuns;
+					delete newWorkflowData.settings.saveManualExecutions;
 				}
 			}
 
@@ -900,7 +900,7 @@ class App {
 			return {
 				endpointWebhook: this.endpointWebhook,
 				endpointWebhookTest: this.endpointWebhookTest,
-				saveManualRuns: this.saveManualRuns,
+				saveManualExecutions: this.saveManualExecutions,
 				timezone: this.timezone,
 				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
 			};

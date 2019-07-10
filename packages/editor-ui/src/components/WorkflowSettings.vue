@@ -42,14 +42,14 @@
 				</el-row>
 				<el-row>
 					<el-col :span="10" class="setting-name">
-						Save Manual Runs:
+						Save Manual Executions:
 						<el-tooltip class="setting-info" placement="top" effect="light">
-							<div slot="content" v-html="helpTexts.saveManualRuns"></div>
+							<div slot="content" v-html="helpTexts.saveManualExecutions"></div>
 							<font-awesome-icon icon="question-circle" />
 						</el-tooltip>
 					</el-col>
 					<el-col :span="14" class="ignore-key-press">
-						<el-select v-model="workflowSettings.saveManualRuns" placeholder="Select Option" size="small" filterable>
+						<el-select v-model="workflowSettings.saveManualExecutions" placeholder="Select Option" size="small" filterable>
 							<el-option
 								v-for="option of saveManualOptions"
 								:key="option.key"
@@ -98,11 +98,11 @@ export default mixins(
 			helpTexts: {
 				errorWorkflow: 'The workflow to run in case the current one fails.<br />To function correctly that workflow has to contain an "Error Trigger" node!',
 				timezone: 'The timezone in which the workflow should run. Gets for example used by "Cron" node.',
-				saveManualRuns: 'If data data of executions should be saved when started manually from the editor.',
+				saveManualExecutions: 'If data data of executions should be saved when started manually from the editor.',
 			},
 			defaultValues: {
 				timezone: 'America/New_York',
-				saveManualRuns: false,
+				saveManualExecutions: false,
 			},
 			saveManualOptions: [] as Array<{ key: string | boolean, value: string }>,
 			timezones: [] as Array<{ key: string, value: string }>,
@@ -128,7 +128,7 @@ export default mixins(
 			this.saveManualOptions.length = 0;
 			this.saveManualOptions.push({
 				key: 'DEFAULT',
-				value: 'Use default - ' + (this.defaultValues.saveManualRuns === true ? 'Yes' : 'No'),
+				value: 'Use default - ' + (this.defaultValues.saveManualExecutions === true ? 'Yes' : 'No'),
 			});
 			this.saveManualOptions.push({
 				key: true,
@@ -196,7 +196,7 @@ export default mixins(
 				return;
 			}
 
-			this.defaultValues.saveManualRuns = this.$store.getters.saveManualRuns;
+			this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
 			this.defaultValues.timezone = this.$store.getters.timezone;
 
 			this.isLoading = true;
@@ -216,8 +216,8 @@ export default mixins(
 			if (workflowSettings.timezone === undefined) {
 				workflowSettings.timezone = 'DEFAULT';
 			}
-			if (workflowSettings.saveManualRuns === undefined) {
-				workflowSettings.saveManualRuns = 'DEFAULT';
+			if (workflowSettings.saveManualExecutions === undefined) {
+				workflowSettings.saveManualExecutions = 'DEFAULT';
 			}
 
 			Vue.set(this, 'workflowSettings', workflowSettings);
