@@ -27,7 +27,7 @@ module.exports = {
 		// are normally only for testing and debugging. This setting can
 		// also be overwritten on a per workflow basis in the workflow settings
 		// in the editor.
-		saveManualRuns: false,
+		saveManualExecutions: false,
 	},
 
 	nodes: {

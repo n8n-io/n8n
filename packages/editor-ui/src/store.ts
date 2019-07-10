@@ -46,7 +46,7 @@ export const store = new Vuex.Store({
 		executingNode: '' as string | null,
 		executionWaitingForWebhook: false,
 		pushConnectionActive: false,
-		saveManualRuns: false,
+		saveManualExecutions: false,
 		timezone: 'America/New_York',
 		workflowExecutionData: null as IExecutionResponse | null,
 		lastSelectedNode: null as string | null,
@@ -458,8 +458,8 @@ export const store = new Vuex.Store({
 			Vue.set(state, 'endpointWebhookTest', endpointWebhookTest);
 		},
 
-		setSaveManualRuns (state, saveManualRuns: boolean) {
-			Vue.set(state, 'saveManualRuns', saveManualRuns);
+		setSaveManualExecutions (state, saveManualExecutions: boolean) {
+			Vue.set(state, 'saveManualExecutions', saveManualExecutions);
 		},
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
@@ -551,8 +551,8 @@ export const store = new Vuex.Store({
 			return `${state.urlBaseWebhook}${state.endpointWebhookTest}`;
 		},
 
-		saveManualRuns: (state): boolean => {
-			return state.saveManualRuns;
+		saveManualExecutions: (state): boolean => {
+			return state.saveManualExecutions;
 		},
 		timezone: (state): string => {
 			return state.timezone;

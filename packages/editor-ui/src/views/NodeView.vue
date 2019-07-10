@@ -1677,7 +1677,7 @@ export default mixins(
 				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
 				this.$store.commit('setEndpointWebhook', settings.endpointWebhook);
 				this.$store.commit('setEndpointWebhookTest', settings.endpointWebhookTest);
-				this.$store.commit('setSaveManualRuns', settings.saveManualRuns);
+				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
 			},
 			async loadNodeTypes (): Promise<void> {

@@ -120,13 +120,13 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowI
 
 					const workflowSavePromise = WorkflowHelpers.saveStaticData(workflowInstance);
 
-					let saveManualRuns = config.get('executions.saveManualRuns') as boolean;
-					if (workflowInstance.settings !== undefined && workflowInstance.settings.saveManualRuns !== undefined) {
+					let saveManualExecutions = config.get('executions.saveManualExecutions') as boolean;
+					if (workflowInstance.settings !== undefined && workflowInstance.settings.saveManualExecutions !== undefined) {
 						// Apply to workflow override
-						saveManualRuns = workflowInstance.settings.saveManualRuns as boolean;
+						saveManualExecutions = workflowInstance.settings.saveManualExecutions as boolean;
 					}
 
-					if (mode === 'manual' && saveManualRuns === false) {
+					if (mode === 'manual' && saveManualExecutions === false) {
 						if (workflowSavePromise !== undefined) {
 							// If workflow had to be saved wait till it is done
 							await workflowSavePromise;
