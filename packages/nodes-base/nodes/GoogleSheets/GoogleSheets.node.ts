@@ -6,7 +6,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { IGoogleAuthCredentials, GoogleSheet } from '../../src/GoogleSheet';
+import {
+	GoogleSheet,
+	IGoogleAuthCredentials,
+	ISheetUpdateData,
+} from './GoogleSheet';
 
 
 export class GoogleSheets implements INodeType {
@@ -76,16 +80,77 @@ export class GoogleSheets implements INodeType {
 				noDataExpression: true,
 				description: 'The columns to read and append data to.<br />If it contains multiple sheets it can also be<br />added like this: "MySheet!A:F"',
 			},
+
+			// ----------------------------------
+			//         Read
+			// ----------------------------------
 			{
-				displayName: 'Key Row',
-				name: 'keyRow',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'read'
+						],
+					},
 				},
-				default: 0,
+				default: false,
+				description: 'If the data should be returned RAW instead of parsed into keys according to their header.',
+			},
+			{
+				displayName: 'Data Property',
+				name: 'dataProperty',
+				type: 'string',
+				default: 'data',
+				displayOptions: {
+					show: {
+						operation: [
+							'read'
+						],
+						rawData: [
+							true
+						],
+					},
+				},
 				noDataExpression: true,
-				description: 'Index of the row which contains the key. Starts with 0.',
+				description: 'The name of the property into which to write the RAW data.',
+			},
+
+			// ----------------------------------
+			//         Update
+			// ----------------------------------
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'update'
+						],
+					},
+				},
+				default: false,
+				description: 'If the data supplied is RAW instead of parsed into keys.',
+			},
+			{
+				displayName: 'Data Property',
+				name: 'dataProperty',
+				type: 'string',
+				default: 'data',
+				displayOptions: {
+					show: {
+						operation: [
+							'update'
+						],
+						rawData: [
+							true
+						],
+					},
+				},
+				noDataExpression: true,
+				description: 'The name of the property from which to read the RAW data.',
 			},
 
 			// ----------------------------------
@@ -102,7 +167,11 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					hide: {
 						operation: [
-							'append'
+							'append',
+							'update'
+						],
+						rawData: [
+							true
 						],
 					},
 				},
@@ -110,6 +179,27 @@ export class GoogleSheets implements INodeType {
 				description: 'Index of the first row which contains<br />the actual data and not the keys. Starts with 0.',
 			},
 
+			// ----------------------------------
+			//         Mixed
+			// ----------------------------------
+			{
+				displayName: 'Key Row',
+				name: 'keyRow',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				displayOptions: {
+					hide: {
+						rawData: [
+							true
+						],
+					},
+				},
+				default: 0,
+				noDataExpression: true,
+				description: 'Index of the row which contains the key. Starts with 0.',
+			},
 
 			// ----------------------------------
 			//         Update
@@ -123,6 +213,9 @@ export class GoogleSheets implements INodeType {
 					show: {
 						operation: [
 							'update'
+						],
+						rawData: [
+							false
 						],
 					},
 				},
@@ -150,8 +243,6 @@ export class GoogleSheets implements INodeType {
 		const sheet = new GoogleSheet(spreadsheetId, googleCredentials);
 
 		const range = this.getNodeParameter('range', 0) as string;
-		const keyRow = this.getNodeParameter('keyRow', 0) as number;
-
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -160,6 +251,7 @@ export class GoogleSheets implements INodeType {
 			// ----------------------------------
 			//         append
 			// ----------------------------------
+			const keyRow = this.getNodeParameter('keyRow', 0) as number;
 
 			const items = this.getInputData();
 
@@ -180,14 +272,24 @@ export class GoogleSheets implements INodeType {
 			//         read
 			// ----------------------------------
 
-			const dataStartRow = this.getNodeParameter('dataStartRow', 0) as number;
+			const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
 			const sheetData = await sheet.getData(range);
 
 			let returnData: IDataObject[];
 			if (!sheetData) {
 				returnData = [];
+			} else if (rawData === true) {
+				const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
+				returnData = [
+					{
+						[dataProperty]: sheetData,
+					}
+				];
 			} else {
+				const dataStartRow = this.getNodeParameter('dataStartRow', 0) as number;
+				const keyRow = this.getNodeParameter('keyRow', 0) as number;
+
 				returnData = sheet.structureArrayDataByColumn(sheetData, keyRow, dataStartRow);
 			}
 
@@ -197,20 +299,38 @@ export class GoogleSheets implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const keyName = this.getNodeParameter('key', 0) as string;
-			const dataStartRow = this.getNodeParameter('dataStartRow', 0) as number;
+			const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
 			const items = this.getInputData();
 
-			const setData: IDataObject[] = [];
-			items.forEach((item) => {
-				setData.push(item.json);
-			});
+			if (rawData === true) {
+				const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
 
-			const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow);
+				const updateData: ISheetUpdateData[] = [];
+				for (let i = 0; i < items.length; i++) {
+					updateData.push({
+						range,
+						values: items[i].json[dataProperty] as string[][],
+					});
+				}
 
+				const data = await sheet.batchUpdate(updateData);
+			} else {
+				const keyName = this.getNodeParameter('key', 0) as string;
+				const keyRow = this.getNodeParameter('keyRow', 0) as number;
+				const dataStartRow = this.getNodeParameter('dataStartRow', 0) as number;
+
+
+				const setData: IDataObject[] = [];
+				items.forEach((item) => {
+					setData.push(item.json);
+				});
+
+				const data = await sheet.updateSheetData(setData, keyName, range, keyRow, dataStartRow);
+			}
 			// TODO: Should add this data somewhere
 			// TODO: Should have something like add metadata which does not get passed through
+
 
 			return this.prepareOutputData(items);
 		}
