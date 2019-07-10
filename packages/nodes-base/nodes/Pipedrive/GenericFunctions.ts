@@ -53,9 +53,13 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 			throw new Error('The Pipedrive credentials are not valid!');
 		}
 
-		if (error.response && error.response.body && error.response.body.message) {
+		if (error.response && error.response.body && error.response.body.error) {
 			// Try to return the error prettier
-			throw new Error(`Pipedrive error response [${error.statusCode}]: ${error.response.body.message}`);
+			let errorMessage = `Pipedrive error response [${error.statusCode}]: ${error.response.body.error}`;
+			if (error.response.body.error_info) {
+				errorMessage += ` - ${error.response.body.error_info}`;
+			}
+			throw new Error(errorMessage);
 		}
 
 		// If that data does not exist for some reason return the actual error
