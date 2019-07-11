@@ -14,7 +14,7 @@ export class Merge implements INodeType {
 		icon: 'fa:clone',
 		group: ['transform'],
 		version: 1,
-		description: 'Merges data from multiple streams',
+		description: 'Merges data of multiple streams once data of both is available',
 		defaults: {
 			name: 'Merge',
 			color: '#00cc22',
@@ -29,11 +29,23 @@ export class Merge implements INodeType {
 				options: [
 					{
 						name: 'Append',
-						value: 'append'
+						value: 'append',
+						description: 'Combines data of both inputs. The output will contain items of input 1 and input 2.',
 					},
 					{
 						name: 'Merge',
-						value: 'merge'
+						value: 'merge',
+						description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
+					},
+					{
+						name: 'Pass-through',
+						value: 'passThrough',
+						description: 'Passes through data of one input. The output will conain only items of the defined input.',
+					},
+					{
+						name: 'Wait',
+						value: 'wait',
+						description: 'Waits till data of both inputs is available and will then output a single empty item.',
 					},
 				],
 				default: 'append',
@@ -44,6 +56,7 @@ export class Merge implements INodeType {
 				name: 'propertyName1',
 				type: 'string',
 				default: '',
+				required: true,
 				displayOptions: {
 					show: {
 						mode: [
@@ -58,6 +71,7 @@ export class Merge implements INodeType {
 				name: 'propertyName2',
 				type: 'string',
 				default: '',
+				required: true,
 				displayOptions: {
 					show: {
 						mode: [
@@ -66,6 +80,30 @@ export class Merge implements INodeType {
 					},
 				},
 				description: 'Name of property which decides which items to merge of input 2.',
+			},
+			{
+				displayName: 'Output Data',
+				name: 'output',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: [
+							'passThrough'
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Input 1',
+						value: 'input1',
+					},
+					{
+						name: 'Input 2',
+						value: 'input2',
+					},
+				],
+				default: 'input1',
+				description: 'Defines of which input the data should be used as output of node.',
 			},
 		]
 	};
@@ -147,6 +185,16 @@ export class Merge implements INodeType {
 			}
 
 			return [dataInput1];
+		} else if (mode === 'passThrough') {
+			const output = this.getNodeParameter('output', 0) as string;
+
+			if (output === 'input1') {
+				returnData.push.apply(returnData, this.getInputData(0));
+			} else  {
+				returnData.push.apply(returnData, this.getInputData(1));
+			}
+		} else if (mode === 'wait') {
+			returnData.push({ json: {} });
 		}
 
 		return [returnData];
