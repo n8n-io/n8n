@@ -122,6 +122,29 @@ helps with n8n-node-development.
 [To n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev)
 
 
+## Keyboard Shortcuts
+
+The following keyboard shortcuts can currently be used:
+
+### General
+
+ - **Ctrl + a**: Select all nodes
+ - **Ctrl + Alt + n**: Create new workflow
+ - **Ctrl + o**: Open workflow
+ - **Ctrl + s**: Save current workflow
+ - **Ctrl + v**: Paste nodes
+ - **Tab**: Open "Node Creator". Type to filter and navigate with arrow keys. To create press "enter"
+
+
+### With nodes selected
+
+ - **Ctrl + c**: Copy nodes
+ - **Ctrl + x**: Cut nodes
+ - **d**: Deactivate nodes
+ - **Delete**: Delete nodes
+ - **F2**: Rename node
+
+
 ## License
 
 [Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
