@@ -3,6 +3,10 @@
 		<div class="header-side-menu">
 			<span v-if="node">
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
+				<el-tooltip class="node-info" placement="top" v-if="nodeType.description" effect="light">
+					<div slot="content" v-html="'<b>Node Description</b><br />' + nodeType.description"></div>
+					<font-awesome-icon icon="question-circle" />
+				</el-tooltip>
 			</span>
 			<span v-else>No node active</span>
 		</div>
@@ -404,6 +408,18 @@ export default mixins(
 		font-size: 1.35em;
 		background-color: $--custom-window-sidebar-top;
 		color: #555;
+
+		.node-info {
+			display: none;
+			padding-left: 0.5em;
+			font-size: 0.8em;
+		}
+
+		&:hover {
+			.node-info {
+				display: inline;
+			}
+		}
 	}
 
 	.node-is-not-valid {
