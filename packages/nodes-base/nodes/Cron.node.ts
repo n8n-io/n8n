@@ -54,6 +54,10 @@ export class Cron implements INodeType {
 								type: 'options',
 								options: [
 									{
+										name: 'Every Hour',
+										value: 'everyHour'
+									},
+									{
 										name: 'Every Day',
 										value: 'everyDay'
 									},
@@ -64,6 +68,10 @@ export class Cron implements INodeType {
 									{
 										name: 'Every Month',
 										value: 'everyMonth'
+									},
+									{
+										name: 'Custom',
+										value: 'custom'
 									},
 								],
 								default: 'everyDay',
@@ -77,6 +85,14 @@ export class Cron implements INodeType {
 									minValue: 0,
 									maxValue: 23,
 								},
+								displayOptions: {
+									hide: {
+										mode: [
+											'custom',
+											'everyHour',
+										],
+									},
+								},
 								default: 14,
 								description: 'The hour of the day to trigger (24h format).',
 							},
@@ -87,6 +103,13 @@ export class Cron implements INodeType {
 								typeOptions: {
 									minValue: 0,
 									maxValue: 59,
+								},
+								displayOptions: {
+									hide: {
+										mode: [
+											'custom',
+										],
+									},
 								},
 								default: 0,
 								description: 'The minute of the day to trigger.',
@@ -153,6 +176,20 @@ export class Cron implements INodeType {
 								default: '1',
 								description: 'The weekday to trigger.',
 							},
+							{
+								displayName: 'Cron Expression',
+								name: 'cronExpression',
+								type: 'string',
+								displayOptions: {
+									show: {
+										mode: [
+											'custom',
+										],
+									},
+								},
+								default: '* * * * * *',
+								description: 'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
+							},
 						]
 					},
 				],
@@ -185,6 +222,11 @@ export class Cron implements INodeType {
 		if (triggerTimes.item !== undefined) {
 			for (const item of triggerTimes.item) {
 				cronTime = [];
+				if (item.mode === 'custom') {
+					cronTimes.push(item.cronExpression as string);
+					continue;
+				}
+
 				for (parameterName of parameterOrder) {
 					if (item[parameterName] !== undefined) {
 						// Value is set so use it
