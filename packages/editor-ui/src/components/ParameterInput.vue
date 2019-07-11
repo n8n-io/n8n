@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
 	<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
-	<div class="parameter-input" :style="parameterInputWrapperStyle">
+	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
 		<el-input v-if="['json', 'string'].includes(parameter.type)" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
 			<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="textEditDialogVisible = true" />
 		</el-input>
