@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div ref="expression-editor" :style="editorStyle" @keydown.stop></div>
+		<div ref="expression-editor" :style="editorStyle" class="ignore-key-press" @keydown.stop></div>
 	</div>
 </template>
 
