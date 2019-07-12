@@ -30,8 +30,8 @@
 		<div class="node-name" :title="data.name">
 			{{data.name}}
 		</div>
-		<div v-if="nodeOperation !== null" class="node-operation" :title="nodeOperation">
-			{{nodeOperation}}
+		<div v-if="nodeSubtitle !== null" class="node-subtitle" :title="nodeSubtitle">
+			{{nodeSubtitle}}
 		</div>
 		<div class="node-edit" @click.left.stop="setNodeActive" title="Edit Node">
 			<font-awesome-icon icon="pen" />
@@ -43,6 +43,7 @@
 
 import Vue from 'vue';
 import { nodeBase } from '@/components/mixins/nodeBase';
+import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
 	INodeIssueObjectProperty,
@@ -56,7 +57,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 import mixins from 'vue-typed-mixins';
 
-export default mixins(nodeBase).extend({
+export default mixins(nodeBase, workflowHelpers).extend({
 	name: 'Node',
 	components: {
 		NodeIcon,
@@ -88,8 +89,8 @@ export default mixins(nodeBase).extend({
 				classes.push('disabled');
 			}
 
-			if (this.nodeOperation) {
-				classes.push('has-operation');
+			if (this.nodeSubtitle) {
+				classes.push('has-subtitle');
 			}
 
 			if (this.isExecuting) {
@@ -118,7 +119,11 @@ export default mixins(nodeBase).extend({
 				return 'play';
 			}
 		},
-		nodeOperation (): string | null {
+		nodeSubtitle (): string | null {
+			if (this.nodeType.subtitle !== undefined) {
+				return this.workflow.getSimpleParameterValue(this, this.nodeType.subtitle)
+			}
+
 			if (this.data.parameters.operation !== undefined) {
 				const operation = this.data.parameters.operation as string;
 				if (this.nodeType === null) {
@@ -149,6 +154,9 @@ export default mixins(nodeBase).extend({
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
+		},
+		workflow () {
+			return this.getWorkflow();
 		},
 	},
 	data () {
@@ -211,7 +219,7 @@ export default mixins(nodeBase).extend({
 		border-style: solid;
 	}
 
-	&.has-operation {
+	&.has-subtitle {
 		line-height: 38px;
 
 		.node-info-icon {
@@ -332,7 +340,7 @@ export default mixins(nodeBase).extend({
 		margin: 0 37px;
 	}
 
-	.node-operation {
+	.node-subtitle {
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
