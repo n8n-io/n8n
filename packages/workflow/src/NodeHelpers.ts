@@ -161,6 +161,20 @@ export function getContext(runExecutionData: IRunExecutionData, type: string, no
  * @returns {(INodeParameters | null)}
  */
 export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeValues: INodeParameters, returnDefaults: boolean, returnNoneDisplayed: boolean, onlySimpleTypes = false, dataIsResolved = false, nodeValuesRoot?: INodeParameters, parentType?: string): INodeParameters | null {
+	// Get the parameter names which get used multiple times as for this
+	// ones we have to always check which ones get displayed and which ones not
+	const duplicateParameterNames: string[] = [];
+	const parameterNames: string[] = [];
+	for (const nodeProperties of nodePropertiesArray) {
+		if (parameterNames.includes(nodeProperties.name)) {
+			if (!duplicateParameterNames.includes(nodeProperties.name)) {
+				duplicateParameterNames.push(nodeProperties.name);
+			}
+		} else {
+			parameterNames.push(nodeProperties.name);
+		}
+	}
+
 	const nodeParameters: INodeParameters = {};
 
 	let nodeValuesDisplayCheck = nodeValues;
@@ -187,6 +201,17 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 
 		if (!['collection', 'fixedCollection'].includes(nodeProperties.type)) {
 			// Is a simple property so can be set as it is
+
+			if (duplicateParameterNames.includes(nodeProperties.name)) {
+				// Parameter gets used multiple times
+				if (dataIsResolved !== true) {
+					nodeValuesDisplayCheck = getNodeParameters(nodePropertiesArray, nodeValues, true, true, true, true, nodeValuesRoot, parentType) as INodeParameters;
+				}
+
+				if (!displayParameter(nodeValuesDisplayCheck, nodeProperties, nodeValuesRoot)) {
+					continue;
+				}
+			}
 
 			if (returnDefaults === true) {
 				// Set also when it has the default value

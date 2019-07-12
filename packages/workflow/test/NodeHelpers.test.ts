@@ -2212,6 +2212,95 @@ describe('Workflow', () => {
 						},
 					},
 				},
+				{
+					description: 'two identically named properties of which only one gets displayed with different options. No value set at all.',
+					input: {
+						nodePropertiesArray: [
+							{
+								displayName: 'mainOption',
+								name: 'mainOption',
+								type: 'options',
+								options: [
+									{
+										name: 'option1',
+										value: 'option1',
+									},
+									{
+										name: 'option2',
+										value: 'option2',
+									},
+								],
+								default: 'option1',
+							},
+							{
+								displayName: 'subOption',
+								name: 'subOption',
+								type: 'options',
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option1',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'option1a',
+										value: 'option1a',
+									},
+									{
+										name: 'option1b',
+										value: 'option1b',
+									},
+								],
+								default: 'option1a',
+							},
+							{
+								displayName: 'subOption',
+								name: 'subOption',
+								type: 'options',
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option2',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'option2a',
+										value: 'option2a',
+									},
+									{
+										name: 'option2b',
+										value: 'option2b',
+									},
+								],
+								default: 'option2a',
+							},
+						],
+						nodeValues: {},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+							},
+							defaultsTrue: {
+								mainOption: 'option1',
+								subOption: 'option1a',
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+							},
+							defaultsTrue: {
+								mainOption: 'option1',
+								subOption: 'option1a',
+							},
+						},
+					},
+				},
+
 			];
 
 
