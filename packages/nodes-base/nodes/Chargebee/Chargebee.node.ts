@@ -45,77 +45,56 @@ export class Chargebee implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Operation',
-				name: 'operation',
-				default: 'listInvoices',
-				description: 'The operation to perform.',
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
 				options: [
 					{
-						name: 'Cancel Subscription',
-						value: 'cancelSubscription',
-						description: 'Cancel a subscription',
+						name: 'Customer',
+						value: 'customer',
 					},
 					{
-						name: 'Create Customer',
-						value: 'createCustomer',
-						description: 'Create a customer',
+						name: 'Invoice',
+						value: 'invoice',
 					},
 					{
-						name: 'Delete Subscription',
-						value: 'deleteSubscription',
-						description: 'Deletes a subscription',
-					},
-					{
-						name: 'List Invoices',
-						value: 'listInvoices',
-						description: 'Returns the invoices',
-					},
-					{
-						name: 'PDF Invoice URL',
-						value: 'pdfInvoiceUrl',
-						description: 'Gets PDF invoice URL and adds it as property "pdfUrl"',
+						name: 'Subscription',
+						value: 'subscription',
 					},
 				],
+				default: 'invoice',
+				description: 'The resource to operate on.',
 			},
 
 
+
 			// ----------------------------------
-			//         cancelSubscription
+			//         customer
 			// ----------------------------------
 			{
-				displayName: 'Subscription Id',
-				name: 'subscriptionId',
-				description: 'The id of the subscription to cancel.',
-				type: 'string',
-				default: '',
-				required: true,
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
 				displayOptions: {
 					show: {
-						operation: [
-							'cancelSubscription'
+						resource: [
+							'customer',
 						],
 					},
 				},
-			},
-			{
-				displayName: 'Schedule end of Term',
-				name: 'endOfTerm',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'cancelSubscription'
-						],
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a customer',
 					},
-				},
-				description: 'If set it will not cancel it directly in will instead schedule the cancelation for the end of the term..',
+				],
+				default: 'create',
+				description: 'The operation to perform.',
 			},
-
 
 			// ----------------------------------
-			//         createCustomer
+			//         customer:create
 			// ----------------------------------
 			{
 				displayName: 'Properties',
@@ -124,7 +103,10 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createCustomer'
+							'create'
+						],
+						resource: [
+							'customer',
 						],
 					},
 				},
@@ -174,10 +156,6 @@ export class Chargebee implements INodeType {
 						default: '',
 						description: 'The company of the customer.',
 					},
-
-
-
-
 					{
 						displayName: 'Custom Properties',
 						name: 'customProperties',
@@ -212,53 +190,43 @@ export class Chargebee implements INodeType {
 						],
 					}
 
-
 				],
 			},
 
 
+
 			// ----------------------------------
-			//         deleteSubscription
+			//         invoice
 			// ----------------------------------
 			{
-				displayName: 'Subscription Id',
-				name: 'subscriptionId',
-				description: 'The id of the subscription to delete.',
-				type: 'string',
-				default: '',
-				required: true,
+				displayName: 'Operation',
+				name: 'operation',
+				default: 'listInvoices',
+				description: 'The operation to perform.',
+				type: 'options',
 				displayOptions: {
 					show: {
-						operation: [
-							'deleteSubscription'
+						resource: [
+							'invoice',
 						],
 					},
 				},
-			},
-
-
-			// ----------------------------------
-			//         pdfInvoiceUrl
-			// ----------------------------------
-			{
-				displayName: 'Invoice Id',
-				name: 'invoiceId',
-				description: 'The id of the invoice to get.',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'pdfInvoiceUrl'
-						],
+				options: [
+					{
+						name: 'List',
+						value: 'list',
+						description: 'Returns the invoices',
 					},
-				},
+					{
+						name: 'PDF Invoice URL',
+						value: 'pdfUrl',
+						description: 'Gets PDF invoice URL and adds it as property "pdfUrl"',
+					},
+				],
 			},
 
-
 			// ----------------------------------
-			//         listInvoices
+			//         invoice:list
 			// ----------------------------------
 			{
 				displayName: 'Max results',
@@ -272,7 +240,10 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'listInvoices'
+							'list'
+						],
+						resource: [
+							'invoice'
 						],
 					},
 				},
@@ -291,7 +262,10 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'listInvoices'
+							'list'
+						],
+						resource: [
+							'invoice'
 						],
 					},
 				},
@@ -386,6 +360,122 @@ export class Chargebee implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//         invoice:pdfUrl
+			// ----------------------------------
+			{
+				displayName: 'Invoice Id',
+				name: 'invoiceId',
+				description: 'The id of the invoice to get.',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'pdfUrl'
+						],
+						resource: [
+							'invoice'
+						],
+					},
+				},
+			},
+
+
+
+			// ----------------------------------
+			//         subscription
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'subscription',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Cancel',
+						value: 'cancel',
+						description: 'Cancel a subscription',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a subscription',
+					},
+				],
+				default: 'delete',
+				description: 'The operation to perform.',
+			},
+
+			// ----------------------------------
+			//         subscription:cancel
+			// ----------------------------------
+			{
+				displayName: 'Subscription Id',
+				name: 'subscriptionId',
+				description: 'The id of the subscription to cancel.',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'cancel'
+						],
+						resource: [
+							'subscription',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Schedule end of Term',
+				name: 'endOfTerm',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'cancel'
+						],
+						resource: [
+							'subscription',
+						],
+					},
+				},
+				description: 'If set it will not cancel it directly in will instead schedule the cancelation for the end of the term..',
+			},
+
+			// ----------------------------------
+			//         subscription:delete
+			// ----------------------------------
+			{
+				displayName: 'Subscription Id',
+				name: 'subscriptionId',
+				description: 'The id of the subscription to delete.',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete'
+						],
+						resource: [
+							'subscription',
+						],
+					},
+				},
+			},
+
 		],
 	};
 
@@ -412,68 +502,103 @@ export class Chargebee implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 
 			item = items[i];
+			const resource = this.getNodeParameter('resource', i) as string;
 			const operation = this.getNodeParameter('operation', i) as string;
 
 			let requestMethod = 'GET';
 			let endpoint = '';
 			body = {};
 			qs = {};
+			if (resource === 'customer') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
 
-			if (operation === 'cancelSubscription') {
-				requestMethod = 'POST';
+					requestMethod = 'POST';
 
-				const subscriptionId = this.getNodeParameter('subscriptionId', i, {}) as string;
-				body.end_of_term = this.getNodeParameter('endOfTerm', i, {}) as boolean;
+					const properties = this.getNodeParameter('properties', i, {}) as IDataObject;
 
-				endpoint = `subscriptions/${subscriptionId.trim()}/cancel`;
-			} else if (operation === 'createCustomer') {
-				requestMethod = 'POST';
-
-				const properties = this.getNodeParameter('properties', i, {}) as IDataObject;
-
-				for (const key of Object.keys(properties)) {
-					if (key === 'customProperties' && (properties.customProperties as IDataObject).property !== undefined) {
-						for (const customProperty of (properties.customProperties as IDataObject)!.property! as CustomProperty[]) {
-							qs[customProperty.name] = customProperty.value;
+					for (const key of Object.keys(properties)) {
+						if (key === 'customProperties' && (properties.customProperties as IDataObject).property !== undefined) {
+							for (const customProperty of (properties.customProperties as IDataObject)!.property! as CustomProperty[]) {
+								qs[customProperty.name] = customProperty.value;
+							}
+						} else {
+							qs[key] = properties[key];
 						}
-					} else {
-						qs[key] = properties[key];
 					}
+
+					endpoint = `customers`;
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
 				}
 
-				endpoint = `customers`;
-			} else if (operation === 'deleteSubscription') {
-				requestMethod = 'POST';
+			} else if (resource === 'invoice') {
+				if (operation === 'list') {
+					// ----------------------------------
+					//         list
+					// ----------------------------------
 
-				const subscriptionId = this.getNodeParameter('subscriptionId', i, {}) as string;
+					endpoint = 'invoices';
+					// TODO: Make also sorting configurable
+					qs['sort_by[desc]'] = 'date';
 
-				endpoint = `subscriptions/${subscriptionId.trim()}/delete`;
-			} else if (operation === 'listInvoices') {
-				endpoint = 'invoices';
-				// TODO: Make also sorting configurable
-				qs['sort_by[desc]'] = 'date';
+					qs.limit = this.getNodeParameter('maxResults', i, {});
 
-				qs.limit = this.getNodeParameter('maxResults', i, {});
+					const setFilters: FilterValues = this.getNodeParameter('filters', i, {}) as unknown as FilterValues;
 
-				const setFilters: FilterValues = this.getNodeParameter('filters', i, {}) as unknown as FilterValues;
+					let filter: FilterValue;
+					let value: NodeParameterValue;
 
-				let filter: FilterValue;
-				let value: NodeParameterValue;
-
-				for (const filterProperty of Object.keys(setFilters)) {
-					for (filter of setFilters[filterProperty]) {
-						value = filter.value;
-						if (filterProperty === 'date') {
-							value = Math.floor(new Date(value as string).getTime() / 1000);
+					for (const filterProperty of Object.keys(setFilters)) {
+						for (filter of setFilters[filterProperty]) {
+							value = filter.value;
+							if (filterProperty === 'date') {
+								value = Math.floor(new Date(value as string).getTime() / 1000);
+							}
+							qs[`${filterProperty}[${filter.operation}]`] = value;
 						}
-						qs[`${filterProperty}[${filter.operation}]`] = value;
 					}
+				} else if (operation === 'pdfUrl') {
+					// ----------------------------------
+					//         pdfUrl
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					const invoiceId = this.getNodeParameter('invoiceId', i) as string;
+					endpoint = `invoices/${invoiceId.trim()}/pdf`;
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
 				}
 
-			} else if (operation === 'pdfInvoiceUrl') {
-				requestMethod = 'POST';
-				const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-				endpoint = `invoices/${invoiceId.trim()}/pdf`;
+			} else if (resource === 'subscription') {
+				if (operation === 'cancel') {
+					// ----------------------------------
+					//         cancel
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					const subscriptionId = this.getNodeParameter('subscriptionId', i, {}) as string;
+					body.end_of_term = this.getNodeParameter('endOfTerm', i, {}) as boolean;
+
+					endpoint = `subscriptions/${subscriptionId.trim()}/cancel`;
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					const subscriptionId = this.getNodeParameter('subscriptionId', i, {}) as string;
+
+					endpoint = `subscriptions/${subscriptionId.trim()}/delete`;
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
+				}
+			} else {
+				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
 			const options = {
@@ -490,11 +615,11 @@ export class Chargebee implements INodeType {
 
 			const responseData = await requestPromise(options);
 
-			if (operation === 'listInvoices') {
+			if (resource === 'invoice' && operation === 'list') {
 				responseData.list.forEach((data: IDataObject) => {
 					returnData.push(data.invoice as IDataObject);
 				});
-			} else if (operation === 'pdfInvoiceUrl') {
+			} else if (resource === 'invoice' && operation === 'pdfUrl') {
 				item.json.pdfUrl = responseData.download.download_url;
 				returnData.push(item.json);
 			} else {
