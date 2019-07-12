@@ -21,6 +21,7 @@ export class Asana implements INodeType {
 		icon: 'file:asana.png',
 		group: ['input'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access and edit Asana tasks',
 		defaults: {
 			name: 'Asana',
@@ -36,42 +37,72 @@ export class Asana implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Operation',
-				name: 'operation',
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
 				options: [
 					{
-						name: 'Create Task',
-						value: 'createTask',
-						description: 'Creates a task',
+						name: 'Task',
+						value: 'task',
 					},
 					{
-						name: 'Delete Task',
-						value: 'deleteTask',
+						name: 'User',
+						value: 'user',
+					},
+				],
+				default: 'task',
+				description: 'The resource to operate on.',
+			},
+
+
+
+			// ----------------------------------
+			//         task
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'task',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a task',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
 						description: 'Delete a task',
 					},
 					{
-						name: 'Get Task',
-						value: 'getTask',
+						name: 'Get',
+						value: 'get',
 						description: 'Get data of task',
 					},
 					{
-						name: 'Update Task',
-						value: 'updateTask',
+						name: 'Update',
+						value: 'update',
 						description: 'Update a task',
 					},
 					{
-						name: 'Search For Tasks',
-						value: 'searchForTasks',
-						description: 'Search Tasks',
+						name: 'Search',
+						value: 'search',
+						description: 'Search for tasks',
 					},
 				],
-				default: 'createTask',
+				default: 'create',
 				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
-			//         createTask
+			//         task:create
 			// ----------------------------------
 			{
 				displayName: 'Workspace',
@@ -86,7 +117,10 @@ export class Asana implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createTask',
+							'create',
+						],
+						resource: [
+							'task',
 						],
 					},
 				},
@@ -94,14 +128,17 @@ export class Asana implements INodeType {
 			},
 			{
 				displayName: 'Name',
-				name: 'taskName',
+				name: 'name',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'createTask',
+							'create',
+						],
+						resource: [
+							'task',
 						],
 					},
 				},
@@ -109,18 +146,21 @@ export class Asana implements INodeType {
 			},
 
 			// ----------------------------------
-			//         deleteTask
+			//         delete
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
-				name: 'taskId',
+				name: 'id',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'deleteTask',
+							'delete',
+						],
+						resource: [
+							'task',
 						],
 					},
 				},
@@ -128,18 +168,21 @@ export class Asana implements INodeType {
 			},
 
 			// ----------------------------------
-			//         getTask
+			//         get
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
-				name: 'taskId',
+				name: 'id',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'getTask',
+							'get',
+						],
+						resource: [
+							'task',
 						],
 					},
 				},
@@ -147,18 +190,21 @@ export class Asana implements INodeType {
 			},
 
 			// ----------------------------------
-			//         updateTask
+			//         update
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
-				name: 'taskId',
+				name: 'id',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'updateTask',
+							'update',
+						],
+						resource: [
+							'task',
 						],
 					},
 				},
@@ -167,7 +213,7 @@ export class Asana implements INodeType {
 
 
 			// ----------------------------------
-			//         searchForTasks
+			//         search
 			// ----------------------------------
 			{
 				displayName: 'Workspace',
@@ -182,7 +228,10 @@ export class Asana implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'searchForTasks',
+							'search',
+						],
+						resource: [
+							'task',
 						],
 					},
 				},
@@ -195,7 +244,10 @@ export class Asana implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'searchForTasks',
+							'search',
+						],
+						resource: [
+							'task',
 						],
 					},
 				},
@@ -226,18 +278,20 @@ export class Asana implements INodeType {
 			},
 
 			// ----------------------------------
-			//         createTask/updateTask
+			//         create/update
 			// ----------------------------------
 			{
 				displayName: 'Other Properties',
 				name: 'otherProperties',
 				type: 'collection',
 				displayOptions: {
-					hide: {
+					show: {
+						resource: [
+							'task',
+						],
 						operation: [
-							'deleteTask',
-							'getTask',
-							'searchForTasks',
+							'create',
+							'update',
 						],
 					},
 				},
@@ -253,7 +307,7 @@ export class Asana implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'updateTask',
+									'update',
 								],
 							},
 						},
@@ -293,6 +347,86 @@ export class Asana implements INodeType {
 						description: 'If the task is liked by the authorized user.',
 					},
 				],
+			},
+
+
+
+			// ----------------------------------
+			//         user
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Data of all users',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get data of user',
+					},
+				],
+				default: 'get',
+				description: 'The operation to perform.',
+			},
+
+			// ----------------------------------
+			//         user:get
+			// ----------------------------------
+			{
+				displayName: 'Id',
+				name: 'userId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				description: 'An identifier for the user to get data of. Can be one of an<br />email address,the globally unique identifier for the user,<br />or the keyword me to indicate the current user making the request.',
+			},
+
+			// ----------------------------------
+			//         user:getAll
+			// ----------------------------------
+			{
+				displayName: 'Workspace',
+				name: 'workspace',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				description: 'The workspace in which to get users.',
 			},
 		],
 	};
@@ -339,6 +473,7 @@ export class Asana implements INodeType {
 			throw new Error('No credentials got returned!');
 		}
 
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let endpoint = '';
@@ -351,67 +486,92 @@ export class Asana implements INodeType {
 			body = {};
 			qs = {};
 
-			if (operation === 'createTask') {
-				// ----------------------------------
-				//         createTask
-				// ----------------------------------
+			if (resource === 'task') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
 
-				requestMethod = 'POST';
-				endpoint = 'tasks';
-				// endpoint = this.getNodeParameter('folderCreate', i) as string;
+					requestMethod = 'POST';
+					endpoint = 'tasks';
 
-				body.name = this.getNodeParameter('taskName', 0) as string;
-				// body.notes = this.getNodeParameter('taskNotes', 0) as string;
-				body.workspace = this.getNodeParameter('workspace', 0) as string;
+					body.name = this.getNodeParameter('name', i) as string;
+					// body.notes = this.getNodeParameter('taskNotes', 0) as string;
+					body.workspace = this.getNodeParameter('workspace', i) as string;
 
-				const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
-				Object.assign(body, otherProperties);
+					const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
+					Object.assign(body, otherProperties);
 
-			} else if (operation === 'deleteTask') {
-				// ----------------------------------
-				//         deleteTask
-				// ----------------------------------
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
 
-				requestMethod = 'DELETE';
-				endpoint = 'tasks/' + this.getNodeParameter('taskId', i) as string;
+					requestMethod = 'DELETE';
+					endpoint = 'tasks/' + this.getNodeParameter('id', i) as string;
 
-			} else if (operation === 'getTask') {
-				// ----------------------------------
-				//         getTask
-				// ----------------------------------
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
 
-				requestMethod = 'GET';
-				endpoint = 'tasks/' + this.getNodeParameter('taskId', i) as string;
+					requestMethod = 'GET';
+					endpoint = 'tasks/' + this.getNodeParameter('id', i) as string;
 
-			} else if (operation === 'updateTask') {
-				// ----------------------------------
-				//         getTask
-				// ----------------------------------
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         update
+					// ----------------------------------
 
-				requestMethod = 'PUT';
-				endpoint = 'tasks/' + this.getNodeParameter('taskId', i) as string;
+					requestMethod = 'PUT';
+					endpoint = 'tasks/' + this.getNodeParameter('id', i) as string;
 
+					const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
+					Object.assign(body, otherProperties);
 
+				} else if (operation === 'search') {
+					// ----------------------------------
+					//         search
+					// ----------------------------------
 
-				const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
-				Object.assign(body, otherProperties);
+					const workspaceId = this.getNodeParameter('workspace', i) as string;
 
-			} else if (operation === 'searchForTasks') {
-				// ----------------------------------
-				//         searchForTasks
-				// ----------------------------------
+					requestMethod = 'GET';
+					endpoint = `workspaces/${workspaceId}/tasks/search`;
 
-				const workspaceId = this.getNodeParameter('workspace', i) as string;
+					const searchTaskProperties = this.getNodeParameter('searchTaskProperties', i) as IDataObject;
+					Object.assign(qs, searchTaskProperties);
 
-				requestMethod = 'GET';
-				endpoint = `workspaces/${workspaceId}/tasks/search`;
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
+				}
+			} else if (resource === 'user') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
 
-				const searchTaskProperties = this.getNodeParameter('searchTaskProperties', i) as IDataObject;
-				Object.assign(qs, searchTaskProperties);
+					const userId = this.getNodeParameter('userId', i) as string;
+
+					requestMethod = 'GET';
+					endpoint = `users/${userId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					const workspaceId = this.getNodeParameter('workspace', i) as string;
+
+					requestMethod = 'GET';
+					endpoint = `workspaces/${workspaceId}/users`;
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
+				}
 			} else {
-				throw new Error(`The operation "${operation}" is not known!`);
+				throw new Error(`The resource "${resource}" is not known!`);
 			}
-
 			const responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body);
 
 			returnData.push(responseData.data as IDataObject);
