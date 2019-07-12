@@ -167,6 +167,7 @@ export interface IHookFunctions {
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getTimezone(): string;
 	getWebhookDescription(name: string): IWebhookDescription | undefined;
+	getWebhookName(): string;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
@@ -191,10 +192,12 @@ export interface IWebhookFunctions {
 	getHeaderData(): object;
 	getMode(): WorkflowExecuteMode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getNodeWebhookUrl: (name: string) => string | undefined;
 	getQueryData(): object;
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getTimezone(): string;
+	getWebhookName(): string;
 	getWorkflowStaticData(type: string): IDataObject;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
 	helpers: {
@@ -247,8 +250,8 @@ export interface INodeExecuteFunctions {
 	getExecuteTriggerFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): ITriggerFunctions;
 	getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions;
 	getExecuteSingleFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, itemIndex: number, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteSingleFunctions;
-	getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean): IHookFunctions;
-	getExecuteWebhookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IWebhookFunctions;
+	getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
+	getExecuteWebhookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, webhookData: IWebhookData): IWebhookFunctions;
 }
 
 
