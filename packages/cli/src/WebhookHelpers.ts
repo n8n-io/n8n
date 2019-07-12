@@ -135,7 +135,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	try {
 		// Run the webhook function to see what should be returned and if
 		// the workflow should be executed or not
-		const webhookResultData = await webhookData.workflow.runWebhook(workflowStartNode, additionalData, NodeExecuteFunctions, executionMode);
+		const webhookResultData = await webhookData.workflow.runWebhook(webhookData, workflowStartNode, additionalData, NodeExecuteFunctions, executionMode);
 
 		if (webhookResultData.noWebhookResponse === true) {
 			// The response got already send

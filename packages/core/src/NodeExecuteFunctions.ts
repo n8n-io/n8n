@@ -22,6 +22,7 @@ import {
 	IRunExecutionData,
 	ITaskDataConnections,
 	ITriggerFunctions,
+	IWebhookData,
 	IWebhookDescription,
 	IWebhookFunctions,
 	IWorkflowExecuteAdditionalData,
@@ -227,6 +228,38 @@ export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecu
 
 
 /**
+ * Returns the webhook URL of the webhook with the given name
+ *
+ * @export
+ * @param {string} name
+ * @param {Workflow} workflow
+ * @param {INode} node
+ * @param {IWorkflowExecuteAdditionalData} additionalData
+ * @param {boolean} [isTest]
+ * @returns {(string | undefined)}
+ */
+export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, isTest?: boolean): string | undefined {
+	let baseUrl = additionalData.webhookBaseUrl;
+	if (isTest === true) {
+		baseUrl = additionalData.webhookTestBaseUrl;
+	}
+
+	const webhookDescription = getWebhookDescription(name, workflow, node);
+	if (webhookDescription === undefined) {
+		return undefined;
+	}
+
+	const path = workflow.getWebhookParameterValue(node, webhookDescription, 'path');
+	if (path === undefined) {
+		return undefined;
+	}
+
+	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path);
+}
+
+
+
+/**
  * Returns the timezone for the workflow
  *
  * @export
@@ -239,6 +272,34 @@ export function getTimezone(workflow: Workflow, additionalData: IWorkflowExecute
 		return (workflow.settings as IWorkflowSettings).timezone as string;
 	}
 	return additionalData.timezone;
+}
+
+
+
+/**
+ * Returns the full webhook description of the webhook with the given name
+ *
+ * @export
+ * @param {string} name
+ * @param {Workflow} workflow
+ * @param {INode} node
+ * @returns {(IWebhookDescription | undefined)}
+ */
+export function getWebhookDescription(name: string, workflow: Workflow, node: INode): IWebhookDescription | undefined {
+	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+
+	if (nodeType.description.webhooks === undefined) {
+		// Node does not have any webhooks so return
+		return undefined;
+	}
+
+	for (const webhookDescription of nodeType.description.webhooks) {
+		if (webhookDescription.name === name) {
+			return webhookDescription;
+		}
+	}
+
+	return undefined;
 }
 
 
@@ -496,7 +557,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
  * @param {WorkflowExecuteMode} mode
  * @returns {IHookFunctions}
  */
-export function getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean): IHookFunctions {
+export function getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
@@ -514,41 +575,19 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
 			},
 			getNodeWebhookUrl: (name: string): string | undefined => {
-				let baseUrl = additionalData.webhookBaseUrl;
-				if (isTest === true) {
-					baseUrl = additionalData.webhookTestBaseUrl;
-				}
-
-				const webhookDescription = that.getWebhookDescription(name);
-				if (webhookDescription === undefined) {
-					return undefined;
-				}
-
-				const path = workflow.getWebhookParameterValue(node, webhookDescription, 'path');
-				if (path === undefined) {
-					return undefined;
-				}
-
-				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path);
+				return getNodeWebhookUrl(name, workflow, node, additionalData, isTest);
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
+			getWebhookName(): string {
+				if (webhookData === undefined) {
+					throw new Error('Is only supported in webhook functions!');
+				}
+				return webhookData.webhookDescription.name;
+			},
 			getWebhookDescription(name: string): IWebhookDescription | undefined {
-				const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
-
-				if (nodeType.description.webhooks === undefined) {
-					// Node does not have any webhooks so return
-					return undefined;
-				}
-
-				for (const webhookDescription of nodeType.description.webhooks) {
-					if (webhookDescription.name === name) {
-						return webhookDescription;
-					}
-				}
-
-				return undefined;
+				return getWebhookDescription(name, workflow, node);
 			},
 			getWorkflowStaticData(type: string): IDataObject {
 				return workflow.getStaticData(type, node);
@@ -574,7 +613,7 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
  * @param {WorkflowExecuteMode} mode
  * @returns {IWebhookFunctions}
  */
-export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IWebhookFunctions {
+export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, webhookData: IWebhookData): IWebhookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			getBodyData(): IDataObject {
@@ -621,11 +660,17 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 				}
 				return additionalData.httpResponse;
 			},
+			getNodeWebhookUrl: (name: string): string | undefined => {
+				return getNodeWebhookUrl(name, workflow, node, additionalData);
+			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
 			getWorkflowStaticData(type: string): IDataObject {
 				return workflow.getStaticData(type, node);
+			},
+			getWebhookName(): string {
+				return webhookData.webhookDescription.name;
 			},
 			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {

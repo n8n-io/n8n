@@ -896,7 +896,7 @@ export class Workflow {
 			return;
 		}
 
-		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(this, node, webhookData.workflowExecuteAdditionalData, mode, isTest);
+		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(this, node, webhookData.workflowExecuteAdditionalData, mode, isTest, webhookData);
 		return nodeType.webhookMethods[webhookData.webhookDescription.name][method]!.call(thisArgs);
 	}
 
@@ -956,7 +956,7 @@ export class Workflow {
 	 * @returns {Promise<IWebhookResonseData>}
 	 * @memberof Workflow
 	 */
-	async runWebhook(node: INode, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<IWebhookResonseData> {
+	async runWebhook(webhookData: IWebhookData, node: INode, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<IWebhookResonseData> {
 		const nodeType = this.nodeTypes.getByName(node.type);
 		if (nodeType === undefined) {
 			throw new Error(`The type of the webhook node "${node.name}" is not known.`);
@@ -964,7 +964,7 @@ export class Workflow {
 			throw new Error(`The node "${node.name}" does not have any webhooks defined.`);
 		}
 
-		const thisArgs = nodeExecuteFunctions.getExecuteWebhookFunctions(this, node, additionalData, mode);
+		const thisArgs = nodeExecuteFunctions.getExecuteWebhookFunctions(this, node, additionalData, mode, webhookData);
 		return nodeType.webhook.call(thisArgs);
 	}
 
