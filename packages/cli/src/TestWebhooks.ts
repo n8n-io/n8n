@@ -131,13 +131,13 @@ export class TestWebhooks {
 
 		let key: string;
 		for (const webhookData of webhooks) {
-			await this.activeWebhooks!.add(webhookData, mode);
 			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
 			this.testWebhookData[key] = {
 				sessionId,
 				timeout,
 				workflowData,
 			};
+			await this.activeWebhooks!.add(webhookData, mode);
 		}
 
 		return true;
