@@ -249,7 +249,7 @@ export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode,
 		return undefined;
 	}
 
-	const path = workflow.getWebhookParameterValue(node, webhookDescription, 'path');
+	const path = workflow.getSimpleParameterValue(node, webhookDescription['path']);
 	if (path === undefined) {
 		return undefined;
 	}

@@ -16,7 +16,6 @@ import {
 	ITaskDataConnections,
 	ITriggerResponse,
 	IWebhookData,
-	IWebhookDescription,
 	IWebhookResonseData,
 	WebhookSetupMethodNames,
 	WorkflowDataProxy,
@@ -648,18 +647,15 @@ export class Workflow {
 
 
 	/**
-	 * Resolves parameter value of parameter in webhook description
+	 * Resolves value of parameter. But does not work for workflow-data.
 	 *
-	 * @export
 	 * @param {INode} node
-	 * @param {IWebhookDescription} webhookDescription
-	 * @param {string} parameterName
+	 * @param {(string | undefined)} parameterValue
 	 * @param {string} [defaultValue]
 	 * @returns {(string | undefined)}
+	 * @memberof Workflow
 	 */
-	getWebhookParameterValue(node: INode, webhookDescription: IWebhookDescription, parameterName: string, defaultValue?: string): string | undefined {
-		const parameterValue: string | undefined = webhookDescription[parameterName];
-
+	getSimpleParameterValue(node: INode, parameterValue: string | undefined, defaultValue?: string): string | undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;

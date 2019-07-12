@@ -370,7 +370,7 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 
 	const returnData: IWebhookData[] = [];
 	for (const webhookDescription of nodeType.description.webhooks) {
-		let nodeWebhookPath = workflow.getWebhookParameterValue(node, webhookDescription, 'path', 'GET');
+		let nodeWebhookPath = workflow.getSimpleParameterValue(node, webhookDescription['path'], 'GET');
 		if (nodeWebhookPath === undefined) {
 			// TODO: Use a proper logger
 			console.error(`No webhook path could be found for node "${node.name}" in workflow "${workflow.id}".`);
@@ -383,7 +383,7 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 
 		const path = getNodeWebhookPath(workflow.id, node, nodeWebhookPath);
 
-		const httpMethod = workflow.getWebhookParameterValue(node, webhookDescription, 'httpMethod', 'GET');
+		const httpMethod = workflow.getSimpleParameterValue(node, webhookDescription['httpMethod'], 'GET');
 
 		if (httpMethod === undefined) {
 			// TODO: Use a proper logger

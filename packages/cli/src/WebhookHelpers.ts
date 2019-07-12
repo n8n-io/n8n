@@ -112,7 +112,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	}
 
 	// Get the responseMode
-	const reponseMode = webhookData.workflow.getWebhookParameterValue(workflowStartNode, webhookData.webhookDescription, 'reponseMode', 'onReceived');
+	const reponseMode = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['reponseMode'], 'onReceived');
 
 	if (!['onReceived', 'lastNode'].includes(reponseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -248,7 +248,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				return data;
 			}
 
-			const reponseData = webhookData.workflow.getWebhookParameterValue(workflowStartNode, webhookData.webhookDescription, 'reponseData', 'firstEntryJson');
+			const reponseData = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['reponseData'], 'firstEntryJson');
 
 			if (didSendResponse === false) {
 				let data: IDataObject | IDataObject[];
@@ -263,7 +263,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 						responseCallback(new Error('No binary data to return got found.'), {});
 					}
 
-					const responseBinaryPropertyName = webhookData.workflow.getWebhookParameterValue(workflowStartNode, webhookData.webhookDescription, 'responseBinaryPropertyName', 'data');
+					const responseBinaryPropertyName = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseBinaryPropertyName'], 'data');
 
 					if (responseBinaryPropertyName === undefined) {
 						responseCallback(new Error('No "responseBinaryPropertyName" is set.'), {});
