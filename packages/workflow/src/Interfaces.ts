@@ -318,6 +318,10 @@ export interface INodePropertyCollection {
 	values: INodeProperties[];
 }
 
+export interface IParameterDependencies {
+	[key: string]: string[];
+}
+
 export interface ITriggerResponse {
 	closeFunction?: () => Promise<void>;
 	// To manually trigger the run

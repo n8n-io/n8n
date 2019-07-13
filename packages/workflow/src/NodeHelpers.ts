@@ -9,11 +9,12 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	INodeType,
+	IParameterDependencies,
 	IRunExecutionData,
 	IWebhookData,
+	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
 	WebhookHttpMethod,
-	IWorkflowExecuteAdditionalData,
 } from './Interfaces';
 
 import {
@@ -147,6 +148,108 @@ export function getContext(runExecutionData: IRunExecutionData, type: string, no
 
 
 /**
+ * Returns which parameters are dependent on which
+ *
+ * @export
+ * @param {INodeProperties[]} nodePropertiesArray
+ * @returns {IParameterDependencies}
+ */
+export function getParamterDependencies(nodePropertiesArray: INodeProperties[]): IParameterDependencies {
+	const dependencies: IParameterDependencies = {};
+
+	let displayRule: string;
+	let parameterName: string;
+	for (const nodeProperties of nodePropertiesArray) {
+		if (dependencies[nodeProperties.name] === undefined) {
+			dependencies[nodeProperties.name] = [];
+		}
+		if (nodeProperties.displayOptions === undefined) {
+			// Does not have any dependencies
+			continue;
+		}
+
+		for (displayRule of Object.keys(nodeProperties.displayOptions)) {
+			// @ts-ignore
+			for (parameterName of Object.keys(nodeProperties.displayOptions[displayRule])) {
+				if (!dependencies[nodeProperties.name].includes(parameterName)) {
+					dependencies[nodeProperties.name].push(parameterName);
+				}
+			}
+		}
+	}
+
+	return dependencies;
+}
+
+
+/**
+ * Returns in which order the parameters should be resolved
+ * to have the paramters available they are depent on
+ *
+ * @export
+ * @param {INodeProperties[]} nodePropertiesArray
+ * @param {IParameterDependencies} parameterDependencies
+ * @returns {number[]}
+ */
+export function getParamterResolveOrder(nodePropertiesArray: INodeProperties[], parameterDependencies: IParameterDependencies): number[] {
+	const executionOrder: number[] = [];
+	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (v, k) => k);
+	const resolvedParamters: string[] = [];
+
+	let index: number;
+	let property: INodeProperties;
+
+	let lastIndexLength = indexToResolve.length;
+	let lastIndexReduction = -1;
+
+	let itterations = 0 ;
+
+	while (indexToResolve.length !== 0) {
+		itterations += 1;
+
+		index = indexToResolve.shift() as number;
+		property = nodePropertiesArray[index];
+
+		if (parameterDependencies[property.name].length === 0) {
+			// Does not have any dependencies so simply add
+			executionOrder.push(index);
+			resolvedParamters.push(property.name);
+			continue;
+		}
+
+		// Parameter has dependencies
+		for (const dependency of parameterDependencies[property.name]) {
+			if (!resolvedParamters.includes(dependency)) {
+				if (dependency.charAt(0) === '/') {
+					// Assume that root level depenencies are resolved
+					continue;
+				}
+				// Dependencies for that paramter are still missing so
+				// try to add again later
+				indexToResolve.push(index);
+				continue;
+			}
+		}
+
+		// All dependencies got found so add
+		executionOrder.push(index);
+		resolvedParamters.push(property.name);
+
+		if (indexToResolve.length < lastIndexLength) {
+			lastIndexReduction = itterations;
+		}
+
+		if (itterations > lastIndexReduction + nodePropertiesArray.length) {
+			throw new Error('Could not resolve parameter depenencies!');
+		}
+		lastIndexLength = indexToResolve.length;
+	}
+
+	return executionOrder;
+}
+
+
+/**
  * Returns the node parameter values. Depending on the settings it either just returns the none
  * default values or it applies all the default values.
  *
@@ -160,7 +263,11 @@ export function getContext(runExecutionData: IRunExecutionData, type: string, no
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
  * @returns {(INodeParameters | null)}
  */
-export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeValues: INodeParameters, returnDefaults: boolean, returnNoneDisplayed: boolean, onlySimpleTypes = false, dataIsResolved = false, nodeValuesRoot?: INodeParameters, parentType?: string): INodeParameters | null {
+export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeValues: INodeParameters, returnDefaults: boolean, returnNoneDisplayed: boolean, onlySimpleTypes = false, dataIsResolved = false, nodeValuesRoot?: INodeParameters, parentType?: string, parameterDependencies?: IParameterDependencies): INodeParameters | null {
+	if (parameterDependencies === undefined) {
+		parameterDependencies = getParamterDependencies(nodePropertiesArray);
+	}
+
 	// Get the parameter names which get used multiple times as for this
 	// ones we have to always check which ones get displayed and which ones not
 	const duplicateParameterNames: string[] = [];
@@ -176,15 +283,20 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 	}
 
 	const nodeParameters: INodeParameters = {};
+	const nodeParametersFull: INodeParameters = {};
 
-	let nodeValuesDisplayCheck = nodeValues;
+	let nodeValuesDisplayCheck = nodeParametersFull;
 	if (dataIsResolved !== true && returnNoneDisplayed === false) {
-		nodeValuesDisplayCheck = getNodeParameters(nodePropertiesArray, nodeValues, true, true, true, true, nodeValuesRoot, parentType) as INodeParameters;
+		nodeValuesDisplayCheck = getNodeParameters(nodePropertiesArray, nodeValues, true, true, true, true, nodeValuesRoot, parentType, parameterDependencies) as INodeParameters;
 	}
 
 	nodeValuesRoot = nodeValuesRoot || nodeValuesDisplayCheck;
 
-	for (const nodeProperties of nodePropertiesArray) {
+	// Go through the parameters in order of their dependencies
+	const parameterItterationOrderIndex = getParamterResolveOrder(nodePropertiesArray, parameterDependencies);
+
+	for (const parameterIndex of parameterItterationOrderIndex) {
+		const nodeProperties = nodePropertiesArray[parameterIndex];
 		if (nodeValues[nodeProperties.name] === undefined && (returnDefaults === false || parentType === 'collection')) {
 			// The value is not defined so go to the next
 			continue;
@@ -203,11 +315,6 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 			// Is a simple property so can be set as it is
 
 			if (duplicateParameterNames.includes(nodeProperties.name)) {
-				// Parameter gets used multiple times
-				if (dataIsResolved !== true) {
-					nodeValuesDisplayCheck = getNodeParameters(nodePropertiesArray, nodeValues, true, true, true, true, nodeValuesRoot, parentType) as INodeParameters;
-				}
-
 				if (!displayParameter(nodeValuesDisplayCheck, nodeProperties, nodeValuesRoot)) {
 					continue;
 				}
@@ -222,9 +329,11 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 				} else {
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name] || nodeProperties.default;
 				}
+				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else if (nodeValues[nodeProperties.name] !== nodeProperties.default || (nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')) {
 				// Set only if it is different to the default value
 				nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
+				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				continue;
 			}
 		}
@@ -250,7 +359,7 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 					// case of a collection with multipleValues always an empty array
 					nodeParameters[nodeProperties.name] = [];
 				}
-
+				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else {
 				if (nodeValues[nodeProperties.name] !== undefined) {
 					// Has values defined so get them
@@ -258,10 +367,12 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 
 					if (tempNodeParameters !== null) {
 						nodeParameters[nodeProperties.name] = tempNodeParameters;
+						nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 					}
 				} else if (returnDefaults === true) {
 					// Does not have values defined but defaults should be returned
 					nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				}
 			}
 		} else if (nodeProperties.type === 'fixedCollection') {
@@ -331,9 +442,11 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 					} else {
 						nodeParameters[nodeProperties.name] = collectionValues;
 					}
+					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				} else if (collectionValues !== nodeProperties.default) {
 					// Set only if values got found and it is not the default
 					nodeParameters[nodeProperties.name] = collectionValues;
+					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				}
 			}
 		}

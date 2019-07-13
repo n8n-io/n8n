@@ -2300,7 +2300,382 @@ describe('Workflow', () => {
 						},
 					},
 				},
-
+				{
+					description: 'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					input: {
+						nodePropertiesArray: [
+							{
+								displayName: 'mainOption',
+								name: 'mainOption',
+								type: 'options',
+								options: [
+									{
+										name: 'option1',
+										value: 'option1',
+									},
+									{
+										name: 'option2',
+										value: 'option2',
+									},
+								],
+								default: 'option1',
+							},
+							{
+								displayName: 'subOption',
+								name: 'subOption',
+								type: 'options',
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option1',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'option1a',
+										value: 'option1a',
+									},
+									{
+										name: 'option1b',
+										value: 'option1b',
+									},
+								],
+								default: 'option1a',
+							},
+							{
+								displayName: 'subOption',
+								name: 'subOption',
+								type: 'options',
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option2',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'option2a',
+										value: 'option2a',
+									},
+									{
+										name: 'option2b',
+										value: 'option2b',
+									},
+								],
+								default: 'option2a',
+							},
+							{
+								displayName: 'dependentParameter',
+								name: 'dependentParameter',
+								type: 'string',
+								default: 'value1',
+								required: true,
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option1',
+										],
+										subOption: [
+											'option1a',
+										],
+									},
+								},
+							},
+							{
+								displayName: 'dependentParameter',
+								name: 'dependentParameter',
+								type: 'string',
+								default: 'value2',
+								required: true,
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option2',
+										],
+										subOption: [
+											'option2a',
+										],
+									},
+								},
+							},
+						],
+						nodeValues: {},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+							},
+							defaultsTrue: {
+								mainOption: 'option1',
+								subOption: 'option1a',
+								dependentParameter: 'value1',
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+							},
+							defaultsTrue: {
+								mainOption: 'option1',
+								subOption: 'option1a',
+								dependentParameter: 'value1',
+							},
+						},
+					},
+				},
+				{
+					description: 'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
+					input: {
+						nodePropertiesArray: [
+							{
+								displayName: 'dependentParameter',
+								name: 'dependentParameter',
+								type: 'string',
+								default: 'value2',
+								required: true,
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option2',
+										],
+										subOption: [
+											'option2a',
+										],
+									},
+								},
+							},
+							{
+								displayName: 'subOption',
+								name: 'subOption',
+								type: 'options',
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option2',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'option2a',
+										value: 'option2a',
+									},
+									{
+										name: 'option2b',
+										value: 'option2b',
+									},
+								],
+								default: 'option2a',
+							},
+							{
+								displayName: 'subOption',
+								name: 'subOption',
+								type: 'options',
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option1',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'option1a',
+										value: 'option1a',
+									},
+									{
+										name: 'option1b',
+										value: 'option1b',
+									},
+								],
+								default: 'option1a',
+							},
+							{
+								displayName: 'dependentParameter',
+								name: 'dependentParameter',
+								type: 'string',
+								default: 'value1',
+								required: true,
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option1',
+										],
+										subOption: [
+											'option1a',
+										],
+									},
+								},
+							},
+							{
+								displayName: 'mainOption',
+								name: 'mainOption',
+								type: 'options',
+								options: [
+									{
+										name: 'option1',
+										value: 'option1',
+									},
+									{
+										name: 'option2',
+										value: 'option2',
+									},
+								],
+								default: 'option1',
+							},
+						],
+						nodeValues: {},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+							},
+							defaultsTrue: {
+								mainOption: 'option1',
+								subOption: 'option1a',
+								dependentParameter: 'value1',
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+							},
+							defaultsTrue: {
+								mainOption: 'option1',
+								subOption: 'option1a',
+								dependentParameter: 'value1',
+							},
+						},
+					},
+				},
+				{
+					description: 'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					input: {
+						nodePropertiesArray: [
+							{
+								displayName: 'mainOption',
+								name: 'mainOption',
+								type: 'options',
+								options: [
+									{
+										name: 'option1',
+										value: 'option1',
+									},
+									{
+										name: 'option2',
+										value: 'option2',
+									},
+								],
+								default: 'option1',
+							},
+							{
+								displayName: 'subOption',
+								name: 'subOption',
+								type: 'options',
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option1',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'option1a',
+										value: 'option1a',
+									},
+									{
+										name: 'option1b',
+										value: 'option1b',
+									},
+								],
+								default: 'option1a',
+							},
+							{
+								displayName: 'subOption',
+								name: 'subOption',
+								type: 'options',
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option2',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'option2a',
+										value: 'option2a',
+									},
+									{
+										name: 'option2b',
+										value: 'option2b',
+									},
+								],
+								default: 'option2a',
+							},
+							{
+								displayName: 'dependentParameter',
+								name: 'dependentParameter',
+								type: 'string',
+								default: 'value1',
+								required: true,
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option1',
+										],
+										subOption: [
+											'option1a',
+										],
+									},
+								},
+							},
+							{
+								displayName: 'dependentParameter',
+								name: 'dependentParameter',
+								type: 'string',
+								default: 'value2',
+								required: true,
+								displayOptions: {
+									show: {
+										mainOption: [
+											'option2',
+										],
+										subOption: [
+											'option2a',
+										],
+									},
+								},
+							},
+						],
+						nodeValues: {
+							mainOption: 'option2'
+						},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+								mainOption: 'option2',
+							},
+							defaultsTrue: {
+								mainOption: 'option2',
+								subOption: 'option2a',
+								dependentParameter: 'value2',
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+								mainOption: 'option2',
+							},
+							defaultsTrue: {
+								mainOption: 'option2',
+								subOption: 'option2a',
+								dependentParameter: 'value2',
+							},
+						},
+					},
+				},
 			];
 
 
