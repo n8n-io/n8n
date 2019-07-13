@@ -30,7 +30,7 @@
 		<div class="node-name" :title="data.name">
 			{{data.name}}
 		</div>
-		<div v-if="nodeSubtitle !== null" class="node-subtitle" :title="nodeSubtitle">
+		<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 			{{nodeSubtitle}}
 		</div>
 		<div class="node-edit" @click.left.stop="setNodeActive" title="Edit Node">
@@ -46,6 +46,7 @@ import { nodeBase } from '@/components/mixins/nodeBase';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
+	INode,
 	INodeIssueObjectProperty,
 	INodePropertyOptions,
 	INodeTypeDescription,
@@ -119,9 +120,9 @@ export default mixins(nodeBase, workflowHelpers).extend({
 				return 'play';
 			}
 		},
-		nodeSubtitle (): string | null {
-			if (this.nodeType.subtitle !== undefined) {
-				return this.workflow.getSimpleParameterValue(this, this.nodeType.subtitle)
+		nodeSubtitle (): string | undefined {
+			if (this.nodeType !== null && this.nodeType.subtitle !== undefined) {
+				return this.workflow.getSimpleParameterValue(this.data as INode, this.nodeType.subtitle);
 			}
 
 			if (this.data.parameters.operation !== undefined) {
@@ -150,7 +151,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 
 				return optionData.name;
 			}
-			return null;
+			return undefined;
 		},
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
