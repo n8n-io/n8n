@@ -348,7 +348,7 @@ export const store = new Vuex.Store({
 				}
 			}
 		},
-		setNodeParameter (state, updateInformation: IUpdateInformation) {
+		setNodeValue (state, updateInformation: IUpdateInformation) {
 			// Find the node that should be updated
 			const node = state.workflow.nodes.find(node => {
 				return node.name === updateInformation.name;
@@ -358,55 +358,19 @@ export const store = new Vuex.Store({
 				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
 			}
 
-			const nameParts = updateInformation.key.split('.');
-			let lastNamePart = nameParts.pop();
+			Vue.set(node, updateInformation.key, updateInformation.value);
+		},
+		setNodeParameters (state, updateInformation: IUpdateInformation) {
+			// Find the node that should be updated
+			const node = state.workflow.nodes.find(node => {
+				return node.name === updateInformation.name;
+			});
 
-			let isArray = false;
-			if (lastNamePart !== undefined && lastNamePart.includes('[')) {
-				// It incldues an index so we have to extract it
-				const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
-				if (lastNameParts) {
-					nameParts.push(lastNameParts[1]);
-					lastNamePart = lastNameParts[2];
-					isArray = true;
-				}
+			if (node === undefined || node === null) {
+				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
 			}
 
-			// Set the value via Vue.set that everything updates correctly in the UI
-
-			if (nameParts.length === 0) {
-				// Data is on top level
-				if (updateInformation.value === null) {
-					// Property should be deleted
-					// @ts-ignore
-					Vue.delete(node, lastNamePart);
-				} else {
-					// Value should be set
-					// @ts-ignore
-					Vue.set(node, lastNamePart, updateInformation.value);
-				}
-			} else {
-				// Data is on lewer level
-				if (updateInformation.value === null) {
-					// Property should be deleted
-					let tempValue = get(node, nameParts.join('.'));
-
-					Vue.delete(tempValue, lastNamePart as string);
-
-					if (isArray === true && tempValue.length === 0) {
-						// If a value from an array got delete and no values are left
-						// delete also the parent
-						lastNamePart = nameParts.pop();
-						tempValue = get(node, nameParts.join('.'));
-
-						Vue.delete(tempValue, lastNamePart as string);
-					}
-				} else {
-					// Value should be set
-					Vue.set(get(node, nameParts.join('.')), lastNamePart as string, updateInformation.value);
-					// Vue.set(get(node, nameParts.join('.')), lastNamePart as string, JSON.parse(JSON.stringify(updateInformation.value)));
-				}
-			}
+			Vue.set(node, 'parameters', updateInformation.value);
 		},
 
 		// Node-Index
@@ -460,10 +424,10 @@ export const store = new Vuex.Store({
 			Vue.set(state, 'endpointWebhookTest', endpointWebhookTest);
 		},
 
-		setSaveDataErrorExecution(state, newValue: string) {
+		setSaveDataErrorExecution (state, newValue: string) {
 			Vue.set(state, 'saveDataErrorExecution', newValue);
 		},
-		setSaveDataSuccessExecution(state, newValue: string) {
+		setSaveDataSuccessExecution (state, newValue: string) {
 			Vue.set(state, 'saveDataSuccessExecution', newValue);
 		},
 		setSaveManualExecutions (state, saveManualExecutions: boolean) {

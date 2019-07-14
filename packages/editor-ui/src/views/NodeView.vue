@@ -1417,7 +1417,7 @@ export default mixins(
 					if (nodeType !== null) {
 						let nodeParameters = null;
 						try {
-							nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, true);
+							nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, false);
 						} catch (e) {
 							console.error(`There was a problem loading the node-parameters of node: "${node.name}"`);
 							console.error(e);

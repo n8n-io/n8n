@@ -116,7 +116,7 @@ export default mixins(genericHelpers)
 			deleteOption (optionName: string, index?: number) {
 				const parameterData = {
 					name: this.getPropertyPath(optionName, index),
-					value: null,
+					value: undefined,
 				};
 
 				this.$emit('valueChanged', parameterData);
