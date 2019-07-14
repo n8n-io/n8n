@@ -35,53 +35,120 @@ export class NextCloud implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'File',
+						value: 'file',
+					},
+					{
+						name: 'Folder',
+						value: 'folder',
+					},
+				],
+				default: 'file',
+				description: 'The resource to operate on.',
+			},
+
+
+
+			// ----------------------------------
+			//         operations
+			// ----------------------------------
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'Copy',
 						value: 'copy',
-						description: 'Copy a file or folder',
-					},
-					{
-						name: 'Create Folder',
-						value: 'createFolder',
-						description: 'Creates a folder',
+						description: 'Copy a file',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Deletes a file or folder',
+						description: 'Delete a file',
 					},
 					{
-						name: 'Download File',
-						value: 'downloadFile',
-						description: 'Downloads a file',
-					},
-					{
-						name: 'Get Folder Content',
-						value: 'listFolderContent',
-						description: 'Returns the files and folder in a given folder',
+						name: 'Download',
+						value: 'download',
+						description: 'Download a file',
 					},
 					{
 						name: 'Move',
 						value: 'move',
-						description: 'Moves a file or folder',
+						description: 'Move a file',
 					},
 					{
-						name: 'Upload File',
-						value: 'uploadFile',
-						description: 'Uploads a file into a folder',
+						name: 'Upload',
+						value: 'upload',
+						description: 'Upload a file',
 					},
 				],
-				default: 'uploadFile',
+				default: 'upload',
 				description: 'The operation to perform.',
 			},
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'folder',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Copy',
+						value: 'copy',
+						description: 'Copy a folder',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a folder',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a folder',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'Return the files and folders in a given folder',
+					},
+					{
+						name: 'Move',
+						value: 'move',
+						description: 'Move a folder',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			}
+
+
 
 			// ----------------------------------
-			//         copy
+			//         file
+			// ----------------------------------
+
+			// ----------------------------------
+			//         file/folder:copy
 			// ----------------------------------
 			{
 				displayName: 'From Path',
@@ -93,6 +160,10 @@ export class NextCloud implements INodeType {
 					show: {
 						operation: [
 							'copy'
+						],
+						resource: [
+							'file',
+							'folder',
 						],
 					},
 				},
@@ -110,35 +181,18 @@ export class NextCloud implements INodeType {
 						operation: [
 							'copy'
 						],
+						resource: [
+							'file',
+							'folder',
+						],
 					},
 				},
 				placeholder: '/invoices/copy.txt',
 				description: 'The destination path of file or folder.',
 			},
 
-
 			// ----------------------------------
-			//         createFolder
-			// ----------------------------------
-			{
-				displayName: 'Folder',
-				name: 'path',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'createFolder'
-						],
-					},
-				},
-				placeholder: 'invoices/2019',
-				description: 'The folder to create. The parent folder has to exist.',
-			},
-
-			// ----------------------------------
-			//         delete
+			//         file/folder:delete
 			// ----------------------------------
 			{
 				displayName: 'Delete Path',
@@ -151,6 +205,10 @@ export class NextCloud implements INodeType {
 						operation: [
 							'delete'
 						],
+						resource: [
+							'file',
+							'folder',
+						],
 					},
 				},
 				placeholder: 'invoices/2019/invoice_1.pdf',
@@ -158,63 +216,7 @@ export class NextCloud implements INodeType {
 			},
 
 			// ----------------------------------
-			//         downloadFile
-			// ----------------------------------
-			{
-				displayName: 'File Path',
-				name: 'path',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'downloadFile'
-						],
-					},
-				},
-				placeholder: 'invoices/2019/invoice_1.pdf',
-				description: 'The file path of the file to download. Has to contain the full path.',
-			},
-			{
-				displayName: 'Binary Property',
-				name: 'binaryPropertyName',
-				type: 'string',
-				default: 'data',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'downloadFile'
-						],
-					},
-				},
-				description: 'Name of the binary property to which to<br />write the data of the read file.',
-			},
-
-			// ----------------------------------
-			//         listFolderContent
-			// ----------------------------------
-			{
-				displayName: 'Folder Path',
-				name: 'path',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'listFolderContent'
-						],
-					},
-				},
-				placeholder: 'invoices/2019/',
-				description: 'The path of which to list the content.',
-			},
-
-
-			// ----------------------------------
-			//         move
+			//         file/folder:move
 			// ----------------------------------
 			{
 				displayName: 'From Path',
@@ -226,6 +228,10 @@ export class NextCloud implements INodeType {
 					show: {
 						operation: [
 							'move'
+						],
+						resource: [
+							'file',
+							'folder',
 						],
 					},
 				},
@@ -243,15 +249,18 @@ export class NextCloud implements INodeType {
 						operation: [
 							'move'
 						],
+						resource: [
+							'file',
+							'folder',
+						],
 					},
 				},
 				placeholder: '/invoices/new_name.txt',
 				description: 'The new path of file or folder.',
 			},
 
-
 			// ----------------------------------
-			//         uploadFile
+			//         file:download
 			// ----------------------------------
 			{
 				displayName: 'File Path',
@@ -262,7 +271,51 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'uploadFile'
+							'download'
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				placeholder: 'invoices/2019/invoice_1.pdf',
+				description: 'The file path of the file to download. Has to contain the full path.',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'download'
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'Name of the binary property to which to<br />write the data of the read file.',
+			},
+
+			// ----------------------------------
+			//         file:upload
+			// ----------------------------------
+			{
+				displayName: 'File Path',
+				name: 'path',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'upload'
+						],
+						resource: [
+							'file',
 						],
 					},
 				},
@@ -278,7 +331,10 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'uploadFile'
+							'upload'
+						],
+						resource: [
+							'file',
 						],
 					},
 				},
@@ -291,11 +347,14 @@ export class NextCloud implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'uploadFile'
-						],
 						binaryDataUpload: [
-							false
+							true
+						],
+						operation: [
+							'upload'
+						],
+						resource: [
+							'file',
 						],
 					},
 
@@ -311,11 +370,14 @@ export class NextCloud implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'uploadFile'
-						],
 						binaryDataUpload: [
 							true
+						],
+						operation: [
+							'upload'
+						],
+						resource: [
+							'file',
 						],
 					},
 
@@ -323,6 +385,58 @@ export class NextCloud implements INodeType {
 				placeholder: '',
 				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
 			},
+
+
+
+			// ----------------------------------
+			//         folder
+			// ----------------------------------
+
+			// ----------------------------------
+			//         folder:create
+			// ----------------------------------
+			{
+				displayName: 'Folder',
+				name: 'path',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create'
+						],
+						resource: [
+							'folder',
+						],
+					},
+				},
+				placeholder: 'invoices/2019',
+				description: 'The folder to create. The parent folder has to exist.',
+			},
+
+			// ----------------------------------
+			//         folder:list
+			// ----------------------------------
+			{
+				displayName: 'Folder Path',
+				name: 'path',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'list'
+						],
+						resource: [
+							'folder',
+						],
+					},
+				},
+				placeholder: 'invoices/2019/',
+				description: 'The path of which to list the content.',
+			},
+
 		],
 	};
 
@@ -337,6 +451,7 @@ export class NextCloud implements INodeType {
 			throw new Error('No credentials got returned!');
 		}
 
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let endpoint = '';
@@ -347,88 +462,96 @@ export class NextCloud implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-			if (operation === 'copy') {
-				// ----------------------------------
-				//         copy
-				// ----------------------------------
+			if (resource === 'file') {
+				if (operation === 'download') {
+					// ----------------------------------
+					//         download
+					// ----------------------------------
 
-				requestMethod = 'COPY';
-				endpoint = this.getNodeParameter('path', i) as string;
-				const toPath = this.getNodeParameter('toPath', i) as string;
-				headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+					requestMethod = 'GET';
+					endpoint = this.getNodeParameter('path', i) as string;
 
-			} else if (operation === 'createFolder') {
-				// ----------------------------------
-				//         createFolder
-				// ----------------------------------
+				} else if (operation === 'upload') {
+					// ----------------------------------
+					//         upload
+					// ----------------------------------
 
-				requestMethod = 'MKCOL';
-				endpoint = this.getNodeParameter('path', i) as string;
+					requestMethod = 'PUT';
+					endpoint = this.getNodeParameter('path', i) as string;
 
-			} else if (operation === 'delete') {
-				// ----------------------------------
-				//         delete
-				// ----------------------------------
+					if (this.getNodeParameter('binaryDataUpload', i) === true) {
+						// Is binary file to upload
+						const item = items[i];
 
-				requestMethod = 'DELETE';
-				endpoint = this.getNodeParameter('path', i) as string;
+						if (item.binary === undefined) {
+							throw new Error('No binary data exists on item!');
+						}
 
-			} else if (operation === 'downloadFile') {
-				// ----------------------------------
-				//         downloadFile
-				// ----------------------------------
+						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
-				requestMethod = 'GET';
-				endpoint = this.getNodeParameter('path', i) as string;
 
-			} else if (operation === 'listFolderContent') {
-				// ----------------------------------
-				//         listFolderContent
-				// ----------------------------------
+						if (item.binary[propertyNameUpload] === undefined) {
+							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+						}
 
-				requestMethod = 'PROPFIND';
-				endpoint = this.getNodeParameter('path', i) as string;
-
-			} else if (operation === 'move') {
-				// ----------------------------------
-				//         move
-				// ----------------------------------
-
-				requestMethod = 'MOVE';
-				endpoint = this.getNodeParameter('path', i) as string;
-				const toPath = this.getNodeParameter('toPath', i) as string;
-				headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
-
-			} else if (operation === 'uploadFile') {
-				// ----------------------------------
-				//         uploadFile
-				// ----------------------------------
-
-				requestMethod = 'PUT';
-				endpoint = this.getNodeParameter('path', i) as string;
-
-				if (this.getNodeParameter('binaryDataUpload', i) === true) {
-					// Is binary file to upload
-					const item = items[i];
-
-					if (item.binary === undefined) {
-						throw new Error('No binary data exists on item!');
+						body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
+					} else {
+						// Is text file
+						body = this.getNodeParameter('fileContent', i) as string;
 					}
+				}
+			} else if (resource === 'folder') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
 
-					const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+					requestMethod = 'MKCOL';
+					endpoint = this.getNodeParameter('path', i) as string;
 
+				} else if (operation === 'list') {
+					// ----------------------------------
+					//         list
+					// ----------------------------------
 
-					if (item.binary[propertyNameUpload] === undefined) {
-						throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
-					}
+					requestMethod = 'PROPFIND';
+					endpoint = this.getNodeParameter('path', i) as string;
 
-					body = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING);
-				} else {
-					// Is text file
-					body = this.getNodeParameter('fileContent', i) as string;
+				}
+			}
+
+			if (['file', 'folder'].includes(resource)) {
+				if (operation === 'copy') {
+					// ----------------------------------
+					//         copy
+					// ----------------------------------
+
+					requestMethod = 'COPY';
+					endpoint = this.getNodeParameter('path', i) as string;
+					const toPath = this.getNodeParameter('toPath', i) as string;
+					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					endpoint = this.getNodeParameter('path', i) as string;
+
+				} else if (operation === 'move') {
+					// ----------------------------------
+					//         move
+					// ----------------------------------
+
+					requestMethod = 'MOVE';
+					endpoint = this.getNodeParameter('path', i) as string;
+					const toPath = this.getNodeParameter('toPath', i) as string;
+					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+
 				}
 			} else {
-				throw new Error(`The operation "${operation}" is not known!`);
+				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
 			// Make sure that the webdav URL does never have a trailing slash because
@@ -451,14 +574,14 @@ export class NextCloud implements INodeType {
 				json: false,
 			};
 
-			if (operation === 'downloadFile') {
+			if (resource === 'file' && operation === 'download') {
 				// Return the data as a buffer
 				options.encoding = null;
 			}
 
 			const responseData = await this.helpers.request(options);
 
-			if (operation === 'downloadFile') {
+			if (resource === 'file' && operation === 'download') {
 				// TODO: Has to check if it already exists and only add if not
 				if (items[i].binary === undefined) {
 					items[i].binary = {};
@@ -466,7 +589,7 @@ export class NextCloud implements INodeType {
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
-			} else if (operation === 'listFolderContent') {
+			} else if (resource === 'folder' && operation === 'list') {
 
 				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 					parseString(responseData, { explicitArray: false }, (err, data) => {
@@ -523,7 +646,7 @@ export class NextCloud implements INodeType {
 			}
 		}
 
-		if (operation === 'downloadFile') {
+		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
 		} else  {
