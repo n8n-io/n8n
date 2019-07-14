@@ -419,7 +419,6 @@ export class Dropbox implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '',
-				required: true,
 				displayOptions: {
 					show: {
 						operation: [
@@ -637,7 +636,7 @@ export class Dropbox implements INodeType {
 				const filePathDownload = this.getNodeParameter('path', i) as string;
 				items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
 
-			} else if (operation === 'listFolderContent') {
+			} else if (resource === 'folder' && operation === 'list') {
 
 				const propNames: { [key: string]: string } = {
 					'id': 'id',
