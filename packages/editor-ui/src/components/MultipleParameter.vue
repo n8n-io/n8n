@@ -89,7 +89,7 @@ export default mixins(genericHelpers)
 			deleteItem (index: number) {
 				const parameterData = {
 					name: this.getPath(index),
-					value: null,
+					value: undefined,
 				};
 
 				this.$emit('valueChanged', parameterData);

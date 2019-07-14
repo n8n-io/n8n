@@ -141,7 +141,7 @@ export default mixins(
 			deleteOption (optionName: string): void {
 				const parameterData = {
 					name: this.getPath(optionName),
-					value: null,
+					value: undefined,
 				};
 
 				// TODO: If there is only one option it should delete the whole one

@@ -82,7 +82,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
-import { get } from 'lodash';
+import { get, set } from 'lodash';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -235,7 +235,7 @@ export default mixins(
 						Vue.set(this.nodeValues, lastNamePart, value);
 					}
 				} else {
-					// Data is on lewer level
+					// Data is on lower level
 					if (value === null) {
 						// Property should be deleted
 						// @ts-ignore
@@ -294,52 +294,102 @@ export default mixins(
 					newValue = get(this.nodeValues, parameterData.name) as NodeParameterValue;
 				}
 
-				if (newValue !== undefined) {
-					// Save the node name before we commit the change because
-					// we need the old name to rename the node properly
-					const nodeNameBefore = parameterData.node || this.node.name;
-					const node = this.$store.getters.nodeByName(nodeNameBefore);
+				// Save the node name before we commit the change because
+				// we need the old name to rename the node properly
+				const nodeNameBefore = parameterData.node || this.node.name;
+				const node = this.$store.getters.nodeByName(nodeNameBefore);
+				if (parameterData.name === 'name') {
+					// Name of node changed so we have to set also the new node name as active
 
-					this.setValue(parameterData.name, newValue);
+					// Update happens in NodeView so emit event
+					const sendData = {
+						value: newValue,
+						oldValue: nodeNameBefore,
+						name: parameterData.name,
+					};
+					this.$emit('valueChanged', sendData);
 
+					this.$store.commit('setActiveNode', newValue);
+				} else if (parameterData.name === 'color') {
+					// Color of node changed
+
+					// Update color in settings
+					Vue.set(this.nodeValues, 'color', newValue);
+					// Update color in vuex
 					const updateInformation = {
 						name: node.name,
-						key: parameterData.name,
+						key: 'color',
 						value: newValue,
 					};
+					this.$store.commit('setNodeValue', updateInformation);
+				} else {
+					// Everything else are node parameters
 
-					if (parameterData.name === 'name') {
-						// Name of node changed so we have to set also the new node name as active
+					const nodeType = this.$store.getters.nodeType(node.type);
 
-						const sendData = {
-							value: newValue,
-							oldValue: nodeNameBefore,
-							name: parameterData.name,
-						};
-						this.$emit('valueChanged', sendData);
+					// Get only the parameters which are different to the defaults
+					let nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, false, false);
 
-						this.$store.commit('setActiveNode', newValue);
-					} else {
-						// For all changes except renames we commit the change. For
-						// renames that happens in NodeView
-						this.$store.commit('setNodeParameter', updateInformation);
+					// Copy the data because it is the data of vuex so make sure that
+					// we do not edit it directly
+					nodeParameters = JSON.parse(JSON.stringify(nodeParameters));
 
-						const nodeType = this.$store.getters.nodeType(node.type);
-						const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
+					// Remove the 'parameters.' from the beginning to just have the
+					// actual parameter name
+					const parameterPath = parameterData.name.split('.').slice(1).join('.');
 
-						let newIssues: INodeIssueObjectProperty | null = null;
-						if (fullNodeIssues !== null) {
-							newIssues = fullNodeIssues.parameters!;
+					// Check if the path is supposed to change an array and if so get
+					// the needed data like path and index
+					const parameterPathArray = parameterPath.match(/(.*)\[(\d)\]$/);
+
+					// Apply the new value
+					if (parameterData.value === undefined && parameterPathArray !== null) {
+						// Delete array item
+						const path = parameterPathArray[1];
+						const index = parameterPathArray[2];
+						const data = get(nodeParameters, path);
+
+						if (Array.isArray(data)) {
+							data.splice(parseInt(index, 10), 1);
+							Vue.set(nodeParameters as object, path, data);
 						}
-
-						this.$store.commit('setNodeIssue', {
-							node: node.name,
-							type: 'parameters',
-							value: newIssues,
-						} as INodeIssueData);
-
-						this.updateNodeCredentialIssues(node);
+					} else {
+						// For everything else
+						set(nodeParameters as object, parameterPath, newValue);
 					}
+
+					// Get the parameters with the now new defaults according to the
+					// from the user actually defined parameters
+					nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, nodeParameters as INodeParameters, true, false);
+
+					for (const key of Object.keys(nodeParameters as object)) {
+						if (nodeParameters && nodeParameters[key] !== null && nodeParameters[key] !== undefined) {
+							this.setValue(`parameters.${key}`, nodeParameters[key] as string);
+						}
+					}
+
+					// Update the data in vuex
+					const updateInformation = {
+						name: node.name,
+						value: nodeParameters,
+					};
+					this.$store.commit('setNodeParameters', updateInformation);
+
+					// All data got updated everywhere so update now the issues
+					const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
+
+					let newIssues: INodeIssueObjectProperty | null = null;
+					if (fullNodeIssues !== null) {
+						newIssues = fullNodeIssues.parameters!;
+					}
+
+					this.$store.commit('setNodeIssue', {
+						node: node.name,
+						type: 'parameters',
+						value: newIssues,
+					} as INodeIssueData);
+
+					this.updateNodeCredentialIssues(node);
 				}
 			},
 			/**

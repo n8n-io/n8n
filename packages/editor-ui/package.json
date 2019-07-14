@@ -30,6 +30,7 @@
     "@types/file-saver": "^2.0.1",
     "@types/jest": "^23.3.2",
     "@types/lodash.get": "^4.4.5",
+    "@types/lodash.set": "^4.3.6",
     "@types/quill": "^2.0.1",
     "@vue/cli-plugin-babel": "^3.8.0",
     "@vue/cli-plugin-e2e-cypress": "^3.8.0",
@@ -54,6 +55,7 @@
     "jsplumb": "^2.10.0",
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
+    "lodash.set": "^4.3.2",
     "n8n-workflow": "^0.3.0",
     "node-sass": "^4.12.0",
     "quill": "^2.0.0-dev.3",
@@ -67,8 +69,8 @@
     "vue-cli-plugin-webpack-bundle-analyzer": "^1.3.0",
     "vue-json-pretty": "^1.4.1",
     "vue-router": "^3.0.6",
+    "vue-template-compiler": "^2.5.17",
     "vue-typed-mixins": "^0.1.0",
-    "vuex": "^3.1.1",
-    "vue-template-compiler": "^2.5.17"
+    "vuex": "^3.1.1"
   }
 }
