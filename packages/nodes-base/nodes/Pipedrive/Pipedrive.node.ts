@@ -59,108 +59,241 @@ export class Pipedrive implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Operation',
-				name: 'operation',
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
 				options: [
 					{
-						name: 'Create Activity',
-						value: 'createActivity',
-						description: 'Creates an activity',
+						name: 'Activity',
+						value: 'activity',
 					},
 					{
-						name: 'Create Deal',
-						value: 'createDeal',
-						description: 'Creates a deal',
+						name: 'Deal',
+						value: 'deal',
 					},
 					{
-						name: 'Create Organization',
-						value: 'createOrganization',
-						description: 'Creates a Organization',
+						name: 'Organization',
+						value: 'organization',
 					},
 					{
-						name: 'Create Person',
-						value: 'createPerson',
-						description: 'Creates a person',
+						name: 'Person',
+						value: 'person',
 					},
 					{
-						name: 'Delete Activity',
-						value: 'deleteActivity',
+						name: 'Product',
+						value: 'product',
+					},
+				],
+				default: 'deal',
+				description: 'The resource to operate on.',
+			},
+
+
+
+			// ----------------------------------
+			//         operations
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'activity',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create an activity',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
 						description: 'Delete an activity',
 					},
 					{
-						name: 'Delete Deal',
-						value: 'deleteDeal',
+						name: 'Get',
+						value: 'get',
+						description: 'Get data of an activity',
+					},
+					// TODO: Currently missing
+					// {
+					// 	name: 'Get All',
+					// 	value: 'getAll',
+					// 	description: 'Get data of all activities',
+					// },
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update an activity',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'deal',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a deal',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
 						description: 'Delete a deal',
 					},
 					{
-						name: 'Delete Organization',
-						value: 'deleteOrganization',
-						description: 'Delete a Organization',
-					},
-					{
-						name: 'Delete Person',
-						value: 'deletePerson',
-						description: 'Delete a person',
-					},
-					{
-						name: 'Get Activity',
-						value: 'getActivity',
-						description: 'Get data of an activity',
-					},
-					{
-						name: 'Get Deal',
-						value: 'getDeal',
+						name: 'Get',
+						value: 'get',
 						description: 'Get data of a deal',
 					},
+					// TODO: Currently missing
+					// {
+					// 	name: 'Get All',
+					// 	value: 'getAll',
+					// 	description: 'Get data of all deals',
+					// },
 					{
-						name: 'Get Organization',
-						value: 'getOrganization',
+						name: 'Update',
+						value: 'update',
+						description: 'Update a deal',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'organization',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create an organization',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete anorganization',
+					},
+					{
+						name: 'Get',
+						value: 'get',
 						description: 'Get data of an organization',
 					},
 					{
-						name: 'Get Person',
-						value: 'getPerson',
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get data of all organizations',
+					},
+					// TODO: Currently missing
+					// {
+					// 	name: 'Update',
+					// 	value: 'update',
+					// 	description: 'Update an organization',
+					// },
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'person',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a person',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a person',
+					},
+					{
+						name: 'Get',
+						value: 'get',
 						description: 'Get data of a person',
 					},
 					{
-						name: 'Get All Organizations',
-						value: 'getAllOrganizations',
-						description: 'Get data of all organizations',
-					},
-					{
-						name: 'Get All Persons',
-						value: 'getAllPersons',
+						name: 'Get All',
+						value: 'getAll',
 						description: 'Get data of all persons',
 					},
 					{
-						name: 'Get All Products',
-						value: 'getAllProducts',
-						description: 'Get data of all products',
-					},
-					{
-						name: 'Update Activity',
-						value: 'updateActivity',
-						description: 'Update an activity',
-					},
-					{
-						name: 'Update Deal',
-						value: 'updateDeal',
-						description: 'Update a deal',
-					},
-					{
-						name: 'Update Person',
-						value: 'updatePerson',
+						name: 'Update',
+						value: 'update',
 						description: 'Update a person',
 					},
 				],
-				default: 'createDeal',
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'product',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get data of all products',
+					},
+				],
+				default: 'getAll',
 				description: 'The operation to perform.',
 			},
 
 
+
 			// ----------------------------------
-			//         createActivity
+			//         Activity
+			// ----------------------------------
+
+			// ----------------------------------
+			//         activity:create
 			// ----------------------------------
 			{
 				displayName: 'Subject',
@@ -171,7 +304,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createActivity',
+							'create',
+						],
+						resource: [
+							'activity',
 						],
 					},
 				},
@@ -184,7 +320,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createActivity',
+							'create',
+						],
+						resource: [
+							'activity',
 						],
 					},
 				},
@@ -210,7 +349,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createActivity',
+							'create',
+						],
+						resource: [
+							'activity',
 						],
 					},
 				},
@@ -225,7 +367,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createActivity',
+							'create',
+						],
+						resource: [
+							'activity',
 						],
 					},
 				},
@@ -306,9 +451,205 @@ export class Pipedrive implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         activity:delete
+			// ----------------------------------
+			{
+				displayName: 'Activity ID',
+				name: 'activityId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'activity',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the activity to delete.',
+			},
+
 
 			// ----------------------------------
-			//         createDeal
+			//         activity:get
+			// ----------------------------------
+			{
+				displayName: 'Activity ID',
+				name: 'activityId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'get'
+						],
+						resource: [
+							'activity',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the activity to get.',
+			},
+
+			// ----------------------------------
+			//         activity:update
+			// ----------------------------------
+			{
+				displayName: 'Activity ID',
+				name: 'activityId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'update'
+						],
+						resource: [
+							'activity',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the activity to update.',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'update'
+						],
+						resource: [
+							'activity',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Deal ID',
+						name: 'deal_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the deal this activity will be associated with',
+					},
+					{
+						displayName: 'Done',
+						name: 'done',
+						type: 'options',
+						options: [
+							{
+								name: 'Not done',
+								value: '0',
+							},
+							{
+								name: 'Done',
+								value: '1',
+							},
+						],
+						default: '0',
+						description: 'Whether the activity is done or not.',
+					},
+
+					{
+						displayName: 'Note',
+						name: 'note',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+							rows: 5,
+						},
+						default: '',
+						description: 'Note of the activity (HTML format)',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'org_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the organization this activity will be associated with',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person this activity will be associated with',
+					},
+					{
+						displayName: 'Subject',
+						name: 'subject',
+						type: 'string',
+						default: '',
+						description: 'The subject of the activity',
+					},
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'string',
+						default: '',
+						placeholder: 'call',
+						description: 'Type of the activity like "call", "meeting", ...',
+					},
+					{
+						displayName: 'User ID',
+						name: 'user_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
+					},
+					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the property to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								]
+							},
+						],
+					},
+				],
+			},
+
+
+
+			// ----------------------------------
+			//         deal
+			// ----------------------------------
+
+			// ----------------------------------
+			//         deal:create
 			// ----------------------------------
 			{
 				displayName: 'Title',
@@ -319,7 +660,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createDeal',
+							'create',
+						],
+						resource: [
+							'deal',
 						],
 					},
 				},
@@ -333,7 +677,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createDeal',
+							'create',
+						],
+						resource: [
+							'deal',
 						],
 					},
 				},
@@ -477,228 +824,8 @@ export class Pipedrive implements INodeType {
 				],
 			},
 
-
 			// ----------------------------------
-			//         createOrganization
-			// ----------------------------------
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'createOrganization',
-						],
-					},
-				},
-				description: 'The name of the organization to create',
-			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				displayOptions: {
-					show: {
-						operation: [
-							'createOrganization',
-						],
-					},
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Visible to',
-						name: 'visible_to',
-						type: 'options',
-						options: [
-							{
-								name: 'Owner & followers (private)',
-								value: '1',
-							},
-							{
-								name: 'Entire company (shared)',
-								value: '3',
-							},
-						],
-						default: '3',
-						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
-					},
-					{
-						displayName: 'Custom Properties',
-						name: 'customProperties',
-						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Property',
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the property to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								]
-							},
-						],
-					},
-				],
-			},
-
-
-			// ----------------------------------
-			//         createPerson
-			// ----------------------------------
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'createPerson',
-						],
-					},
-				},
-				description: 'The name of the person to create',
-			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				displayOptions: {
-					show: {
-						operation: [
-							'createPerson',
-						],
-					},
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Email',
-						name: 'email',
-						type: 'string',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: '',
-						description: 'Email of the person.',
-					},
-					{
-						displayName: 'Organization ID',
-						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this person will belong to.',
-					},
-					{
-						displayName: 'Phone',
-						name: 'phone',
-						type: 'string',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: '',
-						description: 'Phone number of the person.',
-					},
-					{
-						displayName: 'Visible to',
-						name: 'visible_to',
-						type: 'options',
-						options: [
-							{
-								name: 'Owner & followers (private)',
-								value: '1',
-							},
-							{
-								name: 'Entire company (shared)',
-								value: '3',
-							},
-						],
-						default: '3',
-						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
-					},
-					{
-						displayName: 'Custom Properties',
-						name: 'customProperties',
-						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Property',
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the property to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								]
-							},
-						],
-					},
-				],
-			},
-
-
-			// ----------------------------------
-			//         deleteActivity
-			// ----------------------------------
-			{
-				displayName: 'Activity ID',
-				name: 'activityId',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'deleteActivity',
-						],
-					},
-				},
-				default: 0,
-				required: true,
-				description: 'ID of the activity to delete.',
-			},
-
-
-			// ----------------------------------
-			//         deleteDeal
+			//         deal:delete
 			// ----------------------------------
 			{
 				displayName: 'Deal ID',
@@ -707,7 +834,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'deleteDeal',
+							'delete',
+						],
+						resource: [
+							'deal',
 						],
 					},
 				},
@@ -716,189 +846,8 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the deal to delete.',
 			},
 
-
 			// ----------------------------------
-			//         deleteOrganization
-			// ----------------------------------
-			{
-				displayName: 'Organization ID',
-				name: 'organizationId',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'deleteOrganization',
-						],
-					},
-				},
-				default: 0,
-				required: true,
-				description: 'ID of the organization to delete.',
-			},
-
-
-			// ----------------------------------
-			//         deletePerson
-			// ----------------------------------
-			{
-				displayName: 'Person ID',
-				name: 'personId',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'deletePerson',
-						],
-					},
-				},
-				default: 0,
-				required: true,
-				description: 'ID of the person to delete.',
-			},
-
-
-			// ----------------------------------
-			//         getAllOrganizations
-			// ----------------------------------
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAllOrganizations',
-						],
-					},
-				},
-				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAllOrganizations',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 500,
-				},
-				default: 100,
-				description: 'How many results to return.',
-			},
-
-
-			// ----------------------------------
-			//         getAllPersons
-			// ----------------------------------
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAllPersons',
-						],
-					},
-				},
-				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAllPersons',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 500,
-				},
-				default: 100,
-				description: 'How many results to return.',
-			},
-
-
-			// ----------------------------------
-			//         getAllProducts
-			// ----------------------------------
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAllProducts',
-						],
-					},
-				},
-				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAllProducts',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 500,
-				},
-				default: 100,
-				description: 'How many results to return.',
-			},
-
-
-			// ----------------------------------
-			//         getActivity
-			// ----------------------------------
-			{
-				displayName: 'Activity ID',
-				name: 'activityId',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getActivity'
-						],
-					},
-				},
-				default: 0,
-				required: true,
-				description: 'ID of the activity to get.',
-			},
-
-
-			// ----------------------------------
-			//         getDeal
+			//         deal:get
 			// ----------------------------------
 			{
 				displayName: 'Deal ID',
@@ -907,7 +856,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'getDeal'
+							'get'
+						],
+						resource: [
+							'deal',
 						],
 					},
 				},
@@ -916,190 +868,8 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the deal to get.',
 			},
 
-
 			// ----------------------------------
-			//         getOrganization
-			// ----------------------------------
-			{
-				displayName: 'Organization ID',
-				name: 'organizationId',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getOrganization'
-						],
-					},
-				},
-				default: 0,
-				required: true,
-				description: 'ID of the organization to get.',
-			},
-
-
-			// ----------------------------------
-			//         getPerson
-			// ----------------------------------
-			{
-				displayName: 'Person ID',
-				name: 'personId',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getPerson'
-						],
-					},
-				},
-				default: 0,
-				required: true,
-				description: 'ID of the person to get.',
-			},
-
-
-			// ----------------------------------
-			//         updateActivity
-			// ----------------------------------
-			{
-				displayName: 'Activity ID',
-				name: 'activityId',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'updateActivity'
-						],
-					},
-				},
-				default: 0,
-				required: true,
-				description: 'ID of the activity to update.',
-			},
-			{
-				displayName: 'Update Fields',
-				name: 'updateFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				displayOptions: {
-					show: {
-						operation: [
-							'updateActivity'
-						],
-					},
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Deal ID',
-						name: 'deal_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the deal this activity will be associated with',
-					},
-					{
-						displayName: 'Done',
-						name: 'done',
-						type: 'options',
-						options: [
-							{
-								name: 'Not done',
-								value: '0',
-							},
-							{
-								name: 'Done',
-								value: '1',
-							},
-						],
-						default: '0',
-						description: 'Whether the activity is done or not.',
-					},
-
-					{
-						displayName: 'Note',
-						name: 'note',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-							rows: 5,
-						},
-						default: '',
-						description: 'Note of the activity (HTML format)',
-					},
-					{
-						displayName: 'Organization ID',
-						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this activity will be associated with',
-					},
-					{
-						displayName: 'Person ID',
-						name: 'person_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the person this activity will be associated with',
-					},
-					{
-						displayName: 'Subject',
-						name: 'subject',
-						type: 'string',
-						default: '',
-						description: 'The subject of the activity',
-					},
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'string',
-						default: '',
-						placeholder: 'call',
-						description: 'Type of the activity like "call", "meeting", ...',
-					},
-					{
-						displayName: 'User ID',
-						name: 'user_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the user whom the activity will be assigned to. If omitted, the activity will be assigned to the authorized user.',
-					},
-					{
-						displayName: 'Custom Properties',
-						name: 'customProperties',
-						placeholder: 'Add Custom Property',
-						description: 'Adds a custom property to set also values which have not been predefined.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'property',
-								displayName: 'Property',
-								values: [
-									{
-										displayName: 'Property Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-										description: 'Name of the property to set.',
-									},
-									{
-										displayName: 'Property Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the property to set.',
-									},
-								]
-							},
-						],
-					},
-				],
-			},
-
-
-			// ----------------------------------
-			//         updateDeal
+			//         deal:update
 			// ----------------------------------
 			{
 				displayName: 'Deal ID',
@@ -1108,7 +878,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'updateDeal'
+							'update'
+						],
+						resource: [
+							'deal',
 						],
 					},
 				},
@@ -1124,7 +897,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'updateDeal'
+							'update'
+						],
+						resource: [
+							'deal',
 						],
 					},
 				},
@@ -1269,8 +1045,317 @@ export class Pipedrive implements INodeType {
 			},
 
 
+
 			// ----------------------------------
-			//         updatePerson
+			//         organization
+			// ----------------------------------
+
+			// ----------------------------------
+			//         organization:create
+			// ----------------------------------
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				description: 'The name of the organization to create',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Visible to',
+						name: 'visible_to',
+						type: 'options',
+						options: [
+							{
+								name: 'Owner & followers (private)',
+								value: '1',
+							},
+							{
+								name: 'Entire company (shared)',
+								value: '3',
+							},
+						],
+						default: '3',
+						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+					},
+					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the property to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								]
+							},
+						],
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         organization:delete
+			// ----------------------------------
+			{
+				displayName: 'Organization ID',
+				name: 'organizationId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the organization to delete.',
+			},
+
+			// ----------------------------------
+			//         organization:get
+			// ----------------------------------
+			{
+				displayName: 'Organization ID',
+				name: 'organizationId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the organization to get.',
+			},
+
+			// ----------------------------------
+			//         organization:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'organization',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+
+
+
+			// ----------------------------------
+			//         person
+			// ----------------------------------
+
+			// ----------------------------------
+			//         person:create
+			// ----------------------------------
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				description: 'The name of the person to create',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: '',
+						description: 'Email of the person.',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'org_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the organization this person will belong to.',
+					},
+					{
+						displayName: 'Phone',
+						name: 'phone',
+						type: 'string',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: '',
+						description: 'Phone number of the person.',
+					},
+					{
+						displayName: 'Visible to',
+						name: 'visible_to',
+						type: 'options',
+						options: [
+							{
+								name: 'Owner & followers (private)',
+								value: '1',
+							},
+							{
+								name: 'Entire company (shared)',
+								value: '3',
+							},
+						],
+						default: '3',
+						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+					},
+					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the property to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								]
+							},
+						],
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         person:delete
 			// ----------------------------------
 			{
 				displayName: 'Person ID',
@@ -1279,7 +1364,99 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'updatePerson'
+							'delete',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the person to delete.',
+			},
+
+			// ----------------------------------
+			//         person:get
+			// ----------------------------------
+			{
+				displayName: 'Person ID',
+				name: 'personId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the person to get.',
+			},
+
+			// ----------------------------------
+			//         person:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'person',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+
+			// ----------------------------------
+			//         person:update
+			// ----------------------------------
+			{
+				displayName: 'Person ID',
+				name: 'personId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'person',
 						],
 					},
 				},
@@ -1296,7 +1473,10 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'updatePerson'
+							'update',
+						],
+						resource: [
+							'person',
 						],
 					},
 				},
@@ -1389,6 +1569,57 @@ export class Pipedrive implements INodeType {
 				],
 			},
 
+
+
+			// ----------------------------------
+			//         product
+			// ----------------------------------
+
+			// ----------------------------------
+			//         product:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'product',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'product',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+
 		],
 	};
 
@@ -1397,7 +1628,8 @@ export class Pipedrive implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		let resource: string;
+		let operation: string;
 
 		// For Post
 		let body: IDataObject;
@@ -1409,224 +1641,236 @@ export class Pipedrive implements INodeType {
 		let returnAll = false;
 
 		for (let i = 0; i < items.length; i++) {
+			resource = this.getNodeParameter('resource', 0) as string;
+			operation = this.getNodeParameter('operation', 0) as string;
+
 			requestMethod = 'GET';
 			endpoint = '';
 			body = {};
 			qs = {};
 
-			if (operation === 'createActivity') {
-				// ----------------------------------
-				//         createActivity
-				// ----------------------------------
+			if (resource === 'activity') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         activity:create
+					// ----------------------------------
 
-				requestMethod = 'POST';
-				endpoint = '/activities';
+					requestMethod = 'POST';
+					endpoint = '/activities';
 
-				body.subject = this.getNodeParameter('subject', i) as string;
-				body.done = this.getNodeParameter('done', i) as string;
-				body.type = this.getNodeParameter('type', i) as string;
-				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-				addAdditionalFields(body, additionalFields);
+					body.subject = this.getNodeParameter('subject', i) as string;
+					body.done = this.getNodeParameter('done', i) as string;
+					body.type = this.getNodeParameter('type', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body, additionalFields);
 
-			} else if (operation === 'createDeal') {
-				// ----------------------------------
-				//         createTask
-				// ----------------------------------
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         activity:delete
+					// ----------------------------------
 
-				requestMethod = 'POST';
-				endpoint = '/deals';
+					requestMethod = 'DELETE';
 
-				body.title = this.getNodeParameter('title', i) as string;
-				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-				addAdditionalFields(body, additionalFields);
+					const activityId = this.getNodeParameter('activityId', i) as number;
+					endpoint = `/activities/${activityId}`;
 
-			} else if (operation === 'createOrganization') {
-				// ----------------------------------
-				//         createOrganization
-				// ----------------------------------
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         activity:get
+					// ----------------------------------
 
-				requestMethod = 'POST';
-				endpoint = '/organizations';
+					requestMethod = 'GET';
 
-				body.name = this.getNodeParameter('name', i) as string;
-				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-				addAdditionalFields(body, additionalFields);
+					const activityId = this.getNodeParameter('activityId', i) as number;
+					endpoint = `/activities/${activityId}`;
 
-			} else if (operation === 'createPerson') {
-				// ----------------------------------
-				//         createPerson
-				// ----------------------------------
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         activity:update
+					// ----------------------------------
 
-				requestMethod = 'POST';
-				endpoint = '/persons';
+					requestMethod = 'PUT';
 
-				body.name = this.getNodeParameter('name', i) as string;
-				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-				addAdditionalFields(body, additionalFields);
+					const activityId = this.getNodeParameter('activityId', i) as number;
+					endpoint = `/activities/${activityId}`;
 
-			} else if (operation === 'deleteActivity') {
-				// ----------------------------------
-				//         deleteActivity
-				// ----------------------------------
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body, updateFields);
 
-				requestMethod = 'DELETE';
-
-				const activityId = this.getNodeParameter('activityId', i) as number;
-				endpoint = `/activities/${activityId}`;
-
-			} else if (operation === 'deleteDeal') {
-				// ----------------------------------
-				//         deleteDeal
-				// ----------------------------------
-
-				requestMethod = 'DELETE';
-
-				const dealId = this.getNodeParameter('dealId', i) as number;
-				endpoint = `/deals/${dealId}`;
-
-			} else if (operation === 'deleteOrganization') {
-				// ----------------------------------
-				//         deleteOrganization
-				// ----------------------------------
-
-				requestMethod = 'DELETE';
-
-				const organizationId = this.getNodeParameter('organizationId', i) as number;
-				endpoint = `/organizations/${organizationId}`;
-
-			} else if (operation === 'deletePerson') {
-				// ----------------------------------
-				//         deletePerson
-				// ----------------------------------
-
-				requestMethod = 'DELETE';
-
-				const personId = this.getNodeParameter('personId', i) as number;
-				endpoint = `/persons/${personId}`;
-
-			} else if (operation === 'getAllOrganizations') {
-				// ----------------------------------
-				//         getAllOrganizations
-				// ----------------------------------
-
-				requestMethod = 'GET';
-
-				returnAll = this.getNodeParameter('returnAll', i) as boolean;
-				if (returnAll === false) {
-					qs.limit = this.getNodeParameter('limit', i) as number;
 				}
+			} else if (resource === 'deal') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         deal:create
+					// ----------------------------------
 
-				endpoint = `/organizations`;
+					requestMethod = 'POST';
+					endpoint = '/deals';
 
-			} else if (operation === 'getAllPersons') {
-				// ----------------------------------
-				//         getAllPersons
-				// ----------------------------------
+					body.title = this.getNodeParameter('title', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body, additionalFields);
 
-				requestMethod = 'GET';
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         deal:delete
+					// ----------------------------------
 
-				returnAll = this.getNodeParameter('returnAll', i) as boolean;
-				if (returnAll === false) {
-					qs.limit = this.getNodeParameter('limit', i) as number;
+					requestMethod = 'DELETE';
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					endpoint = `/deals/${dealId}`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         deal:get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					endpoint = `/deals/${dealId}`;
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         deal:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					endpoint = `/deals/${dealId}`;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body, updateFields);
+
 				}
+			} else if (resource === 'organization') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         organization:create
+					// ----------------------------------
 
-				endpoint = `/persons`;
+					requestMethod = 'POST';
+					endpoint = '/organizations';
 
-			} else if (operation === 'getAllProducts') {
-				// ----------------------------------
-				//         getAllProducts
-				// ----------------------------------
+					body.name = this.getNodeParameter('name', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body, additionalFields);
 
-				requestMethod = 'GET';
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         organization:delete
+					// ----------------------------------
 
-				returnAll = this.getNodeParameter('returnAll', i) as boolean;
-				if (returnAll === false) {
-					qs.limit = this.getNodeParameter('limit', i) as number;
+					requestMethod = 'DELETE';
+
+					const organizationId = this.getNodeParameter('organizationId', i) as number;
+					endpoint = `/organizations/${organizationId}`;
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         organization:get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const organizationId = this.getNodeParameter('organizationId', i) as number;
+					endpoint = `/organizations/${organizationId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         organization:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					endpoint = `/organizations`;
+
 				}
+			} else if (resource === 'person') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         person:create
+					// ----------------------------------
 
-				endpoint = `/products`;
+					requestMethod = 'POST';
+					endpoint = '/persons';
 
-			} else if (operation === 'getActivity') {
-				// ----------------------------------
-				//         getActivity
-				// ----------------------------------
+					body.name = this.getNodeParameter('name', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body, additionalFields);
 
-				requestMethod = 'GET';
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         person:delete
+					// ----------------------------------
 
-				const activityId = this.getNodeParameter('activityId', i) as number;
-				endpoint = `/activities/${activityId}`;
+					requestMethod = 'DELETE';
 
-			} else if (operation === 'getDeal') {
-				// ----------------------------------
-				//         getDeal
-				// ----------------------------------
+					const personId = this.getNodeParameter('personId', i) as number;
+					endpoint = `/persons/${personId}`;
 
-				requestMethod = 'GET';
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         person:get
+					// ----------------------------------
 
-				const dealId = this.getNodeParameter('dealId', i) as number;
-				endpoint = `/deals/${dealId}`;
+					requestMethod = 'GET';
 
-			} else if (operation === 'getOrganization') {
-				// ----------------------------------
-				//         getOrganization
-				// ----------------------------------
+					const personId = this.getNodeParameter('personId', i) as number;
+					endpoint = `/persons/${personId}`;
 
-				requestMethod = 'GET';
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         persons:getAll
+					// ----------------------------------
 
-				const organizationId = this.getNodeParameter('organizationId', i) as number;
-				endpoint = `/organizations/${organizationId}`;
+					requestMethod = 'GET';
 
-			} else if (operation === 'getPerson') {
-				// ----------------------------------
-				//         getPerson
-				// ----------------------------------
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
 
-				requestMethod = 'GET';
+					endpoint = `/persons`;
 
-				const personId = this.getNodeParameter('personId', i) as number;
-				endpoint = `/persons/${personId}`;
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         person:update
+					// ----------------------------------
 
-			} else if (operation === 'updateActivity') {
-				// ----------------------------------
-				//         updateActivity
-				// ----------------------------------
+					requestMethod = 'PUT';
 
-				requestMethod = 'PUT';
+					const personId = this.getNodeParameter('personId', i) as number;
+					endpoint = `/persons/${personId}`;
 
-				const activityId = this.getNodeParameter('activityId', i) as number;
-				endpoint = `/activities/${activityId}`;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body, updateFields);
 
-				const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-				addAdditionalFields(body, updateFields);
+				}
+			} else if (resource === 'product') {
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         product:getAll
+					// ----------------------------------
 
-			} else if (operation === 'updateDeal') {
-				// ----------------------------------
-				//         updateDeal
-				// ----------------------------------
+					requestMethod = 'GET';
 
-				requestMethod = 'PUT';
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
 
-				const dealId = this.getNodeParameter('dealId', i) as number;
-				endpoint = `/deals/${dealId}`;
+					endpoint = `/products`;
 
-				const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-				addAdditionalFields(body, updateFields);
-
-			} else if (operation === 'updatePerson') {
-				// ----------------------------------
-				//         updatePerson
-				// ----------------------------------
-
-				requestMethod = 'PUT';
-
-				const personId = this.getNodeParameter('personId', i) as number;
-				endpoint = `/persons/${personId}`;
-
-				const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-				addAdditionalFields(body, updateFields);
-
+				}
 			} else {
-				throw new Error(`The operation "${operation}" is not known!`);
+				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
 			let responseData;
