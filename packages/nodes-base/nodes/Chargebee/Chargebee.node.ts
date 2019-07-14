@@ -30,6 +30,7 @@ export class Chargebee implements INodeType {
 		icon: 'file:chargebee.png',
 		group: ['input'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Retrieve data from Chargebee API',
 		defaults: {
 			name: 'Chargebee',
@@ -201,7 +202,7 @@ export class Chargebee implements INodeType {
 			{
 				displayName: 'Operation',
 				name: 'operation',
-				default: 'listInvoices',
+				default: 'list',
 				description: 'The operation to perform.',
 				type: 'options',
 				displayOptions: {
