@@ -34,32 +34,85 @@ export class Slack implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Operation',
-				name: 'operation',
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
 				options: [
 					{
-						name: 'Create Channel',
-						value: 'channelsCreate',
-						description: 'Creates a new channel',
+						name: 'Channel',
+						value: 'channel',
 					},
 					{
-						name: 'Invite User',
-						value: 'channelsInvite',
-						description: 'Invites a user to a channel',
-					},
-					{
-						name: 'Send Message',
-						value: 'chatPostMessage',
-						description: 'Posts a message into a channel',
+						name: 'Message',
+						value: 'message',
 					},
 				],
-				default: 'chatPostMessage',
+				default: 'message',
+				description: 'The resource to operate on.',
+			},
+
+
+
+			// ----------------------------------
+			//         operations
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'channel',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new channel',
+					},
+					{
+						name: 'Invite',
+						value: 'invite',
+						description: 'Invite a user to a channel',
+					},
+				],
+				default: 'create',
 				description: 'The operation to perform.',
 			},
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'message',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Post',
+						value: 'post',
+						description: 'Post a message into a channel',
+					},
+				],
+				default: 'post',
+				description: 'The operation to perform.',
+			},
+
+
+
 			// ----------------------------------
-			//         channelsCreate
+			//         channel
+			// ----------------------------------
+
+			// ----------------------------------
+			//         channel:create
 			// ----------------------------------
 			{
 				displayName: 'Name',
@@ -70,7 +123,10 @@ export class Slack implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'channelsCreate'
+							'create'
+						],
+						resource: [
+							'channel',
 						],
 					},
 				},
@@ -78,9 +134,8 @@ export class Slack implements INodeType {
 				description: 'The name of the channel to create.',
 			},
 
-
 			// ----------------------------------
-			//         channelsInvite
+			//         channel:invite
 			// ----------------------------------
 			{
 				displayName: 'Channel ID',
@@ -91,7 +146,10 @@ export class Slack implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'channelsInvite'
+							'invite'
+						],
+						resource: [
+							'channel',
 						],
 					},
 				},
@@ -107,7 +165,10 @@ export class Slack implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'channelsInvite'
+							'invite'
+						],
+						resource: [
+							'channel',
 						],
 					},
 				},
@@ -116,8 +177,13 @@ export class Slack implements INodeType {
 			},
 
 
+
 			// ----------------------------------
-			//         chatPostMessage
+			//         message
+			// ----------------------------------
+
+			// ----------------------------------
+			//         message:post
 			// ----------------------------------
 			{
 				displayName: 'Channel',
@@ -128,7 +194,10 @@ export class Slack implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'chatPostMessage'
+							'post'
+						],
+						resource: [
+							'message',
 						],
 					},
 				},
@@ -146,7 +215,10 @@ export class Slack implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'chatPostMessage'
+							'post'
+						],
+						resource: [
+							'message',
 						],
 					},
 				},
@@ -160,7 +232,10 @@ export class Slack implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'chatPostMessage'
+							'post'
+						],
+						resource: [
+							'message',
 						],
 					},
 				},
@@ -173,11 +248,14 @@ export class Slack implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'chatPostMessage'
-						],
 						as_user: [
 							false
+						],
+						operation: [
+							'post'
+						],
+						resource: [
+							'message',
 						],
 					},
 				},
@@ -194,7 +272,10 @@ export class Slack implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'chatPostMessage'
+							'post'
+						],
+						resource: [
+							'message',
 						],
 					},
 				},
@@ -382,7 +463,10 @@ export class Slack implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'chatPostMessage'
+							'post'
+						],
+						resource: [
+							'message',
 						],
 					},
 				},
@@ -399,6 +483,12 @@ export class Slack implements INodeType {
 								'/as_user': [
 									false
 								],
+								'/operation': [
+									'post'
+								],
+								'/resource': [
+									'message',
+								],
 							},
 						},
 						default: '',
@@ -412,6 +502,12 @@ export class Slack implements INodeType {
 							show: {
 								'/as_user': [
 									false
+								],
+								'/operation': [
+									'post'
+								],
+								'/resource': [
+									'message',
 								],
 							},
 						},
@@ -478,8 +574,9 @@ export class Slack implements INodeType {
 		}
 
 		const baseUrl = `https://slack.com/api/`;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		let requestMethod = 'GET';
+		let operation: string;
+		let resource: string;
+		let requestMethod = 'POST';
 
 		// For Post
 		let body: IDataObject;
@@ -491,61 +588,70 @@ export class Slack implements INodeType {
 			body = {};
 			qs = {};
 
-			if (operation === 'channelsCreate') {
-				// ----------------------------------
-				//         channelsCreate
-				// ----------------------------------
+			resource = this.getNodeParameter('resource', i) as string;
+			operation = this.getNodeParameter('operation', i) as string;
 
-				requestMethod = 'POST';
-				endpoint = 'channels.create';
+			if (resource === 'channel') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         channel:create
+					// ----------------------------------
 
-				body.name = this.getNodeParameter('channel', i) as string;
-			} else if (operation === 'chatPostMessage') {
-				// ----------------------------------
-				//         chatPostMessage
-				// ----------------------------------
+					requestMethod = 'POST';
+					endpoint = 'channels.create';
 
-				requestMethod = 'POST';
-				endpoint = 'chat.postMessage';
+					body.name = this.getNodeParameter('channel', i) as string;
+				} else if (operation === 'invite') {
+					// ----------------------------------
+					//         channel:invite
+					// ----------------------------------
 
-				body.channel = this.getNodeParameter('channel', i) as string;
-				body.text = this.getNodeParameter('text', i) as string;
-				body.as_user = this.getNodeParameter('as_user', i) as boolean;
-				if (body.as_user === false) {
-					body.username = this.getNodeParameter('username', i) as string;
+					requestMethod = 'POST';
+					endpoint = 'channels.invite';
+
+					body.channel = this.getNodeParameter('channel', i) as string;
+					body.user = this.getNodeParameter('username', i) as string;
 				}
+			} else if (resource === 'message') {
+				if (operation === 'post') {
+					// ----------------------------------
+					//         message:post
+					// ----------------------------------
 
-				const attachments = this.getNodeParameter('attachments', i, []) as unknown as Attachment[];
+					requestMethod = 'POST';
+					endpoint = 'chat.postMessage';
 
-				// The node does save the fields data differently than the API
-				// expects so fix the data befre we send the request
-				for (const attachment of attachments) {
-					if (attachment.fields !== undefined) {
-						if (attachment.fields.item !== undefined) {
-							// Move the field-content up
-							// @ts-ignore
-							attachment.fields = attachment.fields.item;
-						} else {
-							// If it does not have any items set remove it
-							delete attachment.fields;
+					body.channel = this.getNodeParameter('channel', i) as string;
+					body.text = this.getNodeParameter('text', i) as string;
+					body.as_user = this.getNodeParameter('as_user', i) as boolean;
+					if (body.as_user === false) {
+						body.username = this.getNodeParameter('username', i) as string;
+					}
+
+					const attachments = this.getNodeParameter('attachments', i, []) as unknown as Attachment[];
+
+					// The node does save the fields data differently than the API
+					// expects so fix the data befre we send the request
+					for (const attachment of attachments) {
+						if (attachment.fields !== undefined) {
+							if (attachment.fields.item !== undefined) {
+								// Move the field-content up
+								// @ts-ignore
+								attachment.fields = attachment.fields.item;
+							} else {
+								// If it does not have any items set remove it
+								delete attachment.fields;
+							}
 						}
 					}
+					body['attachments'] = attachments;
+
+					// Add all the other options to the request
+					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
+					Object.assign(body, otherOptions);
 				}
-				body['attachments'] = attachments;
-
-				// Add all the other options to the request
-				const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
-				Object.assign(body, otherOptions);
-			} else if (operation === 'channelsInvite') {
-				// ----------------------------------
-				//         channelsInvite
-				// ----------------------------------
-
-				requestMethod = 'POST';
-				endpoint = 'channels.invite';
-
-				body.channel = this.getNodeParameter('channel', i) as string;
-				body.user = this.getNodeParameter('username', i) as string;
+			} else {
+				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
 			const options = {
