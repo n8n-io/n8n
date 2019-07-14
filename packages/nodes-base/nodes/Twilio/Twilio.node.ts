@@ -12,8 +12,6 @@ import {
 	twilioApiRequest,
 } from './GenericFunctions';
 
-import { OptionsWithUri } from 'request';
-
 export class Twilio implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Twilio',
@@ -21,6 +19,7 @@ export class Twilio implements INodeType {
 		icon: 'file:twilio.png',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Send SMS and WhatsApp messages or make phone calls',
 		defaults: {
 			name: 'Twilio',
@@ -36,23 +35,48 @@ export class Twilio implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Operation',
-				name: 'operation',
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
 				options: [
 					{
-						name: 'Send Message',
-						value: 'sendMessage',
+						name: 'SMS',
+						value: 'sms',
+					},
+				],
+				default: 'sms',
+				description: 'The resource to operate on.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'sms',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Send',
+						value: 'send',
 						description: 'Send SMS/MMS/WhatsApp message',
 					},
 				],
-				default: 'sendMessage',
+				default: 'send',
 				description: 'The operation to perform.',
 			},
 
 
 			// ----------------------------------
-			//         sendMessage
+			//         sms
+			// ----------------------------------
+
+			// ----------------------------------
+			//         sms:send
 			// ----------------------------------
 			{
 				displayName: 'From',
@@ -64,7 +88,10 @@ export class Twilio implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendMessage',
+							'send',
+						],
+						resource: [
+							'sms',
 						],
 					},
 				},
@@ -80,7 +107,10 @@ export class Twilio implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendMessage',
+							'send',
+						],
+						resource: [
+							'sms',
 						],
 					},
 				},
@@ -94,7 +124,10 @@ export class Twilio implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendMessage',
+							'send',
+						],
+						resource: [
+							'sms',
 						],
 					},
 				},
@@ -109,7 +142,10 @@ export class Twilio implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendMessage',
+							'send',
+						],
+						resource: [
+							'sms',
 						],
 					},
 				},
@@ -123,7 +159,8 @@ export class Twilio implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		let operation: string;
+		let resource: string;
 
 		// For Post
 		let body: IDataObject;
@@ -139,26 +176,33 @@ export class Twilio implements INodeType {
 			body = {};
 			qs = {};
 
-			if (operation === 'sendMessage') {
-				// ----------------------------------
-				//         sendMessage
-				// ----------------------------------
+			resource = this.getNodeParameter('resource', i) as string;
+			operation = this.getNodeParameter('operation', i) as string;
 
-				requestMethod = 'POST';
-				endpoint = '/Messages.json';
+			if (resource === 'sms') {
+				if (operation === 'send') {
+					// ----------------------------------
+					//         sms:send
+					// ----------------------------------
 
-				body.From = this.getNodeParameter('from', i) as string;
-				body.To = this.getNodeParameter('to', i) as string;
-				body.Body = this.getNodeParameter('message', i) as string;
+					requestMethod = 'POST';
+					endpoint = '/Messages.json';
 
-				const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
+					body.From = this.getNodeParameter('from', i) as string;
+					body.To = this.getNodeParameter('to', i) as string;
+					body.Body = this.getNodeParameter('message', i) as string;
 
-				if (toWhatsapp === true) {
-					body.From = `whatsapp:${body.From}`;
-					body.To = `whatsapp:${body.To}`;
+					const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
+
+					if (toWhatsapp === true) {
+						body.From = `whatsapp:${body.From}`;
+						body.To = `whatsapp:${body.To}`;
+					}
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
 				}
 			} else {
-				throw new Error(`The operation "${operation}" is not known!`);
+				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
 			const responseData = await twilioApiRequest.call(this, requestMethod, endpoint, body, qs);
