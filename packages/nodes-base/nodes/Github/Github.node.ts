@@ -37,95 +37,210 @@ export class Github implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Operation',
-				name: 'operation',
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
 				options: [
 					{
-						name: 'Create File',
-						value: 'createFile',
-						description: 'Creates a new file in a repository',
+						name: 'File',
+						value: 'file',
 					},
 					{
-						name: 'Create Issue',
-						value: 'createIssue',
-						description: 'Creates a new issue',
+						name: 'Issue',
+						value: 'issue',
 					},
 					{
-						name: 'Create Issue Comment',
-						value: 'createIssueComment',
-						description: 'Creates a new comment on an issue',
+						name: 'Repository',
+						value: 'repository',
 					},
 					{
-						name: 'Create Release',
-						value: 'createRelease',
-						description: 'Creates a new release',
+						name: 'Release',
+						value: 'release',
 					},
 					{
-						name: 'Delete File',
-						value: 'deleteFile',
-						description: 'Deletes a file',
+						name: 'User',
+						value: 'user',
+					},
+				],
+				default: 'issue',
+				description: 'The resource to operate on.',
+			},
+
+
+
+			// ----------------------------------
+			//         operations
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'issue',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new issue',
 					},
 					{
-						name: 'Edit Issue',
-						value: 'editIssue',
-						description: 'Edits an existing issue',
+						name: 'Create Comment',
+						value: 'createComment',
+						description: 'Create a new comment on an issue',
 					},
 					{
-						name: 'Get Community Profile',
-						value: 'getCommunityProfile',
-						description: 'Get the community profile of a repository with metrics, health score, description, license, ...',
+						name: 'Edit',
+						value: 'edit',
+						description: 'Edit an issue',
 					},
 					{
-						name: 'Get File',
-						value: 'getFile',
-						description: 'Get the data of a file',
-					},
-					{
-						name: 'Get Issue',
-						value: 'getIssue',
+						name: 'Get',
+						value: 'get',
 						description: 'Get the data of a single issues',
 					},
 					{
-						name: 'Get Repository Issues',
-						value: 'getRepositoryIssues',
+						name: 'Lock',
+						value: 'lock',
+						description: 'Lock an issue',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new file in repository',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a file in repository',
+					},
+					{
+						name: 'Edit',
+						value: 'edit',
+						description: 'Edit a file in repository',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get the data of a single issues',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'repository',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get License',
+						value: 'getLicense',
+						description: 'Returns the contents of the repository\'s license file, if one is detected',
+					},
+					{
+						name: 'Get Issues',
+						value: 'getIssues',
 						description: 'Returns issues of a repository',
 					},
 					{
-						name: 'Get Repository License',
-						value: 'getRepositoryLicense',
-						description: 'Returns the contents of the repository\'s license file, if one is detected',
+						name: 'Get Profile',
+						value: 'getProfile',
+						description: 'Get the community profile of a repository with metrics, health score, description, license, ...',
 					},
 					{
 						name: 'List Popular Paths',
 						value: 'listPopularPaths',
-						description: 'Get the top 10 popular content paths over the last 14 days.',
+						description: 'Get the data of a file in repositoryGet the top 10 popular content paths over the last 14 days.',
 					},
 					{
 						name: 'List Referrers',
 						value: 'listReferrers',
 						description: 'Get the top 10 referrering domains over the last 14 days',
 					},
-					{
-						name: 'List User Repositories',
-						value: 'listUserRepositories',
-						description: 'Returns the repositories of a user',
-					},
-					{
-						name: 'Lock Issue',
-						value: 'lockIssue',
-						description: 'Lock an issue',
-					},
-					{
-						name: 'Update File',
-						value: 'updateFile',
-						description: 'Updates an existing file',
-					},
 				],
-				default: 'createIssue',
+				default: 'getIssues',
 				description: 'The operation to perform.',
 			},
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get Repositories',
+						value: 'getRepositories',
+						description: 'Returns the repositories of a user',
+					},
+				],
+				default: 'getRepositories',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'release',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Creates a new release',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+
+
+			// ----------------------------------
+			//         shared
+			// ----------------------------------
 			{
 				displayName: 'Repository Owner',
 				name: 'owner',
@@ -143,8 +258,11 @@ export class Github implements INodeType {
 				required: true,
 				displayOptions: {
 					hide: {
+						resource: [
+							'user',
+						],
 						operation: [
-							'listUserRepositories',
+							'getRepositories',
 						],
 					},
 				},
@@ -155,9 +273,12 @@ export class Github implements INodeType {
 
 
 			// ----------------------------------
-			//         createFile / deleteFile / getFile / updateFile
+			//         file
 			// ----------------------------------
 
+			// ----------------------------------
+			//         file:create/delete/edit/get
+			// ----------------------------------
 			{
 				displayName: 'File Path',
 				name: 'filePath',
@@ -166,11 +287,8 @@ export class Github implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'createFile',
-							'deleteFile',
-							'getFile',
-							'updateFile',
+						resource: [
+							'file',
 						],
 					},
 				},
@@ -178,12 +296,9 @@ export class Github implements INodeType {
 				description: 'The file path of the file. Has to contain the full path.',
 			},
 
-
-
 			// ----------------------------------
-			//         createFile / updateFile
+			//         file:create/edit
 			// ----------------------------------
-
 			{
 				displayName: 'Binary Data',
 				name: 'binaryData',
@@ -193,8 +308,11 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createFile',
-							'updateFile',
+							'create',
+							'edit',
+						],
+						resource: [
+							'file',
 						],
 					},
 				},
@@ -208,12 +326,15 @@ export class Github implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'createFile',
-							'updateFile',
-						],
 						binaryData: [
 							false,
+						],
+						operation: [
+							'create',
+							'edit',
+						],
+						resource: [
+							'file',
 						],
 					},
 
@@ -229,12 +350,15 @@ export class Github implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'createFile',
-							'updateFile',
-						],
 						binaryData: [
 							true,
+						],
+						operation: [
+							'create',
+							'edit',
+						],
+						resource: [
+							'file',
 						],
 					},
 
@@ -251,15 +375,17 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createFile',
-							'deleteFile',
-							'updateFile',
+							'create',
+							'delete',
+							'edit',
+						],
+						resource: [
+							'file',
 						],
 					},
 				},
 				description: 'The commit message.',
 			},
-
 			{
 				displayName: 'Additional Parameters',
 				name: 'additionalParameters',
@@ -270,9 +396,12 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createFile',
-							'deleteFile',
-							'updateFile',
+							'create',
+							'delete',
+							'edit',
+						],
+						resource: [
+							'file',
 						],
 					},
 				},
@@ -333,12 +462,59 @@ export class Github implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         file:get
+			// ----------------------------------
+			{
+				displayName: 'As Binary Property',
+				name: 'asBinaryProperty',
+				type: 'boolean',
+				default: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'If set it will set the data of the file as binary property<br />instead of returning the raw API response.',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						asBinaryProperty: [
+							true,
+						],
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+
+				},
+				placeholder: '',
+				description: 'Name of the binary property in which to save<br />the binary data of the received file.',
+			},
+
 
 
 			// ----------------------------------
-			//         createIssue
+			//         issue
 			// ----------------------------------
 
+			// ----------------------------------
+			//         issue:create
+			// ----------------------------------
 			{
 				displayName: 'Title',
 				name: 'title',
@@ -348,7 +524,10 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createIssue',
+							'create',
+						],
+						resource: [
+							'issue',
 						],
 					},
 				},
@@ -365,7 +544,10 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createIssue',
+							'create',
+						],
+						resource: [
+							'issue',
 						],
 					},
 				},
@@ -382,7 +564,10 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createIssue',
+							'create',
+						],
+						resource: [
+							'issue',
 						],
 					},
 				},
@@ -408,7 +593,10 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createIssue',
+							'create',
+						],
+						resource: [
+							'issue',
 						],
 					},
 				},
@@ -424,11 +612,9 @@ export class Github implements INodeType {
 				],
 			},
 
-
 			// ----------------------------------
-			//         createIssueComment
+			//         issue:createComment
 			// ----------------------------------
-
 			{
 				displayName: 'Issue Number',
 				name: 'issueNumber',
@@ -438,7 +624,10 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createIssueComment',
+							'createComment',
+						],
+						resource: [
+							'issue',
 						],
 					},
 				},
@@ -454,7 +643,10 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createIssueComment',
+							'createComment',
+						],
+						resource: [
+							'issue',
 						],
 					},
 				},
@@ -462,88 +654,9 @@ export class Github implements INodeType {
 				description: 'The body of the comment.',
 			},
 
-
 			// ----------------------------------
-			//         createRelease
+			//         issue:edit
 			// ----------------------------------
-
-			{
-				displayName: 'Tag',
-				name: 'releaseTag',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'createRelease',
-						],
-					},
-				},
-				description: 'The tag of the release.',
-			},
-			{
-				displayName: 'Edit Fields',
-				name: 'createReleaseFields',
-				type: 'collection',
-				typeOptions: {
-					multipleValueButtonText: 'Add Field',
-				},
-				displayOptions: {
-					show: {
-						operation: [
-							'createRelease'
-						],
-					},
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						description: 'The name of the issue.',
-					},
-					{
-						displayName: 'Body',
-						name: 'body',
-						type: 'string',
-						typeOptions: {
-							rows: 5,
-						},
-						default: '',
-						description: 'The body of the release.',
-					},
-					{
-						displayName: 'Draft',
-						name: 'draft',
-						type: 'boolean',
-						default: false,
-						description: 'Set "true" to create a draft (unpublished) release, "false" to create a published one.',
-					},
-					{
-						displayName: 'Prerelease',
-						name: 'prerelease',
-						type: 'boolean',
-						default: false,
-						description: 'If set to "true" it will point out that the release is non-production ready.',
-					},
-					{
-						displayName: 'Target Commitish',
-						name: 'target_commitish',
-						type: 'string',
-						default: '',
-						description: 'Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository\'s default branch(usually master).',
-					},
-				],
-			},
-
-
-			// ----------------------------------
-			//         editIssue
-			// ----------------------------------
-
 			{
 				displayName: 'Issue Number',
 				name: 'issueNumber',
@@ -553,7 +666,10 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'editIssue',
+							'edit',
+						],
+						resource: [
+							'issue',
 						],
 					},
 				},
@@ -569,7 +685,10 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'editIssue'
+							'edit',
+						],
+						resource: [
+							'issue',
 						],
 					},
 				},
@@ -652,53 +771,9 @@ export class Github implements INodeType {
 				],
 			},
 
-
-
 			// ----------------------------------
-			//         getFile
+			//         issue:get
 			// ----------------------------------
-
-			{
-				displayName: 'As Binary Property',
-				name: 'asBinaryProperty',
-				type: 'boolean',
-				default: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'getFile',
-						],
-					},
-				},
-				description: 'If set it will set the data of the file as binary property<br />instead of returning the raw API response.',
-			},
-			{
-				displayName: 'Binary Property',
-				name: 'binaryPropertyName',
-				type: 'string',
-				default: 'data',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'getFile',
-						],
-						asBinaryProperty: [
-							true,
-						],
-					},
-
-				},
-				placeholder: '',
-				description: 'Name of the binary property in which to save<br />the binary data of the received file.',
-			},
-
-
-
-			// ----------------------------------
-			//         getIssue
-			// ----------------------------------
-
 			{
 				displayName: 'Issue Number',
 				name: 'issueNumber',
@@ -708,19 +783,173 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'getIssue',
+							'get',
+						],
+						resource: [
+							'issue',
 						],
 					},
 				},
 				description: 'The number of the issue get data of.',
 			},
 
+			// ----------------------------------
+			//         issue:lock
+			// ----------------------------------
+			{
+				displayName: 'Issue Number',
+				name: 'issueNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'lock',
+						],
+						resource: [
+							'issue',
+						],
+					},
+				},
+				description: 'The number of the issue to lock.',
+			},
+			{
+				displayName: 'Lock Reason',
+				name: 'lockReason',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: [
+							'lock',
+						],
+						resource: [
+							'issue',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Off-Topic',
+						value: 'off-topic',
+						description: 'The issue is Off-Topic',
+					},
+					{
+						name: 'Too Heated',
+						value: 'too heated',
+						description: 'The discussion is too heated',
+					},
+					{
+						name: 'Resolved',
+						value: 'resolved',
+						description: 'The issue got resolved',
+					},
+					{
+						name: 'Spam',
+						value: 'spam',
+						description: 'The issue is spam',
+					},
+				],
+				default: 'resolved',
+				description: 'The reason to lock the issue.',
+			},
+
+
 
 			// ----------------------------------
-			//         getRepositoryIssues
+			//         release
 			// ----------------------------------
 
+			// ----------------------------------
+			//         release:create
+			// ----------------------------------
+			{
+				displayName: 'Tag',
+				name: 'releaseTag',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				description: 'The tag of the release.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				typeOptions: {
+					multipleValueButtonText: 'Add Field',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'release',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The name of the issue.',
+					},
+					{
+						displayName: 'Body',
+						name: 'body',
+						type: 'string',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '',
+						description: 'The body of the release.',
+					},
+					{
+						displayName: 'Draft',
+						name: 'draft',
+						type: 'boolean',
+						default: false,
+						description: 'Set "true" to create a draft (unpublished) release, "false" to create a published one.',
+					},
+					{
+						displayName: 'Prerelease',
+						name: 'prerelease',
+						type: 'boolean',
+						default: false,
+						description: 'If set to "true" it will point out that the release is non-production ready.',
+					},
+					{
+						displayName: 'Target Commitish',
+						name: 'target_commitish',
+						type: 'string',
+						default: '',
+						description: 'Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository\'s default branch(usually master).',
+					},
+				],
+			},
 
+
+
+			// ----------------------------------
+			//         repository
+			// ----------------------------------
+
+			// ----------------------------------
+			//         repository:getIssues
+			// ----------------------------------
 			{
 				displayName: 'Filters',
 				name: 'getRepositoryIssuesFilters',
@@ -731,7 +960,10 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'getRepositoryIssues'
+							'getIssues'
+						],
+						resource: [
+							'repository',
 						],
 					},
 				},
@@ -843,62 +1075,6 @@ export class Github implements INodeType {
 				],
 			},
 
-
-			// ----------------------------------
-			//         lockIssue
-			// ----------------------------------
-
-			{
-				displayName: 'Issue Number',
-				name: 'issueNumber',
-				type: 'number',
-				default: 0,
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'lockIssue',
-						],
-					},
-				},
-				description: 'The number of the issue to lock.',
-			},
-			{
-				displayName: 'Lock Reason',
-				name: 'lockReason',
-				type: 'options',
-				displayOptions: {
-					show: {
-						operation: [
-							'lockIssue'
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Off-Topic',
-						value: 'off-topic',
-						description: 'The issue is Off-Topic',
-					},
-					{
-						name: 'Too Heated',
-						value: 'too heated',
-						description: 'The discussion is too heated',
-					},
-					{
-						name: 'Resolved',
-						value: 'resolved',
-						description: 'The issue got resolved',
-					},
-					{
-						name: 'Spam',
-						value: 'spam',
-						description: 'The issue is spam',
-					},
-				],
-				default: 'resolved',
-				description: 'The reason to lock the issue.',
-			},
 		],
 	};
 
@@ -915,25 +1091,25 @@ export class Github implements INodeType {
 
 		// Operations which overwrite the returned data
 		const overwriteDataOperations = [
-			'createFile',
-			'createIssue',
-			'createIssueComment',
-			'createRelease',
-			'deleteFile',
-			'editIssue',
-			'getCommunityProfile',
-			'getFile',
-			'getIssue',
-			'getRepositoryLicense',
-			'updateFile',
+			'file:create',
+			'file:delete',
+			'file:edit',
+			'file:get',
+			'issue:create',
+			'issue:createComment',
+			'issue:edit',
+			'issue:get',
+			'release:create',
+			'repository:getLicense',
+			'repository:getProfile',
 		];
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
 		const overwriteDataOperationsArray = [
-			'getRepositoryIssues',
-			'listPopularPaths',
-			'listReferrers',
-			'listUserRepositories',
+			'repository:getIssues',
+			'repository:listPopularPaths',
+			'repository:listReferrers',
+			'user:getRepositories',
 		];
 
 
@@ -946,6 +1122,8 @@ export class Github implements INodeType {
 		let endpoint: string;
 
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const fullOperation = `${resource}:${operation}`;
 
 		for (let i = 0; i < items.length; i++) {
 			// Reset all values
@@ -957,169 +1135,232 @@ export class Github implements INodeType {
 			// Request the parameters which almost all operations need
 			const owner = this.getNodeParameter('owner', i) as string;
 			let repository = '';
-			if (operation !== 'listUserRepositories') {
+			if (fullOperation !== 'user:getRepositories') {
 				repository = this.getNodeParameter('repository', i) as string;
 			}
 
-			if (['createFile', 'updateFile'].includes(operation)) {
-				requestMethod = 'PUT';
+			if (resource === 'file') {
+				if (['create', 'edit'].includes(operation)) {
+					// ----------------------------------
+					//         create/edit
+					// ----------------------------------
 
-				const filePath = this.getNodeParameter('filePath', i) as string;
+					requestMethod = 'PUT';
 
-				const additionalParameters = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
-				if (additionalParameters.author) {
-					body.author = additionalParameters.author;
-				}
-				if (additionalParameters.committer) {
-					body.committer = additionalParameters.committer;
-				}
-				if (additionalParameters.branch && (additionalParameters.branch as IDataObject).branch) {
-					body.branch = (additionalParameters.branch as IDataObject).branch;
-				}
+					const filePath = this.getNodeParameter('filePath', i) as string;
 
-				if (operation === 'updateFile') {
-					// If the file should be updated the request has to contain the SHA
-					// of the file which gets replaced.
+					const additionalParameters = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
+					if (additionalParameters.author) {
+						body.author = additionalParameters.author;
+					}
+					if (additionalParameters.committer) {
+						body.committer = additionalParameters.committer;
+					}
+					if (additionalParameters.branch && (additionalParameters.branch as IDataObject).branch) {
+						body.branch = (additionalParameters.branch as IDataObject).branch;
+					}
+
+					if (operation === 'edit') {
+						// If the file should be updated the request has to contain the SHA
+						// of the file which gets replaced.
+						body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
+					}
+
+					body.message = this.getNodeParameter('commitMessage', i) as string;
+
+					if (this.getNodeParameter('binaryData', i) === true) {
+						// Is binary file to upload
+						const item = items[i];
+
+						if (item.binary === undefined) {
+							throw new Error('No binary data exists on item!');
+						}
+
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+						if (item.binary[binaryPropertyName] === undefined) {
+							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
+
+						// Currently internally n8n uses base64 and also Github expects it base64 encoded.
+						// If that ever changes the data has to get converted here.
+						body.content = item.binary[binaryPropertyName].data;
+					} else {
+						// Is text file
+						// body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'base64');
+						body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string).toString('base64');
+					}
+
+					endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const additionalParameters = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
+					if (additionalParameters.author) {
+						body.author = additionalParameters.author;
+					}
+					if (additionalParameters.committer) {
+						body.committer = additionalParameters.committer;
+					}
+					if (additionalParameters.branch && (additionalParameters.branch as IDataObject).branch) {
+						body.branch = (additionalParameters.branch as IDataObject).branch;
+					}
+
+					const filePath = this.getNodeParameter('filePath', i) as string;
+					body.message = this.getNodeParameter('commitMessage', i) as string;
+
 					body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
+
+					endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+				} else if (operation === 'get') {
+					requestMethod = 'GET';
+
+					const filePath = this.getNodeParameter('filePath', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
 				}
+			} else if (resource === 'issue') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
 
-				body.message = this.getNodeParameter('commitMessage', i) as string;
+					requestMethod = 'POST';
 
-				if (this.getNodeParameter('binaryData', i) === true) {
-					// Is binary file to upload
-					const item = items[i];
+					body.title = this.getNodeParameter('title', i) as string;
+					body.body = this.getNodeParameter('body', i) as string;
+					const labels = this.getNodeParameter('labels', i) as IDataObject[];
 
-					if (item.binary === undefined) {
-						throw new Error('No binary data exists on item!');
+					const assignees = this.getNodeParameter('assignees', i) as IDataObject[];
+
+					body.labels = labels.map((data) => data['label']);
+					body.assignees = assignees.map((data) => data['assignee']);
+
+					endpoint = `/repos/${owner}/${repository}/issues`;
+				} else if (operation === 'createComment') {
+					// ----------------------------------
+					//         createComment
+					// ----------------------------------
+					requestMethod = 'POST';
+
+					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+					body.body = this.getNodeParameter('body', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/comments`;
+				} else if (operation === 'edit') {
+					// ----------------------------------
+					//         edit
+					// ----------------------------------
+
+					requestMethod = 'PATCH';
+
+					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+					body = this.getNodeParameter('editFields', i, {}) as IDataObject;
+
+					if (body.labels !== undefined) {
+						body.labels = (body.labels as IDataObject[]).map((data) => data['label']);
+					}
+					if (body.assignees !== undefined) {
+						body.assignees = (body.assignees as IDataObject[]).map((data) => data['assignee']);
 					}
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
 
-					if (item.binary[binaryPropertyName] === undefined) {
-						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
-					}
+					requestMethod = 'GET';
 
-					// Currently internally n8n uses base64 and also Github expects it base64 encoded.
-					// If that ever changes the data has to get converted here.
-					body.content = item.binary[binaryPropertyName].data;
-				} else {
-					// Is text file
-					// body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'base64');
-					body.content = Buffer.from(this.getNodeParameter('fileContent', i) as string).toString('base64');
+					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
+				} else if (operation === 'lock') {
+					// ----------------------------------
+					//         lock
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
+
+					qs.lock_reason = this.getNodeParameter('lockReason', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/lock`;
 				}
+			} else if (resource === 'release') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
 
-				endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-			} else if (operation === 'createIssue') {
-				requestMethod = 'POST';
+					requestMethod = 'POST';
 
-				body.title = this.getNodeParameter('title', i) as string;
-				body.body = this.getNodeParameter('body', i) as string;
-				const labels = this.getNodeParameter('labels', i) as IDataObject[];
+					body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
-				const assignees = this.getNodeParameter('assignees', i) as IDataObject[];
+					body.tag_name = this.getNodeParameter('releaseTag', i) as string;
 
-				body.labels = labels.map((data) => data['label']);
-				body.assignees = assignees.map((data) => data['assignee']);
-
-				endpoint = `/repos/${owner}/${repository}/issues`;
-			} else if (operation === 'createIssueComment') {
-				requestMethod = 'POST';
-
-				const issueNumber = this.getNodeParameter('issueNumber', i) as string;
-
-				body.body = this.getNodeParameter('body', i) as string;
-
-				endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/comments`;
-			} else if (operation === 'createRelease') {
-				requestMethod = 'POST';
-
-				body = this.getNodeParameter('createReleaseFields', i, {}) as IDataObject;
-
-				body.tag_name = this.getNodeParameter('releaseTag', i) as string;
-
-				endpoint = `/repos/${owner}/${repository}/releases`;
-			} else if (operation === 'deleteFile') {
-				requestMethod = 'DELETE';
-
-				const additionalParameters = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
-				if (additionalParameters.author) {
-					body.author = additionalParameters.author;
+					endpoint = `/repos/${owner}/${repository}/releases`;
 				}
-				if (additionalParameters.committer) {
-					body.committer = additionalParameters.committer;
+			} else if (resource === 'repository') {
+				if (operation === 'listPopularPaths') {
+					// ----------------------------------
+					//         listPopularPaths
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = `/repos/${owner}/${repository}/traffic/popular/paths`;
+				} else if (operation === 'listReferrers') {
+					// ----------------------------------
+					//         listReferrers
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = `/repos/${owner}/${repository}/traffic/popular/referrers`;
+				} else if (operation === 'getLicense') {
+					// ----------------------------------
+					//         getLicense
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = `/repos/${owner}/${repository}/license`;
+				} else if (operation === 'getIssues') {
+					// ----------------------------------
+					//         getIssues
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
+
+					endpoint = `/repos/${owner}/${repository}/issues`;
 				}
-				if (additionalParameters.branch && (additionalParameters.branch as IDataObject).branch) {
-					body.branch = (additionalParameters.branch as IDataObject).branch;
+			} else if (resource === 'user') {
+				if (operation === 'getRepositories') {
+					// ----------------------------------
+					//         getRepositories
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = `/users/${owner}/repos`;
 				}
-
-				const filePath = this.getNodeParameter('filePath', i) as string;
-				body.message = this.getNodeParameter('commitMessage', i) as string;
-
-				body.sha = await getFileSha.call(this, owner, repository, filePath, body.branch as string | undefined);
-
-				endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-			} else if (operation === 'editIssue') {
-				requestMethod = 'PATCH';
-
-				const issueNumber = this.getNodeParameter('issueNumber', i) as string;
-
-				body = this.getNodeParameter('editFields', i, {}) as IDataObject;
-
-				if (body.labels !== undefined) {
-					body.labels = (body.labels as IDataObject[]).map((data) => data['label']);
-				}
-				if (body.assignees !== undefined) {
-					body.assignees = (body.assignees as IDataObject[]).map((data) => data['assignee']);
-				}
-
-				endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
-			} else if (operation === 'getFile') {
-				requestMethod = 'GET';
-
-				const filePath = this.getNodeParameter('filePath', i) as string;
-
-				endpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-			} else if (operation === 'getIssue') {
-				requestMethod = 'GET';
-
-				const issueNumber = this.getNodeParameter('issueNumber', i) as string;
-
-				endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
-			} else if (operation === 'listPopularPaths') {
-				requestMethod = 'GET';
-
-				endpoint = `/repos/${owner}/${repository}/traffic/popular/paths`;
-			} else if (operation === 'listReferrers') {
-				requestMethod = 'GET';
-
-				endpoint = `/repos/${owner}/${repository}/traffic/popular/referrers`;
-			} else if (operation === 'getRepositoryLicense') {
-				requestMethod = 'GET';
-
-				endpoint = `/repos/${owner}/${repository}/license`;
-			} else if (operation === 'getRepositoryIssues') {
-				requestMethod = 'GET';
-
-				qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
-
-				endpoint = `/repos/${owner}/${repository}/issues`;
-			} else if (operation === 'listUserRepositories') {
-				requestMethod = 'GET';
-
-				endpoint = `/users/${owner}/repos`;
-			} else if (operation === 'lockIssue') {
-				requestMethod = 'PUT';
-
-				const issueNumber = this.getNodeParameter('issueNumber', i) as string;
-
-				qs.lock_reason = this.getNodeParameter('lockReason', i) as string;
-
-				endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/lock`;
+			} else {
+				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
 			const responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-			if (operation === 'getFile') {
+			if (fullOperation === 'file:get') {
 				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
 
 				if (asBinaryProperty === true) {
@@ -1133,14 +1374,14 @@ export class Github implements INodeType {
 				}
 			}
 
-			if (overwriteDataOperations.includes(operation)) {
+			if (overwriteDataOperations.includes(fullOperation)) {
 				returnData.push(responseData);
-			} else if (overwriteDataOperationsArray.includes(operation)) {
+			} else if (overwriteDataOperationsArray.includes(fullOperation)) {
 				returnData.push.apply(returnData, responseData);
 			}
 		}
 
-		if (overwriteDataOperations.includes(operation) || overwriteDataOperationsArray.includes(operation)) {
+		if (overwriteDataOperations.includes(fullOperation) || overwriteDataOperationsArray.includes(fullOperation)) {
 			// Return data gets replaced
 			return [this.helpers.returnJsonArray(returnData)];
 		} else {
