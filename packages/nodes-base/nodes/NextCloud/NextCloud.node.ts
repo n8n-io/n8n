@@ -20,6 +20,7 @@ export class NextCloud implements INodeType {
 		icon: 'file:nextcloud.png',
 		group: ['input'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access data on NextCloud',
 		defaults: {
 			name: 'NextCloud',
