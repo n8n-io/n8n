@@ -139,7 +139,7 @@ export class NextCloud implements INodeType {
 				],
 				default: 'create',
 				description: 'The operation to perform.',
-			}
+			},
 
 
 
