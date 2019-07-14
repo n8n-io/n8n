@@ -44,6 +44,7 @@ export class Pipedrive implements INodeType {
 		icon: 'file:pipedrive.png',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Create and edit data in Pipedrive',
 		defaults: {
 			name: 'Pipedrive',
