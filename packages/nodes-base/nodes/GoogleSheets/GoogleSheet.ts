@@ -47,6 +47,7 @@ export class GoogleSheet {
 				auth: client,
 				spreadsheetId: this.id,
 				range,
+				valueRenderOption: 'UNFORMATTED_VALUE',
 			}
 		);
 
