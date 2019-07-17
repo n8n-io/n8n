@@ -468,7 +468,6 @@ export const workflowHelpers = mixins(
 				for (const node of workflowData.nodes) {
 					node.position[0] += offsetPosition[0];
 					node.position[1] += offsetPosition[1];
-					console.log(node.position);
 				}
 			},
 		},

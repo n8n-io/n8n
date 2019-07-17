@@ -508,7 +508,7 @@ export class Workflow {
 
 
 	/**
-	 * Returns all the active nodes before the given one
+	 * Returns all the after the given one
 	 *
 	 * @param {string} nodeName
 	 * @param {string} [type='main']
@@ -516,7 +516,40 @@ export class Workflow {
 	 * @returns {string[]}
 	 * @memberof Workflow
 	 */
-	getParentNodes(nodeName: string, type = 'main', depth = -1, checkedNodes?: string[]): string[] {
+	getChildNodes(nodeName: string, type = 'main', depth = -1): string[] {
+		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
+	}
+
+
+
+	/**
+	 * Returns all the nodes before the given one
+	 *
+	 * @param {string} nodeName
+	 * @param {string} [type='main']
+	 * @param {*} [depth=-1]
+	 * @returns {string[]}
+	 * @memberof Workflow
+	 */
+	getParentNodes(nodeName: string, type = 'main', depth = -1): string[] {
+		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
+	}
+
+
+
+	/**
+	 * Gets all the nodes which are connected nodes starting from
+	 * the given one
+	 *
+	 * @param {IConnections} connections
+	 * @param {string} nodeName
+	 * @param {string} [type='main']
+	 * @param {*} [depth=-1]
+	 * @param {string[]} [checkedNodes]
+	 * @returns {string[]}
+	 * @memberof Workflow
+	 */
+	getConnectedNodes(connections: IConnections, nodeName: string, type = 'main', depth = -1, checkedNodes?: string[]): string[] {
 		depth = depth === -1 ? -1 : depth;
 		const newDepth = depth === -1 ? depth : depth - 1;
 		if (depth === 0) {
@@ -524,12 +557,12 @@ export class Workflow {
 			return [];
 		}
 
-		if (!this.connectionsByDestinationNode.hasOwnProperty(nodeName)) {
+		if (!connections.hasOwnProperty(nodeName)) {
 			// Node does not have incoming connections
 			return [];
 		}
 
-		if (!this.connectionsByDestinationNode[nodeName].hasOwnProperty(type)) {
+		if (!connections[nodeName].hasOwnProperty(type)) {
 			// Node does not have incoming connections of given type
 			return [];
 		}
@@ -548,7 +581,7 @@ export class Workflow {
 		let nodeIndex: number;
 		let i: number;
 		let parentNodeName: string;
-		this.connectionsByDestinationNode[nodeName][type].forEach((connectionsByIndex) => {
+		connections[nodeName][type].forEach((connectionsByIndex) => {
 			connectionsByIndex.forEach((connection) => {
 				if (checkedNodes!.includes(connection.node)) {
 					// Node got checked already before
@@ -557,7 +590,7 @@ export class Workflow {
 
 				returnNodes.unshift(connection.node);
 
-				addNodes = this.getParentNodes(connection.node, type, newDepth, checkedNodes);
+				addNodes = this.getConnectedNodes(connections, connection.node, type, newDepth, checkedNodes);
 
 				for (i = addNodes.length; i--; i > 0) {
 					// Because nodes can have multiple parents it is possible that
