@@ -324,8 +324,9 @@ export default mixins(
 			},
 			mouseDown (e: MouseEvent) {
 				// Save the location of the mouse click
-				this.lastClickPosition[0] = e.pageX;
-				this.lastClickPosition[1] = e.pageY;
+				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
+				this.lastClickPosition[0] = e.pageX - offsetPosition[0];
+				this.lastClickPosition[1] = e.pageY - offsetPosition[1];
 
 				this.mouseDownMouseSelect(e);
 				this.mouseDownMoveWorkflow(e);
