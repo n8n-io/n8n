@@ -3,8 +3,8 @@
  * defined on the component which uses this mixin
  */
 import Vue from 'vue';
+import { debounce } from 'lodash';
 
-// export const copyPaste = {
 export const copyPaste = Vue.extend({
 	data () {
 		return {
@@ -92,7 +92,7 @@ export const copyPaste = Vue.extend({
 
 		// Set clipboard event listeners on the document.
 		['paste'].forEach((event) => {
-			document.addEventListener(event, (e) => {
+			document.addEventListener(event, debounce((e) => {
 				// Check if the event got emitted from a message box or from something
 				// else which should ignore the copy/paste
 				// @ts-ignore
@@ -118,7 +118,7 @@ export const copyPaste = Vue.extend({
 						e.preventDefault();
 					}
 				}
-			});
+			}, 1000, { leading: true }));
 		});
 	},
 	methods: {
