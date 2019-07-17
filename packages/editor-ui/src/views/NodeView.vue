@@ -704,10 +704,17 @@ export default mixins(
 				}
 
 				try {
-					const data = await this.addNodesToWorkflow(workflowData);
 					// By default we automatically deselect all the currently
 					// selected nodes and select the new ones
 					this.deselectAllNodes();
+
+					// Fix the node position as it could be totally offscreen
+					// and the pasted nodes would so not be directly visible to
+					// the user
+					this.updateNodePositions(workflowData, this.getNewNodePosition());
+
+					const data = await this.addNodesToWorkflow(workflowData);
+
 					setTimeout(() => {
 						data.nodes!.forEach((node: INodeUi) => {
 							this.nodeSelectedByName(node.name);
@@ -1515,8 +1522,6 @@ export default mixins(
 
 					oldName = node.name;
 					node.name = this.getUniqueNodeName(node.name, newNodeNames);
-					node.position[0] += 200;
-					node.position[1] += 50;
 
 					newNodeNames.push(node.name);
 					nodeNameTable[oldName] = node.name;

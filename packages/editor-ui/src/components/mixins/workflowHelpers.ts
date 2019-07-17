@@ -19,6 +19,8 @@ import {
 	INodeTypesMaxCount,
 	INodeUi,
 	IWorkflowData,
+	IWorkflowDataUpdate,
+	XYPositon,
 } from '../../Interface';
 
 import { restApi } from '@/components/mixins/restApi';
@@ -436,6 +438,37 @@ export const workflowHelpers = mixins(
 						message: `There was a problem saving the workflow: "${e.message}"`,
 						type: 'error',
 					});
+				}
+			},
+
+			// Updates the position of all the nodes that the top-left node
+			// is at the given position
+			updateNodePositions (workflowData: IWorkflowData | IWorkflowDataUpdate, position: XYPositon): void {
+				if (workflowData.nodes === undefined) {
+					return;
+				}
+
+				// Find most top-left node
+				const minPosition = [99999999, 99999999];
+				for (const node of workflowData.nodes) {
+					if (node.position[1] < minPosition[1]) {
+						minPosition[0] = node.position[0];
+						minPosition[1] = node.position[1];
+					} else if (node.position[1] === minPosition[1]) {
+						if (node.position[0] < minPosition[0]) {
+							minPosition[0] = node.position[0];
+							minPosition[1] = node.position[1];
+						}
+					}
+				}
+
+				// Update the position on all nodes so that the
+				// most top-left one is at given position
+				const offsetPosition = [position[0] - minPosition[0], position[1] - minPosition[1]];
+				for (const node of workflowData.nodes) {
+					node.position[0] += offsetPosition[0];
+					node.position[1] += offsetPosition[1];
+					console.log(node.position);
 				}
 			},
 		},
