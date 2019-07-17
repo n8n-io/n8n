@@ -493,6 +493,54 @@ export class WorkflowExecute {
 										}
 									} else {
 										stillDataMissing = true;
+
+										// Node was not on "waitingExecution" so it is the first time it gets
+										// checked. So we have to go through all the inputs and check if they
+										// are already on the list to be processed.
+										// If that is not the case add it.
+										for (let inputIndex = 0; inputIndex < workflow.connectionsByDestinationNode[connectionData.node]['main'].length; inputIndex++) {
+											for (const inputData of workflow.connectionsByDestinationNode[connectionData.node]['main'][inputIndex]) {
+												if (inputData.node === executionNode.name) {
+													// Is the node we come from so its data is available for sure
+													continue;
+												}
+
+												// Get the most top nodes to know where to start to process from
+												const inputStartNodes = workflow.getStartNodes(inputData.node);
+
+												for (const startNode of inputStartNodes) {
+													// Check if the node has to be added to be processed
+
+													// Check if node got processed already
+													if (runExecutionData.resultData.runData[startNode.name] !== undefined) {
+														continue;
+													}
+
+													// Check if it is already in the execution stack
+													const executionStackNodes = runExecutionData.executionData!.nodeExecutionStack.map((stackData) => stackData.node.name);
+													if (executionStackNodes.includes(startNode.name)) {
+														continue;
+													}
+
+													// Add is currently missing so add it
+													runExecutionData.executionData!.nodeExecutionStack.push(
+														{
+															node: startNode,
+															data: {
+																main: [
+																	[
+																		{
+																			json: {},
+																		},
+																	],
+																],
+															},
+														},
+													);
+												}
+
+											}
+										}
 									}
 								}
 
