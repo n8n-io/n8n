@@ -10,7 +10,7 @@
 			<div v-if="multipleValues === true">
 				<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
 					<div class="parameter-item-wrapper">
-						<div class="delete-option clickable" title="Delete" v-if="!isReadOnly">
+						<div class="delete-option" title="Delete" v-if="!isReadOnly">
 							<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name, index)" />
 						</div>
 						<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name, index)" :hideDelete="true" @valueChanged="valueChanged" />
@@ -19,7 +19,7 @@
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
-					<div class="delete-option clickable" title="Delete" v-if="!isReadOnly">
+					<div class="delete-option" title="Delete" v-if="!isReadOnly">
 						<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name)" />
 					</div>
 					<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name)" class="parameter-item" @valueChanged="valueChanged" :hideDelete="true" />
@@ -210,6 +210,8 @@ export default mixins(genericHelpers)
 	color: #f56c6c;
 	left: 0;
 	top: 0;
+	width: 15px;
+	height: 100%;
 }
 
 .parameter-item-wrapper:hover > .delete-option {
