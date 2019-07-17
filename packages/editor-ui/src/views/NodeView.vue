@@ -245,7 +245,7 @@ export default mixins(
 			return {
 				createNodeActive: false,
 				instance: jsPlumb.getInstance(),
-				lastClickPosition: [150, 30] as XYPositon,
+				lastClickPosition: [450, 450] as XYPositon,
 				nodeViewScale: 1,
 				ctrlKeyPressed: false,
 				debouncedFunctions: [] as any[], // tslint:disable-line:no-any
