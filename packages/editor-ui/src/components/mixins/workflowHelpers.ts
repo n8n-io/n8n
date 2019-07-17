@@ -396,12 +396,21 @@ export const workflowHelpers = mixins(
 
 					if (currentWorkflow === undefined || withNewName === true) {
 						// Workflow is new or is supposed to get saved under a new name
-						// so create a new etnry in database
+						// so create a new entry in database
 						workflowData.name = workflowName as string;
+
+						if (withNewName === true) {
+							// If an existing workflow gets resaved with a new name
+							// make sure that the new ones is not active
+							workflowData.active = false;
+						}
+
 						workflowData = await this.restApi().createNewWorkflow(workflowData);
 
-						this.$store.commit('setWorkflowName', workflowData.name);
+						this.$store.commit('setActive', workflowData.active || false);
 						this.$store.commit('setWorkflowId', workflowData.id);
+						this.$store.commit('setWorkflowName', workflowData.name);
+						this.$store.commit('setWorkflowSettings', workflowData.settings || {});
 					} else {
 						// Workflow exists already so update it
 						await this.restApi().updateWorkflow(currentWorkflow, workflowData);
