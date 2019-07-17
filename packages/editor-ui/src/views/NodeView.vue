@@ -12,6 +12,7 @@
 				v-for="nodeData in nodes"
 				@duplicateNode="duplicateNode"
 				@deselectAllNodes="deselectAllNodes"
+				@deselectNode="nodeDeselectedByName"
 				@nodeSelected="nodeSelectedByName"
 				@removeNode="removeNode"
 				@runWorkflow="runWorkflow"
@@ -779,6 +780,13 @@ export default mixins(
 			nodeTypeSelected (nodeTypeName: string) {
 				this.addNodeButton(nodeTypeName);
 				this.createNodeActive = false;
+			},
+
+			nodeDeselectedByName (nodeName: string) {
+				const node = this.$store.getters.nodeByName(nodeName);
+				if (node) {
+					this.nodeDeselected(node);
+				}
 			},
 
 			nodeSelectedByName (nodeName: string, setActive = false, deselectAllOthers?: boolean) {

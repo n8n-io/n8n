@@ -26,6 +26,9 @@ export const nodeBase = mixins(nodeIndex).extend({
 			}
 			return false;
 		},
+		isMacOs(): boolean {
+			return /(ipad|iphone|ipod|mac)/i.test(navigator.platform);
+		},
 		isReadOnly (): boolean {
 			if (['NodeViewExisting', 'NodeViewNew'].includes(this.$route.name as string)) {
 				return false;
@@ -271,23 +274,32 @@ export const nodeBase = mixins(nodeIndex).extend({
 
 							this.$store.commit('updateNodeProperties', updateInformation);
 						});
-
-						this.$store.commit('removeActiveAction', 'dragActive');
 					}
 				},
 				filter: '.action-button',
 			});
 		},
 
+		isCtrlKeyPressed(e: MouseEvent | KeyboardEvent): boolean {
+			if (this.isMacOs) {
+				return e.metaKey;
+			}
+			return e.ctrlKey;
+		},
+
 		mouseLeftClick (e: MouseEvent) {
 			if (this.$store.getters.isActionActive('dragActive')) {
 				this.$store.commit('removeActiveAction', 'dragActive');
 			} else {
-				if (!e.ctrlKey) {
+				if (this.isCtrlKeyPressed(e) === false) {
 					this.$emit('deselectAllNodes');
 				}
 
-				this.$emit('nodeSelected', this.name);
+				if (this.$store.getters.isNodeSelected(this.data.name)) {
+					this.$emit('deselectNode', this.name);
+				} else {
+					this.$emit('nodeSelected', this.name);
+				}
 			}
 		},
 	},
