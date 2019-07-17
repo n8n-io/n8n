@@ -11,6 +11,11 @@ export const mouseSelect = mixins(nodeIndex).extend({
 			selectBox: document.createElement('span'),
 		};
 	},
+	computed: {
+		isMacOs (): boolean {
+			return /(ipad|iphone|ipod|mac)/i.test(navigator.platform);
+		},
+	},
 	mounted () {
 		this.createSelectBox();
 	},
@@ -27,6 +32,12 @@ export const mouseSelect = mixins(nodeIndex).extend({
 
 			// document.body.appendChild(this.selectBox);
 			this.$el.appendChild(this.selectBox);
+		},
+		isCtrlKeyPressed (e: MouseEvent | KeyboardEvent): boolean {
+			if (this.isMacOs) {
+				return e.metaKey;
+			}
+			return e.ctrlKey;
 		},
 		showSelectBox (event: MouseEvent) {
 			// @ts-ignore
@@ -97,7 +108,7 @@ export const mouseSelect = mixins(nodeIndex).extend({
 			return returnNodes;
 		},
 		mouseDownMouseSelect (e: MouseEvent) {
-			if (e.ctrlKey === true) {
+			if (this.isCtrlKeyPressed(e) === true) {
 				// We only care about it when the ctrl key is not pressed at the same time.
 				// So we exit when it is pressed.
 				return;
