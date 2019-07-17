@@ -39,7 +39,7 @@ export class ErrorTrigger implements INodeType {
 						message: 'Example Error Message',
 						stack: 'Stacktrace'
 					},
-					lastNodeExecuted: '',
+					lastNodeExecuted: 'Node With Error',
 					mode: 'manual'
 				},
 				workflow: {
