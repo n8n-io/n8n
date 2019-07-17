@@ -8,9 +8,24 @@ export const moveNodeWorkflow = mixins(nodeIndex).extend({
 			moveLastPosition: [0, 0],
 		};
 	},
-	mounted () {
+	computed: {
+		controlKeyCode (): string {
+			if (this.isMacOs) {
+				return 'Meta';
+			}
+			return 'Control';
+		},
+		isMacOs (): boolean {
+			return /(ipad|iphone|ipod|mac)/i.test(navigator.platform);
+		},
 	},
 	methods: {
+		isCtrlKeyPressed (e: MouseEvent | KeyboardEvent): boolean {
+			if (this.isMacOs) {
+				return e.metaKey;
+			}
+			return e.ctrlKey;
+		},
 		moveWorkflow (e: MouseEvent) {
 			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
 
@@ -23,7 +38,7 @@ export const moveNodeWorkflow = mixins(nodeIndex).extend({
 			this.moveLastPosition[1] = e.pageY;
 		},
 		mouseDownMoveWorkflow (e: MouseEvent) {
-			if (e.ctrlKey === false) {
+			if (this.isCtrlKeyPressed(e) === false) {
 				// We only care about it when the ctrl key is pressed at the same time.
 				// So we exit when it is not pressed.
 				return;
