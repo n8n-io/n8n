@@ -338,7 +338,7 @@ export default mixins(
 				this.mouseUpMoveWorkflow(e);
 			},
 			keyUp (e: KeyboardEvent) {
-				if (e.key === 'Control') {
+				if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = false;
 				}
 			},
@@ -368,7 +368,7 @@ export default mixins(
 					this.$store.commit('setActiveNode', null);
 				} else if (e.key === 'Tab') {
 					this.createNodeActive = !this.createNodeActive;
-				} else if (e.key === 'Control') {
+				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
 				} else if (e.key === 'F2') {
 					const lastSelectedNode = this.lastSelectedNode;
@@ -379,29 +379,29 @@ export default mixins(
 					this.callDebounced('setZoom', 300, 'in');
 				} else if (e.key === '-') {
 					this.callDebounced('setZoom', 300, 'out');
-				} else if ((e.key === '0') && (e.ctrlKey === true)) {
+				} else if ((e.key === '0') && (this.isCtrlKeyPressed(e) === true)) {
 					this.callDebounced('setZoom', 300, 'reset');
-				} else if ((e.key === 'a') && (e.ctrlKey === true)) {
+				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
 					e.stopPropagation();
 					e.preventDefault();
 
 					this.callDebounced('selectAllNodes', 1000);
-				} else if ((e.key === 'c') && (e.ctrlKey === true)) {
+				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
 					this.callDebounced('copySelectedNodes', 1000);
-				} else if ((e.key === 'x') && (e.ctrlKey === true)) {
+				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
 					// Cut nodes
 					e.stopPropagation();
 					e.preventDefault();
 
 					this.callDebounced('cutSelectedNodes', 1000);
-				} else if (e.key === 'o' && e.ctrlKey === true) {
+				} else if (e.key === 'o' && this.isCtrlKeyPressed(e) === true) {
 					// Open workflow dialog
 					e.stopPropagation();
 					e.preventDefault();
 
 					this.$root.$emit('openWorkflowDialog');
-				} else if (e.key === 'n' && e.ctrlKey === true && e.altKey === true) {
+				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
 					e.preventDefault();
@@ -413,7 +413,7 @@ export default mixins(
 						message: 'A new workflow got created!',
 						type: 'success',
 					});
-				} else if ((e.key === 's') && (e.ctrlKey === true)) {
+				} else if ((e.key === 's') && (this.isCtrlKeyPressed(e) === true)) {
 					// Save workflow
 					e.stopPropagation();
 					e.preventDefault();
