@@ -850,20 +850,37 @@ export default mixins(
 				return newPosition!;
 			},
 			getUniqueNodeName (originalName: string, additinalUsedNames?: string[]) {
+				// Check if node-name is unique else find one that is
 				additinalUsedNames = additinalUsedNames || [];
 
-				// Check if node-name is unique else find one that is
+				// Get all the names of the current nodes
 				const nodeNames = this.$store.getters.allNodes.map((node: INodeUi) => {
 					return node.name;
 				});
 
+				const nameMatch = originalName.match(/(.*[a-zA-Z])(\d*)/);
+				let ignore, baseName, nameIndex, uniqueName;
 				let index = 1;
-				let uniqueName = originalName;
+
+				if (nameMatch === null) {
+					// Name is only a number
+					index = parseInt(originalName, 10);
+					baseName = '';
+					uniqueName = baseName + index;
+				} else {
+					// Name is string or string/number combination
+					[ignore, baseName, nameIndex] = nameMatch;
+					if (nameIndex !== '') {
+						index = parseInt(nameIndex, 10);
+					}
+					uniqueName = baseName;
+				}
+
 				while (
-					nodeNames.indexOf(uniqueName) !== -1 ||
-					additinalUsedNames.indexOf(uniqueName) !== -1
+					nodeNames.includes(uniqueName) ||
+					additinalUsedNames.includes(uniqueName)
 				) {
-					uniqueName = originalName + index++;
+					uniqueName = baseName + (index++);
 				}
 
 				return uniqueName;
