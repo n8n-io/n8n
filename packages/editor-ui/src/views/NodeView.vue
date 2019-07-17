@@ -427,6 +427,12 @@ export default mixins(
 					if (lastSelectedNode !== null) {
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
 					}
+				} else if (e.key === 'ArrowDown' && e.shiftKey === true) {
+					// Select all downstream nodes
+					e.stopPropagation();
+					e.preventDefault();
+
+					this.callDebounced('selectDownstreamNodes', 1000);
 				} else if (e.key === 'ArrowDown') {
 					// Set child node active
 					const lastSelectedNode = this.$store.getters.lastSelectedNode;
@@ -441,6 +447,12 @@ export default mixins(
 					}
 
 					this.callDebounced('nodeSelectedByName', 100, connections.main[0][0].node, false, true);
+				} else if (e.key === 'ArrowUp' && e.shiftKey === true) {
+					// Select all downstream nodes
+					e.stopPropagation();
+					e.preventDefault();
+
+					this.callDebounced('selectUpstreamNodes', 1000);
 				} else if (e.key === 'ArrowUp') {
 					// Set parent node active
 					const lastSelectedNode = this.$store.getters.lastSelectedNode;
@@ -558,6 +570,41 @@ export default mixins(
 				this.nodes.forEach((node) => {
 					this.nodeSelectedByName(node.name);
 				});
+			},
+
+			selectUpstreamNodes () {
+				const lastSelectedNode = this.$store.getters.lastSelectedNode as INodeUi | null;
+				if (lastSelectedNode === null) {
+					return;
+				}
+
+				this.deselectAllNodes();
+
+				// Get all upstream nodes and select them
+				const workflow = this.getWorkflow();
+				for (const nodeName of workflow.getParentNodes(lastSelectedNode.name)) {
+					this.nodeSelectedByName(nodeName);
+				}
+
+				// At the end select the previously selected node again
+				this.nodeSelectedByName(lastSelectedNode.name);
+			},
+			selectDownstreamNodes () {
+				const lastSelectedNode = this.$store.getters.lastSelectedNode as INodeUi | null;
+				if (lastSelectedNode === null) {
+					return;
+				}
+
+				this.deselectAllNodes();
+
+				// Get all downstream nodes and select them
+				const workflow = this.getWorkflow();
+				for (const nodeName of workflow.getChildNodes(lastSelectedNode.name)) {
+					this.nodeSelectedByName(nodeName);
+				}
+
+				// At the end select the previously selected node again
+				this.nodeSelectedByName(lastSelectedNode.name);
 			},
 
 			cutSelectedNodes () {
