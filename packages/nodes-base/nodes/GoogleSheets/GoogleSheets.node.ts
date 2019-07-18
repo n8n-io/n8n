@@ -68,7 +68,6 @@ export class GoogleSheets implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				noDataExpression: true,
 				description: 'The ID of the Google Sheet.',
 			},
 			{
@@ -77,7 +76,6 @@ export class GoogleSheets implements INodeType {
 				type: 'string',
 				default: 'A:F',
 				required: true,
-				noDataExpression: true,
 				description: 'The columns to read and append data to.<br />If it contains multiple sheets it can also be<br />added like this: "MySheet!A:F"',
 			},
 
@@ -113,7 +111,6 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				noDataExpression: true,
 				description: 'The name of the property into which to write the RAW data.',
 			},
 
@@ -149,7 +146,6 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				noDataExpression: true,
 				description: 'The name of the property from which to read the RAW data.',
 			},
 
@@ -175,7 +171,6 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				noDataExpression: true,
 				description: 'Index of the first row which contains<br />the actual data and not the keys. Starts with 0.',
 			},
 
@@ -197,7 +192,6 @@ export class GoogleSheets implements INodeType {
 					},
 				},
 				default: 0,
-				noDataExpression: true,
 				description: 'Index of the row which contains the key. Starts with 0.',
 			},
 
@@ -219,7 +213,6 @@ export class GoogleSheets implements INodeType {
 						],
 					},
 				},
-				noDataExpression: true,
 				description: 'The name of the key to identify which<br />data should be updated in the sheet.',
 			},
 

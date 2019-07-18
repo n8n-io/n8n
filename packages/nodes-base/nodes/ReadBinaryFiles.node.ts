@@ -35,7 +35,6 @@ export class ReadBinaryFiles implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				noDataExpression: true,
 				placeholder: '*.jpg',
 				description: 'Pattern for files to read.',
 			},
@@ -45,7 +44,6 @@ export class ReadBinaryFiles implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				noDataExpression: true,
 				description: 'Name of the binary property to which to<br />write the data of the read files.',
 			},
 		]
