@@ -77,8 +77,8 @@
 					<font-awesome-icon icon="cogs" class="reset-icon clickable" title="Parameter Options"/>
 				</span>
 				<el-dropdown-menu slot="dropdown">
-					<el-dropdown-item command="addExpression" v-if="!isValueExpression">Add Expression</el-dropdown-item>
-					<el-dropdown-item command="removeExpression" v-if="isValueExpression">Remove Expression</el-dropdown-item>
+					<el-dropdown-item command="addExpression" v-if="parameter.noDataExpression !== true && !isValueExpression">Add Expression</el-dropdown-item>
+					<el-dropdown-item command="removeExpression" v-if="parameter.noDataExpression !== true && isValueExpression">Remove Expression</el-dropdown-item>
 					<el-dropdown-item command="resetValue" :disabled="isDefault" divided>Reset Value</el-dropdown-item>
 				</el-dropdown-menu>
 			</el-dropdown>
@@ -325,6 +325,9 @@ export default mixins(
 				return this.parameter.default === this.value;
 			},
 			isValueExpression () {
+				if (this.parameter.noDataExpression === true) {
+					return false;
+				}
 				if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
 					return true;
 				}

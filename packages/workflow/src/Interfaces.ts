@@ -215,6 +215,9 @@ export interface INode {
 	type: string;
 	position: [number, number];
 	disabled?: boolean;
+	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
