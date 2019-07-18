@@ -24,34 +24,7 @@
 					</div>
 				</el-tab-pane>
 				<el-tab-pane label="Node">
-
-					<parameter-input-full
-						:parameter="nodeSettingsParameterColor"
-						:value="nodeValues.color"
-						:displayOptions="false"
-						path="color"
-						@valueChanged="valueChanged"
-					/>
-					<div v-if="!isColorDefaultValue" class="color-reset-button-wrapper">
-						<font-awesome-icon icon="redo" @click="resetColor('color')" class="color-reset-button clickable" title="Reset node color" />
-					</div>
-
-					<parameter-input-full
-						:parameter="nodeSettingsParameterNotes"
-						:value="nodeValues.notes"
-						:displayOptions="false"
-						path="notes"
-						@valueChanged="valueChanged"
-					/>
-
-					<parameter-input-full
-						:parameter="nodeSettingsParameterContinueOnFail"
-						:value="nodeValues.continueOnFail"
-						:displayOptions="false"
-						path="continueOnFail"
-						@valueChanged="valueChanged"
-					/>
-
+					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 				</el-tab-pane>
 			</el-tabs>
@@ -160,35 +133,88 @@ export default mixins(
 				nodeValues: {
 					color: '#ff0000',
 					continueOnFail: false,
+					retryOnFail: false,
+					maxTries: 3,
+					waitBetweenTries: 1000,
 					notes: '',
 					parameters: {},
 				} as INodeParameters,
-				nodeSettingsParameterNotes: {
-					displayName: 'Notes',
-					name: 'notes',
-					type: 'string',
-					typeOptions: {
-						rows: 5,
+
+				nodeSettings: [
+					{
+						displayName: 'Notes',
+						name: 'notes',
+						type: 'string',
+						typeOptions: {
+							rows: 5,
+						},
+						default: '',
+						noDataExpression: true,
+						description: 'Notes to save with the node.',
 					},
-					default: '',
-					description: 'Notes to save with the node.',
-				} as INodeProperties,
-
-				nodeSettingsParameterColor: {
-					displayName: 'Node Color',
-					name: 'color',
-					type: 'color',
-					default: '',
-					description: 'The color of the node in the flow.',
-				} as INodeProperties,
-
-				nodeSettingsParameterContinueOnFail: {
-					displayName: 'Continue On Fail',
-					name: 'continueOnFail',
-					type: 'boolean',
-					default: false,
-					description: 'If set and the node fails the workflow will simply continue running.<br />It will then simply pass through the input data so the workflow has<br />to be set up to handle the case that different data gets returned.',
-				} as INodeProperties,
+					{
+						displayName: 'Node Color',
+						name: 'color',
+						type: 'color',
+						default: '#ff0000',
+						noDataExpression: true,
+						description: 'The color of the node in the flow.',
+					},
+					{
+						displayName: 'Retry On Fail',
+						name: 'retryOnFail',
+						type: 'boolean',
+						default: false,
+						noDataExpression: true,
+						description: 'If activated it will automatically retry the node again multiple times.',
+					},
+					{
+						displayName: 'Max. Tries',
+						name: 'maxTries',
+						type: 'number',
+						typeOptions: {
+							minValue: 2,
+							maxValue: 5,
+						},
+						default: 3,
+						displayOptions: {
+							show: {
+								retryOnFail: [
+									true,
+								],
+							},
+						},
+						noDataExpression: true,
+						description: 'How often it should try to execute the node before it should fail.',
+					},
+					{
+						displayName: 'Wait Between Tries',
+						name: 'waitBetweenTries',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+							maxValue: 5000,
+						},
+						default: 1000,
+						displayOptions: {
+							show: {
+								retryOnFail: [
+									true,
+								],
+							},
+						},
+						noDataExpression: true,
+						description: 'How long to wait between ties. Value in ms.',
+					},
+					{
+						displayName: 'Continue On Fail',
+						name: 'continueOnFail',
+						type: 'boolean',
+						default: false,
+						noDataExpression: true,
+						description: 'If activated and the node fails the workflow will simply continue running.<br />It will then simply pass through the input data so the workflow has<br />to be set up to handle the case that different data gets returned.',
+					},
+				] as INodeProperties[],
 
 			};
 		},
@@ -199,14 +225,6 @@ export default mixins(
 		},
 		methods: {
 			noOp () {},
-			resetColor () {
-				const activeNode = this.node as INodeUi;
-				const activeNodeType = this.nodeType;
-				if (activeNodeType !== null) {
-					this.setValue('color', activeNodeType.defaults.color as NodeParameterValue);
-					this.valueChanged({ name: 'color', value: activeNodeType.defaults.color } as IUpdateInformation);
-				}
-			},
 			setValue (name: string, value: NodeParameterValue) {
 				const nameParts = name.split('.');
 				let lastNamePart: string | undefined = nameParts.pop();
@@ -405,19 +423,49 @@ export default mixins(
 				if (this.nodeType !== null) {
 					this.nodeValid = true;
 
+					const foundNodeSettings = [];
 					if (this.node.color) {
+						foundNodeSettings.push('color');
 						Vue.set(this.nodeValues, 'color', this.node.color);
-					} else {
-						Vue.set(this.nodeValues, 'color', '#ff0000');
 					}
 
 					if (this.node.notes) {
+						foundNodeSettings.push('notes');
 						Vue.set(this.nodeValues, 'notes', this.node.notes);
 					}
 
 					if (this.node.continueOnFail) {
+						foundNodeSettings.push('continueOnFail');
 						Vue.set(this.nodeValues, 'continueOnFail', this.node.continueOnFail);
 					}
+
+					if (this.node.retryOnFail) {
+						foundNodeSettings.push('retryOnFail');
+						Vue.set(this.nodeValues, 'retryOnFail', this.node.retryOnFail);
+					}
+
+					if (this.node.maxTries) {
+						foundNodeSettings.push('maxTries');
+						Vue.set(this.nodeValues, 'maxTries', this.node.maxTries);
+					}
+
+					if (this.node.waitBetweenTries) {
+						foundNodeSettings.push('waitBetweenTries');
+						Vue.set(this.nodeValues, 'waitBetweenTries', this.node.waitBetweenTries);
+					}
+
+					// Set default node settings
+					for (const nodeSetting of this.nodeSettings) {
+						if (!foundNodeSettings.includes(nodeSetting.name)) {
+							// Set default value
+							Vue.set(this.nodeValues, nodeSetting.name, nodeSetting.default);
+						}
+						if (nodeSetting.name === 'color') {
+							// For color also apply the default node color to the node settings
+							nodeSetting.default = this.nodeType.defaults.color;
+						}
+					}
+
 
 					Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
 				} else {

@@ -360,22 +360,51 @@ export class WorkflowExecute {
 				//       is very slow so only do if needed
 				startTime = new Date().getTime();
 
-				try {
-					runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
-					nodeSuccessData = await workflow.runNode(executionData.node, JSON.parse(JSON.stringify(executionData.data)), runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
+				let maxTries = 1;
+				if (executionData.node.retryOnFail === true) {
+					// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
+					maxTries = Math.min(5, Math.max(2, executionData.node.maxTries || 3));
+				}
 
-					if (nodeSuccessData === null) {
-						// If null gets returned it means that the node did succeed
-						// but did not have any data. So the branch should end
-						// (meaning the nodes afterwards should not be processed)
-						continue;
+				let waitBetweenTries = 0;
+				if (executionData.node.retryOnFail === true) {
+					// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
+					waitBetweenTries = Math.min(5000, Math.max(0, executionData.node.waitBetweenTries || 1000));
+				}
+
+				for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
+					try {
+						if (tryIndex !== 0) {
+							// Reset executionError from previous error try
+							executionError = undefined;
+							if (waitBetweenTries !== 0) {
+								// TODO: Improve that in the future and check if other nodes can
+								//       be executed in the meantime
+								await new Promise((resolve) => {
+									setTimeout(() => {
+										resolve();
+									}, waitBetweenTries);
+								});
+							}
+						}
+
+						runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
+						nodeSuccessData = await workflow.runNode(executionData.node, JSON.parse(JSON.stringify(executionData.data)), runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
+
+						if (nodeSuccessData === null) {
+							// If null gets returned it means that the node did succeed
+							// but did not have any data. So the branch should end
+							// (meaning the nodes afterwards should not be processed)
+							continue executionLoop;
+						}
+
+						break;
+					} catch (error) {
+						executionError = {
+							message: error.message,
+							stack: error.stack,
+						};
 					}
-
-				} catch (error) {
-					executionError = {
-						message: error.message,
-						stack: error.stack,
-					};
 				}
 
 				// Add the data to return to the user
