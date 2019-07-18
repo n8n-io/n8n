@@ -310,20 +310,8 @@ export default mixins(
 					this.$emit('valueChanged', sendData);
 
 					this.$store.commit('setActiveNode', newValue);
-				} else if (parameterData.name === 'color') {
-					// Color of node changed
-
-					// Update color in settings
-					Vue.set(this.nodeValues, 'color', newValue);
-					// Update color in vuex
-					const updateInformation = {
-						name: node.name,
-						key: 'color',
-						value: newValue,
-					};
-					this.$store.commit('setNodeValue', updateInformation);
-				} else {
-					// Everything else are node parameters
+				} else if (parameterData.name.startsWith('parameters.')) {
+					// A node parameter changed
 
 					const nodeType = this.$store.getters.nodeType(node.type);
 
@@ -390,6 +378,19 @@ export default mixins(
 					} as INodeIssueData);
 
 					this.updateNodeCredentialIssues(node);
+				} else {
+					// A property on the node itself changed
+
+					// Update data in settings
+					Vue.set(this.nodeValues, parameterData.name, newValue);
+
+					// Update data in vuex
+					const updateInformation = {
+						name: node.name,
+						key: parameterData.name,
+						value: newValue,
+					};
+					this.$store.commit('setNodeValue', updateInformation);
 				}
 			},
 			/**
