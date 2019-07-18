@@ -71,7 +71,7 @@ export class Push {
 			data,
 		};
 
-		this.channel.send(JSON.stringify(sendData));
+		this.channel.send(JSON.stringify(sendData), [this.connections[sessionId]]);
 	}
 }
 
