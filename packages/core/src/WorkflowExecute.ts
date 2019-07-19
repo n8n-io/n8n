@@ -374,6 +374,7 @@ export class WorkflowExecute {
 
 				for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 					try {
+
 						if (tryIndex !== 0) {
 							// Reset executionError from previous error try
 							executionError = undefined;
@@ -386,6 +387,13 @@ export class WorkflowExecute {
 									}, waitBetweenTries);
 								});
 							}
+						}
+
+						// Check again if the execution should be stopped else it
+						// could take forever to stop when each try takes a long time
+						if (this.activeExecutions.shouldBeStopped(this.executionId!) === true) {
+							// The execution should be stopped
+							break;
 						}
 
 						runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
