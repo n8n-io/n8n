@@ -1,4 +1,4 @@
-import * as config from 'config';
+import * as config from '../config';
 import * as express from 'express';
 
 
@@ -25,9 +25,9 @@ export function logOutput(message: string, level = 'log'): void {
  * @returns {string}
  */
 export function getBaseUrl(): string {
-	const protocol = config.get('urls.protocol') as string;
-	const host = config.get('urls.host') as string;
-	const port = config.get('urls.port') as number;
+	const protocol = config.get('protocol') as string;
+	const host = config.get('host') as string;
+	const port = config.get('port') as number;
 
 	if (protocol === 'http' && port === 80 || protocol === 'https' && port === 443) {
 		return `${protocol}://${host}/`;

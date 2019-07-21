@@ -16,6 +16,7 @@
 		// Have to deactivate for TypeORM
 		// "strict": true,
 		"preserveConstEnums": true,
+		"resolveJsonModule": true,
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2017",

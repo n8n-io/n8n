@@ -13,7 +13,7 @@ import {
 	getRepository,
 } from "typeorm";
 
-import * as config from 'config';
+import * as config from './../config';
 
 
 import {
@@ -40,7 +40,7 @@ export async function init(): Promise<IDatabaseCollections> {
 		entities = MongoDb;
 		connectionOptions = {
 			type: 'mongodb',
-			url: config.get('database.mongodbConfig.url') as string,
+			url: config.get('database.mongodb.connectionUrl') as string,
 			useNewUrlParser: true,
 		};
 	} else if (dbType === 'sqlite') {

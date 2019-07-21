@@ -71,29 +71,21 @@ n8n start --tunnel
 ### Start with MongoDB as Database
 
 By default n8n uses SQLite to save credentials, past executions and workflows.
-To use MongoDB instead you can either overwrite the default configuration on
-startup like this:
+To use MongoDB instead you can provide the environment varialbles `DB_TYPE` and
+`DB_MONGODB_CONNECTION_URL` like in the example bellow.
+
+Replace the following placeholders with the actual data:
+ - MONGO_DATABASE
+ - MONGO_HOST
+ - MONGO_PORT
+ - MONGO_USER
+ - MONGO_PASSWORD
 
 ```bash
-n8n start \
-  --NODE_CONFIG='{\"database\":{\"type\":\"mongodb\", \"mongodbConfig\":{\"url\":\"mongodb://MONGO_USER:MONGO_PASSWORD@MONGO_SERVER:MONGO_PORT/MONGO_DATABASE\"}}}'"
+export DB_TYPE=mongodb
+export DB_MONGODB_CONNECTION_URL=mongodb://MONGO_USER:MONGO_PASSWORD@MONGO_HOST:MONGO_PORT/MONGO_DATABASE
+n8n start
 ```
-
-Or you can provide a custom configuration file by copying the default
-configuration file [(config/defaults.ts)](https://github.com/n8n-io/n8n/blob/master/packages/cli/config/default.ts).
-Make sure the file is also called `default.ts` and then set the path of the
-parent directory as environment variable `NODE_CONFIG_DIR`.
-
-For example like this:
-```bash
-export NODE_CONFIG_DIR=/directory-containing-config-file
-```
-
-Change in the config file the value under `database.type` from `sqlite`
-to `mongodb` and adjust the Mongo connection URL
-`database.mongodbConfig` accordingly.
-
-n8n will then read your custom configuration and use MongoDB instead.
 
 
 ## Execute Workflow from CLI

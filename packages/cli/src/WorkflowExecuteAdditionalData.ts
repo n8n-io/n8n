@@ -25,7 +25,7 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import * as config from 'config';
+import * as config from '../config';
 
 const pushInstance = Push.getInstance();
 
@@ -120,7 +120,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowI
 
 					const workflowSavePromise = WorkflowHelpers.saveStaticData(workflowInstance);
 
-					let saveManualExecutions = config.get('executions.saveManualExecutions') as boolean;
+					let saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
 					if (workflowInstance.settings !== undefined && workflowInstance.settings.saveManualExecutions !== undefined) {
 						// Apply to workflow override
 						saveManualExecutions = workflowInstance.settings.saveManualExecutions as boolean;
@@ -137,8 +137,8 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowI
 					}
 
 					// Check config to know if execution should be saved or not
-					let saveDataErrorExecution = config.get('executions.saveDataErrorExecution') as string;
-					let saveDataSuccessExecution = config.get('executions.saveDataSuccessExecution') as string;
+					let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
+					let saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
 					if (workflowInstance.settings !== undefined) {
 						saveDataErrorExecution = (workflowInstance.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
 						saveDataSuccessExecution = (workflowInstance.settings.saveDataSuccessExecution as string) || saveDataSuccessExecution;
@@ -198,9 +198,9 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowI
 export async function get(mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowInstance: Workflow, sessionId?: string, retryOf?: string): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
-	const timezone = config.get('timezone') as string;
-	const webhookBaseUrl = urlBaseWebhook + config.get('urls.endpointWebhook') as string;
-	const webhookTestBaseUrl = urlBaseWebhook + config.get('urls.endpointWebhookTest') as string;
+	const timezone = config.get('generic.timezone') as string;
+	const webhookBaseUrl = urlBaseWebhook + config.get('endpoints.webhook') as string;
+	const webhookTestBaseUrl = urlBaseWebhook + config.get('endpoints.webhookTest') as string;
 
 	const encryptionKey = await UserSettings.getEncryptionKey();
 	if (encryptionKey === undefined) {
