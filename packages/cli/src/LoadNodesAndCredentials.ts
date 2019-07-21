@@ -6,11 +6,8 @@ import {
 	ICredentialType,
 	INodeType,
 } from 'n8n-workflow';
-import {
-	IN8nConfigNodes,
-} from './';
 
-import * as config from 'config';
+import * as config from '../config';
 import {
 	access as fsAccess,
 	readdir as fsReaddir,
@@ -66,10 +63,7 @@ class LoadNodesAndCredentialsClass {
 			throw new Error('Could not find "node_modules" folder!');
 		}
 
-		const nodeSettings = config.get('nodes') as IN8nConfigNodes | undefined;
-		if (nodeSettings !== undefined && nodeSettings.exclude !== undefined) {
-			this.excludeNodes = nodeSettings.exclude;
-		}
+		this.excludeNodes = config.get('nodes.exclude');
 
 		// Get all the installed packages which contain n8n nodes
 		const packages = await this.getN8nNodePackages();

@@ -89,10 +89,11 @@ Replace the following placeholders with the actual data:
 docker run -it --rm \
   --name n8n \
   -p 5678:5678 \
+	-e DB_TYPE=mongodb \
+	-e DB_MONGODB_CONNECTION_URL="mongodb://MONGO_USER:MONGO_PASSWORD@MONGO_SERVER:MONGO_PORT/MONGO_DATABASE" \
   -v ~/.n8n:/root/.n8n \
   n8nio/n8n \
-  n8n start \
-  --NODE_CONFIG='{\"database\":{\"type\":\"mongodb\", \"mongodbConfig\":{\"url\":\"mongodb://MONGO_USER:MONGO_PASSWORD@MONGO_SERVER:MONGO_PORT/MONGO_DATABASE\"}}}'"
+  n8n start
 ```
 
 A full working setup with docker-compose can be found [here](../../compose/withMongo/README.md)

@@ -89,6 +89,7 @@ export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
 }
 
 export type DatabaseType = 'mongodb' | 'sqlite';
+export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
 	id?: number | string | ObjectID;
@@ -171,18 +172,47 @@ export interface IExecutionDeleteFilter {
 
 export interface IN8nConfig {
 	database: IN8nConfigDatabase;
-	nodes?: IN8nConfigNodes;
+	endpoints: IN8nConfigEndpoints;
+	executions: IN8nConfigExecutions;
+	generic: IN8nConfigGeneric;
+	host: string;
+	nodes: IN8nConfigNodes;
+	port: number;
+	protocol: 'http' | 'https';
 }
 
 export interface IN8nConfigDatabase {
 	type: DatabaseType;
-	mongodbConfig?: {
-		url: string;
+	mongodb: {
+		connectionUrl: string;
 	};
 }
 
+export interface IN8nConfigEndpoints {
+	rest: string;
+	webhook: string;
+	webhookTest: string;
+}
+
+export interface IN8nConfigExecutions {
+	saveDataOnError: SaveExecutionDataType;
+	saveDataOnSuccess: SaveExecutionDataType;
+	saveDataManualExecutions: boolean;
+}
+
+export interface IN8nConfigExecutions {
+	saveDataOnError: SaveExecutionDataType;
+	saveDataOnSuccess: SaveExecutionDataType;
+	saveDataManualExecutions: boolean;
+}
+
+export interface IN8nConfigGeneric {
+	timezone: string;
+}
+
 export interface IN8nConfigNodes {
-	exclude?: string[];
+	errorTriggerType: string;
+	exclude: string[];
 }
 
 

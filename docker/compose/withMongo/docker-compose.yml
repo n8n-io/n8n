@@ -17,6 +17,9 @@ services:
   n8n:
     image: n8n
     restart: always
+    environment:
+      - DB_TYPE=mongodb
+      - DB_MONGODB_CONNECTION_URL=mongodb://n8nuser:${MONGO_NON_ROOT_PASSWORD}@mongo:27017/${MONGO_INITDB_DATABASE}
     ports:
       - 5678:5678
     links:
@@ -25,4 +28,4 @@ services:
       - ~/.n8n:/root/.n8n
     # Wait 5 seconds to start n8n to make sure that MongoDB is ready
     # when n8n tries to connect to it
-    command: /bin/sh -c "sleep 5; n8n start --NODE_CONFIG='{\"database\":{\"type\":\"mongodb\", \"mongodbConfig\":{\"url\":\"mongodb://n8nuser:${MONGO_NON_ROOT_PASSWORD}@mongo:27017/${MONGO_INITDB_DATABASE}\"}}}'"
+    command: /bin/sh -c "sleep 5; n8n start"

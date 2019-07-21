@@ -62,7 +62,7 @@ import {
 } from 'typeorm';
 
 import * as parseUrl from 'parseurl';
-import * as config from 'config';
+import * as config from '../config';
 // @ts-ignore
 import * as timezones from 'google-timezones-json';
 
@@ -83,12 +83,12 @@ class App {
 	constructor() {
 		this.app = express();
 
-		this.endpointWebhook = config.get('urls.endpointWebhook') as string;
-		this.endpointWebhookTest = config.get('urls.endpointWebhookTest') as string;
-		this.saveDataErrorExecution = config.get('executions.saveDataErrorExecution') as string;
-		this.saveDataSuccessExecution = config.get('executions.saveDataSuccessExecution') as string;
-		this.saveManualExecutions = config.get('executions.saveManualExecutions') as boolean;
-		this.timezone = config.get('timezone') as string;
+		this.endpointWebhook = config.get('endpoints.webhook') as string;
+		this.endpointWebhookTest = config.get('endpoints.webhookTest') as string;
+		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
+		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
+		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+		this.timezone = config.get('generic.timezone') as string;
 
 		this.config();
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
@@ -1030,7 +1030,7 @@ class App {
 }
 
 export function start() {
-	const PORT = config.get('urls.port');
+	const PORT = config.get('port');
 
 	const app = new App().app;
 

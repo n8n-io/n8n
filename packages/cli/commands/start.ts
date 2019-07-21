@@ -1,6 +1,6 @@
 import Vorpal = require('vorpal');
 import { Args } from 'vorpal';
-import * as config from 'config';
+import * as config from '../config';
 
 const open = require('open');
 
@@ -105,7 +105,7 @@ flag "--init" to fix this problem!`);
 						subdomain: userSettings.tunnelSubdomain,
 					};
 
-					const port = config.get('urls.port') as number;
+					const port = config.get('port') as number;
 
 					// @ts-ignore
 					const webhookTunnel = await tunnel(port, tunnelSettings);
