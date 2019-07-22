@@ -66,8 +66,8 @@ export class LoadNodeParameterOptions {
 			active: false,
 			connections: {},
 			nodes: Object.values(this.workflow.nodes),
-			createdAt: 0,
-			updatedAt: 0,
+			createdAt: new Date(),
+			updatedAt: new Date(),
 		};
 	}
 

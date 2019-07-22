@@ -50,7 +50,7 @@ describe('Credentials', () => {
                 {
                     nodeType: 'base.noOp',
                     user: 'userName',
-                    date: 1234,
+                    date: new Date(),
                 }
             ];
 

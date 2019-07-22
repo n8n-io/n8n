@@ -47,7 +47,7 @@ export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 
 export interface IExecutingWorkflowData {
 	runExecutionData: IRunExecutionData;
-	startedAt: number;
+	startedAt: Date;
 	mode: WorkflowExecuteMode;
 	workflow: Workflow;
 	postExecutePromises: Array<IDeferredPromise<IRun>>;
@@ -55,7 +55,7 @@ export interface IExecutingWorkflowData {
 
 export interface IExecutionsCurrentSummary {
 	id: string;
-	startedAt: number;
+	startedAt: Date;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
 }

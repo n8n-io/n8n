@@ -34,11 +34,11 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column('json')
 	connections: IConnections;
 
-	@Column()
-	createdAt: number;
+	@Column('Date')
+	createdAt: Date;
 
-	@Column()
-	updatedAt: number;
+	@Column('Date')
+	updatedAt: Date;
 
 	@Column('json')
 	settings?: IWorkflowSettings;

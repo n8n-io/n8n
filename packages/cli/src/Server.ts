@@ -105,8 +105,8 @@ class App {
 	 * @returns {number}
 	 * @memberof App
 	 */
-	getCurrentDate(): number {
-		return Math.floor(new Date().getTime());
+	getCurrentDate(): Date {
+		return new Date();
 	}
 
 
@@ -851,7 +851,7 @@ class App {
 						id: data.id.toString(),
 						workflowId: data.workflowId,
 						mode:data.mode,
-						startedAt: data.startedAt,
+						startedAt: new Date(data.startedAt),
 					}
 				);
 			}
@@ -873,8 +873,8 @@ class App {
 
 			const returnData: IExecutionsStopData = {
 				mode: result.mode,
-				startedAt: result.startedAt,
-				stoppedAt: result.stoppedAt,
+				startedAt: new Date(result.startedAt),
+				stoppedAt: new Date(result.stoppedAt),
 				finished: result.finished,
 			};
 

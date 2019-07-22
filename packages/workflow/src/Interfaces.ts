@@ -37,7 +37,7 @@ export interface IGetCredentials {
 export interface ICredentialNodeAccess {
 	nodeType: string;
 	user?: string;
-	date?: number;
+	date?: Date;
 }
 
 export interface ICredentialsDecrypted {
@@ -466,8 +466,8 @@ export interface IRun {
 	data: IRunExecutionData;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	startedAt: number;
-	stoppedAt: number;
+	startedAt: Date;
+	stoppedAt: Date;
 }
 
 

@@ -110,7 +110,7 @@
 							{{(new Date().getTime() - new Date(scope.row.startedAt).getTime())/1000}} sec.
 						</span>
 						<span v-else>
-							{{(scope.row.stoppedAt - scope.row.startedAt) / 1000}} sec.
+							{{(new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime()) / 1000}} sec.
 						</span>
 					</template>
 				</el-table-column>
@@ -323,7 +323,7 @@ export default mixins(
 
 			const sendData: IExecutionDeleteFilter = {};
 			if (this.checkAll === true) {
-				sendData.deleteBefore = this.finishedExecutions[0].startedAt as number;
+				sendData.deleteBefore = this.finishedExecutions[0].startedAt as Date;
 			} else {
 				sendData.ids = Object.keys(this.selectedItems);
 			}
@@ -387,11 +387,11 @@ export default mixins(
 			this.isDataLoading = true;
 
 			const filter = this.workflowFilter;
-			let lastStartedAt: number | undefined;
+			let lastStartedAt: Date | undefined;
 
 			if (this.finishedExecutions.length !== 0) {
 				const lastItem = this.finishedExecutions.slice(-1)[0];
-				lastStartedAt = lastItem.startedAt as number;
+				lastStartedAt = lastItem.startedAt as Date;
 			}
 
 			let data: IExecutionsListResponse;

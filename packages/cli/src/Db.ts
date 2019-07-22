@@ -18,6 +18,7 @@ import * as config from './../config';
 
 import {
 	MongoDb,
+	PostgresDb,
 	SQLite,
 } from './databases';
 
@@ -42,6 +43,16 @@ export async function init(): Promise<IDatabaseCollections> {
 			type: 'mongodb',
 			url: config.get('database.mongodb.connectionUrl') as string,
 			useNewUrlParser: true,
+		};
+	} else if (dbType === 'postgresdb') {
+		entities = PostgresDb;
+		connectionOptions = {
+			type: 'postgres',
+			database: config.get('database.postgresdb.database'),
+			host: config.get('database.postgresdb.host'),
+			password: config.get('database.postgresdb.password'),
+			port: config.get('database.postgresdb.port'),
+			username: config.get('database.postgresdb.user'),
 		};
 	} else if (dbType === 'sqlite') {
 		entities = SQLite;
