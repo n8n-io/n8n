@@ -35,7 +35,7 @@ export class ActiveExecutions {
 
 		this.activeExecutions[executionId] = {
 			runExecutionData,
-			startedAt: new Date().getTime(),
+			startedAt: new Date(),
 			mode,
 			workflow,
 			postExecutePromises: [],

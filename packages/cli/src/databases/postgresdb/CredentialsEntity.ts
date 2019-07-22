@@ -10,32 +10,35 @@ import {
 	Column,
 	Entity,
 	Index,
-	ObjectID,
-	ObjectIdColumn,
+	PrimaryGeneratedColumn,
 } from "typeorm";
 
 @Entity()
 export class CredentialsEntity implements ICredentialsDb {
 
-	@ObjectIdColumn()
-	id: ObjectID;
+	@PrimaryGeneratedColumn()
+	id: number;
 
-	@Column()
+	@Column({
+		length: 128
+	})
 	name: string;
 
-	@Column()
+	@Column('text')
 	data: string;
 
 	@Index()
-	@Column()
+	@Column({
+		length: 32
+	})
 	type: string;
 
 	@Column('json')
 	nodesAccess: ICredentialNodeAccess[];
 
-	@Column('Date')
+	@Column('timestamp')
 	createdAt: Date;
 
-	@Column('Date')
+	@Column('timestamp')
 	updatedAt: Date;
 }

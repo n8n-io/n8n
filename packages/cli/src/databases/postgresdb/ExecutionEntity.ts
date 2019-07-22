@@ -11,17 +11,17 @@ import {
 	Column,
 	Entity,
 	Index,
-	ObjectID,
-	ObjectIdColumn,
+	PrimaryGeneratedColumn,
  } from "typeorm";
+
 
 @Entity()
 export class ExecutionEntity implements IExecutionFlattedDb {
 
-	@ObjectIdColumn()
-	id: ObjectID;
+	@PrimaryGeneratedColumn()
+	id: number;
 
-	@Column()
+	@Column('text')
 	data: string;
 
 	@Column()
@@ -30,22 +30,22 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column()
 	mode: WorkflowExecuteMode;
 
-	@Column()
+	@Column({ nullable: true })
 	retryOf: string;
 
-	@Column()
+	@Column({ nullable: true })
 	retrySuccessId: string;
 
-	@Column('Date')
+	@Column('timestamp')
 	startedAt: Date;
 
-	@Column('Date')
+	@Column('timestamp')
 	stoppedAt: Date;
 
 	@Column('json')
 	workflowData: IWorkflowDb;
 
 	@Index()
-	@Column()
+	@Column({ nullable: true })
 	workflowId: string;
 }

@@ -116,7 +116,7 @@ export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined >;
 	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
-	getPastExecutions(filter: object, limit: number, lastStartedAt?: number): Promise<IExecutionsListResponse>;
+	getPastExecutions(filter: object, limit: number, lastStartedAt?: Date): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getSettings(): Promise<IN8nUISettings>;
@@ -250,8 +250,8 @@ export interface IExecutionBase {
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
 	retrySuccessId?: string;
-	startedAt: number;
-	stoppedAt: number;
+	startedAt: Date;
+	stoppedAt?: Date;
 	workflowId?: string; // To be able to filter executions easily //
 }
 
@@ -283,8 +283,8 @@ export interface IExecutionShortResponse {
 	};
 	mode: WorkflowExecuteMode;
 	finished: boolean;
-	startedAt: number | string;
-	stoppedAt: number | string;
+	startedAt: Date;
+	stoppedAt: Date;
 	executionTime?: number;
 }
 
@@ -297,8 +297,8 @@ export interface IExecutionsCurrentSummaryExtended {
 	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	startedAt: number | string;
-	stoppedAt?: number | string;
+	startedAt: Date;
+	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
 }
@@ -306,8 +306,8 @@ export interface IExecutionsCurrentSummaryExtended {
 export interface IExecutionsStopData {
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	startedAt: number | string;
-	stoppedAt: number | string;
+	startedAt: Date;
+	stoppedAt: Date;
 }
 
 export interface IExecutionsSummary {
@@ -316,14 +316,14 @@ export interface IExecutionsSummary {
 	finished?: boolean;
 	retryOf?: string;
 	retrySuccessId?: string;
-	startedAt: number | string;
-	stoppedAt?: number | string;
+	startedAt: Date;
+	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
 }
 
 export interface IExecutionDeleteFilter {
-	deleteBefore?: number;
+	deleteBefore?: Date;
 	filters?: IDataObject;
 	ids?: string[];
 }

@@ -37,8 +37,8 @@ export class CredentialsEntity implements ICredentialsDb {
 	nodesAccess: ICredentialNodeAccess[];
 
 	@Column()
-	createdAt: number;
+	createdAt: Date;
 
 	@Column()
-	updatedAt: number;
+	updatedAt: Date;
 }

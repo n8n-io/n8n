@@ -29,26 +29,26 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column()
 	active: boolean;
 
-	@Column('simple-json')
+	@Column('json')
 	nodes: INode[];
 
-	@Column('simple-json')
+	@Column('json')
 	connections: IConnections;
 
-	@Column()
+	@Column('timestamp')
 	createdAt: Date;
 
-	@Column()
+	@Column('timestamp')
 	updatedAt: Date;
 
 	@Column({
-		type: 'simple-json',
+		type: 'json',
 		nullable: true,
 	})
 	settings?: IWorkflowSettings;
 
 	@Column({
-		type: 'simple-json',
+		type: 'json',
 		nullable: true,
 	})
 	staticData?: IDataObject;

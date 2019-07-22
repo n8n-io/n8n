@@ -623,8 +623,8 @@ export class WorkflowExecute {
 			const fullRunData: IRun = {
 				data: runExecutionData,
 				mode: this.mode,
-				startedAt,
-				stoppedAt: new Date().getTime(),
+				startedAt: new Date(startedAt),
+				stoppedAt: new Date(),
 			};
 
 			if (executionError !== undefined) {
@@ -643,8 +643,8 @@ export class WorkflowExecute {
 			const fullRunData: IRun = {
 				data: runExecutionData,
 				mode: this.mode,
-				startedAt,
-				stoppedAt: new Date().getTime(),
+				startedAt: new Date(startedAt),
+				stoppedAt: new Date(),
 			};
 
 			fullRunData.data.resultData.error = {

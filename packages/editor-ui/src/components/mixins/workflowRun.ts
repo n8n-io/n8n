@@ -144,8 +144,8 @@ export const workflowRun = mixins(
 					id: '__IN_PROGRESS__',
 					finished: false,
 					mode: 'manual',
-					startedAt: new Date().getTime(),
-					stoppedAt: 0,
+					startedAt: new Date(),
+					stoppedAt: undefined,
 					workflowId: workflow.id,
 					data: {
 						resultData: {

@@ -68,11 +68,19 @@ n8n start --tunnel
 ```
 
 
-### Start with MongoDB as Database
+### Start with other Database
 
 By default n8n uses SQLite to save credentials, past executions and workflows.
-To use MongoDB instead you can provide the environment varialbles `DB_TYPE` and
-`DB_MONGODB_CONNECTION_URL` like in the example bellow.
+n8n however also supports MongoDB and PostgresDB. To use them simply a few
+environment variables have to be set.
+
+
+#### Start with MongoDB as Database
+
+To use MongoDB as database you can provide the following environment variables like
+in the example bellow:
+ - `DB_TYPE=mongodb`
+ - `DB_MONGODB_CONNECTION_URL=<CONNECTION_URL>`
 
 Replace the following placeholders with the actual data:
  - MONGO_DATABASE
@@ -84,6 +92,30 @@ Replace the following placeholders with the actual data:
 ```bash
 export DB_TYPE=mongodb
 export DB_MONGODB_CONNECTION_URL=mongodb://MONGO_USER:MONGO_PASSWORD@MONGO_HOST:MONGO_PORT/MONGO_DATABASE
+n8n start
+```
+
+
+#### Start with PostgresDB as Database
+
+To use PostgresDB as database you can provide the following environment variables
+ - `DB_TYPE=postgresdb`
+ - `DB_POSTGRESDB_DATABASE` (default: 'n8n')
+ - `DB_POSTGRESDB_HOST` (default: 'localhost')
+ - `DB_POSTGRESDB_PORT` (default: 5432)
+ - `DB_POSTGRESDB_USER` (default: 'root')
+ - `DB_POSTGRESDB_PASSWORD` (default: empty)
+
+
+
+```bash
+export DB_TYPE=postgresdb
+export DB_POSTGRESDB_DATABASE=n8n
+export DB_POSTGRESDB_HOST=postgresdb
+export DB_POSTGRESDB_PORT=5432
+export DB_POSTGRESDB_USER=n8n
+export DB_POSTGRESDB_PASSWORD=n8n
+
 n8n start
 ```
 

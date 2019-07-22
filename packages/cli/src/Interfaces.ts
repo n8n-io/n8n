@@ -41,8 +41,8 @@ export interface IWorkflowBase {
 	id?: number | string | ObjectID;
 	name: string;
 	active: boolean;
-	createdAt: number | string;
-	updatedAt: number | string;
+	createdAt: Date;
+	updatedAt: Date;
 	nodes: INode[];
 	connections: IConnections;
 	settings?: IWorkflowSettings;
@@ -63,13 +63,13 @@ export interface IWorkflowShortResponse {
 	id: string;
 	name: string;
 	active: boolean;
-	createdAt: number | string;
-	updatedAt: number | string;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface ICredentialsBase {
-	createdAt: number | string;
-	updatedAt: number | string;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted{
@@ -88,14 +88,14 @@ export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
 	id: string;
 }
 
-export type DatabaseType = 'mongodb' | 'sqlite';
+export type DatabaseType = 'mongodb' | 'postgresdb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
 	id?: number | string | ObjectID;
 	mode: WorkflowExecuteMode;
-	startedAt: number;
-	stoppedAt: number;
+	startedAt: Date;
+	stoppedAt: Date;
 	workflowId?: string; // To be able to filter executions easily //
 	finished: boolean;
 	retryOf?: number | string | ObjectID; // If it is a retry, the id of the execution it is a retry of.
@@ -148,8 +148,8 @@ export interface IExecutionsListResponse {
 export interface IExecutionsStopData {
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
-	startedAt: number | string;
-	stoppedAt: number | string;
+	startedAt: Date;
+	stoppedAt: Date;
 }
 
 export interface IExecutionsSummary {
@@ -158,14 +158,14 @@ export interface IExecutionsSummary {
 	finished?: boolean;
 	retryOf?: string;
 	retrySuccessId?: string;
-	startedAt: number | string;
-	stoppedAt?: number | string;
+	startedAt: Date;
+	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
 }
 
 export interface IExecutionDeleteFilter {
-	deleteBefore?: number;
+	deleteBefore?: Date;
 	filters?: IDataObject;
 	ids?: string[];
 }
@@ -185,6 +185,12 @@ export interface IN8nConfigDatabase {
 	type: DatabaseType;
 	mongodb: {
 		connectionUrl: string;
+	};
+	postgresdb: {
+		host: string;
+		password: string;
+		port: number;
+		user: string;
 	};
 }
 

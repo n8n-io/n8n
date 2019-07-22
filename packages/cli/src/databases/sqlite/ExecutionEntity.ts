@@ -39,10 +39,10 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	retrySuccessId: string;
 
 	@Column()
-	startedAt: number;
+	startedAt: Date;
 
 	@Column()
-	stoppedAt: number;
+	stoppedAt: Date;
 
 	@Column('simple-json')
 	workflowData: IWorkflowDb;
