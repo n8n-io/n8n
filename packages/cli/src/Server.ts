@@ -848,7 +848,7 @@ class App {
 				}
 				returnData.push(
 					{
-						id: data.id.toString(),
+						idActive: data.id.toString(),
 						workflowId: data.workflowId,
 						mode:data.mode,
 						startedAt: new Date(data.startedAt),

@@ -23,7 +23,21 @@ export const genericHelpers = mixins(showMessage).extend({
 		convertToDisplayDate (epochTime: number) {
 			return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
 		},
+		displayTimer (msPassed: number, showMs = false): string {
+			if (msPassed < 60000) {
+				if (showMs === false) {
+					return `${Math.floor(msPassed / 1000)} sec.`;
+				}
 
+				return `${msPassed / 1000} sec.`;
+			}
+
+			const secondsPassed = Math.floor(msPassed / 1000);
+			const minutesPassed = Math.floor(secondsPassed / 60);
+			const secondsLeft = (secondsPassed - (minutesPassed * 60)).toString().padStart(2, '0');
+
+			return `${minutesPassed}:${secondsLeft} min.`;
+		},
 		editAllowedCheck (): boolean {
 			if (this.isReadOnly) {
 				this.$showMessage({

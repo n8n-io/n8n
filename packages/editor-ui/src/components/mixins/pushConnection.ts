@@ -1,6 +1,8 @@
 import {
+	IExecutionsCurrentSummaryExtended,
 	IPushData,
 	IPushDataExecutionFinished,
+	IPushDataExecutionStarted,
 	IPushDataNodeExecuteAfter,
 	IPushDataNodeExecuteBefore,
 	IPushDataTestWebhook,
@@ -100,7 +102,7 @@ export const pushConnection = mixins(
 					return;
 				}
 
-				if (['executionFinished', 'nodeExecuteAfter', 'nodeExecuteBefore'].includes(receivedData.type)) {
+				if (['nodeExecuteAfter', 'nodeExecuteBefore'].includes(receivedData.type)) {
 					if (this.$store.getters.isActionActive('workflowRunning') === false) {
 						// No workflow is running so ignore the messages
 						return;
@@ -118,6 +120,19 @@ export const pushConnection = mixins(
 				if (receivedData.type === 'executionFinished') {
 					// The workflow finished executing
 					const pushData = receivedData.data as IPushDataExecutionFinished;
+
+					this.$store.commit('finishActiveExecution', pushData);
+
+					if (this.$store.getters.isActionActive('workflowRunning') === false) {
+						// No workflow is running so ignore the messages
+						return;
+					}
+
+					if (this.$store.getters.activeExecutionId !== pushData.executionIdActive) {
+						// The workflow which did finish execution did not get started
+						// by this session so ignore
+						return;
+					}
 
 					const runDataExecuted = pushData.data;
 
@@ -149,6 +164,19 @@ export const pushConnection = mixins(
 					// Set the node execution issues on all the nodes which produced an error so that
 					// it can be displayed in the node-view
 					this.updateNodesExecutionIssues();
+				} else if (receivedData.type === 'executionStarted') {
+					const pushData = receivedData.data as IPushDataExecutionStarted;
+
+					const executionData: IExecutionsCurrentSummaryExtended = {
+						idActive: pushData.executionId,
+						finished: false,
+						mode: pushData.mode,
+						startedAt: pushData.startedAt,
+						workflowId: pushData.workflowId,
+						workflowName: pushData.workflowName,
+					};
+
+					this.$store.commit('addActiveExecution', executionData);
 				} else if (receivedData.type === 'nodeExecuteAfter') {
 					// A node finished to execute. Add its data
 					const pushData = receivedData.data as IPushDataNodeExecuteAfter;
