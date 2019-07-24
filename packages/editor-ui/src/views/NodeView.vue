@@ -1428,12 +1428,25 @@ export default mixins(
 			},
 			async renameNodePrompt (currentName: string) {
 				try {
-					const promptResponse = await this.$prompt('New Name:', `Rename Node: "${currentName}"`, {
+					const promptResponsePromise = this.$prompt('New Name:', `Rename Node: "${currentName}"`, {
+						customClass: 'rename-prompt',
 						confirmButtonText: 'Rename',
 						cancelButtonText: 'Cancel',
 						inputErrorMessage: 'Invalid Name',
 						inputValue: currentName,
 					});
+
+					// Wait till it had time to display
+					await Vue.nextTick();
+
+					// Get the input and select the text in it
+					const nameInput = document.querySelector('.rename-prompt .el-input__inner') as HTMLInputElement | undefined;
+					if (nameInput) {
+						nameInput.focus();
+						nameInput.select();
+					}
+
+					const promptResponse = await promptResponsePromise;
 
 					this.renameNode(currentName, promptResponse.value);
 				} catch (e) {}
