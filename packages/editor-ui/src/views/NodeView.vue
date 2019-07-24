@@ -1465,6 +1465,10 @@ export default mixins(
 
 				// Add the new updated nodes
 				await this.addNodes(Object.values(workflow.nodes), workflow.connectionsBySourceNode);
+
+				// Make sure that the node is selected again
+				this.deselectAllNodes();
+				this.nodeSelectedByName(newName);
 			},
 			async addNodes (nodes: INodeUi[], connections?: IConnections) {
 				if (!nodes || !nodes.length) {
