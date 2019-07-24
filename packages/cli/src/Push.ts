@@ -59,8 +59,11 @@ export class Push {
 	 * @param {*} data
 	 * @memberof Push
 	 */
-	send(sessionId: string, type: IPushDataType, data: any) { // tslint:disable-line:no-any
-		if (this.connections[sessionId] === undefined) {
+
+
+
+	send(type: IPushDataType, data: any, sessionId?: string) { // tslint:disable-line:no-any
+		if (sessionId !== undefined && this.connections[sessionId] === undefined) {
 			// TODO: Log that properly!
 			console.error(`The session "${sessionId}" is not registred.`);
 			return;
@@ -71,7 +74,14 @@ export class Push {
 			data,
 		};
 
-		this.channel.send(JSON.stringify(sendData), [this.connections[sessionId]]);
+		if (sessionId === undefined) {
+			// Send to all connected clients
+			this.channel.send(JSON.stringify(sendData));
+		} else {
+			// Send only to a specific client
+			this.channel.send(JSON.stringify(sendData), [this.connections[sessionId]]);
+		}
+
 	}
 }
 

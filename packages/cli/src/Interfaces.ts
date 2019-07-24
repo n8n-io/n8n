@@ -153,7 +153,8 @@ export interface IExecutionsStopData {
 }
 
 export interface IExecutionsSummary {
-	id: string;
+	id?: string; // executionIdDb
+	idActive?: string; // executionIdActive
 	mode: WorkflowExecuteMode;
 	finished?: boolean;
 	retryOf?: string;
@@ -238,14 +239,23 @@ export interface IPushData {
 	type: IPushDataType;
 }
 
-export type IPushDataType = 'executionFinished' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'testWebhookDeleted' | 'testWebhookReceived';
+export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'testWebhookDeleted' | 'testWebhookReceived';
 
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
-	executionId: string;
+	executionIdActive: string;
+	executionIdDb?: string;
 }
 
+export interface IPushDataExecutionStarted {
+	executionId: string;
+	mode: WorkflowExecuteMode;
+	startedAt: Date;
+	retryOf?: string;
+	workflowId: string;
+	workflowName?: string;
+}
 
 export interface IPushDataNodeExecuteAfter {
 	data: ITaskData;

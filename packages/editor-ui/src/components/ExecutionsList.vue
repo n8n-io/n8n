@@ -16,25 +16,7 @@
 							</el-option>
 						</el-select>
 					</el-col>
-					<el-col :span="3">&nbsp;
-					</el-col>
-					<el-col :span="3" class="filter-headline">
-						Auto-Refresh:
-					</el-col>
-					<el-col :span="4">
-						<el-select v-model="autoRefresh.time" placeholder="Select Refresh Time" size="small" filterable @change="handleRefreshTimeChanged">
-							<el-option
-								v-for="item in autoRefresh.options"
-								:key="item.value"
-								:label="item.name"
-								:value="item.value">
-							</el-option>
-						</el-select>
-					</el-col>
-					<el-col :span="4">
-						<el-button title="Refresh" @click="refreshData()" :disabled="isDataLoading" size="small" type="success" class="refresh-button">
-							<font-awesome-icon icon="sync" /> Manual Refresh
-						</el-button>
+					<el-col :span="14">&nbsp;
 					</el-col>
 				</el-row>
 			</div>
@@ -46,26 +28,27 @@
 				</span>
 			</div>
 
-			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass" @row-click="handleRowClick">
+			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass">
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
 						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange">Check all</el-checkbox>
 					</template>
 					<template slot-scope="scope">
-						<el-checkbox v-if="scope.row.stoppedAt !== undefined" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
+						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" >Check all</el-checkbox>
 					</template>
 				</el-table-column>
 				<el-table-column property="startedAt" label="Started At / ID" width="205">
 					<template slot-scope="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
-						<small>ID: {{scope.row.id}}</small>
+						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
+						<small v-if="scope.row.idActive && scope.row.id === undefined && scope.row.stoppedAt === undefined">Active-ID: {{scope.row.idActive}}</small>
 					</template>
 				</el-table-column>
 				<el-table-column property="workflowName" label="Name">
 					<template slot-scope="scope">
 						<span class="workflow-name">
-							{{scope.row.workflowName}}
+							{{scope.row.workflowName || '[UNSAVED WORKFLOW]'}}
 						</span>
 
 						<span v-if="scope.row.stoppedAt === undefined">
@@ -107,21 +90,21 @@
 					<template slot-scope="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
 							<font-awesome-icon icon="spinner" spin />
-							{{(new Date().getTime() - new Date(scope.row.startedAt).getTime())/1000}} sec.
+							<execution-time :start-time="scope.row.startedAt"/>
 						</span>
 						<span v-else>
-							{{(new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime()) / 1000}} sec.
+							{{ displayTimer(new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(), true) }}
 						</span>
 					</template>
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
 					<template slot-scope="scope">
-						<span v-if="scope.row.stoppedAt === undefined">
-							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" size="mini">
+						<span v-if="scope.row.stoppedAt === undefined && scope.row.idActive">
+							<el-button circle title="Stop Execution" @click.stop="stopExecution(scope.row.idActive)" :loading="stoppingExecutions.includes(scope.row.idActive)" size="mini">
 								<font-awesome-icon icon="stop" />
 							</el-button>
 						</span>
-						<span v-else>
+						<span v-else-if="scope.row.id">
 							<el-button circle title="Open Past Execution" @click.stop="displayExecution(scope.row)" size="mini">
 								<font-awesome-icon icon="folder-open" />
 							</el-button>
@@ -143,6 +126,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
+import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 
 import { restApi } from '@/components/mixins/restApi';
@@ -174,51 +158,15 @@ export default mixins(
 		'dialogVisible',
 	],
 	components: {
+		ExecutionTime,
 		WorkflowActivator,
 	},
 	data () {
 		return {
-			activeExecutions: [] as IExecutionsCurrentSummaryExtended[],
-
 			finishedExecutions: [] as IExecutionsSummary[],
 			finishedExecutionsCount: 0,
 
 			checkAll: false,
-
-			autoRefresh: {
-				timer: undefined as NodeJS.Timeout | undefined,
-				time: -1,
-				options: [
-					{
-						name: 'Deactivated',
-						value: -1,
-					},
-					{
-						name: '5 Seconds',
-						value: 5,
-					},
-					{
-						name: '10 Seconds',
-						value: 10,
-					},
-					{
-						name: '15 Seconds',
-						value: 15,
-					},
-					{
-						name: '30 Seconds',
-						value: 30,
-					},
-					{
-						name: '1 Minute',
-						value: 60,
-					},
-					{
-						name: '5 Minutes',
-						value: 300,
-					},
-				],
-			},
 
 			filter: {
 				workflowId: 'ALL',
@@ -236,15 +184,13 @@ export default mixins(
 		};
 	},
 	computed: {
+		activeExecutions (): IExecutionsCurrentSummaryExtended[] {
+			return this.$store.getters.getActiveExecutions;
+		},
 		combinedExecutions (): IExecutionsSummary[] {
 			const returnData: IExecutionsSummary[] = [];
 
-			// The active executions do not have the workflow-names yet so add them
-			for (const executionData of this.activeExecutions) {
-				executionData.workflowName = this.getWorkflowName(executionData.workflowId);
-				returnData.push(executionData);
-			}
-
+			returnData.push.apply(returnData, this.activeExecutions);
 			returnData.push.apply(returnData, this.finishedExecutions);
 
 			return returnData;
@@ -281,8 +227,6 @@ export default mixins(
 		dialogVisible (newValue, oldValue) {
 			if (newValue) {
 				this.openDialog();
-			} else {
-				this.handleRefreshTimeChanged(-1);
 			}
 		},
 	},
@@ -355,23 +299,30 @@ export default mixins(
 			this.refreshData();
 		},
 		getRowClass (data: IDataObject): string {
-			const classes: string[] = ['clickable'];
+			const classes: string[] = [];
 			if ((data.row as IExecutionsSummary).stoppedAt === undefined) {
 				classes.push('currently-running');
 			}
 
 			return classes.join(' ');
 		},
-		getWorkflowName (workflowId: string): string {
+		getWorkflowName (workflowId: string): string | undefined {
 			const workflow = this.workflows.find((data) => data.id === workflowId);
 			if (workflow === undefined) {
-				return '<UNSAVED WORKFLOW>';
+				return undefined;
 			}
 
 			return workflow.name;
 		},
 		async loadActiveExecutions (): Promise<void> {
-			this.activeExecutions = await this.restApi().getCurrentExecutions(this.workflowFilter);
+			const activeExecutions = await this.restApi().getCurrentExecutions(this.workflowFilter);
+			for (const activeExecution of activeExecutions) {
+				if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
+					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
+				}
+			}
+
+			this.$store.commit('setActiveExecutions', activeExecutions);
 		},
 		async loadFinishedExecutions (): Promise<void> {
 			const data = await this.restApi().getPastExecutions(this.workflowFilter, this.requestItemsPerRequest);
@@ -379,11 +330,6 @@ export default mixins(
 			this.finishedExecutionsCount = data.count;
 		},
 		async loadMore () {
-			// Deactivate the auto-refresh because else the newly displayed
-			// data would be lost with the next automatic refresh
-			this.autoRefresh.time = -1;
-			this.handleRefreshTimeChanged();
-
 			this.isDataLoading = true;
 
 			const filter = this.workflowFilter;
@@ -432,32 +378,13 @@ export default mixins(
 				this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
 			}
 		},
-		openDialog () {
+		async openDialog () {
 			Vue.set(this, 'selectedItems', {});
 			this.filter.workflowId = 'ALL';
 			this.checkAll = false;
 
-			this.loadWorkflows();
-			this.refreshData();
-			this.handleRefreshTimeChanged();
-		},
-		handleRefreshTimeChanged (manualOverwrite?: number) {
-			if (this.autoRefresh.timer !== undefined) {
-				// Make sure the old timer gets removed
-				clearInterval(this.autoRefresh.timer);
-				this.autoRefresh.timer = undefined;
-			}
-
-			const timerValue = manualOverwrite !== undefined ? manualOverwrite : this.autoRefresh.time;
-			if (timerValue === -1) {
-				// No timer should be set
-				return;
-			}
-
-			// Create the new interval timer
-			this.autoRefresh.timer = setInterval(() => {
-				this.refreshData();
-			}, timerValue * 1000);
+			await this.loadWorkflows();
+			await this.refreshData();
 		},
 		async retryExecution (execution: IExecutionShortResponse) {
 			this.isDataLoading = true;
@@ -501,18 +428,6 @@ export default mixins(
 
 			this.isDataLoading = false;
 		},
-		handleRowClick (entry: IExecutionsSummary, event: Event, column: any) { // tslint:disable-line:no-any
-			if (column.label === '') {
-				// Ignore all clicks in the first and last row
-				return;
-			}
-
-			if (this.selectedItems[entry.id]) {
-				Vue.delete(this.selectedItems, entry.id);
-			} else {
-				Vue.set(this.selectedItems, entry.id, true);
-			}
-		},
 		statusTooltipText (entry: IExecutionsSummary): string {
 			if (entry.stoppedAt === undefined) {
 				return 'The worklow is currently executing.';
@@ -526,21 +441,21 @@ export default mixins(
 				return 'The workflow execution did fail.';
 			}
 		},
-		async stopExecution (executionId: string) {
+		async stopExecution (activeExecutionId: string) {
 			try {
 				// Add it to the list of currently stopping executions that we
 				// can show the user in the UI that it is in progress
-				this.stoppingExecutions.push(executionId);
+				this.stoppingExecutions.push(activeExecutionId);
 
-				const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(executionId);
+				const stopData: IExecutionsStopData = await this.restApi().stopCurrentExecution(activeExecutionId);
 
 				// Remove it from the list of currently stopping executions
-				const index = this.stoppingExecutions.indexOf(executionId);
+				const index = this.stoppingExecutions.indexOf(activeExecutionId);
 				this.stoppingExecutions.splice(index, 1);
 
 				this.$showMessage({
 					title: 'Execution stopped',
-					message: `The execution with the id "${executionId}" got stopped!`,
+					message: `The execution with the id "${activeExecutionId}" got stopped!`,
 					type: 'success',
 				});
 

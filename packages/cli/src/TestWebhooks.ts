@@ -91,7 +91,7 @@ export class TestWebhooks {
 
 				// Inform editor-ui that webhook got received
 				if (this.testWebhookData[webhookKey].sessionId !== undefined) {
-					pushInstance.send(this.testWebhookData[webhookKey].sessionId!, 'testWebhookReceived', { workflowId: webhookData.workflow.id });
+					pushInstance.send('testWebhookReceived', { workflowId: webhookData.workflow.id }, this.testWebhookData[webhookKey].sessionId!);
 				}
 
 			} catch (error) {
@@ -167,7 +167,7 @@ export class TestWebhooks {
 			// Inform editor-ui that webhook got received
 			if (this.testWebhookData[webhookKey].sessionId !== undefined) {
 				try {
-					pushInstance.send(this.testWebhookData[webhookKey].sessionId!, 'testWebhookDeleted', { workflowId });
+					pushInstance.send('testWebhookDeleted', { workflowId }, this.testWebhookData[webhookKey].sessionId!);
 				} catch (error) {
 					// Could not inform editor, probably is not connected anymore. So sipmly go on.
 				}

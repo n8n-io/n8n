@@ -19,6 +19,8 @@ import {
 import {
 	ICredentialsResponse,
 	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
 	IWorkflowDb,
 	INodeUi,
@@ -34,6 +36,7 @@ Vue.use(Vuex);
 export const store = new Vuex.Store({
 	strict: process.env.NODE_ENV !== 'production',
 	state: {
+		activeExecutions: [] as IExecutionsCurrentSummaryExtended[],
 		activeWorkflows: [] as string[],
 		activeActions: [] as string[],
 		activeNode: null as string | null,
@@ -82,6 +85,45 @@ export const store = new Vuex.Store({
 			if (actionIndex !== -1) {
 				state.activeActions.splice(actionIndex, 1);
 			}
+		},
+
+		// Active Executions
+		addActiveExecution (state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
+			// Check if the execution exists already
+			const activeExecution = state.activeExecutions.find(execution => {
+				return execution.idActive === newActiveExecution.idActive;
+			});
+
+			if (activeExecution !== undefined) {
+				// Exists already so no need to add it again
+				if (activeExecution.workflowName === undefined) {
+					activeExecution.workflowName = newActiveExecution.workflowName;
+				}
+				return;
+			}
+
+			state.activeExecutions.unshift(newActiveExecution);
+		},
+		finishActiveExecution (state, finishedActiveExecution: IPushDataExecutionFinished) {
+			// Find the execution to set to finished
+			const activeExecution = state.activeExecutions.find(execution => {
+				return execution.idActive === finishedActiveExecution.executionIdActive;
+			});
+
+			if (activeExecution === undefined) {
+				// The execution could not be found
+				return;
+			}
+
+			if (finishedActiveExecution.executionIdDb !== undefined) {
+				Vue.set(activeExecution, 'id', finishedActiveExecution.executionIdDb);
+			}
+
+			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
+			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
+		},
+		setActiveExecutions (state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
+			Vue.set(state, 'activeExecutions', newActiveExecutions);
 		},
 
 		// Active Workflows
@@ -504,6 +546,10 @@ export const store = new Vuex.Store({
 
 		isActionActive: (state) => (action: string): boolean => {
 			return state.activeActions.includes(action);
+		},
+
+		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
+			return state.activeExecutions;
 		},
 
 		getBaseUrl: (state): string => {

@@ -161,7 +161,6 @@ export const mouseSelect = mixins(nodeIndex).extend({
 			const nodeElement = `node-${this.getNodeIndex(node.name)}`;
 			// @ts-ignore
 			this.instance.removeFromDragSelection(nodeElement);
-
 		},
 		nodeSelected (node: INodeUi) {
 			this.$store.commit('addSelectedNode', node);
