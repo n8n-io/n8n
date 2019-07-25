@@ -211,7 +211,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 						['Label',
 							{
 								id: 'output-name-label',
-								location: [0.5, 1.5],
+								location: [1.75, 0.5],
 								label: nodeTypeData.outputNames[index],
 								cssClass: 'node-endpoint-label',
 								visible: true,
