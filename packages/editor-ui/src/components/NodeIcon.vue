@@ -1,5 +1,5 @@
 <template>
-	<div class="node-icon-wrapper">
+	<div class="node-icon-wrapper" :style="iconStyleData">
 		<div v-if="nodeIconData !== null" class="icon">
 			<img :src="nodeIconData.path" style="width: 100%; height: 100%;" v-if="nodeIconData.type === 'file'"/>
 			<font-awesome-icon :icon="nodeIconData.path" v-else-if="nodeIconData.type === 'fa'" />
@@ -23,8 +23,24 @@ export default Vue.extend({
 	name: 'NodeIcon',
 	props: [
 		'nodeType',
+		'size',
 	],
 	computed: {
+		iconStyleData (): object {
+			if (!this.size) {
+				return {};
+			}
+
+			let size = parseInt(this.size, 10);
+
+			return {
+				width: size + 'px',
+				height: size + 'px',
+				'font-size': Math.floor(parseInt(this.size, 10) * 0.6) + 'px',
+				'line-height': size + 'px',
+				'border-radius': Math.ceil(size / 2) + 'px',
+			}
+		},
 		nodeIconData (): null | NodeIconData {
 			if (this.nodeType === null) {
 				return null;
@@ -57,22 +73,17 @@ export default Vue.extend({
 .node-icon-wrapper {
 	width: 30px;
 	height: 30px;
-	border-radius: 20px;
+	border-radius: 15px;
 	color: #444;
 	line-height: 30px;
 	font-size: 1.1em;
 	overflow: hidden;
 	background-color: #fff;
 	text-align: center;
-	font-size: 12px;
 	font-weight: bold;
-
-	.icon {
-		font-size: 1.6em;
-	}
+	font-size: 20px;
 
 	.node-icon-placeholder {
-		font-size: 1.4em;
 		text-align: center;
 	}
 }

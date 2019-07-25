@@ -59,6 +59,7 @@ import {
 	faStop,
 	faSun,
 	faSync,
+	faSyncAlt,
 	faTable,
 	faTasks,
 	faTerminal,
@@ -117,6 +118,7 @@ library.add(faSpinner);
 library.add(faStop);
 library.add(faSun);
 library.add(faSync);
+library.add(faSyncAlt);
 library.add(faTable);
 library.add(faTasks);
 library.add(faTerminal);

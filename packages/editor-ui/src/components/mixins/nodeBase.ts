@@ -64,17 +64,17 @@ export const nodeBase = mixins(nodeIndex).extend({
 			const nodeConnectors: IConnectionsUi = {
 				main: {
 					input: {
-						uuid: '-top',
+						uuid: '-input',
 						maxConnections: -1,
 						endpoint: 'Rectangle',
-						endpointStyle: { width: 24, height: 12, fill: '#555', stroke: '#555', strokeWidth: 0 },
+						endpointStyle: { width: 12, height: 24, fill: '#555', stroke: '#555', strokeWidth: 0 },
 						dragAllowedWhenFull: true,
 					},
 					output: {
-						uuid: '-bottom',
+						uuid: '-output',
 						maxConnections: -1,
 						endpoint: 'Dot',
-						endpointStyle: { radius: 9, fill: '#555', outlineStroke: 'none' },
+						endpointStyle: { radius: 11, fill: '#555', outlineStroke: 'none' },
 						dragAllowedWhenFull: true,
 					},
 				},
@@ -94,30 +94,30 @@ export const nodeBase = mixins(nodeIndex).extend({
 			} = {
 				input: {
 					1: [
-						'Top',
+						'Left',
 					],
 					2: [
-						[0.3, 0, 0, -1],
-						[0.7, 0, 0, -1],
+						[0, 0.3, -1, 0],
+						[0, 0.7, -1, 0],
 					],
 					3: [
-						[0.25, 0, 0, -1],
-						[0.5, 0, 0, -1],
-						[0.75, 0, 0, -1],
+						[0, 0.25, -1, 0],
+						[0, 0.5, -1, 0],
+						[0, 0.75, -1, 0],
 					],
 				},
 				output: {
 					1: [
-						'Bottom',
+						'Right',
 					],
 					2: [
-						[0.3, 1, 0, 1],
-						[0.7, 1, 0, 1],
+						[1, 0.3, 1, 0],
+						[1, 0.7, 1, 0],
 					],
 					3: [
-						[0.25, 1, 0, 1],
-						[0.5, 1, 0, 1],
-						[0.75, 1, 0, 1],
+						[1, 0.25, 1, 0],
+						[1, 0.5, 1, 0],
+						[1, 0.75, 1, 0],
 					],
 				},
 			};
