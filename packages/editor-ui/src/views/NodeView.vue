@@ -428,13 +428,13 @@ export default mixins(
 					if (lastSelectedNode !== null) {
 						this.$store.commit('setActiveNode', lastSelectedNode.name);
 					}
-				} else if (e.key === 'ArrowDown' && e.shiftKey === true) {
+				} else if (e.key === 'ArrowRight' && e.shiftKey === true) {
 					// Select all downstream nodes
 					e.stopPropagation();
 					e.preventDefault();
 
 					this.callDebounced('selectDownstreamNodes', 1000);
-				} else if (e.key === 'ArrowDown') {
+				} else if (e.key === 'ArrowRight') {
 					// Set child node active
 					const lastSelectedNode = this.$store.getters.lastSelectedNode;
 					if (lastSelectedNode === null) {
@@ -448,13 +448,13 @@ export default mixins(
 					}
 
 					this.callDebounced('nodeSelectedByName', 100, connections.main[0][0].node, false, true);
-				} else if (e.key === 'ArrowUp' && e.shiftKey === true) {
+				} else if (e.key === 'ArrowLeft' && e.shiftKey === true) {
 					// Select all downstream nodes
 					e.stopPropagation();
 					e.preventDefault();
 
 					this.callDebounced('selectUpstreamNodes', 1000);
-				} else if (e.key === 'ArrowUp') {
+				} else if (e.key === 'ArrowLeft') {
 					// Set parent node active
 					const lastSelectedNode = this.$store.getters.lastSelectedNode;
 					if (lastSelectedNode === null) {
@@ -474,7 +474,7 @@ export default mixins(
 					}
 
 					this.callDebounced('nodeSelectedByName', 100, connections.main[0][0].node, false, true);
-				} else if (['ArrowLeft', 'ArrowRight'].includes(e.key)) {
+				} else if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
 					// Set sibling node as active
 
 					// Check first if it has a parent node
@@ -504,7 +504,7 @@ export default mixins(
 
 					// Get all the sibling nodes and their x positions to know which one to set active
 					let siblingNode: INodeUi;
-					let lastCheckedNodePosition = e.key === 'ArrowLeft' ? -99999999 : 99999999;
+					let lastCheckedNodePosition = e.key === 'ArrowUp' ? -99999999 : 99999999;
 					let nextSelectNode: string | null = null;
 					for (const ouputConnections of connectionsParent.main) {
 						for (const ouputConnection of ouputConnections) {
@@ -514,17 +514,17 @@ export default mixins(
 							}
 							siblingNode = this.$store.getters.nodeByName(ouputConnection.node);
 
-							if (e.key === 'ArrowLeft') {
+							if (e.key === 'ArrowUp') {
 								// Get the next node on the left
-								if (siblingNode.position[0] <= lastSelectedNode.position[0] && siblingNode.position[0] > lastCheckedNodePosition) {
+								if (siblingNode.position[1] <= lastSelectedNode.position[1] && siblingNode.position[1] > lastCheckedNodePosition) {
 									nextSelectNode = siblingNode.name;
-									lastCheckedNodePosition = siblingNode.position[0];
+									lastCheckedNodePosition = siblingNode.position[1];
 								}
 							} else {
 								// Get the next node on the right
-								if (siblingNode.position[0] >= lastSelectedNode.position[0] && siblingNode.position[0] < lastCheckedNodePosition) {
+								if (siblingNode.position[1] >= lastSelectedNode.position[1] && siblingNode.position[1] < lastCheckedNodePosition) {
 									nextSelectNode = siblingNode.name;
-									lastCheckedNodePosition = siblingNode.position[0];
+									lastCheckedNodePosition = siblingNode.position[1];
 								}
 							}
 						}
@@ -929,8 +929,8 @@ export default mixins(
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = this.getNewNodePosition(
-						[lastSelectedNode.position[0], lastSelectedNode.position[1] + 50],
-						[0, 55]
+						[lastSelectedNode.position[0] + 180, lastSelectedNode.position[1]],
+						[110, 0]
 					);
 				} else {
 					// If no node is active find a free spot
@@ -1068,8 +1068,8 @@ export default mixins(
 					const sourceNode = this.$store.getters.nodeByName(sourceNodeName);
 
 					// TODO: That should happen after each move (only the setConnector part)
-					if (info.sourceEndpoint.anchor.lastReturnValue[1] >= info.targetEndpoint.anchor.lastReturnValue[1]) {
-						// When the source is underneath the target it will make sure that
+					if (info.sourceEndpoint.anchor.lastReturnValue[0] >= info.targetEndpoint.anchor.lastReturnValue[0]) {
+						// When the source is before the target it will make sure that
 						// the connection is clearer visible
 
 						// Use the Flowchart connector if the source is underneath the target
@@ -1088,7 +1088,7 @@ export default mixins(
 
 						// Change also the color to give an additional visual hint
 						info.connection.setPaintStyle({ strokeWidth: 2, stroke: '#334455' });
-					} else if (Math.abs(info.sourceEndpoint.anchor.lastReturnValue[0] - info.targetEndpoint.anchor.lastReturnValue[0]) < 30) {
+					} else if (Math.abs(info.sourceEndpoint.anchor.lastReturnValue[1] - info.targetEndpoint.anchor.lastReturnValue[1]) < 30) {
 						info.connection.setConnector(['Straight']);
 					}
 
@@ -1274,8 +1274,8 @@ export default mixins(
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection === true) {
 					const uuid: [string, string] = [
-						`${this.getNodeIndex(connection[0].node)}-bottom${connection[0].index}`,
-						`${this.getNodeIndex(connection[1].node)}-top${connection[1].index}`,
+						`${this.getNodeIndex(connection[0].node)}-output${connection[0].index}`,
+						`${this.getNodeIndex(connection[1].node)}-input${connection[1].index}`,
 					];
 
 					// Create connections in DOM
@@ -1348,7 +1348,7 @@ export default mixins(
 
 				newNodeData.position = this.getNewNodePosition(
 					[node.position[0] + 180, node.position[1]],
-					[90, 0]
+					[0, 110]
 				);
 
 				await this.addNodes([newNodeData]);

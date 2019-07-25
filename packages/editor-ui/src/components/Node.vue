@@ -9,33 +9,32 @@
 		<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
 
 		<div class="node-executing-info" title="Node is executing">
-			<font-awesome-icon icon="spinner" spin />
-		</div>
-		<div class="node-execute" v-if="!isReadOnly && !workflowRunning">
-			<font-awesome-icon class="execute-icon" @click.stop.left="executeNode" icon="play-circle" title="Execute Node"/>
+			<font-awesome-icon icon="sync-alt" spin />
 		</div>
 		<div class="node-options" v-if="!isReadOnly">
-			<div @click.stop.left="deleteNode" class="option indent" title="Delete Node" >
+			<div @click.stop.left="deleteNode" class="option" title="Delete Node" >
 				<font-awesome-icon icon="trash" />
+			</div>
+			<div @click.stop.left="disableNode" class="option" title="Activate/Deactivate Node" >
+				<font-awesome-icon :icon="nodeDisabledIcon" />
 			</div>
 			<div @click.stop.left="duplicateNode" class="option" title="Duplicate Node" >
 				<font-awesome-icon icon="clone" />
 			</div>
-			<div @click.stop.left="disableNode" class="option indent" title="Activate/Deactivate Node" >
-				<font-awesome-icon :icon="nodeDisabledIcon" />
+			<div @click.stop.left="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
+				<font-awesome-icon class="execute-icon" icon="play-circle" />
+			</div>
+		</div>
+		<div class="node-description">
+			<div class="node-name" :title="data.name">
+				{{data.name}}
+			</div>
+			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
+				{{nodeSubtitle}}
 			</div>
 		</div>
 
-		<NodeIcon class="node-icon" :nodeType="nodeType" :style="nodeIconStyle"/>
-		<div class="node-name" :title="data.name">
-			{{data.name}}
-		</div>
-		<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
-			{{nodeSubtitle}}
-		</div>
-		<div class="node-edit" @click.left.stop="setNodeActive" title="Edit Node">
-			<font-awesome-icon icon="pen" />
-		</div>
+		<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle"/>
 	</div>
 </template>
 
@@ -88,10 +87,6 @@ export default mixins(nodeBase, workflowHelpers).extend({
 
 			if (this.data.disabled) {
 				classes.push('disabled');
-			}
-
-			if (this.nodeSubtitle) {
-				classes.push('has-subtitle');
 			}
 
 			if (this.isExecuting) {
@@ -203,33 +198,18 @@ export default mixins(nodeBase, workflowHelpers).extend({
 
 .node-default {
 	position: absolute;
-	width: 160px;
-	height: 50px;
+	width: 100px;
+	height: 100px;
 	background-color: #fff;
 	border-radius: 25px;
 	text-align: center;
 	z-index: 24;
 	cursor: pointer;
 	color: #444;
-	line-height: 50px;
-	font-size: 0.8em;
-	font-weight: 600;
 	border: 1px dashed grey;
 
 	&.has-data {
 		border-style: solid;
-	}
-
-	&.has-subtitle {
-		line-height: 38px;
-
-		.node-info-icon {
-			top: -22px;
-
-			&.data-count {
-				top: -15px;
-			}
-		}
 	}
 
 	&.disabled {
@@ -244,7 +224,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 		border-color: $--color-primary !important;
 
 		.node-executing-info {
-			display: initial;
+			display: inline-block;
 		}
 	}
 
@@ -258,72 +238,44 @@ export default mixins(nodeBase, workflowHelpers).extend({
 		}
 	}
 
-	.node-edit {
+	.node-description {
 		position: absolute;
-		top: 0;
-		right: 0;
-		width: 50px;
-		height: 100%;
-		font-size: 1.1em;
-		color: #ccc;
-		border-radius: 0 25px 25px 0;
-
-		&:hover {
-			color: #00cc00;
-		}
-
-		.svg-inline--fa {
-			height: 100%;
-		}
-	}
-
-	.node-execute {
-		display: none;
-		position: absolute;
-		right: -25px;
-		width: 45px;
-		line-height: 50px;
-		font-size: 1.5em;
-		text-align: right;
-		z-index: 10;
-		color: #aaa;
-
-		.execute-icon:hover {
-			color: $--color-primary;
-		}
+		bottom: -70px;
+		left: -50px;
+		width: 200px;
+		height: 60px;
+		text-align: center;
 	}
 
 	.node-executing-info {
 		display: none;
 		position: absolute;
-		right: -35px;
-		top: 8px;
+		left: 0px;
+		top: 0px;
 		z-index: 12;
-		width: 30px;
-		height: 30px;
-		line-height: 30px;
-		font-size: 18px;
+		width: 100%;
+		height: 100%;
+		font-size: 3.75em;
+		line-height: 1.65em;
 		text-align: center;
-		border-radius: 15px;
-		background-color: $--color-primary-light;
-		color: $--color-primary;
+		color: rgba($--color-primary, 0.7);
 	}
 
 	.node-icon {
 		position: absolute;
-		top: 0;
-		height: 30px;
-		margin: 10px;
+		top: calc(50% - 30px);
+		left: calc(50% - 30px);
 	}
 
 	.node-info-icon {
 		position: absolute;
-		top: -28px;
-		right: 18px;
+		top: -18px;
+		right: 12px;
 		z-index: 10;
 
 		&.data-count {
-			top: -22px;
+			font-weight: 600;
+			top: -12px;
 		}
 	}
 
@@ -338,14 +290,13 @@ export default mixins(nodeBase, workflowHelpers).extend({
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		margin: 0 37px;
+		font-weight: 500;
 	}
 
 	.node-subtitle {
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		margin: -23px 20px 0 20px;
 		font-weight: 400;
 		color: $--custom-font-light;
 		font-size: 0.9em;
@@ -354,24 +305,29 @@ export default mixins(nodeBase, workflowHelpers).extend({
 	.node-options {
 		display: none;
 		position: absolute;
-		left: -28px;
-		width: 45px;
-		top: -8px;
-		line-height: 1.8em;
-		font-size: 12px;
+		top: -35px;
+		left: -10px;
+		width: 120px;
+		height: 45px;
+		font-size: 1em;
 		text-align: left;
 		z-index: 10;
 		color: #aaa;
+		text-align: center;
 
 		.option {
 			width: 20px;
-			text-align: center;
+			display: inline-block;
+			padding: 0 0.3em;
 
 			&:hover {
 				color: $--color-primary;
 			}
-			&.indent {
-				margin-left: 7px;
+
+			.execute-icon {
+				position: relative;
+				top: 2px;
+				font-size: 1.2em;
 			}
 		}
 	}
