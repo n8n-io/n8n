@@ -1,29 +1,33 @@
 <template>
-	<div class="node-default" :style="nodeStyle" :class="nodeClass" :ref="data.name" @dblclick="setNodeActive" @click.left="mouseLeftClick">
-		<div v-if="hasIssues" class="node-info-icon node-issues">
-			<el-tooltip placement="top" effect="light">
-				<div slot="content" v-html="nodeIssues"></div>
-				<font-awesome-icon icon="exclamation-triangle" />
-			</el-tooltip>
-		</div>
-		<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
+	<div class="node-wrapper" :style="nodePosition">
+		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick">
+			<div v-if="hasIssues" class="node-info-icon node-issues">
+				<el-tooltip placement="top" effect="light">
+					<div slot="content" v-html="nodeIssues"></div>
+					<font-awesome-icon icon="exclamation-triangle" />
+				</el-tooltip>
+			</div>
+			<el-badge v-else :hidden="workflowDataItems === 0" class="node-info-icon data-count" :value="workflowDataItems"></el-badge>
 
-		<div class="node-executing-info" title="Node is executing">
-			<font-awesome-icon icon="sync-alt" spin />
-		</div>
-		<div class="node-options" v-if="!isReadOnly">
-			<div @click.stop.left="deleteNode" class="option" title="Delete Node" >
-				<font-awesome-icon icon="trash" />
+			<div class="node-executing-info" title="Node is executing">
+				<font-awesome-icon icon="sync-alt" spin />
 			</div>
-			<div @click.stop.left="disableNode" class="option" title="Activate/Deactivate Node" >
-				<font-awesome-icon :icon="nodeDisabledIcon" />
+			<div class="node-options" v-if="!isReadOnly">
+				<div @click.stop.left="deleteNode" class="option" title="Delete Node" >
+					<font-awesome-icon icon="trash" />
+				</div>
+				<div @click.stop.left="disableNode" class="option" title="Activate/Deactivate Node" >
+					<font-awesome-icon :icon="nodeDisabledIcon" />
+				</div>
+				<div @click.stop.left="duplicateNode" class="option" title="Duplicate Node" >
+					<font-awesome-icon icon="clone" />
+				</div>
+				<div @click.stop.left="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
+					<font-awesome-icon class="execute-icon" icon="play-circle" />
+				</div>
 			</div>
-			<div @click.stop.left="duplicateNode" class="option" title="Duplicate Node" >
-				<font-awesome-icon icon="clone" />
-			</div>
-			<div @click.stop.left="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
-				<font-awesome-icon class="execute-icon" icon="play-circle" />
-			</div>
+
+			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle"/>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
@@ -33,8 +37,6 @@
 				{{nodeSubtitle}}
 			</div>
 		</div>
-
-		<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle"/>
 	</div>
 </template>
 
@@ -196,138 +198,144 @@ export default mixins(nodeBase, workflowHelpers).extend({
 
 <style lang="scss">
 
-.node-default {
+.node-wrapper {
 	position: absolute;
 	width: 100px;
 	height: 100px;
-	background-color: #fff;
-	border-radius: 25px;
-	text-align: center;
-	z-index: 24;
-	cursor: pointer;
-	color: #444;
-	border: 1px dashed grey;
-
-	&.has-data {
-		border-style: solid;
-	}
-
-	&.disabled {
-		color: #a0a0a0;
-		text-decoration: line-through;
-		border: 1px solid #eee !important;
-		background-color: #eee;
-	}
-
-	&.executing {
-		background-color: $--color-primary-light !important;
-		border-color: $--color-primary !important;
-
-		.node-executing-info {
-			display: inline-block;
-		}
-	}
-
-	&:hover {
-		.node-execute {
-			display: initial;
-		}
-
-		.node-options {
-			display: initial;
-		}
-	}
 
 	.node-description {
 		position: absolute;
-		bottom: -70px;
+		bottom: -55px;
 		left: -50px;
 		width: 200px;
-		height: 60px;
+		height: 50px;
 		text-align: center;
-	}
+		cursor: default;
 
-	.node-executing-info {
-		display: none;
-		position: absolute;
-		left: 0px;
-		top: 0px;
-		z-index: 12;
-		width: 100%;
-		height: 100%;
-		font-size: 3.75em;
-		line-height: 1.65em;
-		text-align: center;
-		color: rgba($--color-primary, 0.7);
-	}
+		.node-name {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			font-weight: 500;
+		}
 
-	.node-icon {
-		position: absolute;
-		top: calc(50% - 30px);
-		left: calc(50% - 30px);
-	}
-
-	.node-info-icon {
-		position: absolute;
-		top: -18px;
-		right: 12px;
-		z-index: 10;
-
-		&.data-count {
-			font-weight: 600;
-			top: -12px;
+		.node-subtitle {
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			font-weight: 400;
+			color: $--custom-font-light;
+			font-size: 0.8em;
 		}
 	}
 
-	.node-issues {
-		width: 25px;
-		height: 25px;
-		font-size: 20px;
-		color: #ff0000;
-	}
-
-	.node-name {
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		font-weight: 500;
-	}
-
-	.node-subtitle {
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		font-weight: 400;
-		color: $--custom-font-light;
-		font-size: 0.9em;
-	}
-
-	.node-options {
-		display: none;
-		position: absolute;
-		top: -35px;
-		left: -10px;
-		width: 120px;
-		height: 45px;
-		font-size: 1em;
-		text-align: left;
-		z-index: 10;
-		color: #aaa;
+	.node-default {
+		width: 100%;
+		height: 100%;
+		background-color: #fff;
+		border-radius: 25px;
 		text-align: center;
+		z-index: 24;
+		cursor: pointer;
+		color: #444;
+		border: 1px dashed grey;
 
-		.option {
-			width: 20px;
-			display: inline-block;
-			padding: 0 0.3em;
+		&.has-data {
+			border-style: solid;
+		}
 
-			&:hover {
-				color: $--color-primary;
+		&.disabled {
+			color: #a0a0a0;
+			text-decoration: line-through;
+			border: 1px solid #eee !important;
+			background-color: #eee;
+		}
+
+		&.executing {
+			background-color: $--color-primary-light !important;
+			border-color: $--color-primary !important;
+
+			.node-executing-info {
+				display: inline-block;
+			}
+		}
+
+		&:hover {
+			.node-execute {
+				display: initial;
 			}
 
-			.execute-icon {
-				position: relative;
-				top: 2px;
-				font-size: 1.2em;
+			.node-options {
+				display: initial;
+			}
+		}
+
+		.node-executing-info {
+			display: none;
+			position: absolute;
+			left: 0px;
+			top: 0px;
+			z-index: 12;
+			width: 100%;
+			height: 100%;
+			font-size: 3.75em;
+			line-height: 1.65em;
+			text-align: center;
+			color: rgba($--color-primary, 0.7);
+		}
+
+		.node-icon {
+			position: absolute;
+			top: calc(50% - 30px);
+			left: calc(50% - 30px);
+		}
+
+		.node-info-icon {
+			position: absolute;
+			top: -18px;
+			right: 12px;
+			z-index: 10;
+
+			&.data-count {
+				font-weight: 600;
+				top: -12px;
+			}
+		}
+
+		.node-issues {
+			width: 25px;
+			height: 25px;
+			font-size: 20px;
+			color: #ff0000;
+		}
+
+		.node-options {
+			display: none;
+			position: absolute;
+			top: -35px;
+			left: -10px;
+			width: 120px;
+			height: 45px;
+			font-size: 0.9em;
+			text-align: left;
+			z-index: 10;
+			color: #aaa;
+			text-align: center;
+
+			.option {
+				width: 20px;
+				display: inline-block;
+				padding: 0 0.3em;
+
+				&:hover {
+					color: $--color-primary;
+				}
+
+				.execute-icon {
+					position: relative;
+					top: 2px;
+					font-size: 1.2em;
+				}
 			}
 		}
 	}
@@ -355,7 +363,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 	border: 2px solid #ff2244;
 }
 
-.node-default.jtk-drag-selected {
+.jtk-drag-selected .node-default {
 	/* https://www.cssmatic.com/box-shadow */
 	-webkit-box-shadow: 0px 0px 6px 2px rgba(50, 75, 216, 0.37);
 	-moz-box-shadow: 0px 0px 6px 2px rgba(50, 75, 216, 0.37);
