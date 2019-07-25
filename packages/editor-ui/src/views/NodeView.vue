@@ -1961,6 +1961,10 @@ export default mixins(
 	font-size: 0.8em;
 }
 
+.delete-connection {
+	font-weight: 500;
+}
+
 .remove-connection-label {
 	font-size: 12px;
 	color: #fff;

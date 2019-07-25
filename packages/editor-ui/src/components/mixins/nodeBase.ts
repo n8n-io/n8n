@@ -41,12 +41,20 @@ export const nodeBase = mixins(nodeIndex).extend({
 		nodeIndex (): string {
 			return this.$store.getters.getNodeIndex(this.data.name).toString();
 		},
-		nodeStyle (): object {
+		nodePosition (): object {
 			const returnStyles: {
 				[key: string]: string;
 			} = {
 				left: this.data.position[0] + 'px',
 				top: this.data.position[1] + 'px',
+			};
+
+			return returnStyles;
+		},
+		nodeStyle (): object {
+			const returnStyles: {
+				[key: string]: string;
+			} = {
 				'border-color': this.data.color as string,
 			};
 
@@ -67,7 +75,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 						uuid: '-input',
 						maxConnections: -1,
 						endpoint: 'Rectangle',
-						endpointStyle: { width: 12, height: 24, fill: '#555', stroke: '#555', strokeWidth: 0 },
+						endpointStyle: { width: 10, height: 24, fill: '#777', stroke: '#777', lineWidth: 0 },
 						dragAllowedWhenFull: true,
 					},
 					output: {
@@ -276,7 +284,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 						});
 					}
 				},
-				filter: '.action-button',
+				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			});
 		},
 
