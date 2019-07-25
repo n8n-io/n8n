@@ -1232,8 +1232,8 @@ export default mixins(
 						type: 'n8n-nodes-base.start',
 						typeVersion: 1,
 						position: [
-							300,
 							100,
+							300,
 						] as XYPositon,
 						parameters: {},
 					},
