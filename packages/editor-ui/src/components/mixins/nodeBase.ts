@@ -26,7 +26,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 			}
 			return false;
 		},
-		isMacOs(): boolean {
+		isMacOs (): boolean {
 			return /(ipad|iphone|ipod|mac)/i.test(navigator.platform);
 		},
 		isReadOnly (): boolean {
@@ -280,7 +280,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 			});
 		},
 
-		isCtrlKeyPressed(e: MouseEvent | KeyboardEvent): boolean {
+		isCtrlKeyPressed (e: MouseEvent | KeyboardEvent): boolean {
 			if (this.isMacOs) {
 				return e.metaKey;
 			}
