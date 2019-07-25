@@ -87,12 +87,36 @@ export const pushConnection = mixins(
 			},
 
 			/**
+			 * Sometimes the push message is faster as the result from
+			 * the REST API so we do not know yet what execution ID
+			 * is currently active. So internally resend the message
+			 * a few more times
+			 *
+			 * @param {Event} event
+			 * @param {number} retryAttempts
+			 * @returns
+			 */
+			retryPushMessage (event: Event, retryAttempts: number) {
+				retryAttempts = retryAttempts -1;
+
+				if (retryAttempts <= 0) {
+					return;
+				}
+
+				setTimeout(() => {
+					this.pushMessageReceived(event, retryAttempts);
+				}, 200);
+			},
+
+			/**
 			 * Process a newly received message
 			 *
 			 * @param {Event} event The event data with the message data
 			 * @returns {void}
 			 */
-			pushMessageReceived (event: Event): void {
+			pushMessageReceived (event: Event, retryAttempts?: number): void {
+				retryAttempts = retryAttempts || 5;
+
 				let receivedData: IPushData;
 				try {
 					// @ts-ignore
@@ -107,14 +131,13 @@ export const pushConnection = mixins(
 						// No workflow is running so ignore the messages
 						return;
 					}
-					// Deactivated for now because sometimes the push messages arrive
-					// before the execution id gets received
-					// const pushData = receivedData.data as IPushDataNodeExecuteBefore;
-					// if (this.$store.getters.activeExecutionId !== pushData.executionId) {
-					// 	// The data is not for the currently active execution so ignore it.
-					// 	// Should normally not happen but who knows...
-					// 	return;
-					// }
+					const pushData = receivedData.data as IPushDataNodeExecuteBefore;
+					if (this.$store.getters.activeExecutionId !== pushData.executionId) {
+						// The data is not for the currently active execution or
+						// we do not have the execution id yet.
+						this.retryPushMessage(event, retryAttempts);
+						return;
+					}
 				}
 
 				if (receivedData.type === 'executionFinished') {
@@ -129,8 +152,9 @@ export const pushConnection = mixins(
 					}
 
 					if (this.$store.getters.activeExecutionId !== pushData.executionIdActive) {
-						// The workflow which did finish execution did not get started
-						// by this session so ignore
+						// The workflow which did finish execution did either not get started
+						// by this session or we do not have the execution id yet.
+						this.retryPushMessage(event, retryAttempts);
 						return;
 					}
 
