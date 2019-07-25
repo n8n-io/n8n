@@ -67,9 +67,11 @@ docker run -it --rm \
   n8nio/n8n
 ```
 
-## Use with MongoDB
+### Start with other Database
 
-Instead of SQLite, it is also possible to run n8n with MongoDB.
+By default n8n uses SQLite to save credentials, past executions and workflows.
+n8n however also supports MongoDB and PostgresDB. To use them simply a few
+environment variables have to be set.
 
 It is important to still persist the data in the `/root/.n8` folder. The reason
 is that it contains n8n user data. That is the name of the webhook
@@ -77,6 +79,9 @@ is that it contains n8n user data. That is the name of the webhook
 for the credentials. If none gets found n8n creates automatically one on
 startup. In case credentials are already saved with a different encryption key
 it can not be used anymore as encrypting it is not possible anymore.
+
+
+#### Use with MongoDB
 
 Replace the following placeholders with the actual data:
  - MONGO_DATABASE
@@ -90,7 +95,7 @@ docker run -it --rm \
   --name n8n \
   -p 5678:5678 \
 	-e DB_TYPE=mongodb \
-	-e DB_MONGODB_CONNECTION_URL="mongodb://MONGO_USER:MONGO_PASSWORD@MONGO_SERVER:MONGO_PORT/MONGO_DATABASE" \
+	-e DB_MONGODB_CONNECTION_URL="mongodb://<MONGO_USER>:<MONGO_PASSWORD>@<MONGO_SERVER>:<MONGO_PORT>/<MONGO_DATABASE>" \
   -v ~/.n8n:/root/.n8n \
   n8nio/n8n \
   n8n start
@@ -98,6 +103,30 @@ docker run -it --rm \
 
 A full working setup with docker-compose can be found [here](../../compose/withMongo/README.md)
 
+
+#### Use with PostgresDB
+
+Replace the following placeholders with the actual data:
+ - POSTGRES_DATABASE
+ - POSTGRES_HOST
+ - POSTGRES_PASSWORD
+ - POSTGRES_PORT
+ - POSTGRES_USER
+
+```
+docker run -it --rm \
+  --name n8n \
+  -p 5678:5678 \
+	-e DB_TYPE=postgresdb \
+	-e DB_POSTGRESDB_DATABASE=<POSTGRES_DATABASE> \
+	-e DB_POSTGRESDB_HOST=<POSTGRES_HOST> \
+	-e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
+	-e DB_POSTGRESDB_PORT=<POSTGRES_PORT> \
+	-e DB_POSTGRESDB_USER=<POSTGRES_USER> \
+  -v ~/.n8n:/root/.n8n \
+  n8nio/n8n \
+  n8n start
+```
 
 ## License
 
