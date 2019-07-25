@@ -181,6 +181,7 @@ class App {
 
 			const newWorkflowData = req.body;
 
+			newWorkflowData.name = newWorkflowData.name.trim();
 			newWorkflowData.createdAt = this.getCurrentDate();
 			newWorkflowData.updatedAt = this.getCurrentDate();
 
