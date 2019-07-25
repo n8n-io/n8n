@@ -97,7 +97,7 @@ export const pushConnection = mixins(
 			 * @returns
 			 */
 			retryPushMessage (event: Event, retryAttempts: number) {
-				retryAttempts = retryAttempts -1;
+				retryAttempts = retryAttempts - 1;
 
 				if (retryAttempts <= 0) {
 					return;

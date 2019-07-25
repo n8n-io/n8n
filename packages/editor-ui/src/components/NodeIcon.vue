@@ -31,7 +31,7 @@ export default Vue.extend({
 				return {};
 			}
 
-			let size = parseInt(this.size, 10);
+			const size = parseInt(this.size, 10);
 
 			return {
 				width: size + 'px',
@@ -39,7 +39,7 @@ export default Vue.extend({
 				'font-size': Math.floor(parseInt(this.size, 10) * 0.6) + 'px',
 				'line-height': size + 'px',
 				'border-radius': Math.ceil(size / 2) + 'px',
-			}
+			};
 		},
 		nodeIconData (): null | NodeIconData {
 			if (this.nodeType === null) {
