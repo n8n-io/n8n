@@ -1347,8 +1347,8 @@ export default mixins(
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
 
 				newNodeData.position = this.getNewNodePosition(
-					[node.position[0] + 180, node.position[1]],
-					[0, 110]
+					[node.position[0], node.position[1] + 150],
+					[0, 150]
 				);
 
 				await this.addNodes([newNodeData]);
