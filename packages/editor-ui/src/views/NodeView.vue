@@ -5,6 +5,7 @@
 			:class="workflowClasses"
 			@mousedown="mouseDown"
 			@mouseup="mouseUp"
+			@wheel="wheelScroll"
 			>
 			<div class="node-view-background" :style="backgroundStyle"></div>
 			<div id="node-view" class="node-view" :style="workflowStyle">
@@ -338,6 +339,9 @@ export default mixins(
 			mouseUp (e: MouseEvent) {
 				this.mouseUpMouseSelect(e);
 				this.mouseUpMoveWorkflow(e);
+			},
+			wheelScroll (e: WheelEvent) {
+				this.wheelMoveWorkflow(e);
 			},
 			keyUp (e: KeyboardEvent) {
 				if (e.key === this.controlKeyCode) {

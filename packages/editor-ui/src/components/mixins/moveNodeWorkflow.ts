@@ -83,5 +83,11 @@ export const moveNodeWorkflow = mixins(nodeIndex).extend({
 
 			this.moveWorkflow(e);
 		},
+		wheelMoveWorkflow (e: WheelEvent) {
+			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
+			const nodeViewOffsetPositionX = offsetPosition[0] - e.deltaX;
+			const nodeViewOffsetPositionY = offsetPosition[1] - e.deltaY;
+			this.$store.commit('setNodeViewOffsetPosition', [nodeViewOffsetPositionX, nodeViewOffsetPositionY]);
+		},
 	},
 });
