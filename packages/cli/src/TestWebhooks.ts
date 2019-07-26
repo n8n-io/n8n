@@ -91,7 +91,7 @@ export class TestWebhooks {
 
 				// Inform editor-ui that webhook got received
 				if (this.testWebhookData[webhookKey].sessionId !== undefined) {
-					pushInstance.send('testWebhookReceived', { workflowId: webhookData.workflow.id }, this.testWebhookData[webhookKey].sessionId!);
+					pushInstance.send('testWebhookReceived', { workflowId: webhookData.workflow.id, executionId }, this.testWebhookData[webhookKey].sessionId!);
 				}
 
 			} catch (error) {

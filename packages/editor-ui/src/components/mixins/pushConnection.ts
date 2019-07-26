@@ -223,6 +223,7 @@ export const pushConnection = mixins(
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {
 						this.$store.commit('setExecutionWaitingForWebhook', false);
+						this.$store.commit('setActiveExecutionId', pushData.executionId);
 					}
 				}
 			},

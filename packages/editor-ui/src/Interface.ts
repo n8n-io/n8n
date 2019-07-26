@@ -369,6 +369,7 @@ export interface IPushDataNodeExecuteBefore {
 }
 
 export interface IPushDataTestWebhook {
+	executionId: string;
 	workflowId: string;
 }
 
