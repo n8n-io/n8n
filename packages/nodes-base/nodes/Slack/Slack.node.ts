@@ -19,6 +19,7 @@ export class Slack implements INodeType {
 		icon: 'file:slack.png',
 		group: ['output'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to Slack',
 		defaults: {
 			name: 'Slack',
