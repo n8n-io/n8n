@@ -14,7 +14,7 @@ export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailgun',
 		name: 'mailgun',
-		icon: 'fa:envelope',
+		icon: 'file:mailgun.png',
 		group: ['output'],
 		version: 1,
 		description: 'Sends an Email via Mailgun',
