@@ -21,7 +21,7 @@ export class EmailSend implements INodeType {
 		description: 'Sends an Email',
 		defaults: {
 			name: 'Send Email',
-			color: '#44DD22',
+			color: '#00bb88',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

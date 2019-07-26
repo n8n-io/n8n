@@ -23,7 +23,7 @@ export class ReadBinaryFile implements INodeType {
 		description: 'Reads a binary file from disk',
 		defaults: {
 			name: 'Read Binary File',
-			color: '#22CC33',
+			color: '#449922',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
