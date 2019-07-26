@@ -20,6 +20,7 @@ export class RenameKeys implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Rename Keys',
 		name: 'renameKeys',
+		icon: 'fa:edit',
 		group: ['transform'],
 		version: 1,
 		description: 'Renames keys.',

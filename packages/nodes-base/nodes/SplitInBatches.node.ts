@@ -10,6 +10,7 @@ export class SplitInBatches implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Split In Batches',
 		name: 'splitInBatches',
+		icon: 'fa:th-large',
 		group: ['organization'],
 		version: 1,
 		description: 'Saves the originally incoming data and with each itteration it returns a predefined amount of them.',

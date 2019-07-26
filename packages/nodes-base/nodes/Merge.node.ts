@@ -11,7 +11,7 @@ export class Merge implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Merge',
 		name: 'merge',
-		icon: 'fa:clone',
+		icon: 'fa:code-branch',
 		group: ['transform'],
 		version: 1,
 		description: 'Merges data of multiple streams once data of both is available',
