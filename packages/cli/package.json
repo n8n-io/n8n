@@ -69,7 +69,7 @@
         "localtunnel": "^1.9.1",
         "mongodb": "^3.2.3",
         "n8n-core": "^0.6.0",
-        "n8n-editor-ui": "^0.8.0",
+        "n8n-editor-ui": "^0.10.0",
         "n8n-nodes-base": "^0.8.0",
         "n8n-workflow": "^0.7.0",
         "open": "^6.1.0",
