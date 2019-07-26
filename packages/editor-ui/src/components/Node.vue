@@ -99,6 +99,10 @@ export default mixins(nodeBase, workflowHelpers).extend({
 				classes.push('has-data');
 			}
 
+			if (this.hasIssues) {
+				classes.push('has-issues');
+			}
+
 			return classes;
 		},
 		nodeIssues (): string {
@@ -312,7 +316,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 		.node-options {
 			display: none;
 			position: absolute;
-			top: -35px;
+			top: -25px;
 			left: -10px;
 			width: 120px;
 			height: 45px;
@@ -337,6 +341,11 @@ export default mixins(nodeBase, workflowHelpers).extend({
 					font-size: 1.2em;
 				}
 			}
+		}
+
+		&.has-data .node-options,
+		&.has-issues .node-options {
+			top: -35px;
 		}
 	}
 }
