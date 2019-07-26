@@ -17,7 +17,7 @@ export class Merge implements INodeType {
 		description: 'Merges data of multiple streams once data of both is available',
 		defaults: {
 			name: 'Merge',
-			color: '#00cc22',
+			color: '#00bbcc',
 		},
 		inputs: ['main', 'main'],
 		outputs: ['main'],

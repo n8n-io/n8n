@@ -17,7 +17,7 @@ export class ReadFileFromUrl implements INodeType {
 		description: 'Reads a file from an URL',
 		defaults: {
 			name: 'Read File URL',
-			color: '#995533',
+			color: '#119955',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

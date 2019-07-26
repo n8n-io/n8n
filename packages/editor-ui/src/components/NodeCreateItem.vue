@@ -1,6 +1,6 @@
 <template>
 	<div class="node-item clickable" :class="{active: active}" @click="nodeTypeSelected(nodeType)">
-		<NodeIcon class="node-icon" :nodeType="nodeType"/>
+		<NodeIcon class="node-icon" :nodeType="nodeType" :style="nodeIconStyle" />
 		<div class="name">
 			{{nodeType.displayName}}
 		</div>
@@ -27,9 +27,12 @@ export default Vue.extend({
 		'filter',
 		'nodeType',
 	],
-	data () {
-		return {
-		};
+	computed: {
+		nodeIconStyle (): object {
+			return {
+				color: this.nodeType.defaults.color,
+			};
+		},
 	},
 	methods: {
 		nodeTypeSelected (nodeType: INodeTypeDescription) {

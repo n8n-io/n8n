@@ -17,7 +17,7 @@ export class Start implements INodeType {
 		maxNodes: 1,
 		defaults: {
 			name: 'Start',
-			color: '#553399',
+			color: '#00e000',
 		},
 		inputs: [],
 		outputs: ['main'],
