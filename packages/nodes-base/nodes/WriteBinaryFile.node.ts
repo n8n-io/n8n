@@ -21,7 +21,7 @@ export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Write Binary File',
 		name: 'writeBinaryFile',
-		icon: 'fa:save',
+		icon: 'fa:file-export',
 		group: ['output'],
 		version: 1,
 		description: 'Writes a binary file to disk',

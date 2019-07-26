@@ -17,24 +17,29 @@ import {
 	faAngleDown,
 	faAngleRight,
 	faAngleUp,
+	faArrowRight,
 	faAt,
 	faBug,
 	faCalendar,
 	faCheck,
 	faCode,
+	faCodeBranch,
 	faCog,
 	faCogs,
 	faClone,
 	faCloud,
 	faCopy,
 	faDotCircle,
+	faEdit,
 	faEnvelope,
 	faExclamationTriangle,
 	faExternalLinkAlt,
 	faFile,
 	faFileDownload,
+	faFileExport,
+	faFileImport,
+	faFilePdf,
 	faFolderOpen,
-	faGlobe,
 	faHdd,
 	faHourglass,
 	faImage,
@@ -42,6 +47,7 @@ import {
 	faInfo,
 	faInfoCircle,
 	faKey,
+	faMapSigns,
 	faNetworkWired,
 	faPause,
 	faPen,
@@ -63,6 +69,7 @@ import {
 	faTable,
 	faTasks,
 	faTerminal,
+	faThLarge,
 	faTimes,
 	faTrash,
 	faUndo,
@@ -76,24 +83,29 @@ library.add(faAngleDoubleLeft);
 library.add(faAngleDown);
 library.add(faAngleRight);
 library.add(faAngleUp);
+library.add(faArrowRight);
 library.add(faAt);
 library.add(faBug);
 library.add(faCalendar);
 library.add(faCheck);
 library.add(faCode);
+library.add(faCodeBranch);
 library.add(faCog);
 library.add(faCogs);
 library.add(faClone);
 library.add(faCloud);
 library.add(faCopy);
 library.add(faDotCircle);
+library.add(faEdit);
 library.add(faEnvelope);
 library.add(faExclamationTriangle);
 library.add(faExternalLinkAlt);
 library.add(faFile);
 library.add(faFileDownload);
+library.add(faFileExport);
+library.add(faFileImport);
+library.add(faFilePdf);
 library.add(faFolderOpen);
-library.add(faGlobe);
 library.add(faHdd);
 library.add(faHourglass);
 library.add(faImage);
@@ -101,6 +113,7 @@ library.add(faInbox);
 library.add(faInfo);
 library.add(faInfoCircle);
 library.add(faKey);
+library.add(faMapSigns);
 library.add(faNetworkWired);
 library.add(faPause);
 library.add(faPen);
@@ -122,6 +135,7 @@ library.add(faSyncAlt);
 library.add(faTable);
 library.add(faTasks);
 library.add(faTerminal);
+library.add(faThLarge);
 library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);

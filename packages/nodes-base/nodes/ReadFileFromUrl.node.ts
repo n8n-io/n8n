@@ -11,7 +11,7 @@ export class ReadFileFromUrl implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read File From Url',
 		name: 'readFileFromUrl',
-		icon: 'fa:globe',
+		icon: 'fa:file-download',
 		group: ['input'],
 		version: 1,
 		description: 'Reads a file from an URL',

@@ -8,9 +8,9 @@ import {
 
 export class NoOp implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'No Operation',
+		displayName: 'No Operation, do nothing',
 		name: 'noOp',
-		icon: 'fa:pen',
+		icon: 'fa:arrow-right',
 		group: ['organization'],
 		version: 1,
 		description: 'No Operation',

@@ -12,6 +12,7 @@ export class Set implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Set',
 		name: 'set',
+		icon: 'fa:pen',
 		group: ['input'],
 		version: 1,
 		description: 'Sets values on the items and removes if selected all other values.',
