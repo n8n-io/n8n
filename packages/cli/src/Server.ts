@@ -724,8 +724,10 @@ class App {
 			if (req.query.lastStartedAt) {
 				filter.startedAt = LessThan(req.query.lastStartedAt);
 			}
+			countFilter.select = ['id'];
 
 			const resultsPromise = Db.collections.Execution!.find({
+				select: ['id', 'workflowData'],
 				where: filter,
 				order: {
 					startedAt: "DESC",
