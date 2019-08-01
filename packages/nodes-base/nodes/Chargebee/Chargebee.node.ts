@@ -621,8 +621,11 @@ export class Chargebee implements INodeType {
 					returnData.push(data.invoice as IDataObject);
 				});
 			} else if (resource === 'invoice' && operation === 'pdfUrl') {
-				item.json.pdfUrl = responseData.download.download_url;
-				returnData.push(item.json);
+				const data: IDataObject = {};
+				Object.assign(data, items[i].json);
+
+				data.pdfUrl = responseData.download.download_url;
+				returnData.push(data);
 			} else {
 				returnData.push(responseData);
 			}

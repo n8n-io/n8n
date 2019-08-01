@@ -1045,8 +1045,6 @@ export class Workflow {
 			const returnPromises: Array<Promise<INodeExecutionData>> = [];
 
 			for (let itemIndex = 0; itemIndex < connectionInputData.length; itemIndex++) {
-				// executionData = connectionInputData[itemIndex];
-				// const thisArgs = NodeExecuteFunctions.getExecuteSingleFunctions(this, runData, connectionInputData, inputData, node, itemIndex);
 				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(this, runExecutionData, runIndex, connectionInputData, inputData, node, itemIndex, additionalData, mode);
 
 				returnPromises.push(nodeType.executeSingle!.call(thisArgs));

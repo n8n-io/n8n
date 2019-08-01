@@ -443,7 +443,7 @@ export class NextCloud implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
+		const items = this.getInputData().slice();
 		const returnData: IDataObject[] = [];
 
 		const credentials = this.getCredentials('nextCloudApi');
@@ -583,10 +583,21 @@ export class NextCloud implements INodeType {
 			const responseData = await this.helpers.request(options);
 
 			if (resource === 'file' && operation === 'download') {
-				// TODO: Has to check if it already exists and only add if not
-				if (items[i].binary === undefined) {
-					items[i].binary = {};
+
+				const newItem: INodeExecutionData = {
+					json: items[i].json,
+					binary: {},
+				};
+
+				if (items[i].binary !== undefined) {
+					// Create a shallow copy of the binary data so that the old
+					// data references which do not get changed still stay behind
+					// but the incoming data does not get changed.
+					Object.assign(newItem.binary, items[i].binary);
 				}
+
+				items[i] = newItem;
+
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);

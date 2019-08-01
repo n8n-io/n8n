@@ -20,6 +20,7 @@ import {
 	NodeExecuteFunctions,
 } from './';
 
+import { merge } from 'lodash';
 
 export class WorkflowExecute {
 	private additionalData: IWorkflowExecuteAdditionalData;
@@ -600,7 +601,7 @@ export class WorkflowExecute {
 						}
 
 						runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
-						nodeSuccessData = await workflow.runNode(executionData.node, JSON.parse(JSON.stringify(executionData.data)), runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
+						nodeSuccessData = await workflow.runNode(executionData.node, executionData.data, runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
 
 						if (nodeSuccessData === null) {
 							// If null gets returned it means that the node did succeed
@@ -638,7 +639,7 @@ export class WorkflowExecute {
 							// Simply get the input data of the node if it has any and pass it through
 							// to the next node
 							if (executionData.data.main[0] !== null) {
-								nodeSuccessData = [(JSON.parse(JSON.stringify(executionData.data.main[0])) as INodeExecutionData[])];
+								nodeSuccessData = [executionData.data.main[0] as INodeExecutionData[]];
 							}
 						}
 					} else {

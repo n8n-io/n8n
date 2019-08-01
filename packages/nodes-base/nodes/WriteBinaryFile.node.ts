@@ -70,13 +70,22 @@ export class WriteBinaryFile implements INodeType {
 		// Write the file to disk
 		await fsWriteFileAsync(fileName, Buffer.from(item.binary[dataPropertyName].data, BINARY_ENCODING), 'binary');
 
-		if (item.json === undefined) {
-			item.json = {};
+		const newItem: INodeExecutionData = {
+			json: {},
+		};
+		Object.assign(newItem.json, item.json);
+
+		if (item.binary !== undefined) {
+			// Create a shallow copy of the binary data so that the old
+			// data references which do not get changed still stay behind
+			// but the incoming data does not get changed.
+			newItem.binary = {};
+			Object.assign(newItem.binary, item.binary);
 		}
 
 		// Add the file name to data
-		(item.json as IDataObject).fileName = fileName;
+		(newItem.json as IDataObject).fileName = fileName;
 
-		return item;
+		return newItem;
 	}
 }
