@@ -178,14 +178,19 @@ export class Merge implements INodeType {
 					if (['null', 'undefined'].includes(typeof referenceValue)) {
 						continue;
 					}
+
+					// Copy the entry as the data gets changed
+					entry = JSON.parse(JSON.stringify(entry));
+
 					for (key of Object.keys(copyData[referenceValue as string].json)) {
 						// TODO: Currently only copies json data and no binary one
 						entry.json[key] = copyData[referenceValue as string].json[key];
 					}
 				}
+				returnData.push(entry);
 			}
 
-			return [dataInput1];
+			return [returnData];
 		} else if (mode === 'passThrough') {
 			const output = this.getNodeParameter('output', 0) as string;
 

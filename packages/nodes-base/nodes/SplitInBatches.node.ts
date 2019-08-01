@@ -35,7 +35,9 @@ export class SplitInBatches implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null> {
-		const items = this.getInputData();
+		// Get the input data and create a new array so that we can remove
+		// items without a problem
+		const items = this.getInputData().slice();
 
 		const nodeContext = this.getContext('node');
 

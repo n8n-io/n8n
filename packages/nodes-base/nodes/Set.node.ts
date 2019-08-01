@@ -115,32 +115,48 @@ export class Set implements INodeType {
 			items.push({json: {}});
 		}
 
+		const returnData: INodeExecutionData[] = [];
+
 		let item: INodeExecutionData;
 		let keepOnlySet: boolean;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, []) as boolean;
 			item = items[itemIndex];
 
-			if (keepOnlySet === true) {
-				item.json = {};
+			const newItem: INodeExecutionData = {
+				json: {},
+			};
+
+			if (keepOnlySet !== true) {
+				if (item.binary !== undefined) {
+					// Create a shallow copy of the binary data so that the old
+					// data references which do not get changed still stay behind
+					// but the incoming data does not get changed.
+					newItem.binary = {};
+					Object.assign(newItem.binary, item.binary);
+				}
+
+				newItem.json = JSON.parse(JSON.stringify(item.json));
 			}
 
 			// Add boolean values
 			(this.getNodeParameter('values.boolean', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-				set(item.json, setItem.name as string, !!setItem.value);
+				set(newItem.json, setItem.name as string, !!setItem.value);
 			});
 
 			// Add number values
 			(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-				set(item.json, setItem.name as string, setItem.value);
+				set(newItem.json, setItem.name as string, setItem.value);
 			});
 
 			// Add string values
 			(this.getNodeParameter('values.string', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-				set(item.json, setItem.name as string, setItem.value);
+				set(newItem.json, setItem.name as string, setItem.value);
 			});
+
+			returnData.push(newItem);
 		}
 
-		return this.prepareOutputData(items);
+		return this.prepareOutputData(returnData);
 	}
 }

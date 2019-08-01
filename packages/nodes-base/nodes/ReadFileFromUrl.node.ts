@@ -69,12 +69,20 @@ export class ReadFileFromUrl implements INodeType {
 		// Get the current item and add the binary data
 		const item = this.getInputData();
 
-		if (!item.binary) {
-			item.binary = {};
+		const newItem: INodeExecutionData = {
+			json: item.json,
+			binary: {},
+		};
+
+		if (item.binary !== undefined) {
+			// Create a shallow copy of the binary data so that the old
+			// data references which do not get changed still stay behind
+			// but the incoming data does not get changed.
+			Object.assign(newItem.binary, item.binary);
 		}
 
-		item.binary[dataPropertyName as string] = await this.helpers.prepareBinaryData(data, fileName);
+		newItem.binary![dataPropertyName as string] = await this.helpers.prepareBinaryData(data, fileName);
 
-		return item;
+		return newItem;
 	}
 }

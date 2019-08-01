@@ -313,11 +313,20 @@ export class LinkFish implements INodeType {
 		if (operation === 'screenshot') {
 			const item = this.getInputData();
 
+			const newItem: INodeExecutionData = {
+				json: item.json,
+				binary: {},
+			};
+
+			if (item.binary !== undefined) {
+				// Create a shallow copy of the binary data so that the old
+				// data references which do not get changed still stay behind
+				// but the incoming data does not get changed.
+				Object.assign(newItem.binary, item.binary);
+			}
+
 			// Add the returned data to the item as binary property
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName') as string;
-			if (item.binary === undefined) {
-				item.binary = {};
-			}
 
 			let fileExtension = 'png';
 			let mimeType = 'image/png';
@@ -326,9 +335,9 @@ export class LinkFish implements INodeType {
 				mimeType = 'image/jpeg';
 			}
 
-			item.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, `screenshot.${fileExtension}`, mimeType);
+			newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, `screenshot.${fileExtension}`, mimeType);
 
-			return item;
+			return newItem;
 		}
 
 		return {

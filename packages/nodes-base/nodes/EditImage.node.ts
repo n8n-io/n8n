@@ -538,6 +538,18 @@ export class EditImage implements INodeType {
 			throw new Error(`The operation "${operation}" is not supported!`);
 		}
 
+		const newItem: INodeExecutionData = {
+			json: item.json,
+			binary: {},
+		};
+
+		if (item.binary !== undefined) {
+			// Create a shallow copy of the binary data so that the old
+			// data references which do not get changed still stay behind
+			// but the incoming data does not get changed.
+			Object.assign(newItem.binary, item.binary);
+		}
+
 		return new Promise<INodeExecutionData>((resolve, reject) => {
 			gmInstance
 				.toBuffer((error: Error, buffer: Buffer) => {
@@ -545,9 +557,9 @@ export class EditImage implements INodeType {
 						return reject(error);
 					}
 
-					item.binary![dataPropertyName as string].data = buffer.toString(BINARY_ENCODING);
+					newItem.binary![dataPropertyName as string].data = buffer.toString(BINARY_ENCODING);
 
-					return resolve(item);
+					return resolve(newItem);
 				});
 		});
 	}

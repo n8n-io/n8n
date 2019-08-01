@@ -1366,10 +1366,23 @@ export class Github implements INodeType {
 				if (asBinaryProperty === true) {
 					// Add the returned data to the item as binary property
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-					if (items[i].binary === undefined) {
-						items[i].binary = {};
+
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
+
+					if (items[i].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary, items[i].binary);
 					}
-					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(responseData.content, 'base64'), responseData.path);
+
+					newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(responseData.content, 'base64'), responseData.path);
+
+					items[i] = newItem;
+
 					return this.prepareOutputData(items);
 				}
 			}

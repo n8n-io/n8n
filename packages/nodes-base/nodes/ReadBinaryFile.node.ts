@@ -55,10 +55,6 @@ export class ReadBinaryFile implements INodeType {
 		const dataPropertyName = this.getNodeParameter('dataPropertyName') as string;
 		const filePath = this.getNodeParameter('filePath') as string;
 
-		if (item.binary === undefined) {
-			item.binary = {};
-		}
-
 		let data;
 		try {
 			data = await fsReadFileAsync(filePath) as Buffer;
@@ -69,9 +65,22 @@ export class ReadBinaryFile implements INodeType {
 
 			throw error;
 		}
-		item.binary[dataPropertyName] = await this.helpers.prepareBinaryData(data, filePath);
 
-		return item;
+		const newItem: INodeExecutionData = {
+			json: item.json,
+			binary: {},
+		};
+
+		if (item.binary !== undefined) {
+			// Create a shallow copy of the binary data so that the old
+			// data references which do not get changed still stay behind
+			// but the incoming data does not get changed.
+			Object.assign(newItem.binary, item.binary);
+		}
+
+		newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(data, filePath);
+
+		return newItem;
 	}
 
 }

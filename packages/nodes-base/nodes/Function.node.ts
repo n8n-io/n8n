@@ -40,6 +40,9 @@ export class Function implements INodeType {
 		// const item = this.getInputData();
 		let items = this.getInputData();
 
+		// Copy the items as they may get changed in the functions
+		items = JSON.parse(JSON.stringify(items));
+
 		// Define the global objects for the custom function
 		const sandbox = {
 			getNodeParameter: this.getNodeParameter,

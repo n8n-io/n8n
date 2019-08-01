@@ -332,7 +332,6 @@ export class HttpRequest implements INodeType {
 		const httpBasicAuth = this.getCredentials('httpBasicAuth');
 		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
 
-		let item: INodeExecutionData;
 		let url: string, responseFormat: string;
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
@@ -360,8 +359,6 @@ export class HttpRequest implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			item = items[itemIndex];
-
 			url = this.getNodeParameter('url', itemIndex) as string;
 			responseFormat = this.getNodeParameter('responseFormat', itemIndex) as string;
 

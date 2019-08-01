@@ -39,7 +39,10 @@ export class FunctionItem implements INodeType {
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		const item = this.getInputData();
+		let item = this.getInputData();
+
+		// Copy the items as they may get changed in the functions
+		item = JSON.parse(JSON.stringify(item));
 
 		// Define the global objects for the custom function
 		const sandbox = {
