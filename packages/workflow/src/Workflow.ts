@@ -688,7 +688,7 @@ export class Workflow {
 	 * @returns {(string | undefined)}
 	 * @memberof Workflow
 	 */
-	getSimpleParameterValue(node: INode, parameterValue: string | undefined, defaultValue?: string): string | undefined {
+	getSimpleParameterValue(node: INode, parameterValue: string | undefined, defaultValue?: boolean | number | string): boolean | number | string | undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -704,7 +704,7 @@ export class Workflow {
 			}
 		};
 
-		return this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData) as string | undefined;
+		return this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData) as boolean | number | string | undefined;
 	}
 
 

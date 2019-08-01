@@ -92,10 +92,8 @@ export class ExecuteCommand implements INodeType {
 			items = [items[0]];
 		}
 
-		let item: INodeExecutionData;
+		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			item = items[itemIndex];
-
 			command = this.getNodeParameter('command', itemIndex) as string;
 
 			const {
@@ -105,13 +103,17 @@ export class ExecuteCommand implements INodeType {
 				stderr,
 			} = await execPromise(command);
 
-			item.json = {
-				exitCode,
-				stderr,
-				stdout,
-			};
+			returnItems.push(
+				{
+					json: {
+						exitCode,
+						stderr,
+						stdout,
+					},
+				},
+			);
 		}
 
-		return this.prepareOutputData(items);
+		return this.prepareOutputData(returnItems);
 	}
 }

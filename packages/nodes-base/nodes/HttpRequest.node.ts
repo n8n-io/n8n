@@ -129,10 +129,10 @@ export class HttpRequest implements INodeType {
 						name: 'String',
 						value: 'string'
 					},
-					{
-						name: 'XML (not implemented)',
-						value: 'xml'
-					},
+					// {
+					// 	name: 'XML (not implemented)',
+					// 	value: 'xml'
+					// },
 				],
 				default: 'json',
 				description: 'The format in which the data gets returned from the URL.',
@@ -325,10 +325,6 @@ export class HttpRequest implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		if (items.length === 0) {
-			items.push({json: {}});
-		}
-
 		// TODO: Should have a setting which makes clear that this parameter can not change for each item
 		const requestMethod = this.getNodeParameter('requestMethod', 0) as string;
 		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
@@ -362,6 +358,7 @@ export class HttpRequest implements INodeType {
 			},
 		};
 
+		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			item = items[itemIndex];
 
@@ -431,14 +428,14 @@ export class HttpRequest implements INodeType {
 			const response = await this.helpers.request(requestOptions);
 
 			if (responseFormat === 'json') {
-				item.json = response;
-			} else if (responseFormat === 'xml') {
-				// TODO: Not implemented yet
+				returnItems.push({ json: response });
+			// } else if (responseFormat === 'xml') {
+			// 	// TODO: Not implemented yet
 			} else {
-				item.json.reponse = response;
+				returnItems.push({ json: { response } });
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return this.prepareOutputData(returnItems);
 	}
 }
