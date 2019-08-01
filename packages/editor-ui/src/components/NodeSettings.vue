@@ -466,7 +466,6 @@ export default mixins(
 						}
 					}
 
-
 					Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
 				} else {
 					this.nodeValid = false;

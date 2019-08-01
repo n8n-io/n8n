@@ -14,6 +14,7 @@ export class Merge implements INodeType {
 		icon: 'fa:code-branch',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["mode"]}}',
 		description: 'Merges data of multiple streams once data of both is available',
 		defaults: {
 			name: 'Merge',

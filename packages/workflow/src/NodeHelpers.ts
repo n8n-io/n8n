@@ -515,6 +515,8 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			continue;
 		}
 
+		nodeWebhookPath = nodeWebhookPath.toString();
+
 		if (nodeWebhookPath.charAt(0) === '/') {
 			nodeWebhookPath = nodeWebhookPath.slice(1);
 		}
@@ -530,7 +532,7 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 		}
 
 		returnData.push({
-			httpMethod: httpMethod as WebhookHttpMethod,
+			httpMethod: httpMethod.toString() as WebhookHttpMethod,
 			node: node.name,
 			path,
 			webhookDescription,
