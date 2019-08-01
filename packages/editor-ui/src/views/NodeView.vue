@@ -830,7 +830,7 @@ export default mixins(
 				newPosition = newPosition.slice();
 
 				if (!movePosition) {
-					movePosition = [35, 35];
+					movePosition = [50, 50];
 				}
 
 				let conflictFound = false;
@@ -933,8 +933,8 @@ export default mixins(
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = this.getNewNodePosition(
-						[lastSelectedNode.position[0] + 180, lastSelectedNode.position[1]],
-						[110, 0]
+						[lastSelectedNode.position[0] + 150, lastSelectedNode.position[1]],
+						[100, 0]
 					);
 				} else {
 					// If no node is active find a free spot
@@ -1236,7 +1236,7 @@ export default mixins(
 						type: 'n8n-nodes-base.start',
 						typeVersion: 1,
 						position: [
-							100,
+							250,
 							300,
 						] as XYPositon,
 						parameters: {},
