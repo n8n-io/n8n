@@ -20,6 +20,9 @@ export class Interval implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'Interval',

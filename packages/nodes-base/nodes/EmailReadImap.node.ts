@@ -30,6 +30,9 @@ export class EmailReadImap implements INodeType {
 				required: true,
 			}
 		],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'Mailbox Name',

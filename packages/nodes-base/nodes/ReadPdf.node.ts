@@ -25,6 +25,10 @@ export class ReadPdf implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: true,
+			keys: 'json',
+		},
 		properties: [
 			{
 				displayName: 'Binary Property',

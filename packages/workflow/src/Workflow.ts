@@ -1,33 +1,36 @@
 
 import {
+	IChangesIncomingData,
+	IConnection,
 	IConnections,
+	IDataObject,
 	INode,
-	NodeHelpers,
 	INodes,
 	INodeExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodeIssues,
-	NodeParameterValue,
 	INodeType,
 	INodeTypes,
-	ObservableObject,
+	IObservableObject,
 	IRunExecutionData,
 	ITaskDataConnections,
 	ITriggerResponse,
 	IWebhookData,
 	IWebhookResonseData,
-	WebhookSetupMethodNames,
-	WorkflowDataProxy,
 	IWorfklowIssues,
 	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
 	IWorkflowSettings,
+	NodeHelpers,
+	NodeParameterValue,
+	ObservableObject,
+	WebhookSetupMethodNames,
+	WorkflowDataProxy,
+	WorkflowExecuteMode,
 } from './';
 
 // @ts-ignore
 import * as tmpl from 'riot-tmpl';
-import { IConnection, IDataObject, IObservableObject } from './Interfaces';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -327,6 +330,77 @@ export class Workflow {
 
 		return null;
 	}
+
+
+	/**
+	 * Returns if the node with the given name changes the
+	 * incoming data
+	 *
+	 * @param {INode} node The node to get the data of
+	 * @returns {boolean}
+	 * @memberof Workflow
+	 */
+	getNodeChangesData(node: INode): IChangesIncomingData {
+		const nodeType = this.nodeTypes.getByName(node.type);
+		if (nodeType === undefined) {
+			throw new Error(`The node type "${node.type}" of node "${node.name}" does not known.`);
+		}
+
+		const returnData: IChangesIncomingData = {
+			value: true,
+			keys: 'binary,json',
+		};
+
+		if (nodeType.description.changesIncomingData === undefined) {
+			// If not specifially defined that it does not change the data
+			// assume that it does as it would mess up everything afterwards
+			// if it returns "false" and then would still change data.
+			return returnData;
+		}
+
+		// Get the value for "value"
+		if (typeof nodeType.description.changesIncomingData.value === 'boolean') {
+			returnData.value = nodeType.description.changesIncomingData.value;
+		} else if (nodeType.description.changesIncomingData.value !== undefined) {
+			const changesIncomingDataValue = this.getSimpleParameterValue(node, nodeType.description.changesIncomingData.value, 'true') as boolean | string;
+
+			if (typeof changesIncomingDataValue === 'boolean') {
+				returnData.value = changesIncomingDataValue;
+			} else {
+				returnData.value = !(changesIncomingDataValue.toString().toLowerCase() === 'false');
+			}
+		}
+
+		// Get the value for "keys"
+		if (returnData.value === true && nodeType.description.changesIncomingData.keys !== undefined) {
+			const changesIncomingDataKeys = this.getSimpleParameterValue(node, nodeType.description.changesIncomingData.keys, 'binary,json') as string;
+
+			// Check if data is valid
+			if (typeof changesIncomingDataKeys !== 'string') {
+				throw new Error(`The data "${changesIncomingDataKeys}" for "changesIncomingData.keys" is not of type string.`);
+			}
+
+			const dataKeys = changesIncomingDataKeys.split(',');
+			const validKeys = ['binary', 'json'];
+			for (const key of dataKeys) {
+				if (!validKeys.includes(key)) {
+					throw new Error(`The key "${key}" for "changesIncomingData.keys" is not valid. Only the following keys are allowed: ${validKeys.join(',')}`);
+				}
+			}
+
+			// Data is valid so set it
+			returnData.keys = changesIncomingDataKeys;
+		}
+
+		if (returnData.value === false) {
+			return {
+				value: false,
+			};
+		}
+
+		return returnData;
+	}
+
 
 
 	/**

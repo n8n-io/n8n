@@ -3,6 +3,9 @@ import {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
+	INodeType,
+	INodeTypes,
+	INodeTypesObject,
 	IRunExecutionData,
 	Workflow,
 } from '../src';
@@ -144,6 +147,238 @@ describe('Workflow', () => {
 			test(testData.description, () => {
 				const result = workflow.renameNodeInExpressions(testData.input.parameters, testData.input.currentName, testData.input.newName);
 				expect(result).toEqual(testData.output);
+			});
+		}
+	});
+
+
+	describe('getNodeChangesData', () => {
+
+		const tests = [
+			{
+				description: 'should return boolean false if boolean false is set',
+				input: {
+					nodeParameters: {},
+					changesIncomingData: {
+						value: false,
+					},
+				},
+				output: {
+					value: false,
+				},
+			},
+			{
+				description: 'should return boolean false if string false is set',
+				input: {
+					nodeParameters: {},
+					changesIncomingData: {
+						value: 'false',
+					},
+				},
+				output: {
+					value: false,
+				},
+			},
+			{
+				description: 'should return only boolean false if boolean false is set with keys',
+				input: {
+					nodeParameters: {},
+					changesIncomingData: {
+						value: false,
+						keys: 'binary,json',
+					},
+				},
+				output: {
+					value: false,
+				},
+			},
+			{
+				description: 'should return boolean true with all keys if boolean true is set',
+				input: {
+					nodeParameters: {},
+					changesIncomingData: {
+						value: true,
+					},
+				},
+				output: {
+					value: true,
+					keys: 'binary,json',
+				},
+			},
+			{
+				description: 'should return boolean true with defined keys if boolean true is set',
+				input: {
+					nodeParameters: {},
+					changesIncomingData: {
+						value: true,
+						keys: 'json',
+					},
+				},
+				output: {
+					value: true,
+					keys: 'json',
+				},
+			},
+			{
+				description: 'should return boolean true with all keys if string true is set',
+				input: {
+					nodeParameters: {},
+					changesIncomingData: {
+						value: 'true',
+					},
+				},
+				output: {
+					value: true,
+					keys: 'binary,json',
+				},
+			},
+			{
+				description: 'should return boolean false when expression returns boolean false',
+				input: {
+					nodeParameters: {},
+					changesIncomingData: {
+						value: '={{false}}',
+					},
+				},
+				output: {
+					value: false,
+				},
+			},
+			{
+				description: 'should return boolean false when parameter-expression to boolean parameter returns boolean false',
+				input: {
+					nodeParameters: {
+						nodeBooleanParameter: false,
+					},
+					changesIncomingData: {
+						value: '={{$parameter["nodeBooleanParameter"]}}',
+					},
+				},
+				output: {
+					value: false,
+				},
+			},
+			{
+				description: 'should return boolean false when parameter-expression to boolean parameter returns boolean false',
+				input: {
+					nodeParameters: {
+						nodeBooleanParameter: true,
+					},
+					changesIncomingData: {
+						value: '={{$parameter["nodeBooleanParameter"]}}',
+					},
+				},
+				output: {
+					value: true,
+					keys: 'binary,json',
+				},
+			},
+			{
+				description: 'should return boolean false when parameter-expression to string parameter returns string false',
+				input: {
+					nodeParameters: {
+						nodeStringParameter: 'false',
+					},
+					changesIncomingData: {
+						value: '={{$parameter["nodeStringParameter"]}}',
+					},
+				},
+				output: {
+					value: false,
+				},
+			},
+			{
+				description: 'should return boolean true when parameter-expression to string parameter returns string true',
+				input: {
+					nodeParameters: {
+						nodeStringParameter: 'true',
+					},
+					changesIncomingData: {
+						value: '={{$parameter["nodeStringParameter"]}}',
+					},
+				},
+				output: {
+					value: true,
+					keys: 'binary,json',
+				},
+			},
+		];
+
+
+		for (const testData of tests) {
+			test(testData.description, async () => {
+
+				const node: INode = {
+					name: 'Test node',
+					parameters: {},
+					type: 'test.set',
+					typeVersion: 1,
+					position: [
+						100,
+						100,
+					],
+				};
+
+				class NodeTypesClass implements INodeTypes {
+					nodeTypes: INodeTypesObject = {};
+
+					async init(nodeTypes: INodeTypesObject): Promise<void> {
+						this.nodeTypes = nodeTypes;
+					 }
+
+					getAll(): INodeType[] {
+						return Object.values(this.nodeTypes);
+					}
+
+					getByName(nodeType: string): INodeType {
+						return this.nodeTypes[nodeType];
+					}
+				}
+
+				const nodeTypeData: INodeType = {
+					description: {
+						displayName: 'Set',
+						name: 'set',
+						group: ['input'],
+						version: 1,
+						description: 'Sets a value',
+						defaults: {
+							name: 'Set',
+							color: '#0000FF',
+						},
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [
+							{
+								displayName: 'Node String Parameter',
+								name: 'nodeStringParameter',
+								type: 'string',
+								default: 'default-value',
+							},
+							{
+								displayName: 'Node Boolean Parameter',
+								name: 'nodeBooleanParameter',
+								type: 'boolean',
+								default: false,
+							},
+						]
+					}
+				};
+
+				Object.assign(nodeTypeData.description, { changesIncomingData: testData.input.changesIncomingData });
+				Object.assign(node.parameters, testData.input.nodeParameters);
+
+				const nodeTypesData: INodeTypesObject = {
+					'test.set': nodeTypeData,
+				};
+
+				const nodeTypes = new NodeTypesClass();
+				await nodeTypes.init(nodeTypesData);
+
+				const workflow = new Workflow(undefined, [ node ], {}, false, nodeTypes);
+				const nodeChangesData = workflow.getNodeChangesData(node);
+
+				expect(nodeChangesData).toEqual(testData.output);
 			});
 		}
 	});

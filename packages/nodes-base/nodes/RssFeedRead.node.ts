@@ -22,6 +22,9 @@ export class RssFeedRead implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'URL',

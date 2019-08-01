@@ -22,6 +22,10 @@ export class Merge implements INodeType {
 		},
 		inputs: ['main', 'main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: '={{$parameter["mode"] === "merge"}}',
+			keys: 'json',
+		},
 		properties: [
 			{
 				displayName: 'Mode',

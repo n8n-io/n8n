@@ -394,6 +394,11 @@ export interface IWorfklowIssues {
 	[key: string]: INodeIssues;
 }
 
+export interface IChangesIncomingData {
+	value?: string | boolean;
+	keys?: string;
+}
+
 export interface INodeTypeDescription {
 	displayName: string;
 	name: string;
@@ -409,6 +414,7 @@ export interface INodeTypeDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	subtitle?: string;
+	changesIncomingData?: IChangesIncomingData;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;
 		activate?: INodeHookDescription[];

@@ -30,6 +30,10 @@ export class RenameKeys implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: true,
+			keys: 'json',
+		},
 		properties: [
 			{
 				displayName: 'Keys',

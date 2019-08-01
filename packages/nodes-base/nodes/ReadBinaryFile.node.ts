@@ -27,6 +27,10 @@ export class ReadBinaryFile implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: true,
+			keys: 'binary',
+		},
 		properties: [
 			{
 				displayName: 'File Path',

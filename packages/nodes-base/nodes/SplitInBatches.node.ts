@@ -20,6 +20,10 @@ export class SplitInBatches implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: true,
+			keys: 'json',
+		},
 		properties: [
 			{
 				displayName: 'Batch Size',

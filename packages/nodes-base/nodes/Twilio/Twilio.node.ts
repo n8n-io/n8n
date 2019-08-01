@@ -33,6 +33,9 @@ export class Twilio implements INodeType {
 				required: true,
 			}
 		],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'Resource',

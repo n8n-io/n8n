@@ -23,6 +23,10 @@ export class FunctionItem implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: true,
+			keys: 'json,binary',
+		},
 		properties: [
 			{
 				displayName: 'Function',

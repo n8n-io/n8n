@@ -21,6 +21,10 @@ export class ReadFileFromUrl implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: true,
+			keys: 'binary',
+		},
 		properties: [
 			{
 				displayName: 'URL',

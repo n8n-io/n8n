@@ -157,7 +157,7 @@ Property overview
 
 The following properties can be set in the node description:
 
- - **credentials** [optional]: Credentials the node requests access to
+ - **changesIncomingData** [optional]: Object with "keys" and "value" If value is set to true it means that incomign data gets changed. If that is the case then "keys" can additionally be set to define which data (binary,json) gets changed.
  - **defaults** [required]: Default "name" and "color" to set on node when it gets created
  - **displayName** [required]: Name to display users in Editor UI
  - **description** [required]: Description to display users in Editor UI

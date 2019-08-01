@@ -23,6 +23,9 @@ export class If implements INodeType {
 		inputs: ['main'],
 		outputs: ['main', 'main'],
 		outputNames: ['true', 'false'],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'Conditions',

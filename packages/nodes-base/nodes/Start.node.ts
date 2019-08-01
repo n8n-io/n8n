@@ -21,6 +21,9 @@ export class Start implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 		],
 	};

@@ -31,6 +31,9 @@ export class WriteBinaryFile implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'File Name',

@@ -58,6 +58,9 @@ export class SpreadsheetFile implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'Operation',

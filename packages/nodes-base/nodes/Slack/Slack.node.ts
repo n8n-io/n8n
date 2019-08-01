@@ -33,6 +33,9 @@ export class Slack implements INodeType {
 				required: true,
 			}
 		],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'Resource',

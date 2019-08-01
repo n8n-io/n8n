@@ -37,6 +37,9 @@ export class TrelloTrigger implements INodeType {
 				required: true,
 			},
 		],
+		changesIncomingData: {
+			value: false,
+		},
 		webhooks: [
 			{
 				name: 'setup',

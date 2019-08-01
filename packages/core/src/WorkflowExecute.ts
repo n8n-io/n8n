@@ -599,8 +599,57 @@ export class WorkflowExecute {
 							break;
 						}
 
+						let nodeInputData = executionData.data;
+						const changesIncomingData = workflow.getNodeChangesData(executionData.node);
+
+						if (executionData.node.disabled !== true) {
+
+							if (changesIncomingData.value !== false) {
+								// Data has to be copied
+
+								// Copy only the data which is needed
+								const copyKeys = changesIncomingData.keys!.split(',');
+
+								const allInputsData = executionData.data.main;
+								let inputData: INodeExecutionData[] | null;
+								const newAllInputsData: Array<INodeExecutionData[] | null> = [];
+								let newEntries: INodeExecutionData[];
+								let newEntry: INodeExecutionData;
+								for (let inputIndex = 0; inputIndex < allInputsData.length; inputIndex++) {
+									inputData = allInputsData[inputIndex];
+									if (inputData === null) {
+										newAllInputsData.push(null);
+										continue;
+									}
+
+									newEntries = [];
+									for (const entry of inputData) {
+										newEntry = {
+											json: {},
+										};
+										for (const key of Object.keys(entry)) {
+											if (copyKeys.includes(key)) {
+												newEntry[key] = JSON.parse(JSON.stringify(entry[key]));
+											} else {
+												// Data does NOT have to get copied
+												newEntry[key] = entry[key];
+											}
+										}
+
+
+										newEntries.push(newEntry);
+									}
+									newAllInputsData.push(newEntries);
+								}
+
+								nodeInputData = {
+									main: newAllInputsData,
+								};
+							}
+						}
+
 						runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
-						nodeSuccessData = await workflow.runNode(executionData.node, JSON.parse(JSON.stringify(executionData.data)), runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
+						nodeSuccessData = await workflow.runNode(executionData.node, nodeInputData, runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
 
 						if (nodeSuccessData === null) {
 							// If null gets returned it means that the node did succeed

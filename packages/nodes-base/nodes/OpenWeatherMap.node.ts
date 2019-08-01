@@ -30,6 +30,9 @@ export class OpenWeatherMap implements INodeType {
 				required: true,
 			}
 		],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'Operation',

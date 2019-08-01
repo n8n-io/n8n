@@ -43,6 +43,9 @@ export class Webhook implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: false,
+		},
 		credentials: [
 			{
 				name: 'httpBasicAuth',

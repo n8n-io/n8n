@@ -27,6 +27,9 @@ export class GoogleSheets implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: false,
+		},
 		credentials: [
 			{
 				name: 'googleApi',

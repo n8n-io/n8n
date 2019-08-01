@@ -32,6 +32,9 @@ export class HttpRequest implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: false,
+		},
 		credentials: [
 			{
 				name: 'httpBasicAuth',

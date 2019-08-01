@@ -31,6 +31,9 @@ export class Cron implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			{
 				displayName: 'Trigger Times',

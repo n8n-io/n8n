@@ -31,6 +31,9 @@ export class EmailSend implements INodeType {
 				required: true,
 			}
 		],
+		changesIncomingData: {
+			value: false,
+		},
 		properties: [
 			// TODO: Add cc, bcc and choice for text as text or html  (maybe also from name)
 			{

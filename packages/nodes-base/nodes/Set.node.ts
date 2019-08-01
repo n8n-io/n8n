@@ -20,6 +20,10 @@ export class Set implements INodeType {
 			name: 'Set',
 			color: '#0000FF',
 		},
+		changesIncomingData: {
+			value: true,
+			keys: 'json',
+		},
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
