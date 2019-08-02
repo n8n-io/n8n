@@ -707,40 +707,62 @@ export class Workflow {
 
 
 	/**
-	 * Return all the start nodes which can be found in the workflow.
+	 * Returns the start node to start the worfklow from
 	 *
-	 * @param {(string | undefined)} [destinationNode]
-	 * @returns {INode[]}
+	 * @param {string} [destinationNode]
+	 * @returns {(INode | undefined)}
 	 * @memberof Workflow
 	 */
-	getStartNodes(destinationNode?: string): INode[] {
-		const returnData: INode[] = [];
+	getStartNode(destinationNode?: string): INode | undefined {
+		const startNodeType = 'n8n-nodes-base.start';
 
 		if (destinationNode) {
 			// Find the highest parent nodes of the given one
 			const nodeNames = this.getHighestNode(destinationNode);
+
 			if (nodeNames.length === 0) {
 				// If no parent nodes have been found then only the destination-node
 				// is in the tree so add that one
 				nodeNames.push(destinationNode);
 			}
 
-			nodeNames.forEach((nodeName) => {
-				returnData.push(this.nodes[nodeName]);
-			});
-		} else {
-			// No node given so find all the nodes which do not have any input
-			let nodeType: INodeType | undefined;
-			for (const nodeName of Object.keys(this.nodes)) {
-				nodeType = this.nodeTypes.getByName(this.nodes[nodeName].type);
+			// Check which node to return as start node
 
-				if (nodeType !== undefined && nodeType.description.inputs.length === 0 && this.nodes[nodeName].disabled !== true) {
-					returnData.push(this.nodes[nodeName]);
+			// Check if there are any trigger nodes and then return the first one
+			let node: INode;
+			let nodeType: INodeType;
+			for (const nodeName of nodeNames) {
+				node = this.nodes[nodeName];
+				nodeType = this.nodeTypes.getByName(node.type) as INodeType;
+
+				if (nodeType.trigger !== undefined) {
+					return node;
+				}
+			}
+
+			// Check if there is the actual "start" node
+			for (const nodeName of nodeNames) {
+				node = this.nodes[nodeName];
+				if (node.type === startNodeType) {
+					return node;
+				}
+			}
+
+			// If none of the above did find anything simply return the
+			// first parent node in the list
+			return this.nodes[nodeNames[0]];
+		} else {
+			// No node given so start from "start" node
+			let node: INode;
+			for (const nodeName of Object.keys(this.nodes)) {
+				node = this.nodes[nodeName];
+				if (node.type === startNodeType) {
+					return node;
 				}
 			}
 		}
 
-		return returnData;
+		return undefined;
 	}
 
 

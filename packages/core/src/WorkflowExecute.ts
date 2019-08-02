@@ -46,36 +46,36 @@ export class WorkflowExecute {
 	 * @returns {(Promise<string>)}
 	 * @memberof WorkflowExecute
 	 */
-	async run(workflow: Workflow, startNodes?: INode[], destinationNode?: string): Promise<string> {
+	async run(workflow: Workflow, startNode?: INode, destinationNode?: string): Promise<string> {
 		// Get the nodes to start workflow execution from
-		startNodes = startNodes || workflow.getStartNodes(destinationNode);
+		startNode = startNode || workflow.getStartNode(destinationNode);
+
+		if (startNode === undefined) {
+			throw new Error('No node to start the workflow from could be found!');
+		}
 
 		// If a destination node is given we only run the direct parent nodes and no others
 		let runNodeFilter: string[] | undefined = undefined;
 		if (destinationNode) {
-			// TODO: Combine that later with getStartNodes which does more or less the same tree iteration
 			runNodeFilter = workflow.getParentNodes(destinationNode);
 			runNodeFilter.push(destinationNode);
 		}
 
 		// Initialize the data of the start nodes
-		const nodeExecutionStack: IExecuteData[] = [];
-		startNodes.forEach((node) => {
-			nodeExecutionStack.push(
-				{
-					node,
-					data: {
-						main: [
-							[
-								{
-									json: {},
-								},
-							],
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node: startNode,
+				data: {
+					main: [
+						[
+							{
+								json: {},
+							},
 						],
-					},
+					],
 				},
-			);
-		});
+			}
+		];
 
 		const runExecutionData: IRunExecutionData = {
 			startData: {
