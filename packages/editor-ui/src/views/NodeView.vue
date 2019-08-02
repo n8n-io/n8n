@@ -1070,6 +1070,7 @@ export default mixins(
 					const targetNodeName = this.$store.getters.getNodeNameByIndex(targetInfo.nodeIndex);
 
 					const sourceNode = this.$store.getters.nodeByName(sourceNodeName);
+					const targetNode = this.$store.getters.nodeByName(targetNodeName);
 
 					// TODO: That should happen after each move (only the setConnector part)
 					if (info.sourceEndpoint.anchor.lastReturnValue[0] >= info.targetEndpoint.anchor.lastReturnValue[0]) {
@@ -1132,6 +1133,31 @@ export default mixins(
 						},
 					]);
 
+					// Display input names if they exist on connection
+					const targetNodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(targetNode.type);
+					if (targetNodeTypeData.inputNames !== undefined) {
+						for (const input of targetNodeTypeData.inputNames) {
+							const inputName = targetNodeTypeData.inputNames[targetInfo.index];
+
+							if (info.connection.getOverlay('input-name-label')) {
+								// Make sure that it does not get added multiple times
+								// continue;
+								info.connection.removeOverlay('input-name-label');
+							}
+
+							// @ts-ignore
+							info.connection.addOverlay([
+								'Label',
+								{
+									id: 'input-name-label',
+									label: inputName,
+									cssClass: 'connection-input-name-label',
+									location: 0.8,
+								},
+							]);
+						}
+					}
+
 					// Display output names if they exist on connection
 					const sourceNodeTypeData: INodeTypeDescription = this.$store.getters.nodeType(sourceNode.type);
 					if (sourceNodeTypeData.outputNames !== undefined) {
@@ -1140,7 +1166,7 @@ export default mixins(
 
 							if (info.connection.getOverlay('output-name-label')) {
 								// Make sure that it does not get added multiple times
-								continue;
+								info.connection.removeOverlay('output-name-label');
 							}
 
 							// @ts-ignore
@@ -1150,18 +1176,23 @@ export default mixins(
 									id: 'output-name-label',
 									label: outputName,
 									cssClass: 'connection-output-name-label',
-									location: 0.3,
+									location: 0.2,
 								},
 							]);
 						}
 					}
 
-					// When connection gets made the output name get displayed as overlay
-					// on the connection. So the one on the endpoint can be hidden.
+					// When connection gets made the output and input name get displayed
+					// as overlay on the connection. So the ones on the endpoint can be hidden.
 					// @ts-ignore
 					const outputNameOverlay = info.connection.endpoints[0].getOverlay('output-name-label');
 					if (![null, undefined].includes(outputNameOverlay)) {
 						outputNameOverlay.setVisible(false);
+					}
+
+					const inputNameOverlay = info.targetEndpoint.getOverlay('input-name-label');
+					if (![null, undefined].includes(inputNameOverlay)) {
+						inputNameOverlay.setVisible(false);
 					}
 
 					this.$store.commit('addConnection', {
@@ -1180,10 +1211,29 @@ export default mixins(
 					});
 				});
 
+				const updateConnectionDetach = (sourceEndpoint, targetEndpoint, maxConnections) => {
+					// If the source endpoint is not connected to anything else anymore
+					// display the output-name overlays on the endpoint if any exist
+					if (sourceEndpoint !== undefined && sourceEndpoint.connections!.length === maxConnections) {
+						const outputNameOverlay = sourceEndpoint.getOverlay('output-name-label');
+						if (![null, undefined].includes(outputNameOverlay)) {
+							outputNameOverlay.setVisible(true);
+						}
+					}
+					if (targetEndpoint !== undefined && targetEndpoint.connections!.length === maxConnections) {
+						const inputNameOverlay = targetEndpoint.getOverlay('input-name-label');
+						if (![null, undefined].includes(inputNameOverlay)) {
+							inputNameOverlay.setVisible(true);
+						}
+					}
+				}
+
 				this.instance.bind('connectionMoved', (info) => {
 					// When a connection gets moved from one node to another it for some reason
 					// calls the "connection" event but not the "connectionDetached" one. So we listen
 					// additionally to the "connectionMoved" event and then only delete the existing connection.
+
+					updateConnectionDetach(info.originalSourceEndpoint, info.originalTargetEndpoint, 0);
 
 					// @ts-ignore
 					const sourceInfo = info.originalSourceEndpoint.getParameters();
@@ -1211,17 +1261,7 @@ export default mixins(
 				});
 
 				this.instance.bind('connectionDetached', (info) => {
-					const sourceEndpoint = info.connection.endpoints[0];
-
-					// If the source endpoint is not connected to anything else anymore
-					// display the output-name overlays on the endpoint if any exist
-					if (sourceEndpoint !== undefined && sourceEndpoint.connections!.length === 1) {
-						const outputNameOverlay = sourceEndpoint.getOverlay('output-name-label');
-						if (![null, undefined].includes(outputNameOverlay)) {
-							outputNameOverlay.setVisible(true);
-						}
-					}
-
+					updateConnectionDetach(info.sourceEndpoint, info.targetEndpoint, 1);
 					info.connection.removeOverlays();
 					this.__removeConnectionByConnectionInfo(info, false);
 				});
@@ -1959,10 +1999,12 @@ export default mixins(
 
 <style lang="scss">
 
+.connection-input-name-label,
 .connection-output-name-label {
-	background-color: $--custom-node-view-background;
+	background-color: rgba( $--custom-node-view-background, 0.9 );
 	line-height: 1.3em;
-	font-size: 0.8em;
+	font-size: 0.7em;
+	padding: 3px;
 }
 
 .delete-connection {
@@ -1998,9 +2040,14 @@ export default mixins(
 	background-color: #ffffff55;
 }
 
-.node-endpoint-label {
-	font-size: 10px;
+.node-input-endpoint-label,
+.node-output-endpoint-label {
+	font-size: 0.7em;
 	background-color: $--custom-node-view-background;
+}
+
+.node-input-endpoint-label {
+	text-align: right;
 }
 
 .button-white {
