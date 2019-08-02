@@ -34,8 +34,13 @@ export class Merge implements INodeType {
 						description: 'Combines data of both inputs. The output will contain items of input 1 and input 2.',
 					},
 					{
-						name: 'Merge',
-						value: 'merge',
+						name: 'Merge By Index',
+						value: 'mergeByIndex',
+						description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on the index of the items. So first item of input 1 will be merged with first item of input 2 and so on.',
+					},
+					{
+						name: 'Merge By Key',
+						value: 'mergeByKey',
 						description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
 					},
 					{
@@ -50,7 +55,38 @@ export class Merge implements INodeType {
 					},
 				],
 				default: 'append',
-				description: 'How data should be merged. If it should simply<br />be appended or merged depending on a property.',
+				description: 'How data of branches should be merged.',
+			},
+			{
+				displayName: 'Join',
+				name: 'join',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: [
+							'mergeByIndex'
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Inner Join',
+						value: 'inner',
+						description: 'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items)',
+					},
+					{
+						name: 'Left Join',
+						value: 'left',
+						description: 'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items)',
+					},
+					{
+						name: 'Outer Join',
+						value: 'outer',
+						description: 'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items)',
+					},
+				],
+				default: 'left',
+				description: 'How many items the output will contain<br />if inputs contain different amount of items.',
 			},
 			{
 				displayName: 'Property Input 1',
@@ -61,7 +97,7 @@ export class Merge implements INodeType {
 				displayOptions: {
 					show: {
 						mode: [
-							'merge'
+							'mergeByKey'
 						],
 					},
 				},
@@ -76,7 +112,7 @@ export class Merge implements INodeType {
 				displayOptions: {
 					show: {
 						mode: [
-							'merge'
+							'mergeByKey'
 						],
 					},
 				},
@@ -122,7 +158,88 @@ export class Merge implements INodeType {
 			for (let i = 0; i < 2; i++) {
 				returnData.push.apply(returnData, this.getInputData(i));
 			}
-		} else if (mode === 'merge') {
+		} else if (mode === 'mergeByIndex') {
+			// Merges data by index
+
+			const join = this.getNodeParameter('join', 0) as string;
+
+			const dataInput1 = this.getInputData(0);
+			const dataInput2 = this.getInputData(1);
+
+			if (dataInput1 === undefined || dataInput1.length === 0) {
+				if (['inner', 'left'].includes(join)) {
+					// When "inner" or "left" join return empty if first
+					// input does not contain any items
+					return [returnData];
+				}
+
+				// For "outer" return data of second input
+				return [dataInput2];
+			}
+
+			if (dataInput2 === undefined || dataInput2.length === 0) {
+				if (['left', 'outer'].includes(join)) {
+					// When "left" or "outer" join return data of first input
+					return [dataInput1];
+				}
+
+				// For "inner" return empty
+				return [returnData];
+			}
+
+			// Default "left"
+			let numEntries = dataInput1.length;
+			if (join === 'inner') {
+				numEntries = Math.min(dataInput1.length, dataInput2.length);
+			} else if (join === 'outer') {
+				numEntries = Math.max(dataInput1.length, dataInput2.length);
+			}
+
+			let newItem: INodeExecutionData;
+			for (let i = 0; i < numEntries; i++) {
+				if (i >= dataInput1.length) {
+					returnData.push(dataInput2[i]);
+					continue;
+				}
+				if (i >= dataInput2.length) {
+					returnData.push(dataInput1[i]);
+					continue;
+				}
+
+				newItem = {
+					json: {},
+				};
+
+				if (dataInput1[i].binary !== undefined) {
+					newItem.binary = {};
+					// Create a shallow copy of the binary data so that the old
+					// data references which do not get changed still stay behind
+					// but the incoming data does not get changed.
+					Object.assign(newItem.binary, dataInput1[i].binary);
+				}
+
+				// Create also a shallow copy of the json data
+				Object.assign(newItem.json, dataInput1[i].json);
+
+				// Copy json data
+				for (const key of Object.keys(dataInput2[i].json)) {
+					newItem.json[key] = dataInput2[i].json[key];
+				}
+
+				// Copy binary data
+				if (dataInput2[i].binary !== undefined) {
+					if (newItem.binary === undefined) {
+						newItem.binary = {};
+					}
+
+					for (const key of Object.keys(dataInput2[i].binary!)) {
+						newItem.binary[key] = dataInput2[i].binary![key];
+					}
+				}
+
+				returnData.push(newItem);
+			}
+		} else if (mode === 'mergeByKey') {
 			// Merges data by key
 			const dataInput1 = this.getInputData(0);
 			if (!dataInput1) {
