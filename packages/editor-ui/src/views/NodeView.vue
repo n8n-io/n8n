@@ -102,7 +102,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
+import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
 import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -1211,7 +1211,7 @@ export default mixins(
 					});
 				});
 
-				const updateConnectionDetach = (sourceEndpoint, targetEndpoint, maxConnections) => {
+				const updateConnectionDetach = (sourceEndpoint: Endpoint, targetEndpoint: Endpoint, maxConnections: number) => {
 					// If the source endpoint is not connected to anything else anymore
 					// display the output-name overlays on the endpoint if any exist
 					if (sourceEndpoint !== undefined && sourceEndpoint.connections!.length === maxConnections) {
@@ -1226,7 +1226,7 @@ export default mixins(
 							inputNameOverlay.setVisible(true);
 						}
 					}
-				}
+				};
 
 				this.instance.bind('connectionMoved', (info) => {
 					// When a connection gets moved from one node to another it for some reason
