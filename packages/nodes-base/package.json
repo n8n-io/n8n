@@ -107,8 +107,8 @@
         "@types/xml2js": "^0.4.3",
         "gulp": "^4.0.0",
         "jest": "^23.6.0",
-        "n8n-core": "^0.6.0",
-        "n8n-workflow": "^0.7.0",
+        "n8n-core": "^0.7.0",
+        "n8n-workflow": "^0.8.0",
         "ts-jest": "^23.10.1",
         "tslint": "^5.17.0",
         "typescript": "~3.5.2"
