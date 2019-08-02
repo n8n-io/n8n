@@ -459,7 +459,7 @@ export class Workflow {
 
 		if (checkedNodes!.includes(nodeName)) {
 			// Node got checked already before
-			return [];
+			return currentHighest;
 		}
 
 		checkedNodes!.push(nodeName);
@@ -491,11 +491,8 @@ export class Workflow {
 				}
 
 				addNodes.forEach((name) => {
-					// Only add if:
-					// - Node is not on the list already anyway
-					// - And if it has not been checked already which means that we
-					//   are in a loop
-					if (returnNodes.indexOf(name) === -1 && !checkedNodes!.includes(name)) {
+					// Only add if node is not on the list already anyway
+					if (returnNodes.indexOf(name) === -1) {
 						returnNodes.push(name);
 					}
 				});
