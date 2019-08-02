@@ -112,7 +112,7 @@ export default mixins(
 
 			AutoFormat.DEFAULTS = {
 				expression: {
-					trigger: /[\w\s]/,
+					trigger: /\B[\w\s]/,
 					find: /\{\{[^\s,;:!?}]+\}\}/i,
 					format: 'variable',
 				},
