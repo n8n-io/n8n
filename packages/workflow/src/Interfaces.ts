@@ -403,6 +403,7 @@ export interface INodeTypeDescription {
 	description: string;
 	defaults: INodeParameters;
 	inputs: string[];
+	inputNames?: string[];
 	outputs: string[];
 	outputNames?: string[];
 	properties: INodeProperties[];

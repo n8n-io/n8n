@@ -172,12 +172,33 @@ export const nodeBase = mixins(nodeIndex).extend({
 					},
 				};
 
+				if (nodeTypeData.inputNames) {
+					// Apply input names if they got set
+					newEndpointData.overlays = [
+						['Label',
+							{
+								id: 'input-name-label',
+								location: [-2, 0.5],
+								label: nodeTypeData.inputNames[index],
+								cssClass: 'node-input-endpoint-label',
+								visible: true,
+							},
+						],
+					];
+				}
+
 				this.instance.addEndpoint(this.nodeName, newEndpointData);
 
-				if (index === 0 && inputName === 'main') {
-					// Make the first main-input the default one to connect to when connection gets dropped on node
-					this.instance.makeTarget(this.nodeName, newEndpointData);
-				}
+				// TODO: Activate again if it makes sense. Currently makes problems when removing
+				//       connection on which the input has a name. It does not get hidden because
+				//       the endpoint to which it connects when letting it go over the node is
+				//       different to the regular one (have different ids). So that seems to make
+				//       problems when hiding the input-name.
+
+				// if (index === 0 && inputName === 'main') {
+				// 	// Make the first main-input the default one to connect to when connection gets dropped on node
+				// 	this.instance.makeTarget(this.nodeName, newEndpointData);
+				// }
 			});
 
 			// Add Outputs
@@ -221,7 +242,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 								id: 'output-name-label',
 								location: [1.75, 0.5],
 								label: nodeTypeData.outputNames[index],
-								cssClass: 'node-endpoint-label',
+								cssClass: 'node-output-endpoint-label',
 								visible: true,
 							},
 						],

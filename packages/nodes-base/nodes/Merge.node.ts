@@ -22,6 +22,7 @@ export class Merge implements INodeType {
 		},
 		inputs: ['main', 'main'],
 		outputs: ['main'],
+		inputNames: ['Input 1', 'Input 2'],
 		properties: [
 			{
 				displayName: 'Mode',
@@ -51,7 +52,7 @@ export class Merge implements INodeType {
 					{
 						name: 'Wait',
 						value: 'wait',
-						description: 'Waits till data of both inputs is available and will then output a single empty item.',
+						description: 'Waits till data of both inputs is available and will then output a single empty item. If supposed to wait for multiple nodes they have to get attached to input 2. Node will not output any data.',
 					},
 				],
 				default: 'append',
