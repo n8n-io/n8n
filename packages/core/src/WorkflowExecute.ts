@@ -20,8 +20,6 @@ import {
 	NodeExecuteFunctions,
 } from './';
 
-import { merge } from 'lodash';
-
 export class WorkflowExecute {
 	private additionalData: IWorkflowExecuteAdditionalData;
 	private mode: WorkflowExecuteMode;

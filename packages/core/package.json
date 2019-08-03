@@ -39,7 +39,6 @@
     "dependencies": {
         "crypto-js": "^3.1.9-1",
         "lodash.get": "^4.4.2",
-        "lodash.merge": "^4.6.2",
         "mmmagic": "^0.5.2",
         "n8n-workflow": "^0.8.0",
         "request-promise-native": "^1.0.7"
