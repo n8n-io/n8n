@@ -39,6 +39,7 @@
         "dist"
     ],
     "devDependencies": {
+        "@types/compression": "0.0.36",
         "@types/connect-history-api-fallback": "^1.3.1",
         "@types/convict": "^4.2.1",
         "@types/dotenv": "^6.1.1",
@@ -59,6 +60,7 @@
     },
     "dependencies": {
         "body-parser": "^1.18.3",
+        "compression": "^1.7.4",
         "connect-history-api-fallback": "^1.6.0",
         "convict": "^5.0.0",
         "dotenv": "^8.0.0",
