@@ -1,4 +1,5 @@
 import {
+	GenericHelpers,
 	IDatabaseCollections,
 	DatabaseType,
 } from './';
@@ -31,7 +32,7 @@ export let collections: IDatabaseCollections = {
 import * as path from 'path';
 
 export async function init(): Promise<IDatabaseCollections> {
-	const dbType = config.get('database.type') as DatabaseType;
+	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
 	let entities;
@@ -41,18 +42,18 @@ export async function init(): Promise<IDatabaseCollections> {
 		entities = MongoDb;
 		connectionOptions = {
 			type: 'mongodb',
-			url: config.get('database.mongodb.connectionUrl') as string,
+			url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
 			useNewUrlParser: true,
 		};
 	} else if (dbType === 'postgresdb') {
 		entities = PostgresDb;
 		connectionOptions = {
 			type: 'postgres',
-			database: config.get('database.postgresdb.database'),
-			host: config.get('database.postgresdb.host'),
-			password: config.get('database.postgresdb.password'),
-			port: config.get('database.postgresdb.port'),
-			username: config.get('database.postgresdb.user'),
+			database: await GenericHelpers.getConfigValue('database.postgresdb.database') as string,
+			host: await GenericHelpers.getConfigValue('database.postgresdb.host') as string,
+			password: await GenericHelpers.getConfigValue('database.postgresdb.password') as string,
+			port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
+			username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
 		};
 	} else if (dbType === 'sqlite') {
 		entities = SQLite;

@@ -74,6 +74,11 @@ By default n8n uses SQLite to save credentials, past executions and workflows.
 n8n however also supports MongoDB and PostgresDB. To use them simply a few
 environment variables have to be set.
 
+To avoid passing sensitive information via environment variables "_FILE" may be
+appended to the database environment variables (for example "DB_POSTGRESDB_PASSWORD_FILE").
+It will then load the data from a file with the given name. That makes it possible to
+load data easily from Docker- and Kubernetes-Secrets.
+
 
 #### Start with MongoDB as Database
 
