@@ -65,6 +65,8 @@ import * as parseUrl from 'parseurl';
 import * as config from '../config';
 // @ts-ignore
 import * as timezones from 'google-timezones-json';
+import * as compression from 'compression';
+
 
 class App {
 
@@ -111,6 +113,8 @@ class App {
 
 
 	private config(): void {
+
+		this.app.use(compression());
 
 		// Get push connections
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
