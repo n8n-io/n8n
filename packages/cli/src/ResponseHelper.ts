@@ -45,6 +45,14 @@ export class ReponseError extends Error {
 }
 
 
+
+export function basicAuthAuthorizationError(resp: Response, realm: string, message?: string) {
+	resp.statusCode = 401;
+	resp.setHeader('WWW-Authenticate', `Basic realm="${realm}"`);
+	resp.end(message);
+}
+
+
 export function sendSuccessResponse(res: Response, data: any, raw?: boolean) { // tslint:disable-line:no-any
 	res.setHeader('Content-Type', 'application/json');
 

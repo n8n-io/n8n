@@ -121,6 +121,30 @@ const config = convict({
 		doc: 'HTTP Protocol via which n8n can be reached'
 	},
 
+	security: {
+		basicAuth: {
+			active: {
+				format: 'Boolean',
+				default: false,
+				env: 'N8N_BASIC_AUTH_ACTIVE',
+				doc: 'If basic auth should be activated for editor and REST-API'
+			},
+			user: {
+				format: String,
+				default: '',
+				env: 'N8N_BASIC_AUTH_USER',
+				doc: 'The name of the basic auth user'
+			},
+			password: {
+				format: String,
+				default: '',
+				env: 'N8N_BASIC_AUTH_PASSWORD',
+				doc: 'The password of the basic auth user'
+			},
+		}
+
+	},
+
 	endpoints: {
 		rest: {
 			format: String,

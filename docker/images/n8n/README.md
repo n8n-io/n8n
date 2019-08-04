@@ -53,6 +53,22 @@ docker run -it --rm \
   n8n start --tunnel
 ```
 
+
+## Securing n8n
+
+By default n8n can be accessed by everybody. This is OK if you have it only running
+locally buy if you deploy it on a server which is accessible from the web you have
+to make sure that n8n is protected!
+Right now we have very basic protection via basic-auth in place. It can be activated
+by setting the following environment variables:
+
+```
+N8N_BASIC_AUTH_ACTIVE=true
+N8N_BASIC_AUTH_USER=<USER>
+N8N_BASIC_AUTH_PASSWORD=<PASSWORD>
+```
+
+
 ## Persist data
 
 The workflow data gets by default saved in an SQLite database in the user
@@ -72,11 +88,6 @@ docker run -it --rm \
 By default n8n uses SQLite to save credentials, past executions and workflows.
 n8n however also supports MongoDB and PostgresDB. To use them simply a few
 environment variables have to be set.
-
-To avoid passing sensitive information via environment variables "_FILE" may be
-appended to the database environment variables (for example "DB_POSTGRESDB_PASSWORD_FILE").
-It will then load the data from a file with the given name. That makes it possible to
-load data easily from Docker- and Kubernetes-Secrets.
 
 It is important to still persist the data in the `/root/.n8` folder. The reason
 is that it contains n8n user data. That is the name of the webhook
@@ -132,6 +143,25 @@ docker run -it --rm \
   n8nio/n8n \
   n8n start
 ```
+
+
+## Passing Senstive Data via File
+
+To avoid passing sensitive information via environment variables "_FILE" may be
+appended to some environment variables. It will then load the data from a file
+with the given name. That makes it possible to load data easily from
+Docker- and Kubernetes-Secrets.
+
+The following environment variables support file input:
+ - DB_MONGODB_CONNECTION_URL
+ - DB_POSTGRESDB_DATABASE_FILE
+ - DB_POSTGRESDB_HOST_FILE
+ - DB_POSTGRESDB_PASSWORD_FILE
+ - DB_POSTGRESDB_PORT_FILE
+ - DB_POSTGRESDB_USER_FILE
+ - N8N_BASIC_AUTH_PASSWORD_FILE
+ - N8N_BASIC_AUTH_USER_FILE
+
 
 ## License
 
