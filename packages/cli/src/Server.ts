@@ -61,11 +61,12 @@ import {
 	Not,
 } from 'typeorm';
 
-import * as parseUrl from 'parseurl';
+import * as basicAuth from 'basic-auth';
+import * as compression from 'compression';
 import * as config from '../config';
 // @ts-ignore
 import * as timezones from 'google-timezones-json';
-import * as compression from 'compression';
+import * as parseUrl from 'parseurl';
 
 
 class App {
@@ -92,7 +93,6 @@ class App {
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
 		this.timezone = config.get('generic.timezone') as string;
 
-		this.config();
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
 		this.push = Push.getInstance();
@@ -112,8 +112,44 @@ class App {
 	}
 
 
-	private config(): void {
+	async config(): Promise<void> {
 
+		// Check for basic auth credentials if activated
+		const basicAuthActive  = config.get('security.basicAuth.active') as boolean;
+		if (basicAuthActive === true) {
+			const basicAuthUser = await GenericHelpers.getConfigValue('security.basicAuth.user') as string;
+			if (basicAuthUser === '') {
+				throw new Error('Basic auth is activated but no user got defined. Please set one!');
+			}
+
+			const basicAuthPassword = await GenericHelpers.getConfigValue('security.basicAuth.password') as string;
+			if (basicAuthPassword === '') {
+				throw new Error('Basic auth is activated but no password got defined. Please set one!');
+			}
+
+			const authIgnoreRegex = new RegExp(`^\/(rest|${this.endpointWebhook}|${this.endpointWebhookTest})\/.*$`)
+			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+				if (req.url.match(authIgnoreRegex)) {
+					return next();
+				}
+				const realm = 'n8n - Editor UI';
+				const basicAuthData = basicAuth(req);
+
+				if (basicAuthData === undefined) {
+					// Authorization data is missing
+					return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization is required!');
+				}
+
+				if (basicAuthData.name !== basicAuthUser || basicAuthData.pass !== basicAuthPassword) {
+					// Provided authentication data is wrong
+					return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization data is wrong!');
+				}
+
+				next();
+			});
+		}
+
+		// Compress the repsonse data
 		this.app.use(compression());
 
 		// Get push connections
@@ -1036,12 +1072,14 @@ class App {
 
 }
 
-export function start() {
+export async function start(): Promise<void> {
 	const PORT = config.get('port');
 
-	const app = new App().app;
+	const app = new App();
 
-	app.listen(PORT, () => {
+	await app.config();
+
+	app.app.listen(PORT, () => {
 		console.log('n8n ready on port ' + PORT);
 	});
 }
