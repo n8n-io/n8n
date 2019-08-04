@@ -67,7 +67,7 @@ export async function init(): Promise<IDatabaseCollections> {
 
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
-		synchronize: true,
+		synchronize: process.env['NODE_ENV'] !== 'production',
 		logging: false
 	});
 
