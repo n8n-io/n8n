@@ -767,7 +767,16 @@ class App {
 			countFilter.select = ['id'];
 
 			const resultsPromise = Db.collections.Execution!.find({
-				select: ['id', 'workflowData'],
+				select: [
+					'id',
+					'finished',
+					'mode',
+					'retryOf',
+					'retrySuccessId',
+					'startedAt',
+					'stoppedAt',
+					'workflowData',
+				],
 				where: filter,
 				order: {
 					startedAt: "DESC",
