@@ -149,9 +149,6 @@ class App {
 			});
 		}
 
-		// Compress the repsonse data
-		this.app.use(compression());
-
 		// Get push connections
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (req.url.indexOf('/rest/push') === 0) {
@@ -166,6 +163,9 @@ class App {
 			}
 			next();
 		});
+
+		// Compress the response data
+		this.app.use(compression());
 
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
