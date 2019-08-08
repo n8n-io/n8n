@@ -164,7 +164,6 @@ export class GoogleSheets implements INodeType {
 					hide: {
 						operation: [
 							'append',
-							'update'
 						],
 						rawData: [
 							true
