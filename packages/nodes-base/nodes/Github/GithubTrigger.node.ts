@@ -352,7 +352,17 @@ export class GithubTrigger implements INodeType {
 					active: true,
 				};
 
-				const responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
+
+				let responseData;
+				try {
+					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
+				} catch (e) {
+					if (e.message.includes('[422]:')) {
+						throw new Error('A webhook with the identical URL exists already. Please delete it manually on Github!');
+					}
+
+					throw e;
+				}
 
 				if (responseData.id === undefined || responseData.active !== true) {
 					// Required data is missing so was not successful
