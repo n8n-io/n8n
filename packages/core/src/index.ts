@@ -14,11 +14,9 @@ export * from './LoadNodeParameterOptions';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 
-import * as ActiveExecutions from './ActiveExecutions';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';
 export {
-	ActiveExecutions,
 	NodeExecuteFunctions,
 	UserSettings,
 };

@@ -106,6 +106,31 @@ export interface IDataObject {
 }
 
 
+export interface IGetExecuteTriggerFunctions {
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): ITriggerFunctions;
+}
+
+
+export interface IGetExecuteFunctions {
+	(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions;
+}
+
+
+export interface IGetExecuteSingleFunctions {
+	(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, itemIndex: number, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteSingleFunctions;
+}
+
+
+export interface IGetExecuteHookFunctions {
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
+}
+
+
+export interface IGetExecuteWebhookFunctions {
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, webhookData: IWebhookData): IWebhookFunctions;
+}
+
+
 export interface IExecuteData {
 	data: ITaskDataConnections;
 	node: INode;
@@ -250,11 +275,11 @@ export interface INodeExecutionData {
 
 
 export interface INodeExecuteFunctions {
-	getExecuteTriggerFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): ITriggerFunctions;
-	getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions;
-	getExecuteSingleFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, itemIndex: number, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteSingleFunctions;
-	getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
-	getExecuteWebhookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, webhookData: IWebhookData): IWebhookFunctions;
+	getExecuteTriggerFunctions: IGetExecuteTriggerFunctions;
+	getExecuteFunctions: IGetExecuteFunctions;
+	getExecuteSingleFunctions: IGetExecuteSingleFunctions;
+	getExecuteHookFunctions: IGetExecuteHookFunctions;
+	getExecuteWebhookFunctions: IGetExecuteWebhookFunctions;
 }
 
 
@@ -452,16 +477,20 @@ export interface IWebhookResonseData {
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary';
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
 
-export interface INodeTypesObject {
-	[key: string]: INodeType;
-}
-
 export interface INodeTypes {
-	init(nodeTypes?: INodeTypesObject): Promise<void>;
+	nodeTypes: INodeTypeData;
+	init(nodeTypes?: INodeTypeData): Promise<void>;
 	getAll(): INodeType[];
 	getByName(nodeType: string): INodeType | undefined;
 }
 
+
+export interface INodeTypeData {
+	[key: string]: {
+		type: INodeType;
+		sourcePath: string;
+	};
+}
 
 export interface IRun {
 	data: IRunExecutionData;
@@ -537,19 +566,17 @@ export interface IWorkflowCredentials {
 }
 
 export interface IWorkflowExecuteHooks {
-	afterExecute? (data: IRun, waitingExecutionData: IWaitingForExecution): Promise<void>;
+	[key: string]: Array<((...args: any[]) => Promise<void>)> | undefined; // tslint:disable-line:no-any
+	nodeExecuteAfter?: Array<((nodeName: string, data: ITaskData) => Promise<void>)>;
+	nodeExecuteBefore?: Array<((nodeName: string) => Promise<void>)>;
+	workflowExecuteAfter?: Array<((data: IRun, newStaticData: IDataObject) => Promise<void>)>;
+	workflowExecuteBefore?: Array<(() => Promise<void>)>;
 }
 
 export interface IWorkflowExecuteAdditionalData {
 	credentials: IWorkflowCredentials;
 	encryptionKey: string;
-	hooks?: {
-		[key: string]: Array<((...args: any[]) => Promise<void>)> | undefined; // tslint:disable-line:no-any
-		nodeExecuteAfter?: Array<((executionId: string, nodeName: string, data: ITaskData) => Promise<void>)>;
-		nodeExecuteBefore?: Array<((nodeName: string, executionId: string) => Promise<void>)>;
-		workflowExecuteAfter?: Array<((data: IRun, executionId: string) => Promise<void>)>;
-		workflowExecuteBefore?: Array<((executionId: string) => Promise<void>)>;
-	};
+	hooks?: IWorkflowExecuteHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
 	timezone: string;

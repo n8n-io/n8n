@@ -1,19 +1,21 @@
 import * as express from 'express';
 
 import {
+	ActiveExecutions,
 	GenericHelpers,
 	IExecutionDb,
 	IResponseCallbackData,
 	IWorkflowDb,
+	IWorkflowExecutionDataProcess,
 	ResponseHelper,
+	WorkflowRunner,
+	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 } from './';
 
 import {
 	BINARY_ENCODING,
-	ActiveExecutions,
 	NodeExecuteFunctions,
-	WorkflowExecute,
 } from 'n8n-core';
 
 import {
@@ -124,8 +126,8 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	}
 
 	// Prepare everything that is needed to run the workflow
-	const additionalData = await WorkflowExecuteAdditionalData.get(executionMode, workflowData, webhookData.workflow, sessionId);
-	const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+	const credentials = await WorkflowCredentials(workflowData.nodes);
+	const additionalData = await WorkflowExecuteAdditionalData.getBase(executionMode, credentials);
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
@@ -207,8 +209,17 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 			},
 		};
 
+		const runData: IWorkflowExecutionDataProcess = {
+			credentials,
+			executionMode,
+			executionData: runExecutionData,
+			sessionId,
+			workflowData,
+		};
+
 		// Start now to run the workflow
-		const executionId = await workflowExecute.runExecutionData(webhookData.workflow, runExecutionData);
+		const workflowRunner = new WorkflowRunner();
+		const executionId = await workflowRunner.run(runData);
 
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId) as Promise<IExecutionDb | undefined>;

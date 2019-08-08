@@ -3,14 +3,11 @@ import {
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IPushDataExecutionFinished,
-	IPushDataExecutionStarted,
-	IPushDataNodeExecuteAfter,
-	IPushDataNodeExecuteBefore,
 	IWorkflowBase,
+	IWorkflowExecutionDataProcess,
 	Push,
 	ResponseHelper,
 	WebhookHelpers,
-	WorkflowCredentials,
 	WorkflowHelpers,
 } from './';
 
@@ -19,11 +16,13 @@ import {
 } from "n8n-core";
 
 import {
+	IDataObject,
 	IRun,
 	ITaskData,
+	IWorkflowCredentials,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecuteHooks,
 	WorkflowExecuteMode,
-	Workflow,
 } from 'n8n-workflow';
 
 import * as config from '../config';
@@ -68,7 +67,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
  * @param {string} executionIdActive The id of the finished execution
  * @param {string} [executionIdDb] The database id of finished execution
  */
-function pushExecutionFinished(fullRunData: IRun, executionIdActive: string, executionIdDb?: string) {
+export function pushExecutionFinished(fullRunData: IRun, executionIdActive: string, executionIdDb?: string) {
 	// Clone the object except the runData. That one is not supposed
 	// to be send. Because that data got send piece by piece after
 	// each node which finished executing
@@ -94,70 +93,79 @@ function pushExecutionFinished(fullRunData: IRun, executionIdActive: string, exe
 }
 
 
-const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowInstance: Workflow, sessionId?: string, retryOf?: string) => {
+/**
+ * Returns the workflow execution hooks
+ *
+ * @param {WorkflowExecuteMode} mode
+ * @param {IWorkflowBase} workflowData
+ * @param {string} executionId
+ * @param {string} [sessionId]
+ * @param {string} [retryOf]
+ * @returns {IWorkflowExecuteHooks}
+ */
+const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, executionId: string, sessionId?: string, retryOf?: string): IWorkflowExecuteHooks => {
 	return {
 		nodeExecuteBefore: [
-			async (executionId: string, nodeName: string): Promise<void> => {
+			async (nodeName: string): Promise<void> => {
+				// Push data to session which started workflow before each
+				// node which starts rendering
 				if (sessionId === undefined) {
-					// Only push data to the session which started it
 					return;
 				}
 
-				const sendData: IPushDataNodeExecuteBefore = {
+				pushInstance.send('nodeExecuteBefore', {
 					executionId,
 					nodeName,
-				};
-
-				pushInstance.send('nodeExecuteBefore', sendData, sessionId);
+				}, sessionId);
 			},
 		],
 		nodeExecuteAfter: [
-			async (executionId: string, nodeName: string, data: ITaskData): Promise<void> => {
+			async (nodeName: string, data: ITaskData): Promise<void> => {
+				// Push data to session which started workflow after each rendered node
 				if (sessionId === undefined) {
 					return;
 				}
 
-				const sendData: IPushDataNodeExecuteAfter = {
+				pushInstance.send('nodeExecuteAfter', {
 					executionId,
 					nodeName,
 					data,
-				};
-
-				pushInstance.send('nodeExecuteAfter', sendData, sessionId);
+				}, sessionId);
 			},
 		],
 		workflowExecuteBefore: [
-			async (executionId: string): Promise<void> => {
+			async (): Promise<void> => {
 				// Push data to editor-ui once workflow finished
-				const sendData: IPushDataExecutionStarted = {
+				pushInstance.send('executionStarted', {
 					executionId,
 					mode,
 					startedAt: new Date(),
 					retryOf,
 					workflowId: workflowData.id as string,
 					workflowName: workflowData.name,
-				};
-
-				pushInstance.send('executionStarted', sendData);
+				});
 			}
 		],
 		workflowExecuteAfter: [
-			async (fullRunData: IRun, executionId: string): Promise<void> => {
+			async (fullRunData: IRun, newStaticData: IDataObject): Promise<void> => {
 				try {
-					const workflowSavePromise = WorkflowHelpers.saveStaticData(workflowInstance);
+					if (WorkflowHelpers.isWorkflowIdValid(workflowData.id as string) === true) {
+						// Workflow is saved so update in database
+						try {
+							await WorkflowHelpers.saveStaticDataById(workflowData.id as string, newStaticData);
+						} catch (e) {
+							// TODO: Add proper logging!
+							console.error(`There was a problem saving the workflow with id "${workflowData.id}" to save changed staticData: ${e.message}`);
+						}
+					}
 
 					let saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
-					if (workflowInstance.settings !== undefined && workflowInstance.settings.saveManualExecutions !== undefined) {
+					if (workflowData.settings !== undefined && workflowData.settings.saveManualExecutions !== undefined) {
 						// Apply to workflow override
-						saveManualExecutions = workflowInstance.settings.saveManualExecutions as boolean;
+						saveManualExecutions = workflowData.settings.saveManualExecutions as boolean;
 					}
 
 					if (mode === 'manual' && saveManualExecutions === false) {
-						if (workflowSavePromise !== undefined) {
-							// If workflow had to be saved wait till it is done
-							await workflowSavePromise;
-						}
-
 						pushExecutionFinished(fullRunData, executionId);
 						executeErrorWorkflow(workflowData, fullRunData, mode);
 						return;
@@ -166,9 +174,9 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowI
 					// Check config to know if execution should be saved or not
 					let saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 					let saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
-					if (workflowInstance.settings !== undefined) {
-						saveDataErrorExecution = (workflowInstance.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
-						saveDataSuccessExecution = (workflowInstance.settings.saveDataSuccessExecution as string) || saveDataSuccessExecution;
+					if (workflowData.settings !== undefined) {
+						saveDataErrorExecution = (workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
+						saveDataSuccessExecution = (workflowData.settings.saveDataSuccessExecution as string) || saveDataSuccessExecution;
 					}
 
 					const workflowDidSucceed = !fullRunData.data.resultData.error;
@@ -208,11 +216,6 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowI
 						await Db.collections.Execution!.update(retryOf, { retrySuccessId: executionResult.id });
 					}
 
-					if (workflowSavePromise !== undefined) {
-						// If workflow had to be saved wait till it is done
-						await workflowSavePromise;
-					}
-
 					pushExecutionFinished(fullRunData, executionId, executionResult.id as string);
 					executeErrorWorkflow(workflowData, fullRunData, mode, executionResult ? executionResult.id as string : undefined);
 				} catch (error) {
@@ -225,7 +228,15 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowI
 };
 
 
-export async function get(mode: WorkflowExecuteMode, workflowData: IWorkflowBase, workflowInstance: Workflow, sessionId?: string, retryOf?: string): Promise<IWorkflowExecuteAdditionalData> {
+/**
+ * Returns the base additional data without webhooks
+ *
+ * @export
+ * @param {WorkflowExecuteMode} mode
+ * @param {IWorkflowCredentials} credentials
+ * @returns {Promise<IWorkflowExecuteAdditionalData>}
+ */
+export async function getBase(mode: WorkflowExecuteMode, credentials: IWorkflowCredentials): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 	const timezone = config.get('generic.timezone') as string;
@@ -238,11 +249,23 @@ export async function get(mode: WorkflowExecuteMode, workflowData: IWorkflowBase
 	}
 
 	return {
-		credentials: await WorkflowCredentials(workflowData.nodes),
-		hooks: hooks(mode, workflowData, workflowInstance, sessionId, retryOf),
+		credentials,
 		encryptionKey,
 		timezone,
 		webhookBaseUrl,
 		webhookTestBaseUrl,
 	};
+}
+
+
+/**
+ * Returns the workflow hooks
+ *
+ * @export
+ * @param {IWorkflowExecutionDataProcess} data
+ * @param {string} executionId
+ * @returns {IWorkflowExecuteHooks}
+ */
+export function getHookMethods(data: IWorkflowExecutionDataProcess, executionId: string): IWorkflowExecuteHooks {
+	return hooks(data.executionMode, data.workflowData, executionId, data.sessionId, data.retryOf as string | undefined);
 }

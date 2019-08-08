@@ -3,8 +3,9 @@ export * from './Interfaces';
 export * from './LoadNodesAndCredentials';
 export * from './NodeTypes';
 export * from './WorkflowCredentials';
+export * from './WorkflowRunner';
 
-
+import * as ActiveExecutions from './ActiveExecutions';
 import * as ActiveWorkflowRunner from './ActiveWorkflowRunner';
 import * as Db from './Db';
 import * as GenericHelpers from './GenericHelpers';
@@ -16,6 +17,7 @@ import * as WebhookHelpers from './WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from './WorkflowExecuteAdditionalData';
 import * as WorkflowHelpers from './WorkflowHelpers';
 export {
+	ActiveExecutions,
 	ActiveWorkflowRunner,
 	Db,
 	GenericHelpers,

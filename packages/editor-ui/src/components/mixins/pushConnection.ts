@@ -160,11 +160,17 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
+
 					if (runDataExecuted.finished !== true) {
 						// There was a problem with executing the workflow
+						let errorMessage = 'There was a problem executing the workflow!';
+						if (runDataExecuted.data.resultData.error && runDataExecuted.data.resultData.error.message) {
+							errorMessage = `There was a problem executing the workflow:<br /><strong>"${runDataExecuted.data.resultData.error.message}"</strong>`;
+						}
+
 						this.$showMessage({
 							title: 'Problem executing workflow',
-							message: 'There was a problem executing the workflow!',
+							message: errorMessage,
 							type: 'error',
 						});
 					} else {

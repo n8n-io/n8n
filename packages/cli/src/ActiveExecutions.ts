@@ -1,15 +1,18 @@
 import {
 	IRun,
-	IRunExecutionData,
-	Workflow,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import {
 	createDeferredPromise,
-	IExecutingWorkflowData,
 	IExecutionsCurrentSummary,
+} from 'n8n-core';
+
+import {
+	IExecutingWorkflowData,
+	IWorkflowExecutionDataProcess,
 } from '.';
+
+import { ChildProcess } from 'child_process';
 
 
 export class ActiveExecutions {
@@ -17,27 +20,23 @@ export class ActiveExecutions {
 	private activeExecutions: {
 		[index: string]: IExecutingWorkflowData;
 	} = {};
-	private stopExecutions: string[] = [];
-
 
 
 	/**
 	 * Add a new active execution
 	 *
-	 * @param {Workflow} workflow
-	 * @param {IRunExecutionData} runExecutionData
-	 * @param {WorkflowExecuteMode} mode
+	 * @param {ChildProcess} process
+	 * @param {IWorkflowExecutionDataProcess} executionData
 	 * @returns {string}
 	 * @memberof ActiveExecutions
 	 */
-	add(workflow: Workflow, runExecutionData: IRunExecutionData, mode: WorkflowExecuteMode): string {
+	add(process: ChildProcess, executionData: IWorkflowExecutionDataProcess): string {
 		const executionId = this.nextId++;
 
 		this.activeExecutions[executionId] = {
-			runExecutionData,
+			executionData,
+			process,
 			startedAt: new Date(),
-			mode,
-			workflow,
 			postExecutePromises: [],
 		};
 
@@ -53,7 +52,7 @@ export class ActiveExecutions {
 	 * @returns {void}
 	 * @memberof ActiveExecutions
 	 */
-	remove(executionId: string, fullRunData: IRun): void {
+	remove(executionId: string, fullRunData?: IRun): void {
 		if (this.activeExecutions[executionId] === undefined) {
 			return;
 		}
@@ -65,12 +64,6 @@ export class ActiveExecutions {
 
 		// Remove from the list of active executions
 		delete this.activeExecutions[executionId];
-
-		const stopExecutionIndex = this.stopExecutions.indexOf(executionId);
-		if (stopExecutionIndex !== -1) {
-			// If it was on the stop-execution list remove it
-			this.stopExecutions.splice(stopExecutionIndex, 1);
-		}
 	}
 
 
@@ -87,14 +80,18 @@ export class ActiveExecutions {
 			return;
 		}
 
-		if (!this.stopExecutions.includes(executionId)) {
-			// Add the execution to the stop list if it is not already on it
-			this.stopExecutions.push(executionId);
-		}
+		// In case something goes wrong make sure that promise gets first
+		// returned that it gets then also resolved correctly.
+		setTimeout(() => {
+			if (this.activeExecutions[executionId].process.connected) {
+				this.activeExecutions[executionId].process.send({
+					type: 'stopExecution'
+				});
+			}
+		}, 1);
 
 		return this.getPostExecutePromise(executionId);
 	}
-
 
 
 	/**
@@ -105,9 +102,9 @@ export class ActiveExecutions {
 	 * @returns {Promise<IRun>}
 	 * @memberof ActiveExecutions
 	 */
-	async getPostExecutePromise(executionId: string): Promise<IRun> {
+	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
 		// Create the promise which will be resolved when the execution finished
-		const waitPromise = await createDeferredPromise<IRun>();
+		const waitPromise = await createDeferredPromise<IRun | undefined>();
 
 		if (this.activeExecutions[executionId] === undefined) {
 			throw new Error(`There is no active execution with id "${executionId}".`);
@@ -119,20 +116,6 @@ export class ActiveExecutions {
 	}
 
 
-
-	/**
-	 * Returns if the execution should be stopped
-	 *
-	 * @param {string} executionId The execution id to check
-	 * @returns {boolean}
-	 * @memberof ActiveExecutions
-	 */
-	shouldBeStopped(executionId: string): boolean {
-		return this.stopExecutions.includes(executionId);
-	}
-
-
-
 	/**
 	 * Returns all the currently active executions
 	 *
@@ -142,15 +125,15 @@ export class ActiveExecutions {
 	getActiveExecutions(): IExecutionsCurrentSummary[] {
 		const returnData: IExecutionsCurrentSummary[] = [];
 
-		let executionData;
+		let data;
 		for (const id of Object.keys(this.activeExecutions)) {
-			executionData = this.activeExecutions[id];
+			data = this.activeExecutions[id];
 			returnData.push(
 				{
 					id,
-					startedAt: executionData.startedAt,
-					mode: executionData.mode,
-					workflowId: executionData.workflow.id!,
+					startedAt: data.startedAt,
+					mode: data.executionData.executionMode,
+					workflowId: data.executionData.workflowData.id! as string,
 				}
 			);
 		}

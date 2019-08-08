@@ -314,33 +314,12 @@ export function getWebhookDescription(name: string, workflow: Workflow, node: IN
  * @param {WorkflowExecuteMode} mode
  * @returns {ITriggerFunctions}
  */
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
 export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): ITriggerFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			emit: (data: INodeExecutionData[][]): void => {
-				const workflowExecute = new WorkflowExecute(additionalData, mode);
-				const nodeExecutionStack: IExecuteData[] = [
-					{
-						node,
-						data: {
-							main: data,
-						}
-					}
-				];
-
-				const runExecutionData: IRunExecutionData = {
-					startData: {},
-					resultData: {
-						runData: {},
-					},
-					executionData: {
-						contextData: {},
-						nodeExecutionStack,
-						waitingExecution: {},
-					},
-				};
-
-				workflowExecute.runExecutionData(workflow, runExecutionData);
+				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
 				return getCredentials(workflow, node, type, additionalData);
