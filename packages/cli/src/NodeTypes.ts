@@ -1,26 +1,25 @@
 import {
 	INodeType,
 	INodeTypes,
+	INodeTypeData,
 } from 'n8n-workflow';
 
 
 class NodeTypesClass implements INodeTypes {
 
-	nodeTypes: {
-		[key: string]: INodeType
-	} = {};
+	nodeTypes: INodeTypeData = {};
 
 
-	async init(nodeTypes: {[key: string]: INodeType }): Promise<void> {
+	async init(nodeTypes: INodeTypeData): Promise<void> {
 		this.nodeTypes = nodeTypes;
 	}
 
 	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes);
+		return Object.values(this.nodeTypes).map((data) => data.type);
 	}
 
 	getByName(nodeType: string): INodeType | undefined {
-		return this.nodeTypes[nodeType];
+		return this.nodeTypes[nodeType].type;
 	}
 }
 

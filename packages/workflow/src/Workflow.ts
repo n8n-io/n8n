@@ -1,6 +1,7 @@
 
 import {
 	IConnections,
+	IGetExecuteTriggerFunctions,
 	INode,
 	NodeHelpers,
 	INodes,
@@ -954,14 +955,14 @@ export class Workflow {
 	 * when the node has data.
 	 *
 	 * @param {INode} node
-	 * @param {INodeExecuteFunctions} nodeExecuteFunctions
+	 * @param {IGetExecuteTriggerFunctions} getTriggerFunctions
 	 * @param {IWorkflowExecuteAdditionalData} additionalData
 	 * @param {WorkflowExecuteMode} mode
 	 * @returns {(Promise<ITriggerResponse | undefined>)}
 	 * @memberof Workflow
 	 */
-	async runTrigger(node: INode, nodeExecuteFunctions: INodeExecuteFunctions, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): Promise<ITriggerResponse | undefined> {
-		const thisArgs = nodeExecuteFunctions.getExecuteTriggerFunctions(this, node, additionalData, mode);
+	async runTrigger(node: INode, getTriggerFunctions: IGetExecuteTriggerFunctions, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): Promise<ITriggerResponse | undefined> {
+		const triggerFunctions = getTriggerFunctions(this, node, additionalData, mode);
 
 		const nodeType = this.nodeTypes.getByName(node.type);
 
@@ -976,11 +977,11 @@ export class Workflow {
 		if (mode === 'manual') {
 			// In manual mode we do not just start the trigger function we also
 			// want to be able to get informed as soon as the first data got emitted
-			const triggerReponse = await nodeType.trigger!.call(thisArgs);
+			const triggerReponse = await nodeType.trigger!.call(triggerFunctions);
 
 			// Add the manual trigger response which resolves when the first time data got emitted
 			triggerReponse!.manualTriggerResponse = new Promise((resolve) => {
-				thisArgs.emit = ((resolve) => (data: INodeExecutionData[][]) => {
+				triggerFunctions.emit = ((resolve) => (data: INodeExecutionData[][]) => {
 					resolve(data);
 				})(resolve);
 			});
@@ -988,7 +989,7 @@ export class Workflow {
 			return triggerReponse;
 		} else {
 			// In all other modes simply start the trigger
-			return nodeType.trigger!.call(thisArgs);
+			return nodeType.trigger!.call(triggerFunctions);
 		}
 	}
 
@@ -1089,7 +1090,7 @@ export class Workflow {
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
-				const triggerResponse = await this.runTrigger(node, nodeExecuteFunctions, additionalData, mode);
+				const triggerResponse = await this.runTrigger(node, nodeExecuteFunctions.getExecuteTriggerFunctions, additionalData, mode);
 
 				if (triggerResponse === undefined) {
 					return null;

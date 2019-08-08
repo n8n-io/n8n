@@ -1,12 +1,9 @@
 import {
+	IGetExecuteTriggerFunctions,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-
-import {
-	NodeExecuteFunctions,
-} from './';
 
 
 export interface WorkflowData {
@@ -65,7 +62,7 @@ export class ActiveWorkflows {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflows
 	 */
-	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData): Promise<void> {
+	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getTriggerFunctions: IGetExecuteTriggerFunctions): Promise<void> {
 		console.log('ADD ID (active): ' + id);
 
 		this.workflowData[id] = {
@@ -75,7 +72,7 @@ export class ActiveWorkflows {
 
 		let triggerResponse: ITriggerResponse | undefined;
 		for (const triggerNode of triggerNodes) {
-			triggerResponse = await workflow.runTrigger(triggerNode, NodeExecuteFunctions, additionalData, 'trigger');
+			triggerResponse = await workflow.runTrigger(triggerNode, getTriggerFunctions, additionalData, 'trigger');
 			if (triggerResponse !== undefined) {
 				// If a response was given save it
 				this.workflowData[id].triggerResponse = triggerResponse;

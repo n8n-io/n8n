@@ -2,24 +2,20 @@ import Vorpal = require('vorpal');
 import { Args } from 'vorpal';
 import { promises as fs } from 'fs';
 import {
-	CredentialTypes,
+	ActiveExecutions,
 	Db,
+	GenericHelpers,
 	IWorkflowBase,
+	IWorkflowExecutionDataProcess,
 	LoadNodesAndCredentials,
 	NodeTypes,
-	GenericHelpers,
+	WorkflowCredentials,
 	WorkflowHelpers,
-	WorkflowExecuteAdditionalData,
+	WorkflowRunner,
 } from "../src";
 import {
-	ActiveExecutions,
 	UserSettings,
-	WorkflowExecute,
 } from "n8n-core";
-import {
-	INode,
-	Workflow,
-} from "n8n-workflow";
 
 
 module.exports = (vorpal: Vorpal) => {
@@ -99,22 +95,16 @@ module.exports = (vorpal: Vorpal) => {
 			// Add the found types to an instance other parts of the application can use
 			const nodeTypes = NodeTypes();
 			await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
-			const credentialTypes = CredentialTypes();
-			await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 			if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 				workflowId = undefined;
 			}
 
-			const workflowInstance = new Workflow(workflowId, workflowData!.nodes, workflowData!.connections, true, nodeTypes, workflowData!.staticData);
-
 			// Check if the workflow contains the required "Start" node
 			// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
 			const requiredNodeTypes = ['n8n-nodes-base.start'];
 			let startNodeFound = false;
-			let node: INode;
-			for (const nodeName of Object.keys(workflowInstance.nodes)) {
-				node = workflowInstance.nodes[nodeName];
+			for (const node of workflowData!.nodes) {
 				if (requiredNodeTypes.includes(node.type)) {
 					startNodeFound = true;
 				}
@@ -127,12 +117,17 @@ module.exports = (vorpal: Vorpal) => {
 				return Promise.resolve();
 			}
 
-			const mode = 'cli';
-			const additionalData = await WorkflowExecuteAdditionalData.get(mode, workflowData!, workflowInstance);
-			const workflowExecute = new WorkflowExecute(additionalData, mode);
-
 			try {
-				const executionId = await workflowExecute.run(workflowInstance);
+				const credentials = await WorkflowCredentials(workflowData!.nodes);
+
+				const runData: IWorkflowExecutionDataProcess = {
+					credentials,
+					executionMode: 'cli',
+					workflowData: workflowData!,
+				};
+
+				const workflowRunner = new WorkflowRunner();
+				const executionId = await workflowRunner.run(runData);
 
 				const activeExecutions = ActiveExecutions.getInstance();
 				const data = await activeExecutions.getPostExecutePromise(executionId);

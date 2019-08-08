@@ -4,18 +4,28 @@ import {
 	NodeTypes,
 	IResponseCallbackData,
 	IWorkflowDb,
+	IWorkflowExecutionDataProcess,
 	ResponseHelper,
 	WebhookHelpers,
+	WorkflowCredentials,
 	WorkflowHelpers,
+	WorkflowRunner,
 	WorkflowExecuteAdditionalData,
 } from './';
 
 import {
 	ActiveWorkflows,
 	ActiveWebhooks,
+	NodeExecuteFunctions,
+	WorkflowExecute,
 } from 'n8n-core';
 
 import {
+	IExecuteData,
+	IGetExecuteTriggerFunctions,
+	INode,
+	INodeExecutionData,
+	IRunExecutionData,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
 	WebhookHttpMethod,
@@ -210,6 +220,57 @@ export class ActiveWorkflowRunner {
 
 
 	/**
+	 * Return trigger function which gets the global functions from n8n-core
+	 * and overwrites the emit to be able to start it in subprocess
+	 *
+	 * @param {IWorkflowDb} workflowData
+	 * @param {IWorkflowExecuteAdditionalDataWorkflow} additionalData
+	 * @param {WorkflowExecuteMode} mode
+	 * @returns {IGetExecuteTriggerFunctions}
+	 * @memberof ActiveWorkflowRunner
+	 */
+	getExecuteTriggerFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode): IGetExecuteTriggerFunctions{
+		return ((workflow: Workflow, node: INode) => {
+			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(workflow, node, additionalData, mode);
+			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
+
+				const nodeExecutionStack: IExecuteData[] = [
+					{
+						node,
+						data: {
+							main: data,
+						}
+					}
+				];
+
+				const executionData: IRunExecutionData = {
+					startData: {},
+					resultData: {
+						runData: {},
+					},
+					executionData: {
+						contextData: {},
+						nodeExecutionStack,
+						waitingExecution: {},
+					},
+				};
+
+				// Start the workflow
+				const runData: IWorkflowExecutionDataProcess = {
+					credentials: additionalData.credentials,
+					executionMode: mode,
+					executionData,
+					workflowData,
+				};
+
+				const workflowRunner = new WorkflowRunner();
+				workflowRunner.run(runData);
+			};
+			return returnFunctions;
+		});
+	}
+
+	/**
 	 * Makes a workflow active
 	 *
 	 * @param {string} workflowId The id of the workflow to activate
@@ -240,12 +301,13 @@ export class ActiveWorkflowRunner {
 			}
 
 			const mode = 'trigger';
-			const additionalData = await WorkflowExecuteAdditionalData.get(mode, workflowData, workflowInstance);
+			const credentials = await WorkflowCredentials(workflowData.nodes);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(mode, credentials);
+			const getTriggerFunctions = this.getExecuteTriggerFunctions(workflowData, additionalData, mode);
 
 			// Add the workflows which have webhooks defined
 			await this.addWorkflowWebhooks(workflowInstance, additionalData, mode);
-
-			await this.activeWorkflows.add(workflowId, workflowInstance, additionalData);
+			await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, getTriggerFunctions);
 
 			if (this.activationErrors[workflowId] !== undefined) {
 				// If there were any activation errors delete them
@@ -265,6 +327,8 @@ export class ActiveWorkflowRunner {
 			throw error;
 		}
 
+		// If for example webhooks get created it sometimes has to save the
+		// id of them in the static data. So make sure that data gets persisted.
 		await WorkflowHelpers.saveStaticData(workflowInstance!);
 	}
 

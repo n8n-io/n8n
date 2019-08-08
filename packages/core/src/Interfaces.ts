@@ -8,24 +8,24 @@ import {
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
 	INodeType,
-	IRun,
-	IRunExecutionData,
 	ITriggerFunctions as ITriggerFunctionsBase,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	Workflow,
 	WorkflowExecuteMode,
  } from 'n8n-workflow';
 
-import {
-	IDeferredPromise
-} from '.';
 
 import * as request from 'request';
 import * as requestPromise from 'request-promise-native';
 
 interface Constructable<T> {
 	new(): T;
+}
+
+
+export interface IProcessMessage {
+	data?: any; // tslint:disable-line:no-any
+	type: string;
 }
 
 
@@ -45,13 +45,6 @@ export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 	};
 }
 
-export interface IExecutingWorkflowData {
-	runExecutionData: IRunExecutionData;
-	startedAt: Date;
-	mode: WorkflowExecuteMode;
-	workflow: Workflow;
-	postExecutePromises: Array<IDeferredPromise<IRun>>;
-}
 
 export interface IExecutionsCurrentSummary {
 	id: string;

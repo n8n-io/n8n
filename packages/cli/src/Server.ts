@@ -4,15 +4,16 @@ import * as history from 'connect-history-api-fallback';
 import * as requestPromise from 'request-promise-native';
 
 import {
-	IActivationError,
+	ActiveExecutions,
 	ActiveWorkflowRunner,
+	CredentialTypes,
+	Db,
+	IActivationError,
 	ICustomRequest,
 	ICredentialsDb,
 	ICredentialsDecryptedDb,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
-	CredentialTypes,
-	Db,
 	IExecutionDeleteFilter,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
@@ -25,22 +26,23 @@ import {
 	IWorkflowBase,
 	IWorkflowShortResponse,
 	IWorkflowResponse,
+	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	Push,
 	ResponseHelper,
 	TestWebhooks,
+	WorkflowCredentials,
 	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
+	WorkflowRunner,
 	GenericHelpers,
 } from './';
 
 import {
-	ActiveExecutions,
 	Credentials,
 	LoadNodeParameterOptions,
 	UserSettings,
-	WorkflowExecute,
 } from 'n8n-core';
 
 import {
@@ -127,7 +129,7 @@ class App {
 				throw new Error('Basic auth is activated but no password got defined. Please set one!');
 			}
 
-			const authIgnoreRegex = new RegExp(`^\/(rest|${this.endpointWebhook}|${this.endpointWebhookTest})\/.*$`)
+			const authIgnoreRegex = new RegExp(`^\/(rest|${this.endpointWebhook}|${this.endpointWebhookTest})\/.*$`);
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				if (req.url.match(authIgnoreRegex)) {
 					return next();
@@ -386,44 +388,44 @@ class App {
 			const runData: IRunData | undefined = req.body.runData;
 			const startNodes: string[] | undefined = req.body.startNodes;
 			const destinationNode: string | undefined = req.body.destinationNode;
-			const nodeTypes = NodeTypes();
 			const executionMode = 'manual';
 
 			const sessionId = GenericHelpers.getSessionId(req);
 
-			// Do not supply the saved static data! Tests always run with initially empty static data.
-			// The reason is that it contains information like webhook-ids. If a workflow is currently
-			// active it would see its id and would so not create an own test-webhook. Additionally would
-			// it also delete the webhook at the service in the end. So that the active workflow would end
-			// up without still being active but not receiving and webhook requests anymore as it does
-			// not exist anymore.
-			const workflowInstance = new Workflow(workflowData.id, workflowData.nodes, workflowData.connections, false, nodeTypes, undefined, workflowData.settings);
-
-			const additionalData = await WorkflowExecuteAdditionalData.get(executionMode, workflowData, workflowInstance, sessionId);
-
-			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
-
-			let executionId: string;
-
-			if (runData === undefined || startNodes === undefined || startNodes.length === 0 || destinationNode === undefined) {
-				// Execute all nodes
-
-				if (WorkflowHelpers.isWorkflowIdValid(workflowData.id) === true) {
-					// Webhooks can only be tested with saved workflows
-					const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, sessionId, destinationNode);
-					if (needsWebhook === true) {
-						return {
-							waitingForWebhook: true,
-						};
-					}
+			// Check if workflow is saved as webhooks can only be tested with saved workflows.
+			// If that is the case check if any webhooks calls are present we have to wait for and
+			// if that is the case wait till we receive it.
+			if (WorkflowHelpers.isWorkflowIdValid(workflowData.id) === true && (runData === undefined || startNodes === undefined || startNodes.length === 0 || destinationNode === undefined)) {
+				// Webhooks can only be tested with saved workflows
+				const credentials = await WorkflowCredentials(workflowData.nodes);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(executionMode, credentials);
+				const nodeTypes = NodeTypes();
+				const workflowInstance = new Workflow(workflowData.id, workflowData.nodes, workflowData.connections, false, nodeTypes, undefined, workflowData.settings);
+				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, sessionId, destinationNode);
+				if (needsWebhook === true) {
+					return {
+						waitingForWebhook: true,
+					};
 				}
-
-				// Can execute without webhook so go on
-				executionId = await workflowExecute.run(workflowInstance, undefined, destinationNode);
-			} else {
-				// Execute only the nodes between start and destination nodes
-				executionId = await workflowExecute.runPartialWorkflow(workflowInstance, runData, startNodes, destinationNode);
 			}
+
+			// For manual testing always set to not active
+			workflowData.active = false;
+
+			const credentials = await WorkflowCredentials(workflowData.nodes);
+
+			// Start the workflow
+			const data: IWorkflowExecutionDataProcess = {
+				credentials,
+				destinationNode,
+				executionMode,
+				runData,
+				sessionId,
+				startNodes,
+				workflowData,
+			};
+			const workflowRunner = new WorkflowRunner();
+			const executionId = await workflowRunner.run(data);
 
 			return {
 				executionId,
@@ -444,12 +446,11 @@ class App {
 			const nodeTypes = NodeTypes();
 			const executionMode = 'manual';
 
-			const sessionId = GenericHelpers.getSessionId(req);
-
 			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, credentials);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
-			const additionalData = await WorkflowExecuteAdditionalData.get(executionMode, workflowData, loadDataInstance.workflow, sessionId);
+			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(executionMode, workflowCredentials);
 
 			return loadDataInstance.getOptions(methodName, additionalData);
 		}));
@@ -843,13 +844,22 @@ class App {
 
 			const executionMode = 'retry';
 
-			const nodeTypes = NodeTypes();
-			const workflowInstance = new Workflow(req.params.id, fullExecutionData.workflowData.nodes, fullExecutionData.workflowData.connections, false, nodeTypes, fullExecutionData.workflowData.staticData, fullExecutionData.workflowData.settings);
+			const credentials = await WorkflowCredentials(fullExecutionData.workflowData.nodes);
 
-			const additionalData = await WorkflowExecuteAdditionalData.get(executionMode, fullExecutionData.workflowData, workflowInstance, undefined, req.params.id);
-			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+			fullExecutionData.workflowData.active = false;
 
-			return workflowExecute.runExecutionData(workflowInstance, fullExecutionData.data);
+			// Start the workflow
+			const data: IWorkflowExecutionDataProcess = {
+				credentials,
+				executionMode,
+				executionData: fullExecutionData.data,
+				retryOf: req.params.id,
+				workflowData: fullExecutionData.workflowData,
+			};
+			const workflowRunner = new WorkflowRunner();
+			const executionId = await workflowRunner.run(data);
+
+			return executionId;
 		}));
 
 

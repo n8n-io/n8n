@@ -6,15 +6,22 @@ import {
 	IExecutionError,
 	INode,
 	IRun,
+	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	IWorkflowCredentials,
 	IWorkflowSettings,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import {
+	IDeferredPromise,
+} from 'n8n-core';
+
+
 import { ObjectID, Repository } from "typeorm";
 
-
+import { ChildProcess } from 'child_process';
 import { Url } from 'url';
 import { Request } from 'express';
 
@@ -171,6 +178,13 @@ export interface IExecutionDeleteFilter {
 	ids?: string[];
 }
 
+export interface IExecutingWorkflowData {
+	executionData: IWorkflowExecutionDataProcess;
+	process: ChildProcess;
+	startedAt: Date;
+	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
+}
+
 export interface IN8nConfig {
 	database: IN8nConfigDatabase;
 	endpoints: IN8nConfigEndpoints;
@@ -282,6 +296,14 @@ export interface IResponseCallbackData {
 }
 
 
+export interface ITransferNodeTypes {
+	[key: string]: {
+		className: string;
+		sourcePath: string;
+	};
+}
+
+
 export interface IWorkflowErrorData {
 	[key: string]: IDataObject | string | number | IExecutionError;
 	execution: {
@@ -294,4 +316,26 @@ export interface IWorkflowErrorData {
 		id?: string;
 		name: string;
 	};
+}
+
+export interface IProcessMessageDataHook {
+	hook: string;
+	parameters: any[]; // tslint:disable-line:no-any
+}
+
+export interface IWorkflowExecutionDataProcess {
+	credentials: IWorkflowCredentials;
+	destinationNode?: string;
+	executionMode: WorkflowExecuteMode;
+	executionData?: IRunExecutionData;
+	runData?: IRunData;
+	retryOf?: number | string | ObjectID;
+	sessionId?: string;
+	startNodes?: string[];
+	workflowData: IWorkflowBase;
+}
+
+export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
+	executionId: string;
+	nodeTypeData: ITransferNodeTypes;
 }

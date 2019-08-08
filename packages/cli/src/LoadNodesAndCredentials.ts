@@ -5,6 +5,7 @@ import {
 import {
 	ICredentialType,
 	INodeType,
+	INodeTypeData,
 } from 'n8n-workflow';
 
 import * as config from '../config';
@@ -25,9 +26,7 @@ const fsStatAsync = promisify(fsStat);
 
 
 class LoadNodesAndCredentialsClass {
-	nodeTypes: {
-		[key: string]: INodeType
-	} = {};
+	nodeTypes: INodeTypeData = {};
 
 	credentialTypes: {
 		[key: string]: ICredentialType
@@ -37,7 +36,7 @@ class LoadNodesAndCredentialsClass {
 
 	nodeModulesPath = '';
 
-	async init(directory?: string) {
+	async init() {
 		// Get the path to the node-modules folder to be later able
 		// to load the credentials and nodes
 		const checkPaths = [
@@ -172,12 +171,15 @@ class LoadNodesAndCredentialsClass {
 			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
 		}
 
-		// Check if the node should be skipped
+		// Check if the node should be skiped
 		if (this.excludeNodes !== undefined && this.excludeNodes.includes(fullNodeName)) {
 			return;
 		}
 
-		this.nodeTypes[fullNodeName] = tempNode;
+		this.nodeTypes[fullNodeName] = {
+			type: tempNode,
+			sourcePath: filePath,
+		};
 	}
 
 

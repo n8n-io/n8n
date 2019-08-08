@@ -1,15 +1,14 @@
 import {
 	Db,
+	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
 	NodeTypes,
-	WorkflowExecuteAdditionalData,
+	WorkflowCredentials,
+	WorkflowRunner,
 } from './';
 
 import {
-	WorkflowExecute,
-} from 'n8n-core';
-
-import {
+	IDataObject,
 	IExecuteData,
 	INode,
 	IRunExecutionData,
@@ -80,10 +79,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 			return;
 		}
 
-		const additionalData = await WorkflowExecuteAdditionalData.get(executionMode, workflowData, workflowInstance);
-
 		// Can execute without webhook so go on
-		const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 		// Initialize the data of the webhook node
 		const nodeExecutionStack: IExecuteData[] = [];
@@ -115,9 +111,17 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 			},
 		};
 
-		// Start now to run the workflow
-		await workflowExecute.runExecutionData(workflowInstance, runExecutionData);
+		const credentials = await WorkflowCredentials(workflowData.nodes);
 
+		const runData: IWorkflowExecutionDataProcess = {
+			credentials,
+			executionMode,
+			executionData: runExecutionData,
+			workflowData,
+		};
+
+		const workflowRunner = new WorkflowRunner();
+		await workflowRunner.run(runData);
 	} catch (error) {
 		console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}": ${error.message}`);
 	}
@@ -138,10 +142,7 @@ export async function saveStaticData(workflow: Workflow): Promise <void> {
 		if (isWorkflowIdValid(workflow.id) === true) {
 			// Workflow is saved so update in database
 			try {
-				await Db.collections.Workflow!
-					.update(workflow.id!, {
-						staticData: workflow.staticData,
-					});
+				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (e) {
 				// TODO: Add proper logging!
@@ -149,4 +150,21 @@ export async function saveStaticData(workflow: Workflow): Promise <void> {
 			}
 		}
 	}
+}
+
+
+
+/**
+ * Saves the given static data on workflow
+ *
+ * @export
+ * @param {(string | number)} workflowId The id of the workflow to save data on
+ * @param {IDataObject} newStaticData The static data to save
+ * @returns {Promise<void>}
+ */
+export async function saveStaticDataById(workflowId: string | number, newStaticData: IDataObject): Promise<void> {
+	await Db.collections.Workflow!
+		.update(workflowId, {
+			staticData: newStaticData,
+		});
 }
