@@ -431,6 +431,8 @@ export default mixins(
 		statusTooltipText (entry: IExecutionsSummary): string {
 			if (entry.stoppedAt === undefined) {
 				return 'The worklow is currently executing.';
+			} else if (entry.finished === true && entry.retryOf !== undefined) {
+				return `The workflow execution was a retry of "${entry.retryOf}" and it was successful.`;
 			} else if (entry.finished === true) {
 				return 'The worklow execution was successful.';
 			} else if (entry.retryOf !== undefined) {
