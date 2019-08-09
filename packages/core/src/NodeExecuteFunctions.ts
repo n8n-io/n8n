@@ -3,7 +3,6 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWorkflowSettings,
-	WorkflowExecute,
 	BINARY_ENCODING,
 } from './';
 
@@ -12,7 +11,6 @@ import {
 	IContextObject,
 	ICredentialDataDecryptedObject,
 	IDataObject,
-	IExecuteData,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	INode,

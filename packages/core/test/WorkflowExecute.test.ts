@@ -587,10 +587,13 @@ describe('WorkflowExecute', () => {
 
 				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
-				const executionId = await workflowExecute.run(workflowInstance, undefined);
-				expect(executionId).toBeDefined();
+				const executionData = await workflowExecute.run(workflowInstance, undefined);
 
 				const result = await waitPromise.promise();
+
+				// Check if the data from WorkflowExecute is identical to data received
+				// by the webhooks
+				expect(executionData).toEqual(result);
 
 				// Check if the output data of the nodes is correct
 				for (const nodeName of Object.keys(testData.output.nodeData)) {
