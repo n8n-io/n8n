@@ -288,6 +288,13 @@ NODES_EXCLUDE="[\"n8n-nodes-base.executeCommand\",\"n8n-nodes-base.writeBinaryFi
 
 
 
+## Hosted n8n
+
+If you are interested in a hosted version of n8n on our infrastructure please contact us via:
+[hosting@n8n.io](mailto:hosting@n8n.io)
+
+
+
 ## License
 
 [Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
