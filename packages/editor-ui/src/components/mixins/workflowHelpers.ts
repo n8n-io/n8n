@@ -5,6 +5,8 @@ import {
 	INodeExecutionData,
 	INodeIssues,
 	INodeType,
+	INodeTypes,
+	INodeTypeData,
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
@@ -168,13 +170,14 @@ export const workflowHelpers = mixins(
 				const nodes = this.getNodes();
 				const connections = this.$store.getters.allConnections;
 
-				const nodeTypes = {
-					init: async () => { },
-					getAll: () => {
+				const nodeTypes: INodeTypes = {
+					nodeTypes: {},
+					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
+					getAll: (): INodeType[] => {
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},
-					getByName: (nodeType: string) => {
+					getByName: (nodeType: string): INodeType | undefined => {
 						const nodeTypeDescription = this.$store.getters.nodeType(nodeType);
 
 						if (nodeTypeDescription === null) {
