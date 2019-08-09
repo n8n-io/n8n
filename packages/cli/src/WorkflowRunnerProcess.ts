@@ -133,11 +133,20 @@ export class WorkflowRunnerProcess {
  *
  * @param {string} type The type of data to send
  * @param {*} data The data
+ * @returns {Promise<void>}
  */
-function sendToParentProcess(type: string, data: any): void { // tslint:disable-line:no-any
-	process.send!({
-		type,
-		data,
+async function sendToParentProcess(type: string, data: any): Promise<void> { // tslint:disable-line:no-any
+	return new Promise((resolve, reject) => {
+		process.send!({
+			type,
+			data,
+		}, (error: Error) => {
+			if (error) {
+				return reject(error);
+			}
+
+			resolve();
+		});
 	});
 }
 
@@ -152,7 +161,7 @@ process.on('message', async (message: IProcessMessage) => {
 		if (message.type === 'startWorkflow') {
 			const runData = await workflowRunner.runWorkflow(message.data);
 
-			sendToParentProcess('end', {
+			await sendToParentProcess('end', {
 				runData,
 			});
 
@@ -186,7 +195,7 @@ process.on('message', async (message: IProcessMessage) => {
 				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [fullRunData]);
 			}
 
-			sendToParentProcess('end', {
+			await sendToParentProcess('end', {
 				fullRunData,
 			});
 
@@ -200,7 +209,7 @@ process.on('message', async (message: IProcessMessage) => {
 			stack: error.stack,
 		} as IExecutionError;
 
-		sendToParentProcess('processError', {
+		await sendToParentProcess('processError', {
 			executionError,
 		});
 		process.exit();
