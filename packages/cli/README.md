@@ -2,7 +2,7 @@
 
 ![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-logo.png)
 
-n8n is a free node based "Open Source" (with Commons Clause)
+n8n is a free node-based "Open Source" (with Commons Clause)
 Workflow Automation Tool. It can be self-hosted, easily extended, and
 so also used with internal tools.
 
@@ -69,7 +69,7 @@ n8n start --tunnel
 
 ### Securing n8n
 
-By default n8n can be accessed by everybody. This is OK if you have it only running
+By default, n8n can be accessed by everybody. This is OK if you have it only running
 locally buy if you deploy it on a server which is accessible from the web you have
 to make sure that n8n is protected!
 Right now we have very basic protection via basic-auth in place. It can be activated
@@ -84,7 +84,7 @@ N8N_BASIC_AUTH_PASSWORD=<PASSWORD>
 
 ### Start with other Database
 
-By default n8n uses SQLite to save credentials, past executions and workflows.
+By default, n8n uses SQLite to save credentials, past executions and workflows.
 n8n however also supports MongoDB and PostgresDB. To use them simply a few
 environment variables have to be set.
 
@@ -134,7 +134,7 @@ n8n start
 ```
 
 
-## Passing Senstive Data via File
+## Passing Sensitive Data via File
 
 To avoid passing sensitive information via environment variables "_FILE" may be
 appended to some environment variables. It will then load the data from a file
@@ -187,7 +187,7 @@ The following keyboard shortcuts can currently be used:
  - **Ctrl + a**: Select all nodes
  - **Ctrl + Alt + n**: Create new workflow
  - **Ctrl + o**: Open workflow
- - **Ctrl + s**: Save current workflow
+ - **Ctrl + s**: Save the current workflow
  - **Ctrl + v**: Paste nodes
  - **Tab**: Open "Node Creator". Type to filter and navigate with arrow keys. To create press "enter"
 
@@ -205,6 +205,87 @@ The following keyboard shortcuts can currently be used:
  - **F2**: Rename node
  - **Shift + ArrowLeft**: Select all nodes left of the current one
  - **Shift + ArrowRight**: Select all nodes right of the current one
+
+
+## Run n8n on own server
+
+To run n8n on your webserver with own domain some environment variables
+should be set to the appropriate values.
+
+A possible configuration to run n8n on `https://n8n.example.com/` would look
+like this:
+
+```
+N8N_HOST: "n8n.example.com"
+N8N_PROTOCOL: "https"
+N8N_PORT: "443"
+VUE_APP_URL_BASE_API: "https://n8n.example.com/"
+```
+
+***Important***: Make sure that you secure your n8n instance like described above in "Securing n8n"!
+
+
+## Additional Configuration
+
+It is possible to change some of the n8n defaults via special environment variables.
+The ones that currently exist are:
+
+
+### EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS
+
+Normally executions which got started via the Editor UI will not be saved as
+they are normally only for testing and debugging. That default can be changed
+with this environment variable.
+
+```
+EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true
+```
+
+This setting can also be overwritten on a per workflow basis in the workflow
+settings in the Editor UI.
+
+
+### EXECUTIONS_DATA_SAVE_ON_ERROR / EXECUTIONS_DATA_SAVE_ON_SUCCESS
+
+When a workflow gets executed it will save the result in the database. That is
+the case for executions that did succeed and for the ones that failed. That
+default behavior can be changed like this:
+
+```
+EXECUTIONS_DATA_SAVE_ON_ERROR=true
+EXECUTIONS_DATA_SAVE_ON_SUCCESS=false
+```
+
+These settings can also be overwritten on a per workflow basis in the workflow
+settings in the Editor UI.
+
+
+### GENERIC_TIMEZONE
+
+The timezone is set by default to "America/New_York". It gets for example used by the
+Cron-Node to know at what time the workflow should be started at. To set a different
+default timezone simply set `GENERIC_TIMEZONE` to the appropriate value like for example
+for Berlin (Germany):
+
+```
+GENERIC_TIMEZONE="Europe/Berlin"
+```
+
+You can find the name of your timezone here:
+[https://momentjs.com/timezone/](https://momentjs.com/timezone/)
+
+
+### NODES_EXCLUDE
+
+It is possible to not allow users to use nodes of a specific node type. If you, for example,
+do not want that people can write data to disk with the "n8n-nodes-base.writeBinaryFile"
+node and can not execute commands with the "n8n-nodes-base.executeCommand" node you can
+set the following:
+
+```
+NODES_EXCLUDE="[\"n8n-nodes-base.executeCommand\",\"n8n-nodes-base.writeBinaryFile\"]"
+```
+
 
 
 ## License
