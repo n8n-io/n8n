@@ -29,6 +29,7 @@ export class WorkflowRunnerProcess {
 	workflow: Workflow | undefined;
 	workflowExecute: WorkflowExecute | undefined;
 
+
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
 		this.data = inputData;
 		let className: string;
@@ -81,15 +82,29 @@ export class WorkflowRunnerProcess {
 	}
 
 
+	/**
+	 * Sends hook data to the parent process that it executes them
+	 *
+	 * @param {string} hook
+	 * @param {any[]} parameters
+	 * @memberof WorkflowRunnerProcess
+	 */
 	sendHookToParentProcess(hook: string, parameters: any[]) { // tslint:disable-line:no-any
-		(process as unknown as ChildProcess).send({
-			type: 'processHook',
-			data: {
+		try {
+			sendToParentProcess('processHook', {
 				hook,
 				parameters,
-			} as IProcessMessageDataHook,
-		} as IProcessMessage);
+			});
+		} catch (error) {
+			// TODO: Add proper logging
+			console.error(`There was a problem sending hook: "${hook}"`);
+			console.error('Parameters:');
+			console.error(parameters);
+			console.error('Error:');
+			console.error(error);
+		}
 	}
+
 
 	/**
 	 * Create a wrapper for hooks which simply forwards the data to
@@ -169,18 +184,18 @@ process.on('message', async (message: IProcessMessage) => {
 			process.exit();
 		} else if (message.type === 'stopExecution') {
 			// The workflow execution should be stopped
-			let fullRunData: IRun;
+			let runData: IRun;
 
 			if (workflowRunner.workflowExecute !== undefined) {
 				// Workflow started already executing
 
-				fullRunData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
+				runData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
 
 				// If there is any data send it to parent process
 				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!);
 			} else {
 				// Workflow did not get started yet
-				fullRunData = {
+				runData = {
 					data: {
 						resultData: {
 							runData: {},
@@ -192,11 +207,11 @@ process.on('message', async (message: IProcessMessage) => {
 					stoppedAt: new Date(),
 				};
 
-				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [fullRunData]);
+				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
 			}
 
 			await sendToParentProcess('end', {
-				fullRunData,
+				runData,
 			});
 
 			// Stop process
