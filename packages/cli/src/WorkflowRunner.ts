@@ -22,6 +22,7 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
 
@@ -144,7 +145,7 @@ export class WorkflowRunner {
 	 */
 	async run(data: IWorkflowExecutionDataProcess): Promise<string> {
 		const startedAt = new Date();
-		const subprocess = fork('./dist/src/WorkflowRunnerProcess.js');
+		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
 		// Register the active execution
 		const executionId = this.activeExecutions.add(subprocess, data);
