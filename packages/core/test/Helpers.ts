@@ -5,7 +5,7 @@ import {
 	INodeParameters,
 	INodeType,
 	INodeTypes,
-	INodeTypesObject,
+	INodeTypeData,
 	IRun,
 	ITaskData,
 	IWorkflowExecuteAdditionalData,
@@ -19,201 +19,218 @@ import {
 
 class NodeTypesClass implements INodeTypes {
 
-	nodeTypes: INodeTypesObject = {
+	nodeTypes: INodeTypeData = {
 		'n8n-nodes-base.merge': {
-			description: {
-				displayName: 'Merge',
-				name: 'merge',
-				icon: 'fa:clone',
-				group: ['transform'],
-				version: 1,
-				description: 'Merges data of multiple streams once data of both is available',
-				defaults: {
-					name: 'Merge',
-					color: '#00cc22',
-				},
-				inputs: ['main', 'main'],
-				outputs: ['main'],
-				properties: [
-					{
-						displayName: 'Mode',
-						name: 'mode',
-						type: 'options',
-						options: [
-							{
-								name: 'Append',
-								value: 'append',
-								description: 'Combines data of both inputs. The output will contain items of input 1 and input 2.',
-							},
-							{
-								name: 'Pass-through',
-								value: 'passThrough',
-								description: 'Passes through data of one input. The output will conain only items of the defined input.',
-							},
-							{
-								name: 'Wait',
-								value: 'wait',
-								description: 'Waits till data of both inputs is available and will then output a single empty item.',
-							},
-						],
-						default: 'append',
-						description: 'How data should be merged. If it should simply<br />be appended or merged depending on a property.',
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'Merge',
+					name: 'merge',
+					icon: 'fa:clone',
+					group: ['transform'],
+					version: 1,
+					description: 'Merges data of multiple streams once data of both is available',
+					defaults: {
+						name: 'Merge',
+						color: '#00cc22',
 					},
-					{
-						displayName: 'Output Data',
-						name: 'output',
-						type: 'options',
-						displayOptions: {
-							show: {
-								mode: [
-									'passThrough'
-								],
-							},
+					inputs: ['main', 'main'],
+					outputs: ['main'],
+					properties: [
+						{
+							displayName: 'Mode',
+							name: 'mode',
+							type: 'options',
+							options: [
+								{
+									name: 'Append',
+									value: 'append',
+									description: 'Combines data of both inputs. The output will contain items of input 1 and input 2.',
+								},
+								{
+									name: 'Pass-through',
+									value: 'passThrough',
+									description: 'Passes through data of one input. The output will conain only items of the defined input.',
+								},
+								{
+									name: 'Wait',
+									value: 'wait',
+									description: 'Waits till data of both inputs is available and will then output a single empty item.',
+								},
+							],
+							default: 'append',
+							description: 'How data should be merged. If it should simply<br />be appended or merged depending on a property.',
 						},
-						options: [
-							{
-								name: 'Input 1',
-								value: 'input1',
+						{
+							displayName: 'Output Data',
+							name: 'output',
+							type: 'options',
+							displayOptions: {
+								show: {
+									mode: [
+										'passThrough'
+									],
+								},
 							},
-							{
-								name: 'Input 2',
-								value: 'input2',
-							},
-						],
-						default: 'input1',
-						description: 'Defines of which input the data should be used as output of node.',
-					},
-				]
-			},
-			async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-				// const itemsInput2 = this.getInputData(1);
+							options: [
+								{
+									name: 'Input 1',
+									value: 'input1',
+								},
+								{
+									name: 'Input 2',
+									value: 'input2',
+								},
+							],
+							default: 'input1',
+							description: 'Defines of which input the data should be used as output of node.',
+						},
+					]
+				},
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+					// const itemsInput2 = this.getInputData(1);
 
-				const returnData: INodeExecutionData[] = [];
+					const returnData: INodeExecutionData[] = [];
 
-				const mode = this.getNodeParameter('mode', 0) as string;
+					const mode = this.getNodeParameter('mode', 0) as string;
 
-				if (mode === 'append') {
-					// Simply appends the data
-					for (let i = 0; i < 2; i++) {
-						returnData.push.apply(returnData, this.getInputData(i));
+					if (mode === 'append') {
+						// Simply appends the data
+						for (let i = 0; i < 2; i++) {
+							returnData.push.apply(returnData, this.getInputData(i));
+						}
+					} else if (mode === 'passThrough') {
+						const output = this.getNodeParameter('output', 0) as string;
+
+						if (output === 'input1') {
+							returnData.push.apply(returnData, this.getInputData(0));
+						} else {
+							returnData.push.apply(returnData, this.getInputData(1));
+						}
+					} else if (mode === 'wait') {
+						returnData.push({ json: {} });
 					}
-				} else if (mode === 'passThrough') {
-					const output = this.getNodeParameter('output', 0) as string;
 
-					if (output === 'input1') {
-						returnData.push.apply(returnData, this.getInputData(0));
-					} else {
-						returnData.push.apply(returnData, this.getInputData(1));
-					}
-				} else if (mode === 'wait') {
-					returnData.push({ json: {} });
+					return [returnData];
 				}
-
-				return [returnData];
-			}
+			},
 		},
 		'n8n-nodes-base.set': {
-			description: {
-				displayName: 'Set',
-				name: 'set',
-				group: ['input'],
-				version: 1,
-				description: 'Sets a value',
-				defaults: {
-					name: 'Set',
-					color: '#0000FF',
-				},
-				inputs: ['main'],
-				outputs: ['main'],
-				properties: [
-					{
-						displayName: 'Keep Only Set',
-						name: 'keepOnlySet',
-						type: 'boolean',
-						default: false,
-						description: 'If only the values set on this node should be<br />kept and all others removed.',
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'Set',
+					name: 'set',
+					group: ['input'],
+					version: 1,
+					description: 'Sets a value',
+					defaults: {
+						name: 'Set',
+						color: '#0000FF',
 					},
-					{
-						displayName: 'Values to Set',
-						name: 'values',
-						placeholder: 'Add Value',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [
+						{
+							displayName: 'Keep Only Set',
+							name: 'keepOnlySet',
+							type: 'boolean',
+							default: false,
+							description: 'If only the values set on this node should be<br />kept and all others removed.',
 						},
-						description: 'The value to set.',
-						default: {},
-						options: [
-							{
-								name: 'number',
-								displayName: 'Number',
-								values: [
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: 'propertyName',
-										description: 'Name of the property to write data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'number',
-										default: 0,
-										description: 'The number value to write in the property.',
-									},
-								]
+						{
+							displayName: 'Values to Set',
+							name: 'values',
+							placeholder: 'Add Value',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
 							},
-						],
-					},
-				]
-			},
-			execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-				const items = this.getInputData();
+							description: 'The value to set.',
+							default: {},
+							options: [
+								{
+									name: 'number',
+									displayName: 'Number',
+									values: [
+										{
+											displayName: 'Name',
+											name: 'name',
+											type: 'string',
+											default: 'propertyName',
+											description: 'Name of the property to write data to.<br />Supports dot-notation.<br />Example: "data.person[0].name"',
+										},
+										{
+											displayName: 'Value',
+											name: 'value',
+											type: 'number',
+											default: 0,
+											description: 'The number value to write in the property.',
+										},
+									]
+								},
+							],
+						},
+					]
+				},
+				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+					const items = this.getInputData();
 
-				let item: INodeExecutionData;
-				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-					item = items[itemIndex];
-					// Add number values
-					(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-						set(item.json, setItem.name as string, setItem.value);
-					});
+					const returnData: INodeExecutionData[] = [];
+					let item: INodeExecutionData;
+					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+						item = items[itemIndex];
+
+						const newItem: INodeExecutionData = {
+							json: JSON.parse(JSON.stringify(item.json)),
+						};
+
+						// Add number values
+						(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
+							set(newItem.json, setItem.name as string, setItem.value);
+						});
+
+						returnData.push(newItem);
+					}
+
+					return this.prepareOutputData(returnData);
 				}
-
-				return this.prepareOutputData(items);
-			}
+			},
 		},
 		'n8n-nodes-base.start': {
-			description: {
-				displayName: 'Start',
-				name: 'start',
-				group: ['input'],
-				version: 1,
-				description: 'Starts the workflow execution from this node',
-				defaults: {
-					name: 'Start',
-					color: '#553399',
+			sourcePath: '',
+			type: {
+				description: {
+					displayName: 'Start',
+					name: 'start',
+					group: ['input'],
+					version: 1,
+					description: 'Starts the workflow execution from this node',
+					defaults: {
+						name: 'Start',
+						color: '#553399',
+					},
+					inputs: [],
+					outputs: ['main'],
+					properties: []
 				},
-				inputs: [],
-				outputs: ['main'],
-				properties: []
-			},
-			execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-				const items = this.getInputData();
+				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+					const items = this.getInputData();
 
-				return this.prepareOutputData(items);
+					return this.prepareOutputData(items);
+				},
 			},
 		},
 	};
 
-	async init(nodeTypes: INodeTypesObject): Promise<void> { }
+	async init(nodeTypes: INodeTypeData): Promise<void> { }
 
 	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes);
+		return Object.values(this.nodeTypes).map((data) => data.type);
 	}
 
 	getByName(nodeType: string): INodeType {
-		return this.nodeTypes[nodeType];
+		return this.nodeTypes[nodeType].type;
 	}
 }
 
@@ -235,12 +252,12 @@ export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun
 		credentials: {},
 		hooks: {
 			nodeExecuteAfter: [
-				async (executionId: string, nodeName: string, data: ITaskData): Promise<void> => {
+				async (nodeName: string, data: ITaskData): Promise<void> => {
 					nodeExecutionOrder.push(nodeName);
 				},
 			],
 			workflowExecuteAfter: [
-				async (fullRunData: IRun, executionId: string): Promise<void> => {
+				async (fullRunData: IRun): Promise<void> => {
 					waitPromise.resolve(fullRunData);
 				},
 			],

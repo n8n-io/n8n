@@ -11,7 +11,6 @@ import {
 	ITriggerFunctions as ITriggerFunctionsBase,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	WorkflowExecuteMode,
  } from 'n8n-workflow';
 
 
