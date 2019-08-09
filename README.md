@@ -11,6 +11,8 @@ so also used with internal tools.
 Is still in beta so can not guarantee that everything works perfectly. Also
 is there currently not much documentation. That will hopefully change soon.
 
+
+
 ## Demo
 
 A short demo (< 3 min) which shows how to create a simple workflow which
@@ -20,11 +22,13 @@ received or lost a star:
 [https://www.youtube.com/watch?v=ePdcf0yaz1c](https://www.youtube.com/watch?v=ePdcf0yaz1c)
 
 
+
 ## Usage
 
 Information about how to install and use it can be found in the cli package [here](https://github.com/n8n-io/n8n/tree/master/packages/cli)
 
 And information about how to run it in Docker [here](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n)
+
 
 
 ## Development Setup
@@ -35,9 +39,19 @@ And information about how to run it in Docker [here](https://github.com/n8n-io/n
 4. Run: `npx lerna bootstrap --hoist`
 5. Run: `npm run build` or `npx lerna exec npm run build` (if lerna is not installed)
 
+
+
 ## Start
 
 Execute: `npm run start`
+
+
+
+## Hosted n8n
+
+If you are interested in a hosted version of n8n on our infrastructure please contact us via:
+[hosting@n8n.io](mailto:hosting@n8n.io)
+
 
 
 ## License
