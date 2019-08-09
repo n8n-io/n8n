@@ -132,7 +132,9 @@ import {
 	INodeIssues,
 	INodeTypeDescription,
 	IRunData,
+	NodeInputConnections,
 	NodeHelpers,
+	Workflow,
 } from 'n8n-workflow';
 import {
 	IConnectionsUi,
@@ -862,6 +864,11 @@ export default mixins(
 					return node.name;
 				});
 
+				// Check first if the current name is already unique
+				if (!nodeNames.includes(originalName) && !additinalUsedNames.includes(originalName)) {
+					return originalName;
+				}
+
 				const nameMatch = originalName.match(/(.*[a-zA-Z])(\d*)/);
 				let ignore, baseName, nameIndex, uniqueName;
 				let index = 1;
@@ -1503,7 +1510,7 @@ export default mixins(
 				newName = this.getUniqueNodeName(newName);
 
 				// Rename the node and update the connections
-				const workflow = this.getWorkflow(true);
+				const workflow = this.getWorkflow(undefined, undefined, true);
 				workflow.renameNode(currentName, newName);
 
 				// Update also last selected node and exeuction data
@@ -1634,7 +1641,8 @@ export default mixins(
 				// a max limit set already exist
 				const nodeTypesCount = this.getNodeTypesMaxCount();
 
-				let oldName;
+				let oldName: string;
+				let newName: string;
 				const createNodes: INode[] = [];
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
@@ -1654,52 +1662,69 @@ export default mixins(
 					}
 
 					oldName = node.name;
-					node.name = this.getUniqueNodeName(node.name, newNodeNames);
+					newName = this.getUniqueNodeName(node.name, newNodeNames);
 
-					newNodeNames.push(node.name);
-					nodeNameTable[oldName] = node.name;
+					newNodeNames.push(newName);
+					nodeNameTable[oldName] = newName;
 
 					createNodes.push(node);
 				});
 
-				data.nodes = createNodes;
-
-				const nameData = { old: '', new: '' };
-				for (oldName of Object.keys(nodeNameTable)) {
-					nameData.old = oldName;
-					nameData.new = nodeNameTable[oldName];
-					// More or less identical to "renameNode" in "Workflow.ts"
-
-					if (
-						nameData.old !== nameData.new &&
-						data.connections &&
-						data.connections.hasOwnProperty(nameData.old)
-					) {
-						data.connections[nameData.new] = data.connections[nameData.old];
-						delete data.connections[nameData.old];
+				// Get only the connections of the nodes that get created
+				const newConnections: IConnections = {};
+				const currentConnections = data.connections!;
+				const createNodeNames = createNodes.map((node) => node.name);
+				let sourceNode, type, sourceIndex, connectionIndex, connectionData;
+				for (sourceNode of Object.keys(currentConnections)) {
+					if (!createNodeNames.includes(sourceNode)) {
+						// Node does not get created so skip output connections
+						continue;
 					}
 
-					// Rename all destination connections
-					let sourceNode, type, sourceIndex, connectionIndex, connectionData;
-					if (data.connections) {
-						for (sourceNode of Object.keys(data.connections)) {
-							for (type of Object.keys(data.connections[sourceNode])) {
-								for (sourceIndex = 0; sourceIndex < data.connections[sourceNode][type].length; sourceIndex++) {
-									for (connectionIndex = 0; connectionIndex < data.connections[sourceNode][type][sourceIndex].length; connectionIndex++) {
-										connectionData = data.connections[sourceNode][type][sourceIndex][connectionIndex];
-										if (connectionData.node === nameData.old) {
-											connectionData.node = nameData.new;
-										}
-									}
+					const connection: INodeConnections = {};
+
+					for (type of Object.keys(currentConnections[sourceNode])) {
+						connection[type] = [];
+						for (sourceIndex = 0; sourceIndex < currentConnections[sourceNode][type].length; sourceIndex++) {
+							const nodeSourceConnections = [];
+							for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
+								const nodeConnection: NodeInputConnections = [];
+								connectionData = currentConnections[sourceNode][type][sourceIndex][connectionIndex];
+								if (!createNodeNames.includes(connectionData.node)) {
+									// Node does not get created so skip input connection
+									continue;
 								}
+
+								nodeSourceConnections.push(connectionData);
+								// Add connection
 							}
+							connection[type].push(nodeSourceConnections);
 						}
 					}
+
+					newConnections[sourceNode] = connection;
 				}
 
-				await this.addNodes(data.nodes, data.connections);
+				// Create a workflow with the new nodes and connections that we can use
+				// the rename method
+				const tempWorkflow: Workflow = this.getWorkflow(createNodes, newConnections);
 
-				return data;
+				// Rename all the nodes of which the name changed
+				for (oldName in nodeNameTable) {
+					if (oldName === nodeNameTable[oldName]) {
+						// Name did not change so skip
+						continue;
+					}
+					tempWorkflow.renameNode(oldName, nodeNameTable[oldName]);
+				}
+
+				// Add the nodes with the changed node names, expressions and connections
+				await this.addNodes(Object.values(tempWorkflow.nodes), tempWorkflow.connectionsBySourceNode);
+
+				return {
+					nodes: Object.values(tempWorkflow.nodes),
+					connections: tempWorkflow.connectionsBySourceNode,
+				};
 			},
 			getSelectedNodesToSave (): Promise<IWorkflowData> {
 				const data: IWorkflowData = {

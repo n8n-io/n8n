@@ -1,6 +1,7 @@
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 
 import {
+	IConnections,
 	INode,
 	INodeExecutionData,
 	INodeIssues,
@@ -166,9 +167,9 @@ export const workflowHelpers = mixins(
 			},
 
 			// Returns a workflow instance.
-			getWorkflow (copyData?: boolean): Workflow {
-				const nodes = this.getNodes();
-				const connections = this.$store.getters.allConnections;
+			getWorkflow (nodes?: INodeUi[], connections?: IConnections, copyData?: boolean): Workflow {
+				nodes = nodes || this.getNodes();
+				connections = connections || (this.$store.getters.allConnections as IConnections);
 
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
