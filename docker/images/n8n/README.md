@@ -163,6 +163,24 @@ The following environment variables support file input:
  - N8N_BASIC_AUTH_USER_FILE
 
 
+
+## What does n8n mean and how do you pronounce it
+
+**Short answer:** It means "nodemation"
+
+**Long answer:** I get that question quite often (more often than I expected)
+so decided it is probably best to answer it here. While looking for a
+good name for the project with a free domain I realized very fast that all the
+good ones I could think of were already taken. So, in the end, I choose
+nodemation. "node-" in the sense that it uses a Node-View and that it uses
+Node.js and "-mation" for "automation" what the project is supposed to help with.
+Did however not like how long the name was and could not imagine writing
+something that long every time in the CLI. That is when I then ended up on
+"n8n". Sure does not work perfectly but does neither for Kubernetes (k8s) and
+did not hear anybody complain there. So I guess it should be ok.
+
+
+
 ## License
 
 n8n is licensed under **Apache 2.0 with Commons Clause**
