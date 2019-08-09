@@ -162,8 +162,8 @@ export interface IExecutionsStopData {
 export interface IExecutionsSummary {
 	id?: string; // executionIdDb
 	idActive?: string; // executionIdActive
-	mode: WorkflowExecuteMode;
 	finished?: boolean;
+	mode: WorkflowExecuteMode;
 	retryOf?: string;
 	retrySuccessId?: string;
 	startedAt: Date;
@@ -171,6 +171,16 @@ export interface IExecutionsSummary {
 	workflowId: string;
 	workflowName?: string;
 }
+
+
+export interface IExecutionsCurrentSummary {
+	id: string;
+	retryOf?: string;
+	startedAt: Date;
+	mode: WorkflowExecuteMode;
+	workflowId: string;
+}
+
 
 export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
@@ -260,6 +270,7 @@ export interface IPushDataExecutionFinished {
 	data: IRun;
 	executionIdActive: string;
 	executionIdDb?: string;
+	retryOf?: string;
 }
 
 export interface IPushDataExecutionStarted {

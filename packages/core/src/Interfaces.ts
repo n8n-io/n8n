@@ -46,13 +46,6 @@ export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 }
 
 
-export interface IExecutionsCurrentSummary {
-	id: string;
-	startedAt: Date;
-	mode: WorkflowExecuteMode;
-	workflowId: string;
-}
-
 export interface ITriggerFunctions extends ITriggerFunctionsBase {
 	helpers: {
 		prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;

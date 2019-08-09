@@ -390,9 +390,9 @@ export default mixins(
 			this.isDataLoading = true;
 
 			try {
-				const data = await this.restApi().retryExecution(execution.id);
+				const retrySuccessful = await this.restApi().retryExecution(execution.id);
 
-				if (data.finished === true) {
+				if (retrySuccessful === true) {
 					this.$showMessage({
 						title: 'Retry successful',
 						message: 'The retry was successful!',
@@ -406,13 +406,11 @@ export default mixins(
 					});
 				}
 
-				this.refreshData();
 				this.isDataLoading = false;
 			} catch (error) {
 				this.$showError(error, 'Problem with retry', 'There was a problem with the retry:');
 
 				this.isDataLoading = false;
-				this.refreshData();
 			}
 		},
 		async refreshData () {

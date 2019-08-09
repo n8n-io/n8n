@@ -828,7 +828,7 @@ class App {
 
 
 		// Retries a failed execution
-		this.app.post('/rest/executions/:id/retry', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+		this.app.post('/rest/executions/:id/retry', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			// Get the data to execute
 			const fullExecutionDataFlatted = await Db.collections.Execution!.findOne(req.params.id);
 
@@ -859,7 +859,13 @@ class App {
 			const workflowRunner = new WorkflowRunner();
 			const executionId = await workflowRunner.run(data);
 
-			return executionId;
+			const executionData = await this.activeExecutionsInstance.getPostExecutePromise(executionId);
+
+			if (executionData === undefined) {
+				throw new Error('The retry did not start for an unknown reason.');
+			}
+
+			return !!executionData.finished;
 		}));
 
 
@@ -893,7 +899,6 @@ class App {
 
 
 		// Returns all the currently working executions
-		// this.app.get('/rest/executions-current', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsCurrentSummaryExtended[]> => {
 		this.app.get('/rest/executions-current', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsSummary[]> => {
 			const executingWorkflows = this.activeExecutionsInstance.getActiveExecutions();
 
@@ -912,7 +917,8 @@ class App {
 					{
 						idActive: data.id.toString(),
 						workflowId: data.workflowId,
-						mode:data.mode,
+						mode: data.mode,
+						retryOf: data.retryOf,
 						startedAt: new Date(data.startedAt),
 					}
 				);
