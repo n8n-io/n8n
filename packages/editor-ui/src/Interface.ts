@@ -143,7 +143,7 @@ export interface IRestApi {
 	getCredentialTypes(): Promise<ICredentialType[]>;
 	getExecution(id: string): Promise<IExecutionResponse>;
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
-	retryExecution(id: string): Promise<IExecutionResponse>;
+	retryExecution(id: string): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 }
 
@@ -303,6 +303,8 @@ export interface IExecutionsCurrentSummaryExtended {
 	idActive: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
+	retryOf?: string;
+	retrySuccessId?: string;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId: string;
@@ -356,6 +358,7 @@ export interface IPushDataExecutionFinished {
 	data: IRun;
 	executionIdActive: string;
 	executionIdDb?: string;
+	retryOf?: string;
 }
 
 export interface IPushDataExecutionStarted {

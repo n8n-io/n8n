@@ -160,7 +160,6 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
-
 					if (runDataExecuted.finished !== true) {
 						// There was a problem with executing the workflow
 						let errorMessage = 'There was a problem executing the workflow!';
@@ -202,6 +201,7 @@ export const pushConnection = mixins(
 						finished: false,
 						mode: pushData.mode,
 						startedAt: pushData.startedAt,
+						retryOf: pushData.retryOf,
 						workflowId: pushData.workflowId,
 						workflowName: pushData.workflowName,
 					};

@@ -263,7 +263,7 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns the execution with the given name
-				retryExecution: (id: string): Promise<IExecutionResponse> => {
+				retryExecution: (id: string): Promise<boolean> => {
 					return self.restApi().makeRestApiRequest('POST', `/executions/${id}/retry`);
 				},
 

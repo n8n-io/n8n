@@ -67,7 +67,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
  * @param {string} executionIdActive The id of the finished execution
  * @param {string} [executionIdDb] The database id of finished execution
  */
-export function pushExecutionFinished(fullRunData: IRun, executionIdActive: string, executionIdDb?: string) {
+export function pushExecutionFinished(fullRunData: IRun, executionIdActive: string, executionIdDb?: string, retryOf?: string) {
 	// Clone the object except the runData. That one is not supposed
 	// to be send. Because that data got send piece by piece after
 	// each node which finished executing
@@ -87,6 +87,7 @@ export function pushExecutionFinished(fullRunData: IRun, executionIdActive: stri
 		executionIdActive,
 		executionIdDb,
 		data: pushRunData,
+		retryOf,
 	};
 
 	pushInstance.send('executionFinished', sendData);
@@ -166,7 +167,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 					}
 
 					if (mode === 'manual' && saveManualExecutions === false) {
-						pushExecutionFinished(fullRunData, executionId);
+						pushExecutionFinished(fullRunData, executionId, undefined, retryOf);
 						executeErrorWorkflow(workflowData, fullRunData, mode);
 						return;
 					}
@@ -183,7 +184,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 					if (workflowDidSucceed === true && saveDataSuccessExecution === 'none' ||
 						workflowDidSucceed === false && saveDataErrorExecution === 'none'
 					) {
-						pushExecutionFinished(fullRunData, executionId);
+						pushExecutionFinished(fullRunData, executionId, undefined, retryOf);
 						executeErrorWorkflow(workflowData, fullRunData, mode);
 						return;
 					}
@@ -216,10 +217,10 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 						await Db.collections.Execution!.update(retryOf, { retrySuccessId: executionResult.id });
 					}
 
-					pushExecutionFinished(fullRunData, executionId, executionResult.id as string);
+					pushExecutionFinished(fullRunData, executionId, executionResult.id as string, retryOf);
 					executeErrorWorkflow(workflowData, fullRunData, mode, executionResult ? executionResult.id as string : undefined);
 				} catch (error) {
-					pushExecutionFinished(fullRunData, executionId);
+					pushExecutionFinished(fullRunData, executionId, undefined, retryOf);
 					executeErrorWorkflow(workflowData, fullRunData, mode);
 				}
 			},

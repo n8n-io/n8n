@@ -4,10 +4,10 @@ import {
 
 import {
 	createDeferredPromise,
-	IExecutionsCurrentSummary,
 } from 'n8n-core';
 
 import {
+	IExecutionsCurrentSummary,
 	IExecutingWorkflowData,
 	IWorkflowExecutionDataProcess,
 } from '.';
@@ -131,6 +131,7 @@ export class ActiveExecutions {
 			returnData.push(
 				{
 					id,
+					retryOf: data.executionData.retryOf as string | undefined,
 					startedAt: data.startedAt,
 					mode: data.executionData.executionMode,
 					workflowId: data.executionData.workflowData.id! as string,
