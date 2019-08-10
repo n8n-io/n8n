@@ -7,7 +7,6 @@ import {
 	NodeParameterValue,
 } from 'n8n-workflow';
 
-import * as requestPromise from 'request-promise-native';
 
 interface CustomProperty {
 	name: string;
@@ -614,7 +613,7 @@ export class Chargebee implements INodeType {
 				json: true
 			};
 
-			const responseData = await requestPromise(options);
+			const responseData = await this.helpers.request!(options);
 
 			if (resource === 'invoice' && operation === 'list') {
 				responseData.list.forEach((data: IDataObject) => {
