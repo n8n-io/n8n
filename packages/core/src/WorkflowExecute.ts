@@ -224,10 +224,10 @@ export class WorkflowExecute {
 	 */
 	async executeHook(hookName: string, parameters: any[]): Promise<void> { // tslint:disable-line:no-any
 		if (this.additionalData.hooks === undefined) {
-			return parameters[0];
+			return;
 		}
 		if (this.additionalData.hooks[hookName] === undefined || this.additionalData.hooks[hookName]!.length === 0) {
-			return parameters[0];
+			return;
 		}
 
 		for (const hookFunction of this.additionalData.hooks[hookName]!) {
@@ -235,7 +235,7 @@ export class WorkflowExecute {
 				.catch((error) => {
 					// Catch all errors here because when "executeHook" gets called
 					// we have the most time no "await" and so the errors would so
-					// not be uncaught by anything.
+					// not be caught by anything.
 
 					// TODO: Add proper logging
 					console.error(`There was a problem executing hook: "${hookName}"`);
