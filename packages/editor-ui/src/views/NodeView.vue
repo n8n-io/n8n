@@ -2026,10 +2026,12 @@ export default mixins(
 
 .connection-input-name-label,
 .connection-output-name-label {
-	background-color: rgba( $--custom-node-view-background, 0.9 );
-	line-height: 1.3em;
+	border-radius: 7px;
+	background-color: rgba( $--custom-node-view-background, 0.8 );
 	font-size: 0.7em;
-	padding: 3px;
+	line-height: 1.3em;
+	padding: 2px 3px;
+	white-space: nowrap;
 }
 
 .delete-connection {
@@ -2067,8 +2069,11 @@ export default mixins(
 
 .node-input-endpoint-label,
 .node-output-endpoint-label {
-	font-size: 0.7em;
 	background-color: $--custom-node-view-background;
+	border-radius: 7px;
+	font-size: 0.7em;
+	padding: 2px;
+	white-space: nowrap;
 }
 
 .node-input-endpoint-label {
