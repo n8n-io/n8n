@@ -23,7 +23,7 @@ module.exports = (vorpal: Vorpal) => {
 				console.log('=========================');
 
 				// Ask for the type of not to be created
-				const typeQuestion: inquirer.Questions = {
+				const typeQuestion: inquirer.QuestionCollection = {
 					name: 'type',
 					type: 'list',
 					default: 'Node',
@@ -47,7 +47,7 @@ module.exports = (vorpal: Vorpal) => {
 
 					getDescription = true;
 
-					const nodeTypeQuestion: inquirer.Questions = {
+					const nodeTypeQuestion: inquirer.QuestionCollection = {
 						name: 'nodeType',
 						type: 'list',
 						default: 'Execute',
@@ -99,7 +99,7 @@ module.exports = (vorpal: Vorpal) => {
 					});
 				}
 
-				const additionalAnswers = await inquirer.prompt(additionalQuestions as inquirer.Questions);
+				const additionalAnswers = await inquirer.prompt(additionalQuestions as inquirer.QuestionCollection);
 
 				const nodeName = additionalAnswers.name;
 
@@ -115,7 +115,7 @@ module.exports = (vorpal: Vorpal) => {
 					await fsAccess(destinationFilePath);
 
 					// File does already exist. So ask if it should be overwritten.
-					const overwriteQuestion: inquirer.Questions = [
+					const overwriteQuestion: inquirer.QuestionCollection = [
 						{
 							name: 'overwrite',
 							type: 'confirm',
