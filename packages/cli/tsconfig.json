@@ -13,8 +13,6 @@
 		"strictNullChecks": true,
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitReturns": true,
-		// Have to deactivate for TypeORM
-		// "strict": true,
 		"preserveConstEnums": true,
 		"resolveJsonModule": true,
 		"declaration": true,
@@ -30,7 +28,7 @@
 		"index.ts",
 		"config/**/*",
 		"src/**/*",
-		"test/**/*",
+		"test/**/*"
 	],
 	"exclude": [
 		"dist/**/*",
