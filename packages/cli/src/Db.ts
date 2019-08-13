@@ -14,9 +14,6 @@ import {
 	getRepository,
 } from "typeorm";
 
-import * as config from './../config';
-
-
 import {
 	MongoDb,
 	PostgresDb,
