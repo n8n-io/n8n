@@ -22,7 +22,7 @@
 		"credentials/**/*",
 		"src/**/*",
 		"nodes/**/*",
-		"test/**/*",
+		"test/**/*"
 	],
 	"exclude": [
 		"**/*.spec.ts"

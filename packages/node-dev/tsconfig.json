@@ -4,7 +4,7 @@
 			"es2017"
 		],
 		"types": [
-			"node",
+			"node"
 		],
 		"module": "commonjs",
 		"esModuleInterop": true,
@@ -22,7 +22,7 @@
 		"**/*.d.ts",
 		"commands/**/*",
 		"index.ts",
-		"src/**/*",
+		"src/**/*"
 	],
 	"exclude": [
 		"dist",
