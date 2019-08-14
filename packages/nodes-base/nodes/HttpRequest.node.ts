@@ -117,6 +117,13 @@ export class HttpRequest implements INodeType {
 				required: true,
 			},
 			{
+				displayName: 'Ignore SSL Issues',
+				name: 'allowUnauthorizedCerts',
+				type: 'boolean',
+				default: false,
+				description: 'Still download the response even if SSL certificate validation is not possible.',
+			},
+			{
 				displayName: 'Response Format',
 				name: 'responseFormat',
 				type: 'options',
@@ -366,6 +373,7 @@ export class HttpRequest implements INodeType {
 				headers: {},
 				method: requestMethod,
 				uri: url,
+				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 			};
 
 			if (parametersAreJson === true) {
