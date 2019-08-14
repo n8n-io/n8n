@@ -15,8 +15,8 @@
     "types": "dist/src/index.d.ts",
     "scripts": {
         "build": "tsc",
+        "dev": "nodemon",
         "start": "node dist/index.js start",
-        "start:dev": "nodemon",
         "test": "jest",
         "tslint": "tslint -p tsconfig.json -c tslint.json",
         "watch": "tsc --watch"

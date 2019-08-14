@@ -4,6 +4,7 @@
 	"scripts": {
 		"bootstrap": "lerna bootstrap --hoist --no-ci",
 		"build": "lerna exec npm run build",
+		"dev": "lerna exec npm run dev --parallel",
 		"start": "cd packages/cli && node dist/index.js start",
 		"watch": "lerna run --parallel watch"
 	},

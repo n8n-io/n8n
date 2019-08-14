@@ -15,6 +15,7 @@
     "types": "dist/src/index.d.ts",
     "scripts": {
         "build": "tsc",
+        "dev": "npm run watch",
         "tslint": "tslint -p tsconfig.json -c tslint.json",
         "watch": "tsc --watch",
         "test": "jest"
