@@ -54,13 +54,12 @@ Windows:
 npm install -g windows-build-tools
 ```
 
-
 #### lerna
 
 n8n is split up in different modules which are all in a single mono repository.
 To facilitate those modules management, [lerna](https://lerna.js.org) gets
 used. It automatically sets up file-links between modules which depend on each
-others.
+other.
 
 So for the setup to work correctly lerna has to be installed globally like this:
 
@@ -79,17 +78,17 @@ checked out and set up:
 	git clone https://github.com/n8n-io/n8n.git
 	```
 
-2. Go into repository folder
+1. Go into repository folder
 	```
 	cd n8n
 	```
 
-3. Install all dependencies of all modules and link them together:
+1. Install all dependencies of all modules and link them together:
 	```
 	lerna bootstrap --hoist
 	```
 
-4. Build all the code:
+1. Build all the code:
 	```
 	npm run build
 	```
@@ -103,3 +102,39 @@ To start n8n execute:
 ```
 npm run start
 ```
+
+
+## Development Cycle
+
+While iterating on n8n modules code, you can run `npm run dev`. It will then
+automatically build your code, restart the backend and refresh the frontend
+(editor-ui) on every change you make.
+
+1. Start n8n in development mode:
+	```
+	npm run dev
+	```
+1. hack, hack, hack
+1. Check if everything still runs in production mode
+	```
+	npm run build
+	npm run start
+	```
+1. Create tests
+1. Run all tests
+	```
+	npm run test
+	```
+1. Commit code and create pull request
+
+
+### Test suite
+
+The tests can be started via:
+```
+npm run test
+```
+
+If that gets executed in one of the package folders it will only run the tests
+of this package. If it gets executed in the n8n-root folder it will run all
+tests of all packages.
