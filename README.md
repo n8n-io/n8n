@@ -33,11 +33,7 @@ And information about how to run it in Docker [here](https://github.com/n8n-io/n
 
 ## Development Setup
 
-1. Clone the repository
-2. Go into repository folder
-3. Run: `npm install`
-4. Run: `npx lerna bootstrap --hoist`
-5. Run: `npm run build` or `npx lerna exec npm run build` (if lerna is not installed)
+A guide how to set everything up can be found in the file [CONTRIBUTING.md](CONTRIBUTING.md)
 
 
 
