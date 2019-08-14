@@ -42,10 +42,7 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 #### Build Tools
 
-That all the packages which n8n uses can be installed and compiled correctly
-the essential build tools must be installed. This is probably already the case
-for the most people but if you are totally new to development or just setting
-up a new computer it is probably still missing.
+The packages which n8n uses depend on a few build tools:
 
 Linux:
 ```
@@ -57,12 +54,13 @@ Windows:
 npm install -g windows-build-tools
 ```
 
+
 #### lerna
 
 n8n is split up in different modules which are all in a single mono repository.
-To make development as easy as possible does [lerna](https://lerna.js.org) get
+To facilitate those modules management, [lerna](https://lerna.js.org) gets
 used. It automatically sets up file-links between modules which depend on each
-other.
+others.
 
 So for the setup to work correctly lerna has to be installed globally like this:
 
