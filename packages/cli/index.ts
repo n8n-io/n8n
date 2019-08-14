@@ -41,8 +41,8 @@ if (!supportedCommands.includes(command)) {
 
 const vorpal = new Vorpal();
 vorpal
-	.use(require('./commands/execute.js'))
-	.use(require('./commands/start.js'))
+	.use(require('./commands/execute'))
+	.use(require('./commands/start'))
 	.delimiter('')
 	.show()
 	.parse(process.argv);
