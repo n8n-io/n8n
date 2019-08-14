@@ -16,6 +16,7 @@
     "scripts": {
         "dev": "npm run watch",
         "build": "tsc",
+        "test": "jest",
         "tslint": "tslint -p tsconfig.json -c tslint.json",
         "watch": "tsc --watch"
     },
@@ -45,5 +46,23 @@
         "replace-in-file": "^4.1.0",
         "typescript": "~3.5.2",
         "vorpal": "^1.12.0"
+    },
+    "jest": {
+        "transform": {
+            "^.+\\.tsx?$": "ts-jest"
+        },
+        "testURL": "http://localhost/",
+        "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+        "testPathIgnorePatterns": [
+            "/dist/",
+            "/node_modules/"
+        ],
+        "moduleFileExtensions": [
+            "ts",
+            "tsx",
+            "js",
+            "json",
+            "node"
+        ]
     }
 }
