@@ -42,10 +42,7 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 #### Build Tools
 
-That all the packages which n8n uses can be installed and compiled correctly
-the essential build tools must be installed. This is probably already the case
-for the most people but if you are totally new to development or just setting
-up a new computer it is probably still missing.
+The packages which n8n uses depend on a few build tools:
 
 Linux:
 ```
@@ -60,7 +57,7 @@ npm install -g windows-build-tools
 #### lerna
 
 n8n is split up in different modules which are all in a single mono repository.
-To make development as easy as possible does [lerna](https://lerna.js.org) get
+To facilitate those modules management, [lerna](https://lerna.js.org) gets
 used. It automatically sets up file-links between modules which depend on each
 other.
 
@@ -81,17 +78,17 @@ checked out and set up:
 	git clone https://github.com/n8n-io/n8n.git
 	```
 
-2. Go into repository folder
+1. Go into repository folder
 	```
 	cd n8n
 	```
 
-3. Install all dependencies of all modules and link them together:
+1. Install all dependencies of all modules and link them together:
 	```
 	lerna bootstrap --hoist
 	```
 
-4. Build all the code:
+1. Build all the code:
 	```
 	npm run build
 	```
@@ -109,13 +106,35 @@ npm run start
 
 ## Development Cycle
 
-While iterating on n8n modules' code, you can run `npm run watch` to automatically build your changes. This will alert you as soon as something gets broken.
+While iterating on n8n modules code, you can run `npm run dev`. It will then
+automatically build your code, restart the backend and refresh the frontend
+(editor-ui) on every change you make.
 
-1. `npm run watch`
+1. Start n8n in development mode:
+	```
+	npm run dev
+	```
 1. hack, hack, hack
-1. `npm run start`
-1. test
+1. Check if everything still runs in production mode
+	```
+	npm run build
+	npm run start
+	```
+1. Create tests
+1. Run all tests
+	```
+	npm run test
+	```
+1. Commit code and create pull request
+
 
 ### Test suite
 
-TODO: how to run jest or other automated test tools
+The tests can be started via:
+```
+npm run test
+```
+
+If that gets executed in one of the package folders it will only run the tests
+of this package. If it gets executed in the n8n-root folder it will run all
+tests of all packages.
