@@ -916,7 +916,7 @@ class App {
 				returnData.push(
 					{
 						idActive: data.id.toString(),
-						workflowId: data.workflowId,
+						workflowId: data.workflowId.toString(),
 						mode: data.mode,
 						retryOf: data.retryOf,
 						startedAt: new Date(data.startedAt),
