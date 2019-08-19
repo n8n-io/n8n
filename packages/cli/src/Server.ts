@@ -1,4 +1,8 @@
 import * as express from 'express';
+import {
+	dirname as pathDirname,
+	join as pathJoin,
+} from 'path';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as requestPromise from 'request-promise-native';
@@ -1092,7 +1096,8 @@ class App {
 
 
 		// Serve the website
-		this.app.use('/', express.static(__dirname + '/../../node_modules/n8n-editor-ui/dist', { index: 'index.html' }));
+		const editorUiPath = require.resolve('n8n-editor-ui');
+		this.app.use('/', express.static(pathJoin(pathDirname(editorUiPath), 'dist'), { index: 'index.html' }));
 	}
 
 }
