@@ -3,6 +3,15 @@
 Great that you are here and you want to contribute to n8n
 
 
+## Contents
+
+- [Code of Conduct](#code-of-conduct)
+- [Directory Structure](#directory-structure)
+- [Development Setup](#development-setup)
+- [Development Cycle](#development-cycle)
+- [Create Custom Nodes](#create-custom-nodes)
+
+
 ## Code of Conduct
 
 This project and everyone participating in it are governed by the Code of
