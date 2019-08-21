@@ -15,25 +15,16 @@ is there currently not much documentation. That will hopefully change soon.
 
 ## Demo
 
-A short demo (< 3 min) which shows how to create a simple workflow which
+[:tv: A short demo (< 3 min)](https://www.youtube.com/watch?v=ePdcf0yaz1c) which shows how to create a simple workflow which
 automatically sends a new Slack notification every time a Github repository
-received or lost a star:
-
-[https://www.youtube.com/watch?v=ePdcf0yaz1c](https://www.youtube.com/watch?v=ePdcf0yaz1c)
+received or lost a star.
 
 
 
 ## Usage
 
-Information about how to install and use it can be found in the cli package [here](https://github.com/n8n-io/n8n/tree/master/packages/cli)
-
-And information about how to run it in Docker [here](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n)
-
-
-
-## Development Setup
-
-A guide how to set everything up can be found in the file [CONTRIBUTING.md](CONTRIBUTING.md)
+- :books: Learn [how to **install** and **use** it from the command line](https://github.com/n8n-io/n8n/tree/master/packages/cli/README.md)
+- :whale: Learn [how to run n8n in **Docker**](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n/README.md)
 
 
 
@@ -64,6 +55,12 @@ Did however not like how long the name was and could not imagine writing
 something that long every time in the CLI. That is when I then ended up on
 "n8n". Sure does not work perfectly but does neither for Kubernetes (k8s) and
 did not hear anybody complain there. So I guess it should be ok.
+
+
+
+## Development Setup
+
+Have you found a bug :bug: ? Or maybe you have a nice feature :sparkles: to contribute ? The [CONTRIBUTING guide](CONTRIBUTING.md) will help you get your development environment ready in minutes.
 
 
 
