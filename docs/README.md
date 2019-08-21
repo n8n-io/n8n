@@ -2,4 +2,4 @@
 
 ![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-logo.png)
 
-Documentation coming soon...
+Documentation coming soon... in the meantime, you can browse the [awesome collection of n8n workflows](workflows/README.md).
