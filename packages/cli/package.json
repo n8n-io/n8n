@@ -75,7 +75,7 @@
         "mongodb": "^3.2.3",
         "n8n-core": "^0.8.0",
         "n8n-editor-ui": "^0.13.1",
-        "n8n-nodes-base": "^0.11.0",
+        "n8n-nodes-base": "^0.12.0",
         "n8n-workflow": "^0.9.0",
         "open": "^6.1.0",
         "pg": "^7.11.0",
