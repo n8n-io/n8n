@@ -138,3 +138,14 @@ npm run test
 If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
+
+
+
+## Create Custom Nodes
+
+It is very easy to create own nodes for n8n. More information about that can
+be found in the documentation of "n8n-node-dev" which is a small CLI which
+helps with n8n-node-development.
+
+[To n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev)
+
