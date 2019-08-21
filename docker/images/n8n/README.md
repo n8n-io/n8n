@@ -13,11 +13,9 @@ is there currently not much documentation. That will hopefully change soon.
 
 ## Demo
 
-A short demo (< 3 min) which shows how to create a simple workflow which
+[:tv: A short demo (< 3 min)](https://www.youtube.com/watch?v=ePdcf0yaz1c) which shows how to create a simple workflow which
 automatically sends a new Slack notification every time a Github repository
-received or lost a star:
-
-[https://www.youtube.com/watch?v=ePdcf0yaz1c](https://www.youtube.com/watch?v=ePdcf0yaz1c)
+received or lost a star.
 
 
 
