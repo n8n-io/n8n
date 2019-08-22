@@ -9,6 +9,17 @@ to create credentials and nodes in TypeScript for n8n.
 npm install n8n-node-dev -g
 ```
 
+## Contents
+
+- [Usage](#usage)
+- [Commands](#commands)
+- [Create a node](#create-a-node)
+    - [Node Type](#node-type)
+    - [Node Type Description](#node-type-description)
+    - [Node Properties](#node-properties)
+    - [Node Property Options](#node-property-options)
+- [License](#license)
+
 
 ## Usage
 
