@@ -47,7 +47,7 @@ module.exports = (vorpal: Vorpal) => {
 		.option('-o --open',
 			'Opens the UI automatically in browser')
 		.option('--tunnel',
-			'Runs the webhooks via a hooks.n8n.cloud tunnel server')
+			'Runs the webhooks via a hooks.n8n.cloud tunnel server (use only for testing and development)')
 		.option('\n')
 		// 	TODO: Add validation
 		// .validate((args: Args) => {
