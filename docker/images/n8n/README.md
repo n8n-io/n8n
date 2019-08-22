@@ -128,7 +128,7 @@ docker run -it --rm \
   n8n start
 ```
 
-A full working setup with docker-compose can be found [here](../../compose/withMongo/README.md)
+A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withMongo/README.md)
 
 
 #### Use with PostgresDB
@@ -155,7 +155,7 @@ docker run -it --rm \
   n8n start
 ```
 
-A full working setup with docker-compose can be found [here](../../compose/withPostgres/README.md)
+A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withPostgres/README.md)
 
 
 ## Passing Senstive Data via File
@@ -196,4 +196,4 @@ did not hear anybody complain there. So I guess it should be ok.
 
 ## License
 
-n8n is licensed under **Apache 2.0 with Commons Clause**
+n8n is licensed under [**Apache 2.0 with Commons Clause**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
