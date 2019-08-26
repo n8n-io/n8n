@@ -30,14 +30,13 @@ is there currently not much documentation. That will hopefully change soon.
 
 ## Demo
 
-[:tv: A short demo (< 3 min)](https://www.youtube.com/watch?v=ePdcf0yaz1c) which shows how to create a simple workflow which
-automatically sends a new Slack notification every time a Github repository
-received or lost a star.
-
+[:tv: A short demo (< 3 min)](https://www.youtube.com/watch?v=ePdcf0yaz1c)
+which shows how to create a simple workflow which automatically sends a new
+Slack notification every time a Github repository received or lost a star.
 
 ## Give n8n a spin
 
-To simply spin up n8n to have a look and give it spin you can simply run:
+To spin up n8n to have a look you can run:
 
 ```bash
 npx n8n
