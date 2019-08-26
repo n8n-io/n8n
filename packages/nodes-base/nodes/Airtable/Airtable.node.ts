@@ -22,7 +22,7 @@ export class Airtable implements INodeType {
 		icon: 'file:airtable.png',
 		group: ['input'],
 		version: 1,
-		description: 'Read, update, write and delete data to Airtable',
+		description: 'Read, update, write and delete data from Airtable',
 		defaults: {
 			name: 'Airtable',
 			color: '#445599',
