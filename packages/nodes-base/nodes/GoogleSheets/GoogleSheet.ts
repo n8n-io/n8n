@@ -18,6 +18,10 @@ export interface ISheetUpdateData {
 	values: string[][];
 }
 
+export interface ILookupValues {
+	lookupColumn: string;
+	lookupValue: string;
+}
 
 export class GoogleSheet {
 	id: string;
@@ -146,7 +150,7 @@ export class GoogleSheet {
     /**
      * Returns the given sheet data in a strucutred way
      */
-	structureData(inputData: string[][], startRow: number, keys: string[]): IDataObject[] {
+	structureData(inputData: string[][], startRow: number, keys: string[], addEmpty?: boolean): IDataObject[] {
 		const returnData = [];
 
 		let tempEntry: IDataObject, rowIndex: number, columnIndex: number, key: string;
@@ -160,7 +164,7 @@ export class GoogleSheet {
 					tempEntry[key] = inputData[rowIndex][columnIndex];
 				}
 			}
-			if (Object.keys(tempEntry).length) {
+			if (Object.keys(tempEntry).length || addEmpty === true) {
 				// Only add the entry if data got found to not have empty ones
 				returnData.push(tempEntry);
 			}
@@ -309,6 +313,61 @@ export class GoogleSheet {
 		}
 
 		return this.batchUpdate(updateData);
+	}
+
+
+	/**
+	 * Looks for a specific value in a column and if it gets found it returns the whole row
+	 *
+	 * @param {string[][]} inputData Data to to check for lookup value in
+	 * @param {number} keyRowIndex Index of the row which contains the keys
+	 * @param {number} dataStartRowIndex Index of the first row which contains data
+	 * @param {ILookupValues[]} lookupValues The lookup values which decide what data to return
+	 * @returns {Promise<IDataObject[]>}
+	 * @memberof GoogleSheet
+	 */
+	async lookupValues(inputData: string[][], keyRowIndex: number, dataStartRowIndex: number, lookupValues: ILookupValues[]): Promise<IDataObject[]> {
+		const keys: string[] = [];
+
+		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
+			// The key row does not exist so it is not possible to look up the data
+			throw new Error(`The key row does not exist!`);
+		}
+
+		// Create the keys array
+		for (let columnIndex = 0; columnIndex < inputData[keyRowIndex].length; columnIndex++) {
+			keys.push(inputData[keyRowIndex][columnIndex]);
+		}
+
+		const returnData = [
+			inputData[keyRowIndex],
+		];
+
+		// Loop over all the lookup values and try to find a row to return
+		let rowIndex: number;
+		let returnColumnIndex: number;
+		lookupLoop:
+		for (const lookupValue of lookupValues) {
+			returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
+
+			if (returnColumnIndex === -1) {
+				throw new Error(`The column "${lookupValue.lookupColumn}" could not be found!`);
+			}
+
+			// Loop over all the items and find the one with the matching value
+			for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
+				if (inputData[rowIndex][returnColumnIndex].toString() === lookupValue.lookupValue.toString()) {
+					returnData.push(inputData[rowIndex]);
+					continue lookupLoop;
+				}
+			}
+
+			// If value could not be found add an empty one that the order of
+			// the returned items stays the same
+			returnData.push([]);
+		}
+
+		return this.structureData(returnData, 1, keys, true);
 	}
 
 

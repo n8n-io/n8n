@@ -9,6 +9,7 @@ import {
 import {
 	GoogleSheet,
 	IGoogleAuthCredentials,
+	ILookupValues,
 	ISheetUpdateData,
 } from './GoogleSheet';
 
@@ -43,6 +44,11 @@ export class GoogleSheets implements INodeType {
 						name: 'Append',
 						value: 'append',
 						description: 'Appends the data to a Sheet',
+					},
+					{
+						name: 'Lookup',
+						value: 'lookup',
+						description: 'Looks for a specific column value and then returns the matching row'
 					},
 					{
 						name: 'Read',
@@ -150,7 +156,7 @@ export class GoogleSheets implements INodeType {
 			},
 
 			// ----------------------------------
-			//         Read & Update
+			//         Read & Update & lookupColumn
 			// ----------------------------------
 			{
 				displayName: 'Data Start Row',
@@ -192,6 +198,43 @@ export class GoogleSheets implements INodeType {
 				},
 				default: 0,
 				description: 'Index of the row which contains the key. Starts with 0.',
+			},
+
+
+			// ----------------------------------
+			//         lookup
+			// ----------------------------------
+			{
+				displayName: 'Lookup Column',
+				name: 'lookupColumn',
+				type: 'string',
+				default: '',
+				placeholder: 'Email',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'lookup'
+						],
+					},
+				},
+				description: 'The name of the column in which to look for value.',
+			},
+			{
+				displayName: 'Lookup Value',
+				name: 'lookupValue',
+				type: 'string',
+				default: '',
+				placeholder: 'frank@example.com',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'lookup'
+						],
+					},
+				},
+				description: 'The value to look for in column.',
 			},
 
 			// ----------------------------------
@@ -259,6 +302,33 @@ export class GoogleSheets implements INodeType {
 			// TODO: Should have something like add metadata which does not get passed through
 
 			return this.prepareOutputData(items);
+		} else if (operation === 'lookup') {
+			// ----------------------------------
+			//         lookup
+			// ----------------------------------
+
+			const sheetData = await sheet.getData(range);
+
+			if (sheetData === undefined) {
+				return [];
+			}
+
+			const dataStartRow = this.getNodeParameter('dataStartRow', 0) as number;
+			const keyRow = this.getNodeParameter('keyRow', 0) as number;
+
+			const items = this.getInputData();
+
+			const lookupValues: ILookupValues[] = [];
+			for (let i = 0; i < items.length; i++) {
+				lookupValues.push({
+					lookupColumn: this.getNodeParameter('lookupColumn', i) as string,
+					lookupValue: this.getNodeParameter('lookupValue', i) as string,
+				});
+			}
+
+			const returnData = await sheet.lookupValues(sheetData, keyRow, dataStartRow, lookupValues);
+
+			return [this.helpers.returnJsonArray(returnData)];
 		} else if (operation === 'read') {
 			// ----------------------------------
 			//         read
@@ -311,7 +381,6 @@ export class GoogleSheets implements INodeType {
 				const keyName = this.getNodeParameter('key', 0) as string;
 				const keyRow = this.getNodeParameter('keyRow', 0) as number;
 				const dataStartRow = this.getNodeParameter('dataStartRow', 0) as number;
-
 
 				const setData: IDataObject[] = [];
 				items.forEach((item) => {
