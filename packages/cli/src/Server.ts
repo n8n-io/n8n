@@ -1019,7 +1019,7 @@ class App {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true);
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
 
@@ -1043,7 +1043,7 @@ class App {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true);
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
 
@@ -1067,7 +1067,7 @@ class App {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true);
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
 
@@ -1091,7 +1091,7 @@ class App {
 				return;
 			}
 
-			ResponseHelper.sendSuccessResponse(res, response.data, true);
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
 

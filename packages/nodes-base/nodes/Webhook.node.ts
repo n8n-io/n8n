@@ -71,6 +71,7 @@ export class Webhook implements INodeType {
 			{
 				name: 'default',
 				httpMethod: '={{$parameter["httpMethod"]}}',
+				responseCode: '={{$parameter["responseCode"]}}',
 				reponseMode: '={{$parameter["reponseMode"]}}',
 				reponseData: '={{$parameter["reponseData"]}}',
 				responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
@@ -122,9 +123,20 @@ export class Webhook implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '',
-				placeholder: '',
+				placeholder: 'webhook',
 				required: true,
 				description: 'The path to listen to',
+			},
+			{
+				displayName: 'Response Code',
+				name: 'responseCode',
+				type: 'number',
+				typeOptions: {
+					minValue: 100,
+					maxValue: 599,
+				},
+				default: 200,
+				description: 'The HTTP Response code to return',
 			},
 			{
 				displayName: 'Reponse Mode',
@@ -134,7 +146,7 @@ export class Webhook implements INodeType {
 					{
 						name: 'On Received',
 						value: 'onReceived',
-						description: 'Returns directly with Reponse Code 200',
+						description: 'Returns directly with defined Response Code',
 					},
 					{
 						name: 'Last Node',
