@@ -38,7 +38,7 @@
         "dist"
     ],
     "devDependencies": {
-        "@types/inquirer": "^6.0.3",
+        "@types/inquirer": "^6.5.0",
         "@types/node": "^10.10.1",
         "@types/vorpal": "^1.11.0",
         "tslint": "^5.17.0"
@@ -47,7 +47,7 @@
         "@oclif/command": "^1.5.18",
         "@oclif/errors": "^1.2.2",
         "change-case": "^3.1.0",
-        "inquirer": "^6.3.1",
+        "inquirer": "^7.0.0",
         "n8n-core": "^0.2.0",
         "n8n-workflow": "^0.3.0",
         "replace-in-file": "^4.1.0",
