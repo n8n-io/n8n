@@ -1001,8 +1001,6 @@ class App {
 
 		// GET webhook requests
 		this.app.get(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			console.log('\n*** WEBHOOK CALLED (GET) ***');
-
 			// Cut away the "/webhook/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
 
@@ -1025,8 +1023,6 @@ class App {
 
 		// POST webhook requests
 		this.app.post(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
-			console.log('\n*** WEBHOOK CALLED (POST) ***');
-
 			// Cut away the "/webhook/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
 
@@ -1049,8 +1045,6 @@ class App {
 
 		// GET webhook requests (test for UI)
 		this.app.get(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
-			console.log('\n*** WEBHOOK-TEST CALLED (GET) ***');
-
 			// Cut away the "/webhook-test/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookTest.length + 2);
 
@@ -1073,8 +1067,6 @@ class App {
 
 		// POST webhook requests (test for UI)
 		this.app.post(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
-			console.log('\n*** WEBHOOK-TEST CALLED (POST) ***');
-
 			// Cut away the "/webhook-test/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookTest.length + 2);
 
