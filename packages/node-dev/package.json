@@ -13,6 +13,10 @@
     },
     "main": "dist/src/index",
     "types": "dist/src/index.d.ts",
+    "oclif": {
+        "commands": "./dist/commands",
+        "bin": "run"
+    },
     "scripts": {
         "dev": "npm run watch",
         "build": "tsc",
@@ -21,7 +25,7 @@
         "watch": "tsc --watch"
     },
     "bin": {
-        "n8n-node-dev": "./dist/index.js"
+        "n8n-node-dev": "./bin/run"
     },
     "keywords": [
         "development",
@@ -30,6 +34,7 @@
         "n8n"
     ],
     "files": [
+        "bin",
         "dist"
     ],
     "devDependencies": {
@@ -39,13 +44,14 @@
         "tslint": "^5.17.0"
     },
     "dependencies": {
+        "@oclif/command": "^1.5.18",
+        "@oclif/errors": "^1.2.2",
         "change-case": "^3.1.0",
         "inquirer": "^6.3.1",
         "n8n-core": "^0.2.0",
         "n8n-workflow": "^0.3.0",
         "replace-in-file": "^4.1.0",
-        "typescript": "~3.5.2",
-        "vorpal": "^1.12.0"
+        "typescript": "~3.5.2"
     },
     "jest": {
         "transform": {

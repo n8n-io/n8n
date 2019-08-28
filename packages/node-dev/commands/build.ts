@@ -1,49 +1,59 @@
-import Vorpal = require('vorpal');
-import { Args } from 'vorpal';
+import {
+	UserSettings,
+} from "n8n-core";
+import { Command, flags } from '@oclif/command';
+
 import {
 	buildFiles,
 	IBuildOptions,
 } from '../src';
 
-import {
-	UserSettings,
-} from "n8n-core";
+export class Build extends Command {
+	static description = 'Builds credentials and nodes and copies it to n8n custom extension folder';
 
-module.exports = (vorpal: Vorpal) => {
-	return vorpal
-		.command('build')
-		// @ts-ignore
-		.description('Builds credentials and nodes and copies it to n8n custom extension folder')
-		.option('--destination <folder>',
-			`The path to copy the compiles files to [default: ${UserSettings.getUserN8nFolderCustomExtensionPath()}]`)
-		.option('--watch',
-			'Starts in watch mode and automatically builds and copies file whenever they change')
-		.option('\n')
-		.action(async (args: Args) => {
+	static examples = [
+		`$ n8n-node-dev build`,
+		`$ n8n-node-dev build --destination ~/n8n-nodes`,
+		`$ n8n-node-dev build --watch`,
+	];
 
-			console.log('\nBuild credentials and nodes');
-			console.log('=========================');
+	static flags = {
+		help: flags.help({ char: 'h' }),
+		destination: flags.string({
+			char: 'd',
+			description: `The path to copy the compiles files to [default: ${UserSettings.getUserN8nFolderCustomExtensionPath()}]`,
+		}),
+		watch: flags.boolean({
+			description: 'Starts in watch mode and automatically builds and copies file whenever they change',
+		}),
+	};
 
-			try {
-				const options: IBuildOptions = {};
+	async run() {
+		const { flags } = this.parse(Build);
 
-				if (args.options.destination) {
-					options.destinationFolder = args.options.destination;
-				}
-				if (args.options.watch) {
-					options.watch = true;
-				}
+		this.log('\nBuild credentials and nodes');
+		this.log('=========================');
 
-				const outputDirectory = await buildFiles(options);
+		try {
+			const options: IBuildOptions = {};
 
-				console.log(`The nodes got build and saved into the following folder:\n${outputDirectory}`);
-
-			} catch (error) {
-				console.error('\nGOT ERROR');
-				console.error('====================================');
-				console.error(error.message);
-				return;
+			if (flags.destination) {
+				options.destinationFolder = flags.destination;
+			}
+			if (flags.watch) {
+				options.watch = true;
 			}
 
-		});
-};
+			const outputDirectory = await buildFiles(options);
+
+			this.log(`The nodes got build and saved into the following folder:\n${outputDirectory}`);
+
+		} catch (error) {
+			this.error('\nGOT ERROR');
+			this.error('====================================');
+			this.error(error.message);
+			return;
+		}
+
+	}
+}
