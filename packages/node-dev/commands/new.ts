@@ -25,7 +25,7 @@ export class New extends Command {
 			this.log('=========================');
 
 			// Ask for the type of not to be created
-			const typeQuestion: inquirer.Question = {
+			const typeQuestion: inquirer.QuestionCollection = {
 				name: 'type',
 				type: 'list',
 				default: 'Node',
@@ -49,7 +49,7 @@ export class New extends Command {
 
 				getDescription = true;
 
-				const nodeTypeQuestion: inquirer.Question = {
+				const nodeTypeQuestion: inquirer.QuestionCollection = {
 					name: 'nodeType',
 					type: 'list',
 					default: 'Execute',
@@ -101,7 +101,7 @@ export class New extends Command {
 				});
 			}
 
-			const additionalAnswers = await inquirer.prompt(additionalQuestions as inquirer.Questions);
+			const additionalAnswers = await inquirer.prompt(additionalQuestions as inquirer.QuestionCollection);
 
 			const nodeName = additionalAnswers.name;
 
@@ -117,7 +117,7 @@ export class New extends Command {
 				await fsAccess(destinationFilePath);
 
 				// File does already exist. So ask if it should be overwritten.
-				const overwriteQuestion: inquirer.Questions = [
+				const overwriteQuestion: inquirer.QuestionCollection = [
 					{
 						name: 'overwrite',
 						type: 'confirm',
