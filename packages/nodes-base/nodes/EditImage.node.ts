@@ -552,7 +552,7 @@ export class EditImage implements INodeType {
 
 		return new Promise<INodeExecutionData>((resolve, reject) => {
 			gmInstance
-				.toBuffer((error: Error, buffer: Buffer) => {
+				.toBuffer((error: Error | null, buffer: Buffer) => {
 					if (error) {
 						return reject(error);
 					}
