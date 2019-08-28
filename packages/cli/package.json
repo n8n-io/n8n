@@ -47,6 +47,7 @@
         "oclif.manifest.json"
     ],
     "devDependencies": {
+        "@oclif/dev-cli": "^1.22.2",
         "@types/basic-auth": "^1.1.2",
         "@types/compression": "0.0.36",
         "@types/connect-history-api-fallback": "^1.3.1",
