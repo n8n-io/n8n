@@ -304,6 +304,7 @@ export interface IPushDataTestWebhook {
 export interface IResponseCallbackData {
 	data?: IDataObject | IDataObject[];
 	noWebhookResponse?: boolean;
+	responseCode?: number;
 }
 
 

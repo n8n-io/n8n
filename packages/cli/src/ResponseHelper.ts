@@ -53,8 +53,12 @@ export function basicAuthAuthorizationError(resp: Response, realm: string, messa
 }
 
 
-export function sendSuccessResponse(res: Response, data: any, raw?: boolean) { // tslint:disable-line:no-any
+export function sendSuccessResponse(res: Response, data: any, raw?: boolean, responseCode?: number) { // tslint:disable-line:no-any
 	res.setHeader('Content-Type', 'application/json');
+
+	if (responseCode !== undefined) {
+		res.status(responseCode);
+	}
 
 	if (raw === true) {
 		res.send(JSON.stringify(data));

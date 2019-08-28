@@ -115,6 +115,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 
 	// Get the responseMode
 	const reponseMode = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['reponseMode'], 'onReceived');
+	const responseCode = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], 200);
 
 	if (!['onReceived', 'lastNode'].includes(reponseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -152,7 +153,8 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 			if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
 				responseCallback(null, {
-					data: webhookResultData.webhookResponse
+					data: webhookResultData.webhookResponse,
+					responseCode,
 				});
 			} else {
 				// Send default response
@@ -160,6 +162,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 					data: {
 						message: 'Webhook call got received.',
 					},
+					responseCode,
 				});
 			}
 			return;
@@ -173,12 +176,16 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				// Data to respond with is given
 				responseCallback(null, {
 					data: webhookResultData.webhookResponse,
+					responseCode,
 				});
 			} else {
+				console.log('k1: ' + responseCode);
+
 				responseCallback(null, {
 					data: {
 						message: 'Workflow got started.',
-					}
+					},
+					responseCode,
 				});
 			}
 
@@ -229,7 +236,8 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 					responseCallback(null, {
 						data: {
 							message: 'Workflow did execute sucessfully but no data got returned.',
-						}
+						},
+						responseCode,
 					});
 					didSendResponse = true;
 				}
@@ -242,7 +250,8 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 					responseCallback(null, {
 						data: {
 							message: 'Workflow did execute sucessfully but the last node did not return any data.',
-						}
+						},
+						responseCode,
 					});
 				}
 				didSendResponse = true;
@@ -302,6 +311,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 
 				responseCallback(null, {
 					data,
+					responseCode,
 				});
 			}
 			didSendResponse = true;
