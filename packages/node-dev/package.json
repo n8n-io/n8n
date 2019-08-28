@@ -52,8 +52,8 @@
         "@oclif/errors": "^1.2.2",
         "change-case": "^3.1.0",
         "inquirer": "^7.0.0",
-        "n8n-core": "^0.2.0",
-        "n8n-workflow": "^0.3.0",
+        "n8n-core": "^0.9.0",
+        "n8n-workflow": "^0.10.0",
         "replace-in-file": "^4.1.0",
         "typescript": "~3.5.2"
     },
