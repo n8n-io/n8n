@@ -462,8 +462,8 @@ export interface IWebhookDescription {
 	name: string;
 	path: string;
 	responseBinaryPropertyName?: string;
-	reponseMode?: WebhookResponseMode | string;
-	reponseData?: WebhookResponseData | string;
+	responseMode?: WebhookResponseMode | string;
+	responseData?: WebhookResponseData | string;
 }
 
 export type WebhookHttpMethod = 'GET' | 'POST';

@@ -54,7 +54,7 @@ function unflattenExecutionData (fullExecutionData: IExecutionFlattedResponse): 
 	return returnData;
 }
 
-export class ReponseError extends Error {
+export class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
@@ -65,16 +65,16 @@ export class ReponseError extends Error {
 	serverStackTrace?: string;
 
 	/**
-	 * Creates an instance of ReponseError.
+	 * Creates an instance of ResponseError.
 	 * @param {string} message The error message
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
 	 * @param {string} [stack] The stack trace
-	 * @memberof ReponseError
+	 * @memberof ResponseError
 	 */
 	constructor (message: string, errorCode?: number, httpStatusCode?: number, stack?: string) {
 		super(message);
-		this.name = 'ReponseError';
+		this.name = 'ResponseError';
 
 		if (errorCode) {
 			this.errorCode = errorCode;
@@ -113,12 +113,12 @@ export const restApi = Vue.extend({
 						return response.data.data;
 					} catch (error) {
 						if (error.message === 'Network Error') {
-							throw new ReponseError('API-Server can not be reached. It is probably down.');
+							throw new ResponseError('API-Server can not be reached. It is probably down.');
 						}
 
 						const errorResponseData = error.response.data;
 						if (errorResponseData !== undefined && errorResponseData.message !== undefined) {
-							throw new ReponseError(errorResponseData.message, errorResponseData.code, error.response.status, errorResponseData.stack);
+							throw new ResponseError(errorResponseData.message, errorResponseData.code, error.response.status, errorResponseData.stack);
 						}
 
 						throw error;

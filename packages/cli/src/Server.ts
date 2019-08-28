@@ -208,7 +208,7 @@ class App {
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (Db.collections.Workflow === null) {
-				const error = new ResponseHelper.ReponseError('Database is not ready!', undefined, 503);
+				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -246,10 +246,10 @@ class App {
 		// Reads and returns workflow data from an URL
 		this.app.get('/rest/workflows/from-url', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
 			if (req.query.url === undefined) {
-				throw new ResponseHelper.ReponseError(`The parameter "url" is missing!`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
 			}
 			if (!req.query.url.match(/^http[s]?:\/\/.*\.json$/i)) {
-				throw new ResponseHelper.ReponseError(`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`, undefined, 400);
 			}
 			const data = await requestPromise.get(req.query.url);
 
@@ -257,14 +257,14 @@ class App {
 			try {
 				workflowData = JSON.parse(data);
 			} catch (error) {
-				throw new ResponseHelper.ReponseError(`The URL does not point to valid JSON file!`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`The URL does not point to valid JSON file!`, undefined, 400);
 			}
 
 			// Do a very basic check if it is really a n8n-workflow-json
 			if (workflowData === undefined || workflowData.nodes === undefined || !Array.isArray(workflowData.nodes) ||
 				workflowData.connections === undefined || typeof workflowData.connections !== 'object' ||
 				Array.isArray(workflowData.connections)) {
-				throw new ResponseHelper.ReponseError(`The data in the file does not seem to be a n8n workflow JSON file!`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`The data in the file does not seem to be a n8n workflow JSON file!`, undefined, 400);
 			}
 
 			return workflowData;
@@ -343,13 +343,13 @@ class App {
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
-			const reponseData = await Db.collections.Workflow!.findOne(id);
+			const responseData = await Db.collections.Workflow!.findOne(id);
 
-			if (reponseData === undefined) {
-				throw new ResponseHelper.ReponseError(`Workflow with id "${id}" could not be found to be updated.`, undefined, 400);
+			if (responseData === undefined) {
+				throw new ResponseHelper.ResponseError(`Workflow with id "${id}" could not be found to be updated.`, undefined, 400);
 			}
 
-			if (reponseData.active === true) {
+			if (responseData.active === true) {
 				// When the workflow is supposed to be active add it again
 				try {
 					await this.activeWorkflowRunner.add(id);
@@ -359,7 +359,7 @@ class App {
 					await Db.collections.Workflow!.update(id, newWorkflowData);
 
 					// Also set it in the returned data
-					reponseData.active = false;
+					responseData.active = false;
 
 					// Now return the original error for UI to display
 					throw error;
@@ -367,8 +367,8 @@ class App {
 			}
 
 			// Convert to response format in which the id is a string
-			(reponseData as IWorkflowBase as IWorkflowResponse).id = reponseData.id.toString();
-			return reponseData as IWorkflowBase as IWorkflowResponse;
+			(responseData as IWorkflowBase as IWorkflowResponse).id = responseData.id.toString();
+			return responseData as IWorkflowBase as IWorkflowResponse;
 		}));
 
 
@@ -569,7 +569,7 @@ class App {
 
 			const checkResult = await Db.collections.Credentials!.findOne(findQuery);
 			if (checkResult !== undefined) {
-				throw new ResponseHelper.ReponseError(`Credentials with the same type and name exist already.`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`Credentials with the same type and name exist already.`, undefined, 400);
 			}
 
 			// Encrypt the data
@@ -616,7 +616,7 @@ class App {
 
 			const checkResult = await Db.collections.Credentials!.findOne(findQuery);
 			if (checkResult !== undefined) {
-				throw new ResponseHelper.ReponseError(`Credentials with the same type and name exist already.`, undefined, 400);
+				throw new ResponseHelper.ResponseError(`Credentials with the same type and name exist already.`, undefined, 400);
 			}
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
@@ -637,18 +637,18 @@ class App {
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
-			const reponseData = await Db.collections.Credentials!.findOne(id);
+			const responseData = await Db.collections.Credentials!.findOne(id);
 
-			if (reponseData === undefined) {
-				throw new ResponseHelper.ReponseError(`Credentials with id "${id}" could not be found to be updated.`, undefined, 400);
+			if (responseData === undefined) {
+				throw new ResponseHelper.ResponseError(`Credentials with id "${id}" could not be found to be updated.`, undefined, 400);
 			}
 
 			// Remove the encrypted data as it is not needed in the frontend
-			reponseData.data = '';
+			responseData.data = '';
 
 			// Convert to response format in which the id is a string
-			(reponseData as unknown as ICredentialsResponse).id = reponseData.id.toString();
-			return reponseData as unknown as ICredentialsResponse;
+			(responseData as unknown as ICredentialsResponse).id = responseData.id.toString();
+			return responseData as unknown as ICredentialsResponse;
 		}));
 
 
@@ -837,7 +837,7 @@ class App {
 			const fullExecutionDataFlatted = await Db.collections.Execution!.findOne(req.params.id);
 
 			if (fullExecutionDataFlatted === undefined) {
-				throw new ResponseHelper.ReponseError(`The execution with the id "${req.params.id}" does not exist.`, 404, 404);
+				throw new ResponseHelper.ResponseError(`The execution with the id "${req.params.id}" does not exist.`, 404, 404);
 			}
 
 			const fullExecutionData = ResponseHelper.unflattenExecutionData(fullExecutionDataFlatted);

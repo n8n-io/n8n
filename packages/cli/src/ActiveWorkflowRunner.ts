@@ -107,28 +107,28 @@ export class ActiveWorkflowRunner {
 	 */
 	async executeWebhook(httpMethod: WebhookHttpMethod, path: string, req: express.Request, res: express.Response): Promise<IResponseCallbackData> {
 		if (this.activeWorkflows === null) {
-			throw new ResponseHelper.ReponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
+			throw new ResponseHelper.ResponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
 		}
 
 		const webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
 
 		if (webhookData === undefined) {
 			// The requested webhook is not registred
-			throw new ResponseHelper.ReponseError('The requested webhook is not registred.', 404, 404);
+			throw new ResponseHelper.ResponseError('The requested webhook is not registred.', 404, 404);
 		}
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
 		const workflowStartNode = webhookData.workflow.getNode(webhookData.node);
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.ReponseError('Could not find node to process webhook.', 404, 404);
+			throw new ResponseHelper.ResponseError('Could not find node to process webhook.', 404, 404);
 		}
 		const executionMode = 'webhook';
 
 		const workflowData = await Db.collections.Workflow!.findOne(webhookData.workflow.id!);
 
 		if (workflowData === undefined) {
-			throw new ResponseHelper.ReponseError(`Could not find workflow with id "${webhookData.workflow.id}"`, 404, 404);
+			throw new ResponseHelper.ResponseError(`Could not find workflow with id "${webhookData.workflow.id}"`, 404, 404);
 		}
 
 		return new Promise((resolve, reject) => {
