@@ -27,8 +27,6 @@ import {
 
 import * as config from '../config';
 
-const pushInstance = Push.getInstance();
-
 
 /**
  * Checks if there was an error and if errorWorkflow is defined. If so it collects
@@ -90,6 +88,7 @@ export function pushExecutionFinished(fullRunData: IRun, executionIdActive: stri
 		retryOf,
 	};
 
+	const pushInstance = Push.getInstance();
 	pushInstance.send('executionFinished', sendData);
 }
 
@@ -114,6 +113,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 					return;
 				}
 
+				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteBefore', {
 					executionId,
 					nodeName,
@@ -127,6 +127,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 					return;
 				}
 
+				const pushInstance = Push.getInstance();
 				pushInstance.send('nodeExecuteAfter', {
 					executionId,
 					nodeName,
@@ -137,6 +138,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 		workflowExecuteBefore: [
 			async (): Promise<void> => {
 				// Push data to editor-ui once workflow finished
+				const pushInstance = Push.getInstance();
 				pushInstance.send('executionStarted', {
 					executionId,
 					mode,
