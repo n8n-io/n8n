@@ -11,6 +11,7 @@ import {
 import {
 	pipedriveApiRequest,
 	pipedriveApiRequestAllItems,
+	pipedriveResolveCustomProperties,
 } from './GenericFunctions';
 
 interface CustomProperty {
@@ -121,12 +122,11 @@ export class Pipedrive implements INodeType {
 						value: 'get',
 						description: 'Get data of an activity',
 					},
-					// TODO: Currently missing
-					// {
-					// 	name: 'Get All',
-					// 	value: 'getAll',
-					// 	description: 'Get data of all activities',
-					// },
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get data of all activities',
+					},
 					{
 						name: 'Update',
 						value: 'update',
@@ -164,12 +164,11 @@ export class Pipedrive implements INodeType {
 						value: 'get',
 						description: 'Get data of a deal',
 					},
-					// TODO: Currently missing
-					// {
-					// 	name: 'Get All',
-					// 	value: 'getAll',
-					// 	description: 'Get data of all deals',
-					// },
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get data of all deals',
+					},
 					{
 						name: 'Update',
 						value: 'update',
@@ -1186,51 +1185,6 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the organization to get.',
 			},
 
-			// ----------------------------------
-			//         organization:getAll
-			// ----------------------------------
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'organization',
-						],
-					},
-				},
-				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'organization',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 500,
-				},
-				default: 100,
-				description: 'How many results to return.',
-			},
-
 
 
 			// ----------------------------------
@@ -1400,51 +1354,6 @@ export class Pipedrive implements INodeType {
 			},
 
 			// ----------------------------------
-			//         person:getAll
-			// ----------------------------------
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'person',
-						],
-					},
-				},
-				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'person',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 500,
-				},
-				default: 100,
-				description: 'How many results to return.',
-			},
-
-			// ----------------------------------
 			//         person:update
 			// ----------------------------------
 			{
@@ -1572,13 +1481,25 @@ export class Pipedrive implements INodeType {
 
 
 
-			// ----------------------------------
-			//         product
-			// ----------------------------------
 
 			// ----------------------------------
-			//         product:getAll
+			//         activity / deal / organization / person / product
 			// ----------------------------------
+			{
+				displayName: 'Resolve Properties',
+				name: 'resolveProperties',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.',
+			},
 			{
 				displayName: 'Return All',
 				name: 'returnAll',
@@ -1587,9 +1508,6 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
-						],
-						resource: [
-							'product',
 						],
 					},
 				},
@@ -1604,9 +1522,6 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
-						],
-						resource: [
-							'product',
 						],
 						returnAll: [
 							false,
@@ -1629,9 +1544,6 @@ export class Pipedrive implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		let resource: string;
-		let operation: string;
-
 		// For Post
 		let body: IDataObject;
 		// For Query string
@@ -1641,9 +1553,10 @@ export class Pipedrive implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < items.length; i++) {
-			resource = this.getNodeParameter('resource', 0) as string;
-			operation = this.getNodeParameter('operation', 0) as string;
 
 			requestMethod = 'GET';
 			endpoint = '';
@@ -1683,7 +1596,22 @@ export class Pipedrive implements INodeType {
 					requestMethod = 'GET';
 
 					const activityId = this.getNodeParameter('activityId', i) as number;
+
 					endpoint = `/activities/${activityId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         activity:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					endpoint = `/activities`;
 
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -1731,6 +1659,20 @@ export class Pipedrive implements INodeType {
 
 					const dealId = this.getNodeParameter('dealId', i) as number;
 					endpoint = `/deals/${dealId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         deal:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					endpoint = `/deals`;
 
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -1885,6 +1827,14 @@ export class Pipedrive implements INodeType {
 				returnData.push.apply(returnData, responseData.data as IDataObject[]);
 			} else {
 				returnData.push(responseData.data as IDataObject);
+			}
+		}
+
+		if (['get', 'getAll'].includes(operation)) {
+			const resolveProperties = this.getNodeParameter('resolveProperties', 0) as boolean;
+
+			if (resolveProperties === true) {
+				await pipedriveResolveCustomProperties.call(this, resource, returnData);
 			}
 		}
 
