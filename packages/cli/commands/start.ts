@@ -1,10 +1,12 @@
-import Vorpal = require('vorpal');
-import { Args } from 'vorpal';
-import * as config from '../config';
-
-const open = require('open');
-
 import * as localtunnel from 'localtunnel';
+import {
+	UserSettings,
+} from "n8n-core";
+import { Command, flags } from '@oclif/command';
+const open = require('open');
+import { promisify } from "util";
+
+import * as config from '../config';
 import {
 	ActiveWorkflowRunner,
 	CredentialTypes,
@@ -15,175 +17,189 @@ import {
 	TestWebhooks,
 	Server,
 } from "../src";
-import {
-	UserSettings,
-} from "n8n-core";
 
-import { promisify } from "util";
 const tunnel = promisify(localtunnel);
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
 
-/**
- * Opens the UI in browser
- *
- */
-function openBrowser() {
-	const editorUrl = GenericHelpers.getBaseUrl();
 
-	open(editorUrl, { wait: true })
-		.catch((error: Error) => {
-			console.log(`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`);
-		});
-}
+export class Start extends Command {
+	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
+
+	static examples = [
+		`$ n8n start`,
+		`$ n8n start --tunnel`,
+		`$ n8n start -o`,
+		`$ n8n start --tunnel -o`,
+	];
+
+	static flags = {
+		help: flags.help({ char: 'h' }),
+		open: flags.boolean({
+			char: 'o',
+			description: 'opens the UI automatically in browser',
+		}),
+		tunnel: flags.boolean({
+			description: 'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
+		}),
+	};
 
 
-module.exports = (vorpal: Vorpal) => {
-	return vorpal
-		.command('start')
-		// @ts-ignore
-		.description('Starts n8n. Makes Web-UI available and starts active workflows')
-		.option('-o --open',
-			'Opens the UI automatically in browser')
-		.option('--tunnel',
-			'Runs the webhooks via a hooks.n8n.cloud tunnel server (use only for testing and development)')
-		.option('\n')
-		// 	TODO: Add validation
-		// .validate((args: Args) => {
-		// })
-		.action((args: Args) => {
+	/**
+	 * Opens the UI in browser
+	 */
+	static openBrowser() {
+		const editorUrl = GenericHelpers.getBaseUrl();
 
-			if (process.pid === 1) {
-				console.error(`The n8n node process should not run as process with ID 1 because that will cause
+		open(editorUrl, { wait: true })
+			.catch((error: Error) => {
+				console.log(`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`);
+			});
+	}
+
+
+	/**
+	 * Stoppes the n8n in a graceful way.
+	 * Make for example sure that all the webhooks from third party services
+	 * get removed.
+	 */
+	static async stopProcess() {
+		console.log(`\nStopping n8n...`);
+
+		setTimeout(() => {
+			// In case that something goes wrong with shutdown we
+			// kill after max. 30 seconds no matter what
+			process.exit(processExistCode);
+		}, 30000);
+
+		const removePromises = [];
+		if (activeWorkflowRunner !== undefined) {
+			removePromises.push(activeWorkflowRunner.removeAll());
+		}
+
+		// Remove all test webhooks
+		const testWebhooks = TestWebhooks.getInstance();
+		removePromises.push(testWebhooks.removeAll());
+
+		await Promise.all(removePromises);
+
+		process.exit(processExistCode);
+	}
+
+
+	async run() {
+		// Make sure that n8n shuts down gracefully if possible
+		process.on('SIGTERM', Start.stopProcess);
+		process.on('SIGINT', Start.stopProcess);
+
+		const { flags } = this.parse(Start);
+
+		if (process.pid === 1) {
+			this.error(`The n8n node process should not run as process with ID 1 because that will cause
 problems with shutting everything down correctly. If started with docker use the
 flag "--init" to fix this problem!`);
-				return;
-			}
+			return;
+		}
 
-			// TODO: Start here the the script in a subprocess which can get restarted when new nodes get added and so new packages have to get installed
+		// Wrap that the process does not close but we can still use async
+		(async () => {
+			try {
+				// Start directly with the init of the database to improve startup time
+				const startDbInitPromise = Db.init();
 
-			// npm install / rm (in other process)
-			// restart process depending on exit code (lets say 50 means restart)
+				// Make sure the settings exist
+				const userSettings = await UserSettings.prepareUserSettings();
 
-			// Wrap that the process does not close but we can still use async
-			(async () => {
-				try {
-					// Start directly with the init of the database to improve startup time
-					const startDbInitPromise = Db.init();
+				// Load all node and credential types
+				const loadNodesAndCredentials = LoadNodesAndCredentials();
+				await loadNodesAndCredentials.init();
 
-					// Make sure the settings exist
-					const userSettings = await UserSettings.prepareUserSettings();
+				// Add the found types to an instance other parts of the application can use
+				const nodeTypes = NodeTypes();
+				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
+				const credentialTypes = CredentialTypes();
+				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
-					// Load all node and credential types
-					const loadNodesAndCredentials = LoadNodesAndCredentials();
-					await loadNodesAndCredentials.init();
+				// Wait till the database is ready
+				await startDbInitPromise;
 
-					// Add the found types to an instance other parts of the application can use
-					const nodeTypes = NodeTypes();
-					await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
-					const credentialTypes = CredentialTypes();
-					await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+				if (flags.tunnel === true) {
+					this.log('\nWaiting for tunnel ...');
 
-					// Wait till the database is ready
-					await startDbInitPromise;
+					if (userSettings.tunnelSubdomain === undefined) {
+						// When no tunnel subdomain did exist yet create a new random one
+						const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+						userSettings.tunnelSubdomain = Array.from({ length: 24 }).map(() => {
+							return availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length));
+						}).join('');
 
-					if (args.options.tunnel !== undefined) {
-						console.log('\nWaiting for tunnel ...');
-
-						if (userSettings.tunnelSubdomain === undefined) {
-							// When no tunnel subdomain did exist yet create a new random one
-							const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-							userSettings.tunnelSubdomain = Array.from({ length: 24 }).map(() => {
-								return availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length));
-							}).join('');
-
-							await UserSettings.writeUserSettings(userSettings);
-						}
-
-						const tunnelSettings: localtunnel.TunnelConfig = {
-							host: 'https://hooks.n8n.cloud',
-							subdomain: userSettings.tunnelSubdomain,
-						};
-
-						const port = config.get('port') as number;
-
-						// @ts-ignore
-						const webhookTunnel = await tunnel(port, tunnelSettings);
-
-						process.env.WEBHOOK_TUNNEL_URL = webhookTunnel.url + '/';
-						console.log(`Tunnel URL: ${process.env.WEBHOOK_TUNNEL_URL}\n`);
+						await UserSettings.writeUserSettings(userSettings);
 					}
 
-					await Server.start();
+					const tunnelSettings: localtunnel.TunnelConfig = {
+						host: 'https://hooks.n8n.cloud',
+						subdomain: userSettings.tunnelSubdomain,
+					};
 
-					// Start to get active workflows and run their triggers
-					activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-					await activeWorkflowRunner.init();
+					const port = config.get('port') as number;
 
-					const editorUrl = GenericHelpers.getBaseUrl();
-					console.log(`\nEditor is now accessible via:\n${editorUrl}`);
+					// @ts-ignore
+					const webhookTunnel = await tunnel(port, tunnelSettings);
 
-					// Allow to open n8n editor by pressing "o"
-					if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
-						process.stdin.setRawMode(true);
-						process.stdin.resume();
-						process.stdin.setEncoding('utf8');
-						let inputText = '';
+					process.env.WEBHOOK_TUNNEL_URL = webhookTunnel.url + '/';
+					this.log(`Tunnel URL: ${process.env.WEBHOOK_TUNNEL_URL}\n`);
+					this.log('IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!');
+				}
 
-						if (args.options.browser !== undefined) {
-							openBrowser();
-						}
-						console.log(`\nPress "o" to open in Browser.`);
-						process.stdin.on("data", (key) => {
-							if (key === 'o') {
-								openBrowser();
+				await Server.start();
+
+				// Start to get active workflows and run their triggers
+				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
+				await activeWorkflowRunner.init();
+
+				const editorUrl = GenericHelpers.getBaseUrl();
+				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
+
+				// Allow to open n8n editor by pressing "o"
+				if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
+					process.stdin.setRawMode(true);
+					process.stdin.resume();
+					process.stdin.setEncoding('utf8');
+					let inputText = '';
+
+					if (flags.open === true) {
+						Start.openBrowser();
+					}
+					this.log(`\nPress "o" to open in Browser.`);
+					process.stdin.on("data", (key) => {
+						if (key === 'o') {
+							Start.openBrowser();
+							inputText = '';
+						} else if (key.charCodeAt(0) === 3) {
+							// Ctrl + c got pressed
+							Start.stopProcess();
+						} else {
+							// When anything else got pressed, record it and send it on enter into the child process
+							if (key.charCodeAt(0) === 13) {
+								// send to child process and print in terminal
+								process.stdout.write('\n');
 								inputText = '';
 							} else {
-								// When anything else got pressed, record it and send it on enter into the child process
-								if (key.charCodeAt(0) === 13) {
-									// send to child process and print in terminal
-									process.stdout.write('\n');
-									inputText = '';
-								} else {
-									// record it and write into terminal
-									inputText += key;
-									process.stdout.write(key);
-								}
+								// record it and write into terminal
+								inputText += key;
+								process.stdout.write(key);
 							}
-						});
-					}
-				} catch (error) {
-					console.error(`There was an error: ${error.message}`);
-
-					processExistCode = 1;
-					// @ts-ignore
-					process.emit('SIGINT');
+						}
+					});
 				}
-			})();
+			} catch (error) {
+				this.error(`There was an error: ${error.message}`);
 
-
-			vorpal.sigint(async () => {
-				console.log(`\nStopping n8n...`);
-
-				setTimeout(() => {
-					// In case that something goes wrong with shutdown we
-					// kill after max. 30 seconds no matter what
-					process.exit(processExistCode);
-				}, 30000);
-
-				const removePromises = [];
-				if (activeWorkflowRunner !== undefined) {
-					removePromises.push(activeWorkflowRunner.removeAll());
-				}
-
-				// Remove all test webhooks
-				const testWebhooks = TestWebhooks.getInstance();
-				removePromises.push(testWebhooks.removeAll());
-
-				await Promise.all(removePromises);
-
-				process.exit(processExistCode);
-			});
-		});
-};
+				processExistCode = 1;
+				// @ts-ignore
+				process.emit('SIGINT');
+			}
+		})();
+	}
+}

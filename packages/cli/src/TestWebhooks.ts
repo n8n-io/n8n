@@ -20,8 +20,6 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-const pushInstance = Push.getInstance();
-
 
 
 export class TestWebhooks {
@@ -91,6 +89,7 @@ export class TestWebhooks {
 
 				// Inform editor-ui that webhook got received
 				if (this.testWebhookData[webhookKey].sessionId !== undefined) {
+					const pushInstance = Push.getInstance();
 					pushInstance.send('testWebhookReceived', { workflowId: webhookData.workflow.id, executionId }, this.testWebhookData[webhookKey].sessionId!);
 				}
 
@@ -167,6 +166,7 @@ export class TestWebhooks {
 			// Inform editor-ui that webhook got received
 			if (this.testWebhookData[webhookKey].sessionId !== undefined) {
 				try {
+					const pushInstance = Push.getInstance();
 					pushInstance.send('testWebhookDeleted', { workflowId }, this.testWebhookData[webhookKey].sessionId!);
 				} catch (error) {
 					// Could not inform editor, probably is not connected anymore. So sipmly go on.
