@@ -15,7 +15,7 @@
     "types": "dist/src/index.d.ts",
     "oclif": {
         "commands": "./dist/commands",
-        "bin": "run"
+        "bin": "n8n-node-dev"
     },
     "scripts": {
         "dev": "npm run watch",
@@ -25,7 +25,7 @@
         "watch": "tsc --watch"
     },
     "bin": {
-        "n8n-node-dev": "./bin/run"
+        "n8n-node-dev": "./bin/n8n-node-dev"
     },
     "keywords": [
         "development",
