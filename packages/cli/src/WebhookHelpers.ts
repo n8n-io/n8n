@@ -259,7 +259,8 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 					responseCallback(null, {
 						data: {
 							message: 'Workflow did error.',
-						}
+						},
+						responseCode: 500,
 					});
 				}
 				didSendResponse = true;
