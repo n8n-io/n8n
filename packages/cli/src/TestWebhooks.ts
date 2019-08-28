@@ -57,14 +57,14 @@ export class TestWebhooks {
 
 		if (webhookData === undefined) {
 			// The requested webhook is not registred
-			throw new ResponseHelper.ReponseError('The requested webhook is not registred.', 404, 404);
+			throw new ResponseHelper.ResponseError('The requested webhook is not registred.', 404, 404);
 		}
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
 		const workflowStartNode = webhookData.workflow.getNode(webhookData.node);
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.ReponseError('Could not find node to process webhook.', 404, 404);
+			throw new ResponseHelper.ResponseError('Could not find node to process webhook.', 404, 404);
 		}
 
 		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);

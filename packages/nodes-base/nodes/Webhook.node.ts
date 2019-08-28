@@ -72,8 +72,8 @@ export class Webhook implements INodeType {
 				name: 'default',
 				httpMethod: '={{$parameter["httpMethod"]}}',
 				responseCode: '={{$parameter["responseCode"]}}',
-				reponseMode: '={{$parameter["reponseMode"]}}',
-				reponseData: '={{$parameter["reponseData"]}}',
+				responseMode: '={{$parameter["responseMode"]}}',
+				responseData: '={{$parameter["responseData"]}}',
 				responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
 				path: '={{$parameter["path"]}}',
 			},
@@ -139,8 +139,8 @@ export class Webhook implements INodeType {
 				description: 'The HTTP Response code to return',
 			},
 			{
-				displayName: 'Reponse Mode',
-				name: 'reponseMode',
+				displayName: 'Response Mode',
+				name: 'responseMode',
 				type: 'options',
 				options: [
 					{
@@ -158,12 +158,12 @@ export class Webhook implements INodeType {
 				description: 'When and how to respond to the webhook.',
 			},
 			{
-				displayName: 'Reponse Data',
-				name: 'reponseData',
+				displayName: 'Response Data',
+				name: 'responseData',
 				type: 'options',
 				displayOptions: {
 					show: {
-						reponseMode: [
+						responseMode: [
 							'lastNode',
 						],
 					},
@@ -196,7 +196,7 @@ export class Webhook implements INodeType {
 				default: 'data',
 				displayOptions: {
 					show: {
-						reponseData: [
+						responseData: [
 							'firstEntryBinary'
 						],
 					},

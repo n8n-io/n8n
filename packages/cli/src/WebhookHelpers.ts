@@ -110,20 +110,20 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	if (nodeType === undefined) {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known.`;
 		responseCallback(new Error(errorMessage), {});
-		throw new ResponseHelper.ReponseError(errorMessage, 500, 500);
+		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
 
 	// Get the responseMode
-	const reponseMode = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['reponseMode'], 'onReceived');
-	const responseCode = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], 200);
+	const responseMode = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], 'onReceived');
+	const responseCode = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], 200) as number;
 
-	if (!['onReceived', 'lastNode'].includes(reponseMode as string)) {
+	if (!['onReceived', 'lastNode'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
-		const errorMessage = `The response mode ${reponseMode} is not valid!.`;
+		const errorMessage = `The response mode ${responseMode} is not valid!.`;
 		responseCallback(new Error(errorMessage), {});
-		throw new ResponseHelper.ReponseError(errorMessage, 500, 500);
+		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
 
 	// Prepare everything that is needed to run the workflow
@@ -170,7 +170,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 
 		// Now that we know that the workflow should run we can return the default respons
 		// directly if responseMode it set to "onReceived" and a respone should be sent
-		if (reponseMode === 'onReceived' && didSendResponse === false) {
+		if (responseMode === 'onReceived' && didSendResponse === false) {
 			// Return response directly and do not wait for the workflow to finish
 			if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
@@ -179,8 +179,6 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 					responseCode,
 				});
 			} else {
-				console.log('k1: ' + responseCode);
-
 				responseCallback(null, {
 					data: {
 						message: 'Workflow got started.',
@@ -268,15 +266,15 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				return data;
 			}
 
-			const reponseData = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['reponseData'], 'firstEntryJson');
+			const responseData = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseData'], 'firstEntryJson');
 
 			if (didSendResponse === false) {
 				let data: IDataObject | IDataObject[];
 
-				if (reponseData === 'firstEntryJson') {
+				if (responseData === 'firstEntryJson') {
 					// Return the JSON data of the first entry
 					data = returnData.data!.main[0]![0].json;
-				} else if (reponseData === 'firstEntryBinary') {
+				} else if (responseData === 'firstEntryBinary') {
 					// Return the binary data of the first entry
 					data = returnData.data!.main[0]![0];
 					if (data.binary === undefined) {
@@ -323,7 +321,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				responseCallback(new Error('There was a problem executing the workflow.'), {});
 			}
 
-			throw new ResponseHelper.ReponseError(e.message, 500, 500);
+			throw new ResponseHelper.ResponseError(e.message, 500, 500);
 		});
 
 		return executionId;
@@ -333,7 +331,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 			responseCallback(new Error('There was a problem executing the workflow.'), {});
 		}
 
-		throw new ResponseHelper.ReponseError(e.message, 500, 500);
+		throw new ResponseHelper.ResponseError(e.message, 500, 500);
 	}
 }
 

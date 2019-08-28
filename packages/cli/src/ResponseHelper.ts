@@ -13,10 +13,10 @@ import {
  * Special Error which allows to return also an error code and http status code
  *
  * @export
- * @class ReponseError
+ * @class ResponseError
  * @extends {Error}
  */
-export class ReponseError extends Error {
+export class ResponseError extends Error {
 
 	// The HTTP status code of  response
 	httpStatusCode?: number;
@@ -25,15 +25,15 @@ export class ReponseError extends Error {
 	errorCode?: number;
 
 	/**
-	 * Creates an instance of ReponseError.
+	 * Creates an instance of ResponseError.
 	 * @param {string} message The error message
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
-	 * @memberof ReponseError
+	 * @memberof ResponseError
 	 */
 	constructor(message: string, errorCode?: number, httpStatusCode?: number) {
 		super(message);
-		this.name = 'ReponseError';
+		this.name = 'ResponseError';
 
 		if (errorCode) {
 			this.errorCode = errorCode;
@@ -71,7 +71,7 @@ export function sendSuccessResponse(res: Response, data: any, raw?: boolean, res
 }
 
 
-export function sendErrorResponse(res: Response, error: ReponseError) {
+export function sendErrorResponse(res: Response, error: ResponseError) {
 	let httpStatusCode = 500;
 	if (error.httpStatusCode) {
 		httpStatusCode = error.httpStatusCode;
