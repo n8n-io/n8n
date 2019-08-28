@@ -20,6 +20,8 @@
     "scripts": {
         "dev": "npm run watch",
         "build": "tsc",
+        "postpack": "rm -f oclif.manifest.json",
+        "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b && oclif-dev manifest",
         "test": "jest",
         "tslint": "tslint -p tsconfig.json -c tslint.json",
         "watch": "tsc --watch"
@@ -35,9 +37,11 @@
     ],
     "files": [
         "bin",
-        "dist"
+        "dist",
+        "oclif.manifest.json"
     ],
     "devDependencies": {
+        "@oclif/dev-cli": "^1.22.2",
         "@types/inquirer": "^6.5.0",
         "@types/node": "^10.10.1",
         "@types/vorpal": "^1.11.0",
