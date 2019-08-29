@@ -268,9 +268,13 @@ the case for executions that did succeed and for the ones that failed. That
 default behavior can be changed like this:
 
 ```
-EXECUTIONS_DATA_SAVE_ON_ERROR=true
-EXECUTIONS_DATA_SAVE_ON_SUCCESS=false
+EXECUTIONS_DATA_SAVE_ON_ERROR=none
+EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
 ```
+
+Possible values are:
+ - **all**: Saves all data
+ - **none**: Do not save anything (recommended if a workflow runs a very often and/or processes a lot of data, setup "Error Workflow" instead)
 
 These settings can also be overwritten on a per workflow basis in the workflow
 settings in the Editor UI.
