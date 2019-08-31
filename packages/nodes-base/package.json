@@ -3,6 +3,7 @@
     "version": "0.13.0",
     "description": "Base nodes of n8n",
     "license": "SEE LICENSE IN LICENSE.md",
+    "homepage": "https://n8n.io",
     "author": {
         "name": "Jan Oberhauser",
         "email": "jan@n8n.io"
