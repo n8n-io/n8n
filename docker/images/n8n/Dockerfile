@@ -1,4 +1,4 @@
-FROM mhart/alpine-node:10
+FROM node:12.9.1-alpine
 
 ARG N8N_VERSION
 

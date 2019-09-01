@@ -178,6 +178,15 @@ The following environment variables support file input:
  - N8N_BASIC_AUTH_USER_FILE
 
 
+## Build Docker-Image
+
+```
+docker build --build-arg N8N_VERSION=<VERSION> -t n8nio/n8n:<VERSION> .
+
+# For example:
+docker build --build-arg N8N_VERSION=0.18.1 -t n8nio/n8n:0.18.1 .
+```
+
 
 ## What does n8n mean and how do you pronounce it
 
