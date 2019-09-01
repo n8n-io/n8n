@@ -3,10 +3,12 @@
 		<div class="header-side-menu">
 			<span v-if="node">
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
-				<el-tooltip class="node-info" placement="top" v-if="nodeType.description" effect="light">
-					<div slot="content" v-html="'<b>Node Description</b><br />' + nodeType.description"></div>
-					<font-awesome-icon icon="question-circle" />
-				</el-tooltip>
+				<a :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
+					<el-tooltip class="clickable" placement="top" effect="light">
+						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>For more information and usage examples click!</strong>'"></div>
+						<font-awesome-icon icon="question-circle" />
+					</el-tooltip>
+				</a>
 			</span>
 			<span v-else>No node active</span>
 		</div>
@@ -85,6 +87,13 @@ export default mixins(
 				}
 
 				return null;
+			},
+			nodeTypeDescription (): string {
+				if (this.nodeType.description) {
+					return this.nodeType.description;
+				} else {
+					return 'No description found';
+				}
 			},
 			headerStyle (): object {
 				if (!this.node) {
@@ -508,6 +517,7 @@ export default mixins(
 		color: #555;
 
 		.node-info {
+			color: #555;
 			display: none;
 			padding-left: 0.5em;
 			font-size: 0.8em;
