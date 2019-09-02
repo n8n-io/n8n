@@ -74,6 +74,10 @@ export class Pipedrive implements INodeType {
 						value: 'deal',
 					},
 					{
+						name: 'Note',
+						value: 'note',
+					},
+					{
 						name: 'Organization',
 						value: 'organization',
 					},
@@ -173,6 +177,48 @@ export class Pipedrive implements INodeType {
 						name: 'Update',
 						value: 'update',
 						description: 'Update a deal',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'note',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a note',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a note',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get data of a note',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get data of all note',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a note',
 					},
 				],
 				default: 'create',
@@ -1047,6 +1093,193 @@ export class Pipedrive implements INodeType {
 
 
 			// ----------------------------------
+			//         note
+			// ----------------------------------
+
+			// ----------------------------------
+			//         note:create
+			// ----------------------------------
+			{
+				displayName: 'Content',
+				name: 'content',
+				typeOptions: {
+					rows: 5,
+				},
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'note',
+						],
+					},
+				},
+				description: 'The content of the note to create',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'note',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Deal ID',
+						name: 'deal_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the deal this note will be associated with',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'org_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the organization this note will be associated with.',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person this note will be associated with.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         note:delete
+			// ----------------------------------
+			{
+				displayName: 'Note ID',
+				name: 'noteId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'note',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the note to delete.',
+			},
+
+			// ----------------------------------
+			//         note:get
+			// ----------------------------------
+			{
+				displayName: 'Note ID',
+				name: 'noteId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'get'
+						],
+						resource: [
+							'note',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the note to get.',
+			},
+
+			// ----------------------------------
+			//         note:update
+			// ----------------------------------
+			{
+				displayName: 'Note ID',
+				name: 'noteId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'update'
+						],
+						resource: [
+							'note',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the note to update.',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'update'
+						],
+						resource: [
+							'note',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Content',
+						name: 'content',
+						typeOptions: {
+							rows: 5,
+						},
+						type: 'string',
+						default: '',
+						description: 'The content of the note',
+					},
+					{
+						displayName: 'Deal ID',
+						name: 'deal_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the deal this note will be associated with',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'org_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the organization this note will be associated with.',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person this note will be associated with.',
+					},
+				],
+			},
+
+
+
+			// ----------------------------------
 			//         organization
 			// ----------------------------------
 
@@ -1483,7 +1716,7 @@ export class Pipedrive implements INodeType {
 
 
 			// ----------------------------------
-			//         activity / deal / organization / person / product
+			//         activity / deal / note / organization / person / product
 			// ----------------------------------
 			{
 				displayName: 'Resolve Properties',
@@ -1491,6 +1724,13 @@ export class Pipedrive implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
+						resource: [
+							'activity',
+							'deal',
+							'organization',
+							'person',
+							'product',
+						],
 						operation: [
 							'get',
 							'getAll',
@@ -1688,6 +1928,69 @@ export class Pipedrive implements INodeType {
 					addAdditionalFields(body, updateFields);
 
 				}
+			} else if (resource === 'note') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         note:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					endpoint = '/notes';
+
+					body.content = this.getNodeParameter('content', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body, additionalFields);
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         note:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const noteId = this.getNodeParameter('noteId', i) as number;
+					endpoint = `/notes/${noteId}`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         note:get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const noteId = this.getNodeParameter('noteId', i) as number;
+					endpoint = `/notes/${noteId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         note:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					endpoint = `/notes`;
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         note:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const noteId = this.getNodeParameter('noteId', i) as number;
+					endpoint = `/notes/${noteId}`;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body, updateFields);
+
+				}
+
+
 			} else if (resource === 'organization') {
 				if (operation === 'create') {
 					// ----------------------------------
@@ -1830,7 +2133,7 @@ export class Pipedrive implements INodeType {
 			}
 		}
 
-		if (['get', 'getAll'].includes(operation)) {
+		if (['get', 'getAll'].includes(operation) && resource !== 'note') {
 			const resolveProperties = this.getNodeParameter('resolveProperties', 0) as boolean;
 
 			if (resolveProperties === true) {
