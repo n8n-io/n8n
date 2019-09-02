@@ -168,7 +168,7 @@ with the given name. That makes it possible to load data easily from
 Docker- and Kubernetes-Secrets.
 
 The following environment variables support file input:
- - DB_MONGODB_CONNECTION_URL
+ - DB_MONGODB_CONNECTION_URL_FILE
  - DB_POSTGRESDB_DATABASE_FILE
  - DB_POSTGRESDB_HOST_FILE
  - DB_POSTGRESDB_PASSWORD_FILE
