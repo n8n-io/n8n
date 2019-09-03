@@ -7,6 +7,8 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+import { OptionsWithUri } from 'request';
+
 
 export interface ICustomInterface {
 	name: string;
@@ -25,7 +27,7 @@ export interface ICustomInterface {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('pipedriveApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -37,16 +39,34 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 
 	query.api_token = credentials.apiToken;
 
-	const options = {
+	const options: OptionsWithUri = {
 		method,
-		body,
 		qs: query,
 		uri: `https://api.pipedrive.com/v1${endpoint}`,
-		json: true
 	};
+
+	if (downloadFile === true) {
+		options.encoding = null;
+	} else {
+		options.json = true;
+	}
+
+	if (Object.keys(body).length !== 0) {
+		options.body = body;
+	}
+
+	if (formData !== undefined && Object.keys(formData).length !== 0) {
+		options.formData = formData;
+	}
 
 	try {
 		const responseData = await this.helpers.request(options);
+
+		if (downloadFile === true) {
+			return {
+				data: responseData,
+			};
+		}
 
 		if (responseData.success === false) {
 			throw new Error(`Pipedrive error response: ${responseData.error} (${responseData.error_info})`);

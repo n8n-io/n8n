@@ -1,4 +1,5 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
@@ -72,6 +73,10 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Deal',
 						value: 'deal',
+					},
+					{
+						name: 'File',
+						value: 'file',
 					},
 					{
 						name: 'Note',
@@ -178,6 +183,53 @@ export class Pipedrive implements INodeType {
 						value: 'update',
 						description: 'Update a deal',
 					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a file',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a file',
+					},
+					{
+						name: 'Download',
+						value: 'download',
+						description: 'Download a file',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get data of a file',
+					},
+					// {
+					// 	name: 'Get All',
+					// 	value: 'getAll',
+					// 	description: 'Get data of all file',
+					// },
+					// {
+					// 	name: 'Update',
+					// 	value: 'update',
+					// 	description: 'Update a file',
+					// },
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -1093,6 +1145,174 @@ export class Pipedrive implements INodeType {
 
 
 			// ----------------------------------
+			//         file
+			// ----------------------------------
+
+			// ----------------------------------
+			//         file:create
+			// ----------------------------------
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create'
+						],
+						resource: [
+							'file',
+						],
+					},
+
+				},
+				placeholder: '',
+				description: 'Name of the binary property which contains<br />the data for the file to be created.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Activity ID',
+						name: 'activity_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the activite this file will be associated with.',
+					},
+					{
+						displayName: 'Deal ID',
+						name: 'deal_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the deal this file will be associated with',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'org_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the organization this file will be associated with.',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person this file will be associated with.',
+					},
+					{
+						displayName: 'Product ID',
+						name: 'product_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person this file will be associated with.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         file:delete
+			// ----------------------------------
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the file to delete.',
+			},
+
+			// ----------------------------------
+			//         file:download
+			// ----------------------------------
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'download',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the file to download.',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				required: true,
+				default: 'data',
+				displayOptions: {
+					show: {
+						operation: [
+							'download'
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'Name of the binary property to which to<br />write the data of the downloaded file.',
+			},
+
+			// ----------------------------------
+			//         file:get
+			// ----------------------------------
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'get'
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the file to get.',
+			},
+
+
+
+			// ----------------------------------
 			//         note
 			// ----------------------------------
 
@@ -1786,8 +2006,12 @@ export class Pipedrive implements INodeType {
 
 		// For Post
 		let body: IDataObject;
+		// For FormData
+		let formData: IDataObject;
 		// For Query string
 		let qs: IDataObject;
+
+		let downloadFile: boolean;
 
 		let requestMethod: string;
 		let endpoint: string;
@@ -1800,7 +2024,9 @@ export class Pipedrive implements INodeType {
 
 			requestMethod = 'GET';
 			endpoint = '';
+			downloadFile = false;
 			body = {};
+			formData = {};
 			qs = {};
 
 			if (resource === 'activity') {
@@ -1928,6 +2154,73 @@ export class Pipedrive implements INodeType {
 					addAdditionalFields(body, updateFields);
 
 				}
+
+			} else if (resource === 'file') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         file:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					endpoint = '/files';
+
+					const item = items[i];
+
+					if (item.binary === undefined) {
+						throw new Error('No binary data exists on item!');
+					}
+
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+					if (item.binary[binaryPropertyName] === undefined) {
+						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+					}
+
+					const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+
+					formData.file = {
+						value: fileBufferData,
+						options: {
+							contentType: item.binary[binaryPropertyName].mimeType,
+							filename: item.binary[binaryPropertyName].fileName,
+						}
+					};
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(formData, additionalFields);
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         file:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const fileId = this.getNodeParameter('fileId', i) as number;
+					endpoint = `/files/${fileId}`;
+
+				} else if (operation === 'download') {
+					// ----------------------------------
+					//         file:download
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					downloadFile = true;
+
+					const fileId = this.getNodeParameter('fileId', i) as number;
+					endpoint = `/files/${fileId}/download`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         file:get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const fileId = this.getNodeParameter('fileId', i) as number;
+					endpoint = `/files/${fileId}`;
+
+				}
 			} else if (resource === 'note') {
 				if (operation === 'create') {
 					// ----------------------------------
@@ -1989,8 +2282,6 @@ export class Pipedrive implements INodeType {
 					addAdditionalFields(body, updateFields);
 
 				}
-
-
 			} else if (resource === 'organization') {
 				if (operation === 'create') {
 					// ----------------------------------
@@ -2013,6 +2304,7 @@ export class Pipedrive implements INodeType {
 
 					const organizationId = this.getNodeParameter('organizationId', i) as number;
 					endpoint = `/organizations/${organizationId}`;
+
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//         organization:get
@@ -2123,17 +2415,37 @@ export class Pipedrive implements INodeType {
 			if (returnAll === true) {
 				responseData = await pipedriveApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 			} else {
-				responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs);
+				responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
 			}
 
-			if (Array.isArray(responseData.data)) {
-				returnData.push.apply(returnData, responseData.data as IDataObject[]);
+			if (resource === 'file' && operation === 'download') {
+				const newItem: INodeExecutionData = {
+					json: items[i].json,
+					binary: {},
+				};
+
+				if (items[i].binary !== undefined) {
+					// Create a shallow copy of the binary data so that the old
+					// data references which do not get changed still stay behind
+					// but the incoming data does not get changed.
+					Object.assign(newItem.binary, items[i].binary);
+				}
+
+				items[i] = newItem;
+
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData.data);
 			} else {
-				returnData.push(responseData.data as IDataObject);
+				if (Array.isArray(responseData.data)) {
+					returnData.push.apply(returnData, responseData.data as IDataObject[]);
+				} else {
+					returnData.push(responseData.data as IDataObject);
+				}
 			}
 		}
 
-		if (['get', 'getAll'].includes(operation) && resource !== 'note') {
+		if (['get', 'getAll'].includes(operation) && ['activity', 'deal', 'organization', 'person', 'product'].includes(resource)) {
 			const resolveProperties = this.getNodeParameter('resolveProperties', 0) as boolean;
 
 			if (resolveProperties === true) {
@@ -2141,6 +2453,12 @@ export class Pipedrive implements INodeType {
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		if (resource === 'file' && operation === 'download') {
+			// For file downloads the files get attached to the existing items
+			return this.prepareOutputData(items);
+		} else {
+			// For all other ones does the output items get replaced
+			return [this.helpers.returnJsonArray(returnData)];
+		}
 	}
 }
