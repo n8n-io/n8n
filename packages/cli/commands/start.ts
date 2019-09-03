@@ -95,13 +95,6 @@ export class Start extends Command {
 
 		const { flags } = this.parse(Start);
 
-		if (process.pid === 1) {
-			this.error(`The n8n node process should not run as process with ID 1 because that will cause
-problems with shutting everything down correctly. If started with docker use the
-flag "--init" to fix this problem!`);
-			return;
-		}
-
 		// Wrap that the process does not close but we can still use async
 		(async () => {
 			try {
