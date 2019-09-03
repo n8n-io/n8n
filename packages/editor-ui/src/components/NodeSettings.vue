@@ -89,8 +89,8 @@ export default mixins(
 				return null;
 			},
 			nodeTypeDescription (): string {
-				if (this.nodeType.description) {
-					return this.nodeType.description;
+				if (this.nodeType!.description) {
+					return this.nodeType!.description;
 				} else {
 					return 'No description found';
 				}
