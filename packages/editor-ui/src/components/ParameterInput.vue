@@ -1,12 +1,19 @@
 <template>
 	<div @keydown.stop :class="parameterInputClasses">
 	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
-	<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
-		<el-input v-if="['json', 'string'].includes(parameter.type)" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
-			<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="textEditDialogVisible = true" />
-		</el-input>
+		<div v-if="['json', 'string'].includes(parameter.type)">
+			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
+			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
+			<div v-if="isEditor === true" class="clickable" @click="displayEditDialog()">
+				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
+			</div>
+
+			<el-input v-else ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
+			</el-input>
+		</div>
 		<div v-else-if="parameter.type === 'dateTime'">
 			<el-date-picker
 				v-model="tempValue"
@@ -109,7 +116,10 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
+import CodeEdit from '@/components/CodeEdit.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
+// @ts-ignore
+import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -127,7 +137,9 @@ export default mixins(
 	.extend({
 		name: 'ParameterInput',
 		components: {
+			CodeEdit,
 			ExpressionEdit,
+			PrismEditor,
 			TextEdit,
 		},
 		props: [
@@ -139,6 +151,7 @@ export default mixins(
 		],
 		data () {
 			return {
+				codeEditDialogVisible: false,
 				nodeName: '',
 				expressionAddOperation: 'set' as 'add' | 'set',
 				expressionEditDialogVisible: false,
@@ -324,6 +337,9 @@ export default mixins(
 			isDefault (): boolean {
 				return this.parameter.default === this.value;
 			},
+			isEditor (): boolean {
+				return this.getArgument('editor') === 'code';
+			},
 			isValueExpression () {
 				if (this.parameter.noDataExpression === true) {
 					return false;
@@ -401,11 +417,23 @@ export default mixins(
 
 				this.remoteParameterOptionsLoading = false;
 			},
+			closeCodeEditDialog () {
+				this.codeEditDialogVisible = false;
+			},
 			closeExpressionEditDialog () {
 				this.expressionEditDialogVisible = false;
 			},
 			closeTextEditDialog () {
 				this.textEditDialogVisible = false;
+			},
+			displayEditDialog () {
+				console.log('displayEditDialog...');
+
+				if (this.isEditor) {
+					this.codeEditDialogVisible = true;
+				} else {
+					this.textEditDialogVisible = true;
+				}
 			},
 			getArgument (argumentName: string): string | number | boolean | undefined {
 				if (this.parameter.typeOptions === undefined) {
@@ -431,7 +459,7 @@ export default mixins(
 				}
 
 				if (this.parameter.type === 'string' && this.getArgument('alwaysOpenEditWindow')) {
-					this.textEditDialogVisible = true;
+					this.displayEditDialog();
 					return;
 				}
 

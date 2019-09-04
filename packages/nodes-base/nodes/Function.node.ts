@@ -27,11 +27,13 @@ export class Function implements INodeType {
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
+					editor: 'code',
 					rows: 10,
 				},
 				type: 'string',
 				default: 'items[0].json.myVariable = 1;\nreturn items;',
 				description: 'The JavaScript code to execute.',
+				noDataExpression: true,
 			},
 		],
 	};

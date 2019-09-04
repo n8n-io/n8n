@@ -146,6 +146,10 @@ Vue.component('font-awesome-icon', FontAwesomeIcon);
 
 Vue.config.productionTip = false;
 
+import "prismjs";
+import "prismjs/themes/prism.css";
+import "vue-prism-editor/dist/VuePrismEditor.css";
+
 new Vue({
 	router,
 	store,
