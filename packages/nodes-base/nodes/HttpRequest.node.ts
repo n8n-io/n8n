@@ -45,6 +45,17 @@ export class HttpRequest implements INodeType {
 				},
 			},
 			{
+				name: 'httpDigestAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'digestAuth',
+						],
+					},
+				},
+			},
+			{
 				name: 'httpHeaderAuth',
 				required: true,
 				displayOptions: {
@@ -65,6 +76,10 @@ export class HttpRequest implements INodeType {
 					{
 						name: 'Basic Auth',
 						value: 'basicAuth'
+					},
+					{
+						name: 'Digest Auth',
+						value: 'digestAuth'
 					},
 					{
 						name: 'Header Auth',
@@ -337,6 +352,7 @@ export class HttpRequest implements INodeType {
 		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
 
 		const httpBasicAuth = this.getCredentials('httpBasicAuth');
+		const httpDigestAuth = this.getCredentials('httpDigestAuth');
 		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
 
 		let url: string, responseFormat: string;
@@ -427,6 +443,13 @@ export class HttpRequest implements INodeType {
 			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+			}
+			if (httpDigestAuth !== undefined) {
+				requestOptions.auth = {
+					user: httpDigestAuth.user as string,
+					pass: httpDigestAuth.password as string,
+					sendImmediately: false,
+				};
 			}
 
 			// Now that the options are all set make the actual http request
