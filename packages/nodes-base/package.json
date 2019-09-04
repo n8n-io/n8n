@@ -83,7 +83,6 @@
             "dist/nodes/ReadBinaryFile.node.js",
             "dist/nodes/ReadBinaryFiles.node.js",
             "dist/nodes/Redis/Redis.node.js",
-            "dist/nodes/ReadFileFromUrl.node.js",
             "dist/nodes/ReadPdf.node.js",
             "dist/nodes/RenameKeys.node.js",
             "dist/nodes/RssFeedRead.node.js",
