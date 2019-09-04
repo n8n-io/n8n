@@ -522,7 +522,8 @@ export class HttpRequest implements INodeType {
 					}
 				});
 			} else {
-				returnItems.push({ json: { response } });
+				// responseFormat: 'json'
+				returnItems.push({ json: response });
 			}
 		}
 
@@ -531,7 +532,7 @@ export class HttpRequest implements INodeType {
 			return this.prepareOutputData(items);
 		} else {
 			// For all other ones does the output items get replaced
-			return [this.helpers.returnJsonArray(returnItems)];
+			return this.prepareOutputData(returnItems);
 		}
 	}
 }
