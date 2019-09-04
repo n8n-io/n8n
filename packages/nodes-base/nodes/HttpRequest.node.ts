@@ -513,7 +513,7 @@ export class HttpRequest implements INodeType {
 				const fileName = (url).split('/').pop();
 
 				items[itemIndex].binary![dataPropertyName] = await this.helpers.prepareBinaryData(response, fileName);
-			} else if (responseFormat === 'json') {
+			} else if (responseFormat === 'string') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 
 				returnItems.push({
