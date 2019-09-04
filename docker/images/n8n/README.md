@@ -111,6 +111,10 @@ it can not be used anymore as encrypting it is not possible anymore.
 
 #### Use with MongoDB
 
+> **WARNING**: Use Postgres if possible! Mongo has problems with saving large
+> amounts of data in a document and causes also other problems. So support will
+> may be dropped in the future.
+
 Replace the following placeholders with the actual data:
  - MONGO_DATABASE
  - MONGO_HOST
