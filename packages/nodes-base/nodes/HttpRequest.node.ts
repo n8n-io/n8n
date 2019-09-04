@@ -27,7 +27,7 @@ export class HttpRequest implements INodeType {
 		version: 1,
 		description: 'Makes a HTTP request and returns the received data',
 		defaults: {
-			name: 'Http Request',
+			name: 'HTTP Request',
 			color: '#2200DD',
 		},
 		inputs: ['main'],
@@ -144,6 +144,10 @@ export class HttpRequest implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'File',
+						value: 'file'
+					},
+					{
 						name: 'JSON',
 						value: 'json'
 					},
@@ -151,14 +155,43 @@ export class HttpRequest implements INodeType {
 						name: 'String',
 						value: 'string'
 					},
-					// {
-					// 	name: 'XML (not implemented)',
-					// 	value: 'xml'
-					// },
 				],
 				default: 'json',
 				description: 'The format in which the data gets returned from the URL.',
 			},
+
+			{
+				displayName: 'Property Name',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						responseFormat: [
+							'string',
+						],
+					},
+				},
+				description: 'Name of the property to which to write the response data.',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						responseFormat: [
+							'file',
+						],
+					},
+
+				},
+				description: 'Name of the binary property to which to<br />write the data of the read file.',
+			},
+
 			{
 				displayName: 'JSON Parameters',
 				name: 'jsonParameters',
@@ -350,12 +383,13 @@ export class HttpRequest implements INodeType {
 		// TODO: Should have a setting which makes clear that this parameter can not change for each item
 		const requestMethod = this.getNodeParameter('requestMethod', 0) as string;
 		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
+		const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
 		const httpBasicAuth = this.getCredentials('httpBasicAuth');
 		const httpDigestAuth = this.getCredentials('httpDigestAuth');
 		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
 
-		let url: string, responseFormat: string;
+		let url: string;
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
 
@@ -383,7 +417,6 @@ export class HttpRequest implements INodeType {
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			url = this.getNodeParameter('url', itemIndex) as string;
-			responseFormat = this.getNodeParameter('responseFormat', itemIndex) as string;
 
 			requestOptions = {
 				headers: {},
@@ -432,7 +465,6 @@ export class HttpRequest implements INodeType {
 					}
 				}
 			}
-			requestOptions.json = true;
 
 			// Add credentials if any are set
 			if (httpBasicAuth !== undefined) {
@@ -452,18 +484,54 @@ export class HttpRequest implements INodeType {
 				};
 			}
 
+			if (responseFormat === 'file') {
+				requestOptions.encoding = null;
+			} else {
+				requestOptions.json = true;
+			}
+
 			// Now that the options are all set make the actual http request
 			const response = await this.helpers.request(requestOptions);
 
-			if (responseFormat === 'json') {
-				returnItems.push({ json: response });
-			// } else if (responseFormat === 'xml') {
-			// 	// TODO: Not implemented yet
+			if (responseFormat === 'file') {
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+
+				const newItem: INodeExecutionData = {
+					json: items[itemIndex].json,
+					binary: {},
+				};
+
+				if (items[itemIndex].binary !== undefined) {
+					// Create a shallow copy of the binary data so that the old
+					// data references which do not get changed still stay behind
+					// but the incoming data does not get changed.
+					Object.assign(newItem.binary, items[itemIndex].binary);
+				}
+
+				items[itemIndex] = newItem;
+
+				const fileName = (url).split('/').pop();
+
+				items[itemIndex].binary![dataPropertyName] = await this.helpers.prepareBinaryData(response, fileName);
+			} else if (responseFormat === 'json') {
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+
+				returnItems.push({
+					json: {
+						[dataPropertyName]: response,
+					}
+				});
 			} else {
 				returnItems.push({ json: { response } });
 			}
 		}
 
-		return this.prepareOutputData(returnItems);
+		if (responseFormat === 'file') {
+			// For file downloads the files get attached to the existing items
+			return this.prepareOutputData(items);
+		} else {
+			// For all other ones does the output items get replaced
+			return [this.helpers.returnJsonArray(returnItems)];
+		}
 	}
 }
