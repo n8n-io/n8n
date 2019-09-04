@@ -57,6 +57,10 @@ export class FunctionItem implements INodeType {
 			},
 		};
 
+		// Make it possible to access data via $node, $parameter, ...
+		const dataProxy = this.getWorkflowDataProxy();
+		Object.assign(sandbox, dataProxy);
+
 		const vm = new NodeVM({
 			console: 'inherit',
 			sandbox,

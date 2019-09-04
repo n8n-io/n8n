@@ -23,10 +23,12 @@ import {
 	IWebhookData,
 	IWebhookDescription,
 	IWebhookFunctions,
+	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
 	NodeHelpers,
 	NodeParameterValue,
 	Workflow,
+	WorkflowDataProxy,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -403,6 +405,10 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
+			getWorkflowDataProxy: (itemIndex: number): IWorkflowDataProxyData => {
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+				return dataProxy.getDataProxy();
+			},
 			getWorkflowStaticData(type: string): IDataObject {
 				return workflow.getStaticData(type, node);
 			},
@@ -475,6 +481,10 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			},
 			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
 				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
+			},
+			getWorkflowDataProxy: (): IWorkflowDataProxyData => {
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+				return dataProxy.getDataProxy();
 			},
 			getWorkflowStaticData(type: string): IDataObject {
 				return workflow.getStaticData(type, node);

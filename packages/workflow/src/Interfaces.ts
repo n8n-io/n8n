@@ -154,6 +154,7 @@ export interface IExecuteFunctions {
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	getTimezone(): string;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
@@ -170,6 +171,7 @@ export interface IExecuteSingleFunctions {
 	getMode(): WorkflowExecuteMode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getTimezone(): string;
+	getWorkflowDataProxy(): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
@@ -464,6 +466,14 @@ export interface IWebhookDescription {
 	responseBinaryPropertyName?: string;
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
+}
+
+export interface IWorkflowDataProxyData {
+	$binary: any; // tslint:disable-line:no-any
+	$data: any; // tslint:disable-line:no-any
+	$env: any; // tslint:disable-line:no-any
+	$node: any; // tslint:disable-line:no-any
+	$parameter: any; // tslint:disable-line:no-any
 }
 
 export type WebhookHttpMethod = 'GET' | 'POST';
