@@ -34,6 +34,7 @@
             "dist/credentials/GithubApi.credentials.js",
             "dist/credentials/GoogleApi.credentials.js",
             "dist/credentials/HttpBasicAuth.credentials.js",
+            "dist/credentials/HttpDigestAuth.credentials.js",
             "dist/credentials/HttpHeaderAuth.credentials.js",
             "dist/credentials/Imap.credentials.js",
             "dist/credentials/LinkFishApi.credentials.js",
