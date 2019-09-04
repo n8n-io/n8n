@@ -107,6 +107,10 @@ environment variables have to be set.
 
 #### Start with MongoDB as Database
 
+> **WARNING**: Use Postgres if possible! Mongo has problems with saving large
+> amounts of data in a document and causes also other problems. So support will
+> may be dropped in the future.
+
 To use MongoDB as database you can provide the following environment variables like
 in the example bellow:
  - `DB_TYPE=mongodb`
