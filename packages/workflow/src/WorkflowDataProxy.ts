@@ -1,8 +1,9 @@
 import {
 	IDataObject,
 	INodeExecutionData,
-	NodeHelpers,
 	IRunExecutionData,
+	IWorkflowDataProxyData,
+	NodeHelpers,
 	Workflow,
 } from './';
 
@@ -184,11 +185,11 @@ export class WorkflowDataProxy {
 						return executionData[that.itemIndex].json;
 					} else if (name === 'binary') {
 						// Binary-Data
-						if (!executionData[that.itemIndex].binary) {
-							throw new Error(`No binary data for node "${nodeName}" has been found!`);
-						}
-
 						const returnData: IDataObject = {};
+
+						if (!executionData[that.itemIndex].binary) {
+							return returnData;
+						}
 
 						const binaryKeyData = executionData[that.itemIndex].binary!;
 						for (const keyName of Object.keys(binaryKeyData)) {
@@ -263,7 +264,7 @@ export class WorkflowDataProxy {
 	 * @returns
 	 * @memberof WorkflowDataGetter
 	 */
-	getDataProxy() {
+	getDataProxy(): IWorkflowDataProxyData {
 		const that = this;
 
 		const base = {

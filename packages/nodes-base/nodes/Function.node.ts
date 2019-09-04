@@ -48,7 +48,13 @@ export class Function implements INodeType {
 			getNodeParameter: this.getNodeParameter,
 			helpers: this.helpers,
 			items,
+			// To be able to access data of other items
+			$item: (index: number) => this.getWorkflowDataProxy(index),
 		};
+
+		// Make it possible to access data via $node, $parameter, ...
+		// By default use data from first item
+		Object.assign(sandbox, sandbox.$item(0));
 
 		const vm = new NodeVM({
 			console: 'inherit',
