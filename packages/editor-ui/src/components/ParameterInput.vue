@@ -554,7 +554,8 @@ export default mixins(
 }
 
 .el-select {
-	overflow: auto;
+	overflow-x: auto;
+	overflow-y: hidden;
 }
 
 </style>
