@@ -2,6 +2,10 @@
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
 import Vue from 'vue';
 
+import "prismjs";
+import "prismjs/themes/prism.css";
+import "vue-prism-editor/dist/VuePrismEditor.css";
+
 import * as ElementUI from 'element-ui';
 // @ts-ignore
 import locale from 'element-ui/lib/locale/lang/en';
@@ -145,10 +149,6 @@ library.add(faUndo);
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 
 Vue.config.productionTip = false;
-
-import "prismjs";
-import "prismjs/themes/prism.css";
-import "vue-prism-editor/dist/VuePrismEditor.css";
 
 new Vue({
 	router,
