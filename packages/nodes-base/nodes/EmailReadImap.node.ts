@@ -81,8 +81,6 @@ export class EmailReadImap implements INodeType {
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		let isFirstRun = true;
-
 		const credentials = this.getCredentials('imap');
 
 		if (credentials === undefined) {
@@ -235,14 +233,7 @@ export class EmailReadImap implements INodeType {
 
 				if (returnData.length) {
 					this.emit([returnData]);
-				} else if (isFirstRun === true && this.getMode() === 'manual') {
-					// If it is the first run we emit even when it is empty. If we would
-					// not do that it would wait till the first unread email arrives
-					// before it would continue to execute the next node.
-					this.emit([]);
 				}
-
-				isFirstRun = false;
 			},
 		};
 
