@@ -69,7 +69,7 @@ export class EmailReadImap implements INodeType {
 				displayOptions: {
 					show: {
 						downloadAttachments: [
-							'true'
+							true
 						],
 					},
 				},
@@ -90,7 +90,6 @@ export class EmailReadImap implements INodeType {
 		}
 
 		const mailbox = this.getNodeParameter('mailbox') as string;
-		const dataPropertyAttachmentsPrefixName = this.getNodeParameter('dataPropertyAttachmentsPrefixName') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
 
@@ -159,6 +158,11 @@ export class EmailReadImap implements INodeType {
 			let newEmail: INodeExecutionData, messageHeader, messageBody;
 			let attachments: IBinaryData[];
 			let propertyName: string;
+
+			let dataPropertyAttachmentsPrefixName = '';
+			if (downloadAttachments === true) {
+				dataPropertyAttachmentsPrefixName = this.getNodeParameter('dataPropertyAttachmentsPrefixName') as string;
+			}
 
 			// All properties get by default moved to metadata except the ones
 			// which are defined here which get set on the top level.
