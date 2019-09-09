@@ -41,6 +41,14 @@ If you are interested in a hosted version of n8n on our infrastructure please co
 
 
 
+## Support
+
+If you have problems or questions go to our forum, we will then try to help you asap:
+
+[https://community.n8n.io](https://community.n8n.io)
+
+
+
 ## What does n8n mean and how do you pronounce it
 
 **Short answer:** It means "nodemation"

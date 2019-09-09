@@ -21,6 +21,7 @@ is there currently not much documentation. That will hopefully change soon.
 - [Persist data](#persist-data)
 - [Passing Senstive Data via File](#passing-senstive-data-via-file)
 - [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
+- [Support](#support)
 - [Upgrading](#upgrading)
 - [License](#license)
 
@@ -206,6 +207,14 @@ Did however not like how long the name was and could not imagine writing
 something that long every time in the CLI. That is when I then ended up on
 "n8n". Sure does not work perfectly but does neither for Kubernetes (k8s) and
 did not hear anybody complain there. So I guess it should be ok.
+
+
+
+## Support
+
+If you have problems or questions go to our forum, we will then try to help you asap:
+
+[https://community.n8n.io](https://community.n8n.io)
 
 
 
