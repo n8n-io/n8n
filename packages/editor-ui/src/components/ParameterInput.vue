@@ -553,11 +553,6 @@ export default mixins(
 	}
 }
 
-.el-select {
-	overflow-x: auto;
-	overflow-y: hidden;
-}
-
 </style>
 
 <style lang="scss">
