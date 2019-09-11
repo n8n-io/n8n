@@ -2,29 +2,6 @@
 
 This list shows all the versions which include breaking changes and how to upgrade
 
-## 0.20.0
-
-### What changed?
-
-The node "ActiveCampaign" had to be changed to use v1 of their API. That API is sadly
-quite bad but at least it is feature complete which their v3 sadly is not.
-
-### When is action necessary?
-
-If a "ActiveCampaign" node gets used in any workflow.
-
-### How to upgrade:
-
-After upgrading open all workflows which contain a "Read File From Url" node.
-They will have a "?" as icon as they are not known anymore. Create a new
-"HTTP Request" node to replace the old one and add the same URL as the previous
-node had (in case you do not know it anymore you can select the old node, copy
-it and paste it in a text-editor, it will display all the data the node
-contained). Then set the "Response Format" to "File". Everything will then
-function again like before.
-
-
-
 ## 0.19.0
 
 ### What changed?
