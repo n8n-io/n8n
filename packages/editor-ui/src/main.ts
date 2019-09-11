@@ -2,9 +2,9 @@
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
 import Vue from 'vue';
 
-import "prismjs";
-import "prismjs/themes/prism.css";
-import "vue-prism-editor/dist/VuePrismEditor.css";
+import 'prismjs';
+import 'prismjs/themes/prism.css';
+import 'vue-prism-editor/dist/VuePrismEditor.css';
 
 import * as ElementUI from 'element-ui';
 // @ts-ignore
