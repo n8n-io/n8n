@@ -188,7 +188,7 @@ class App {
 		this.app.use(history({
 			rewrites: [
 				{
-					from: new RegExp(`^\/(rest|${this.endpointWebhook}|${this.endpointWebhookTest})\/.*$`),
+					from: new RegExp(`^\/(rest|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/.*$`),
 					to: (context) => {
 						return context.parsedUrl!.pathname!.toString();
 					}
