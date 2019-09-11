@@ -183,14 +183,14 @@ export class ActiveCampaign implements INodeType {
 				options: [
 					{
 						displayName: 'First Name',
-						name: 'firstName',
+						name: 'first_name',
 						type: 'string',
 						default: '',
 						description: 'The first name of the contact to create',
 					},
 					{
 						displayName: 'Last Name',
-						name: 'lastName',
+						name: 'last_name',
 						type: 'string',
 						default: '',
 						description: 'The last name of the contact to create',
@@ -282,50 +282,68 @@ export class ActiveCampaign implements INodeType {
 				description: 'ID of the contact to get.',
 			},
 
-			// ----------------------------------
-			//         contact:getAll
-			// ----------------------------------
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'contact',
-						],
-					},
-				},
-				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'contact',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 500,
-				},
-				default: 100,
-				description: 'How many results to return.',
-			},
+			// TODO: Does not work as expted so remove for now
+			// // ----------------------------------
+			// //         contact:getAll
+			// // ----------------------------------
+			// {
+			// 	displayName: 'Full User Data',
+			// 	name: 'fullUserData',
+			// 	type: 'boolean',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: [
+			// 				'getAll',
+			// 			],
+			// 			resource: [
+			// 				'contact',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: false,
+			// 	description: 'If all data of the user should be returned or an abbreviated version.',
+			// },
+			// {
+			// 	displayName: 'Return All',
+			// 	name: 'returnAll',
+			// 	type: 'boolean',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: [
+			// 				'getAll',
+			// 			],
+			// 			resource: [
+			// 				'contact',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: false,
+			// 	description: 'If all results should be returned or only results of a given page.',
+			// },
+			// {
+			// 	displayName: 'Page',
+			// 	name: 'page',
+			// 	type: 'number',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: [
+			// 				'getAll',
+			// 			],
+			// 			resource: [
+			// 				'contact',
+			// 			],
+			// 			returnAll: [
+			// 				false,
+			// 			],
+			// 		},
+			// 	},
+			// 	typeOptions: {
+			// 		minValue: 1,
+			// 		maxValue: 500,
+			// 	},
+			// 	default: 1,
+			// 	description: 'Maximum 20 results per page get returned. Set which page to return.',
+			// },
 
 			// ----------------------------------
 			//         contact:update
@@ -375,14 +393,14 @@ export class ActiveCampaign implements INodeType {
 					},
 					{
 						displayName: 'First Name',
-						name: 'firstName',
+						name: 'first_name',
 						type: 'string',
 						default: '',
 						description: 'First name of the contact',
 					},
 					{
 						displayName: 'Last Name',
-						name: 'lastName',
+						name: 'last_name',
 						type: 'string',
 						default: '',
 						description: 'Last name of the contact',
@@ -447,17 +465,16 @@ export class ActiveCampaign implements INodeType {
 		let qs: IDataObject;
 
 		let requestMethod: string;
-		let endpoint: string;
+		const endpoint = '/admin/api.php';
 		let returnAll = false;
-		let dataKey: string | undefined;
+		let dataKeys: string[] | undefined;
 
 		for (let i = 0; i < items.length; i++) {
-			dataKey = undefined;
 			resource = this.getNodeParameter('resource', 0) as string;
 			operation = this.getNodeParameter('operation', 0) as string;
+			dataKeys = undefined;
 
 			requestMethod = 'GET';
-			endpoint = '';
 			body = {} as IDataObject;
 			qs = {} as IDataObject;
 
@@ -471,27 +488,27 @@ export class ActiveCampaign implements INodeType {
 
 					const updateIfExists = this.getNodeParameter('updateIfExists', i) as boolean;
 					if (updateIfExists === true) {
-						endpoint = '/api/3/contact/sync';
+						qs.api_action = 'contact_sync';
 					} else {
-						endpoint = '/api/3/contacts';
+						qs.api_action = 'contact_add';
 					}
 
-					dataKey = 'contact';
-					body.contact = {
-						email: this.getNodeParameter('email', i) as string,
-					} as IDataObject;
+					dataKeys = ['subscriber_id'];
+
+					body.email = this.getNodeParameter('email', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body.contact as IDataObject, additionalFields);
+					addAdditionalFields(body as IDataObject, additionalFields);
 
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         contact:delete
 					// ----------------------------------
 
-					requestMethod = 'DELETE';
+					requestMethod = 'GET';
+					qs.api_action = 'contact_delete';
 
 					const contactId = this.getNodeParameter('contactId', i) as number;
-					endpoint = `/api/3/contacts/${contactId}`;
+					qs.id = contactId;
 
 				} else if (operation === 'get') {
 					// ----------------------------------
@@ -499,39 +516,45 @@ export class ActiveCampaign implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'GET';
+					qs.api_action = 'contact_view';
 
 					const contactId = this.getNodeParameter('contactId', i) as number;
-					endpoint = `/api/3/contacts/${contactId}`;
+					qs.id = contactId;
 
-				} else if (operation === 'getAll') {
-					// ----------------------------------
-					//         persons:getAll
-					// ----------------------------------
+				// TODO: Does not work as expted so remove for now
+				// } else if (operation === 'getAll') {
+				// 	// ----------------------------------
+				// 	//         contact:getAll
+				// 	// ----------------------------------
 
-					requestMethod = 'GET';
+				// 	requestMethod = 'GET';
+				// 	qs.api_action = 'contact_list';
+				// 	qs.ids = 'ALL';
 
-					returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
-					}
+				// 	returnAll = this.getNodeParameter('returnAll', i) as boolean;
+				// 	if (returnAll === false) {
+				// 		qs.page = this.getNodeParameter('page', i) as number;
+				// 	}
 
-					dataKey = 'contacts';
-					endpoint = `/api/3/contacts`;
+				// 	const fullUserData = this.getNodeParameter('fullUserData', i) as boolean;
+				// 	qs.full = fullUserData === true ? 1 : 0;
 
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//         contact:update
 					// ----------------------------------
 
-					requestMethod = 'PUT';
+					requestMethod = 'POST';
 
 					const contactId = this.getNodeParameter('contactId', i) as number;
-					endpoint = `/api/3/contacts/${contactId}`;
+					qs.api_action = 'contact_edit';
+					qs.overwrite = 0;
 
-					dataKey = 'contact';
-					body.contact = {} as IDataObject;
+					dataKeys = ['subscriber_id'];
+
+					body.id = contactId;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body.contact as IDataObject, updateFields);
+					addAdditionalFields(body as IDataObject, updateFields);
 
 				}
 			} else {
@@ -540,9 +563,9 @@ export class ActiveCampaign implements INodeType {
 
 			let responseData;
 			if (returnAll === true) {
-				responseData = await activeCampaignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs, dataKey);
+				responseData = await activeCampaignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs, dataKeys);
 			} else {
-				responseData = await activeCampaignApiRequest.call(this, requestMethod, endpoint, body, qs, dataKey);
+				responseData = await activeCampaignApiRequest.call(this, requestMethod, endpoint, body, qs, dataKeys);
 			}
 
 			if (Array.isArray(responseData)) {
