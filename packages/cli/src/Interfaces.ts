@@ -255,6 +255,7 @@ export interface IN8nUISettings {
 	saveManualExecutions: boolean;
 	timezone: string;
 	urlBaseWebhook: string;
+	versionCli: string;
 }
 
 

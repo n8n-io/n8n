@@ -6,6 +6,7 @@ import {
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as requestPromise from 'request-promise-native';
+import { version as versionCli } from '../package.json';
 
 import {
 	ActiveExecutions,
@@ -73,6 +74,7 @@ import * as config from '../config';
 // @ts-ignore
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
+import { version } from '@oclif/command/lib/flags';
 
 
 class App {
@@ -989,6 +991,7 @@ class App {
 				saveManualExecutions: this.saveManualExecutions,
 				timezone: this.timezone,
 				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
+				versionCli,
 			};
 		}));
 

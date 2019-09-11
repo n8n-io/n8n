@@ -389,6 +389,7 @@ export interface IN8nUISettings {
 	saveManualExecutions: boolean;
 	timezone: string;
 	urlBaseWebhook: string;
+	versionCli: string;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

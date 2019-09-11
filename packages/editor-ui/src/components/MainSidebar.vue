@@ -16,7 +16,7 @@
 				<el-menu-item index="logo" class="logo-item">
 					<img src="/n8n-icon-small.png" class="icon" alt="n8n.io"/>
 					<a href="https://n8n.io" class="logo-text" target="_blank" slot="title">
-						n8n.io
+						n8n.io - Currently installed version {{versionCli}}
 					</a>
 
 				</el-menu-item>
@@ -204,6 +204,9 @@ export default mixins(
 			},
 			currentWorkflow (): string {
 				return this.$route.params.name;
+			},
+			versionCli (): string {
+				return this.$store.getters.versionCli;
 			},
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;
