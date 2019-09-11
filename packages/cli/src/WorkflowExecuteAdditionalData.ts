@@ -37,7 +37,7 @@ import * as config from '../config';
  * @param {WorkflowExecuteMode} mode The mode in which the workflow which did error got started in
  * @param {string} [executionId] The id the execution got saved as
  */
-function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mode: WorkflowExecuteMode, executionId?: string): void {
+function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mode: WorkflowExecuteMode, executionId?: string, retryOf?: string): void {
 	// Check if there was an error and if so if an errorWorkflow is set
 	if (fullRunData.data.resultData.error !== undefined && workflowData.settings !== undefined && workflowData.settings.errorWorkflow) {
 		const workflowErrorData = {
@@ -46,6 +46,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 				error: fullRunData.data.resultData.error,
 				lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
 				mode,
+				retryOf,
 			},
 			workflow: {
 				id: workflowData.id !== undefined ? workflowData.id.toString() as string : undefined,
@@ -170,7 +171,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 
 					if (mode === 'manual' && saveManualExecutions === false) {
 						pushExecutionFinished(fullRunData, executionId, undefined, retryOf);
-						executeErrorWorkflow(workflowData, fullRunData, mode);
+						executeErrorWorkflow(workflowData, fullRunData, mode, undefined, retryOf);
 						return;
 					}
 
@@ -187,7 +188,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 						workflowDidSucceed === false && saveDataErrorExecution === 'none'
 					) {
 						pushExecutionFinished(fullRunData, executionId, undefined, retryOf);
-						executeErrorWorkflow(workflowData, fullRunData, mode);
+						executeErrorWorkflow(workflowData, fullRunData, mode, undefined, retryOf);
 						return;
 					}
 
@@ -220,10 +221,10 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 					}
 
 					pushExecutionFinished(fullRunData, executionId, executionResult.id as string, retryOf);
-					executeErrorWorkflow(workflowData, fullRunData, mode, executionResult ? executionResult.id as string : undefined);
+					executeErrorWorkflow(workflowData, fullRunData, mode, executionResult ? executionResult.id as string : undefined, retryOf);
 				} catch (error) {
 					pushExecutionFinished(fullRunData, executionId, undefined, retryOf);
-					executeErrorWorkflow(workflowData, fullRunData, mode);
+					executeErrorWorkflow(workflowData, fullRunData, mode, undefined, retryOf);
 				}
 			},
 		]

@@ -35,6 +35,8 @@ export class ErrorTrigger implements INodeType {
 			// example data to allow to develope and test errorWorkflows easily
 			items[0].json = {
 				execution: {
+					id: '231',
+					retryOf: '34',
 					error: {
 						message: 'Example Error Message',
 						stack: 'Stacktrace'
