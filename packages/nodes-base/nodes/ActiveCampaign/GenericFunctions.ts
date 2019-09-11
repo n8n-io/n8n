@@ -19,7 +19,7 @@ import { OptionsWithUri } from 'request';
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKeys?: string[]): Promise<any> { // tslint:disable-line:no-any
+export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('activeCampaignApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -29,10 +29,10 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		query = {};
 	}
 
-	query.api_key = credentials.apiKey;
-	query.api_output = 'json';
-
 	const options: OptionsWithUri = {
+		headers: {
+			'Api-Token': credentials.apiKey,
+		},
 		method,
 		qs: query,
 		uri: `${credentials.apiUrl}${endpoint}`,
@@ -40,26 +40,21 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 	};
 
 	if (Object.keys(body).length !== 0) {
-		options.form = body;
+		options.body = body;
 	}
 
-	const returnData: IDataObject = {};
 	try {
 		const responseData = await this.helpers.request(options);
 
-		if (responseData.result_code === 0) {
-			throw new Error(`ActiveCampaign error response: ${responseData.result_message}`);
+		if (responseData.success === false) {
+			throw new Error(`ActiveCampaign error response: ${responseData.error} (${responseData.error_info})`);
 		}
 
-		if (dataKeys === undefined) {
+		if (dataKey === undefined) {
 			return responseData;
+		} else {
+			return responseData[dataKey] as IDataObject;
 		}
-
-		for (const dataKey of dataKeys) {
-			returnData[dataKey] = responseData[dataKey];
-		}
-
-		return returnData;
 
 	} catch (error) {
 		if (error.statusCode === 403) {
@@ -86,7 +81,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKeys?: string[]): Promise<any> { // tslint:disable-line:no-any
+export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
 
 	if (query === undefined) {
 		query = {};
@@ -100,10 +95,15 @@ export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IE
 
 	let itemsReceived = 0;
 	do {
-		responseData = await activeCampaignApiRequest.call(this, method, endpoint, body, query, dataKeys);
+		responseData = await activeCampaignApiRequest.call(this, method, endpoint, body, query);
 
-		returnData.push.apply(returnData, responseData);
-		itemsReceived += returnData.length;
+		if (dataKey === undefined) {
+			returnData.push.apply(returnData, responseData);
+			itemsReceived += returnData.length;
+		} else {
+			returnData.push.apply(returnData, responseData[dataKey]);
+			itemsReceived += responseData[dataKey].length;
+		}
 
 		query.offset = itemsReceived;
 	} while (
