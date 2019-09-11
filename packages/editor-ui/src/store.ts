@@ -53,6 +53,7 @@ export const store = new Vuex.Store({
 		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
 		timezone: 'America/New_York',
+		versionCli: '0.0.0',
 		workflowExecutionData: null as IExecutionResponse | null,
 		lastSelectedNode: null as string | null,
 		nodeIndex: [] as Array<string | null>,
@@ -478,6 +479,9 @@ export const store = new Vuex.Store({
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
+		setVersionCli(state, version: string) {
+			Vue.set(state, 'versionCli', version);
+		},
 
 		addNodeType (state, typeData: INodeTypeDescription) {
 			if (!typeData.hasOwnProperty('name')) {
@@ -580,6 +584,9 @@ export const store = new Vuex.Store({
 		},
 		timezone: (state): string => {
 			return state.timezone;
+		},
+		versionCli: (state): string => {
+			return state.versionCli;
 		},
 
 		// Push Connection
