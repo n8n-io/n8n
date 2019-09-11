@@ -479,7 +479,7 @@ export const store = new Vuex.Store({
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
-		setVersionCli(state, version: string) {
+		setVersionCli (state, version: string) {
 			Vue.set(state, 'versionCli', version);
 		},
 
