@@ -163,6 +163,11 @@ export class Github implements INodeType {
 				},
 				options: [
 					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get the data of a single repository',
+					},
+					{
 						name: 'Get License',
 						value: 'getLicense',
 						description: 'Returns the contents of the repository\'s license file, if one is detected',
@@ -1100,6 +1105,7 @@ export class Github implements INodeType {
 			'issue:edit',
 			'issue:get',
 			'release:create',
+			'repository:get',
 			'repository:getLicense',
 			'repository:getProfile',
 		];
@@ -1325,6 +1331,14 @@ export class Github implements INodeType {
 					requestMethod = 'GET';
 
 					endpoint = `/repos/${owner}/${repository}/traffic/popular/referrers`;
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = `/repos/${owner}/${repository}`;
 				} else if (operation === 'getLicense') {
 					// ----------------------------------
 					//         getLicense
