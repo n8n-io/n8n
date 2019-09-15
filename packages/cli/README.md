@@ -205,6 +205,7 @@ The following keyboard shortcuts can currently be used:
 
 ### General
 
+ - **Ctrl + Left Mouse Button**: Move/Pan Node View
  - **Ctrl + a**: Select all nodes
  - **Ctrl + Alt + n**: Create new workflow
  - **Ctrl + o**: Open workflow
