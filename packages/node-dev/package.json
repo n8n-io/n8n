@@ -39,7 +39,8 @@
     "files": [
         "bin",
         "dist",
-        "oclif.manifest.json"
+        "oclif.manifest.json",
+        "src/tsconfig-build.json"
     ],
     "devDependencies": {
         "@oclif/dev-cli": "^1.22.2",
