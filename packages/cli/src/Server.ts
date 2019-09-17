@@ -135,7 +135,7 @@ class App {
 				throw new Error('Basic auth is activated but no password got defined. Please set one!');
 			}
 
-			const authIgnoreRegex = new RegExp(`^\/(rest|healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/.*$`);
+			const authIgnoreRegex = new RegExp(`^\/(rest|healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				if (req.url.match(authIgnoreRegex)) {
 					return next();
