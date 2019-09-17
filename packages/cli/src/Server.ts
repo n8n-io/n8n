@@ -135,7 +135,7 @@ class App {
 				throw new Error('Basic auth is activated but no password got defined. Please set one!');
 			}
 
-			const authIgnoreRegex = new RegExp(`^\/(rest|${this.endpointWebhook}|${this.endpointWebhookTest})\/.*$`);
+			const authIgnoreRegex = new RegExp(`^\/(rest|healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/.*$`);
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				if (req.url.match(authIgnoreRegex)) {
 					return next();
@@ -188,7 +188,7 @@ class App {
 		this.app.use(history({
 			rewrites: [
 				{
-					from: new RegExp(`^\/(rest|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/.*$`),
+					from: new RegExp(`^\/(rest|healthz|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`),
 					to: (context) => {
 						return context.parsedUrl!.pathname!.toString();
 					}
@@ -216,6 +216,20 @@ class App {
 
 			next();
 		});
+
+
+
+		// ----------------------------------------
+		// Healthcheck
+		// ----------------------------------------
+
+
+		// Creates a new workflow
+		this.app.get('/healthz', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IDataObject> => {
+			return {
+				status: 'ok',
+			};
+		}));
 
 
 
