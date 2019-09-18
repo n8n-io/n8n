@@ -298,6 +298,9 @@ export class LinkFish implements INodeType {
 		const options = {
 			method: requestMethod,
 			body,
+			headers: {
+				'x-lf-source': 'n8n',
+			},
 			qs,
 			uri: `https://api.link.fish/Urls/${endpoint}`,
 			auth: {
