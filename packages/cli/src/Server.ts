@@ -5,7 +5,7 @@ import {
 } from 'path';
 import {
 	getConnectionManager,
-} from "typeorm";
+} from 'typeorm';
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as requestPromise from 'request-promise-native';

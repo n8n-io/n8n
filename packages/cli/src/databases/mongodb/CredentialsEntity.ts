@@ -12,7 +12,7 @@ import {
 	Index,
 	ObjectID,
 	ObjectIdColumn,
-} from "typeorm";
+} from 'typeorm';
 
 @Entity()
 export class CredentialsEntity implements ICredentialsDb {

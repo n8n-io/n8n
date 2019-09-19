@@ -13,7 +13,7 @@ import {
 
 import {
 	UserSettings,
-} from "n8n-core";
+} from 'n8n-core';
 
 import {
 	IDataObject,

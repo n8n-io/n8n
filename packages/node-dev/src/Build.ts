@@ -5,7 +5,7 @@ import { IBuildOptions } from '.';
 
 import {
 	UserSettings,
-} from "n8n-core";
+} from 'n8n-core';
 
 
 /**

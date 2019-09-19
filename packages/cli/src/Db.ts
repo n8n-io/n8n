@@ -6,13 +6,13 @@ import {
 
 import {
 	UserSettings,
-} from "n8n-core";
+} from 'n8n-core';
 
 import {
 	ConnectionOptions,
 	createConnection,
 	getRepository,
-} from "typeorm";
+} from 'typeorm';
 
 import {
 	MongoDb,

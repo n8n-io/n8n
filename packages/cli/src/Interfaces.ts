@@ -19,7 +19,7 @@ import {
 } from 'n8n-core';
 
 
-import { ObjectID, Repository } from "typeorm";
+import { ObjectID, Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';

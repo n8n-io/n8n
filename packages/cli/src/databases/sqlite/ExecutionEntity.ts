@@ -11,11 +11,9 @@ import {
 	Column,
 	Entity,
 	Index,
-	ManyToOne,
 	PrimaryGeneratedColumn,
- } from "typeorm";
+ } from 'typeorm';
 
-import { WorkflowEntity } from './WorkflowEntity';
 
 @Entity()
 export class ExecutionEntity implements IExecutionFlattedDb {

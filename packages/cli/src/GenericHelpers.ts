@@ -4,7 +4,7 @@ import { join as pathJoin } from 'path';
 import {
 	readFile as fsReadFile,
 } from 'fs';
-import { promisify } from "util";
+import { promisify } from 'util';
 import { IDataObject } from 'n8n-workflow';
 
 import { IPackageVersions } from './';

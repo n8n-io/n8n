@@ -12,7 +12,7 @@ import {
 import {
 	writeFile as fsWriteFile,
 } from 'fs';
-import { promisify } from "util";
+import { promisify } from 'util';
 
 const fsWriteFileAsync = promisify(fsWriteFile);
 

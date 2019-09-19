@@ -17,7 +17,7 @@ import {
  } from 'fs';
 import * as glob from 'glob-promise';
 import * as path from 'path';
-import { promisify } from "util";
+import { promisify } from 'util';
 
 const fsAccessAsync = promisify(fsAccess);
 const fsReaddirAsync = promisify(fsReaddir);
