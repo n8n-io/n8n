@@ -11,7 +11,7 @@ import {
 	Entity,
 	Index,
 	PrimaryGeneratedColumn,
-} from "typeorm";
+} from 'typeorm';
 
 @Entity()
 export class CredentialsEntity implements ICredentialsDb {

@@ -1,5 +1,5 @@
 import { Workflow } from './Workflow';
-import * as express from "express";
+import * as express from 'express';
 
 export interface IBinaryData {
 	[key: string]: string | undefined;

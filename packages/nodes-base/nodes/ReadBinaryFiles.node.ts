@@ -10,7 +10,7 @@ import * as path from 'path';
 import {
 	readFile as fsReadFile,
 } from 'fs';
-import { promisify } from "util";
+import { promisify } from 'util';
 
 const fsReadFileAsync = promisify(fsReadFile);
 
