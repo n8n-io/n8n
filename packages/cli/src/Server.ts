@@ -3,6 +3,9 @@ import {
 	dirname as pathDirname,
 	join as pathJoin,
 } from 'path';
+import {
+	getConnectionManager,
+} from "typeorm";
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as requestPromise from 'request-promise-native';
@@ -226,12 +229,29 @@ class App {
 		// ----------------------------------------
 
 
-		// Creates a new workflow
-		this.app.get('/healthz', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IDataObject> => {
-			return {
+		// Does very basic health check
+		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
+
+			const connectionManager = getConnectionManager();
+
+			if (connectionManager.connections.length === 0) {
+				const error = new ResponseHelper.ResponseError('No Database connection found!', undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, error);
+			}
+
+			if (connectionManager.connections[0].isConnected === false) {
+				// Connection is not active
+				const error = new ResponseHelper.ResponseError('Database connection not active!', undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, error);
+			}
+
+			// Everything fine
+			const responseData = {
 				status: 'ok',
 			};
-		}));
+
+			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
+		});
 
 
 
