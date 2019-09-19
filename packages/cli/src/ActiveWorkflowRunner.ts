@@ -17,7 +17,6 @@ import {
 	ActiveWorkflows,
 	ActiveWebhooks,
 	NodeExecuteFunctions,
-	WorkflowExecute,
 } from 'n8n-core';
 
 import {

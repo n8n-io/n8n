@@ -259,6 +259,11 @@ export interface IN8nUISettings {
 }
 
 
+export interface IPackageVersions {
+	cli: string;
+}
+
+
 export interface IPushData {
 	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook;
 	type: IPushDataType;

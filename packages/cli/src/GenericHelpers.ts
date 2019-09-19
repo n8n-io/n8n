@@ -1,12 +1,18 @@
 import * as config from '../config';
 import * as express from 'express';
+import { join as pathJoin } from 'path';
 import {
 	readFile as fsReadFile,
 } from 'fs';
 import { promisify } from "util";
 import { IDataObject } from 'n8n-workflow';
 
+import { IPackageVersions } from './';
+
 const fsReadFileAsync = promisify(fsReadFile);
+
+let versionCache: IPackageVersions | undefined;
+
 
 /**
  * Displays a message to the user
@@ -51,6 +57,28 @@ export function getBaseUrl(): string {
  */
 export function getSessionId(req: express.Request): string | undefined {
 	return req.headers.sessionid as string | undefined;
+}
+
+
+/**
+ * Returns information which version of the packages are installed
+ *
+ * @export
+ * @returns {Promise<IPackageVersions>}
+ */
+export async function getVersions(): Promise<IPackageVersions> {
+	if (versionCache !== undefined) {
+		return versionCache;
+	}
+
+	const packageFile = await fsReadFileAsync(pathJoin(__dirname, '../../package.json'), 'utf8') as string;
+	const packageData = JSON.parse(packageFile);
+
+	versionCache = {
+		cli: packageData.version,
+	};
+
+	return versionCache;
 }
 
 

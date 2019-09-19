@@ -14,7 +14,6 @@
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitReturns": true,
 		"preserveConstEnums": true,
-		"resolveJsonModule": true,
 		"declaration": true,
 		"outDir": "./dist/",
 		"target": "es2017",
