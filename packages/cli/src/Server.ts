@@ -6,7 +6,6 @@ import {
 import * as bodyParser from 'body-parser';
 import * as history from 'connect-history-api-fallback';
 import * as requestPromise from 'request-promise-native';
-import { version as versionCli } from '../package.json';
 
 import {
 	ActiveExecutions,
@@ -28,6 +27,7 @@ import {
 	IExecutionsStopData,
 	IExecutionsSummary,
 	IN8nUISettings,
+	IPackageVersions,
 	IWorkflowBase,
 	IWorkflowShortResponse,
 	IWorkflowResponse,
@@ -74,7 +74,6 @@ import * as config from '../config';
 // @ts-ignore
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
-import { version } from '@oclif/command/lib/flags';
 
 
 class App {
@@ -90,6 +89,7 @@ class App {
 	timezone: string;
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 	push: Push.Push;
+	versions: IPackageVersions | undefined;
 
 	constructor() {
 		this.app = express();
@@ -121,6 +121,8 @@ class App {
 
 
 	async config(): Promise<void> {
+
+		this.versions = await GenericHelpers.getVersions();
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive  = config.get('security.basicAuth.active') as boolean;
@@ -1005,7 +1007,7 @@ class App {
 				saveManualExecutions: this.saveManualExecutions,
 				timezone: this.timezone,
 				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
-				versionCli,
+				versionCli: this.versions!.cli,
 			};
 		}));
 
@@ -1118,7 +1120,9 @@ export async function start(): Promise<void> {
 
 	await app.config();
 
-	app.app.listen(PORT, () => {
-		console.log('n8n ready on port ' + PORT);
+	app.app.listen(PORT, async () => {
+		const versions = await GenericHelpers.getVersions();
+		console.log(`n8n ready on port ${PORT}`);
+		console.log(`Version: ${versions.cli}`);
 	});
 }
