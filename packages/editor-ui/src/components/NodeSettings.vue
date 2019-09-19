@@ -355,7 +355,7 @@ export default mixins(
 
 					// Check if the path is supposed to change an array and if so get
 					// the needed data like path and index
-					const parameterPathArray = parameterPath.match(/(.*)\[(\d)\]$/);
+					const parameterPathArray = parameterPath.match(/(.*)\[(\d+)\]$/);
 
 					// Apply the new value
 					if (parameterData.value === undefined && parameterPathArray !== null) {
