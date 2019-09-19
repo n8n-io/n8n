@@ -69,7 +69,9 @@ export async function buildFiles (options?: IBuildOptions): Promise<string> {
 
 	const outputDirectory = options.destinationFolder || UserSettings.getUserN8nFolderCustomExtensionPath();
 
-	let buildCommand = `${tscPath} --p ${tsconfigData.path} --outDir ${outputDirectory} --rootDir ${process.cwd()}`;
+	// Supply a node base path so that it finds n8n-core and n8n-workflow
+	const nodeModulesPath = join(__dirname, '../../node_modules/');
+	let buildCommand = `${tscPath} --p ${tsconfigData.path} --outDir ${outputDirectory} --rootDir ${process.cwd()} --baseUrl ${nodeModulesPath}`;
 	if (options.watch === true) {
 		buildCommand += ' --watch';
 	}
