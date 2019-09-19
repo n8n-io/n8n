@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="paramter-input-list-wrapper">
 		<div v-for="parameter in filteredParameters" :key="parameter.name">
 			<div
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
@@ -169,59 +169,56 @@ export default mixins(
 </script>
 
 <style lang="scss">
-
-.delete-option {
-	display: none;
-	position: absolute;
-	z-index: 999;
-	color: #f56c6c;
-
-	&:hover {
-		color: #ff0000;
-	}
-}
-
-.multi-parameter {
-	position: relative;
-	margin: 0.5em 0;
-	padding: 0.5em 0;
-
-	>.parameter-name {
-		font-weight: 600;
-		border-bottom: 1px solid #999;
-
-		.delete-option {
-			top: 0;
-		}
-	}
-}
-
-.parameter-item {
-	position: relative;
-
-	>.delete-option {
-		left: -0.9em;
-		top: 0.6em;
-	}
-}
-.parameter-item:hover > .delete-option,
-.parameter-name:hover > .delete-option {
-	display: block;
-}
-
-.parameter-name {
-	&:hover {
-		.parameter-info {
-			display: inline;
-		}
-	}
-
+.paramter-input-list-wrapper {
 	.delete-option {
-		left: -0.9em;
+		display: none;
+		position: absolute;
+		z-index: 999;
+		color: #f56c6c;
+
+		&:hover {
+			color: #ff0000;
+		}
 	}
 
-	.parameter-info {
-		display: none;
+	.multi-parameter {
+		position: relative;
+		margin: 0.5em 0;
+		padding: 0.5em 0;
+
+		>.parameter-name {
+			font-weight: 600;
+			border-bottom: 1px solid #999;
+
+			&:hover {
+				.parameter-info {
+					display: inline;
+				}
+			}
+
+			.delete-option {
+				top: 0;
+				left: -0.9em;
+			}
+
+			.parameter-info {
+				display: none;
+			}
+
+		}
+	}
+
+	.parameter-item {
+		position: relative;
+
+		>.delete-option {
+			left: -0.9em;
+			top: 0.6em;
+		}
+	}
+	.parameter-item:hover > .delete-option,
+	.parameter-name:hover > .delete-option {
+		display: block;
 	}
 }
 

@@ -73,10 +73,18 @@ export default Vue
 	}
 
 	.parameter-info {
+		background-color: #ffffffaa;
+		border-radius: 6px;
 		display: none;
+		padding: 4px;
+		position: absolute;
+		right: 0px;
+		top: 8px;
 	}
 
 	.parameter-name {
+		position: relative;
+
 		&:hover {
 			.parameter-info {
 				display: inline;
