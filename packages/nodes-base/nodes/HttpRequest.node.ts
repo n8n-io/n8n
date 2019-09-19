@@ -200,6 +200,56 @@ export class HttpRequest implements INodeType {
 				description: 'If the query and/or body parameter should be set via the UI or raw as JSON',
 			},
 
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Full Response',
+						name: 'fullResponse',
+						type: 'boolean',
+						default: false,
+						description: 'Returns the full reponse data instead of only the body.',
+					},
+					{
+						displayName: 'Follow Redirect',
+						name: 'followRedirect',
+						type: 'boolean',
+						default: true,
+						description: 'Follow HTTP 3xx redirects.',
+					},
+					{
+						displayName: 'Ignore Response Code',
+						name: 'ignoreResponseCode',
+						type: 'boolean',
+						default: false,
+						description: 'Succeeds also when status code is not 2xx.',
+					},
+					{
+						displayName: 'Proxy',
+						name: 'proxy',
+						type: 'string',
+						default: '',
+						placeholder: 'http://myproxy:3128',
+						description: 'HTTP proxy to use.',
+					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 10000,
+						description: 'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request.',
+					},
+				],
+			},
+
+
 			// Header Parameters
 			{
 				displayName: 'Headers',
@@ -382,6 +432,13 @@ export class HttpRequest implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
+		const fullReponseProperties = [
+			'body',
+			'headers',
+			'statusCode',
+			'statusMessage',
+		];
+
 		// TODO: Should have a setting which makes clear that this parameter can not change for each item
 		const requestMethod = this.getNodeParameter('requestMethod', 0) as string;
 		const parametersAreJson = this.getNodeParameter('jsonParameters', 0) as boolean;
@@ -391,7 +448,6 @@ export class HttpRequest implements INodeType {
 		const httpDigestAuth = this.getCredentials('httpDigestAuth');
 		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
 
-		let url: string;
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
 
@@ -418,7 +474,10 @@ export class HttpRequest implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			url = this.getNodeParameter('url', itemIndex) as string;
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const url = this.getNodeParameter('url', itemIndex) as string;
+
+			const fullResponse = !!options.fullResponse as boolean;
 
 			requestOptions = {
 				headers: {},
@@ -426,6 +485,25 @@ export class HttpRequest implements INodeType {
 				uri: url,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 			};
+
+			if (fullResponse === true) {
+				// @ts-ignore
+				requestOptions.resolveWithFullResponse = true;
+			}
+
+			if (options.followRedirect !== undefined) {
+				requestOptions.followRedirect = options.followRedirect as boolean;
+			}
+			if (options.ignoreResponseCode === true) {
+				// @ts-ignore
+				requestOptions.simple = false;
+			}
+			if (options.proxy !== undefined) {
+				requestOptions.proxy = options.proxy as string;
+			}
+			if (options.timeout !== undefined) {
+				requestOptions.timeout = options.timeout as number;
+			}
 
 			if (parametersAreJson === true) {
 				// Parameters are defined as JSON
@@ -499,7 +577,7 @@ export class HttpRequest implements INodeType {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 
 				const newItem: INodeExecutionData = {
-					json: items[itemIndex].json,
+					json: {},
 					binary: {},
 				};
 
@@ -510,22 +588,70 @@ export class HttpRequest implements INodeType {
 					Object.assign(newItem.binary, items[itemIndex].binary);
 				}
 
-				items[itemIndex] = newItem;
 
 				const fileName = (url).split('/').pop();
 
-				items[itemIndex].binary![dataPropertyName] = await this.helpers.prepareBinaryData(response, fileName);
+
+				if (fullResponse === true) {
+					const returnItem: IDataObject = {};
+					for (const property of fullReponseProperties) {
+						if (property === 'body') {
+							continue;
+						}
+ 						returnItem[property] = response[property];
+					}
+
+					newItem.json = returnItem;
+
+					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response.body, fileName);
+				} else {
+					newItem.json = items[itemIndex].json;
+
+					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response, fileName);
+				}
+
+				items[itemIndex] = newItem;
 			} else if (responseFormat === 'string') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 
-				returnItems.push({
-					json: {
-						[dataPropertyName]: response,
+				if (fullResponse === true) {
+					const returnItem: IDataObject = {};
+					for (const property of fullReponseProperties) {
+						if (property === 'body') {
+							returnItem[dataPropertyName] = response[property];
+							continue;
+						}
+
+						returnItem[property] = response[property];
 					}
-				});
+					returnItems.push({ json: returnItem });
+				} else {
+					returnItems.push({
+						json: {
+							[dataPropertyName]: response,
+						}
+					});
+				}
 			} else {
 				// responseFormat: 'json'
-				returnItems.push({ json: response });
+				if (fullResponse === true) {
+					const returnItem: IDataObject = {};
+					for (const property of fullReponseProperties) {
+						returnItem[property] = response[property];
+					}
+
+					if (typeof returnItem.body === 'string') {
+						throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					}
+
+					returnItems.push({ json: returnItem });
+				} else {
+					if (typeof response === 'string') {
+						throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					}
+
+					returnItems.push({ json: response });
+				}
 			}
 		}
 
