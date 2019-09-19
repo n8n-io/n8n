@@ -46,6 +46,7 @@
         "@oclif/dev-cli": "^1.22.2",
         "@types/inquirer": "^6.5.0",
         "@types/node": "^10.10.1",
+        "@types/tmp": "^0.1.0",
         "@types/vorpal": "^1.11.0",
         "tslint": "^5.17.0"
     },
@@ -58,6 +59,7 @@
         "n8n-workflow": "^0.11.0",
         "replace-in-file": "^4.1.0",
         "request": "^2.88.0",
+        "tmp-promise": "^2.0.2",
         "typescript": "~3.5.2"
     },
     "jest": {

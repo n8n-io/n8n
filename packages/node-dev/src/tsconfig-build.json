@@ -3,9 +3,7 @@
 		"lib": [
 			"es2017"
 		],
-		"types": [
-			"node"
-		],
+		"types": [],
 		"module": "commonjs",
 		"importHelpers": true,
 		"noImplicitAny": true,
@@ -18,8 +16,8 @@
 		"sourceMap": true
 	},
 	"include": [
-		"../*.credentials.ts",
-		"../*.node.ts"
+		"*.credentials.ts",
+		"*.node.ts"
 	],
 	"exclude": [
 		"node_modules"
