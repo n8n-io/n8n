@@ -268,6 +268,7 @@ export class HttpRequest implements INodeType {
 						],
 						requestMethod: [
 							'POST',
+							'PUT',
 						],
 					},
 				},
@@ -289,6 +290,7 @@ export class HttpRequest implements INodeType {
 						],
 						requestMethod: [
 							'POST',
+							'PUT',
 						],
 					},
 				},
