@@ -1129,8 +1129,19 @@ class App {
 
 
 		// Serve the website
+		const startTime = (new Date()).toUTCString();
 		const editorUiPath = require.resolve('n8n-editor-ui');
-		this.app.use('/', express.static(pathJoin(pathDirname(editorUiPath), 'dist'), { index: 'index.html' }));
+		this.app.use('/', express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
+			index: 'index.html',
+			setHeaders: (res, path) => {
+				if (res.req && res.req.url === '/index.html') {
+					// Set last modified date manually to n8n start time so
+					// that it hopefully refreshes the page when a new version
+					// got used
+					res.setHeader('Last-Modified', startTime);
+				}
+			}
+		}));
 	}
 
 }
