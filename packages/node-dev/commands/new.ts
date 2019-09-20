@@ -152,9 +152,9 @@ export class New extends Command {
 
 			this.log('Node got created: ' + destinationFilePath);
 		} catch (error) {
-			this.error('\nGOT ERROR');
-			this.error('====================================');
-			this.error(error.message);
+			this.log(`\nGOT ERROR: "${error.message}"`);
+			this.log('====================================');
+			this.log(error.stack);
 			return;
 		}
 	}
