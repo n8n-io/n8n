@@ -427,8 +427,6 @@ export default mixins(
 				this.textEditDialogVisible = false;
 			},
 			displayEditDialog () {
-				console.log('displayEditDialog...');
-
 				if (this.isEditor) {
 					this.codeEditDialogVisible = true;
 				} else {
