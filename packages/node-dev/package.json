@@ -39,6 +39,7 @@
     "files": [
         "bin",
         "dist",
+        "templates",
         "oclif.manifest.json",
         "src/tsconfig-build.json"
     ],
