@@ -171,8 +171,8 @@ export default mixins(
 			RunData,
 		},
 		errorCaptured: (err, vm, info) => {
-			console.error('errorCaptured .....');
-			console.error(err);
+			console.error('errorCaptured'); // eslint-disable-line no-console
+			console.error(err); // eslint-disable-line no-console
 		},
 		watch: {
 			// Listen to route changes and load the workflow accordingly
@@ -1567,8 +1567,8 @@ export default mixins(
 						try {
 							nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, node.parameters, true, false);
 						} catch (e) {
-							console.error(`There was a problem loading the node-parameters of node: "${node.name}"`);
-							console.error(e);
+							console.error(`There was a problem loading the node-parameters of node: "${node.name}"`); // eslint-disable-line no-console
+							console.error(e); // eslint-disable-line no-console
 						}
 						node.parameters = nodeParameters !== null ? nodeParameters : {};
 					}

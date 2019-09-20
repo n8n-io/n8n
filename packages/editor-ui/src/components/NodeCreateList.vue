@@ -92,8 +92,6 @@ export default Vue.extend({
 				// Make sure that we do not get before the first nodeType
 				this.activeNodeTypeIndex = Math.max(this.activeNodeTypeIndex, 0);
 			} else if (e.key === 'Enter' && activeNodeType) {
-				console.log('enter');
-
 				this.nodeTypeSelected(activeNodeType.name);
 			}
 
