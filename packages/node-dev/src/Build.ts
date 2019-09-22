@@ -1,4 +1,5 @@
 import { ChildProcess, spawn } from 'child_process';
+const copyfiles = require('copyfiles');
 import {
 	readFile as fsReadFile,
 	write as fsWrite,
@@ -107,7 +108,7 @@ export async function buildFiles (options?: IBuildOptions): Promise<string> {
 		buildProcess.on('exit', code => {
 			// Remove the tmp tsconfig file
 			tsconfigData.cleanup();
-			resolve(outputDirectory);
+			copyfiles([join(process.cwd(), './*.png'), outputDirectory], { up: true }, () => resolve(outputDirectory));
 		});
 	});
 }
