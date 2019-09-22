@@ -8,9 +8,6 @@ so also used with internal tools.
 
 <a href="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
-Is still in beta so can not guarantee that everything works perfectly. Also
-is there currently not much documentation. That will hopefully change soon.
-
 
 
 ## Demo
@@ -19,6 +16,12 @@ is there currently not much documentation. That will hopefully change soon.
 automatically sends a new Slack notification every time a Github repository
 received or lost a star.
 
+
+## Documentation
+
+The official n8n documentation can be found under: [https://docs.n8n.io](https://docs.n8n.io)
+
+Additional information and example workflows on the n8n.io website: [https://n8n.io](https://n8n.io)
 
 
 ## Usage
@@ -68,7 +71,7 @@ did not hear anybody complain there. So I guess it should be ok.
 
 ## Development Setup
 
-Have you found a bug :bug: ? Or maybe you have a nice feature :sparkles: to contribute ? The [CONTRIBUTING guide](CONTRIBUTING.md) will help you get your development environment ready in minutes.
+Have you found a bug :bug: ? Or maybe you have a nice feature :sparkles: to contribute ? The [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) will help you get your development environment ready in minutes.
 
 
 

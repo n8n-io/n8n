@@ -8,13 +8,11 @@ so also used with internal tools.
 
 <a href="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
-Is still in beta so can not guarantee that everything works perfectly. Also
-is there currently not much documentation. That will hopefully change soon.
-
 
 ## Contents
 
 - [Demo](#demo)
+- [Documentation](#documentation)
 - [Start n8n in Docker](#start-n8n-in-docker)
 - [Start with tunnel](#start-with-tunnel)
 - [Securing n8n](#securing-n8n)
@@ -32,6 +30,12 @@ is there currently not much documentation. That will hopefully change soon.
 which shows how to create a simple workflow which automatically sends a new
 Slack notification every time a Github repository received or lost a star.
 
+
+## Documentation
+
+The official n8n documentation can be found under: [https://docs.n8n.io](https://docs.n8n.io)
+
+Additional information and example workflows on the n8n.io website: [https://n8n.io](https://n8n.io)
 
 
 ## Start n8n in Docker
