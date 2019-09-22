@@ -23,6 +23,7 @@ import {
 	faAngleUp,
 	faArrowRight,
 	faAt,
+	faBook,
 	faBug,
 	faCalendar,
 	faCheck,
@@ -59,6 +60,7 @@ import {
 	faPlay,
 	faPlayCircle,
 	faPlus,
+	faQuestion,
 	faQuestionCircle,
 	faRedo,
 	faRss,
@@ -78,6 +80,7 @@ import {
 	faTimes,
 	faTrash,
 	faUndo,
+	faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
@@ -90,6 +93,7 @@ library.add(faAngleRight);
 library.add(faAngleUp);
 library.add(faArrowRight);
 library.add(faAt);
+library.add(faBook);
 library.add(faBug);
 library.add(faCalendar);
 library.add(faCheck);
@@ -126,6 +130,7 @@ library.add(faPen);
 library.add(faPlay);
 library.add(faPlayCircle);
 library.add(faPlus);
+library.add(faQuestion);
 library.add(faQuestionCircle);
 library.add(faRedo);
 library.add(faRss);
@@ -145,6 +150,7 @@ library.add(faThLarge);
 library.add(faTimes);
 library.add(faTrash);
 library.add(faUndo);
+library.add(faUsers);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 
