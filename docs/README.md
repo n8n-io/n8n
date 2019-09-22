@@ -1,5 +1,11 @@
-# n8n - Workflow Automation Tool
+# n8n Documentation
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-logo.png)
+This is the documentation of n8n a free node-based "Open Source" (with Commons Clause)
+Workflow Automation Tool.
 
-Documentation coming soon... in the meantime, you can browse the [awesome collection of n8n workflows](workflows/README.md).
+It covers everything from setup, usage to development. It is still work in progress and all contributions are welcome.
+
+
+## What is n8n?
+
+n8n (pronounced nodemation) helps you to interconnect each and every app with an API in the world with each other to share and manipulate its data without a single line of code. It is an easy to use, user-friendly and highly customizable service, which uses an intuitive user interface for you to design your unique workflows very fast. Hosted on your server and not based in the cloud it keeps your sensible data very secure in your own trusted database.
