@@ -468,8 +468,6 @@ export default mixins(
 	}
 }
 
-
-
 a.logo-text {
 	position: relative;
 	top: -3px;
