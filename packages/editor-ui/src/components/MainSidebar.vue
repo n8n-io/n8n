@@ -26,7 +26,7 @@
 					</a>
 				</el-menu-item>
 
-				<el-submenu index="workflow">
+				<el-submenu index="workflow" title="Workflow">
 					<template slot="title">
 						<font-awesome-icon icon="network-wired"/>&nbsp;
 						<span slot="title" class="item-title-root">Workflows</span>
@@ -88,7 +88,7 @@
 					</el-menu-item>
 				</el-submenu>
 
-				<el-submenu index="credentials">
+				<el-submenu index="credentials" title="Credentials">
 					<template slot="title">
 						<font-awesome-icon icon="key"/>&nbsp;
 						<span slot="title" class="item-title-root">Credentials</span>
@@ -112,6 +112,38 @@
 					<font-awesome-icon icon="tasks"/>&nbsp;
 					<span slot="title" class="item-title-root">Executions</span>
 				</el-menu-item>
+
+				<el-submenu index="help" class="help-menu" title="Help">
+					<template slot="title">
+						<font-awesome-icon icon="question"/>&nbsp;
+						<span slot="title" class="item-title-root">Help</span>
+					</template>
+
+					<el-menu-item index="help-documentation">
+						<template slot="title">
+							<a href="https://docs.n8n.io" target="_blank">
+								<font-awesome-icon icon="book"/>
+								<span slot="title" class="item-title">Documentation</span>
+							</a>
+						</template>
+					</el-menu-item>
+					<el-menu-item index="help-forum">
+						<template slot="title">
+							<a href="https://community.n8n.io" target="_blank">
+								<font-awesome-icon icon="users"/>
+								<span slot="title" class="item-title">Forum</span>
+							</a>
+						</template>
+					</el-menu-item>
+					<el-menu-item index="help-examples">
+						<template slot="title">
+							<a href="https://n8n.io/workflows" target="_blank">
+								<font-awesome-icon icon="network-wired"/>
+								<span slot="title" class="item-title">Workflows</span>
+							</a>
+						</template>
+					</el-menu-item>
+				</el-submenu>
 
 			</el-menu>
 
@@ -418,17 +450,25 @@ export default mixins(
 	transform: scale(1.1);
 }
 
-.el-menu-item.logo-item {
-	background-color: $--color-primary !important;
-	height: 65px;
+.el-menu-item {
+	a {
+		color: #666;
+	}
 
-	.icon {
-		position: relative;
-		height: 23px;
-		left: -10px;
-		top: -2px;
+	&.logo-item {
+		background-color: $--color-primary !important;
+		height: 65px;
+
+		.icon {
+			position: relative;
+			height: 23px;
+			left: -10px;
+			top: -2px;
+		}
 	}
 }
+
+
 
 a.logo-text {
 	position: relative;
