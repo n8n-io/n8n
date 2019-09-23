@@ -38,6 +38,11 @@ import * as config from '../config';
  * @param {string} [executionId] The id the execution got saved as
  */
 function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mode: WorkflowExecuteMode, executionId?: string, retryOf?: string): void {
+	if (mode === 'manual') {
+		// Do not call error workflow when executed manually
+		return;
+	}
+
 	// Check if there was an error and if so if an errorWorkflow is set
 	if (fullRunData.data.resultData.error !== undefined && workflowData.settings !== undefined && workflowData.settings.errorWorkflow) {
 		const workflowErrorData = {
