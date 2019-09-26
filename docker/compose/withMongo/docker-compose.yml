@@ -15,11 +15,14 @@ services:
       - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
 
   n8n:
-    image: n8n
+    image: n8nio/n8n
     restart: always
     environment:
       - DB_TYPE=mongodb
       - DB_MONGODB_CONNECTION_URL=mongodb://n8nuser:${MONGO_NON_ROOT_PASSWORD}@mongo:27017/${MONGO_INITDB_DATABASE}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER
+      - N8N_BASIC_AUTH_PASSWORD
     ports:
       - 5678:5678
     links:
