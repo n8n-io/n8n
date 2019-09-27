@@ -29,6 +29,14 @@ To simplify the development process we created a very basic CLI which creates bo
 That everything works correctly, similarly and no unnecessary code gets added it is important to follow the following guidelines:
 
 
+### Do not change incoming data
+
+Never change the incoming data a node receives (which can be queried with `this.getInputData()`) as it gets shared by all nodes. If data has to get added, changed or deleted it has to be cloned and the new data returned. If that is not done will sibling nodes, which execute after the current one, operate on the altered data and would so process different data then they were supposed to.
+It is however not needed to always clone all the data. If a node for, example only, changes only the binary data but not the JSON one simply a new item can be created which reuses the reference to the JSON item.
+
+An example can be seen in the code of the [ReadBinartFile-Node](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ReadBinaryFile.node.ts#L69-L83).
+
+
 ### Write nodes in TypeScript
 
 All code of n8n is written in TypeScript so should also be the nodes. That makes development easier and faster and avoids at least some bugs.
