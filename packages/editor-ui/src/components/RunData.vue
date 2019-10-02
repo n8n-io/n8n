@@ -48,7 +48,7 @@
 			</div>
 			<div v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name) && !workflowRunData[node.name][runIndex].error" class="title-data-display-selector" @click.stop>
 				<el-radio-group v-model="displayMode" size="mini">
-					<el-radio-button label="JSON"></el-radio-button>
+					<el-radio-button label="JSON" :disabled="showData === false"></el-radio-button>
 					<el-radio-button label="Table"></el-radio-button>
 					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
@@ -61,16 +61,26 @@
 					<pre><code>{{workflowRunData[node.name][runIndex].error.stack}}</code></pre>
 				</div>
 				<span v-else>
-					<div v-if="['JSON', 'Table'].includes(displayMode)">
+					<div v-if="showData === false" class="to-much-data">
+						<h3>
+							Node contains large amount of data
+						</h3>
+
+						<div class="text">
+							The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />
+							Displaying it could cause problems!
+						</div>
+
+						<el-button size="small" @click="displayMode = 'Table';showData = true;">
+							<font-awesome-icon icon="eye"/>
+							Display Data Anyway
+						</el-button>
+					</div>
+					<div v-else-if="['JSON', 'Table'].includes(displayMode)">
 						<div v-if="jsonData.length === 0" class="no-data">
 							No text data found
 						</div>
-						<vue-json-pretty
-							v-else-if="displayMode === 'JSON'"
-							class="json-data"
-							:data="jsonData">
-						</vue-json-pretty>
-						<div v-else-if="displayMode === 'Table'">
+						<div v-else-if="showData === true || displayMode === 'Table'">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
 								Entries exist but they do not contain any JSON data.
 							</div>
@@ -83,6 +93,11 @@
 								</tr>
 							</table>
 						</div>
+						<vue-json-pretty
+							v-else-if="displayMode === 'JSON'"
+							class="json-data"
+							:data="jsonData">
+						</vue-json-pretty>
 					</div>
 					<div v-else-if="displayMode === 'Binary'">
 						<div v-if="binaryData.length === 0" class="no-data">
@@ -188,8 +203,10 @@ export default mixins(
 		data () {
 			return {
 				binaryDataPreviewActive: false,
+				dataSize: 0,
 				displayMode: 'Table',
 				runIndex: 0,
+				showData: false,
 				outputIndex: 0,
 				binaryDataDisplayVisible: false,
 				binaryDataDisplayData: null as IBinaryDisplayData | null,
@@ -427,8 +444,20 @@ export default mixins(
 		},
 		watch: {
 			node (newNode, oldNode) {
-				// Reset the selected output index every time another node gest selected
+				// Reset the selected output index every time another node gets selected
 				this.outputIndex = 0;
+
+				// Hide by default the data from being displayed
+				this.showData = false;
+
+				// Check how much data there is to display
+				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
+				this.dataSize = JSON.stringify(inputData).length;
+				if (this.dataSize < 102400) {
+					// Data is reasonable small (< 100kb) so display it directly
+					this.showData = true;
+				}
+
 				if (this.displayMode === 'Binary' && this.binaryData.length === 0) {
 					this.displayMode = 'Table';
 				}
@@ -544,7 +573,16 @@ export default mixins(
 		.json-data,
 		.message,
 		.no-data {
-			margin: 10px;
+			margin: 1em;
+		}
+
+		.to-much-data  {
+			margin: 1em;
+			text-align: center;
+
+			.text {
+				margin-bottom: 1em;
+			}
 		}
 
 		.error-display {

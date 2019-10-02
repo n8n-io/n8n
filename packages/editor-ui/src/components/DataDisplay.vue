@@ -4,7 +4,7 @@
 			<div class="data-display" >
 				<NodeSettings @valueChanged="valueChanged" />
 				<RunData />
-				<div class="close-button clickable close-on-click" @click="close" title="Close">
+				<div class="close-button clickable close-on-click" title="Close">
 					<i class="el-icon-close close-on-click"></i>
 				</div>
 			</div>
