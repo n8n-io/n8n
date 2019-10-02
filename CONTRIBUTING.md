@@ -10,6 +10,8 @@ Great that you are here and you want to contribute to n8n
 - [Development Setup](#development-setup)
 - [Development Cycle](#development-cycle)
 - [Create Custom Nodes](#create-custom-nodes)
+- [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
+- [Extend Documentation](#extend-documentation)
 
 
 ## Code of Conduct
@@ -159,6 +161,33 @@ helps with n8n-node-development.
 [To n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev)
 
 
+
+## Create a new node to contribute to n8n
+
+If you want to create a node which should be added to n8n follow these steps:
+
+  1. Read the information in the [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev) package as it contains a lot of generic information about node development.
+
+  1. Create the n8n development setup like described above and start n8n in develoment mode `npm run dev`
+
+  1. Create a new folder for the new node. For a service named "Example" the folder would be called: `/packages/nodes-base/nodes/Example`
+
+  1. If there is already a similar node simply copy the existing one in the new folder and rename it. If none exists yet, create a boilerplate node with [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev) and copy that one in the folder.
+
+  1. If the node needs credentials because it has to authenticate with an API or similar create new ones. Existing ones can be found in folder `/packages/nodes-base/credentials`. Also there it is the easiest to simply copy existing similar ones.
+
+  1. Add the path to the new node (and optionally credentials) to package.json of `nodes-base`. It already contains a property `n8n` with its own keys `credentials` and `nodes`.
+
+  1. Add icon for the node (60x60 PNG)
+
+  1. Start n8n. The new node will then be available via the editor UI and can be tested.
+
+
+When developing n8n must get restarted and the browser reloaded every time parameters of a node change (like new ones added, removed or changed). Only then will the new data be loaded and the node displayed correctly.
+
+If only the code of the node changes (the execute method) than it is not needed as each workflow automatically starts a new process and so will always load the latest code.
+
+
 ## Extend Documentation
 
 All the files which get used in the n8n documentation on [https://docs.n8n.io](https://docs.n8n.io)
@@ -168,7 +197,7 @@ and additions can directly be made in there
 That the markdown docs look pretty we use [docsify](https://docsify.js.org). It is possible to test
 locally how it looks like rendered with the following commands:
 
-```
+```bash
 # 1. Install docisify
 npm i docsify-cli -g
 
@@ -177,4 +206,4 @@ cd /data/n8n
 
 # 3. Start docsificy
 docsify serve ./docs
-``
+```
