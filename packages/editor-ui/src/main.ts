@@ -37,6 +37,7 @@ import {
 	faDotCircle,
 	faEdit,
 	faEnvelope,
+	faEye,
 	faExclamationTriangle,
 	faExternalLinkAlt,
 	faFile,
@@ -107,6 +108,7 @@ library.add(faCopy);
 library.add(faDotCircle);
 library.add(faEdit);
 library.add(faEnvelope);
+library.add(faEye);
 library.add(faExclamationTriangle);
 library.add(faExternalLinkAlt);
 library.add(faFile);
