@@ -158,3 +158,23 @@ helps with n8n-node-development.
 
 [To n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev)
 
+
+## Extend Documentation
+
+All the files which get used in the n8n documentation on [https://docs.n8n.io](https://docs.n8n.io)
+can be found in the [/docs](https://github.com/n8n-io/n8n/tree/master/docs) folder. So all changes
+and additions can directly be made in there
+
+That the markdown docs look pretty we use [docsify](https://docsify.js.org). It is possible to test
+locally how it looks like rendered with the following commands:
+
+```
+# 1. Install docisify
+npm i docsify-cli -g
+
+# 2. Go into n8n folder (the same folder which contains this file). For example:
+cd /data/n8n
+
+# 3. Start docsificy
+docsify serve ./docs
+``
