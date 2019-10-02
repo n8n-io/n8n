@@ -30,7 +30,4 @@
 
 - Links
 
-  - [![Github](https://n8n.io/favicon.ico ':size=16')n8n.io](https://n8n.io)
-  - [![Github](https://icongram.jgog.in/simple/github.svg?color=808080&size=16)Github](https://github.com/n8n-io/n8n)
-  - [![NPM](https://icongram.jgog.in/simple/npm.svg?colored&size=16)NPM](https://www.npmjs.com/package/n8n)
-  - [![Twitter](https://icongram.jgog.in/simple/twitter.svg?colored&size=16)@n8n_io](http://twitter.com/n8n_io)
+  - [![Website](https://n8n.io/favicon.ico ':size=16')n8n.io](https://n8n.io)
