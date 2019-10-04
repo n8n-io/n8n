@@ -145,7 +145,9 @@ export default mixins(genericHelpers)
 				const newParameterValue: INodeParameters = {};
 
 				for (const optionParameter of option.values) {
-					if (optionParameter.typeOptions !== undefined && optionParameter.typeOptions.multipleValues === true) {
+					if (optionParameter.type === 'fixedCollection' && optionParameter.typeOptions.multipleValues === true) {
+						newParameterValue[optionParameter.name] = {};
+					} else if (optionParameter.typeOptions !== undefined && optionParameter.typeOptions.multipleValues === true) {
 						// Multiple values are allowed so append option to array
 						newParameterValue[optionParameter.name] = get(this.nodeValues, `${this.path}.${optionParameter.name}`, []);
 						(newParameterValue[optionParameter.name] as INodeParameters[]).push(JSON.parse(JSON.stringify(optionParameter.default)));
