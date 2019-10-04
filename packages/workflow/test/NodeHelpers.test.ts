@@ -2676,6 +2676,144 @@ describe('Workflow', () => {
 						},
 					},
 				},
+				{
+				description: 'complex type "fixedCollection" with "multipleValues: true". Which contains complex type "fixedCollection" with "multipleValues: true". One value set.',
+					input: {
+						nodePropertiesArray: [
+							{
+								displayName: 'Values1',
+								name: 'values1',
+								type: 'fixedCollection',
+								typeOptions: {
+									multipleValues: true,
+								},
+								description: 'The value to set.',
+								default: {},
+								options: [
+									{
+										displayName: 'Options1',
+										name: 'options1',
+										values: [
+											{
+												displayName: 'Values2',
+												name: 'values2',
+												type: 'fixedCollection',
+												typeOptions: {
+													multipleValues: true,
+												},
+												description: 'The value to set.',
+												default: {},
+												options: [
+													{
+														displayName: 'Options2',
+														name: 'options2',
+														values: [
+															{
+																name: 'string1',
+																displayName: 'string1',
+																type: 'string',
+																default: 'default string1',
+															},
+															{
+																name: 'number1',
+																displayName: 'number1',
+																type: 'number',
+																default: 0,
+															},
+														],
+													},
+												],
+											},
+										],
+									},
+								],
+							},
+						],
+						nodeValues: {
+							values1: {
+								options1: [
+									{
+										values2: {
+											options2: [
+												{
+													number1: 1,
+												},
+											],
+										},
+									},
+								],
+							},
+						},
+					},
+					output: {
+						noneDisplayedFalse: {
+							defaultsFalse: {
+								values1: {
+									options1: [
+										{
+											values2: {
+												options2: [
+													{
+														number1: 1,
+													},
+												],
+											},
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values1: {
+									options1: [
+										{
+											values2: {
+												options2: [
+													{
+														string1: 'default string1',
+														number1: 1,
+													},
+												],
+										},
+										},
+									],
+								},
+							},
+						},
+						noneDisplayedTrue: {
+							defaultsFalse: {
+								values1: {
+									options1: [
+										{
+											values2: {
+												options2: [
+													{
+														number1: 1,
+													},
+												],
+											},
+										},
+									],
+								},
+							},
+							defaultsTrue: {
+								values1: {
+									options1: [
+										{
+											values2: {
+												options2: [
+													{
+														string1: 'default string1',
+														number1: 1,
+													},
+												],
+											},
+										},
+									],
+								},
+							},
+						},
+					},
+				},
 			];
 
 
