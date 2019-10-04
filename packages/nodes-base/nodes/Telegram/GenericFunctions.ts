@@ -134,9 +134,6 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	console.log('');
-	console.log('============ apiRequest ===========');
-
 	const credentials = this.getCredentials('telegramApi');
 
 	if (credentials === undefined) {
@@ -154,16 +151,9 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		uri: `https://api.telegram.org/bot${credentials.accessToken}/${endpoint}`,
 		json: true,
 	};
-	console.log(JSON.stringify(options, null, 2));
 
 	try {
-		console.log('MAKE CALL');
-		const response = await this.helpers.request!(options);
-		console.log('____response:');
-		console.log(JSON.stringify(response, null, 2));
-
-		return response;
-		// return this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error

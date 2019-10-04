@@ -111,6 +111,9 @@ export class TelegramTrigger implements INodeType {
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				return false;
+			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
