@@ -29,6 +29,7 @@
             "dist/credentials/ActiveCampaignApi.credentials.js",
             "dist/credentials/AirtableApi.credentials.js",
             "dist/credentials/AsanaApi.credentials.js",
+            "dist/credentials/Aws.credentials.js",
             "dist/credentials/ChargebeeApi.credentials.js",
             "dist/credentials/DropboxApi.credentials.js",
             "dist/credentials/GithubApi.credentials.js",
