@@ -484,7 +484,7 @@ export default mixins(
 									options: [
 										{
 											name: '[Data to large]',
-										}
+										},
 									],
 								}
 							);
