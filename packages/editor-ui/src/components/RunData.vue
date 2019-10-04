@@ -80,7 +80,7 @@
 						<div v-if="jsonData.length === 0" class="no-data">
 							No text data found
 						</div>
-						<div v-else-if="showData === true || displayMode === 'Table'">
+						<div v-else-if="displayMode === 'Table'">
 							<div v-if="tableData !== null && tableData.columns.length === 0" class="no-data">
 								Entries exist but they do not contain any JSON data.
 							</div>
