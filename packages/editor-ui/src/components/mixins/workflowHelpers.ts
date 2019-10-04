@@ -422,10 +422,12 @@ export const workflowHelpers = mixins(
 						await this.restApi().updateWorkflow(currentWorkflow, workflowData);
 					}
 
-					this.$router.push({
-						name: 'NodeViewExisting',
-						params: { name: workflowData.id as string, action: 'workflowSave' },
-					});
+					if (this.$route.params.name !== workflowData.id) {
+						this.$router.push({
+							name: 'NodeViewExisting',
+							params: { name: workflowData.id as string, action: 'workflowSave' },
+						});
+					}
 
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
