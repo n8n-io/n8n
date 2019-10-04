@@ -232,3 +232,5 @@ Before you upgrade to the latest version make sure to check here if there are an
 ## License
 
 n8n is licensed under [**Apache 2.0 with Commons Clause**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
+
+Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license)
