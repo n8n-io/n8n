@@ -46,6 +46,7 @@
             "dist/credentials/Redis.credentials.js",
             "dist/credentials/SlackApi.credentials.js",
             "dist/credentials/Smtp.credentials.js",
+            "dist/credentials/TelegramApi.credentials.js",
             "dist/credentials/TrelloApi.credentials.js",
             "dist/credentials/TwilioApi.credentials.js"
         ],
@@ -91,6 +92,8 @@
             "dist/nodes/Slack/Slack.node.js",
             "dist/nodes/SpreadsheetFile.node.js",
             "dist/nodes/Start.node.js",
+            "dist/nodes/Telegram/Telegram.node.js",
+            "dist/nodes/Telegram/TelegramTrigger.node.js",
             "dist/nodes/Trello/Trello.node.js",
             "dist/nodes/Trello/TrelloTrigger.node.js",
             "dist/nodes/Twilio/Twilio.node.js",
