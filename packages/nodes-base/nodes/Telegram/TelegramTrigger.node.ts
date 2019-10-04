@@ -102,7 +102,7 @@ export class TelegramTrigger implements INodeType {
 					},
 				],
 				required: true,
-				default: ['*'],
+				default: [],
 				description: 'The update types to listen to.',
 			},
 		],
