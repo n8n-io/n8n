@@ -68,7 +68,9 @@
 
 						<div class="text">
 							The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />
-							Displaying it could cause problems!
+							Displaying it could cause problems!<br />
+							<br />
+							If you decide to display it anyway avoid the JSON view!
 						</div>
 
 						<el-button size="small" @click="displayMode = 'Table';showData = true;">
@@ -441,26 +443,32 @@ export default mixins(
 					key,
 				};
 			},
-		},
-		watch: {
-			node (newNode, oldNode) {
-				// Reset the selected output index every time another node gets selected
-				this.outputIndex = 0;
-
+			refreshDataSize () {
 				// Hide by default the data from being displayed
 				this.showData = false;
 
 				// Check how much data there is to display
 				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
 				this.dataSize = JSON.stringify(inputData).length;
-				if (this.dataSize < 102400) {
-					// Data is reasonable small (< 100kb) so display it directly
+
+				if (this.dataSize < 204800) {
+					// Data is reasonable small (< 200kb) so display it directly
 					this.showData = true;
 				}
 
 				if (this.displayMode === 'Binary' && this.binaryData.length === 0) {
 					this.displayMode = 'Table';
 				}
+			},
+		},
+		watch: {
+			node (newNode, oldNode) {
+				// Reset the selected output index every time another node gets selected
+				this.outputIndex = 0;
+				this.refreshDataSize();
+			},
+			jsonData () {
+				this.refreshDataSize();
 			},
 			displayMode () {
 				this.closeBinaryDataDisplay();
