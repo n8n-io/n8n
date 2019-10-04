@@ -468,12 +468,27 @@ export default mixins(
 					tempOutputData = this.getNodeOutputData(runData, parentNode[0], filterText, itemIndex, 0, 'main', outputIndex) as IVariableSelectorOption[];
 
 					if (tempOutputData) {
-						currentNodeData.push(
-							{
-								name: 'Input Data',
-								options: this.sortOptions(tempOutputData),
-							}
-						);
+						if (JSON.stringify(tempOutputData).length < 102400) {
+							// Data is reasonable small (< 100kb) so add it
+							currentNodeData.push(
+								{
+									name: 'Input Data',
+									options: this.sortOptions(tempOutputData),
+								}
+							);
+						} else {
+							// Data is to large so do not add
+							currentNodeData.push(
+								{
+									name: 'Input Data',
+									options: [
+										{
+											name: '[Data to large]',
+										}
+									],
+								}
+							);
+						}
 					}
 				}
 
