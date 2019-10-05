@@ -8,7 +8,7 @@ import {
 	IDataObject
 } from 'n8n-workflow';
 
-import { awsConfigCredentials } from './GenericFunctions';
+import { awsApiRequest } from './GenericFunctions';
 
 import { Lambda } from 'aws-sdk';
 
@@ -89,13 +89,9 @@ export class AwsLambda implements INodeType {
 	methods = {
 		loadOptions: {
 			async getFunctions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				await awsConfigCredentials.call(this);
-
 				const returnData: INodePropertyOptions[] = [];
-
-				let lambda = new Lambda();
 				try {
-					var data = await lambda.listFunctions({}).promise();
+					var data = await awsApiRequest.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
 				} catch (err) {
 					throw new Error(`AWS Error: ${err}`);
 				}
@@ -116,9 +112,6 @@ export class AwsLambda implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		await awsConfigCredentials.call(this);
-		const lambda = new Lambda();
-
 		for (let i = 0; i < items.length; i++) {
 			const params = {
 				FunctionName: this.getNodeParameter('function', i) as string,
@@ -128,16 +121,38 @@ export class AwsLambda implements INodeType {
 			};
 
 			try {
-				var responseData = await lambda.invoke(params).promise();
+
+				var responseData = await awsApiRequest.call(
+					this,
+					'lambda',
+					'POST',
+					`/2015-03-31/functions/${params.FunctionName}/invocations?Qualifier=${params.Qualifier}`,
+					params.Payload,
+					{
+						'X-Amz-Invocation-Type': params.InvocationType,
+						'Content-Type': 'application/x-amz-json-1.0',
+					},
+				);
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);
 			}
 
-			returnData.push({
-				StatusCode: responseData.StatusCode,
-				Result: responseData.Payload,
-				Error: responseData.FunctionError,
-			} as IDataObject);
+			if (responseData.errorMessage === undefined) {
+				returnData.push({
+					FunctionName: params.FunctionName,
+					FunctionQualifier: params.Qualifier,
+					Result: responseData,
+				} as IDataObject);
+			} else {
+				returnData.push({
+					FunctionName: params.FunctionName,
+					FunctionQualifier: params.Qualifier,
+					ErrorMessage: responseData.errorMessage,
+					ErrorType: responseData.errorType,
+					ErrorStackTrace: responseData.stackTrace,
+				} as IDataObject);
+			}
+
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
