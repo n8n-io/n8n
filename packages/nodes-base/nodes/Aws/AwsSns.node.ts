@@ -117,7 +117,7 @@ export class AwsSns implements INodeType {
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);
 			}
-			returnData.push(responseData as IDataObject);
+			returnData.push({MessageId: responseData.MessageId} as IDataObject);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
