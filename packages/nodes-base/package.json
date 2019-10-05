@@ -56,6 +56,7 @@
             "dist/nodes/Airtable/Airtable.node.js",
             "dist/nodes/Asana/Asana.node.js",
             "dist/nodes/Asana/AsanaTrigger.node.js",
+            "dist/nodes/Aws/Sns.node.js",
             "dist/nodes/Chargebee/Chargebee.node.js",
             "dist/nodes/Chargebee/ChargebeeTrigger.node.js",
             "dist/nodes/Cron.node.js",
@@ -124,6 +125,7 @@
         "typescript": "~3.5.2"
     },
     "dependencies": {
+        "aws-sdk": "^2.543.0",
         "basic-auth": "^2.0.1",
         "cron": "^1.6.0",
         "glob-promise": "^3.4.0",
