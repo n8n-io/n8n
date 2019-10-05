@@ -46,42 +46,42 @@ export class AwsLambda implements INodeType {
 				required: true,
 				description: 'The function you want to invoke',
 			},
-            {
-                displayName: 'Qualifier',
-                name: 'qualifier',
-                type: 'string',
-                required: true,
-                default: '$LATEST',
-                description: 'Specify a version or alias to invoke a published version of the function',
-            },
-            {
-                displayName: 'Invocation Type',
-                name: 'invocationType',
-                type: 'options',
-                options: [
-                    {
-                        name: 'Wait for results',
-                        value: 'RequestResponse',
-                        description: 'Invoke the function synchronously and wait for the response',
-                    },
-                    {
-                        name: 'Continue workflow',
-                        value: 'Event',
-                        description: 'Invoke the function and immediately continue the workflow',
-                    },
-                ],
-                default: 'RequestResponse',
-                description: 'Specify if the workflow should wait for the function to return the results',
-            },
+			{
+				displayName: 'Qualifier',
+				name: 'qualifier',
+				type: 'string',
+				required: true,
+				default: '$LATEST',
+				description: 'Specify a version or alias to invoke a published version of the function',
+			},
+			{
+				displayName: 'Invocation Type',
+				name: 'invocationType',
+				type: 'options',
+				options: [
+					{
+						name: 'Wait for results',
+						value: 'RequestResponse',
+						description: 'Invoke the function synchronously and wait for the response',
+					},
+					{
+						name: 'Continue workflow',
+						value: 'Event',
+						description: 'Invoke the function and immediately continue the workflow',
+					},
+				],
+				default: 'RequestResponse',
+				description: 'Specify if the workflow should wait for the function to return the results',
+			},
 			{
 				displayName: 'JSON Input',
 				name: 'payload',
 				type: 'string',
 				default: '',
 				description: 'The JSON that you want to provide to your Lambda function as input',
-                typeOptions: {
-                    alwaysOpenEditWindow: true,
-                },
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 			},
 		],
 	};
@@ -121,10 +121,10 @@ export class AwsLambda implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			const params = {
-                FunctionName: this.getNodeParameter('function', i) as string,
-                InvocationType: this.getNodeParameter('invocationType', i) as string,
-                Payload: this.getNodeParameter('payload', i) as string,
-                Qualifier: this.getNodeParameter('qualifier', i) as string,
+				FunctionName: this.getNodeParameter('function', i) as string,
+				InvocationType: this.getNodeParameter('invocationType', i) as string,
+				Payload: this.getNodeParameter('payload', i) as string,
+				Qualifier: this.getNodeParameter('qualifier', i) as string,
 			};
 
 			try {
@@ -134,10 +134,10 @@ export class AwsLambda implements INodeType {
 			}
 
 			returnData.push({
-                StatusCode: responseData.StatusCode,
-                Result: responseData.Payload,
-                Error: responseData.FunctionError,
-            } as IDataObject);
+				StatusCode: responseData.StatusCode,
+				Result: responseData.Payload,
+				Error: responseData.FunctionError,
+			} as IDataObject);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
