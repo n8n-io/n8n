@@ -153,7 +153,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	};
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error

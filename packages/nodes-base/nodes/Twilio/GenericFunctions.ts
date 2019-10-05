@@ -39,7 +39,7 @@ export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions,
 	};
 
 	try {
-		return this.helpers.request(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
