@@ -12,6 +12,7 @@ so also used with internal tools.
 ## Contents
 
 - [Demo](#demo)
+- [Available integrations](#available-integrations)
 - [Documentation](#documentation)
 - [Start n8n in Docker](#start-n8n-in-docker)
 - [Start with tunnel](#start-with-tunnel)
@@ -29,6 +30,11 @@ so also used with internal tools.
 [:tv: A short demo (< 3 min)](https://www.youtube.com/watch?v=3w7xIMKLVAg)
 which shows how to create a simple workflow which automatically sends a new
 Slack notification every time a Github repository received or lost a star.
+
+
+## Available integrations
+
+n8n has 50+ different nodes to automate workflows. The list can be found on: [https://n8n.io/nodes](https://n8n.io/nodes)
 
 
 ## Documentation
