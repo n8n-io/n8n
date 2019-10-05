@@ -1,8 +1,3 @@
-import {
-	SNS,
-	config,
-	AWSError,
-} from 'aws-sdk';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeTypeDescription,
@@ -12,6 +7,10 @@ import {
 	ILoadOptionsFunctions,
 	IDataObject
 } from 'n8n-workflow';
+
+import { awsConfigCredentials } from './GenericFunctions';
+
+import { SNS } from 'aws-sdk';
 
 export class Sns implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +23,7 @@ export class Sns implements INodeType {
 		description: 'Sends data to Amazon SNS',
 		defaults: {
 			name: 'Amazon SNS',
-			color: '#BB2244',
+			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -73,17 +72,7 @@ export class Sns implements INodeType {
 			// Get all the available topics to display them to user so that he can
 			// select them easily
 			async getTopics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const credentials = this.getCredentials('aws');
-
-				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
-				}
-
-				config.update({
-					region: `${credentials.region}`,
-					accessKeyId: `${credentials.accessKeyId}`,
-					secretAccessKey: `${credentials.secretAccessKey}`,
-				});
+				await awsConfigCredentials.call(this);
 
 				const returnData: INodePropertyOptions[] = [];
 
@@ -95,8 +84,9 @@ export class Sns implements INodeType {
 				}
 
 				for (let topic of data.Topics!) {
-					let topicArn = topic.TopicArn!;
+					let topicArn = topic.TopicArn as string;
 					let topicName = topicArn.split(':')[5];
+
 					returnData.push({
 						name: topicName,
 						value: topicArn,
@@ -112,31 +102,14 @@ export class Sns implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const credentials = this.getCredentials('aws');
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
-
-		let topicArn: string;
-		let subject: string;
-		let message: string;
-
-		config.update({
-			region: `${credentials.region}`,
-			accessKeyId: `${credentials.accessKeyId}`,
-			secretAccessKey: `${credentials.secretAccessKey}`,
-		});
-		let sns = new SNS();
+		await awsConfigCredentials.call(this);
+		const sns = new SNS();
 
 		for (let i = 0; i < items.length; i++) {
-			topicArn = this.getNodeParameter('topic', i) as string;
-			subject = this.getNodeParameter('subject', i) as string;
-			message = this.getNodeParameter('message', i) as string;
-
-			let params = {
-				Message: message,
-				Subject: subject,
-				TopicArn: topicArn,
+			const params = {
+				TopicArn: this.getNodeParameter('topic', i) as string,
+				Subject: this.getNodeParameter('subject', i) as string,
+				Message: this.getNodeParameter('message', i) as string,
 			};
 
 			try {
