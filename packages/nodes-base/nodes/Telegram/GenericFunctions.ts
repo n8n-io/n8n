@@ -162,8 +162,8 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 		if (error.response && error.response.body && error.response.body.error_code) {
 			// Try to return the error prettier
-			const airtableError = error.response.body;
-			throw new Error(`Telegram error response [${airtableError.error_code}]: ${airtableError.description}`);
+			const errorBody = error.response.body;
+			throw new Error(`Telegram error response [${errorBody.error_code}]: ${errorBody.description}`);
 		}
 
 		// Expected error data did not get returned so throw the actual error
