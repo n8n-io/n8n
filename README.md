@@ -16,6 +16,10 @@ so also used with internal tools.
 automatically sends a new Slack notification every time a Github repository
 received or lost a star.
 
+## Available integrations
+
+n8n has 50+ different nodes to automate workflows. The list can be found in: [https://n8n.io/nodes](https://n8n.io/nodes)
+
 
 ## Documentation
 
