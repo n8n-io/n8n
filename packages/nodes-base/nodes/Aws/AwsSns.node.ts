@@ -12,17 +12,17 @@ import { awsConfigCredentials } from './GenericFunctions';
 
 import { SNS } from 'aws-sdk';
 
-export class Sns implements INodeType {
+export class AwsSns implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Amazon SNS',
-		name: 'amazonSns',
+		displayName: 'AWS SNS',
+		name: 'awsSns',
 		icon: 'file:sns.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["topic"]}}',
-		description: 'Sends data to Amazon SNS',
+		description: 'Sends data to AWS SNS',
 		defaults: {
-			name: 'Amazon SNS',
+			name: 'AWS SNS',
 			color: '#FF9900',
 		},
 		inputs: ['main'],
