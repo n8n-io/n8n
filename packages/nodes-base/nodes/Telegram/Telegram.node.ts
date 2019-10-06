@@ -142,6 +142,11 @@ export class Telegram implements INodeType {
 				},
 				options: [
 					{
+						name: 'Edit Message Text',
+						value: 'editMessageText',
+						description: 'Edit a text message',
+					},
+					{
 						name: 'Send Audio',
 						value: 'sendAudio',
 						description: 'Send a audio file',
@@ -193,6 +198,20 @@ export class Telegram implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
+						operation: [
+							'getChat',
+							'leaveChat',
+							'getChatMember',
+							'setChatDescription',
+							'setChatTitle',
+							'sendAudio',
+							'sendChatAction',
+							'sendDocument',
+							'sendMessage',
+							'sendPhoto',
+							'sendSticker',
+							'sendVideo',
+						],
 						resource: [
 							'chat',
 							'message',
@@ -364,6 +383,131 @@ export class Telegram implements INodeType {
 			// ----------------------------------
 
 			// ----------------------------------
+			//         message:editMessageText
+			// ----------------------------------
+
+			{
+				displayName: 'Message Type',
+				name: 'messageType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: [
+							'editMessageText',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Inline Message',
+						value: 'inlineMessage',
+					},
+					{
+						name: 'Message',
+						value: 'message',
+					},
+				],
+				default: 'message',
+				description: 'The type of the message to edit.',
+			},
+
+			{
+				displayName: 'Chat ID',
+				name: 'chatId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						messageType: [
+							'message'
+						],
+						operation: [
+							'editMessageText',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier for the target chat or username of the target<br />channel (in the format @channelusername).',
+			},
+			{
+				displayName: 'Message ID',
+				name: 'messageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						messageType: [
+							'message'
+						],
+						operation: [
+							'editMessageText',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the message to edit.',
+			},
+			{
+				displayName: 'Inline Message ID',
+				name: 'inlineMessageId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						messageType: [
+							'inlineMessage'
+						],
+						operation: [
+							'editMessageText',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				required: true,
+				description: 'Unique identifier of the inline message to edit.',
+			},
+			{
+				displayName: 'Reply Markup',
+				name: 'replyMarkup',
+				displayOptions: {
+					show: {
+						operation: [
+							'editMessageText',
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				type: 'options',
+				options: [
+					{
+						name: 'None',
+						value: 'none',
+					},
+					{
+						name: 'Inline Keyboard',
+						value: 'inlineKeyboard',
+					},
+				],
+				default: 'none',
+				description: 'Additional interface options.',
+			},
+
+
+
+			// ----------------------------------
 			//         message:sendAudio
 			// ----------------------------------
 			{
@@ -488,7 +632,8 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendMessage'
+							'editMessageText',
+							'sendMessage',
 						],
 						resource: [
 							'message',
@@ -566,7 +711,7 @@ export class Telegram implements INodeType {
 
 
 			// ----------------------------------
-			//         message:sendAudio/sendMessage/sendPhoto/sendSticker/sendVideo
+			//         message:editMessageText/sendAudio/sendMessage/sendPhoto/sendSticker/sendVideo
 			// ----------------------------------
 
 			{
@@ -901,6 +1046,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'editMessageText',
 							'sendDocument',
 							'sendMessage',
 							'sendPhoto',
@@ -939,6 +1085,13 @@ export class Telegram implements INodeType {
 						name: 'disable_notification',
 						type: 'boolean',
 						default: false,
+						displayOptions: {
+							hide: {
+								'/operation': [
+									'editMessageText',
+								],
+							},
+						},
 						description: 'Sends the message silently. Users will receive a notification with no sound.',
 					},
 					{
@@ -948,6 +1101,7 @@ export class Telegram implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'editMessageText',
 									'sendMessage',
 								],
 							},
@@ -1007,6 +1161,7 @@ export class Telegram implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'editMessageText',
 									'sendAudio',
 									'sendMessage',
 									'sendPhoto',
@@ -1035,6 +1190,13 @@ export class Telegram implements INodeType {
 						displayName: 'Reply To Message ID',
 						name: 'reply_to_message_id',
 						type: 'number',
+						displayOptions: {
+							hide: {
+								'/operation': [
+									'editMessageText',
+								],
+							},
+						},
 						default: 0,
 						description: 'If the message is a reply, ID of the original message.',
 					},
@@ -1185,7 +1347,28 @@ export class Telegram implements INodeType {
 
 			} else if (resource === 'message') {
 
-				if (operation === 'sendAudio') {
+				if (operation === 'editMessageText') {
+					// ----------------------------------
+					//         message:editMessageText
+					// ----------------------------------
+
+					endpoint = 'editMessageText';
+
+					const messageType = this.getNodeParameter('messageType', i) as string;
+
+					if (messageType === 'inlineMessage') {
+						body.inline_message_id = this.getNodeParameter('inlineMessageId', i) as string;
+					} else {
+						body.chat_id = this.getNodeParameter('chatId', i) as string;
+						body.message_id = this.getNodeParameter('messageId', i) as string;
+					}
+
+					body.text = this.getNodeParameter('text', i) as string;
+
+					// Add additional fields and replyMarkup
+					addAdditionalFields.call(this, body, i);
+
+				} else if (operation === 'sendAudio') {
 					// ----------------------------------
 					//         message:sendAudio
 					// ----------------------------------
