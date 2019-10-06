@@ -12,6 +12,7 @@ import {
 
 import {
 	apiRequest,
+	getForms,
 	ITypeformAnswer,
 	ITypeformAnswerField,
 	ITypeformDefinition,
@@ -49,13 +50,16 @@ export class TypeformTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Form ID',
+				displayName: 'Form',
 				name: 'formId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getForms',
+				},
+				options: [],
 				default: '',
 				required: true,
-				placeholder: 'OUiTe2',
-				description: 'Unique ID of the form.',
+				description: 'Form which should trigger workflow on submission.',
 			},
 			{
 				displayName: 'Simplify Answers',
@@ -72,6 +76,12 @@ export class TypeformTrigger implements INodeType {
 				description: 'Returns only the answers of the form and not any of the other data.',
 			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			getForms,
+		},
 	};
 
 	// @ts-ignore (because of request)

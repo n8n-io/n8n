@@ -78,3 +78,72 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		throw error;
 	}
 }
+
+
+/**
+ * Make an API request to paginated Typeform endpoint
+ * and return all results
+ *
+ * @export
+ * @param {(IHookFunctions | IExecuteFunctions)} this
+ * @param {string} method
+ * @param {string} endpoint
+ * @param {IDataObject} body
+ * @param {IDataObject} [query]
+ * @returns {Promise<any>}
+ */
+export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
+
+	if (query === undefined) {
+		query = {};
+	}
+
+	query.page_size = 200;
+	query.page = 0;
+
+	const returnData = {
+		items: [] as IDataObject[],
+	};
+
+	let responseData;
+
+	do {
+		query.page += 1;
+
+		responseData = await apiRequest.call(this, method, endpoint, body, query);
+
+		returnData.items.push.apply(returnData.items, responseData.items);
+	} while (
+		responseData.page_count !== undefined &&
+		responseData.page_count > query.page
+	);
+
+	return returnData;
+}
+
+
+/**
+ * Returns all the available forms
+ *
+ * @export
+ * @param {ILoadOptionsFunctions} this
+ * @returns {Promise<INodePropertyOptions[]>}
+ */
+export async function getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const endpoint = 'forms';
+	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
+
+	if (responseData.items === undefined) {
+		throw new Error('No data got returned');
+	}
+
+	const returnData: INodePropertyOptions[] = [];
+	for (const baseData of responseData.items) {
+		returnData.push({
+			name: baseData.title,
+			value: baseData.id,
+		});
+	}
+
+	return returnData;
+}
