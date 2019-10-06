@@ -62,8 +62,8 @@
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column label="Status" width="120">
-					<template slot-scope="scope">
+				<el-table-column label="Status" width="120" align="center">
+					<template slot-scope="scope" align="center">
 
 						<el-tooltip placement="top" effect="light">
 							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
@@ -533,7 +533,7 @@ export default mixins(
 }
 
 .el-table tr:hover.currently-running td {
-	background-color: #907070 !important;
+	background-color: darken($--color-primary-light, 3% ) !important;
 }
 
 </style>
