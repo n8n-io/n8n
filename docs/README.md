@@ -1,6 +1,6 @@
 # n8n Documentation
 
-This is the documentation of n8n a free node-based "Open Source" (with Commons Clause)
+This is the documentation of n8n a free node-based, source-available
 Workflow Automation Tool.
 
 It covers everything from setup, usage to development. It is still work in progress and all contributions are welcome.

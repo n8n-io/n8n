@@ -2,7 +2,7 @@
 
 ![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-logo.png)
 
-n8n is a free node based "Open Source" (with Commons Clause)
+n8n is a free node based source-available
 Workflow Automation Tool. It can be self-hosted, easily extended, and
 so also used with internal tools.
 
@@ -81,6 +81,6 @@ Have you found a bug :bug: ? Or maybe you have a nice feature :sparkles: to cont
 
 ## License
 
-[Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
+[Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md) (source-available, not open source)
 
 Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license)
