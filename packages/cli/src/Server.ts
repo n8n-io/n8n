@@ -7,6 +7,7 @@ import {
 	getConnectionManager,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
+import * as multer from 'multer';
 import * as history from 'connect-history-api-fallback';
 import * as requestPromise from 'request-promise-native';
 
@@ -78,6 +79,7 @@ import * as config from '../config';
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
 
+const upload = multer();
 
 class App {
 
@@ -1063,7 +1065,7 @@ class App {
 
 
 		// POST webhook requests
-		this.app.post(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
+		this.app.post(`/${this.endpointWebhook}/*`, upload.none(), async (req: express.Request, res: express.Response) => {
 			// Cut away the "/webhook/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
 
@@ -1107,7 +1109,7 @@ class App {
 
 
 		// POST webhook requests (test for UI)
-		this.app.post(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
+		this.app.post(`/${this.endpointWebhookTest}/*`, upload.none(), async (req: express.Request, res: express.Response) => {
 			// Cut away the "/webhook-test/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookTest.length + 2);
 

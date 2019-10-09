@@ -70,6 +70,7 @@
     "dependencies": {
         "@oclif/command": "^1.5.18",
         "@oclif/errors": "^1.2.2",
+        "@types/multer": "^1.3.10",
         "basic-auth": "^2.0.1",
         "body-parser": "^1.18.3",
         "compression": "^1.7.4",
@@ -83,6 +84,7 @@
         "inquirer": "^6.5.1",
         "localtunnel": "^1.9.1",
         "mongodb": "^3.2.3",
+        "multer": "^1.4.2",
         "n8n-core": "~0.11.0",
         "n8n-editor-ui": "~0.20.0",
         "n8n-nodes-base": "~0.19.0",
