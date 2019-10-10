@@ -18,7 +18,7 @@ so also used with internal tools.
 - [Start with tunnel](#start-with-tunnel)
 - [Securing n8n](#securing-n8n)
 - [Persist data](#persist-data)
-- [Passing Senstive Data via File](#passing-senstive-data-via-file)
+- [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
 - [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
 - [Support](#support)
 - [Upgrading](#upgrading)
@@ -175,7 +175,7 @@ docker run -it --rm \
 A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withPostgres/README.md)
 
 
-## Passing Senstive Data via File
+## Passing Sensitive Data via File
 
 To avoid passing sensitive information via environment variables "_FILE" may be
 appended to some environment variables. It will then load the data from a file
