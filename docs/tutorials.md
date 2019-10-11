@@ -15,6 +15,7 @@ node got used.
 ## Videos
 
  - [Slack Notification on Github Star](https://www.youtube.com/watch?v=3w7xIMKLVAg)
+ - [Typeform to Google Sheet and Slack or Email](https://www.youtube.com/watch?v=rn3-d4IiW44)
 
 
 ### Community Tutorials
