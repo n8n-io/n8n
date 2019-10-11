@@ -6,7 +6,7 @@ import {
 import {
 	INodeTypeDescription,
 	INodeType,
-	IWebhookResonseData,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -278,7 +278,7 @@ export class PipedriveTrigger implements INodeType {
 
 
 
-	async webhook(this: IWebhookFunctions): Promise<IWebhookResonseData> {
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const resp = this.getResponseObject();
 		const realm = 'Webhook';
