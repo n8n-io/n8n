@@ -6,7 +6,7 @@ import {
 import {
 	INodeTypeDescription,
 	INodeType,
-	IWebhookResonseData,
+	IWebhookResponseData,
 	IDataObject,
 } from 'n8n-workflow';
 
@@ -158,7 +158,7 @@ export class TypeformTrigger implements INodeType {
 
 
 
-	async webhook(this: IWebhookFunctions): Promise<IWebhookResonseData> {
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 
 		const simplifyAnswers = this.getNodeParameter('simplifyAnswers') as boolean;

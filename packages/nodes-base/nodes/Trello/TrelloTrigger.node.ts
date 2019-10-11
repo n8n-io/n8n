@@ -7,7 +7,7 @@ import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeType,
-	IWebhookResonseData,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -179,7 +179,7 @@ export class TrelloTrigger implements INodeType {
 
 
 
-	async webhook(this: IWebhookFunctions): Promise<IWebhookResonseData> {
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
 
 		if (webhookName === 'setup') {
