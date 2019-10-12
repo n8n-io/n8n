@@ -19,7 +19,7 @@ services:
     restart: always
     environment:
       - DB_TYPE=mongodb
-      - DB_MONGODB_CONNECTION_URL=mongodb://n8nuser:${MONGO_NON_ROOT_PASSWORD}@mongo:27017/${MONGO_INITDB_DATABASE}
+      - DB_MONGODB_CONNECTION_URL=mongodb://${MONGO_NON_ROOT_USERNAME}:${MONGO_NON_ROOT_PASSWORD}@mongo:27017/${MONGO_INITDB_DATABASE}
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER
       - N8N_BASIC_AUTH_PASSWORD
