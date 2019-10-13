@@ -8,6 +8,18 @@ The ones that currently exist are:
 
 ## Execution Data Manual Runs
 
+n8n creates a random encryption key automatically on the first launch and saves
+it in the `~/.n8n` folder. That key gets used to encrypt the credentials before
+they get saved to the database. It is also possible to overwrite that key and
+set it via an environment variable.
+
+```bash
+export N8N_ENCRYPTION_KEY="<SOME RANDOM STRING>"
+```
+
+
+## Execution Data Manual Runs
+
 Normally executions which got started via the Editor UI will not be saved as
 they are normally only for testing and debugging. That default can be changed
 with this environment variable.
@@ -51,6 +63,17 @@ export NODES_EXCLUDE="[\"n8n-nodes-base.executeCommand\",\"n8n-nodes-base.writeB
 ```
 
 
+## Custom Nodes Location
+
+Every user can add custom nodes that get loaded by n8n on startup. The default
+location is in the subfolder `.n8n/custom` of the user which started n8n.
+Additional folders can be defined via an environment variable.
+
+```bash
+export N8N_CUSTOM_EXTENSIONS="/home/jim/n8n/custom-nodes;/data/n8n/nodes"
+```
+
+
 ## Timezone
 
 The timezone is set by default to "America/New_York". It gets for example used by the
@@ -64,3 +87,15 @@ export GENERIC_TIMEZONE="Europe/Berlin"
 
 You can find the name of your timezone here:
 [https://momentjs.com/timezone/](https://momentjs.com/timezone/)
+
+
+## User Folder
+
+User-specific data like the encryption key, SQLite database file, and
+the ID of the tunnel (if used) get by default saved in the subfolder
+`.n8n` of the user which started n8n. It is possible to overwrite the
+user-folder via an environment variable.
+
+```bash
+export N8N_USER_FOLDER="/home/jim/n8n"
+```
