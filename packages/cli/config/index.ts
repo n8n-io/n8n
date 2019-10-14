@@ -141,8 +141,27 @@ const config = convict({
 				env: 'N8N_BASIC_AUTH_PASSWORD',
 				doc: 'The password of the basic auth user'
 			},
+		},
+		jwtAuth: {
+			active: {
+				format: 'Boolean',
+				default: false,
+				env: 'N8N_JWT_AUTH_ACTIVE',
+				doc: 'If JWT auth should be activated for editor and REST-API'
+			},
+			jwtHeader: {
+				format: String,
+				default: '',
+				env: 'N8N_JWT_AUTH_HEADER',
+				doc: 'The request header containing a signed JWT'
+			},
+			jwksUri: {
+				format: String,
+				default: '',
+				env: 'N8N_JWKS_URI',
+				doc: 'The URI to fetch JWK Set for JWT auh'
+			},
 		}
-
 	},
 
 	endpoints: {

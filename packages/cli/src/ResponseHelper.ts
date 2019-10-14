@@ -52,6 +52,11 @@ export function basicAuthAuthorizationError(resp: Response, realm: string, messa
 	resp.end(message);
 }
 
+export function jwtAuthAuthorizationError(resp: Response, message?: string) {
+	resp.statusCode = 403;
+	resp.end(message);
+}
+
 
 export function sendSuccessResponse(res: Response, data: any, raw?: boolean, responseCode?: number) { // tslint:disable-line:no-any
 	res.setHeader('Content-Type', 'application/json');
