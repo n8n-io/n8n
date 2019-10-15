@@ -263,7 +263,7 @@ export class ActiveWorkflowRunner {
 				};
 
 				const workflowRunner = new WorkflowRunner();
-				workflowRunner.run(runData);
+				workflowRunner.run(runData, true);
 			};
 			return returnFunctions;
 		});

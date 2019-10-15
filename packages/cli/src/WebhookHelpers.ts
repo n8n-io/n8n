@@ -224,7 +224,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 
 		// Start now to run the workflow
 		const workflowRunner = new WorkflowRunner();
-		const executionId = await workflowRunner.run(runData);
+		const executionId = await workflowRunner.run(runData, true);
 
 		// Get a promise which resolves when the workflow did execute and send then response
 		const executePromise = activeExecutions.getPostExecutePromise(executionId) as Promise<IExecutionDb | undefined>;
