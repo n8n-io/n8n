@@ -117,8 +117,8 @@ export class MongoDB implements INodeType {
 			//         insert
 			// ----------------------------------
 			{
-				displayName: 'Table',
-				name: 'table',
+				displayName: 'Fields',
+				name: 'fields',
 				type: 'string',
 				displayOptions: {
 					show: {
@@ -128,44 +128,14 @@ export class MongoDB implements INodeType {
 					},
 				},
 				default: '',
-				required: true,
-				description: 'Name of the table in which to insert data to.',
-			},
-			{
-				displayName: 'Columns',
-				name: 'columns',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'insert'
-						],
-					},
-				},
-				default: '',
-				placeholder: 'id,name,description',
-				description: 'Comma separated list of the properties which should used as columns for the new rows.',
+				placeholder: 'name,description',
+				description: 'Comma separated list of the fields to be included into the new document.',
 			},
 
 
 			// ----------------------------------
 			//         update
 			// ----------------------------------
-			{
-				displayName: 'Table',
-				name: 'table',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'update'
-						],
-					},
-				},
-				default: '',
-				required: true,
-				description: 'Name of the table in which to update data in',
-			},
 			{
 				displayName: 'Update Key',
 				name: 'updateKey',
@@ -182,8 +152,8 @@ export class MongoDB implements INodeType {
 				description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
-				displayName: 'Columns',
-				name: 'columns',
+				displayName: 'Fields',
+				name: 'fields',
 				type: 'string',
 				displayOptions: {
 					show: {
@@ -194,7 +164,7 @@ export class MongoDB implements INodeType {
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma separated list of the fields to be included into the new document.',
 			},
 
 		]
@@ -237,63 +207,58 @@ export class MongoDB implements INodeType {
 
 			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 
-		// } else if (operation === 'insert') {
+		} else if (operation === 'insert') {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
 
-			// const table = this.getNodeParameter('table', 0) as string;
-			// const columnString = this.getNodeParameter('columns', 0) as string;
+			// Prepare the data to insert and copy it to be returned
+			const fields = (this.getNodeParameter('fields', 0) as string)
+				.split(',')
+				.map(f => f.trim())
+				.filter(f => !!f)
 
-			// const columns = columnString.split(',').map(column => column.trim());
+			const insertItems = getItemCopy(items, fields);
 
-			// const cs = new pgp.helpers.ColumnSet(columns, { table });
+			const { insertedIds } = await mdb
+				.collection(this.getNodeParameter('collection', 0) as string)
+				.insertMany(insertItems)
 
-			// // Prepare the data to insert and copy it to be returned
-			// const insertItems = getItemCopy(items, columns);
-
-			// // Generate the multi-row insert query and return the id of new row
-			// const query = pgp.helpers.insert(insertItems, cs) + ' RETURNING id';
-
-			// // Executing the query to insert the data
-			// const insertData = await db.many(query);
-
-			// // Add the id to the data
-			// for (let i = 0; i < insertData.length; i++) {
-			// 	returnItems.push({
-			// 		json: {
-			// 			...insertData[i],
-			// 			...insertItems[i],
-			// 		}
-			// 	});
-			// }
-
-		// } else if (operation === 'update') {
+			// Add the id to the data
+			for (let i in insertedIds) {
+				returnItems.push({
+					json: {
+						...insertItems[i],
+						id: insertedIds[i] as string,
+					}
+				});
+			}
+		} else if (operation === 'update') {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
 
-			// const table = this.getNodeParameter('table', 0) as string;
-			// const updateKey = this.getNodeParameter('updateKey', 0) as string;
-			// const columnString = this.getNodeParameter('columns', 0) as string;
+			const fields = (this.getNodeParameter('fields', 0) as string)
+				.split(',')
+				.map(f => f.trim())
+				.filter(f => !!f)
 
-			// const columns = columnString.split(',').map(column => column.trim());
+			// Prepare the data to update and copy it to be returned
+			const updateItems = getItemCopy(items, fields);
+			const updateKey = this.getNodeParameter('updateKey', 0) as string;
 
-			// // Make sure that the updateKey does also get queried
-			// if (!columns.includes(updateKey)) {
-			// 	columns.unshift(updateKey);
-			// }
+			for (let item of updateItems) {
+				if (item[updateKey] === undefined) { continue }
 
-			// // Prepare the data to update and copy it to be returned
-			// const updateItems = getItemCopy(items, columns);
+				const filter: { [key: string] :string } = {};
+				filter[updateKey] = item[updateKey] as string;
 
-			// // Generate the multi-row update query
-			// const query = pgp.helpers.update(updateItems, columns, table) + ' WHERE v.' + updateKey + ' = t.' + updateKey;
+				await mdb
+					.collection(this.getNodeParameter('collection', 0) as string)
+					.updateOne(filter, item)
+			}
 
-			// // Executing the query to update the data
-			// await db.none(query);
-
-			// returnItems = this.helpers.returnJsonArray(updateItems	 as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
 
 		} else {
 			throw new Error(`The operation "${operation}" is not supported!`);
