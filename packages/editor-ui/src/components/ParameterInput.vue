@@ -473,6 +473,7 @@ export default mixins(
 
 				// Set focus on field
 				setTimeout(() => {
+					// @ts-ignore
 					(this.$refs.inputField.$el.querySelector('input') as HTMLInputElement).focus();
 				});
 			},
