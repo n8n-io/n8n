@@ -33,11 +33,32 @@ export class AwsSns implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: [
+					{
+						name: 'Publish',
+						value: 'publish',
+						description: 'Publish a message to a topic',
+					},
+				],
+				default: 'invoke',
+				description: 'The operation to perform.',
+			},
+			{
 				displayName: 'Topic',
 				name: 'topic',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getTopics',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'publish',
+						],
+					},
 				},
 				options: [],
 				default: '',
@@ -48,6 +69,13 @@ export class AwsSns implements INodeType {
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'publish',
+						],
+					},
+				},
 				default: '',
 				required: true,
 				description: 'Subject when the message is delivered to email endpoints',
@@ -56,6 +84,13 @@ export class AwsSns implements INodeType {
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'publish',
+						],
+					},
+				},
 				required: true,
 				typeOptions: {
 					alwaysOpenEditWindow: true,
