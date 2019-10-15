@@ -128,7 +128,6 @@
     },
     "dependencies": {
         "aws4": "^1.8.0",
-        "aws-sdk": "^2.543.0",
         "basic-auth": "^2.0.1",
         "cron": "^1.6.0",
         "glob-promise": "^3.4.0",

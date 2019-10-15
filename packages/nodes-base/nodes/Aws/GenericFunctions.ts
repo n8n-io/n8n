@@ -4,27 +4,12 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { config } from 'aws-sdk';
 import { OptionsWithUri } from 'request';
 import { sign } from 'aws4';
-
-export async function awsConfigCredentials(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions): Promise<void> {
-	const credentials = this.getCredentials('aws');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	config.update({
-		region: `${credentials.region}`,
-		accessKeyId: `${credentials.accessKeyId}`,
-		secretAccessKey: `${credentials.secretAccessKey}`,
-	});
-}
+import { parseString } from 'xml2js';
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
-
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
@@ -42,9 +27,8 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		body: signOpts.body,
 	};
 
-	let response: string
 	try {
-		response = await this.helpers.request!(options);
+		return await this.helpers.request!(options);
 	} catch (error) {
 		console.error(error);
 
@@ -57,11 +41,34 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 			}
 		}
 
-		throw errorMessage;
+		if (errorMessage !== undefined) {
+			throw errorMessage;
+		}
+		throw error.response.body;
 	}
+}
 
+
+export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
+	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return JSON.parse(response);
+	} catch (e) {
+		return response
+	}
+}
+
+export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
+	const response = await awsApiRequest.call(this, service, method, path, body, headers);
+	try {
+		return await new Promise((resolve, reject) => {
+			parseString(response, { explicitArray: false }, (err, data) => {
+				if (err) {
+					return reject(err);
+				}
+				resolve(data);
+			});
+		});
 	} catch (e) {
 		return response
 	}

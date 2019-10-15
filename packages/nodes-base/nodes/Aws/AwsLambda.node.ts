@@ -8,9 +8,7 @@ import {
 	IDataObject
 } from 'n8n-workflow';
 
-import { awsApiRequest } from './GenericFunctions';
-
-import { Lambda } from 'aws-sdk';
+import { awsApiRequestREST } from './GenericFunctions';
 
 export class AwsLambda implements INodeType {
 	description: INodeTypeDescription = {
@@ -91,7 +89,7 @@ export class AwsLambda implements INodeType {
 			async getFunctions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				try {
-					var data = await awsApiRequest.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
+					var data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
 				} catch (err) {
 					throw new Error(`AWS Error: ${err}`);
 				}
@@ -121,8 +119,7 @@ export class AwsLambda implements INodeType {
 			};
 
 			try {
-
-				var responseData = await awsApiRequest.call(
+				var responseData = await awsApiRequestREST.call(
 					this,
 					'lambda',
 					'POST',
