@@ -1,4 +1,5 @@
 import {
+  IHookFunctions,
   IWebhookFunctions,
 } from 'n8n-core';
 
@@ -9,6 +10,9 @@ import {
   IWebhookResponseData,
 } from 'n8n-workflow';
 
+import {
+  stripeApiRequest,
+} from './helpers';
 
 export class StripeTrigger implements INodeType {
   description: INodeTypeDescription = {
@@ -24,6 +28,12 @@ export class StripeTrigger implements INodeType {
     },
     inputs: [],
     outputs: ['main'],
+    credentials: [
+			{
+				name: 'stripeApi',
+				required: true,
+			}
+		],
     webhooks: [
       {
         name: 'default',
@@ -790,6 +800,95 @@ export class StripeTrigger implements INodeType {
       }
     ],
   };
+
+  // @ts-ignore (because of request)
+	webhookMethods = {
+		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+        const webhookData = this.getWorkflowStaticData('node');
+
+				if (webhookData.webhookId === undefined) {
+					// No webhook id is set so no webhook can exist
+					return false;
+				}
+
+				// Webhook got created before so check if it still exists
+				const endpoint = `/webhook_endpoints/${webhookData.webhookId}`;
+
+				try {
+					await stripeApiRequest.call(this, 'GET', endpoint, {});
+				} catch (e) {
+					if (e.message.includes('[404]:')) {
+						// Webhook does not exist
+						delete webhookData.webhookId;
+            delete webhookData.webhookEvents;
+            delete webhookData.webhookSecret;
+
+						return false;
+					}
+
+					// Some error occured
+					throw e;
+				}
+
+				// If it did not error then the webhook exists
+				return true;
+			},
+			async create(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
+
+        const events = this.getNodeParameter('events', []);
+
+				const endpoint = '/webhook_endpoints';
+
+				const body = {
+					url: webhookUrl,
+					enabled_events: events,
+				};
+
+				let responseData;
+				try {
+					responseData = await stripeApiRequest.call(this, 'POST', endpoint, body);
+				} catch (e) {
+					throw e;
+				}
+
+				if (responseData.id === undefined || responseData.secret === undefined || responseData.status !== 'enabled') {
+					// Required data is missing so was not successful
+					throw new Error('Stripe webhook creation response did not contain the expected data.');
+				}
+
+				const webhookData = this.getWorkflowStaticData('node');
+				webhookData.webhookId = responseData.id as string;
+        webhookData.webhookEvents = responseData.enabled_events as string[];
+        webhookData.webhookSecret = responseData.secret as string;
+
+				return true;
+			},
+			async delete(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+
+				if (webhookData.webhookId !== undefined) {
+					const endpoint = `/webhook_endpoints/${webhookData.webhookId}`;
+					const body = {};
+
+					try {
+						await stripeApiRequest.call(this, 'DELETE', endpoint, body);
+					} catch (e) {
+						return false;
+					}
+
+					// Remove from the static workflow data so that it is clear
+					// that no webhooks are registred anymore
+					delete webhookData.webhookId;
+          delete webhookData.webhookEvents;
+          delete webhookData.webhookSecret;
+				}
+
+				return true;
+			},
+		},
+	};
 
   async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
     const bodyData = this.getBodyData() as IDataObject;
