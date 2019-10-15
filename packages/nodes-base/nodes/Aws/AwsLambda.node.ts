@@ -33,11 +33,32 @@ export class AwsLambda implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: [
+					{
+						name: 'Invoke',
+						value: 'invoke',
+						description: 'Invoke a function',
+					},
+				],
+				default: 'invoke',
+				description: 'The operation to perform.',
+			},
+			{
 				displayName: 'Function',
 				name: 'function',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getFunctions',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'invoke',
+						],
+					},
 				},
 				options: [],
 				default: '',
@@ -48,6 +69,13 @@ export class AwsLambda implements INodeType {
 				displayName: 'Qualifier',
 				name: 'qualifier',
 				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'invoke',
+						],
+					},
+				},
 				required: true,
 				default: '$LATEST',
 				description: 'Specify a version or alias to invoke a published version of the function',
@@ -68,6 +96,13 @@ export class AwsLambda implements INodeType {
 						description: 'Invoke the function and immediately continue the workflow',
 					},
 				],
+				displayOptions: {
+					show: {
+						operation: [
+							'invoke',
+						],
+					},
+				},
 				default: 'RequestResponse',
 				description: 'Specify if the workflow should wait for the function to return the results',
 			},
@@ -75,6 +110,13 @@ export class AwsLambda implements INodeType {
 				displayName: 'JSON Input',
 				name: 'payload',
 				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'invoke',
+						],
+					},
+				},
 				default: '',
 				description: 'The JSON that you want to provide to your Lambda function as input',
 				typeOptions: {
