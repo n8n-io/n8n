@@ -16,14 +16,14 @@ import {
 
 export class StripeTrigger implements INodeType {
   description: INodeTypeDescription = {
-    displayName: 'Stripe',
+    displayName: 'Stripe Trigger',
     name: 'stripe',
     icon: 'file:stripe.png',
     group: ['trigger'],
     version: 1,
     description: 'Handle Stripe events via webhooks',
     defaults: {
-      name: 'Stripe',
+      name: 'Stripe Trigger',
       color: '#32325d',
     },
     inputs: [],
