@@ -130,13 +130,15 @@ export class AwsLambda implements INodeType {
 		loadOptions: {
 			async getFunctions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+
+				let data;
 				try {
-					var data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
+					data = await awsApiRequestREST.call(this, 'lambda', 'GET', '/2015-03-31/functions/');
 				} catch (err) {
 					throw new Error(`AWS Error: ${err}`);
 				}
 
-				for (let func of data.Functions!) {
+				for (const func of data.Functions!) {
 					returnData.push({
 						name: func.FunctionName as string,
 						value: func.FunctionArn as string,
@@ -160,8 +162,9 @@ export class AwsLambda implements INodeType {
 				Qualifier: this.getNodeParameter('qualifier', i) as string,
 			};
 
+			let responseData;
 			try {
-				var responseData = await awsApiRequestREST.call(
+				responseData = await awsApiRequestREST.call(
 					this,
 					'lambda',
 					'POST',
@@ -176,19 +179,17 @@ export class AwsLambda implements INodeType {
 				throw new Error(`AWS Error: ${err}`);
 			}
 
-			if (responseData.errorMessage === undefined) {
-				returnData.push({
-					FunctionName: params.FunctionName,
-					FunctionQualifier: params.Qualifier,
-					Result: responseData,
-				} as IDataObject);
+			if (responseData !== null && responseData.errorMessage !== undefined) {
+				let errorMessage = responseData.errorMessage;
+
+				if (responseData.stackTrace) {
+					errorMessage += `\n\nStack trace:\n${responseData.stackTrace}`;
+				}
+
+				throw new Error(errorMessage);
 			} else {
 				returnData.push({
-					FunctionName: params.FunctionName,
-					FunctionQualifier: params.Qualifier,
-					ErrorMessage: responseData.errorMessage,
-					ErrorType: responseData.errorType,
-					ErrorStackTrace: responseData.stackTrace,
+					result: responseData,
 				} as IDataObject);
 			}
 

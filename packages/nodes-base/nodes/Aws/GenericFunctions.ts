@@ -1,12 +1,13 @@
+import { sign } from 'aws4';
+import { OptionsWithUri } from 'request';
+import { parseString } from 'xml2js';
+
 import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-import { sign } from 'aws4';
-import { parseString } from 'xml2js';
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
@@ -14,15 +15,15 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		throw new Error('No credentials got returned!');
 	}
 
-	const endpoint = `${service}.${credentials.region}.amazonaws.com`
+	const endpoint = `${service}.${credentials.region}.amazonaws.com`;
 
 	// Sign AWS API request with the user credentials
-	const signOpts = {headers: headers || {}, host: endpoint, method: method, path: path, body: body}
-	sign(signOpts, {accessKeyId: `${credentials.accessKeyId}`, secretAccessKey: `${credentials.secretAccessKey}`})
+	const signOpts = {headers: headers || {}, host: endpoint, method, path, body};
+	sign(signOpts, {accessKeyId: `${credentials.accessKeyId}`, secretAccessKey: `${credentials.secretAccessKey}`});
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
-		method: method,
+		method,
 		uri: `https://${endpoint}${signOpts.path}`,
 		body: signOpts.body,
 	};
@@ -34,7 +35,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 
 		const errorMessage = error.response.body.message || error.response.body.Message;
 		if (error.statusCode === 403) {
-			if (errorMessage == 'The security token included in the request is invalid.') {
+			if (errorMessage === 'The security token included in the request is invalid.') {
 				throw new Error('The AWS credentials are not valid!');
 			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
 				throw new Error('The AWS credentials are not valid!');
@@ -54,9 +55,10 @@ export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions
 	try {
 		return JSON.parse(response);
 	} catch (e) {
-		return response
+		return response;
 	}
 }
+
 
 export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
@@ -70,6 +72,6 @@ export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions
 			});
 		});
 	} catch (e) {
-		return response
+		return response;
 	}
 }
