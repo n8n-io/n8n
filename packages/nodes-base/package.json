@@ -29,6 +29,7 @@
             "dist/credentials/ActiveCampaignApi.credentials.js",
             "dist/credentials/AirtableApi.credentials.js",
             "dist/credentials/AsanaApi.credentials.js",
+            "dist/credentials/Aws.credentials.js",
             "dist/credentials/ChargebeeApi.credentials.js",
             "dist/credentials/DropboxApi.credentials.js",
             "dist/credentials/GithubApi.credentials.js",
@@ -56,6 +57,8 @@
             "dist/nodes/Airtable/Airtable.node.js",
             "dist/nodes/Asana/Asana.node.js",
             "dist/nodes/Asana/AsanaTrigger.node.js",
+            "dist/nodes/Aws/AwsLambda.node.js",
+            "dist/nodes/Aws/AwsSns.node.js",
             "dist/nodes/Chargebee/Chargebee.node.js",
             "dist/nodes/Chargebee/ChargebeeTrigger.node.js",
             "dist/nodes/Cron.node.js",
@@ -105,6 +108,7 @@
         ]
     },
     "devDependencies": {
+        "@types/aws4": "^1.5.1",
         "@types/basic-auth": "^1.1.2",
         "@types/cron": "^1.6.1",
         "@types/express": "^4.16.1",
@@ -125,6 +129,7 @@
         "typescript": "~3.5.2"
     },
     "dependencies": {
+        "aws4": "^1.8.0",
         "basic-auth": "^2.0.1",
         "cron": "^1.6.0",
         "glob-promise": "^3.4.0",
