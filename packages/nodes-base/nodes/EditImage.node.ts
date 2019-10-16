@@ -511,7 +511,7 @@ export class EditImage implements INodeType {
 			const lineLength = this.getNodeParameter('lineLength') as number;
 			const positionX = this.getNodeParameter('positionX') as number;
 			const positionY = this.getNodeParameter('positionY') as number;
-			const text = this.getNodeParameter('text') as string;
+			const text = this.getNodeParameter('text') as string || '';
 
 			// Split the text in multiple lines
 			const lines: string[] = [];
