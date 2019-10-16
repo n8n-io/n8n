@@ -1,12 +1,12 @@
 All Stripe webhook events are taken from docs:
-https://stripe.com/docs/api/events/types#event_types
+[https://stripe.com/docs/api/events/types#event_types](https://stripe.com/docs/api/events/types#event_types)
 
 To get the entire list of events as a JS array, scrape the website:
 
-1. manually add the id #event-types to `<ul>` that contains all event types
-2. copy-paste the function in the JS console
-3. the result is copied into in the clipboard
-4. paste the prepared array in StripeTrigger.node.ts
+ 1. manually add the id #event-types to `<ul>` that contains all event types
+ 2. copy-paste the function in the JS console
+ 3. the result is copied into in the clipboard
+ 4. paste the prepared array in StripeTrigger.node.ts
 
 ```js
 types = []
