@@ -43,7 +43,7 @@ export class AwsSns implements INodeType {
 						description: 'Publish a message to a topic',
 					},
 				],
-				default: 'invoke',
+				default: 'publish',
 				description: 'The operation to perform.',
 			},
 			{
@@ -107,22 +107,31 @@ export class AwsSns implements INodeType {
 			// select them easily
 			async getTopics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				let data;
 				try {
-					var data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
+					data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
 				} catch (err) {
 					throw new Error(`AWS Error: ${err}`);
 				}
 
-				const topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;
-				for (let topic of topics) {
-					let topicArn = topic.TopicArn as string;
-					let topicName = topicArn.split(':')[5];
+				let topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;
+
+				if (!Array.isArray(topics)) {
+					// If user has only a single topic no array get returned so we make
+					// one manually to be able to process everything identically
+					topics = [topics];
+				}
+
+				for (const topic of topics) {
+					const topicArn = topic.TopicArn as string;
+					const topicName = topicArn.split(':')[5];
 
 					returnData.push({
 						name: topicName,
 						value: topicArn,
 					});
 				}
+
 				return returnData;
 			}
 		},
@@ -140,8 +149,9 @@ export class AwsSns implements INodeType {
 				'Message=' + this.getNodeParameter('message', i) as string,
 			];
 
+			let responseData;
 			try {
-				var responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
+				responseData = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Publish&' + params.join('&'));
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);
 			}
