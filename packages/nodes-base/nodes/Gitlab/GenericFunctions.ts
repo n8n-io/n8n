@@ -25,7 +25,7 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 	const options = {
 		method,
 		headers: {
-			'Private-Token': `token ${credentials.accessToken}`,
+			'Private-Token': `${credentials.accessToken}`,
 		},
 		body,
 		qs: query,
