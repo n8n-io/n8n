@@ -52,6 +52,7 @@ export class FunctionItem implements INodeType {
 				return item.binary;
 			},
 			getNodeParameter: this.getNodeParameter,
+			getWorkflowStaticData: this.getWorkflowStaticData,
 			helpers: this.helpers,
 			item: item.json,
 			setBinaryData: (data: IBinaryKeyData) => {

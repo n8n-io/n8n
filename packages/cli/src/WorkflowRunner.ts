@@ -8,6 +8,7 @@ import {
 	NodeTypes,
 	Push,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
 } from './';
 
 import {
@@ -140,12 +141,18 @@ export class WorkflowRunner {
 	 * Run the workflow in subprocess
 	 *
 	 * @param {IWorkflowExecutionDataProcess} data
+	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
+	 *                                   the workflow and added to input data
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async run(data: IWorkflowExecutionDataProcess): Promise<string> {
+	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
 		const startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
+
+		if (loadStaticData === true && data.workflowData.id) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(data.workflowData.id as string);
+		}
 
 		// Register the active execution
 		const executionId = this.activeExecutions.add(subprocess, data);

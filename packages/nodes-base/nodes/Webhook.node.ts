@@ -6,7 +6,7 @@ import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeType,
-	IWebhookResonseData,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import * as basicAuth from 'basic-auth';
@@ -75,6 +75,8 @@ export class Webhook implements INodeType {
 				responseMode: '={{$parameter["responseMode"]}}',
 				responseData: '={{$parameter["responseData"]}}',
 				responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
+				responseContentType: '={{$parameter["options"]["responseContentType"]}}',
+				responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
 				path: '={{$parameter["path"]}}',
 			},
 		],
@@ -203,11 +205,47 @@ export class Webhook implements INodeType {
 				},
 				description: 'Name of the binary property to return',
 			},
+
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						responseData: [
+							'firstEntryJson',
+						],
+						responseMode: [
+							'lastNode',
+						],
+					},
+				},
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Response Content-Type',
+						name: 'responseContentType',
+						type: 'string',
+						default: '',
+						placeholder: 'application/xml',
+						description: 'Set a custom content-type to return if another one as the "application/json" should be returned.',
+					},
+					{
+						displayName: 'Property Name',
+						name: 'responsePropertyName',
+						type: 'string',
+						default: 'data',
+						description: 'Name of the property to return the data of instead of the whole JSON.',
+					},
+				],
+			},
+
 		],
 	};
 
 
-	async webhook(this: IWebhookFunctions): Promise<IWebhookResonseData> {
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 		const req = this.getRequestObject();
 		const resp = this.getResponseObject();

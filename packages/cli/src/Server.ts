@@ -74,6 +74,8 @@ import {
 import * as basicAuth from 'basic-auth';
 import * as compression from 'compression';
 import * as config from '../config';
+import * as jwt from 'jsonwebtoken';
+import * as jwks from 'jwks-rsa';
 // @ts-ignore
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
@@ -126,6 +128,7 @@ class App {
 	async config(): Promise<void> {
 
 		this.versions = await GenericHelpers.getVersions();
+		const authIgnoreRegex = new RegExp(`^\/(rest|healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive  = config.get('security.basicAuth.active') as boolean;
@@ -140,7 +143,6 @@ class App {
 				throw new Error('Basic auth is activated but no password got defined. Please set one!');
 			}
 
-			const authIgnoreRegex = new RegExp(`^\/(rest|healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				if (req.url.match(authIgnoreRegex)) {
 					return next();
@@ -159,6 +161,47 @@ class App {
 				}
 
 				next();
+			});
+		}
+
+		// Check for and validate JWT if configured
+		const jwtAuthActive  = config.get('security.jwtAuth.active') as boolean;
+		if (jwtAuthActive === true) {
+			const jwtAuthHeader = await GenericHelpers.getConfigValue('security.jwtAuth.jwtHeader') as string;
+			if (jwtAuthHeader === '') {
+				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
+			}
+
+			const jwksUri = await GenericHelpers.getConfigValue('security.jwtAuth.jwksUri') as string;
+			if (jwksUri === '') {
+				throw new Error('JWT auth is activated but no JWK Set URI was defined. Please set one!');
+			}
+
+			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+				if (req.url.match(authIgnoreRegex)) {
+					return next();
+				}
+
+				const token = req.header(jwtAuthHeader) as string;
+				if (token === '') {
+					return ResponseHelper.jwtAuthAuthorizationError(res, "Missing token");
+				}
+
+				const jwkClient = jwks({ cache: true, jwksUri });
+				function getKey(header: any, callback: Function) {
+					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => {
+						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
+
+						const signingKey = key.publicKey || key.rsaPublicKey;
+						callback(null, signingKey);
+					});
+				}
+
+				jwt.verify(token, getKey, {}, (err: Error, decoded: string) => {
+					if (err) return ResponseHelper.jwtAuthAuthorizationError(res, "Invalid token");
+
+					next();
+				});
 			});
 		}
 

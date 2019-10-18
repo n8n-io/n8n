@@ -17,7 +17,7 @@ import {
 	ITaskDataConnections,
 	ITriggerResponse,
 	IWebhookData,
-	IWebhookResonseData,
+	IWebhookResponseData,
 	WebhookSetupMethodNames,
 	WorkflowDataProxy,
 	IWorfklowIssues,
@@ -1002,10 +1002,10 @@ export class Workflow {
 	 * @param {IWorkflowExecuteAdditionalData} additionalData
 	 * @param {INodeExecuteFunctions} nodeExecuteFunctions
 	 * @param {WorkflowExecuteMode} mode
-	 * @returns {Promise<IWebhookResonseData>}
+	 * @returns {Promise<IWebhookResponseData>}
 	 * @memberof Workflow
 	 */
-	async runWebhook(webhookData: IWebhookData, node: INode, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<IWebhookResonseData> {
+	async runWebhook(webhookData: IWebhookData, node: INode, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<IWebhookResponseData> {
 		const nodeType = this.nodeTypes.getByName(node.type);
 		if (nodeType === undefined) {
 			throw new Error(`The type of the webhook node "${node.name}" is not known.`);

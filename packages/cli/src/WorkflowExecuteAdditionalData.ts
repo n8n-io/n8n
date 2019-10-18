@@ -158,7 +158,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
 		workflowExecuteAfter: [
 			async (fullRunData: IRun, newStaticData: IDataObject): Promise<void> => {
 				try {
-					if (WorkflowHelpers.isWorkflowIdValid(workflowData.id as string) === true) {
+					if (mode !== 'manual' && WorkflowHelpers.isWorkflowIdValid(workflowData.id as string) === true && newStaticData) {
 						// Workflow is saved so update in database
 						try {
 							await WorkflowHelpers.saveStaticDataById(workflowData.id as string, newStaticData);

@@ -111,6 +111,10 @@ export class HttpRequest implements INodeType {
 						value: 'HEAD'
 					},
 					{
+						name: 'PATCH',
+						value: 'PATCH'
+					},
+					{
 						name: 'POST',
 						value: 'POST'
 					},
@@ -187,7 +191,6 @@ export class HttpRequest implements INodeType {
 							'file',
 						],
 					},
-
 				},
 				description: 'Name of the binary property to which to<br />write the data of the read file.',
 			},
@@ -207,6 +210,36 @@ export class HttpRequest implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				options: [
+					{
+						displayName: 'Body Content Type',
+						name: 'bodyContentType',
+						type: 'options',
+						displayOptions: {
+							show: {
+								'/requestMethod': [
+									'PATCH',
+									'POST',
+									'PUT',
+								],
+							},
+						},
+						options: [
+							{
+								name: 'JSON',
+								value: 'json'
+							},
+							{
+								name: 'Form-Data Multipart',
+								value: 'multipart-form-data'
+							},
+							{
+								name: 'Form Urlencoded',
+								value: 'form-urlencoded'
+							},
+						],
+						default: 'json',
+						description: 'Content-Type to use to send body parameters.',
+					},
 					{
 						displayName: 'Full Response',
 						name: 'fullResponse',
@@ -317,6 +350,7 @@ export class HttpRequest implements INodeType {
 							true,
 						],
 						requestMethod: [
+							'PATCH',
 							'POST',
 							'PUT',
 						],
@@ -339,6 +373,7 @@ export class HttpRequest implements INodeType {
 							false,
 						],
 						requestMethod: [
+							'PATCH',
 							'POST',
 							'PUT',
 						],
@@ -543,6 +578,17 @@ export class HttpRequest implements INodeType {
 							requestOptions[optionName][parameterData!.name as string] = parameterData!.value;
 						}
 					}
+				}
+			}
+
+			// Change the way data get send in case a different content-type than JSON got selected
+			if (['PATCH', 'POST', 'PUT'].includes(requestMethod)) {
+				if (options.bodyContentType === 'multipart-form-data') {
+					requestOptions.formData = requestOptions.body;
+					delete requestOptions.body;
+				} else if (options.bodyContentType === 'form-urlencoded') {
+					requestOptions.form = requestOptions.body;
+					delete requestOptions.body;
 				}
 			}
 

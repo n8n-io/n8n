@@ -369,7 +369,7 @@ export interface INodeType {
 	execute?(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
-	webhook?(this: IWebhookFunctions): Promise<IWebhookResonseData>;
+	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
 	hooks?: {
 		[key: string]: (this: IHookFunctions) => Promise<boolean>;
 	};
@@ -467,6 +467,8 @@ export interface IWebhookDescription {
 	name: string;
 	path: string;
 	responseBinaryPropertyName?: string;
+	responseContentType?: string;
+	responsePropertyName?: string;
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 }
@@ -481,7 +483,7 @@ export interface IWorkflowDataProxyData {
 
 export type WebhookHttpMethod = 'GET' | 'POST';
 
-export interface IWebhookResonseData {
+export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
 	webhookResponse?: any; // tslint:disable-line:no-any
 	noWebhookResponse?: boolean;
