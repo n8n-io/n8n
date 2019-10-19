@@ -39,10 +39,10 @@ export class Mattermost implements INodeType {
 				name: 'resource',
 				type: 'options',
 				options: [
-					{
-						name: 'Channel',
-						value: 'channel',
-					},
+					//{
+					//	name: 'Channel',
+					//	value: 'channel',
+					//},
 					{
 						name: 'Message',
 						value: 'message',
