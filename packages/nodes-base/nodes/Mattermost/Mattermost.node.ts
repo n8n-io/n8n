@@ -668,7 +668,7 @@ export class Mattermost implements INodeType {
 
 			const responseData = await this.helpers.request(options);
 
-            if ("${responseData}" === "ok") {
+            if (responseData == "ok") {
                 throw new Error(`Request to Mattermost did fail with error: "${responseData}"`);
             }
 
