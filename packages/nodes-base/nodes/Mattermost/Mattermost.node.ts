@@ -659,7 +659,7 @@ export class Mattermost implements INodeType {
 				method: requestMethod,
 				body,
 				qs,
-				uri: ${credentials.accessToken},
+				uri: `${credentials.accessToken}`,
 				headers: {
 					'content-type': 'application/json; charset=utf-8'
 				},
