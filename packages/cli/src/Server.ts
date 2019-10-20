@@ -538,7 +538,7 @@ class App {
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(executionMode, workflowCredentials,currentNodeParameters);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(executionMode, workflowCredentials, currentNodeParameters);
 
 			return loadDataInstance.getOptions(methodName, additionalData);
 		}));
