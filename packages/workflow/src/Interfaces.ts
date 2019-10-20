@@ -181,6 +181,8 @@ export interface IExecuteSingleFunctions {
 export interface ILoadOptionsFunctions {
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getCurrentNodeParameter(parameterName: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined;
+	getCurrentNodeParameters(): INodeParameters | undefined;
 	getTimezone(): string;
 	helpers: {
 		[key: string]: ((...args: any[]) => any) | undefined; //tslint:disable-line:no-any
@@ -597,6 +599,7 @@ export interface IWorkflowExecuteAdditionalData {
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
+	currentNodeParameters? : INodeParameters[];
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';

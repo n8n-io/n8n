@@ -17,6 +17,7 @@ import {
 
 import {
 	IDataObject,
+	INodeParameters,
 	IRun,
 	ITaskData,
 	IWorkflowCredentials,
@@ -245,7 +246,7 @@ const hooks = (mode: WorkflowExecuteMode, workflowData: IWorkflowBase, execution
  * @param {IWorkflowCredentials} credentials
  * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
-export async function getBase(mode: WorkflowExecuteMode, credentials: IWorkflowCredentials): Promise<IWorkflowExecuteAdditionalData> {
+export async function getBase(mode: WorkflowExecuteMode, credentials: IWorkflowCredentials, currentNodeParameters: INodeParameters[] = []): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
 	const timezone = config.get('generic.timezone') as string;
@@ -263,6 +264,7 @@ export async function getBase(mode: WorkflowExecuteMode, credentials: IWorkflowC
 		timezone,
 		webhookBaseUrl,
 		webhookTestBaseUrl,
+		currentNodeParameters,
 	};
 }
 
