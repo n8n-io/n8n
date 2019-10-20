@@ -152,12 +152,15 @@ export class DiscordWebhook implements INodeType {
 				responseData = await this.helpers.request(options);
 			} catch (error) {
 				if (error.statusCode === 429) {
-					// Return API Rate Limit error
-					throw new Error(`You are rate limited, please retry in ${error.response.body.retry_after} ms.`);
+					// Waiting rating limit
+					setTimeout(async () => {
+						responseData = await this.helpers.request(options)
+					}, 
+					error.response.body.retry_after);
+				}else {
+					// If it's another error code then return the JSON response
+					throw error;
 				}
-
-				// If it's another error code then return the JSON response
-				throw error;
 			}
 
 			returnData.push(responseData as IDataObject);
