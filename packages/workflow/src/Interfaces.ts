@@ -181,6 +181,7 @@ export interface IExecuteSingleFunctions {
 export interface ILoadOptionsFunctions {
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getCurrentNodeParameters(parameterName: string):  NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object;
 	getTimezone(): string;
 	helpers: {
 		[key: string]: ((...args: any[]) => any) | undefined; //tslint:disable-line:no-any
@@ -290,7 +291,7 @@ export type NodeParameterValue = string | number | boolean;
 
 export interface INodeParameters {
 	// TODO: Later also has to be possible to add multiple ones with the name name. So array has to be possible
-	[key: string]: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
+	[key: string]: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] ;
 }
 
 
@@ -597,6 +598,7 @@ export interface IWorkflowExecuteAdditionalData {
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
+	currentNodeParameters? : INodeParameters[];
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
