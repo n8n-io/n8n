@@ -6,12 +6,6 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 
-interface Attachment {
-	fields: {
-		item?: object[];
-	};
-}
-
 export class DiscordWebhook implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Discord Webhook',
@@ -23,7 +17,7 @@ export class DiscordWebhook implements INodeType {
 		description: 'Sends data to Discord',
 		defaults: {
 			name: 'Discord Webhook',
-			color: '#BB2244',
+			color: '#7289da',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -110,6 +104,7 @@ export class DiscordWebhook implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
+		let responseData;
 
 		const credentials = this.getCredentials('discordApi');
 
@@ -123,12 +118,9 @@ export class DiscordWebhook implements INodeType {
 
 		// For Post
 		let body: IDataObject;
-		// For Query string
-		let qs: IDataObject;
 
 		for (let i = 0; i < items.length; i++) {
 			body = {};
-			qs = {};
 
 			resource = this.getNodeParameter('resource', i) as string;
 			operation = this.getNodeParameter('operation', i) as string;
@@ -141,24 +133,6 @@ export class DiscordWebhook implements INodeType {
 
 					requestMethod = 'POST';
 					body.content = this.getNodeParameter('text', i) as string;
-
-					const attachments = this.getNodeParameter('attachments', i, []) as unknown as Attachment[];
-
-					// The node does save the fields data differently than the API
-					// expects so fix the data befre we send the request
-					for (const attachment of attachments) {
-						if (attachment.fields !== undefined) {
-							if (attachment.fields.item !== undefined) {
-								// Move the field-content up
-								// @ts-ignore
-								attachment.fields = attachment.fields.item;
-							} else {
-								// If it does not have any items set remove it
-								delete attachment.fields;
-							}
-						}
-					}
-					body['attachments'] = attachments;
 				}
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
@@ -167,7 +141,6 @@ export class DiscordWebhook implements INodeType {
 			const options = {
 				method: requestMethod,
 				body,
-				qs,
 				uri: `${credentials.webhookUri}`,
 				headers: {
 					'content-type': 'application/json; charset=utf-8'
@@ -175,7 +148,17 @@ export class DiscordWebhook implements INodeType {
 				json: true
 			};
 
-			const responseData = await this.helpers.request(options);
+			try {
+				responseData = await this.helpers.request(options);
+			} catch (error) {
+				if (error.statusCode === 429) {
+					// Return API Rate Limit error
+					throw new Error(`You are rate limited, please retry in ${error.response.body.retry_after} ms.`);
+				}
+
+				// If it's another error code then return the JSON response
+				throw error;
+			}
 
 			returnData.push(responseData as IDataObject);
 		}
