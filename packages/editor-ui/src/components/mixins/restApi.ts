@@ -157,8 +157,8 @@ export const restApi = Vue.extend({
 						nodeType,
 						methodName,
 						credentials,
+						currentNodeParameters : this.$store.getters.activeNode.parameters,
 					};
-
 					return self.restApi().makeRestApiRequest('GET', '/node-parameter-options', sendData);
 				},
 

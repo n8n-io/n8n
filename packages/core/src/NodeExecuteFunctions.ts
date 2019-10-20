@@ -513,6 +513,16 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
 				return getCredentials(workflow, node, type, additionalData);
 			},
+			getCurrentNodeParameter: (parameterName: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined => {
+				const nodeParameters = JSON.parse('' + additionalData.currentNodeParameters);
+				if (nodeParameters && nodeParameters[parameterName]) {
+					return nodeParameters[parameterName];
+				}
+				return undefined;
+			},
+			getCurrentNodeParameters: (): INodeParameters | undefined => {
+				return JSON.parse('' + additionalData.currentNodeParameters);
+			},
 			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
 				const runExecutionData: IRunExecutionData | null = null;
 				const itemIndex = 0;
