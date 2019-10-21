@@ -10,6 +10,7 @@ import {
 
 import {
 	apiRequest,
+	IAttachment,
 } from './GenericFunctions';
 
 
@@ -176,6 +177,34 @@ export class Mattermost implements INodeType {
 				required: true,
 				description: 'The unique handle for the channel, will be present in the channel URL.',
 			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: [
+							'create'
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Private',
+						value: 'private',
+					},
+					{
+						name: 'Public',
+						value: 'public',
+					},
+				],
+				default: 'public',
+				description: 'The type of channel to create.',
+			},
+
 
 			// ----------------------------------
 			//         channel:addUser
@@ -276,6 +305,222 @@ export class Mattermost implements INodeType {
 				},
 				description: 'The text to send.',
 			},
+			{
+				displayName: 'Attachments',
+				name: 'attachments',
+				type: 'collection',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add attachment',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'post'
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				default: {},
+				description: 'The attachment to add',
+				placeholder: 'Add attachment item',
+				options: [
+					{
+						displayName: 'Fallback Text',
+						name: 'fallback',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Required plain-text summary of the attachment.',
+					},
+					{
+						displayName: 'Text',
+						name: 'text',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text to send.',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Title of the message.',
+					},
+					{
+						displayName: 'Title Link',
+						name: 'title_link',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Link of the title.',
+					},
+					{
+						displayName: 'Color',
+						name: 'color',
+						type: 'color',
+						default: '#ff0000',
+						description: 'Color of the line left of text.',
+					},
+					{
+						displayName: 'Pretext',
+						name: 'pretext',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text which appears before the message block.',
+					},
+					{
+						displayName: 'Author Name',
+						name: 'author_name',
+						type: 'string',
+						default: '',
+						description: 'Name that should appear.',
+					},
+					{
+						displayName: 'Author Link',
+						name: 'author_link',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Link for the author.',
+					},
+					{
+						displayName: 'Author Icon',
+						name: 'author_icon',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Icon which should appear for the user.',
+					},
+					{
+						displayName: 'Image URL',
+						name: 'image_url',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'URL of image.',
+					},
+					{
+						displayName: 'Thumbnail URL',
+						name: 'thumb_url',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'URL of thumbnail.',
+					},
+					{
+						displayName: 'Footer',
+						name: 'footer',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text of footer to add.',
+					},
+					{
+						displayName: 'Footer Icon',
+						name: 'footer_icon',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Icon which should appear next to footer.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						placeholder: 'Add Fields',
+						description: 'Fields to add to message.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'item',
+								displayName: 'Item',
+								values: [
+									{
+										displayName: 'Title',
+										name: 'title',
+										type: 'string',
+										default: '',
+										description: 'Title of the item.',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the item.',
+									},
+									{
+										displayName: 'Short',
+										name: 'short',
+										type: 'boolean',
+										default: true,
+										description: 'If items can be displayed next to each other.',
+									},
+								]
+							},
+						],
+					}
+				],
+			},
+			{
+				displayName: 'Other Options',
+				name: 'otherOptions',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'post'
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				default: {},
+				description: 'Other options to set',
+				placeholder: 'Add options',
+				options: [
+					{
+						displayName: 'Make Comment',
+						name: 'root_id',
+						type: 'string',
+						default: '',
+						description: 'The post ID to comment on',
+					},
+				],
+			},
+
 		],
 	};
 
@@ -402,8 +647,9 @@ export class Mattermost implements INodeType {
 					body.team_id = this.getNodeParameter('teamId', i) as string;
 					body.displayName = this.getNodeParameter('displayName', i) as string;
 					body.name = this.getNodeParameter('channel', i) as string;
-					// TODO: Make type configurable
-					body.type = 'O';
+
+					const type = this.getNodeParameter('type', i) as string;
+					body.type = type === 'public' ? 'O' : 'P';
 
 				} else if (operation === 'addUser') {
 					// ----------------------------------
@@ -430,6 +676,30 @@ export class Mattermost implements INodeType {
 					body.channel_id = this.getNodeParameter('channelId', i) as string;
 					body.message = this.getNodeParameter('message', i) as string;
 
+					const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
+
+					// The node does save the fields data differently than the API
+					// expects so fix the data befre we send the request
+					for (const attachment of attachments) {
+						if (attachment.fields !== undefined) {
+							if (attachment.fields.item !== undefined) {
+								// Move the field-content up
+								// @ts-ignore
+								attachment.fields = attachment.fields.item;
+							} else {
+								// If it does not have any items set remove it
+								delete attachment.fields;
+							}
+						}
+					}
+
+					body.props = {
+						attachments,
+					};
+
+					// Add all the other options to the request
+					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
+					Object.assign(body, otherOptions);
 				}
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
