@@ -12,11 +12,17 @@ import { OptionsWithUri } from 'request';
 
 export interface ICustomInterface {
 	name: string;
+	key: string;
 	options?: Array<{
 		id: number;
 		label: string;
 	}>;
 }
+
+export interface ICustomProperties {
+	[key: string]: ICustomInterface;
+}
+
 
 /**
  * Make an API request to Pipedrive
@@ -141,15 +147,14 @@ export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecut
 
 
 /**
- * Converts names and values of custom properties to their actual values
+ * Gets the custom properties from Pipedrive
  *
  * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
  * @param {string} resource
- * @param {IDataObject[]} items
- * @returns {Promise<IDataObject[]>}
+ * @returns {Promise<ICustomProperties>}
  */
-export async function pipedriveResolveCustomProperties(this: IHookFunctions | IExecuteFunctions, resource: string, items: IDataObject[]): Promise<void> {
+export async function pipedriveGetCustomProperties(this: IHookFunctions | IExecuteFunctions, resource: string): Promise<ICustomProperties> {
 
 	const endpoints: { [key: string]: string } = {
 		'activity': '/activityFields',
@@ -170,37 +175,83 @@ export async function pipedriveResolveCustomProperties(this: IHookFunctions | IE
 	// Get the custom properties and their values
 	const responseData = await pipedriveApiRequest.call(this, requestMethod, endpoints[resource], body, qs);
 
-	const customProperties: {
-		[key: string]: ICustomInterface;
-	} = {};
+	const customProperties: ICustomProperties = {};
 
 	for (const customPropertyData of responseData.data) {
 		customProperties[customPropertyData.key] = customPropertyData;
 	}
 
+	return customProperties;
+}
+
+
+
+/**
+ * Converts names and values of custom properties from their actual values to the
+ * Pipedrive internal ones
+ *
+ * @export
+ * @param {ICustomProperties} customProperties
+ * @param {IDataObject} item
+ */
+export function pipedriveEncodeCustomProperties(customProperties: ICustomProperties, item: IDataObject): void {
 	let customPropertyData;
 
-	for (const item of items) {
-		// Itterate over all keys and replace the custom ones
-		for (const key of Object.keys(item)) {
-			if (customProperties[key] !== undefined) {
-				// Is a custom property
-				customPropertyData = customProperties[key];
+	for (const key of Object.keys(item)) {
+		customPropertyData = Object.values(customProperties).find(customPropertyData => customPropertyData.name === key);
 
-				// Check if also the value has to be resolved or just the key
-				if (item[key] !== null && item[key] !== undefined && customPropertyData.options !== undefined && Array.isArray(customPropertyData.options)) {
-					// Has an option key so get the actual option-value
-					const propertyOption = customPropertyData.options.find(option => option.id.toString() === item[key]!.toString());
+		if (customPropertyData !== undefined) {
+			// Is a custom property
 
-					if (propertyOption !== undefined) {
-						item[customPropertyData.name as string] = propertyOption.label;
-						delete item[key];
-					}
-				} else {
-					// Does already represent the actual value or is null
-					item[customPropertyData.name as string] = item[key];
+			// Check if also the value has to be resolved or just the key
+			if (item[key] !== null && item[key] !== undefined && customPropertyData.options !== undefined && Array.isArray(customPropertyData.options)) {
+				// Has an option key so get the actual option-value
+				const propertyOption = customPropertyData.options.find(option => option.label.toString() === item[key]!.toString());
+
+				if (propertyOption !== undefined) {
+					item[customPropertyData.key as string] = propertyOption.id;
 					delete item[key];
 				}
+			} else {
+				// Does already represent the actual value or is null
+				item[customPropertyData.key as string] = item[key];
+				delete item[key];
+			}
+		}
+	}
+}
+
+
+
+/**
+ * Converts names and values of custom properties to their actual values
+ *
+ * @export
+ * @param {ICustomProperties} customProperties
+ * @param {IDataObject} item
+ */
+export function pipedriveResolveCustomProperties(customProperties: ICustomProperties, item: IDataObject): void {
+	let customPropertyData;
+
+	// Itterate over all keys and replace the custom ones
+	for (const key of Object.keys(item)) {
+		if (customProperties[key] !== undefined) {
+			// Is a custom property
+			customPropertyData = customProperties[key];
+
+			// Check if also the value has to be resolved or just the key
+			if (item[key] !== null && item[key] !== undefined && customPropertyData.options !== undefined && Array.isArray(customPropertyData.options)) {
+				// Has an option key so get the actual option-value
+				const propertyOption = customPropertyData.options.find(option => option.id.toString() === item[key]!.toString());
+
+				if (propertyOption !== undefined) {
+					item[customPropertyData.name as string] = propertyOption.label;
+					delete item[key];
+				}
+			} else {
+				// Does already represent the actual value or is null
+				item[customPropertyData.name as string] = item[key];
+				delete item[key];
 			}
 		}
 	}
