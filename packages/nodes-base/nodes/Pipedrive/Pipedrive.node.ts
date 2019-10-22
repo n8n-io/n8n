@@ -10,8 +10,11 @@ import {
 } from 'n8n-workflow';
 
 import {
+	ICustomProperties,
 	pipedriveApiRequest,
 	pipedriveApiRequestAllItems,
+	pipedriveEncodeCustomProperties,
+	pipedriveGetCustomProperties,
 	pipedriveResolveCustomProperties,
 } from './GenericFunctions';
 
@@ -1961,6 +1964,27 @@ export class Pipedrive implements INodeType {
 				description: 'By default do custom properties get returned only as ID instead of their actual name. Also option fields contain only the ID instead of their actual value. If this option gets set they get automatically resolved.',
 			},
 			{
+				displayName: 'Encode Properties',
+				name: 'encodeProperties',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'activity',
+							'deal',
+							'organization',
+							'person',
+							'product',
+						],
+						operation: [
+							'update',
+						],
+					},
+				},
+				default: false,
+				description: 'By default do custom properties have to be set as ID instead of their actual name. Also option fields have to be set as ID instead of their actual value. If this option gets set they get automatically encoded.',
+			},
+			{
 				displayName: 'Return All',
 				name: 'returnAll',
 				type: 'boolean',
@@ -2019,6 +2043,23 @@ export class Pipedrive implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
+		let customProperties: ICustomProperties | undefined;
+		if (['get', 'getAll', 'update'].includes(operation) && ['activity', 'deal', 'organization', 'person', 'product'].includes(resource)) {
+			// Request the custom properties once in the beginning to not query it multiple
+			// times if multiple items get updated
+
+			let getCustomProperties = false;
+			if (['update'].includes(operation)) {
+				getCustomProperties = this.getNodeParameter('encodeProperties', 0, false) as boolean;
+			} else {
+				getCustomProperties = this.getNodeParameter('resolveProperties', 0, false) as boolean;
+			}
+
+			if (getCustomProperties === true) {
+				customProperties = await pipedriveGetCustomProperties.call(this, resource);
+			}
+		}
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -2415,6 +2456,11 @@ export class Pipedrive implements INodeType {
 			if (returnAll === true) {
 				responseData = await pipedriveApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 			} else {
+
+				if (customProperties !== undefined) {
+					pipedriveEncodeCustomProperties(customProperties!, body);
+				}
+
 				responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
 			}
 
@@ -2445,11 +2491,9 @@ export class Pipedrive implements INodeType {
 			}
 		}
 
-		if (['get', 'getAll'].includes(operation) && ['activity', 'deal', 'organization', 'person', 'product'].includes(resource)) {
-			const resolveProperties = this.getNodeParameter('resolveProperties', 0) as boolean;
-
-			if (resolveProperties === true) {
-				await pipedriveResolveCustomProperties.call(this, resource, returnData);
+		if (customProperties !== undefined) {
+			for (const item of returnData) {
+				await pipedriveResolveCustomProperties(customProperties, item);
 			}
 		}
 
