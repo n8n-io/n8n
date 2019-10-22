@@ -7,8 +7,8 @@
     "build": "lerna exec npm run build",
     "dev": "lerna exec npm run dev --parallel",
     "start": "run-script-os",
-    "start:default": "cd packages/cli/bin && ./n8n",
-    "start:windows": "cd packages/cli/bin && n8n",
+    "start:default": "npm install --save && cd packages/cli/bin && ./n8n",
+    "start:windows": "npm install --save && cd packages/cli/bin && n8n",
     "test": "lerna run test",
     "watch": "lerna run --parallel watch"
   },
