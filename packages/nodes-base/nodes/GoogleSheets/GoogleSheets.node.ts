@@ -390,7 +390,7 @@ export class GoogleSheets implements INodeType {
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 		const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
-		const valueRenderMode = (options.valueRenderMode || 'FORMATTED_VALUE') as ValueRenderOption;
+		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 		if (operation === 'append') {
 			// ----------------------------------
