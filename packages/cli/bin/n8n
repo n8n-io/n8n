@@ -37,6 +37,11 @@ if (!supportedCommands.includes(command)) {
 	process.argv.push('--help');
 }
 
+if (parseInt(process.versions.node.split('.')[0], 10) < 10) {
+	console.log('\nThe Node.js version is too old to run n8n. Please use version 10 or later!\n');
+	process.exit(0);
+}
+
 require('@oclif/command').run()
 .then(require('@oclif/command/flush'))
 .catch(require('@oclif/errors/handle'));
