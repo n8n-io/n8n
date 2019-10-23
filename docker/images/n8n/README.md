@@ -72,7 +72,7 @@ To use it simply start n8n with `--tunnel`
 docker run -it --rm \
   --name n8n \
   -p 5678:5678 \
-  -v ~/.n8n:/root/.n8n \
+  -v ~/.n8n:/home/n8n/.n8n \
   n8nio/n8n \
   n8n start --tunnel
 ```
@@ -96,14 +96,14 @@ N8N_BASIC_AUTH_PASSWORD=<PASSWORD>
 ## Persist data
 
 The workflow data gets by default saved in an SQLite database in the user
-folder (`/root/.n8n`). That folder also additionally contains the
+folder (`/home/n8n/.n8n`). That folder also additionally contains the
 settings like webhook URL and encryption key.
 
 ```
 docker run -it --rm \
   --name n8n \
   -p 5678:5678 \
-  -v ~/.n8n:/root/.n8n \
+  -v ~/.n8n:/home/n8n/.n8n \
   n8nio/n8n
 ```
 
@@ -113,7 +113,7 @@ By default n8n uses SQLite to save credentials, past executions and workflows.
 n8n however also supports MongoDB and PostgresDB. To use them simply a few
 environment variables have to be set.
 
-It is important to still persist the data in the `/root/.n8` folder. The reason
+It is important to still persist the data in the `/home/n8n/.n8` folder. The reason
 is that it contains n8n user data. That is the name of the webhook
 (in case) the n8n tunnel gets used and even more important the encryption key
 for the credentials. If none gets found n8n creates automatically one on
@@ -140,7 +140,7 @@ docker run -it --rm \
   -p 5678:5678 \
 	-e DB_TYPE=mongodb \
 	-e DB_MONGODB_CONNECTION_URL="mongodb://<MONGO_USER>:<MONGO_PASSWORD>@<MONGO_SERVER>:<MONGO_PORT>/<MONGO_DATABASE>" \
-  -v ~/.n8n:/root/.n8n \
+  -v ~/.n8n:/home/n8n/.n8n \
   n8nio/n8n \
   n8n start
 ```
@@ -167,7 +167,7 @@ docker run -it --rm \
 	-e DB_POSTGRESDB_PORT=<POSTGRES_PORT> \
 	-e DB_POSTGRESDB_USER=<POSTGRES_USER> \
 	-e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
-  -v ~/.n8n:/root/.n8n \
+  -v ~/.n8n:/home/n8n/.n8n \
   n8nio/n8n \
   n8n start
 ```
