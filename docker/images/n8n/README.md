@@ -95,6 +95,7 @@ N8N_BASIC_AUTH_PASSWORD=<PASSWORD>
 
 ## Persist data
 
+`n8n` runs as the 'n8n' user which has a UID of `1001`, take this into account when persisting data.
 The workflow data gets by default saved in an SQLite database in the user
 folder (`/home/n8n/.n8n`). That folder also additionally contains the
 settings like webhook URL and encryption key.

@@ -7,7 +7,7 @@ RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" 
 # Update everything, install needed dependencies and create n8n user
 RUN apk add --update \
 	graphicsmagick; \
-	adduser -S -h /home/n8n n8n
+	adduser -S -h /home/n8n -u 1001 n8n
 
 # Install n8n and the also temporary all the packages
 # it needs to build it correctly.
