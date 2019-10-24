@@ -165,6 +165,16 @@ export class ActiveCampaign implements INodeType {
 						value: 'update',
 						description: 'Update a deal',
 					},
+					{
+						name: 'Create Note',
+						value: 'createNote',
+						description: 'Create a deal note',
+					},
+					{
+						name: 'Update deal note',
+						value: 'updateNote',
+						description: 'Update a deal note',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -923,6 +933,85 @@ export class ActiveCampaign implements INodeType {
 					},
 				},
 				description: 'The status of the deal',
+			},
+
+			// ----------------------------------
+			//         dealNote:create
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'createNote',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal note',
+			},
+			{
+				displayName: 'Deal Note',
+				name: 'dealNote',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'createNote',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The content of the deal note',
+			},
+			
+			// ----------------------------------
+			//         dealNote:update
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'updateNote',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal note',
+			},
+			{
+				displayName: 'Deal Note',
+				name: 'dealNote',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'updateNote',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The content of the deal note',
 			},
 		],
 	};
