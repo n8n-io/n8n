@@ -532,8 +532,8 @@ export class ActiveCampaign implements INodeType {
 				description: 'The description of the deal',
 			},
 			{
-				displayName: 'Deal ID',
-				name: 'dealId',
+				displayName: 'Deal\'s contact ID',
+				name: 'contactId',
 				type: 'number',
 				default: '',
 				required: true,
@@ -547,7 +547,7 @@ export class ActiveCampaign implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the deal',
+				description: 'The ID of the deal\'s contact',
 			},
 			{
 				displayName: 'Deal value',
@@ -799,8 +799,8 @@ export class ActiveCampaign implements INodeType {
 				description: 'The description of the deal',
 			},
 			{
-				displayName: 'Deal ID',
-				name: 'dealId',
+				displayName: 'Deal\'s contact ID',
+				name: 'contactId',
 				type: 'number',
 				default: '',
 				displayOptions: {
@@ -813,7 +813,7 @@ export class ActiveCampaign implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the deal',
+				description: 'The ID of the deal\'s contact',
 			},
 			{
 				displayName: 'Deal value',
@@ -974,7 +974,7 @@ export class ActiveCampaign implements INodeType {
 				},
 				description: 'The content of the deal note',
 			},
-			
+
 			// ----------------------------------
 			//         dealNote:update
 			// ----------------------------------
