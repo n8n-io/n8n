@@ -59,6 +59,10 @@ export class ActiveCampaign implements INodeType {
 			}
 		],
 		properties: [
+
+			// ----------------------------------
+			//         resources
+			// ----------------------------------
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -68,6 +72,10 @@ export class ActiveCampaign implements INodeType {
 						name: 'Contact',
 						value: 'contact',
 					},
+					{
+						name: 'Deal',
+						value: 'deal',
+					}
 				],
 				default: 'contact',
 				description: 'The resource to operate on.',
@@ -114,6 +122,48 @@ export class ActiveCampaign implements INodeType {
 						name: 'Update',
 						value: 'update',
 						description: 'Update a contact',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'deal',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a deal',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a deal',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get data of a deal',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get data of all deals',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a deal',
 					},
 				],
 				default: 'create',
@@ -261,7 +311,7 @@ export class ActiveCampaign implements INodeType {
 			},
 
 			// ----------------------------------
-			//         person:get
+			//         contact:get
 			// ----------------------------------
 			{
 				displayName: 'Contact ID',
@@ -429,7 +479,451 @@ export class ActiveCampaign implements INodeType {
 					},
 				],
 			},
+			// ----------------------------------
+			//         deal
+			// ----------------------------------
 
+			// ----------------------------------
+			//         deal:create
+			// ----------------------------------
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The title of the deal',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The description of the deal',
+			},
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal',
+			},
+			{
+				displayName: 'Deal value',
+				name: 'dealValue',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The value of the deal in cents',
+			},
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The currency of the deal in 3-character ISO format',
+			},
+			{
+				displayName: 'Deal group ID',
+				name: 'dealGroup',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The group ID of the deal',
+			},
+			{
+				displayName: 'Deal stage ID',
+				name: 'dealStage',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The stage ID of the deal',
+			},
+			{
+				displayName: 'Deal owner ID',
+				name: 'dealOwner',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The owner ID of the deal',
+			},
+			{
+				displayName: 'Deal percentage',
+				name: 'dealPercentage',
+				type: 'number',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The percentage of the deal',
+			},
+			{
+				displayName: 'Deal status',
+				name: 'dealStatus',
+				type: 'number',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The status of the deal',
+			},
+			
+			// ----------------------------------
+			//         deal:delete
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal',
+			},
+
+			// ----------------------------------
+			//         deal:get
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal',
+			},
+			
+			// ----------------------------------
+			//         deal:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'deal',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+
+			// ----------------------------------
+			//         deal:update
+			// ----------------------------------
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The title of the deal',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The description of the deal',
+			},
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal',
+			},
+			{
+				displayName: 'Deal value',
+				name: 'dealValue',
+				type: 'number',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The value of the deal in cents',
+			},
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The currency of the deal in 3-character ISO format',
+			},
+			{
+				displayName: 'Deal group ID',
+				name: 'dealGroup',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The group ID of the deal',
+			},
+			{
+				displayName: 'Deal stage ID',
+				name: 'dealStage',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The stage ID of the deal',
+			},
+			{
+				displayName: 'Deal owner ID',
+				name: 'dealOwner',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The owner ID of the deal',
+			},
+			{
+				displayName: 'Deal percentage',
+				name: 'dealPercentage',
+				type: 'number',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The percentage of the deal',
+			},
+			{
+				displayName: 'Deal status',
+				name: 'dealStatus',
+				type: 'number',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The status of the deal',
+			},
 		],
 	};
 
