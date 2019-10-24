@@ -62,7 +62,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		const executionMode = 'error';
 		const nodeTypes = NodeTypes();
 
-		const workflowInstance = new Workflow(workflowId, workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, undefined, workflowData.settings);
+		const workflowInstance = new Workflow(workflowId, workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
 
 
 		let node: INode;
@@ -167,4 +167,24 @@ export async function saveStaticDataById(workflowId: string | number, newStaticD
 		.update(workflowId, {
 			staticData: newStaticData,
 		});
+}
+
+
+
+/**
+ * Returns the static data of workflow
+ *
+ * @export
+ * @param {(string | number)} workflowId The id of the workflow to get static data of
+ * @returns
+ */
+export async function getStaticDataById(workflowId: string | number) {
+	const workflowData = await Db.collections.Workflow!
+		.findOne(workflowId, { select: ['staticData']});
+
+	if (workflowData === undefined) {
+		return {};
+	}
+
+	return workflowData.staticData || {};
 }

@@ -23,6 +23,10 @@ export interface ILookupValues {
 	lookupValue: string;
 }
 
+export type ValueInputOption = 'RAW' | 'USER_ENTERED';
+
+export type ValueRenderOption = 'FORMATTED_VALUE' | 'FORMULA' | 'UNFORMATTED_VALUE';
+
 export class GoogleSheet {
 	id: string;
 	credentials: IGoogleAuthCredentials;
@@ -43,7 +47,7 @@ export class GoogleSheet {
     /**
      * Returns the cell values
      */
-	async getData(range: string): Promise<string[][] | undefined> {
+	async getData(range: string, valueRenderMode: ValueRenderOption): Promise<string[][] | undefined> {
 		const client = await this.getAuthenticationClient();
 
 		const response = await Sheets.spreadsheets.values.get(
@@ -51,7 +55,7 @@ export class GoogleSheet {
 				auth: client,
 				spreadsheetId: this.id,
 				range,
-				valueRenderOption: 'UNFORMATTED_VALUE',
+				valueRenderOption: valueRenderMode,
 			}
 		);
 
@@ -62,7 +66,7 @@ export class GoogleSheet {
     /**
      * Sets the cell values
      */
-	async batchUpdate(updateData: ISheetUpdateData[]) {
+	async batchUpdate(updateData: ISheetUpdateData[], valueInputMode: ValueInputOption) {
 		const client = await this.getAuthenticationClient();
 
 		const response = await Sheets.spreadsheets.values.batchUpdate(
@@ -70,10 +74,9 @@ export class GoogleSheet {
 				// @ts-ignore
 				auth: client,
 				spreadsheetId: this.id,
-				valueInputOption: 'RAW',
+				valueInputOption: valueInputMode,
 				resource: {
 					data: updateData,
-					valueInputOption: "USER_ENTERED",
 				},
 			}
 		);
@@ -85,7 +88,7 @@ export class GoogleSheet {
     /**
      * Sets the cell values
      */
-	async setData(range: string, data: string[][]) {
+	async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 		const client = await this.getAuthenticationClient();
 
 		const response = await Sheets.spreadsheets.values.update(
@@ -94,7 +97,7 @@ export class GoogleSheet {
 				auth: client,
 				spreadsheetId: this.id,
 				range,
-				valueInputOption: 'RAW',
+				valueInputOption: valueInputMode,
 				resource: {
 					values: data
 				}
@@ -108,7 +111,7 @@ export class GoogleSheet {
     /**
      * Appends the cell values
      */
-	async appendData(range: string, data: string[][]) {
+	async appendData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 		const client = await this.getAuthenticationClient();
 
 		const response = await Sheets.spreadsheets.values.append(
@@ -117,7 +120,7 @@ export class GoogleSheet {
 				auth: client,
 				spreadsheetId: this.id,
 				range,
-				valueInputOption: 'RAW',
+				valueInputOption: valueInputMode,
 				resource: {
 					values: data
 				}
@@ -196,9 +199,9 @@ export class GoogleSheet {
 	}
 
 
-	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number): Promise<string[][]> {
+	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption): Promise<string[][]> {
 		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex);
-		return this.appendData(range, data);
+		return this.appendData(range, data, valueInputMode);
 	}
 
 
@@ -213,7 +216,7 @@ export class GoogleSheet {
 	 * @returns {Promise<string[][]>}
 	 * @memberof GoogleSheet
 	 */
-	async updateSheetData(inputData: IDataObject[], indexKey: string, range: string, keyRowIndex: number, dataStartRowIndex: number): Promise<string[][]> {
+	async updateSheetData(inputData: IDataObject[], indexKey: string, range: string, keyRowIndex: number, dataStartRowIndex: number, valueInputMode: ValueInputOption, valueRenderMode: ValueRenderOption): Promise<string[][]> {
 		// Get current data in Google Sheet
 		let rangeStart: string, rangeEnd: string;
 		let sheet: string | undefined = undefined;
@@ -224,7 +227,7 @@ export class GoogleSheet {
 
 		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStart}${dataStartRowIndex}:${rangeEnd}${dataStartRowIndex}`;
 
-		const sheetDatakeyRow = await this.getData(keyRowRange);
+		const sheetDatakeyRow = await this.getData(keyRowRange, valueRenderMode);
 
 		if (sheetDatakeyRow === undefined) {
 			throw new Error('Could not retrieve the key row!');
@@ -242,7 +245,7 @@ export class GoogleSheet {
 		let keyColumnRange = String.fromCharCode(characterCode);
 		keyColumnRange = `${sheet ? sheet + '!' : ''}${keyColumnRange}:${keyColumnRange}`;
 
-		const sheetDataKeyColumn = await this.getData(keyColumnRange);
+		const sheetDataKeyColumn = await this.getData(keyColumnRange, valueRenderMode);
 
 		if (sheetDataKeyColumn === undefined) {
 			throw new Error('Could not retrieve the key column!');
@@ -312,7 +315,7 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.batchUpdate(updateData);
+		return this.batchUpdate(updateData, valueInputMode);
 	}
 
 
@@ -386,7 +389,7 @@ export class GoogleSheet {
 			getRange = `${sheet}!${getRange}`;
 		}
 
-		const keyColumnData = await this.getData(getRange);
+		const keyColumnData = await this.getData(getRange, 'UNFORMATTED_VALUE');
 
 		if (keyColumnData === undefined) {
 			throw new Error('Could not retrieve the column data!');

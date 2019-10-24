@@ -56,7 +56,7 @@ The source code is however open and people and companies can use it totally free
 What is however not allowed is to make money directly with n8n. So you can for example not charge
 other people to host or support n8n.
 
-The support part is mainly there because it was already in the license and I am not a lawyer. So to make it simpler do I hereby grant anybody the right to do consulting/support without prior permission as long as it is less than 30.000 USD per year.
+The support part is mainly there because it was already in the license and I am not a lawyer. So to make it simpler do I hereby grant anybody the right to do consulting/support without prior permission as long as it is less than 30,000 USD ($30k) per year.
 
 If you have bigger things planned simply write an email to [license@n8n.io](mailto:license@n8n.io).
 

@@ -400,10 +400,9 @@ export default mixins(
 		},
 		methods: {
 			async loadRemoteParameterOptions () {
-				if (this.node === null || this.remoteMethod === undefined) {
+				if (this.node === null || this.remoteMethod === undefined || this.remoteParameterOptionsLoading) {
 					return;
 				}
-
 				this.remoteParameterOptionsLoadingIssues = null;
 				this.remoteParameterOptionsLoading = true;
 				this.remoteParameterOptions.length = 0;
@@ -473,7 +472,8 @@ export default mixins(
 
 				// Set focus on field
 				setTimeout(() => {
-					(this.$refs.inputField as HTMLInputElement).focus();
+					// @ts-ignore
+					(this.$refs.inputField.$el.querySelector('input') as HTMLInputElement).focus();
 				});
 			},
 			valueChanged (value: string | number | boolean | Date | null) {
@@ -512,6 +512,28 @@ export default mixins(
 				this.$watch(() => this.node!.credentials, () => {
 					this.loadRemoteParameterOptions();
 				}, { deep: true, immediate: true });
+
+				// Reload function on change element from
+				// displayOptions.typeOptions.reloadOnChange parameters
+				if (this.parameter.typeOptions && this.parameter.typeOptions.reloadOnChange) {
+					// Get all paramter in reloadOnChange property
+					// This reload when parameters in reloadOnChange is updated
+					const paramtersOnChange : string[] = this.parameter.typeOptions.reloadOnChange;
+					for (let i = 0; i < paramtersOnChange.length; i++) {
+						const parameter = paramtersOnChange[i] as string;
+						if (parameter in this.node.parameters) {
+							this.$watch(() => {
+								if (this.node && this.node.parameters && this.node.parameters[parameter]) {
+									return this.node.parameters![parameter];
+								} else {
+									return null;
+								}
+							}, () => {
+								this.loadRemoteParameterOptions();
+							}, { deep: true, immediate: true });
+						}
+					}
+				}
 			}
 		},
 	});
