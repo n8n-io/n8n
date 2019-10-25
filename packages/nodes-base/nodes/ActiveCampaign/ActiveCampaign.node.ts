@@ -1115,8 +1115,6 @@ export class ActiveCampaign implements INodeType {
 					//         deal:createNote
 					// ----------------------------------
 					requestMethod = 'POST'
-					console.log(operation)
-					console.log(this.getNodeParameter('dealNote', i) as string)
 
 					body.note = {
 						note: this.getNodeParameter('dealNote', i) as string,
@@ -1145,11 +1143,7 @@ export class ActiveCampaign implements INodeType {
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
-			console.log(requestMethod)
-			console.log(endpoint)
-			console.log(body)
-			console.log(qs)
-			console.log(dataKey)
+
 			let responseData;
 			if (returnAll === true) {
 				responseData = await activeCampaignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs, dataKey);
