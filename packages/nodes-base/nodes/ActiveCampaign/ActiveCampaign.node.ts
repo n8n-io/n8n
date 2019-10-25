@@ -297,96 +297,7 @@ export class ActiveCampaign implements INodeType {
 					},
 				],
 			},
-
-			// ----------------------------------
-			//         contact:delete
-			// ----------------------------------
-			{
-				displayName: 'Contact ID',
-				name: 'contactId',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'contact',
-						],
-					},
-				},
-				default: 0,
-				required: true,
-				description: 'ID of the contact to delete.',
-			},
-
-			// ----------------------------------
-			//         contact:get
-			// ----------------------------------
-			{
-				displayName: 'Contact ID',
-				name: 'contactId',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'contact',
-						],
-					},
-				},
-				default: 0,
-				required: true,
-				description: 'ID of the contact to get.',
-			},
-
-			// ----------------------------------
-			//         contact:getAll
-			// ----------------------------------
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'contact',
-						],
-					},
-				},
-				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'contact',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 500,
-				},
-				default: 100,
-				description: 'How many results to return.',
-			},
-
+			
 			// ----------------------------------
 			//         contact:update
 			// ----------------------------------
@@ -489,6 +400,97 @@ export class ActiveCampaign implements INodeType {
 					},
 				],
 			},
+
+			// ----------------------------------
+			//         contact:delete
+			// ----------------------------------
+			{
+				displayName: 'Contact ID',
+				name: 'contactId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'contact',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the contact to delete.',
+			},
+
+			// ----------------------------------
+			//         contact:get
+			// ----------------------------------
+			{
+				displayName: 'Contact ID',
+				name: 'contactId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'contact',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the contact to get.',
+			},
+
+			// ----------------------------------
+			//         contact:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'contact',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'contact',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+
+
 			// ----------------------------------
 			//         deal
 			// ----------------------------------
@@ -672,95 +674,6 @@ export class ActiveCampaign implements INodeType {
 			},
 			
 			// ----------------------------------
-			//         deal:delete
-			// ----------------------------------
-			{
-				displayName: 'Deal ID',
-				name: 'dealId',
-				type: 'number',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'deal',
-						],
-					},
-				},
-				description: 'The ID of the deal',
-			},
-
-			// ----------------------------------
-			//         deal:get
-			// ----------------------------------
-			{
-				displayName: 'Deal ID',
-				name: 'dealId',
-				type: 'number',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'get',
-						],
-						resource: [
-							'deal',
-						],
-					},
-				},
-				description: 'The ID of the deal',
-			},
-			
-			// ----------------------------------
-			//         deal:getAll
-			// ----------------------------------
-			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'deal',
-						],
-					},
-				},
-				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'deal',
-						],
-						returnAll: [
-							false,
-						],
-					},
-				},
-				typeOptions: {
-					minValue: 1,
-					maxValue: 500,
-				},
-				default: 100,
-				description: 'How many results to return.',
-			},
-
-			// ----------------------------------
 			//         deal:update
 			// ----------------------------------
 			{
@@ -933,6 +846,96 @@ export class ActiveCampaign implements INodeType {
 					},
 				},
 				description: 'The status of the deal',
+			},
+
+			
+			// ----------------------------------
+			//         deal:delete
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal',
+			},
+
+			// ----------------------------------
+			//         deal:get
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal',
+			},
+			
+			// ----------------------------------
+			//         deal:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'deal',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
 			},
 
 			// ----------------------------------
