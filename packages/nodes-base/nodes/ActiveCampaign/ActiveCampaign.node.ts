@@ -529,23 +529,6 @@ export class ActiveCampaign implements INodeType {
 				description: 'The title of the deal',
 			},
 			{
-				displayName: 'Description',
-				name: 'dealDescription',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
-					},
-				},
-				description: 'The description of the deal',
-			},
-			{
 				displayName: 'Deal\'s contact ID',
 				name: 'dealContactId',
 				type: 'number',
@@ -600,10 +583,10 @@ export class ActiveCampaign implements INodeType {
 				description: 'The currency of the deal in 3-character ISO format',
 			},
 			{
-				displayName: 'Deal group ID',
-				name: 'dealGroup',
-				type: 'string',
-				default: '',
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: [
@@ -614,75 +597,51 @@ export class ActiveCampaign implements INodeType {
 						],
 					},
 				},
-				description: 'The group ID of the deal',
-			},
-			{
-				displayName: 'Deal stage ID',
-				name: 'dealStage',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
+				default: {},
+				options: [
+					{
+						displayName: 'Description',
+						name: 'dealDescription',
+						type: 'string',
+						default: '',
+						description: 'The description of the deal',
 					},
-				},
-				description: 'The stage ID of the deal',
-			},
-			{
-				displayName: 'Deal owner ID',
-				name: 'dealOwner',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
+					{
+						displayName: 'Deal group ID',
+						name: 'dealGroup',
+						type: 'string',
+						default: '',
+						description: 'The group ID of the deal',
 					},
-				},
-				description: 'The owner ID of the deal',
-			},
-			{
-				displayName: 'Deal percentage',
-				name: 'dealPercentage',
-				type: 'number',
-				default: 0,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
+					{
+						displayName: 'Deal stage ID',
+						name: 'dealStage',
+						type: 'string',
+						default: '',
+						description: 'The stage ID of the deal',
 					},
-				},
-				description: 'The percentage of the deal',
-			},
-			{
-				displayName: 'Deal status',
-				name: 'dealStatus',
-				type: 'number',
-				default: 0,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
+					{
+						displayName: 'Deal owner ID',
+						name: 'dealOwner',
+						type: 'string',
+						default: '',
+						description: 'The owner ID of the deal',
 					},
-				},
-				description: 'The status of the deal',
+					{
+						displayName: 'Deal percentage',
+						name: 'dealPercentage',
+						type: 'number',
+						default: 0,
+						description: 'The percentage of the deal',
+					},
+					{
+						displayName: 'Deal status',
+						name: 'dealStatus',
+						type: 'number',
+						default: 0,
+						description: 'The status of the deal',
+					},
+				]
 			},
 
 			// ----------------------------------
@@ -715,7 +674,7 @@ export class ActiveCampaign implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update',
+							'create',
 						],
 						resource: [
 							'deal',
@@ -725,31 +684,15 @@ export class ActiveCampaign implements INodeType {
 				description: 'The title of the deal',
 			},
 			{
-				displayName: 'Description',
-				name: 'dealDescription',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'deal',
-						],
-					},
-				},
-				description: 'The description of the deal',
-			},
-			{
 				displayName: 'Deal\'s contact ID',
 				name: 'dealContactId',
 				type: 'number',
 				default: 0,
+				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'update',
+							'create',
 						],
 						resource: [
 							'deal',
@@ -763,10 +706,11 @@ export class ActiveCampaign implements INodeType {
 				name: 'dealValue',
 				type: 'number',
 				default: 0,
+				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'update',
+							'create',
 						],
 						resource: [
 							'deal',
@@ -780,10 +724,11 @@ export class ActiveCampaign implements INodeType {
 				name: 'dealCurrency',
 				type: 'string',
 				default: '',
+				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'update',
+							'create',
 						],
 						resource: [
 							'deal',
@@ -793,89 +738,65 @@ export class ActiveCampaign implements INodeType {
 				description: 'The currency of the deal in 3-character ISO format',
 			},
 			{
-				displayName: 'Deal group ID',
-				name: 'dealGroup',
-				type: 'string',
-				default: '',
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: [
-							'update',
+							'create',
 						],
 						resource: [
 							'deal',
 						],
 					},
 				},
-				description: 'The group ID of the deal',
-			},
-			{
-				displayName: 'Deal stage ID',
-				name: 'dealStage',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'deal',
-						],
+				default: {},
+				options: [
+					{
+						displayName: 'Description',
+						name: 'dealDescription',
+						type: 'string',
+						default: '',
+						description: 'The description of the deal',
 					},
-				},
-				description: 'The stage ID of the deal',
-			},
-			{
-				displayName: 'Deal owner ID',
-				name: 'dealOwner',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'deal',
-						],
+					{
+						displayName: 'Deal group ID',
+						name: 'dealGroup',
+						type: 'string',
+						default: '',
+						description: 'The group ID of the deal',
 					},
-				},
-				description: 'The owner ID of the deal',
-			},
-			{
-				displayName: 'Deal percentage',
-				name: 'dealPercentage',
-				type: 'number',
-				default: 0,
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'deal',
-						],
+					{
+						displayName: 'Deal stage ID',
+						name: 'dealStage',
+						type: 'string',
+						default: '',
+						description: 'The stage ID of the deal',
 					},
-				},
-				description: 'The percentage of the deal',
-			},
-			{
-				displayName: 'Deal status',
-				name: 'dealStatus',
-				type: 'number',
-				default: 0,
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'deal',
-						],
+					{
+						displayName: 'Deal owner ID',
+						name: 'dealOwner',
+						type: 'string',
+						default: '',
+						description: 'The owner ID of the deal',
 					},
-				},
-				description: 'The status of the deal',
+					{
+						displayName: 'Deal percentage',
+						name: 'dealPercentage',
+						type: 'number',
+						default: 0,
+						description: 'The percentage of the deal',
+					},
+					{
+						displayName: 'Deal status',
+						name: 'dealStatus',
+						type: 'number',
+						default: 0,
+						description: 'The status of the deal',
+					},
+				]
 			},
 
 
@@ -1159,46 +1080,18 @@ export class ActiveCampaign implements INodeType {
 					requestMethod = 'POST';
 
 					dataKey = 'deal';
-					
+
 					body.deal = {
 						title: this.getNodeParameter('dealTitle', i) as string,
 						contact: this.getNodeParameter('dealContactId', i) as string,
 						value: this.getNodeParameter('dealValue', i) as number,
-						currency: '',
 					} as IDataObject;
 
-					let currency= this.getNodeParameter('dealCurrency', i) as string
-					if (currency.length === 3) {
-						currency = currency.toLowerCase();
-						addAdditionalField(body.deal as IDataObject, currency)
-					} else {
-						throw new Error('Currency must be in 3-character ISO format')
-					}
+					let currency = this.getNodeParameter('dealCurrency', i).toString().toLowerCase() as string
+					addAdditionalField(body.deal as IDataObject, currency)
 
-					let description = this.getNodeParameter('dealDescription', i) as string;
-					if (description.length !== 0){
-						addAdditionalField(body.deal as IDataObject, description)
-					}
-
-					let group = this.getNodeParameter('dealGroup', i) as string;
-					if (group.length !== 0){
-						addAdditionalField(body.deal as IDataObject, group)
-					}
-
-					let stage = this.getNodeParameter('dealStage', i) as string;
-					if (stage.length !== 0){
-						addAdditionalField(body.deal as IDataObject, stage)
-					}
-
-					let percentage = this.getNodeParameter('dealPercentage', i) as number;
-					if (percentage !== 0){
-						addAdditionalField(body.deal as IDataObject, percentage)
-					}
-
-					let status = this.getNodeParameter('dealStatus', i) as number;
-					if (status !== 0){
-						addAdditionalField(body.deal as IDataObject, status)
-					}
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body.deal as IDataObject, additionalFields);
 
 
 				} else if (operation === 'delete') {
