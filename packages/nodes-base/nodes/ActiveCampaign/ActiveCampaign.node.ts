@@ -755,7 +755,7 @@ export class ActiveCampaign implements INodeType {
 					},
 				]
 			},
-			
+
 			// ----------------------------------
 			//         deal:delete
 			// ----------------------------------
@@ -1026,6 +1026,8 @@ export class ActiveCampaign implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					addAdditionalFields(body.contact as IDataObject, updateFields);
 
+				} else {
+					throw new Error(`The operation ${operation} is not known`);
 				}
 			} else if (resource === 'deal') {
 				if (operation === 'create') {
@@ -1102,23 +1104,26 @@ export class ActiveCampaign implements INodeType {
 					dataKey = 'deals';
 					endpoint = `/api/3/deals`;
 				} else {
-					throw new Error(`The resource "${resource}" is not known!`);
+					throw new Error(`The operation ${operation} is not known`);
 				}
-
-				let responseData;
-				if (returnAll === true) {
-					responseData = await activeCampaignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs, dataKey);
-				} else {
-					responseData = await activeCampaignApiRequest.call(this, requestMethod, endpoint, body, qs, dataKey);
-				}
-
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+			} else {
+				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
-			return [this.helpers.returnJsonArray(returnData)];
+			let responseData;
+			if (returnAll === true) {
+				responseData = await activeCampaignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs, dataKey);
+			} else {
+				responseData = await activeCampaignApiRequest.call(this, requestMethod, endpoint, body, qs, dataKey);
+			}
+
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
+			}
 		}
+
+		return [this.helpers.returnJsonArray(returnData)];
 	}
+}
