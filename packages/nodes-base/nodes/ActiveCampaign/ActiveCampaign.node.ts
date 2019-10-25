@@ -1129,7 +1129,7 @@ export class ActiveCampaign implements INodeType {
 					// ----------------------------------
 					//         deal:updateNote
 					// ----------------------------------
-					requestMethod = 'POST'
+					requestMethod = 'PUT'
 
 					body.note = {
 						note: this.getNodeParameter('dealNote', i) as string,
