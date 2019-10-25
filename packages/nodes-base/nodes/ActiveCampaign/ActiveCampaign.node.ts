@@ -1115,10 +1115,12 @@ export class ActiveCampaign implements INodeType {
 					//         deal:createNote
 					// ----------------------------------
 					requestMethod = 'POST'
+					console.log(operation)
+					console.log(this.getNodeParameter('dealNote', i) as string)
 
 					body.note = {
-						note: this.getNodeParameter('createNote', i) as string,
-					}
+						note: this.getNodeParameter('dealNote', i) as string,
+					} as IDataObject
 
 					const dealId = this.getNodeParameter('dealId', i) as number;
 					endpoint = `/api/3/deals/${dealId}/notes`;
@@ -1130,8 +1132,8 @@ export class ActiveCampaign implements INodeType {
 					requestMethod = 'POST'
 
 					body.note = {
-						note: this.getNodeParameter('updateNote', i) as string,
-					}
+						note: this.getNodeParameter('dealNote', i) as string,
+					} as IDataObject
 
 					const dealId = this.getNodeParameter('dealId', i) as number;
 					const dealNoteId = this.getNodeParameter('dealNoteId', i) as number;
