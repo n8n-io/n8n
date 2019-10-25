@@ -12,6 +12,7 @@ import {
 	activeCampaignApiRequest,
 	activeCampaignApiRequestAllItems,
 } from './GenericFunctions';
+import { type } from 'os';
 
 interface CustomProperty {
 	name: string;
@@ -500,7 +501,7 @@ export class ActiveCampaign implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Title',
-				name: 'title',
+				name: 'dealTitle',
 				type: 'string',
 				default: '',
 				required: true,
@@ -518,7 +519,7 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Description',
-				name: 'description',
+				name: 'dealDescription',
 				type: 'string',
 				default: '',
 				displayOptions: {
@@ -535,9 +536,9 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Deal\'s contact ID',
-				name: 'contactId',
+				name: 'dealContactId',
 				type: 'number',
-				default: '',
+				default: 0,
 				required: true,
 				displayOptions: {
 					show: {
@@ -555,7 +556,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Deal value',
 				name: 'dealValue',
 				type: 'number',
-				default: '',
+				default: 0,
 				required: true,
 				displayOptions: {
 					show: {
@@ -571,7 +572,7 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Currency',
-				name: 'currency',
+				name: 'dealCurrency',
 				type: 'string',
 				default: '',
 				required: true,
@@ -642,7 +643,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Deal percentage',
 				name: 'dealPercentage',
 				type: 'number',
-				default: '',
+				default: 0,
 				displayOptions: {
 					show: {
 						operation: [
@@ -659,7 +660,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Deal status',
 				name: 'dealStatus',
 				type: 'number',
-				default: '',
+				default: 0,
 				displayOptions: {
 					show: {
 						operation: [
@@ -678,7 +679,7 @@ export class ActiveCampaign implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Title',
-				name: 'title',
+				name: 'dealTitle',
 				type: 'string',
 				default: '',
 				required: true,
@@ -696,7 +697,7 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Description',
-				name: 'description',
+				name: 'dealDescription',
 				type: 'string',
 				default: '',
 				displayOptions: {
@@ -713,9 +714,9 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Deal\'s contact ID',
-				name: 'contactId',
+				name: 'dealContactId',
 				type: 'number',
-				default: '',
+				default: 0,
 				displayOptions: {
 					show: {
 						operation: [
@@ -732,7 +733,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Deal value',
 				name: 'dealValue',
 				type: 'number',
-				default: '',
+				default: 0,
 				displayOptions: {
 					show: {
 						operation: [
@@ -747,7 +748,7 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Currency',
-				name: 'currency',
+				name: 'dealCurrency',
 				type: 'string',
 				default: '',
 				displayOptions: {
@@ -817,7 +818,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Deal percentage',
 				name: 'dealPercentage',
 				type: 'number',
-				default: '',
+				default: 0,
 				displayOptions: {
 					show: {
 						operation: [
@@ -834,7 +835,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Deal status',
 				name: 'dealStatus',
 				type: 'number',
-				default: '',
+				default: 0,
 				displayOptions: {
 					show: {
 						operation: [
@@ -1129,11 +1130,25 @@ export class ActiveCampaign implements INodeType {
 					requestMethod = 'POST';
 
 					dataKey = 'deal';
+
+					let currency = this.getNodeParameter('dealCurrency', i) as string;
+					if(currency.length !== 3){
+						currency = currency.toLowerCase();
+					}
+		
 					body.deal = {
-						email: this.getNodeParameter('email', i) as string,
+						title: this.getNodeParameter('title', i) as string,
+						contact: this.getNodeParameter('contactId', i) as string,
+						value: this.getNodeParameter('value', i) as number,
+						currency,
 					} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body.deal as IDataObject, additionalFields);
+
+					let dealDescription = this.getNodeParameter('description', i) as string;
+					let dealGroup = this.getNodeParameter('dealGroup', i) as string;
+					let dealStage = this.getNodeParameter('dealStage', i) as string;
+					let dealPercentage = this.getNodeParameter('dealPercentage', i) as number;
+					let dealStatus = this.getNodeParameter('dealStatus', i) as number;
+					
 
 				} else if (operation === 'delete') {
 					// ----------------------------------
