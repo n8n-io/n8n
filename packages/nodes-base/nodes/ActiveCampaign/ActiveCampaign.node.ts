@@ -297,7 +297,7 @@ export class ActiveCampaign implements INodeType {
 					},
 				],
 			},
-			
+
 			// ----------------------------------
 			//         contact:update
 			// ----------------------------------
@@ -672,7 +672,7 @@ export class ActiveCampaign implements INodeType {
 				},
 				description: 'The status of the deal',
 			},
-			
+
 			// ----------------------------------
 			//         deal:update
 			// ----------------------------------
@@ -848,7 +848,7 @@ export class ActiveCampaign implements INodeType {
 				description: 'The status of the deal',
 			},
 
-			
+
 			// ----------------------------------
 			//         deal:delete
 			// ----------------------------------
@@ -892,7 +892,7 @@ export class ActiveCampaign implements INodeType {
 				},
 				description: 'The ID of the deal',
 			},
-			
+
 			// ----------------------------------
 			//         deal:getAll
 			// ----------------------------------
@@ -1120,24 +1120,89 @@ export class ActiveCampaign implements INodeType {
 					addAdditionalFields(body.contact as IDataObject, updateFields);
 
 				}
-			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+			} else if (resource === 'deal') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         deal:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					dataKey = 'deal';
+					body.deal = {
+						email: this.getNodeParameter('email', i) as string,
+					} as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body.deal as IDataObject, additionalFields);
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         deal:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					endpoint = `/api/3/deals/${dealId}`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         deal:get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					endpoint = `/api/3/deals/${dealId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         persons:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					dataKey = 'deals';
+					endpoint = `/api/3/deals`;
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         deal:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					endpoint = `/api/3/deals/${dealId}`;
+
+					dataKey = 'deal';
+					body.deal = {} as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body.deal as IDataObject, updateFields);
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
+
+				let responseData;
+				if (returnAll === true) {
+					responseData = await activeCampaignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs, dataKey);
+				} else {
+					responseData = await activeCampaignApiRequest.call(this, requestMethod, endpoint, body, qs, dataKey);
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
 			}
 
-			let responseData;
-			if (returnAll === true) {
-				responseData = await activeCampaignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs, dataKey);
-			} else {
-				responseData = await activeCampaignApiRequest.call(this, requestMethod, endpoint, body, qs, dataKey);
-			}
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
+			return [this.helpers.returnJsonArray(returnData)];
 		}
-
-		return [this.helpers.returnJsonArray(returnData)];
 	}
-}
