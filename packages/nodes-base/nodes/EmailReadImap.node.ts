@@ -8,7 +8,7 @@ import {
 	ITriggerResponse,
 } from 'n8n-workflow';
 
-import { connect as imapConnect, ImapSimple, getParts, Message }  from 'imap-simple';
+import { connect as imapConnect, ImapSimple, ImapSimpleOptions, getParts, Message }  from 'imap-simple';
 
 export class EmailReadImap implements INodeType {
 	description: INodeTypeDescription = {
@@ -75,6 +75,22 @@ export class EmailReadImap implements INodeType {
 				},
 				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Ignore SSL Issues',
+						name: 'allowUnauthorizedCerts',
+						type: 'boolean',
+						default: false,
+						description: 'Do connect even if SSL certificate validation is not possible.',
+					},
+				],
+			},
 		],
 	};
 
@@ -90,6 +106,7 @@ export class EmailReadImap implements INodeType {
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
+		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 
 		// Returns the email text
@@ -219,7 +236,7 @@ export class EmailReadImap implements INodeType {
 
 		let connection: ImapSimple;
 
-		const config = {
+		const config: ImapSimpleOptions = {
 			imap: {
 				user: credentials.user as string,
 				password: credentials.password as string,
@@ -236,6 +253,12 @@ export class EmailReadImap implements INodeType {
 				}
 			},
 		};
+
+		if (options.allowUnauthorizedCerts === true) {
+			config.imap.tlsOptions = {
+				rejectUnauthorized: false
+			};
+		}
 
 		// Connect to the IMAP server and open the mailbox
 		// that we get informed whenever a new email arrives
