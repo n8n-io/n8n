@@ -12,7 +12,6 @@ import {
 	activeCampaignApiRequest,
 	activeCampaignApiRequestAllItems,
 } from './GenericFunctions';
-import { type } from 'os';
 
 interface CustomProperty {
 	name: string;
