@@ -29,7 +29,7 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 		},
 		body,
 		qs: query,
-		uri: `${(credentials.server as string).replace(/\/$/, '')}/api/v4/${endpoint}`,
+		uri: `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`,
 		json: true
 	};
 

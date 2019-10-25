@@ -21,6 +21,7 @@ export class Gitlab implements INodeType {
 		icon: 'file:gitlab.png',
 		group: ['input'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Retrieve data from Gitlab API.',
 		defaults: {
 			name: 'Gitlab',
@@ -733,7 +734,7 @@ export class Gitlab implements INodeType {
 								description: 'Sort by priority.'
 							},
 						],
-						default: 'desc',
+						default: 'created_at',
 						description: 'The order the issues should be returned in.',
 					},
 					{
@@ -816,7 +817,7 @@ export class Gitlab implements INodeType {
 				repository = this.getNodeParameter('repository', i) as string;
 			}
 
-			const baseEndpoint = `/projects/${owner}%2F${repository}`
+			const baseEndpoint = `/projects/${owner}%2F${repository}`;
 
 			if (resource === 'issue') {
 				if (operation === 'create') {
