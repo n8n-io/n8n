@@ -1,5 +1,5 @@
 import {
-	IExecuteFunctions,
+	IExecuteFunctions, getExecuteSingleFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
@@ -907,6 +907,24 @@ export class ActiveCampaign implements INodeType {
 				description: 'The ID of the deal note',
 			},
 			{
+				displayName: 'Deal note ID',
+				name: 'dealNoteId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'updateNote',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal note',
+			},
+			{
 				displayName: 'Deal Note',
 				name: 'dealNote',
 				type: 'string',
@@ -998,7 +1016,7 @@ export class ActiveCampaign implements INodeType {
 
 				} else if (operation === 'getAll') {
 					// ----------------------------------
-					//         persons:getAll
+					//         contacts:getAll
 					// ----------------------------------
 
 					requestMethod = 'GET';
@@ -1027,7 +1045,7 @@ export class ActiveCampaign implements INodeType {
 					addAdditionalFields(body.contact as IDataObject, updateFields);
 
 				} else {
-					throw new Error(`The operation ${operation} is not known`);
+					throw new Error(`The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'deal') {
 				if (operation === 'create') {
@@ -1091,7 +1109,7 @@ export class ActiveCampaign implements INodeType {
 
 				} else if (operation === 'getAll') {
 					// ----------------------------------
-					//         persons:getAll
+					//         deals:getAll
 					// ----------------------------------
 
 					requestMethod = 'GET';
@@ -1103,8 +1121,36 @@ export class ActiveCampaign implements INodeType {
 
 					dataKey = 'deals';
 					endpoint = `/api/3/deals`;
+
+				} else if (operation === 'createNote') {
+					// ----------------------------------
+					//         deal:createNote
+					// ----------------------------------
+					requestMethod = 'POST'
+
+					body.note = {
+						note: this.getNodeParameter('createNote', i) as string,
+					}
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					endpoint = `/api/3/deals/${dealId}/notes`;
+
+				} else if (operation === 'updateNote') {
+					// ----------------------------------
+					//         deal:updateNote
+					// ----------------------------------
+					requestMethod = 'POST'
+
+					body.note = {
+						note: this.getNodeParameter('updateNote', i) as string,
+					}
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					const dealNoteId = this.getNodeParameter('dealNoteId', i) as number;
+					endpoint = `/api/3/deals/${dealId}/notes/${dealNoteId}`;
+
 				} else {
-					throw new Error(`The operation ${operation} is not known`);
+					throw new Error(`The operation "${operation}" is not known`);
 				}
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
