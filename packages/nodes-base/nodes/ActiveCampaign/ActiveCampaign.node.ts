@@ -651,8 +651,6 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Deal ID',
 				name: 'dealId',
 				type: 'number',
-				default: 0,
-				required: true,
 				displayOptions: {
 					show: {
 						operation: [
@@ -663,97 +661,56 @@ export class ActiveCampaign implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the deal',
-			},
-			{
-				displayName: 'Title',
-				name: 'dealTitle',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
-					},
-				},
-				description: 'The title of the deal',
-			},
-			{
-				displayName: 'Deal\'s contact ID',
-				name: 'dealContactId',
-				type: 'number',
 				default: 0,
 				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
-					},
-				},
-				description: 'The ID of the deal\'s contact',
+				description: 'ID of the deal to update.',
 			},
 			{
-				displayName: 'Deal value',
-				name: 'dealValue',
-				type: 'number',
-				default: 0,
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
-					},
-				},
-				description: 'The value of the deal in cents',
-			},
-			{
-				displayName: 'Currency',
-				name: 'dealCurrency',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'deal',
-						],
-					},
-				},
-				description: 'The currency of the deal in 3-character ISO format',
-			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
+				displayName: 'Update Fields',
+				name: 'updateFields',
 				type: 'collection',
+				description: 'The fields to update.',
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: [
-							'create',
+							'update',
 						],
 						resource: [
-							'deal',
+							'contact',
 						],
 					},
 				},
 				default: {},
 				options: [
+					{
+						displayName: 'Title',
+						name: 'dealTitle',
+						type: 'string',
+						default: '',
+						description: 'The title of the deal',
+					},
+					{
+						displayName: 'Deal\'s contact ID',
+						name: 'dealContactId',
+						type: 'number',
+						default: 0,
+						description: 'The ID of the deal\'s contact',
+					},
+					{
+						displayName: 'Deal value',
+						name: 'dealValue',
+						type: 'number',
+						default: 0,
+						description: 'The value of the deal in cents',
+					},
+					{
+						displayName: 'Currency',
+						name: 'dealCurrency',
+						type: 'string',
+						default: '',
+						description: 'The currency of the deal in 3-character ISO format',
+					},
 					{
 						displayName: 'Description',
 						name: 'dealDescription',
@@ -798,8 +755,7 @@ export class ActiveCampaign implements INodeType {
 					},
 				]
 			},
-
-
+			
 			// ----------------------------------
 			//         deal:delete
 			// ----------------------------------
@@ -1079,6 +1035,8 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'POST';
 
+					endpoint = '/api/3/deals';
+
 					dataKey = 'deal';
 
 					body.deal = {
@@ -1093,6 +1051,21 @@ export class ActiveCampaign implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body.deal as IDataObject, additionalFields);
 
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         deal:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					endpoint = `/api/3/deals/${dealId}`;
+
+					dataKey = 'deal';
+					body.deal = {} as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body.deal as IDataObject, updateFields);
 
 				} else if (operation === 'delete') {
 					// ----------------------------------
@@ -1128,22 +1101,6 @@ export class ActiveCampaign implements INodeType {
 
 					dataKey = 'deals';
 					endpoint = `/api/3/deals`;
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         deal:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const dealId = this.getNodeParameter('dealId', i) as number;
-					endpoint = `/api/3/deals/${dealId}`;
-
-					dataKey = 'deal';
-					body.deal = {} as IDataObject;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body.deal as IDataObject, updateFields);
-
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
