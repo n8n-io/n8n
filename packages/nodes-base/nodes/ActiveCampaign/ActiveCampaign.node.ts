@@ -37,17 +37,6 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 	}
 }
 
-/**
- * Add one additional field to the body
- *
- * @param {IDataObject} body The body object to add the field to
- * @param {IDataObject} additionalField The field to add
- */
-function addAdditionalField(body: IDataObject, additionalField: string | number) {
-	body.additionalField = additionalField;
-}
-
-
 export class ActiveCampaign implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ActiveCampaign',
@@ -511,7 +500,7 @@ export class ActiveCampaign implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Title',
-				name: 'dealTitle',
+				name: 'title',
 				type: 'string',
 				default: '',
 				required: true,
@@ -529,7 +518,7 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Deal\'s contact ID',
-				name: 'dealContactId',
+				name: 'contact',
 				type: 'number',
 				default: 0,
 				required: true,
@@ -547,7 +536,7 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Deal value',
-				name: 'dealValue',
+				name: 'value',
 				type: 'number',
 				default: 0,
 				required: true,
@@ -565,7 +554,7 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Currency',
-				name: 'dealCurrency',
+				name: 'currency',
 				type: 'string',
 				default: '',
 				required: true,
@@ -600,42 +589,42 @@ export class ActiveCampaign implements INodeType {
 				options: [
 					{
 						displayName: 'Description',
-						name: 'dealDescription',
+						name: 'description',
 						type: 'string',
 						default: '',
 						description: 'The description of the deal',
 					},
 					{
 						displayName: 'Deal group ID',
-						name: 'dealGroup',
+						name: 'group',
 						type: 'string',
 						default: '',
 						description: 'The group ID of the deal',
 					},
 					{
 						displayName: 'Deal stage ID',
-						name: 'dealStage',
+						name: 'stage',
 						type: 'string',
 						default: '',
 						description: 'The stage ID of the deal',
 					},
 					{
 						displayName: 'Deal owner ID',
-						name: 'dealOwner',
+						name: 'owner',
 						type: 'string',
 						default: '',
 						description: 'The owner ID of the deal',
 					},
 					{
 						displayName: 'Deal percentage',
-						name: 'dealPercentage',
+						name: 'percent',
 						type: 'number',
 						default: 0,
 						description: 'The percentage of the deal',
 					},
 					{
 						displayName: 'Deal status',
-						name: 'dealStatus',
+						name: 'status',
 						type: 'number',
 						default: 0,
 						description: 'The status of the deal',
@@ -676,7 +665,7 @@ export class ActiveCampaign implements INodeType {
 							'update',
 						],
 						resource: [
-							'contact',
+							'deal',
 						],
 					},
 				},
@@ -684,70 +673,70 @@ export class ActiveCampaign implements INodeType {
 				options: [
 					{
 						displayName: 'Title',
-						name: 'dealTitle',
+						name: 'title',
 						type: 'string',
 						default: '',
 						description: 'The title of the deal',
 					},
 					{
 						displayName: 'Deal\'s contact ID',
-						name: 'dealContactId',
+						name: 'contact',
 						type: 'number',
 						default: 0,
 						description: 'The ID of the deal\'s contact',
 					},
 					{
 						displayName: 'Deal value',
-						name: 'dealValue',
+						name: 'value',
 						type: 'number',
 						default: 0,
 						description: 'The value of the deal in cents',
 					},
 					{
 						displayName: 'Currency',
-						name: 'dealCurrency',
+						name: 'currency',
 						type: 'string',
 						default: '',
 						description: 'The currency of the deal in 3-character ISO format',
 					},
 					{
 						displayName: 'Description',
-						name: 'dealDescription',
+						name: 'description',
 						type: 'string',
 						default: '',
 						description: 'The description of the deal',
 					},
 					{
 						displayName: 'Deal group ID',
-						name: 'dealGroup',
+						name: 'group',
 						type: 'string',
 						default: '',
 						description: 'The group ID of the deal',
 					},
 					{
 						displayName: 'Deal stage ID',
-						name: 'dealStage',
+						name: 'stage',
 						type: 'string',
 						default: '',
 						description: 'The stage ID of the deal',
 					},
 					{
 						displayName: 'Deal owner ID',
-						name: 'dealOwner',
+						name: 'owner',
 						type: 'string',
 						default: '',
 						description: 'The owner ID of the deal',
 					},
 					{
 						displayName: 'Deal percentage',
-						name: 'dealPercentage',
+						name: 'percent',
 						type: 'number',
 						default: 0,
 						description: 'The percentage of the deal',
 					},
 					{
 						displayName: 'Deal status',
-						name: 'dealStatus',
+						name: 'status',
 						type: 'number',
 						default: 0,
 						description: 'The status of the deal',
@@ -1059,13 +1048,13 @@ export class ActiveCampaign implements INodeType {
 					dataKey = 'deal';
 
 					body.deal = {
-						title: this.getNodeParameter('dealTitle', i) as string,
-						contact: this.getNodeParameter('dealContactId', i) as string,
-						value: this.getNodeParameter('dealValue', i) as number,
+						title: this.getNodeParameter('title', i) as string,
+						contact: this.getNodeParameter('contact', i) as string,
+						value: this.getNodeParameter('value', i) as number,
 					} as IDataObject;
 
-					let currency = this.getNodeParameter('dealCurrency', i).toString().toLowerCase() as string
-					addAdditionalField(body.deal as IDataObject, currency)
+					let currency = this.getNodeParameter('currency', i).toString().toLowerCase() as string
+					addAdditionalFields(body.deal as IDataObject, { currency })
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body.deal as IDataObject, additionalFields);
@@ -1154,7 +1143,11 @@ export class ActiveCampaign implements INodeType {
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
-
+			console.log(requestMethod)
+			console.log(endpoint)
+			console.log(body)
+			console.log(qs)
+			console.log(dataKey)
 			let responseData;
 			if (returnAll === true) {
 				responseData = await activeCampaignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs, dataKey);
