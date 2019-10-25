@@ -1,5 +1,5 @@
 import {
-	IExecuteFunctions, getExecuteSingleFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
