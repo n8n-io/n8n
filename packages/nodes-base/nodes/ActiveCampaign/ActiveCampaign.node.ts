@@ -678,6 +678,24 @@ export class ActiveCampaign implements INodeType {
 			//         deal:update
 			// ----------------------------------
 			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				description: 'The ID of the deal',
+			},
+			{
 				displayName: 'Title',
 				name: 'dealTitle',
 				type: 'string',
@@ -857,7 +875,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Deal ID',
 				name: 'dealId',
 				type: 'number',
-				default: '',
+				default: 0,
 				required: true,
 				displayOptions: {
 					show: {
@@ -879,7 +897,7 @@ export class ActiveCampaign implements INodeType {
 				displayName: 'Deal ID',
 				name: 'dealId',
 				type: 'number',
-				default: '',
+				default: 0,
 				required: true,
 				displayOptions: {
 					show: {
