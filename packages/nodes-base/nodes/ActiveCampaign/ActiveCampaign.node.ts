@@ -38,6 +38,17 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 	}
 }
 
+/**
+ * Add one additional field to the body
+ *
+ * @param {IDataObject} body The body object to add the field to
+ * @param {IDataObject} additionalField The field to add
+ */
+function addAdditionalField(body: IDataObject, additionalField: string | number) {
+	body.additionalField = additionalField;
+}
+
+
 export class ActiveCampaign implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ActiveCampaign',
@@ -1148,25 +1159,47 @@ export class ActiveCampaign implements INodeType {
 					requestMethod = 'POST';
 
 					dataKey = 'deal';
-
-					let currency = this.getNodeParameter('dealCurrency', i) as string;
-					if(currency.length !== 3){
-						currency = currency.toLowerCase();
-					}
-		
+					
 					body.deal = {
-						title: this.getNodeParameter('title', i) as string,
-						contact: this.getNodeParameter('contactId', i) as string,
-						value: this.getNodeParameter('value', i) as number,
-						currency,
+						title: this.getNodeParameter('dealTitle', i) as string,
+						contact: this.getNodeParameter('dealContactId', i) as string,
+						value: this.getNodeParameter('dealValue', i) as number,
+						currency: '',
 					} as IDataObject;
 
-					let dealDescription = this.getNodeParameter('description', i) as string;
-					let dealGroup = this.getNodeParameter('dealGroup', i) as string;
-					let dealStage = this.getNodeParameter('dealStage', i) as string;
-					let dealPercentage = this.getNodeParameter('dealPercentage', i) as number;
-					let dealStatus = this.getNodeParameter('dealStatus', i) as number;
-					
+					let currency= this.getNodeParameter('dealCurrency', i) as string
+					if (currency.length === 3) {
+						currency = currency.toLowerCase();
+						addAdditionalField(body.deal as IDataObject, currency)
+					} else {
+						throw new Error('Currency must be in 3-character ISO format')
+					}
+
+					let description = this.getNodeParameter('dealDescription', i) as string;
+					if (description.length !== 0){
+						addAdditionalField(body.deal as IDataObject, description)
+					}
+
+					let group = this.getNodeParameter('dealGroup', i) as string;
+					if (group.length !== 0){
+						addAdditionalField(body.deal as IDataObject, group)
+					}
+
+					let stage = this.getNodeParameter('dealStage', i) as string;
+					if (stage.length !== 0){
+						addAdditionalField(body.deal as IDataObject, stage)
+					}
+
+					let percentage = this.getNodeParameter('dealPercentage', i) as number;
+					if (percentage !== 0){
+						addAdditionalField(body.deal as IDataObject, percentage)
+					}
+
+					let status = this.getNodeParameter('dealStatus', i) as number;
+					if (status !== 0){
+						addAdditionalField(body.deal as IDataObject, status)
+					}
+
 
 				} else if (operation === 'delete') {
 					// ----------------------------------
