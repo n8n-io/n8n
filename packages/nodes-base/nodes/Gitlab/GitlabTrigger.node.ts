@@ -172,7 +172,7 @@ export class GitlabTrigger implements INodeType {
 
 				const events: { [key: string]: boolean } = { };
 				for (const e of eventsArray) {
-					events[`${e}_events`] = true
+					events[`${e}_events`] = true;
 				}
 
 				const endpoint = `/projects/${owner}%2F${repository}/hooks`;
