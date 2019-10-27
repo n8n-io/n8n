@@ -4,8 +4,8 @@ import {
 } from 'n8n-workflow';
 
 
-export class MongoDB implements ICredentialType {
-	name = 'mongodb';
+export class MongoDb implements ICredentialType {
+	name = 'mongoDb';
 	displayName = 'MongoDB';
 	properties = [
 		{
@@ -39,7 +39,7 @@ export class MongoDB implements ICredentialType {
 			displayName: 'Port',
 			name: 'port',
 			type: 'number' as NodePropertyTypes,
-			default: 0
+			default: 27017,
 		},
 	];
 }

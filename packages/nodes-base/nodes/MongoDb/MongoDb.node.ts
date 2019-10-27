@@ -34,11 +34,11 @@ function getItemCopy(items: INodeExecutionData[], properties: string[]): IDataOb
 }
 
 
-export class MongoDB implements INodeType {
+export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MongoDB',
-		name: 'mongodb',
-		icon: 'file:mongodb.png',
+		name: 'mongoDb',
+		icon: 'file:mongoDb.png',
 		group: ['input'],
 		version: 1,
 		description: 'Find, insert and update documents in MongoDB.',
@@ -50,7 +50,7 @@ export class MongoDB implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'mongodb',
+				name: 'mongoDb',
 				required: true,
 			}
 		],
@@ -173,19 +173,19 @@ export class MongoDB implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
-		const credentials = this.getCredentials('mongodb');
+		const credentials = this.getCredentials('mongoDb');
 
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
 		}
 
-		let connectionUri = ''
+		let connectionUri = '';
 
 		if (credentials.port) {
-		  connectionUri = `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`
-    } else {
-      connectionUri = `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}`
-    }
+			connectionUri = `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
+		} else {
+			connectionUri = `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}`;
+		}
 
 		const client = await MongoClient.connect(connectionUri, { useNewUrlParser: true, useUnifiedTopology: true });
 		const mdb = client.db(credentials.database as string);
@@ -216,20 +216,20 @@ export class MongoDB implements INodeType {
 			const fields = (this.getNodeParameter('fields', 0) as string)
 				.split(',')
 				.map(f => f.trim())
-				.filter(f => !!f)
+				.filter(f => !!f);
 
 			const insertItems = getItemCopy(items, fields);
 
 			const { insertedIds } = await mdb
 				.collection(this.getNodeParameter('collection', 0) as string)
-				.insertMany(insertItems)
+				.insertMany(insertItems);
 
 			// Add the id to the data
-			for (let i in insertedIds) {
+			for (const i of Object.keys(insertedIds)) {
 				returnItems.push({
 					json: {
-						...insertItems[i],
-						id: insertedIds[i] as string,
+						...insertItems[parseInt(i, 10)],
+						id: insertedIds[parseInt(i, 10)] as string,
 					}
 				});
 			}
@@ -241,21 +241,29 @@ export class MongoDB implements INodeType {
 			const fields = (this.getNodeParameter('fields', 0) as string)
 				.split(',')
 				.map(f => f.trim())
-				.filter(f => !!f)
+				.filter(f => !!f);
+
+			let updateKey = this.getNodeParameter('updateKey', 0) as string;
+			updateKey = updateKey.trim();
+
+			if (!fields.includes(updateKey)) {
+				fields.push(updateKey);
+			}
 
 			// Prepare the data to update and copy it to be returned
 			const updateItems = getItemCopy(items, fields);
-			const updateKey = this.getNodeParameter('updateKey', 0) as string;
 
-			for (let item of updateItems) {
-				if (item[updateKey] === undefined) { continue }
+			for (const item of updateItems) {
+				if (item[updateKey] === undefined) {
+					continue;
+				}
 
 				const filter: { [key: string] :string } = {};
 				filter[updateKey] = item[updateKey] as string;
 
 				await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.updateOne(filter, item)
+					.updateOne(filter, { $set: item });
 			}
 
 			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
