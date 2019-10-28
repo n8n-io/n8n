@@ -1,4 +1,4 @@
-FROM node:12.9.1-alpine
+FROM node:12.13.0-alpine
 
 ARG N8N_VERSION
 
