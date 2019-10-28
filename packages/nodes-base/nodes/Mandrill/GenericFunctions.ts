@@ -26,7 +26,8 @@ export async function mandrillApiRequest(this: IHookFunctions | IExecuteFunction
 		uri: `https://${endpoint}${resource}${action}.json`,
         body: data,
         json: true
-	};
+    };
+    
 
 	try {
         return await this.helpers.request!(options);
@@ -66,4 +67,34 @@ export async function mandrillApiRequest(this: IHookFunctions | IExecuteFunction
             }]
         }
         return toEmailArray
+    }
+
+    export function getGoogleAnalyticsDomainsArray(string: String): Array<any> { 
+        let array = []
+        if (string.split(',').length > 0) {
+            array = string.split(',')
+        } else {
+            array = [string]
+        }
+        return array
+    }
+
+    export function getTags(string: String): Array<any> { 
+        let array = []
+        if (string.split(',').length > 0) {
+            array = string.split(',')
+        } else {
+            array = [string]
+        }
+        return array
+    }
+
+    export function validateJSON(json: any): any {
+        let result
+        try {
+            result = JSON.parse(json)
+        } catch (exception) {
+            result = []
+        }
+        return result
     }
