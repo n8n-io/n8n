@@ -14,7 +14,7 @@ export class Function implements INodeType {
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
-		description: 'Run custom function code which gets executed once per item.',
+		description: 'Run custom function code which gets executed once and allows to add, remove, change and replace items.',
 		defaults: {
 			name: 'Function',
 			color: '#FF9922',
