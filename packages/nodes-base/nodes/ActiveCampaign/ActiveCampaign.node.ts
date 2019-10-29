@@ -702,7 +702,7 @@ export class ActiveCampaign implements INodeType {
 						name: 'currency',
 						type: 'options',
 						options: returnAllCurrencyOptions(),
-						default: '',
+						default: 'eur',
 						description: 'The currency of the deal in 3-character ISO format',
 					},
 					{
