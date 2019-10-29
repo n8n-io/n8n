@@ -18,7 +18,4 @@ RUN apk --update add --virtual build-dependencies python build-base ca-certifica
 
 WORKDIR /data
 
-COPY docker-entrypoint.sh /usr/local/bin/
-ENTRYPOINT ["docker-entrypoint.sh"]
-
 CMD ["n8n"]

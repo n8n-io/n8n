@@ -193,6 +193,25 @@ The following environment variables support file input:
  - N8N_BASIC_AUTH_USER_FILE
 
 
+## Setting Timezone
+
+To define the timezone n8n should use the environment variable `GENERIC_TIMEZONE` can
+be set. This gets used to by for example the Cron-Node.
+Apart from that can also the timezone of the system be set separately. Which controls what
+some scripts and commands return like `> date`. The system timezone can be set via
+the environment variable `TZ`.
+
+Example to use the same timezone for both:
+```
+docker run -it --rm \
+  --name n8n \
+  -p 5678:5678 \
+	-e GENERIC_TIMEZONE="Europe/Berlin" \
+	-e TZ="Europe/Berlin" \
+  n8nio/n8n
+```
+
+
 ## Build Docker-Image
 
 ```
