@@ -577,7 +577,7 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Deal pipeline ID',
-				name: 'pipeline',
+				name: 'owner',
 				type: 'string',
 				default: '',
 				displayOptions: {
@@ -650,7 +650,7 @@ export class ActiveCampaign implements INodeType {
 						default: '',
 						description: 'The description of the deal',
 					},
-					
+
 					{
 						displayName: 'Deal percentage',
 						name: 'percent',
@@ -745,7 +745,7 @@ export class ActiveCampaign implements INodeType {
 					},
 					{
 						displayName: 'Deal pipeline ID',
-						name: 'pipeline',
+						name: 'owner',
 						type: 'string',
 						default: '',
 						description: 'The pipeline ID of the deal',
@@ -966,6 +966,7 @@ export class ActiveCampaign implements INodeType {
 				},
 				description: 'The content of the deal note',
 			},
+			
 		],
 	};
 
@@ -1090,18 +1091,18 @@ export class ActiveCampaign implements INodeType {
 						value: this.getNodeParameter('value', i) as number,
 					} as IDataObject;
 
-					const group = this.getNodeParameter('pipeline', i) as string
-					if(group !== ''){
+					const group = this.getNodeParameter('owner', i) as string
+					if (group !== '') {
 						addAdditionalFields(body.deal as IDataObject, { group })
 					}
 
 					const owner = this.getNodeParameter('owner', i) as string
-					if(owner !== ''){
+					if (owner !== '') {
 						addAdditionalFields(body.deal as IDataObject, { owner })
 					}
 
 					const stage = this.getNodeParameter('stage', i) as string
-					if(stage !== ''){
+					if (stage !== '') {
 						addAdditionalFields(body.deal as IDataObject, { stage })
 					}
 
@@ -1188,9 +1189,11 @@ export class ActiveCampaign implements INodeType {
 					const dealNoteId = this.getNodeParameter('dealNoteId', i) as number;
 					endpoint = `/api/3/deals/${dealId}/notes/${dealNoteId}`;
 
+
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
 				}
+				
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
@@ -1212,3 +1215,4 @@ export class ActiveCampaign implements INodeType {
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
+

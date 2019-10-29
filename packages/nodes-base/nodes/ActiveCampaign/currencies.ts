@@ -1,7 +1,9 @@
 export function returnAllCurrencyOptions() {
-	return [
-		{ name: 'United States Dollar', value: 'usd' },
+	return [		
 		{ name: 'Euro', value: 'eur' },
+		{ name: 'United States Dollar', value: 'usd' },
+		{ name: 'British Pound Sterling', value: 'gbp' },
+		{ name: 'Swiss Franc', value: 'chf' },
 		{ name: 'Renminbi', value: 'cny' },
 		{ name: '--------', value: '' },
 		{ name: 'United Arab Emirates Dirham', value: 'aed' },
@@ -32,7 +34,6 @@ export function returnAllCurrencyOptions() {
 		{ name: 'Belize Dollar', value: 'bzd' },
 		{ name: 'Canadian Dollar', value: 'cad' },
 		{ name: 'Congolese Franc', value: 'cdf' },
-		{ name: 'Swiss Franc', value: 'chf' },
 		{ name: 'Chilean Unit of Account (UF)', value: 'clf' },
 		{ name: 'Chilean Peso', value: 'clp' },
 		{ name: 'Chinese Yuan (Offshore)', value: 'cnh' },
@@ -51,7 +52,6 @@ export function returnAllCurrencyOptions() {
 		{ name: 'Ethiopian Birr', value: 'etb' },
 		{ name: 'Fijian Dollar', value: 'fjd' },
 		{ name: 'Falkland Islands Pound', value: 'fkp' },
-		{ name: 'British Pound Sterling', value: 'gbp' },
 		{ name: 'Georgian Lari', value: 'gel' },
 		{ name: 'Guernsey Pound', value: 'ggp' },
 		{ name: 'Ghanaian Cedi', value: 'ghs' },
