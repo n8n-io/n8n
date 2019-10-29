@@ -1,17 +1,21 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
 	activeCampaignApiRequest,
 	activeCampaignApiRequestAllItems,
 } from './GenericFunctions';
+
+import { returnAllCurrencyOptions } from './currencies'
 
 interface CustomProperty {
 	name: string;
@@ -555,8 +559,8 @@ export class ActiveCampaign implements INodeType {
 			{
 				displayName: 'Currency',
 				name: 'currency',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'eur',
 				required: true,
 				displayOptions: {
 					show: {
@@ -568,6 +572,7 @@ export class ActiveCampaign implements INodeType {
 						],
 					},
 				},
+				options: returnAllCurrencyOptions(),
 				description: 'The currency of the deal in 3-character ISO format',
 			},
 			{
@@ -695,7 +700,8 @@ export class ActiveCampaign implements INodeType {
 					{
 						displayName: 'Currency',
 						name: 'currency',
-						type: 'string',
+						type: 'options',
+						options: returnAllCurrencyOptions(),
 						default: '',
 						description: 'The currency of the deal in 3-character ISO format',
 					},
