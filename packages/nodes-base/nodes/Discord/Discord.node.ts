@@ -1,3 +1,4 @@
+import { get } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
@@ -13,7 +14,6 @@ export class Discord implements INodeType {
 		icon: 'file:discord.png',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["resource"]}}',
 		description: 'Sends data to Discord',
 		defaults: {
 			name: 'Discord',
@@ -23,27 +23,6 @@ export class Discord implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				options: [
-					{
-						name: 'Webhook',
-						value: 'webhook',
-					},
-				],
-				default: 'webhook',
-				description: 'The resource to operate on.',
-			},
-
-			// ----------------------------------
-			//         message
-			// ----------------------------------
-
-			// ----------------------------------
-			//         message:post
-			// ----------------------------------
-			{
 				displayName: 'Webhook URL',
 				name: 'webhookUri',
 				type: 'string',
@@ -51,14 +30,7 @@ export class Discord implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				displayOptions: {
-					show: {
-						resource: [
-							'webhook',
-						],
-					},
-				},
-				description: 'The webhook url',
+				description: 'The webhook url.',
 			},
 			{
 				displayName: 'Text',
@@ -68,13 +40,6 @@ export class Discord implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				displayOptions: {
-					show: {
-						resource: [
-							'webhook',
-						],
-					},
-				},
 				description: 'The text to send.',
 			}
 		],
@@ -85,10 +50,8 @@ export class Discord implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		let responseData;
 
-		let resource: string;
-		let requestMethod = 'POST';
+		const requestMethod = 'POST';
 
 		// For Post
 		let body: IDataObject;
@@ -97,14 +60,7 @@ export class Discord implements INodeType {
 			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
 			body = {};
 
-			resource = this.getNodeParameter('resource', i) as string;
-			
-			if (resource === 'webhook') {
-				requestMethod = 'POST';
-				body.content = this.getNodeParameter('text', i) as string;
-			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
-			}
+			body.content = this.getNodeParameter('text', i) as string;
 
 			const options = {
 				method: requestMethod,
@@ -116,22 +72,32 @@ export class Discord implements INodeType {
 				json: true
 			};
 
-			try {
-				responseData = await this.helpers.request(options);
-			} catch (error) {
-				if (error.statusCode === 429) {
-					// Waiting rating limit
-					setTimeout(async () => {
-						responseData = await this.helpers.request(options)
-					}, 
-					error.response.body.retry_after);
-				}else {
-					// If it's another error code then return the JSON response
-					throw error;
+			let maxTries = 5;
+			do {
+				try {
+					await this.helpers.request(options);
+					break;
+				} catch (error) {
+					if (error.statusCode === 429) {
+						// Waiting rating limit
+						await new Promise((resolve) => {
+							setTimeout(async () => {
+								resolve();
+							}, get(error, 'response.body.retry_after', 150));
+						});
+					} else {
+						// If it's another error code then return the JSON response
+						throw error;
+					}
 				}
+
+			} while (--maxTries);
+
+			if (maxTries <= 0) {
+				throw new Error('Could not send message. Max. amount of rate-limit retries got reached.');
 			}
 
-			returnData.push(responseData as IDataObject);
+			returnData.push({success: true});
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
