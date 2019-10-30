@@ -92,7 +92,7 @@ export class GraphQL implements INodeType {
 				displayName: 'Variables',
 				name: 'variables',
 				type: 'json',
-				default: {},
+				default: '',
 				description: 'Query variables',
 				displayOptions: {
 					show: {
@@ -194,7 +194,11 @@ export class GraphQL implements INodeType {
 						operationName: this.getNodeParameter('operationName', itemIndex, null) as string,
 					};
 					if (typeof requestOptions.body.variables === "string") {
-						requestOptions.body.variables = {};
+						try {
+							requestOptions.body.variables = JSON.parse(requestOptions.body.variables)
+						} catch {
+							requestOptions.body.variables = {};
+						}
 					}
 					if (requestOptions.body.operationName === "") {
 						requestOptions.body.operation = null;
