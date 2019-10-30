@@ -80,6 +80,7 @@
             "dist/nodes/Gitlab/GitlabTrigger.node.js",
             "dist/nodes/Google/GoogleDrive.node.js",
             "dist/nodes/Google/GoogleSheets.node.js",
+            "dist/nodes/GraphQL/GraphQL.node.js",
             "dist/nodes/HttpRequest.node.js",
             "dist/nodes/If.node.js",
             "dist/nodes/Interval.node.js",
