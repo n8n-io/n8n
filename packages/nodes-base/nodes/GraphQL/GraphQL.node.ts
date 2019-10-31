@@ -12,6 +12,7 @@ export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GraphQL',
 		name: 'graphql',
+		icon: 'file:graphql.png',
 		group: ['input'],
 		version: 1,
 		description: 'Makes a GraphQL request and returns the received data',
@@ -29,11 +30,11 @@ export class GraphQL implements INodeType {
 				options: [
 					{
 						name: 'GET',
-						value: 'GET'
+						value: 'GET',
 					},
 					{
 						name: 'POST',
-						value: 'POST'
+						value: 'POST',
 					},
 				],
 				default: 'POST',
@@ -63,17 +64,17 @@ export class GraphQL implements INodeType {
 				options: [
 					{
 						name: 'GraphQL (raw)',
-						value: 'graphql'
+						value: 'graphql',
 					},
 					{
 						name: 'JSON',
-						value: 'json'
+						value: 'json',
 					},
 				],
 				displayOptions: {
 					show: {
 						requestMethod: [
-							"POST"
+							'POST',
 						],
 					},
 				},
@@ -97,10 +98,10 @@ export class GraphQL implements INodeType {
 				displayOptions: {
 					show: {
 						requestFormat: [
-							"json"
+							'json',
 						],
 						requestMethod: [
-							"POST"
+							'POST',
 						],
 					},
 				},
@@ -114,10 +115,10 @@ export class GraphQL implements INodeType {
 				displayOptions: {
 					show: {
 						requestFormat: [
-							"json"
+							'json',
 						],
 						requestMethod: [
-							"POST"
+							'POST',
 						],
 					},
 				},
@@ -129,11 +130,11 @@ export class GraphQL implements INodeType {
 				options: [
 					{
 						name: 'JSON',
-						value: 'json'
+						value: 'json',
 					},
 					{
 						name: 'String',
-						value: 'string'
+						value: 'string',
 					},
 				],
 				default: 'json',
@@ -168,7 +169,7 @@ export class GraphQL implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex, 'POST') as string;
 			const endpoint = this.getNodeParameter('endpoint', itemIndex, '') as string;
-			const requestFormat = this.getNodeParameter('requestFormat', itemIndex, 'graphql') as string; 
+			const requestFormat = this.getNodeParameter('requestFormat', itemIndex, 'graphql') as string;
 			const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
 			requestOptions = {
@@ -183,8 +184,8 @@ export class GraphQL implements INodeType {
 
 			const gqlQuery = this.getNodeParameter('query', itemIndex, '') as string;
 			if (requestMethod === 'GET') {
-				requestOptions.qs = { 
-					query: gqlQuery 
+				requestOptions.qs = {
+					query: gqlQuery
 				};
 			} else {
 				if (requestFormat === 'json') {
@@ -193,14 +194,14 @@ export class GraphQL implements INodeType {
 						variables: this.getNodeParameter('variables', itemIndex, {}) as object,
 						operationName: this.getNodeParameter('operationName', itemIndex, null) as string,
 					};
-					if (typeof requestOptions.body.variables === "string") {
+					if (typeof requestOptions.body.variables === 'string') {
 						try {
-							requestOptions.body.variables = JSON.parse(requestOptions.body.variables)
+							requestOptions.body.variables = JSON.parse(requestOptions.body.variables);
 						} catch {
 							requestOptions.body.variables = {};
 						}
 					}
-					if (requestOptions.body.operationName === "") {
+					if (requestOptions.body.operationName === '') {
 						requestOptions.body.operation = null;
 					}
 					requestOptions.json = true;
