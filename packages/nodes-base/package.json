@@ -89,7 +89,7 @@
             "dist/nodes/Mailgun/Mailgun.node.js",
             "dist/nodes/Mattermost/Mattermost.node.js",
             "dist/nodes/Merge.node.js",
-            "dist/nodes/MoveBinaryData.node",
+            "dist/nodes/MoveBinaryData.node.js",
             "dist/nodes/MongoDb/MongoDb.node.js",
             "dist/nodes/NextCloud/NextCloud.node.js",
             "dist/nodes/NoOp.node.js",
