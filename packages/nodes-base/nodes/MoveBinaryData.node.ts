@@ -199,6 +199,20 @@ export class MoveBinaryData implements INodeType {
 						default: false,
 						description: 'Use data as is and do not JSON.stringify it.',
 					},
+					{
+						displayName: 'Encoding',
+						name: 'encoding',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/mode': [
+									'binaryToJson',
+								],
+							},
+						},
+						default: 'ascii',
+						description: 'Set the encoding of the data stream',
+					},
 				],
 			}
 		],
@@ -235,7 +249,7 @@ export class MoveBinaryData implements INodeType {
 					continue;
 				}
 
-				const convertedValue = JSON.parse(new Buffer(value.data, 'base64').toString('ascii'));
+				const convertedValue = JSON.parse(new Buffer(value.data, 'base64').toString(options.encoding));
 
 				if (setAllData === true) {
 					// Set the full data
