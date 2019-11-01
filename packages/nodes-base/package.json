@@ -60,7 +60,8 @@
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
             "dist/nodes/Airtable/Airtable.node.js",
-            "dist/nodes/Amqp/AmqpListener.node.js",
+            "dist/nodes/Amqp/Amqp.node.js",
+            "dist/nodes/Amqp/AmqpTrigger.node.js",
             "dist/nodes/Asana/Asana.node.js",
             "dist/nodes/Asana/AsanaTrigger.node.js",
             "dist/nodes/Aws/AwsLambda.node.js",
