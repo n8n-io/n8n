@@ -164,11 +164,18 @@ export class MoveBinaryData implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Keep Source',
-						name: 'keepSource',
-						type: 'boolean',
-						default: false,
-						description: 'If the source key should be kept. By default does it get deleted.',
+						displayName: 'Encoding',
+						name: 'encoding',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/mode': [
+									'binaryToJson',
+								],
+							},
+						},
+						default: 'utf8',
+						description: 'Set the encoding of the data stream',
 					},
 					{
 						displayName: 'JSON Parse',
@@ -186,6 +193,13 @@ export class MoveBinaryData implements INodeType {
 						},
 						default: false,
 						description: 'Run JSON parse on the data to get propery object data.',
+					},
+					{
+						displayName: 'Keep Source',
+						name: 'keepSource',
+						type: 'boolean',
+						default: false,
+						description: 'If the source key should be kept. By default does it get deleted.',
 					},
 					{
 						displayName: 'Mime Type',
@@ -252,7 +266,8 @@ export class MoveBinaryData implements INodeType {
 					continue;
 				}
 
-				let convertedValue = new Buffer(value.data, 'base64').toString('utf8');
+				const encoding = (options.encoding as string) || 'utf8';
+				let convertedValue = new Buffer(value.data, 'base64').toString(encoding);
 
 				if (setAllData === true) {
 					// Set the full data
