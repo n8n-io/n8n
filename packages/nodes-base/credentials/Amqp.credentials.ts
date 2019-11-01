@@ -12,6 +12,18 @@ export class Amqp implements ICredentialType {
 		// Properties can be defined exactly in the same way
 		// as node properties.
 		{
+			displayName: 'Hostname',
+			name: 'hostname',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
+		{
+			displayName: 'Port',
+			name: 'port',
+			type: 'number' as NodePropertyTypes,
+			default: 5672,
+		},
+		{
 			displayName: 'User',
 			name: 'username',
 			type: 'string' as NodePropertyTypes,
