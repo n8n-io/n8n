@@ -171,6 +171,23 @@ export class MoveBinaryData implements INodeType {
 						description: 'If the source key should be kept. By default does it get deleted.',
 					},
 					{
+						displayName: 'JSON Parse',
+						name: 'jsonParse',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/mode': [
+									'binaryToJson',
+								],
+								'/setAllData': [
+									false
+								],
+							},
+						},
+						default: false,
+						description: 'Run JSON parse on the data to get propery object data.',
+					},
+					{
 						displayName: 'Mime Type',
 						name: 'mimeType',
 						type: 'string',
@@ -235,14 +252,18 @@ export class MoveBinaryData implements INodeType {
 					continue;
 				}
 
-				const convertedValue = JSON.parse(new Buffer(value.data, 'base64').toString('ascii'));
+				let convertedValue = new Buffer(value.data, 'base64').toString('utf8');
 
 				if (setAllData === true) {
 					// Set the full data
-					newItem.json = convertedValue;
+					newItem.json = JSON.parse(convertedValue);
 				} else {
 					// Does get added to existing data so copy it first
 					newItem.json = JSON.parse(JSON.stringify(item.json));
+
+					if (options.jsonParse) {
+						convertedValue = JSON.parse(convertedValue);
+					}
 
 					const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
 					set(newItem.json, destinationKey, convertedValue);
