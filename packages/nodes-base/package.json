@@ -28,6 +28,7 @@
         "credentials": [
             "dist/credentials/ActiveCampaignApi.credentials.js",
             "dist/credentials/AirtableApi.credentials.js",
+            "dist/credentials/Amqp.credentials.js",
             "dist/credentials/AsanaApi.credentials.js",
             "dist/credentials/Aws.credentials.js",
             "dist/credentials/ChargebeeApi.credentials.js",
@@ -59,6 +60,7 @@
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
             "dist/nodes/Airtable/Airtable.node.js",
+            "dist/nodes/Amqp/AmqpListener.node.js",
             "dist/nodes/Asana/Asana.node.js",
             "dist/nodes/Asana/AsanaTrigger.node.js",
             "dist/nodes/Aws/AwsLambda.node.js",
@@ -158,6 +160,7 @@
         "pdf-parse": "^1.1.1",
         "pg-promise": "^9.0.3",
         "redis": "^2.8.0",
+        "rhea": "^1.0.11",
         "rss-parser": "^3.7.0",
         "vm2": "^3.6.10",
         "xlsx": "^0.14.3",
