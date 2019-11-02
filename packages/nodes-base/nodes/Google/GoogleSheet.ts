@@ -45,6 +45,27 @@ export class GoogleSheet {
 	}
 
 
+	/**
+	 * Clears values from a sheet
+	 *
+	 * @param {string} range
+	 * @returns {Promise<object>}
+	 * @memberof GoogleSheet
+	 */
+	async clearData(range: string): Promise<object> {
+		const client = await this.getAuthenticationClient();
+
+		const response = await Sheets.spreadsheets.values.clear(
+			{
+				auth: client,
+				spreadsheetId: this.id,
+				range,
+			}
+		);
+
+		return response.data;
+	}
+
     /**
      * Returns the cell values
      */
