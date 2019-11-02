@@ -8,9 +8,6 @@ export class Amqp implements ICredentialType {
 	name = 'amqp';
 	displayName = 'AMQP';
 	properties = [
-		// The credentials to get from user and save encrypted.
-		// Properties can be defined exactly in the same way
-		// as node properties.
 		{
 			displayName: 'Hostname',
 			name: 'hostname',
