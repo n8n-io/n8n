@@ -79,6 +79,10 @@ export class ActiveCampaign implements INodeType {
 					{
 						name: 'Deal',
 						value: 'deal',
+					},
+					{
+						name: "E-commerce order",
+						value: "ecommerceOrder"
 					}
 				],
 				default: 'contact',
@@ -178,6 +182,48 @@ export class ActiveCampaign implements INodeType {
 						name: 'Update deal note',
 						value: 'updateNote',
 						description: 'Update a deal note',
+					},
+				],
+				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a order',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a order',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get data of a order',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get data of all orders',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a order',
 					},
 				],
 				default: 'create',
@@ -966,7 +1012,563 @@ export class ActiveCampaign implements INodeType {
 				},
 				description: 'The content of the deal note',
 			},
+
+			// ----------------------------------
+			//         ecommerceOrder
+			// ----------------------------------
+
+			// ----------------------------------
+			//         ecommerceOrder:create
+			// ----------------------------------
+			{
+				displayName: 'External ID',
+				name: 'externalid',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED',
+			},
+			{
+				displayName: 'External checkout ID',
+				name: 'externalcheckoutid',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The id of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
+			},
+			{
+				displayName: 'Order source',
+				name: 'source',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The order source code (0 - will not trigger automations, 1 - will trigger automations).',
+			},
+			{
+				displayName: 'Customer Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The email address of the customer who placed the order.',
+			},
+			{
+				displayName: 'Total price',
+				name: 'totalPrice',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The total price of the order in cents, including tax and shipping charges. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
+			},
+			{
+				displayName: 'Order currency',
+				name: 'currency',
+				type: 'options',
+				default: 'eur',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				options: returnAllCurrencyOptions(),
+				description: 'The currency of the order (3-digit ISO code, e.g., "USD").',
+			},
+			{
+				displayName: 'Connection ID',
+				name: 'connectionid',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The id of the connection from which this order originated.',
+			},
+			{
+				displayName: 'Customer ID',
+				name: 'customerid',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The id of the customer associated with this order.',
+			},
+			{
+				displayName: 'Creation Date',
+				name: 'externalCreatedDate',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The date the order was placed.',
+			},
+			{
+				displayName: 'Abandoning Date',
+				name: 'externalCreatedDate',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The date the cart was abandoned. REQUIRED ONLY IF INCLUDING EXTERNALCHECKOUTID.',
+			},
+			{
+				displayName: 'Products',
+				name: 'orderProducts',
+				type: 'collection',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add product',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'create'
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				default: {},
+				description: 'All ordered products',
+				placeholder: 'Add product',
+				options: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'The name of the product',
+					},
+					{
+						displayName: 'Price',
+						name: 'price',
+						type: 'number',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: 0,
+						description: 'The price of the product, in cents. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
+					},
+					{
+						displayName: 'Product Quantity',
+						name: 'quantity',
+						type: 'number',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: 0,
+						description: 'The quantity ordered.',
+					},
+					{
+						displayName: 'Product external ID',
+						name: 'externalid',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'The id of the product in the external service.',
+					},
+					{
+						displayName: 'Product Category',
+						name: 'category',
+						type: 'string',
+						default: '',
+						description: 'The category of the product.',
+					},
+					{
+						displayName: 'SKU',
+						name: 'sku',
+						type: 'string',
+						default: '',
+						description: 'The SKU for the product.',
+					},
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'The description of the product.',
+					},
+					{
+						displayName: 'Image URL',
+						name: 'imageUrl',
+						type: 'string',
+						default: '',
+						description: 'An Image URL that displays an image of the product.',
+					},
+					{
+						displayName: 'Product URL',
+						name: 'productUrl',
+						type: 'string',
+						default: '',
+						description: 'A URL linking to the product in your store.',
+					},
+				],
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Shipping Amount',
+						name: 'shippingAmount',
+						type: 'number',
+						default: 0,
+						description: 'The total shipping amount for the order in cents .',
+					},
+
+					{
+						displayName: 'Tax Amount',
+						name: 'taxAmount',
+						type: 'number',
+						default: 0,
+						description: 'The total tax amount for the order in cents.',
+					},
+					{
+						displayName: 'Discount Amount',
+						name: 'discountAmount',
+						type: 'number',
+						default: 0,
+						description: 'The total discount amount for the order in cents.',
+					},
+					{
+						displayName: 'Order URL',
+						name: 'orderUrl',
+						type: 'string',
+						default: '',
+						description: 'The URL for the order in the external service.',
+					},
+					{
+						displayName: 'External updated date',
+						name: 'externalUpdatedDate',
+						type: 'string',
+						default: '',
+						description: 'The date the order was updated.',
+					},
+					{
+						displayName: 'Shipping Method',
+						name: 'shippingMethod',
+						type: 'string',
+						default: '',
+						description: 'The shipping method of the order.',
+					},
+					{
+						displayName: 'Order Number',
+						name: 'orderNumber',
+						type: 'string',
+						default: '',
+						description: 'The order number. This can be different than the externalid.',
+					},
+
+				]
+			},
 			
+			// ----------------------------------
+			//         ecommerceOrder:update
+			// ----------------------------------
+			{
+				displayName: 'ecommerceOrder ID',
+				name: 'ecommerceOrderId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the ecommerceOrder to update.',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				description: 'The fields to update.',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'The title of the ecommerceOrder',
+					},
+					{
+						displayName: 'ecommerceOrder\'s contact ID',
+						name: 'contact',
+						type: 'number',
+						default: 0,
+						description: 'The ID of the ecommerceOrder\'s contact',
+					},
+					{
+						displayName: 'ecommerceOrder value',
+						name: 'value',
+						type: 'number',
+						default: 0,
+						description: 'The value of the ecommerceOrder in cents',
+					},
+					{
+						displayName: 'Currency',
+						name: 'currency',
+						type: 'options',
+						options: returnAllCurrencyOptions(),
+						default: 'eur',
+						description: 'The currency of the ecommerceOrder in 3-character ISO format',
+					},
+					{
+						displayName: 'Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'The description of the ecommerceOrder',
+					},
+					{
+						displayName: 'ecommerceOrder pipeline ID',
+						name: 'owner',
+						type: 'string',
+						default: '',
+						description: 'The pipeline ID of the ecommerceOrder',
+					},
+					{
+						displayName: 'ecommerceOrder stage ID',
+						name: 'stage',
+						type: 'string',
+						default: '',
+						description: 'The stage ID of the ecommerceOrder',
+					},
+					{
+						displayName: 'ecommerceOrder owner ID',
+						name: 'owner',
+						type: 'string',
+						default: '',
+						description: 'The owner ID of the ecommerceOrder',
+					},
+					{
+						displayName: 'ecommerceOrder percentage',
+						name: 'percent',
+						type: 'number',
+						default: 0,
+						description: 'The percentage of the ecommerceOrder',
+					},
+					{
+						displayName: 'ecommerceOrder status',
+						name: 'status',
+						type: 'number',
+						default: 0,
+						description: 'The status of the ecommerceOrder',
+					},
+				]
+			},
+
+			// ----------------------------------
+			//         ecommerceOrder:delete
+			// ----------------------------------
+			{
+				displayName: 'ecommerceOrder ID',
+				name: 'ecommerceOrderId',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The ID of the ecommerceOrder',
+			},
+
+			// ----------------------------------
+			//         ecommerceOrder:get
+			// ----------------------------------
+			{
+				displayName: 'ecommerceOrder ID',
+				name: 'ecommerceOrderId',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				description: 'The ID of the ecommerceOrder',
+			},
+
+			// ----------------------------------
+			//         ecommerceOrder:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'ecommerceOrder',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},			
 		],
 	};
 
@@ -1193,7 +1795,7 @@ export class ActiveCampaign implements INodeType {
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
 				}
-				
+
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
