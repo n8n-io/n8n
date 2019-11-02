@@ -7,12 +7,12 @@ import {
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
 	activeCampaignApiRequest,
 	activeCampaignApiRequestAllItems,
+	IProduct,
 } from './GenericFunctions';
 
 import { returnAllCurrencyOptions } from './currencies'
@@ -623,7 +623,7 @@ export class ActiveCampaign implements INodeType {
 			},
 			{
 				displayName: 'Deal pipeline ID',
-				name: 'owner',
+				name: 'group',
 				type: 'string',
 				default: '',
 				displayOptions: {
@@ -791,7 +791,7 @@ export class ActiveCampaign implements INodeType {
 					},
 					{
 						displayName: 'Deal pipeline ID',
-						name: 'owner',
+						name: 'group',
 						type: 'string',
 						default: '',
 						description: 'The pipeline ID of the deal',
@@ -1355,7 +1355,7 @@ export class ActiveCampaign implements INodeType {
 
 				]
 			},
-			
+
 			// ----------------------------------
 			//         ecommerceOrder:update
 			// ----------------------------------
@@ -1376,10 +1376,10 @@ export class ActiveCampaign implements INodeType {
 				},
 				description: 'The id of the e-commerce order.',
 			},
-			
+
 			{
 				displayName: 'Add Field',
-				name: 'additionalFields',
+				name: 'updateFields',
 				type: 'collection',
 				placeholder: 'Add Field',
 				displayOptions: {
@@ -1515,7 +1515,7 @@ export class ActiveCampaign implements INodeType {
 						default: '',
 						description: 'The order number. This can be different than the externalid.',
 					},
-					
+
 					{
 						displayName: 'Products',
 						name: 'orderProducts',
@@ -1682,7 +1682,7 @@ export class ActiveCampaign implements INodeType {
 				},
 				default: 100,
 				description: 'How many results to return.',
-			},			
+			},
 		],
 	};
 
@@ -1805,9 +1805,10 @@ export class ActiveCampaign implements INodeType {
 						title: this.getNodeParameter('title', i) as string,
 						contact: this.getNodeParameter('contact', i) as string,
 						value: this.getNodeParameter('value', i) as number,
+						currency: this.getNodeParameter('currency', i) as string
 					} as IDataObject;
 
-					const group = this.getNodeParameter('owner', i) as string
+					const group = this.getNodeParameter('group', i) as string
 					if (group !== '') {
 						addAdditionalFields(body.deal as IDataObject, { group })
 					}
@@ -1821,9 +1822,6 @@ export class ActiveCampaign implements INodeType {
 					if (stage !== '') {
 						addAdditionalFields(body.deal as IDataObject, { stage })
 					}
-
-					const currency = this.getNodeParameter('currency', i) as string
-					addAdditionalFields(body.deal as IDataObject, { currency })
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body.deal as IDataObject, additionalFields);
@@ -1905,6 +1903,103 @@ export class ActiveCampaign implements INodeType {
 					const dealNoteId = this.getNodeParameter('dealNoteId', i) as number;
 					endpoint = `/api/3/deals/${dealId}/notes/${dealNoteId}`;
 
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known`);
+				}
+			} else if (resource === 'ecommerceOrder') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         ecommerceOrder:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					endpoint = '/api/3/ecomOrders';
+
+					dataKey = 'ecommerceOrder';
+
+					body.ecomOrder = {
+						source: this.getNodeParameter('source', i) as string,
+						email: this.getNodeParameter('email', i) as string,
+						totalPrice: this.getNodeParameter('totalPrice', i) as number,
+						currency: this.getNodeParameter('currency', i).toString().toUpperCase() as string,
+						externalCreatedDate: this.getNodeParameter('externalCreatedDate', i) as string,
+						connectionid: this.getNodeParameter('connectionid', i) as number,
+						customerid: this.getNodeParameter('customerid', i) as number,
+					} as IDataObject;
+
+					const externalid = this.getNodeParameter('externalid', i) as string;
+					if (externalid !== '') {
+						addAdditionalFields(body.ecomOrder as IDataObject, { externalid });
+					}
+
+					const externalcheckoutid = this.getNodeParameter('externalcheckoutid', i) as string;
+					if (externalcheckoutid !== '') {
+						addAdditionalFields(body.ecomOrder as IDataObject, { externalcheckoutid });
+					}
+
+					const abandonedDate = this.getNodeParameter('abandonedDate', i) as string;
+					if (abandonedDate !== '') {
+						addAdditionalFields(body.ecomOrder as IDataObject, { abandonedDate });
+					}
+
+					const orderProducts = this.getNodeParameter('orderProducts', i) as unknown as IProduct[];
+					addAdditionalFields(body.ecomOrder as IDataObject, { orderProducts });
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body.ecomOrder as IDataObject, additionalFields);
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         ecommerceOrder:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const orderId = this.getNodeParameter('orderId', i) as number;
+					endpoint = `/api/3/ecomOrders/${orderId}`;
+
+					dataKey = 'ecommerceOrder';
+					body.ecomOrder = {} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body.ecomOrder as IDataObject, updateFields);
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         ecommerceOrder:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const orderId = this.getNodeParameter('orderId', i) as number;
+					endpoint = `/api/3/ecomOrders/${orderId}`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         ecommerceOrder:get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const orderId = this.getNodeParameter('orderId', i) as number;
+					endpoint = `/api/3/ecomOrders/${orderId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         ecommerceOrders:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					dataKey = 'ecommerceOrders';
+					endpoint = `/api/3/ecomOrders`;
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
