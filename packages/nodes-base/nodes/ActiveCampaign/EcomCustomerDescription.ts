@@ -16,27 +16,27 @@ export const ecomCustomerOperations = [
             {
                 name: 'Create',
                 value: 'create',
-                description: 'Create a ecommerceCustomer',
+                description: 'Create a E-commerce Customer',
             },
             {
                 name: 'Delete',
                 value: 'delete',
-                description: 'Delete a ecommerceCustomer',
+                description: 'Delete a E-commerce Customer',
             },
             {
                 name: 'Get',
                 value: 'get',
-                description: 'Get data of a ecommerceCustomer',
+                description: 'Get data of a E-commerce Customer',
             },
             {
                 name: 'Get All',
                 value: 'getAll',
-                description: 'Get data of all ecommerceCustomer',
+                description: 'Get data of all E-commerce Customer',
             },
             {
                 name: 'Update',
                 value: 'update',
-                description: 'Update a ecommerceCustomer',
+                description: 'Update a E-commerce Customer',
             },
         ],
         default: 'create',
