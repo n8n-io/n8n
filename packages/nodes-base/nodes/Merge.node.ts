@@ -37,6 +37,11 @@ export class Merge implements INodeType {
 						description: 'Combines data of both inputs. The output will contain items of input 1 and input 2.',
 					},
 					{
+						name: 'Keep Key Matches',
+						value: 'keepKeyMatches',
+						description: 'Keeps data of input 1 if it does find a match with data of input 2.',
+					},
+					{
 						name: 'Merge By Index',
 						value: 'mergeByIndex',
 						description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on the index of the items. So first item of input 1 will be merged with first item of input 2 and so on.',
@@ -50,6 +55,11 @@ export class Merge implements INodeType {
 						name: 'Pass-through',
 						value: 'passThrough',
 						description: 'Passes through data of one input. The output will conain only items of the defined input.',
+					},
+					{
+						name: 'Remove Key Matches',
+						value: 'removeKeyMatches',
+						description: 'Keeps data of input 1 if it does NOT find match with data of input 2.',
 					},
 					{
 						name: 'Wait',
@@ -100,7 +110,9 @@ export class Merge implements INodeType {
 				displayOptions: {
 					show: {
 						mode: [
-							'mergeByKey'
+							'keepKeyMatches',
+							'mergeByKey',
+							'removeKeyMatches',
 						],
 					},
 				},
@@ -115,7 +127,9 @@ export class Merge implements INodeType {
 				displayOptions: {
 					show: {
 						mode: [
-							'mergeByKey'
+							'keepKeyMatches',
+							'mergeByKey',
+							'removeKeyMatches',
 						],
 					},
 				},
@@ -240,8 +254,7 @@ export class Merge implements INodeType {
 
 				returnData.push(newItem);
 			}
-		} else if (mode === 'mergeByKey') {
-			// Merges data by key
+		} else if (['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'].includes(mode)) {
 			const dataInput1 = this.getInputData(0);
 			if (!dataInput1) {
 				// If it has no input data from first input return nothing
@@ -253,8 +266,13 @@ export class Merge implements INodeType {
 
 			const dataInput2 = this.getInputData(1);
 			if (!dataInput2 || !propertyName1 || !propertyName2) {
-				// If the second input does not have any data or the property names are not defined
-				// simply return the data from the first input
+				// Second input does not have any data or the property names are not defined
+				if (mode === 'keepKeyMatches') {
+					// For "keepKeyMatches" return nothing
+					return [returnData];
+				}
+
+				// For "mergeByKey" and "removeKeyMatches" return the data from the first input
 				return [dataInput1];
 			}
 
@@ -273,40 +291,89 @@ export class Merge implements INodeType {
 				copyData[key as string] = entry;
 			}
 
-			// Copy data on entries
+			// Copy data on entries or add matching entries
 			let referenceValue: GenericValue;
 			let key: string;
 			for (entry of dataInput1) {
 				referenceValue = get(entry.json, propertyName1);
 
-				if (!referenceValue) {
-					// Entry does not have the property so skip it
+				if (referenceValue === undefined) {
+					// Entry does not have the property
+
+					if (mode === 'removeKeyMatches') {
+						// For "removeKeyMatches" add item
+						returnData.push(entry);
+					}
+
+					// For "mergeByKey" and "keepKeyMatches" skip item
 					continue;
 				}
 
-
 				if (!['string', 'number'].includes(typeof referenceValue)) {
-					continue;
+					if (referenceValue !== null && referenceValue.constructor.name !== 'Data') {
+						// Reference value is not of comparable type
+
+						if (mode === 'removeKeyMatches') {
+							// For "removeKeyMatches" add item
+							returnData.push(entry);
+						}
+
+						// For "mergeByKey" and "keepKeyMatches" skip item
+						continue;
+					}
 				}
 
 				if (typeof referenceValue === 'number') {
 					referenceValue = referenceValue.toString();
+				} else if (referenceValue !== null && referenceValue.constructor.name === 'Date') {
+					referenceValue = (referenceValue as Date).toISOString();
 				}
 
 				if (copyData.hasOwnProperty(referenceValue as string)) {
+					// Item with reference value got found
+
 					if (['null', 'undefined'].includes(typeof referenceValue)) {
+						// The reference value is null or undefined
+
+						if (mode === 'removeKeyMatches') {
+							// For "removeKeyMatches" add item
+							returnData.push(entry);
+						}
+
+						// For "mergeByKey" and "keepKeyMatches" skip item
 						continue;
 					}
 
-					// Copy the entry as the data gets changed
-					entry = JSON.parse(JSON.stringify(entry));
+					// Match exists
+					if (mode === 'removeKeyMatches') {
+						// For "removeKeyMatches" we can skip the item as it has a match
+						continue;
+					} else if (mode === 'mergeByKey') {
+						// Copy the entry as the data gets changed
+						entry = JSON.parse(JSON.stringify(entry));
 
-					for (key of Object.keys(copyData[referenceValue as string].json)) {
-						// TODO: Currently only copies json data and no binary one
-						entry.json[key] = copyData[referenceValue as string].json[key];
+						for (key of Object.keys(copyData[referenceValue as string].json)) {
+							// TODO: Currently only copies json data and no binary one
+							entry.json[key] = copyData[referenceValue as string].json[key];
+						}
+					} else {
+						// For "keepKeyMatches" we add it as it is
+						returnData.push(entry);
+						continue;
+					}
+				} else {
+					// No item for reference value got found
+					if (mode === 'removeKeyMatches') {
+						// For "removeKeyMatches" we can add it if not match got found
+						returnData.push(entry);
+						continue;
 					}
 				}
-				returnData.push(entry);
+
+				if (mode === 'mergeByKey') {
+					// For "mergeByKey" we always add the entry anyway but then the unchanged one
+					returnData.push(entry);
+				}
 			}
 
 			return [returnData];
