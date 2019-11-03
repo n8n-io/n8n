@@ -110,7 +110,7 @@ export class ActiveCampaign implements INodeType {
 					{
 						name: 'Connection',
 						value: 'connection'
-					}
+					},
 					{
 						name: 'E-commerce Order',
 						value: 'ecommerceOrder',
@@ -272,7 +272,9 @@ export class ActiveCampaign implements INodeType {
 					endpoint = `/api/3/contacts/${contactId}`;
 
 					dataKey = 'contact';
+
 					body.contact = {} as IDataObject;
+
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					addAdditionalFields(body.contact as IDataObject, updateFields);
 
@@ -401,21 +403,30 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'POST';
 
-					const updateIfExists = this.getNodeParameter('updateIfExists', i) as boolean;
-					if (updateIfExists === true) {
-						endpoint = '/api/3/connection/sync';
-					} else {
-						endpoint = '/api/3/connections';
-					}
-
-					dataKey = 'connection';
+					endpoint = '/api/3/connections';
 
 					body.connection = {
-						email: this.getNodeParameter('email', i) as string,
+						service: this.getNodeParameter('service', i) as string,
+						externalid: this.getNodeParameter('externalid', i) as string,
+						name: this.getNodeParameter('name', i) as string,
+						logoUrl: this.getNodeParameter('logoUrl', i) as string,
+						linkUrl: this.getNodeParameter('linkUrl', i) as string,
 					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body.connection as IDataObject, additionalFields);
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         connection:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const connectionId = this.getNodeParameter('connectionId', i) as number;
+					endpoint = `/api/3/connections/${connectionId}`;
+
+					body.connection = {} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body.connection as IDataObject, updateFields);
 
 				} else if (operation === 'delete') {
 					// ----------------------------------
@@ -449,23 +460,7 @@ export class ActiveCampaign implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
-					dataKey = 'connections';
 					endpoint = `/api/3/connections`;
-
-				} else if (operation === 'update') {
-					// ----------------------------------
-					//         connection:update
-					// ----------------------------------
-
-					requestMethod = 'PUT';
-
-					const connectionId = this.getNodeParameter('connectionId', i) as number;
-					endpoint = `/api/3/connections/${connectionId}`;
-
-					dataKey = 'connection';
-					body.connection = {} as IDataObject;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					addAdditionalFields(body.connection as IDataObject, updateFields);
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
