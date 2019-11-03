@@ -30,6 +30,11 @@ import {
 	ecomOrderFields
 } from './EcomOrderDescription';
 
+import {
+	ecomCustomerOperations,
+	ecomCustomerFields
+} from './EcomCustomerDescription';
+
 interface CustomProperty {
 	name: string;
 	value: string;
@@ -93,9 +98,13 @@ export class ActiveCampaign implements INodeType {
 						value: 'deal',
 					},
 					{
-						name: "E-commerce order",
-						value: "ecommerceOrder"
-					}
+						name: "E-commerce Order",
+						value: "ecommerceOrder",
+					},
+					{
+						name: "E-Commerce Customer",
+						value: "ecommerceCustomer",
+					},
 				],
 				default: 'contact',
 				description: 'The resource to operate on.',
@@ -107,6 +116,7 @@ export class ActiveCampaign implements INodeType {
 			...contactOperations,
 			...dealOperations,
 			...ecomOrderOperations,
+			...ecomCustomerOperations,
 
 			// ----------------------------------
 			//         contact
@@ -122,6 +132,11 @@ export class ActiveCampaign implements INodeType {
 			//         ecommerceOrder
 			// ----------------------------------
 			...ecomOrderFields,
+
+			// ----------------------------------
+			//         ecommerceCustomer
+			// ----------------------------------
+			...ecomCustomerFields,
 
 		],
 	};
@@ -444,6 +459,95 @@ export class ActiveCampaign implements INodeType {
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
 				}
+			} else if (resource === 'ecommerceCustomer') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         ecommerceCustomer:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					endpoint = '/api/3/ecomCustomers';
+
+					dataKey = 'ecommerceCustomer';
+
+					body.ecomCustomer = {
+						connectionid: this.getNodeParameter('connectionid', i) as string,
+						externalid: this.getNodeParameter('externalid', i) as string,
+						email: this.getNodeParameter('email', i) as string,
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (additionalFields.acceptsMarketing) {
+						if (additionalFields.acceptsMarketing == true) {
+							additionalFields.acceptsMarketing = '1';
+						} else {
+							additionalFields.acceptsMarketing = '0';
+						}
+					}
+					addAdditionalFields(body.ecomOrder as IDataObject, additionalFields);
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         ecommerceCustomer:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
+					endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
+
+					dataKey = 'ecommerceCustomer';
+					body.ecomCustomer = {} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					if (updateFields.acceptsMarketing) {
+						if (updateFields.acceptsMarketing == true) {
+							updateFields.acceptsMarketing = '1';
+						} else {
+							updateFields.acceptsMarketing = '0';
+						}
+					}
+					addAdditionalFields(body.ecomCustomer as IDataObject, updateFields);
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         ecommerceCustomer:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
+					endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         ecommerceCustomer:get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
+					endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         ecommerceCustomers:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					dataKey = 'ecommerceCustomers';
+					endpoint = `/api/3/ecomCustomers`;
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known`);
+				}
 
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
@@ -462,6 +566,8 @@ export class ActiveCampaign implements INodeType {
 				returnData.push(responseData as IDataObject);
 			}
 		}
+
+		console.log(body)
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}
