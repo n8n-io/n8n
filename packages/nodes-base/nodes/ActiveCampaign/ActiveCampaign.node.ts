@@ -196,9 +196,11 @@ export class ActiveCampaign implements INodeType {
 					}
 
 					dataKey = 'contact';
+
 					body.contact = {
 						email: this.getNodeParameter('email', i) as string,
 					} as IDataObject;
+
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body.contact as IDataObject, additionalFields);
 
@@ -269,22 +271,22 @@ export class ActiveCampaign implements INodeType {
 						title: this.getNodeParameter('title', i) as string,
 						contact: this.getNodeParameter('contact', i) as string,
 						value: this.getNodeParameter('value', i) as number,
-						currency: this.getNodeParameter('currency', i) as string
+						currency: this.getNodeParameter('currency', i) as string,
 					} as IDataObject;
 
-					const group = this.getNodeParameter('group', i) as string
+					const group = this.getNodeParameter('group', i) as string;
 					if (group !== '') {
-						addAdditionalFields(body.deal as IDataObject, { group })
+						addAdditionalFields(body.deal as IDataObject, { group });
 					}
 
-					const owner = this.getNodeParameter('owner', i) as string
+					const owner = this.getNodeParameter('owner', i) as string;
 					if (owner !== '') {
-						addAdditionalFields(body.deal as IDataObject, { owner })
+						addAdditionalFields(body.deal as IDataObject, { owner });
 					}
 
-					const stage = this.getNodeParameter('stage', i) as string
+					const stage = this.getNodeParameter('stage', i) as string;
 					if (stage !== '') {
-						addAdditionalFields(body.deal as IDataObject, { stage })
+						addAdditionalFields(body.deal as IDataObject, { stage });
 					}
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -343,11 +345,11 @@ export class ActiveCampaign implements INodeType {
 					// ----------------------------------
 					//         deal:createNote
 					// ----------------------------------
-					requestMethod = 'POST'
+					requestMethod = 'POST';
 
 					body.note = {
 						note: this.getNodeParameter('dealNote', i) as string,
-					} as IDataObject
+					} as IDataObject;
 
 					const dealId = this.getNodeParameter('dealId', i) as number;
 					endpoint = `/api/3/deals/${dealId}/notes`;
@@ -356,11 +358,11 @@ export class ActiveCampaign implements INodeType {
 					// ----------------------------------
 					//         deal:updateNote
 					// ----------------------------------
-					requestMethod = 'PUT'
+					requestMethod = 'PUT';
 
 					body.note = {
 						note: this.getNodeParameter('dealNote', i) as string,
-					} as IDataObject
+					} as IDataObject;
 
 					const dealId = this.getNodeParameter('dealId', i) as number;
 					const dealNoteId = this.getNodeParameter('dealNoteId', i) as number;
@@ -480,7 +482,7 @@ export class ActiveCampaign implements INodeType {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					if (additionalFields.acceptsMarketing !== undefined) {
-						if (additionalFields.acceptsMarketing == true) {
+						if (additionalFields.acceptsMarketing === true) {
 							additionalFields.acceptsMarketing = '1';
 						} else {
 							additionalFields.acceptsMarketing = '0';
@@ -501,8 +503,8 @@ export class ActiveCampaign implements INodeType {
 					body.ecomCustomer = {} as IDataObject;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					if (updateFields.acceptsMarketing != undefined) {
-						if (updateFields.acceptsMarketing == true) {
+					if (updateFields.acceptsMarketing !== undefined) {
+						if (updateFields.acceptsMarketing === true) {
 							updateFields.acceptsMarketing = '1';
 						} else {
 							updateFields.acceptsMarketing = '0';
@@ -586,9 +588,6 @@ export class ActiveCampaign implements INodeType {
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
 				}
-
-				console.log(endpoint);
-				console.log(body)
 
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
