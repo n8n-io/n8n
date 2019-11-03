@@ -64,7 +64,7 @@ export const contactFields = [
                 ],
             },
         },
-        description: 'The email of the contact to create',
+        description: 'The email of the contact to create.',
     },
     {
         displayName: 'Update if exists',
@@ -105,14 +105,14 @@ export const contactFields = [
                 name: 'firstName',
                 type: 'string',
                 default: '',
-                description: 'The first name of the contact to create',
+                description: 'The first name of the contact to create.',
             },
             {
                 displayName: 'Last Name',
                 name: 'lastName',
                 type: 'string',
                 default: '',
-                description: 'The last name of the contact to create',
+                description: 'The last name of the contact to create.',
             },
             {
                 displayName: 'Phone',
@@ -208,14 +208,14 @@ export const contactFields = [
                 name: 'firstName',
                 type: 'string',
                 default: '',
-                description: 'First name of the contact',
+                description: 'First name of the contact.',
             },
             {
                 displayName: 'Last Name',
                 name: 'lastName',
                 type: 'string',
                 default: '',
-                description: 'Last name of the contact',
+                description: 'Last name of the contact.',
             },
             {
                 displayName: 'Phone',
