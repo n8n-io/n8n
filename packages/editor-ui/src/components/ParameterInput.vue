@@ -455,7 +455,7 @@ export default mixins(
 					return;
 				}
 
-				if (this.parameter.type === 'string' && this.getArgument('alwaysOpenEditWindow')) {
+				if (['json', 'string'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 					this.displayEditDialog();
 					return;
 				}
