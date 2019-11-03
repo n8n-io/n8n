@@ -1,7 +1,5 @@
 import { INodeProperties } from "n8n-workflow";
 
-import { allCurrencies } from './currencies';
-
 export const ecomOrderProductsOperations = [
     {
         displayName: 'Operation',
@@ -18,21 +16,20 @@ export const ecomOrderProductsOperations = [
             {
                 name: 'Get All',
                 value: 'getAll',
-                description: 'Get data of all orders',
+                description: 'Get data of all order products',
             },
             {
                 name: 'Get by Product ID',
                 value: 'getByProductId',
-                description: 'Get data of a order',
+                description: 'Get data of a ordered product',
             },
             {
                 name: 'Get by Order ID',
                 value: 'getByOrderId',
-                description: 'Get data of a order',
+                description: 'Get data of an order\'s products',
             },
-            
         ],
-        default: 'create',
+        default: 'getAll',
         description: 'The operation to perform.',
     },
 ] as INodeProperties[]
@@ -56,7 +53,7 @@ export const ecomOrderProductsFields = [
                 ],
             },
         },
-        description: 'The id of the e-commerce order.',
+        description: 'The ID of the order whose products you\'d like returned.',
     },
 
     // ----------------------------------
@@ -77,7 +74,7 @@ export const ecomOrderProductsFields = [
                 ],
             },
         },
-        description: 'The id of the e-commerce order.',
+        description: 'The ID of the product you\'d like returned.',
     },
 
     // ----------------------------------
