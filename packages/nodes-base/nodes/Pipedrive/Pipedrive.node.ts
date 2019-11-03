@@ -172,6 +172,11 @@ export class Pipedrive implements INodeType {
 						description: 'Delete a deal',
 					},
 					{
+						name: 'Duplicate',
+						value: 'duplicate',
+						description: 'Duplicate a deal',
+					},
+					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get data of a deal',
@@ -945,6 +950,28 @@ export class Pipedrive implements INodeType {
 				default: 0,
 				required: true,
 				description: 'ID of the deal to delete.',
+			},
+
+			// ----------------------------------
+			//         deal:duplicate
+			// ----------------------------------
+			{
+				displayName: 'Deal ID',
+				name: 'dealId',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'duplicate',
+						],
+						resource: [
+							'deal',
+						],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'ID of the deal to duplicate.',
 			},
 
 			// ----------------------------------
@@ -2156,6 +2183,16 @@ export class Pipedrive implements INodeType {
 
 					const dealId = this.getNodeParameter('dealId', i) as number;
 					endpoint = `/deals/${dealId}`;
+
+				} else if (operation === 'duplicate') {
+					// ----------------------------------
+					//         deal:duplicate
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					const dealId = this.getNodeParameter('dealId', i) as number;
+					endpoint = `/deals/${dealId}/duplicate`;
 
 				} else if (operation === 'get') {
 					// ----------------------------------
