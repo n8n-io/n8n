@@ -76,7 +76,7 @@ export default mixins(genericHelpers)
 		},
 		computed: {
 			getPlaceholderText (): string {
-				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose option to add';
+				return this.parameter.placeholder ? this.parameter.placeholder : 'Choose Option To Add';
 			},
 			getProperties (): INodePropertyCollection[] {
 				const returnProperties = [];
