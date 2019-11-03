@@ -105,12 +105,12 @@ export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IE
 
 		if (dataKey === undefined) {
 			returnData.push.apply(returnData, responseData);
-			if (returnData != undefined) {
+			if (returnData !== undefined) {
 				itemsReceived += returnData.length;
 			}
 		} else {
 			returnData.push.apply(returnData, responseData[dataKey]);
-			if (responseData[dataKey] != undefined) {
+			if (responseData[dataKey] !== undefined) {
 				itemsReceived += responseData[dataKey].length;
 			}
 		}

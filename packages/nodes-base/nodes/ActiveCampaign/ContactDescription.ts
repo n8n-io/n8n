@@ -42,7 +42,7 @@ export const contactOperations = [
         default: 'create',
         description: 'The operation to perform.',
     },
-] as INodeProperties[]
+] as INodeProperties[];
 
 export const contactFields = [
     // ----------------------------------
@@ -348,4 +348,4 @@ export const contactFields = [
         default: 100,
         description: 'How many results to return.',
     },
-] as INodeProperties[]
+] as INodeProperties[];

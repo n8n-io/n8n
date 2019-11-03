@@ -32,7 +32,7 @@ export const ecomOrderProductsOperations = [
         default: 'getAll',
         description: 'The operation to perform.',
     },
-] as INodeProperties[]
+] as INodeProperties[];
 
 export const ecomOrderProductsFields = [
     // ----------------------------------
@@ -121,4 +121,4 @@ export const ecomOrderProductsFields = [
         default: 100,
         description: 'How many results to return.',
     },
-] as INodeProperties[]
+] as INodeProperties[];

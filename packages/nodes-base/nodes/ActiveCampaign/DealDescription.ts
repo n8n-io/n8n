@@ -55,7 +55,7 @@ export const dealOperations = [
         description: 'The operation to perform.',
     },
 
-] as INodeProperties[]
+] as INodeProperties[];
 
 export const dealFields = [
     // ----------------------------------
@@ -526,4 +526,4 @@ export const dealFields = [
         description: 'The content of the deal note',
     },
 
-] as INodeProperties[]
+] as INodeProperties[];
