@@ -139,12 +139,15 @@ export class EmailSend implements INodeType {
 			host: credentials.host as string,
 			port: credentials.port as number,
 			secure: credentials.secure as boolean,
-			// @ts-ignore
-			auth: {
-				user: credentials.user,
-				pass: credentials.password,
-			}
 		};
+
+		if(credentials.user || credentials.password) {
+			// @ts-ignore
+			connectionOptions.auth = {
+				user: credentials.user,
+				pass: credentials.password
+			};
+		}
 
 		if (options.allowUnauthorizedCerts === true) {
 			connectionOptions.tls = {
