@@ -1,4 +1,4 @@
-[		
+const allCurrencies = [		
     { name: 'Euro', value: 'eur' },
     { name: 'United States Dollar', value: 'usd' },
     { name: 'British Pound Sterling', value: 'gbp' },
@@ -170,4 +170,5 @@
     { name: 'South African Rand', value: 'zar' },
     { name: 'Zambian Kwacha', value: 'zmw' },
     { name: 'Zimbabwean Dollar', value: 'zwl' }
+// tslint:disable-next-line: semicolon
 ]
