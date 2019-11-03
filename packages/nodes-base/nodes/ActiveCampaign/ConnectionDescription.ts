@@ -243,7 +243,7 @@ export const connectionFields = [
         displayOptions: {
             show: {
                 operation: [
-                    'update',
+                    'delete',
                 ],
                 resource: [
                     'connection',
@@ -265,7 +265,7 @@ export const connectionFields = [
         displayOptions: {
             show: {
                 operation: [
-                    'update',
+                    'get',
                 ],
                 resource: [
                     'connection',
