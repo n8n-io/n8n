@@ -34,6 +34,7 @@ import {
 	ecomCustomerOperations,
 	ecomCustomerFields
 } from './EcomCustomerDescription';
+import { ecomOrderProductsOperations, ecomOrderProductsFields } from './EcomOrderProductsDescription';
 
 interface CustomProperty {
 	name: string;
@@ -107,7 +108,7 @@ export class ActiveCampaign implements INodeType {
 					},
 					{
 						name: 'E-commerce Order Products',
-						value: 'ecomerceOrderProducts'
+						value: 'ecommerceOrderProducts'
 					}
 				],
 				default: 'contact',
@@ -121,6 +122,7 @@ export class ActiveCampaign implements INodeType {
 			...dealOperations,
 			...ecomOrderOperations,
 			...ecomCustomerOperations,
+			...ecomOrderProductsOperations,
 
 			// ----------------------------------
 			//         contact
@@ -141,6 +143,11 @@ export class ActiveCampaign implements INodeType {
 			//         ecommerceCustomer
 			// ----------------------------------
 			...ecomCustomerFields,
+
+			// ----------------------------------
+			//         ecommerceOrderProducts
+			// ----------------------------------
+			...ecomOrderProductsFields,
 
 		],
 	};
@@ -478,7 +485,7 @@ export class ActiveCampaign implements INodeType {
 						} else {
 							additionalFields.acceptsMarketing = '0';
 						}
-					}					
+					}
 					addAdditionalFields(body.ecomCustomer as IDataObject, additionalFields);
 
 				} else if (operation === 'update') {
@@ -540,6 +547,48 @@ export class ActiveCampaign implements INodeType {
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
 				}
+			} else if (resource === 'ecommerceOrderProducts') {
+				if (operation === 'getByProductId') {
+					// ----------------------------------
+					//         ecommerceOrderProducts:getByProductId
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const procuctId = this.getNodeParameter('procuctId', i) as number;
+					endpoint = `/api/3/ecomOrderProducts/${procuctId}`;
+
+
+				} else if (operation === 'getByOrderId') {
+					// ----------------------------------
+					//         ecommerceOrderProducts:getByOrderId
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const orderId = this.getNodeParameter('orderId', i) as number;
+					endpoint = `/api/3/ecomOrders/${orderId}/orderProducts`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         ecommerceOrderProductss:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					endpoint = `/api/3/ecomOrderProducts`;
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known`);
+				}
+
+				console.log(endpoint);
+				console.log(body)
 
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
