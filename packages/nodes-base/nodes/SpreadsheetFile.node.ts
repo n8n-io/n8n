@@ -156,10 +156,33 @@ export class SpreadsheetFile implements INodeType {
 							'toFile',
 						],
 					},
-
 				},
 				placeholder: '',
 				description: 'Name of the binary property in which to save<br />the binary data of the spreadsheet file.',
+			},
+
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				displayOptions: {
+					show: {
+						operation: [
+							'toFile',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
+					},
+				],
 			},
 		]
 	};
@@ -214,6 +237,7 @@ export class SpreadsheetFile implements INodeType {
 			// Write the workflow data to spreadsheet file
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 			const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 			// Get the json data of the items and flatten it
 			let item: INodeExecutionData;
@@ -258,7 +282,12 @@ export class SpreadsheetFile implements INodeType {
 				binary: {},
 			};
 
-			newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(wbout, `spreadsheet.${fileFormat}`);
+			let fileName = `spreadsheet.${fileFormat}`;
+			if (options.fileName !== undefined) {
+				fileName = options.fileName as string;
+			}
+
+			newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(wbout, fileName);
 
 			const newItems = [];
 			newItems.push(newItem);
