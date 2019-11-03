@@ -285,6 +285,9 @@ export class Postgres implements INodeType {
 			throw new Error(`The operation "${operation}" is not supported!`);
 		}
 
+		// Close the connection
+		await pgp.end();
+
 		return this.prepareOutputData(returnItems);
 	}
 }

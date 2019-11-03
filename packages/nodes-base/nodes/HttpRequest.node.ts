@@ -200,7 +200,7 @@ export class HttpRequest implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: 'If the query and/or body parameter should be set via the value-key pair UI or JSON/RAW',
+				description: 'If the query and/or body parameter should be set via the value-key pair UI or JSON/RAW.',
 			},
 
 			{
@@ -246,11 +246,11 @@ export class HttpRequest implements INodeType {
 					},
 					{
 						displayName: 'MIME Type',
-						name: 'bodyContentCustomMIMEType',
+						name: 'bodyContentCustomMimeType',
 						type: 'string',
 						default: '',
 						placeholder: 'text/xml',
-						description: 'Specify the mime type for raw/custom body type',
+						description: 'Specify the mime type for raw/custom body type.',
 						required: false,
 						displayOptions: {
 							show: {
@@ -615,11 +615,11 @@ export class HttpRequest implements INodeType {
 			}
 
 			// Add Content Type if any are set
-			if (options.bodyContentCustomMIMEType) {
+			if (options.bodyContentCustomMimeType) {
 				if(requestOptions.headers === undefined) {
 					requestOptions.headers = {};
 				}
-				requestOptions.headers['Content-Type'] = options.bodyContentCustomMIMEType;
+				requestOptions.headers['Content-Type'] = options.bodyContentCustomMimeType;
 			}
 
 			// Add credentials if any are set
