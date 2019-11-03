@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-base",
-    "version": "0.25.0",
+    "version": "0.27.1",
     "description": "Base nodes of n8n",
     "license": "SEE LICENSE IN LICENSE.md",
     "homepage": "https://n8n.io",
@@ -92,6 +92,7 @@
             "dist/nodes/Mailgun/Mailgun.node.js",
             "dist/nodes/Mattermost/Mattermost.node.js",
             "dist/nodes/Merge.node.js",
+            "dist/nodes/MoveBinaryData.node.js",
             "dist/nodes/MongoDb/MongoDb.node.js",
             "dist/nodes/NextCloud/NextCloud.node.js",
             "dist/nodes/NoOp.node.js",
