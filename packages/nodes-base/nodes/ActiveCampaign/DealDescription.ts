@@ -359,7 +359,7 @@ export const dealFields = [
                 ],
             },
         },
-        description: 'The ID of the deal',
+        description: 'The ID of the deal to delete.',
     },
 
     // ----------------------------------
@@ -381,7 +381,7 @@ export const dealFields = [
                 ],
             },
         },
-        description: 'The ID of the deal',
+        description: 'The ID of the deal to get.',
     },
 
     // ----------------------------------

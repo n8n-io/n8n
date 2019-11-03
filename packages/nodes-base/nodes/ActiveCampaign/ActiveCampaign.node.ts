@@ -34,7 +34,16 @@ import {
 	ecomCustomerOperations,
 	ecomCustomerFields
 } from './EcomCustomerDescription';
-import { ecomOrderProductsOperations, ecomOrderProductsFields } from './EcomOrderProductsDescription';
+
+import {
+	ecomOrderProductsOperations,
+	ecomOrderProductsFields
+} from './EcomOrderProductsDescription';
+
+import {
+	connectionOperations,
+	connectionFields
+} from './ConnectionDescription';
 
 interface CustomProperty {
 	name: string;
@@ -99,6 +108,10 @@ export class ActiveCampaign implements INodeType {
 						value: 'deal',
 					},
 					{
+						name: 'Connection',
+						value: 'connection'
+					}
+					{
 						name: 'E-commerce Order',
 						value: 'ecommerceOrder',
 					},
@@ -120,10 +133,14 @@ export class ActiveCampaign implements INodeType {
 			// ----------------------------------
 			...contactOperations,
 			...dealOperations,
+			...connectionOperations,
 			...ecomOrderOperations,
 			...ecomCustomerOperations,
 			...ecomOrderProductsOperations,
 
+			// ----------------------------------
+			//         fields
+			// ----------------------------------
 			// ----------------------------------
 			//         contact
 			// ----------------------------------
@@ -133,6 +150,11 @@ export class ActiveCampaign implements INodeType {
 			//         deal
 			// ----------------------------------
 			...dealFields,
+
+			// ----------------------------------
+			//         connection
+			// ----------------------------------
+			...connectionFields,
 
 			// ----------------------------------
 			//         ecommerceOrder
@@ -367,6 +389,83 @@ export class ActiveCampaign implements INodeType {
 					const dealId = this.getNodeParameter('dealId', i) as number;
 					const dealNoteId = this.getNodeParameter('dealNoteId', i) as number;
 					endpoint = `/api/3/deals/${dealId}/notes/${dealNoteId}`;
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known`);
+				}
+			} else if (resource === 'connection') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         connection:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					const updateIfExists = this.getNodeParameter('updateIfExists', i) as boolean;
+					if (updateIfExists === true) {
+						endpoint = '/api/3/connection/sync';
+					} else {
+						endpoint = '/api/3/connections';
+					}
+
+					dataKey = 'connection';
+
+					body.connection = {
+						email: this.getNodeParameter('email', i) as string,
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body.connection as IDataObject, additionalFields);
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         connection:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const connectionId = this.getNodeParameter('connectionId', i) as number;
+					endpoint = `/api/3/connections/${connectionId}`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         connection:get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const connectionId = this.getNodeParameter('connectionId', i) as number;
+					endpoint = `/api/3/connections/${connectionId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         connections:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					dataKey = 'connections';
+					endpoint = `/api/3/connections`;
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         connection:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const connectionId = this.getNodeParameter('connectionId', i) as number;
+					endpoint = `/api/3/connections/${connectionId}`;
+
+					dataKey = 'connection';
+					body.connection = {} as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body.connection as IDataObject, updateFields);
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);

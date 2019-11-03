@@ -1,6 +1,8 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const ecomCustomerOperations = [
+import { allCurrencies } from './currencies';
+
+export const connectionOperations = [
     {
         displayName: 'Operation',
         name: 'operation',
@@ -8,7 +10,7 @@ export const ecomCustomerOperations = [
         displayOptions: {
             show: {
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
@@ -16,41 +18,42 @@ export const ecomCustomerOperations = [
             {
                 name: 'Create',
                 value: 'create',
-                description: 'Create a E-commerce Customer',
+                description: 'Create a connection',
             },
             {
                 name: 'Delete',
                 value: 'delete',
-                description: 'Delete a E-commerce Customer',
+                description: 'Delete a connection',
             },
             {
                 name: 'Get',
                 value: 'get',
-                description: 'Get data of a E-commerce Customer',
+                description: 'Get data of a connection',
             },
             {
                 name: 'Get All',
                 value: 'getAll',
-                description: 'Get data of all E-commerce Customer',
+                description: 'Get data of all connections',
             },
             {
                 name: 'Update',
                 value: 'update',
-                description: 'Update a E-commerce Customer',
+                description: 'Update a connection',
             },
         ],
         default: 'create',
         description: 'The operation to perform.',
     },
+
 ] as INodeProperties[];
 
-export const ecomCustomerFields = [
+export const connectionFields = [
     // ----------------------------------
-    //         ecommerceCustomer:create
+    //         connection:create
     // ----------------------------------
     {
-        displayName: 'Service ID',
-        name: 'connectionid',
+        displayName: 'Service',
+        name: 'service',
         type: 'string',
         default: '',
         required: true,
@@ -60,14 +63,14 @@ export const ecomCustomerFields = [
                     'create',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
-        description: 'The id of the connection object for the service where the customer originates.',
+        description: 'The name of the service.',
     },
     {
-        displayName: 'Customer ID',
+        displayName: 'External accout ID',
         name: 'externalid',
         type: 'string',
         default: '',
@@ -78,15 +81,15 @@ export const ecomCustomerFields = [
                     'create',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
-        description: 'The id of the customer in the external service.',
+        description: 'The id of the account in the external service.',
     },
     {
-        displayName: 'Customer Email',
-        name: 'email',
+        displayName: 'Account Name',
+        name: 'name',
         type: 'string',
         default: '',
         required: true,
@@ -96,45 +99,55 @@ export const ecomCustomerFields = [
                     'create',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
-        description: 'The email address of the customer.',
+        description: 'The name associated with the account in the external service. Often this will be a company name (e.g., "My Toystore, Inc.").',
     },
     {
-        displayName: 'Additional Fields',
-        name: 'additionalFields',
-        type: 'collection',
-        placeholder: 'Add Field',
+        displayName: 'Logo URL',
+        name: 'logoUrl',
+        type: 'string',
+        default: '',
+        required: true,
         displayOptions: {
             show: {
                 operation: [
                     'create',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
-        default: {},
-        options: [
-            {
-                displayName: 'Accepts Marketing',
-                name: 'acceptsMarketing',
-                type: 'boolean',
-                default: false,
-                description: 'Indication of whether customer has opt-ed in to marketing communications.',
+        description: 'The URL to a logo image for the external service.',
+    },
+    {
+        displayName: 'Link URL',
+        name: 'linkUrl',
+        type: 'string',
+        default: '',
+        required: true,
+        displayOptions: {
+            show: {
+                operation: [
+                    'create',
+                ],
+                resource: [
+                    'connection',
+                ],
             },
-        ],
+        },
+        description: 'The URL to a page where the integration with the external service can be managed in the third-party\'s website.',
     },
 
     // ----------------------------------
-    //         ecommerceCustomer:update
+    //         connection:update
     // ----------------------------------
     {
-        displayName: 'Customer ID',
-        name: 'ecommerceCustomerId',
+        displayName: 'Connection ID',
+        name: 'connectionId',
         type: 'number',
         displayOptions: {
             show: {
@@ -142,13 +155,13 @@ export const ecomCustomerFields = [
                     'update',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
         default: 0,
         required: true,
-        description: 'ID of the E-commerce customer to update.',
+        description: 'ID of the connection to update.',
     },
     {
         displayName: 'Update Fields',
@@ -162,89 +175,110 @@ export const ecomCustomerFields = [
                     'update',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
         default: {},
         options: [
             {
-                displayName: 'Service ID',
-                name: 'connectionid',
+                displayName: 'Service',
+                name: 'service',
                 type: 'string',
                 default: '',
-                description: 'The id of the connection object for the service where the customer originates.',
+                description: 'The name of the service.',
             },
             {
-                displayName: 'Customer ID',
+                displayName: 'External accout ID',
                 name: 'externalid',
                 type: 'string',
                 default: '',
-                description: 'The id of the customer in the external service.',
+                description: 'The id of the account in the external service.',
             },
             {
-                displayName: 'Customer Email',
-                name: 'email',
+                displayName: 'Account Name',
+                name: 'name',
                 type: 'string',
                 default: '',
-                description: 'The email address of the customer.',
+                description: 'The name associated with the account in the external service. Often this will be a company name (e.g., "My Toystore, Inc.").',
             },
             {
-                displayName: 'Accepts Marketing',
-                name: 'acceptsMarketing',
-                type: 'boolean',
-                default: false,
-                description: 'Indication of whether customer has opt-ed in to marketing communications.',
+                displayName: 'Logo URL',
+                name: 'logoUrl',
+                type: 'string',
+                default: '',
+                description: 'The URL to a logo image for the external service.',
             },
-        ],
+            {
+                displayName: 'Link URL',
+                name: 'linkUrl',
+                type: 'string',
+                default: '',
+                description: 'The URL to a page where the integration with the external service can be managed in the third-party\'s website.',
+            },
+            {
+                displayName: 'Status',
+                name: 'status',
+                type: 'number',
+                default: 1,
+                description: 'The status of the connection (0 = error; 1 = connected)',
+            },
+            {
+                displayName: 'Syncronisation Status',
+                name: 'syncStatus',
+                type: 'number',
+                default: 1,
+                description: 'The status of a sync triggered on the connection (0 = sync stopped; 1 = sync running).',
+            },
+        ]
     },
 
     // ----------------------------------
-    //         ecommerceCustomer:delete
+    //         connection:delete
     // ----------------------------------
     {
-        displayName: 'Customer ID',
-        name: 'ecommerceCustomerId',
+        displayName: 'Connection ID',
+        name: 'connectionId',
         type: 'number',
         displayOptions: {
             show: {
                 operation: [
-                    'delete',
+                    'update',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
         default: 0,
         required: true,
-        description: 'ID of the E-commerce customer to delete.',
+        description: 'ID of the connection to delete.',
     },
 
     // ----------------------------------
-    //         ecommerceCustomer:get
+    //         connection:get
     // ----------------------------------
     {
-        displayName: 'Customer ID',
-        name: 'ecommerceCustomerId',
+        displayName: 'Connection ID',
+        name: 'connectionId',
         type: 'number',
         displayOptions: {
             show: {
                 operation: [
-                    'get',
+                    'update',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
         default: 0,
         required: true,
-        description: 'ID of the E-commerce customer to get.',
+        description: 'ID of the connection to get.',
     },
 
     // ----------------------------------
-    //         ecommerceCustomer:getAll
+    //         connection:getAll
     // ----------------------------------
     {
         displayName: 'Return All',
@@ -256,7 +290,7 @@ export const ecomCustomerFields = [
                     'getAll',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
             },
         },
@@ -273,7 +307,7 @@ export const ecomCustomerFields = [
                     'getAll',
                 ],
                 resource: [
-                    'ecommerceCustomer',
+                    'connection',
                 ],
                 returnAll: [
                     false,
