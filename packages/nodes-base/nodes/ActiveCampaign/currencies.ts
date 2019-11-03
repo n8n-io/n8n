@@ -170,4 +170,4 @@ export const allCurrencies = [
 	{ name: 'South African Rand', value: 'zar' },
 	{ name: 'Zambian Kwacha', value: 'zmw' },
 	{ name: 'Zimbabwean Dollar', value: 'zwl' }
-]
+];
