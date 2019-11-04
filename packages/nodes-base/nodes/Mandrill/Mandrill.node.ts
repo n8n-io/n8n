@@ -6,13 +6,13 @@ import {
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
-    ILoadOptionsFunctions,
-    INodePropertyOptions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
-import { 
-    mandrillApiRequest, 
-    getToEmailArray, 
-    getGoogleAnalyticsDomainsArray, 
+import {
+	mandrillApiRequest,
+	getToEmailArray,
+	getGoogleAnalyticsDomainsArray,
 	getTags,
 	validateJSON
 } from './GenericFunctions';
@@ -93,9 +93,9 @@ interface Options {
 }
 
 export class Mandrill implements INodeType {
-        
-    //https://mandrillapp.com/api/docs/messages.JSON.html#method=send-template
-    
+
+	//https://mandrillapp.com/api/docs/messages.JSON.html#method=send-template
+
 	description: INodeTypeDescription = {
 		displayName: 'Mandrill',
 		name: 'mandrill',
@@ -123,22 +123,22 @@ export class Mandrill implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Messages',
-						value: 'messages',
-						description: 'API path',
+						name: 'Message',
+						value: 'message',
+						description: 'Send a message.',
 					},
 				],
-				default: 'messages',
-				description: 'Resource to consume',
+				default: 'message',
+				description: 'Resource to consume.',
 			},
-            {
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				displayOptions: {
 					show: {
 						resource: [
-							'messages',
+							'message',
 						],
 					},
 				},
@@ -146,36 +146,36 @@ export class Mandrill implements INodeType {
 					{
 						name: 'Send template',
 						value: 'sendTemplate',
-						description: 'Send template',
-                    },
-                    {
-						name: 'Send html',
+						description: 'Send message based on template.',
+					},
+					{
+						name: 'Send HTML',
 						value: 'sendHtml',
-						description: 'Send Html',
+						description: 'Send message based on HTML.',
 					},
 				],
 				default: 'sendTemplate',
 				description: 'The operation to perform.',
 			},
-            {
-                displayName: 'Template',
-                name: 'template',
-                type: 'options',
-                typeOptions: {
-                    loadOptionsMethod: 'getTemplates',
-                },
-                displayOptions: {
+			{
+				displayName: 'Template',
+				name: 'template',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTemplates',
+				},
+				displayOptions: {
 					show: {
 						operation: [
 							'sendTemplate',
 						],
 					},
 				},
-                default: '',
+				default: '',
 				options: [],
 				required: true,
 				description: 'The template you want to send',
-            },
+			},
 			{
 				displayName: 'From Email',
 				name: 'fromEmail',
@@ -187,7 +187,8 @@ export class Mandrill implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendHtml', 'sendTemplate'
+							'sendHtml',
+							'sendTemplate',
 						],
 					},
 				},
@@ -203,7 +204,8 @@ export class Mandrill implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendHtml', 'sendTemplate'
+							'sendHtml',
+							'sendTemplate',
 						],
 					},
 				},
@@ -217,7 +219,8 @@ export class Mandrill implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendHtml', 'sendTemplate'
+							'sendHtml',
+							'sendTemplate',
 						]
 					},
 				},
@@ -230,10 +233,11 @@ export class Mandrill implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						'operation': [
-							'sendHtml', 'sendTemplate'
-						]
-					}
+						operation: [
+							'sendHtml',
+							'sendTemplate',
+						],
+					},
 				},
 				options: [
 					{
@@ -261,7 +265,7 @@ export class Mandrill implements INodeType {
 							rows: 5,
 						},
 						options: [],
-						description: 'The html you want to send',
+						description: 'The html you want to send.',
 					},
 					{
 						displayName: 'Text',
@@ -272,7 +276,7 @@ export class Mandrill implements INodeType {
 							rows: 5,
 						},
 						options: [],
-						description: 'Example text content',
+						description: 'Example text content.',
 					},
 					{
 						displayName: 'BCC Address',
@@ -280,7 +284,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'message.bcc_address@example.com',
-						description: `An optional address to receive an exact copy of each recipient's email`,
+						description: `An optional address to receive an exact copy of each recipient's email.`,
 					},
 					{
 						displayName: 'Tracking Domain',
@@ -288,7 +292,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `A custom domain to use for tracking opens and clicks instead of mandrillapp.com`,
+						description: `A custom domain to use for tracking opens and clicks instead of mandrillapp.com .`,
 					},
 					{
 						displayName: 'Signing Domain',
@@ -296,7 +300,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `A custom domain to use for SPF/DKIM signing instead of mandrill (for "via" or "on behalf of" in email clients)`,
+						description: `A custom domain to use for SPF/DKIM signing instead of<br />mandrill(for "via" or "on behalf of" in email clients).`,
 					},
 					{
 						displayName: 'Return Path Domain',
@@ -304,77 +308,77 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `A custom domain to use for the messages's return-path`,
+						description: `A custom domain to use for the messages's return-path.`,
 					},
 					{
 						displayName: 'Important',
 						name: 'important',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not this message is important, and should be delivered ahead of non-important messages',
+						description: 'Whether or not this message is important, and should be<br />delivered ahead of non-important messages.',
 					},
 					{
 						displayName: 'Track Opens',
 						name: 'trackOpens',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to turn on open tracking for the message',
+						description: 'Whether or not to turn on open tracking for the message.',
 					},
 					{
 						displayName: 'Track Clicks',
 						name: 'trackClicks',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to turn on click tracking for the message',
+						description: 'Whether or not to turn on click tracking for the message.',
 					},
 					{
 						displayName: 'Auto Text',
 						name: 'autoText',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically generate a text part for messages that are not given text',
+						description: 'Whether or not to automatically generate a text<br />part for messages that are not given text.',
 					},
 					{
 						displayName: 'Auto HTML',
 						name: 'autoHtml',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically generate an HTML part for messages that are not given HTML',
+						description: 'Whether or not to automatically generate an HTML<br />part for messages that are not given HTML.',
 					},
 					{
 						displayName: 'Inline CSS',
 						name: 'inlineCss',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to automatically inline all CSS styles provided in the message HTML - only for HTML documents less than 256KB in size',
+						description: 'Whether or not to automatically inline all CSS styles provided in<br />the message HTML - only for HTML documents less than 256KB in size.',
 					},
 					{
 						displayName: 'Url Strip Qs',
 						name: 'urlStripQs',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to strip the query string from URLs when aggregating tracked URL data',
+						description: 'Whether or not to strip the query string from<br />URLs when aggregating tracked URL data.',
 					},
 					{
 						displayName: 'Preserve Recipients',
 						name: 'preserveRecipients',
 						type: 'boolean',
 						default: false,
-						description: 'Whether or not to expose all recipients in to "To" header for each email',
+						description: 'Whether or not to expose all recipients in to "To" header for each email.',
 					},
 					{
 						displayName: 'View Content Link',
 						name: 'viewContentLink',
 						type: 'boolean',
 						default: false,
-						description: 'Set to false to remove content logging for sensitive emails',
+						description: 'Set to false to remove content logging for sensitive emails.',
 					},
 					{
 						displayName: 'Async',
 						name: 'async',
 						type: 'boolean',
 						default: false,
-						description: `Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.`,
+						description: `Enable a background sending mode that is optimized for bulk sending.<br />In async mode, messages/send will immediately return a status of "queued"<br />for every recipient. To handle rejections when sending in async mode, set up<br />a webhook for the 'reject' event. Defaults to false for messages with<br />no more than 10 recipients; messages with more than 10 recipients are always sent<br />asynchronously, regardless of the value of async.`,
 					},
 					{
 						displayName: 'Subaccount',
@@ -422,7 +426,7 @@ export class Mandrill implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: `When this message should be sent as a UTC timestamp in YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message will be sent immediately. An additional fee applies for scheduled email, and this feature is only available to accounts with a positive balance.`,
+						description: `When this message should be sent as a UTC timestamp in<br />YYYY-MM-DD HH:MM:SS format. If you specify a time in the past, the message<br />will be sent immediately. An additional fee applies for scheduled email,<br />and this feature is only available to accounts with a positive balance.`,
 					},
 				]
 			},
@@ -434,16 +438,17 @@ export class Mandrill implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				placeholder: ` 
-				[{
-						{ "name": "name", "content": "content" }
-				}]`,
+				placeholder: `[
+	{
+		{ "name": "name", "content": "content" }
+	}
+]`,
 				displayOptions: {
 					show: {
 						jsonParameters: [
-							true
-						]
-					}
+							true,
+						],
+					},
 				},
 				description: 'Global merge variables',
 			},
@@ -454,14 +459,14 @@ export class Mandrill implements INodeType {
 				type: 'fixedCollection',
 				default: '',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				displayOptions: {
 					show: {
 						jsonParameters: [
-							false
-						]
-					}
+							false,
+						],
+					},
 				},
 				description: 'Per-recipient merge variables',
 				options: [
@@ -474,18 +479,16 @@ export class Mandrill implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: ''
 							},
 							{
 								displayName: 'Content',
 								name: 'content',
 								type: 'string',
 								default: '',
-								description: 'aasasas'
-							}
-						]
-					}
-				]
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Metadata',
@@ -494,16 +497,16 @@ export class Mandrill implements INodeType {
 				type: 'fixedCollection',
 				default: '',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				displayOptions: {
 					show: {
 						jsonParameters: [
-							false
-						]
-					}
+							false,
+						],
+					},
 				},
-				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.',
+				description: 'Metadata an associative array of user metadata. Mandrill will store<br />this metadata and make it available for retrieval. In addition, you can select<br />up to 10 metadata fields to index and make searchable using the Mandrill search api.',
 				options: [
 					{
 						name: 'metadataValues',
@@ -513,19 +516,18 @@ export class Mandrill implements INodeType {
 								displayName: 'Name',
 								name: 'name',
 								type: 'string',
-								default: '',
-								description: ''
+								default: 'Name of the metadata key to add.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: 'aasasas'
-							}
-						]
-					}
-				]
+								description: 'Value to set for the metadata key.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Metadata',
@@ -537,16 +539,15 @@ export class Mandrill implements INodeType {
 				displayOptions: {
 					show: {
 						jsonParameters: [
-							true
-						]
-					}
+							true,
+						],
+					},
 				},
 				default: '',
-				placeholder: `
-				{
-					"website": "www.example.com"
-				}`,
-				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.',
+				placeholder: `{
+	"website": "www.example.com"
+}`,
+				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata<br />and make it available for retrieval. In addition, you can select up to<br />10 metadata fields to index and make searchable using the Mandrill search api.',
 			},
 			{
 				displayName: 'Attachments',
@@ -558,18 +559,18 @@ export class Mandrill implements INodeType {
 				displayOptions: {
 					show: {
 						jsonParameters: [
-							true
-						]
-					}
+							true,
+						],
+					},
 				},
 				default: '',
-				placeholder: `  [
-					{
-						"type": "text/plain" (the MIME type of the attachment),
-						"name": "myfile.txt" (the file name of the attachment),
-						"content": "ZXhhbXBsZSBmaWxl" (the content of the attachment as a base64-encoded string)
-					}
-				],`,
+				placeholder: `[
+	{
+		"type": "text/plain" (the MIME type of the attachment),
+		"name": "myfile.txt" (the file name of the attachment),
+		"content": "ZXhhbXBsZSBmaWxl" (the content of the attachment as a base64-encoded string)
+	}
+]`,
 				description: 'An array of supported attachments to add to the message',
 			},
 			{
@@ -578,14 +579,14 @@ export class Mandrill implements INodeType {
 				placeholder: 'Add Attachments',
 				type: 'fixedCollection',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				displayOptions: {
 					show: {
 						jsonParameters: [
-							false
-						]
-					}
+							false,
+						],
+					},
 				},
 				options: [
 					{
@@ -597,23 +598,26 @@ export class Mandrill implements INodeType {
 								name: 'type',
 								type: 'string',
 								default: '',
-								description: 'text/plain (the MIME type of the attachment)'
+								placeholder: 'text/plain',
+								description: 'The MIME type of the attachment.',
 							},
 							{
 								displayName: 'Name',
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: 'myfile.txt (the file name of the attachment)'
+								placeholder: 'myfile.txt',
+								description: 'The file name of the attachment.',
 							},
 							{
 								displayName: 'Content',
 								name: 'content',
 								type: 'string',
 								default: '',
-								description: 'ZXhhbXBsZSBmaWxl (the content of the attachment as a base64-encoded string)'
-							}
-						]
+								placeholder: 'ZXhhbXBsZSBmaWxl',
+								description: 'The content of the attachment as a base64-encoded string.',
+							},
+						],
 					},
 					{
 						name: 'attachmentsBinary',
@@ -624,24 +628,22 @@ export class Mandrill implements INodeType {
 								name: 'property',
 								type: 'string',
 								default: '',
-								description: 'Name of the binary properties which contain data which should be added to email as attachment'
+								description: 'Name of the binary properties which contain data which should be added to email as attachment',
 							},
-						]
-					}
+						],
+					},
 				],
 				default: '',
-				description: 'an array of supported attachments to add to the message',
+				description: 'Array of supported attachments to add to the message.',
 			},
 			{
 				displayName: 'Headers',
 				name: 'headersJson',
 				type: 'json',
 				default: '',
-				placeholder: `
-				{
-					"Reply-To": "replies@example.com"
-				},
-				`,
+				placeholder: `{
+	"Reply-To": "replies@example.com"
+}`,
 				displayOptions: {
 					show: {
 						jsonParameters: [
@@ -652,7 +654,7 @@ export class Mandrill implements INodeType {
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'optional extra headers to add to the message (most headers are allowed)',
+				description: 'Optional extra headers to add to the message (most headers are allowed).',
 			},
 			{
 				displayName: 'Headers',
@@ -661,14 +663,14 @@ export class Mandrill implements INodeType {
 				type: 'fixedCollection',
 				default: '',
 				typeOptions: {
-					multipleValues: true
+					multipleValues: true,
 				},
 				displayOptions: {
 					show: {
 						jsonParameters: [
-							false
-						]
-					}
+							false,
+						],
+					},
 				},
 				options: [
 					{
@@ -680,29 +682,29 @@ export class Mandrill implements INodeType {
 								name: 'name',
 								type: 'string',
 								default: '',
-								description: ''
+								description: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
 								default: '',
-								description: ''
-							}
-						]
+								description: '',
+							},
+						],
 					}
 				],
-				description: 'optional extra headers to add to the message (most headers are allowed)',
+				description: 'Optional extra headers to add to the message (most headers are allowed).',
 			},
 		],
-    };
-    
-    methods = {
+	};
+
+	methods = {
 		loadOptions: {
 			// Get all the available templates to display them to user so that he can
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-                const returnData: INodePropertyOptions[] = [];
+				const returnData: INodePropertyOptions[] = [];
 				let templates;
 				try {
 					templates = await mandrillApiRequest.call(this, '/templates', 'POST', '/list');
@@ -710,14 +712,14 @@ export class Mandrill implements INodeType {
 					throw new Error(`Mandrill Error: ${err}`);
 				}
 				for (const template of templates) {
-                    const templateName = template.name;
-                    const templateSlug = template.slug;
-                    
+					const templateName = template.name;
+					const templateSlug = template.slug;
+
 					returnData.push({
 						name: templateName,
 						value: templateSlug,
 					});
-                }
+				}
 
 				return returnData;
 			}
@@ -726,14 +728,14 @@ export class Mandrill implements INodeType {
 
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		
+
 		const item = this.getInputData();
 		let emailSentResponse, response;
-        const resource = this.getNodeParameter('resource') as string;
-		
-		if (resource === 'messages') {
+		const resource = this.getNodeParameter('resource') as string;
 
-			const options = this.getNodeParameter('options') as Options;			
+		if (resource === 'message') {
+
+			const options = this.getNodeParameter('options') as Options;
 			const operation = this.getNodeParameter('operation') as string;
 			const fromEmail = this.getNodeParameter('fromEmail') as string;
 			const toEmail = this.getNodeParameter('toEmail') as string;
@@ -741,18 +743,18 @@ export class Mandrill implements INodeType {
 			const toEmailArray = getToEmailArray(toEmail);
 
 			const credentials = this.getCredentials('mandrillApi');
-	
+
 			if (credentials === undefined) {
 				throw new Error('No credentials got returned!');
 			}
-			
+
 			const message: Message = {
 				html: (options.html) ? options.html : '',
 				text: (options.text) ? options.text : '',
 				subject: (options.subject) ? options.subject : '',
 				from_email: fromEmail,
 				to: toEmailArray,
-				important: (options.important) ? options.important : false ,
+				important: (options.important) ? options.important : false,
 				track_opens: (options.trackOpens) ? options.trackOpens : false,
 				track_clicks: (options.trackClicks) ? options.trackClicks : false,
 				auto_text: (options.autoText) ? options.autoText : false,
@@ -766,7 +768,7 @@ export class Mandrill implements INodeType {
 				ip_pool: (options.ipPool) ? options.ipPool : '',
 				bcc_address: (options.bccAddress) ? options.bccAddress : '',
 				tracking_domain: (options.trackingDomain) ? options.trackingDomain : '',
-				signing_domain: (options.signingDomain) ? options.signingDomain: '',
+				signing_domain: (options.signingDomain) ? options.signingDomain : '',
 				return_path_domain: (options.returnPathDomain) ? options.returnPathDomain : '',
 			};
 
@@ -792,7 +794,7 @@ export class Mandrill implements INodeType {
 			};
 
 			if (options.sendAt) {
-				body.send_at =  moment(options.sendAt).utc().format('YYYY-MM-DD HH:mm:ss');
+				body.send_at = moment(options.sendAt).utc().format('YYYY-MM-DD HH:mm:ss');
 			}
 
 			if (jsonActive) {
@@ -803,12 +805,12 @@ export class Mandrill implements INodeType {
 				body.message.attachments = validateJSON(this.getNodeParameter('attachmentsJson') as string);
 
 			} else {
-	
+
 				const headersUi = this.getNodeParameter('headersUi') as IDataObject;
 				if (!_.isEmpty(headersUi)) {
 					// @ts-ignore
 					body.message.headers = _.map(headersUi.headersValues, (o) => {
-						const aux: IDataObject = { };
+						const aux: IDataObject = {};
 						// @ts-ignore
 						aux[o.name] = o.value;
 						return aux;
@@ -819,7 +821,7 @@ export class Mandrill implements INodeType {
 				if (!_.isEmpty(metadataUi)) {
 					// @ts-ignore
 					body.message.metadata = _.map(metadataUi.metadataValues, (o) => {
-						const aux: IDataObject = { };
+						const aux: IDataObject = {};
 						aux[o.name] = o.value;
 						return aux;
 					});
@@ -829,7 +831,7 @@ export class Mandrill implements INodeType {
 				if (!_.isEmpty(mergeVarsUi)) {
 					// @ts-ignore
 					body.message.global_merge_vars = _.map(mergeVarsUi.mergeVarsValues, (o) => {
-						const aux: IDataObject = { };
+						const aux: IDataObject = {};
 						aux.name = o.name;
 						aux.content = o.content;
 						return aux;
@@ -840,11 +842,11 @@ export class Mandrill implements INodeType {
 				let attachmentsBinary = [], attachmentsValues = [];
 				if (!_.isEmpty(attachmentsUi)) {
 
-					if (attachmentsUi.hasOwnProperty('attachmentsValues') 
-					&& !_.isEmpty(attachmentsUi.attachmentsValues)) {
-						// @ts-ignore 
+					if (attachmentsUi.hasOwnProperty('attachmentsValues')
+						&& !_.isEmpty(attachmentsUi.attachmentsValues)) {
+						// @ts-ignore
 						attachmentsValues = _.map(attachmentsUi.attachmentsValues, (o) => {
-							const aux: IDataObject = { };
+							const aux: IDataObject = {};
 							// @ts-ignore
 							aux.name = o.name;
 							aux.content = o.content;
@@ -856,22 +858,22 @@ export class Mandrill implements INodeType {
 					if (attachmentsUi.hasOwnProperty('attachmentsBinary')
 						&& !_.isEmpty(attachmentsUi.attachmentsBinary)
 						&& item.binary) {
-							// @ts-ignore
-							attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o) => {
-								if (item.binary!.hasOwnProperty(o.property)) {
-									const aux: IDataObject = { };
-									aux.name = item.binary![o.property].fileName || 'unknown';
-									aux.content = item.binary![o.property].data;
-									aux.type = item.binary![o.property].mimeType;
-									return aux;
-								}
-							});
+						// @ts-ignore
+						attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o) => {
+							if (item.binary!.hasOwnProperty(o.property)) {
+								const aux: IDataObject = {};
+								aux.name = item.binary![o.property].fileName || 'unknown';
+								aux.content = item.binary![o.property].data;
+								aux.type = item.binary![o.property].mimeType;
+								return aux;
+							}
+						});
 					}
 				}
-				
+
 				body.message.attachments = attachmentsBinary.concat(attachmentsValues);
 			}
-			
+
 			if (operation === 'sendTemplate') {
 				const template = this.getNodeParameter('template') as string;
 				body.template_name = template;
@@ -879,7 +881,7 @@ export class Mandrill implements INodeType {
 			} else if (operation === 'sendHtml') {
 				emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send', body);
 			}
-	
+
 			try {
 				response = await emailSentResponse;
 			} catch (err) {
