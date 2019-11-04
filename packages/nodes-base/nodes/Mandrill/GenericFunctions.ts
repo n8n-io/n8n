@@ -8,6 +8,7 @@ import {
 } from 'n8n-core';
 
 import * as _ from 'lodash';
+import { IDataObject } from 'n8n-workflow';
 
 export async function mandrillApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
     const credentials = this.getCredentials('mandrillApi');
@@ -16,12 +17,12 @@ export async function mandrillApiRequest(this: IHookFunctions | IExecuteFunction
 		throw new Error('No credentials got returned!');
     }
     
-    const data = Object.assign({ }, body, { key: credentials.apiKey })
+    const data = Object.assign({ }, body, { key: credentials.apiKey });
 
 	const endpoint = 'mandrillapp.com/api/1.0';
 
 	const options: OptionsWithUri = {
-		headers: headers,
+		headers,
 		method,
 		uri: `https://${endpoint}${resource}${action}.json`,
         body: data,
@@ -49,52 +50,52 @@ export async function mandrillApiRequest(this: IHookFunctions | IExecuteFunction
 		throw error.response.body;
     }
 }
-    
-    export function getToEmailArray(toEmail: String): Array<any> { // tslint:disable-line:no-any
-        let toEmailArray
+    // @ts-ignore
+    export function getToEmailArray(toEmail: string): any {
+        let toEmailArray;
         if (toEmail.split(',').length > 0) {
-            const array = toEmail.split(',')
+            const array = toEmail.split(',');
             toEmailArray = _.map(array, (email) => {
                 return {
-                    email: email,
+                    email,
                     type: 'to'
-                }
-            })
+                };
+            });
         } else {
             toEmailArray = [{
                 email: toEmail,
                 type: 'to'
-            }]
+            }];
         }
-        return toEmailArray
+        return toEmailArray;
     }
 
-    export function getGoogleAnalyticsDomainsArray(string: String): Array<any> { 
-        let array = []
-        if (string.split(',').length > 0) {
-            array = string.split(',')
+    export function getGoogleAnalyticsDomainsArray(s: string): string[] { 
+        let array: string[] = [];
+        if (s.split(',').length > 0) {
+            array = s.split(',');
         } else {
-            array = [string]
+            array = [s];
         }
-        return array
+        return array;
     }
 
-    export function getTags(string: String): Array<any> { 
-        let array = []
-        if (string.split(',').length > 0) {
-            array = string.split(',')
+    export function getTags(s: string): Array<any> { 
+        let array = [];
+        if (s.split(',').length > 0) {
+            array = s.split(',');
         } else {
-            array = [string]
+            array = [s];
         }
-        return array
+        return array;
     }
 
-    export function validateJSON(json: any): any {
-        let result
+    export function validateJSON(json: string | undefined): any {
+        let result;
         try {
-            result = JSON.parse(json)
+            result = JSON.parse(json!);
         } catch (exception) {
-            result = []
+            result = [];
         }
-        return result
+        return result;
     }
