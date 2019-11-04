@@ -55,7 +55,8 @@
             "dist/credentials/TelegramApi.credentials.js",
             "dist/credentials/TrelloApi.credentials.js",
             "dist/credentials/TwilioApi.credentials.js",
-            "dist/credentials/TypeformApi.credentials.js"
+            "dist/credentials/TypeformApi.credentials.js",
+            "dist/credentials/MandrillApi.credentials.js"
         ],
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
@@ -120,7 +121,8 @@
             "dist/nodes/Typeform/TypeformTrigger.node.js",
             "dist/nodes/WriteBinaryFile.node.js",
             "dist/nodes/Webhook.node.js",
-            "dist/nodes/Xml.node.js"
+            "dist/nodes/Xml.node.js",
+            "dist/nodes/Mandrill/Mandrill.node.js"
         ]
     },
     "devDependencies": {
