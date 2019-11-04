@@ -18,13 +18,84 @@ import {
 } from './GenericFunctions';
 
 import * as moment from 'moment';
+import * as _ from 'lodash';
+
+interface Attachments {
+	type: string;
+	name: string;
+	content: string;
+}
+
+interface Message {
+	html?: string;
+	text?: string;
+	subject?: string;
+	from_name?: string;
+	from_email: string;
+	to: string[];
+	important?: boolean;
+	track_opens?: boolean;
+	track_clicks?: boolean;
+	auto_text?: boolean;
+	auto_html?: boolean;
+	inline_css?: boolean;
+	url_strip_qs?: boolean;
+	preserve_recipients?: boolean;
+	view_content_link?: boolean;
+	async?: boolean;
+	subaccount?: string;
+	google_analytics_campaign?: string;
+	google_analytics_domains?: string[];
+	tags?: string[];
+	ip_pool?: string;
+	bcc_address?: string;
+	tracking_domain?: string;
+	signing_domain?: string;
+	return_path_domain?: string;
+	headers?: IDataObject;
+	metadata?: IDataObject;
+	global_merge_vars?: [IDataObject];
+	attachments?: Attachments[];
+}
+
+interface Body {
+	template_content: [];
+	template_name?: string;
+	message: Message;
+	send_at?: string;
+}
+
+interface Options {
+	html: string;
+	fromName?: string;
+	text: string;
+	subject?: string;
+	important: boolean;
+	trackOpens: boolean;
+	trackClicks: boolean;
+	autoText: boolean;
+	autoHtml: boolean;
+	inlineCss: boolean;
+	urlStripQs: boolean;
+	preserveRecipients: boolean;
+	viewContentLink: boolean;
+	async: boolean;
+	subaccount: string;
+	googleAnalyticsCampaign: string;
+	googleAnalyticsDomains?: string;
+	tags: string;
+	ipPool: string;
+	bccAddress: string;
+	trackingDomain: string;
+	signingDomain: string;
+	returnPathDomain: string;
+	sendAt: string;
+}
 
 export class Mandrill implements INodeType {
         
-    
     //https://mandrillapp.com/api/docs/messages.JSON.html#method=send-template
     
-
 	description: INodeTypeDescription = {
 		displayName: 'Mandrill',
 		name: 'mandrill',
@@ -138,23 +209,6 @@ export class Mandrill implements INodeType {
 				},
 			},
 			{
-				displayName: 'Binary Data',
-				name: 'binaryData',
-				type: 'boolean',
-				default: false,
-				description: '',
-				displayOptions: {
-					show: {
-						jsonParameters: [
-							false
-						],
-						operation: [
-							'sendHtml', 'sendTemplate'
-						]
-					},
-				},
-			},
-			{
 				displayName: 'JSON Parameters',
 				name: 'jsonParameters',
 				type: 'boolean',
@@ -165,40 +219,6 @@ export class Mandrill implements INodeType {
 						operation: [
 							'sendHtml', 'sendTemplate'
 						]
-					},
-				},
-			},
-			{
-				displayName: 'Attachments',
-				name: 'attachmentsBinary',
-				type: 'string',
-				default: '',
-				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma separated.',
-				displayOptions: {
-					show: {
-						binaryData: [
-							true
-						],
-						jsonParameters: [
-							false
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Images',
-				name: 'imagesBinary',
-				type: 'string',
-				default: '',
-				description: 'Name of the binary properties which contain data which should be added to email as attachment. Multiple ones can be comma separated.',
-				displayOptions: {
-					show: {
-						binaryData: [
-							true
-						],
-						jsonParameters: [
-							false
-						],
 					},
 				},
 			},
@@ -230,7 +250,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'John Doe',
-						description: 'optional from name to be used.',
+						description: 'Optional from name to be used.',
 					},
 					{
 						displayName: 'HTML',
@@ -260,7 +280,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'message.bcc_address@example.com',
-						description: `an optional address to receive an exact copy of each recipient's email`,
+						description: `An optional address to receive an exact copy of each recipient's email`,
 					},
 					{
 						displayName: 'Tracking Domain',
@@ -268,7 +288,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `a custom domain to use for tracking opens and clicks instead of mandrillapp.com`,
+						description: `A custom domain to use for tracking opens and clicks instead of mandrillapp.com`,
 					},
 					{
 						displayName: 'Signing Domain',
@@ -276,7 +296,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `a custom domain to use for SPF/DKIM signing instead of mandrill (for "via" or "on behalf of" in email clients)`,
+						description: `A custom domain to use for SPF/DKIM signing instead of mandrill (for "via" or "on behalf of" in email clients)`,
 					},
 					{
 						displayName: 'Return Path Domain',
@@ -284,77 +304,77 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `a custom domain to use for the messages's return-path`,
+						description: `A custom domain to use for the messages's return-path`,
 					},
 					{
 						displayName: 'Important',
 						name: 'important',
 						type: 'boolean',
 						default: false,
-						description: 'whether or not this message is important, and should be delivered ahead of non-important messages',
+						description: 'Whether or not this message is important, and should be delivered ahead of non-important messages',
 					},
 					{
 						displayName: 'Track Opens',
 						name: 'trackOpens',
 						type: 'boolean',
 						default: false,
-						description: 'whether or not to turn on open tracking for the message',
+						description: 'Whether or not to turn on open tracking for the message',
 					},
 					{
 						displayName: 'Track Clicks',
 						name: 'trackClicks',
 						type: 'boolean',
 						default: false,
-						description: 'whether or not to turn on click tracking for the message',
+						description: 'Whether or not to turn on click tracking for the message',
 					},
 					{
 						displayName: 'Auto Text',
 						name: 'autoText',
 						type: 'boolean',
 						default: false,
-						description: 'whether or not to automatically generate a text part for messages that are not given text',
+						description: 'Whether or not to automatically generate a text part for messages that are not given text',
 					},
 					{
 						displayName: 'Auto HTML',
 						name: 'autoHtml',
 						type: 'boolean',
 						default: false,
-						description: 'whether or not to automatically generate an HTML part for messages that are not given HTML',
+						description: 'Whether or not to automatically generate an HTML part for messages that are not given HTML',
 					},
 					{
 						displayName: 'Inline CSS',
 						name: 'inlineCss',
 						type: 'boolean',
 						default: false,
-						description: 'whether or not to automatically inline all CSS styles provided in the message HTML - only for HTML documents less than 256KB in size',
+						description: 'Whether or not to automatically inline all CSS styles provided in the message HTML - only for HTML documents less than 256KB in size',
 					},
 					{
 						displayName: 'Url Strip Qs',
 						name: 'urlStripQs',
 						type: 'boolean',
 						default: false,
-						description: 'whether or not to strip the query string from URLs when aggregating tracked URL data',
+						description: 'Whether or not to strip the query string from URLs when aggregating tracked URL data',
 					},
 					{
 						displayName: 'Preserve Recipients',
 						name: 'preserveRecipients',
 						type: 'boolean',
 						default: false,
-						description: 'whether or not to expose all recipients in to "To" header for each email',
+						description: 'Whether or not to expose all recipients in to "To" header for each email',
 					},
 					{
 						displayName: 'View Content Link',
 						name: 'viewContentLink',
 						type: 'boolean',
 						default: false,
-						description: 'set to false to remove content logging for sensitive emails',
+						description: 'Set to false to remove content logging for sensitive emails',
 					},
 					{
 						displayName: 'Async',
 						name: 'async',
 						type: 'boolean',
 						default: false,
-						description: `enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.`,
+						description: `Enable a background sending mode that is optimized for bulk sending. In async mode, messages/send will immediately return a status of "queued" for every recipient. To handle rejections when sending in async mode, set up a webhook for the 'reject' event. Defaults to false for messages with no more than 10 recipients; messages with more than 10 recipients are always sent asynchronously, regardless of the value of async.`,
 					},
 					{
 						displayName: 'Subaccount',
@@ -362,7 +382,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'the unique id of a subaccount for this message - must already exist or will fail with an error',
+						description: 'The unique id of a subaccount for this message - must already exist or will fail with an error',
 					},
 					{
 						displayName: 'Google Analytics Campaign',
@@ -370,7 +390,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `optional string indicating the value to set for the utm_campaign tracking parameter. If this isn't provided the email's from address will be used instead.`,
+						description: `Optional string indicating the value to set for the utm_campaign tracking parameter. If this isn't provided the email's from address will be used instead.`,
 					},
 					{
 						displayName: 'Google Analytics Domains',
@@ -378,7 +398,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `an array of strings separated by , indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically.`,
+						description: `An array of strings separated by , indicating for which any matching URLs will automatically have Google Analytics parameters appended to their query string automatically.`,
 					},
 					{
 						displayName: 'Tags',
@@ -386,7 +406,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `an array of string separated by , to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.`,
+						description: `An array of string separated by , to tag the message with. Stats are accumulated using tags, though we only store the first 100 we see, so this should not be unique or change frequently. Tags should be 50 characters or less. Any tags starting with an underscore are reserved for internal use and will cause errors.`,
 					},
 					{
 						displayName: 'Ip Pool',
@@ -394,7 +414,7 @@ export class Mandrill implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: `the name of the dedicated ip pool that should be used to send the message. If you do not have any dedicated IPs, this parameter has no effect. If you specify a pool that does not exist, your default pool will be used instead.`,
+						description: `The name of the dedicated ip pool that should be used to send the message. If you do not have any dedicated IPs, this parameter has no effect. If you specify a pool that does not exist, your default pool will be used instead.`,
 					},
 					{
 						displayName: 'Sent At',
@@ -416,10 +436,7 @@ export class Mandrill implements INodeType {
 				default: '',
 				placeholder: ` 
 				[{
-					"rcpt": "example@example.com",
-					"vars": [
 						{ "name": "name", "content": "content" }
-					]
 				}]`,
 				displayOptions: {
 					show: {
@@ -428,7 +445,7 @@ export class Mandrill implements INodeType {
 						]
 					}
 				},
-				description: 'Per-recipient merge variables',
+				description: 'Global merge variables',
 			},
 			{
 				displayName: 'Merge Vars',
@@ -449,7 +466,7 @@ export class Mandrill implements INodeType {
 				description: 'Per-recipient merge variables',
 				options: [
 					{
-						name: 'parameter',
+						name: 'mergeVarsValues',
 						displayName: 'Vars',
 						values: [
 							{
@@ -460,8 +477,8 @@ export class Mandrill implements INodeType {
 								description: ''
 							},
 							{
-								displayName: 'Value',
-								name: 'value',
+								displayName: 'Content',
+								name: 'content',
 								type: 'string',
 								default: '',
 								description: 'aasasas'
@@ -486,10 +503,10 @@ export class Mandrill implements INodeType {
 						]
 					}
 				},
-				description: 'metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.',
+				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.',
 				options: [
 					{
-						name: 'parameter',
+						name: 'metadataValues',
 						displayName: 'Metadata',
 						values: [
 							{
@@ -532,71 +549,6 @@ export class Mandrill implements INodeType {
 				description: 'Metadata an associative array of user metadata. Mandrill will store this metadata and make it available for retrieval. In addition, you can select up to 10 metadata fields to index and make searchable using the Mandrill search api.',
 			},
 			{
-				displayName: 'Recipient Metadata',
-				name: 'recipientMetadata',
-				type: 'json',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				displayOptions: {
-					show: {
-						jsonParameters: [
-							true
-						]
-					}
-				},
-				default: '',
-				placeholder: ` [
-					{
-						"rcpt": "recipient.email@example.com",
-						"values": {
-							"user_id": 123456
-						}
-					}
-				]`,
-				description: 'Per-recipient metadata that will override the global values specified in the metadata parameter.',
-			},
-			{
-				displayName: 'Recipient Metadata',
-				name: 'recipientMetadataUi',
-				placeholder: 'Add Recipient Metatada',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true
-				},
-				options: [
-					{
-						name: 'parameter',
-						displayName: 'Values',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								description: ''
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'aasasas'
-							}
-						]
-					}
-				],
-				displayOptions: {
-					show: {
-						jsonParameters: [
-							false
-						]
-					}
-				},
-				default: '',
-				description: 'Per-recipient metadata that will override the global values specified in the metadata parameter.',
-			},
-			{
 				displayName: 'Attachments',
 				name: 'attachments',
 				type: 'json',
@@ -618,7 +570,7 @@ export class Mandrill implements INodeType {
 						"content": "ZXhhbXBsZSBmaWxl" (the content of the attachment as a base64-encoded string)
 					}
 				],`,
-				description: 'an array of supported attachments to add to the message',
+				description: 'An array of supported attachments to add to the message',
 			},
 			{
 				displayName: 'Attachments',
@@ -637,8 +589,8 @@ export class Mandrill implements INodeType {
 				},
 				options: [
 					{
-						name: 'parameter',
-						displayName: 'Values',
+						name: 'attachmentsValues',
+						displayName: 'Attachments Values',
 						values: [
 							{
 								displayName: 'Type',
@@ -662,6 +614,19 @@ export class Mandrill implements INodeType {
 								description: 'ZXhhbXBsZSBmaWxl (the content of the attachment as a base64-encoded string)'
 							}
 						]
+					},
+					{
+						name: 'attachmentsBinary',
+						displayName: 'Attachments Binary',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'string',
+								default: '',
+								description: 'Name of the binary properties which contain data which should be added to email as attachment'
+							},
+						]
 					}
 				],
 				default: '',
@@ -669,7 +634,7 @@ export class Mandrill implements INodeType {
 			},
 			{
 				displayName: 'Headers',
-				name: 'headers',
+				name: 'headersJson',
 				type: 'json',
 				default: '',
 				placeholder: `
@@ -695,6 +660,9 @@ export class Mandrill implements INodeType {
 				placeholder: 'Add Headers',
 				type: 'fixedCollection',
 				default: '',
+				typeOptions: {
+					multipleValues: true
+				},
 				displayOptions: {
 					show: {
 						jsonParameters: [
@@ -704,7 +672,7 @@ export class Mandrill implements INodeType {
 				},
 				options: [
 					{
-						name: 'parameter',
+						name: 'headersValues',
 						displayName: 'Values',
 						values: [
 							{
@@ -726,78 +694,6 @@ export class Mandrill implements INodeType {
 				],
 				description: 'optional extra headers to add to the message (most headers are allowed)',
 			},
-			{
-				displayName: 'Images',
-				name: 'images',
-				type: 'json',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				displayOptions: {
-					show: {
-						jsonParameters: [
-							true
-						]
-					}
-				},
-				default: '',
-				placeholder: `  [
-					{
-						"type": "image/png" (the MIME type of the image - must start with "image/"),
-						"name": "IMAGECID" (the Content ID of the image - use <img src="cid:THIS_VALUE"> to reference the image in your HTML content),
-						"content": "ZXhhbXBsZSBmaWxl" (the content of the image as a base64-encoded string)
-					}
-				]`,
-				description: 'an array of embedded images to add to the message',
-			},
-			{
-				displayName: 'Images',
-				name: 'images',
-				placeholder: 'Add images',
-				type: 'fixedCollection',
-				displayOptions: {
-					show: {
-						jsonParameters: [
-							false
-						]
-					}
-				},
-				typeOptions: {
-					multipleValues: true
-				},
-				default: '',
-				options: [
-					{
-						name: 'parameter',
-						displayName: 'Values',
-						values: [
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'string',
-								default: '',
-								description: 'text/plain (the MIME type of the attachment)'
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								description: 'myfile.txt (the file name of the attachment)'
-							},
-							{
-								displayName: 'Content',
-								name: 'content',
-								type: 'string',
-								default: '',
-								description: 'ZXhhbXBsZSBmaWxl (the content of the attachment as a base64-encoded string)'
-							}
-						]
-					}
-				],
-				description: 'an array of embedded images to add to the message',
-			},
-			
 		],
     };
     
@@ -815,7 +711,7 @@ export class Mandrill implements INodeType {
 				}
 				for (const template of templates) {
                     const templateName = template.name;
-                    const templateSlug = template.slug
+                    const templateSlug = template.slug;
                     
 					returnData.push({
 						name: templateName,
@@ -830,106 +726,162 @@ export class Mandrill implements INodeType {
 
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-
-		let response;
+		
+		const item = this.getInputData();
+		let emailSentResponse, response;
         const resource = this.getNodeParameter('resource') as string;
 		
 		if (resource === 'messages') {
 
+			const options = this.getNodeParameter('options') as Options;			
 			const operation = this.getNodeParameter('operation') as string;
 			const fromEmail = this.getNodeParameter('fromEmail') as string;
 			const toEmail = this.getNodeParameter('toEmail') as string;
-			const subject = this.getNodeParameter('subject') as string;
-			const fromName = this.getNodeParameter('fromName') as string;
-			const important = this.getNodeParameter('important') as boolean;
-			const trackOpens = this.getNodeParameter('trackOpens') as boolean;
-			const trackClicks = this.getNodeParameter('trackClicks') as boolean;
-			const autoText = this.getNodeParameter('autoText') as boolean;
-			const autoHtml = this.getNodeParameter('autoHtml') as boolean;
-			const inlineCss = this.getNodeParameter('inlineCss') as boolean;
-			const urlStripQs = this.getNodeParameter('urlStripQs') as boolean;
-			const preserveRecipients = this.getNodeParameter('preserveRecipients') as boolean;
-			const viewContentLink = this.getNodeParameter('viewContentLink') as boolean;
-			const async = this.getNodeParameter('async') as boolean;
-			const subAccount = this.getNodeParameter('subAccount') as string;
-			const googleAnalyticsCampaign = this.getNodeParameter('googleAnalyticsCampaign') as string;
-			const googleAnalyticsDomains = this.getNodeParameter('googleAnalyticsDomains') as string;
-			const tags = this.getNodeParameter('tags') as string;
-			const ipPool = this.getNodeParameter('ipPool') as string;
-			const bccAddress = this.getNodeParameter('bccAddress') as string;
-			const trackingDomain = this.getNodeParameter('trackingDomain') as string;
-			const signingDomain = this.getNodeParameter('signingDomain') as string;
-			const returnPathDomain = this.getNodeParameter('returnPathDomain') as string;
-			const html = this.getNodeParameter('html') as string;
-			const text = this.getNodeParameter('text') as string;
-			const sendAt = moment(this.getNodeParameter('sendAt') as string).utc().format('YYYY-MM-DD HH:mm:ss');
-			const headers = validateJSON(this.getNodeParameter('headers') as string);
-			const recipientMetadata = validateJSON(this.getNodeParameter('recipientMetadata') as string);
-			const attachments = validateJSON(this.getNodeParameter('attachments') as string);
-			const images = validateJSON(this.getNodeParameter('images') as string);
-			const mergeVars = validateJSON(this.getNodeParameter('mergeVars') as string);
-			const metadata = validateJSON(this.getNodeParameter('metadata') as string);
+			const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
+			const toEmailArray = getToEmailArray(toEmail);
 
-			const toEmailArray = getToEmailArray(toEmail)
-			const googleAnalyticsDomainsArray = getGoogleAnalyticsDomainsArray(googleAnalyticsDomains)
-			const tagsArray = getTags(tags)
-	
 			const credentials = this.getCredentials('mandrillApi');
 	
 			if (credentials === undefined) {
 				throw new Error('No credentials got returned!');
 			}
 			
-			const body: IDataObject = {
-				template_content: [],
-				message: {
-					html: html,
-					text: text,
-					subject: subject,
-					from_name: fromName,
-					from_email: fromEmail,
-					to: toEmailArray,
-					important: important,
-					track_opens: trackOpens,
-					track_clicks: trackClicks,
-					auto_text: autoText,
-					auto_html: autoHtml,
-					inline_css: inlineCss,
-					url_strip_qs: urlStripQs,
-					preserve_recipients: preserveRecipients,
-					view_content_link: viewContentLink,
-					async: async,
-					subaccount: subAccount || null,
-					google_analytics_campaign: googleAnalyticsCampaign,
-					google_analytics_domains: googleAnalyticsDomainsArray,
-					tags: tagsArray,
-					ip_pool: ipPool,
-					bcc_address: bccAddress,
-					tracking_domain: trackingDomain,
-					signing_domain: signingDomain,
-					return_path_domain: returnPathDomain,
-					recipient_metadata: recipientMetadata,
-					headers: headers,
-					metadata: metadata,
-					merge_vars: mergeVars,
-					attachments: attachments,
-					images: images
-				},
-				send_at: (sendAt === 'Invalid date' ) ? moment().utc().format('YYYY-MM-DD HH:mm:ss'): sendAt,
+			const message: Message = {
+				html: (options.html) ? options.html : '',
+				text: (options.text) ? options.text : '',
+				subject: (options.subject) ? options.subject : '',
+				from_email: fromEmail,
+				to: toEmailArray,
+				important: (options.important) ? options.important : false ,
+				track_opens: (options.trackOpens) ? options.trackOpens : false,
+				track_clicks: (options.trackClicks) ? options.trackClicks : false,
+				auto_text: (options.autoText) ? options.autoText : false,
+				auto_html: (options.autoHtml) ? options.autoHtml : false,
+				inline_css: (options.inlineCss) ? options.inlineCss : false,
+				url_strip_qs: (options.urlStripQs) ? options.urlStripQs : false,
+				preserve_recipients: (options.preserveRecipients) ? options.preserveRecipients : false,
+				view_content_link: (options.viewContentLink) ? options.viewContentLink : false,
+				async: (options.async) ? options.async : false,
+				google_analytics_campaign: (options.googleAnalyticsCampaign) ? options.googleAnalyticsCampaign : '',
+				ip_pool: (options.ipPool) ? options.ipPool : '',
+				bcc_address: (options.bccAddress) ? options.bccAddress : '',
+				tracking_domain: (options.trackingDomain) ? options.trackingDomain : '',
+				signing_domain: (options.signingDomain) ? options.signingDomain: '',
+				return_path_domain: (options.returnPathDomain) ? options.returnPathDomain : '',
 			};
+
+			if (options.googleAnalyticsDomains) {
+				message.google_analytics_domains = getGoogleAnalyticsDomainsArray(options.googleAnalyticsDomains);
+			}
+
+			if (options.tags) {
+				message.tags = getTags(options.tags);
+			}
+
+			if (options.fromName) {
+				message.from_name = options.fromName;
+			}
+
+			if (options.subaccount) {
+				message.subaccount = options.subaccount;
+			}
+
+			const body: Body = {
+				template_content: [],
+				message,
+			};
+
+			if (options.sendAt) {
+				body.send_at =  moment(options.sendAt).utc().format('YYYY-MM-DD HH:mm:ss');
+			}
+
+			if (jsonActive) {
+
+				body.message.headers = validateJSON(this.getNodeParameter('headersJson') as string);
+				body.message.metadata = validateJSON(this.getNodeParameter('metadataJson') as string);
+				body.message.global_merge_vars = validateJSON(this.getNodeParameter('mergeVarsJson') as string);
+				body.message.attachments = validateJSON(this.getNodeParameter('attachmentsJson') as string);
+
+			} else {
 	
-			let message
+				const headersUi = this.getNodeParameter('headersUi') as IDataObject;
+				if (!_.isEmpty(headersUi)) {
+					// @ts-ignore
+					body.message.headers = _.map(headersUi.headersValues, (o) => {
+						const aux: IDataObject = { };
+						// @ts-ignore
+						aux[o.name] = o.value;
+						return aux;
+					});
+				}
+
+				const metadataUi = this.getNodeParameter('metadataUi') as IDataObject;
+				if (!_.isEmpty(metadataUi)) {
+					// @ts-ignore
+					body.message.metadata = _.map(metadataUi.metadataValues, (o) => {
+						const aux: IDataObject = { };
+						aux[o.name] = o.value;
+						return aux;
+					});
+				}
+
+				const mergeVarsUi = this.getNodeParameter('mergeVarsUi') as IDataObject;
+				if (!_.isEmpty(mergeVarsUi)) {
+					// @ts-ignore
+					body.message.global_merge_vars = _.map(mergeVarsUi.mergeVarsValues, (o) => {
+						const aux: IDataObject = { };
+						aux.name = o.name;
+						aux.content = o.content;
+						return aux;
+					});
+				}
+
+				const attachmentsUi = this.getNodeParameter('attachmentsUi') as IDataObject;
+				let attachmentsBinary = [], attachmentsValues = [];
+				if (!_.isEmpty(attachmentsUi)) {
+
+					if (attachmentsUi.hasOwnProperty('attachmentsValues') 
+					&& !_.isEmpty(attachmentsUi.attachmentsValues)) {
+						// @ts-ignore 
+						attachmentsValues = _.map(attachmentsUi.attachmentsValues, (o) => {
+							const aux: IDataObject = { };
+							// @ts-ignore
+							aux.name = o.name;
+							aux.content = o.content;
+							aux.type = o.type;
+							return aux;
+						});
+					}
+
+					if (attachmentsUi.hasOwnProperty('attachmentsBinary')
+						&& !_.isEmpty(attachmentsUi.attachmentsBinary)
+						&& item.binary) {
+							// @ts-ignore
+							attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o) => {
+								if (item.binary!.hasOwnProperty(o.property)) {
+									const aux: IDataObject = { };
+									aux.name = item.binary![o.property].fileName || 'unknown';
+									aux.content = item.binary![o.property].data;
+									aux.type = item.binary![o.property].mimeType;
+									return aux;
+								}
+							});
+					}
+				}
+				
+				body.message.attachments = attachmentsBinary.concat(attachmentsValues);
+			}
 			
 			if (operation === 'sendTemplate') {
 				const template = this.getNodeParameter('template') as string;
-				body.template_name = template
-				message = mandrillApiRequest.call(this, '/messages', 'POST', '/send-template', body);
+				body.template_name = template;
+				emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send-template', body);
 			} else if (operation === 'sendHtml') {
-				message = mandrillApiRequest.call(this, '/messages', 'POST', '/send', body);
+				emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send', body);
 			}
 	
 			try {
-				response = await message
+				response = await emailSentResponse;
 			} catch (err) {
 				throw new Error(`Mandrill Error: ${err}`);
 			}
