@@ -817,7 +817,7 @@ export class Gitlab implements INodeType {
 				repository = this.getNodeParameter('repository', i) as string;
 			}
 
-			const baseEndpoint = `/projects/${owner}%2F${repository}`;
+			const baseEndpoint = `/projects/${owner}/${repository}`;
 
 			if (resource === 'issue') {
 				if (operation === 'create') {
