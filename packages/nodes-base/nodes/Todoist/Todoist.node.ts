@@ -283,8 +283,6 @@ export class Todoist implements INodeType {
 				body.label_ids = labels
 			}
 
-			console.log(labels)
-
 			try {
 				response = await todoistApiRequest.call(this, '/tasks', 'POST', body);
 			} catch (err) {
