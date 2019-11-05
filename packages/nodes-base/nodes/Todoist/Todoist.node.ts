@@ -14,6 +14,7 @@ import {
 } from './GenericFunctions';
 
 import moment = require('moment');
+import _ = require('lodash')
 
 export class Todoist implements INodeType {
 
@@ -94,6 +95,27 @@ export class Todoist implements INodeType {
 				},
 				default: [],
 				description: 'The project you want to add the task to.',
+			},
+			{
+				displayName: 'Labels',
+				name: 'labels',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getLabels',
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'task',
+                        ],
+                        operation: [
+                            'create'
+                        ]
+					},
+				},
+                default: [],
+                required: false,
+				description: 'Labels',
             },
             {
 				displayName: 'Content',
@@ -115,7 +137,7 @@ export class Todoist implements INodeType {
                 default: [],
                 required: true,
 				description: 'Task content',
-            },
+			},
             {
 				displayName: 'Options',
 				name: 'options',
@@ -188,11 +210,33 @@ export class Todoist implements INodeType {
 				}
 
 				return returnData
+			},
+
+			// Get all the available labels to display them to user so that he can
+			// select them easily
+			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let labels;
+				try {
+					labels = await todoistApiRequest.call(this, '/labels', 'GET');
+				} catch (err) {
+					throw new Error(`Todoist Error: ${err}`);
+				}
+				for (const label of labels) {
+					const labelName = label.name;
+					const labelId = label.id;
+
+					returnData.push({
+						name: labelName,
+						value: labelId,
+					});
+				}
+
+				return returnData
 			}
-		},
+		}
     };
     
-
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
 		
 		const resource = this.getNodeParameter('resource') as string;
@@ -205,8 +249,8 @@ export class Todoist implements INodeType {
 
 			const content = this.getNodeParameter('content') as string;
 			const projectId = this.getNodeParameter('project') as number;
+			const labels = this.getNodeParameter('labels') as [number];
 			const options = this.getNodeParameter('options') as IDataObject;
-
 
 			interface IBodyCreateTask {
 				content: string;
@@ -224,16 +268,22 @@ export class Todoist implements INodeType {
 			const body: IBodyCreateTask = {
 				content,
 				project_id: projectId,
-				priority: (options.priority!) ? parseInt(options.priority, 10) : 1,
-			}
+				priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
+			};
 
 			if (options.dueDateTime) {
-				body.due_datetime = moment(options.dueDateTime).utc().format()
+				body.due_datetime = moment(options.dueDateTime as string).utc().format();
 			}
 
 			if (options.dueString) {
-				body.due_string = options.dueString
+				body.due_string = options.dueString as string;
 			}
+
+			if (!_.isEmpty(labels)) {
+				body.label_ids = labels
+			}
+
+			console.log(labels)
 
 			try {
 				response = await todoistApiRequest.call(this, '/tasks', 'POST', body);
@@ -243,7 +293,7 @@ export class Todoist implements INodeType {
 		}
 
 		return {
-			json: response,
+			json: response
 		};
 	}
 }
