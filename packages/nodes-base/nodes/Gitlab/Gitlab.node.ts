@@ -853,7 +853,7 @@ export class Gitlab implements INodeType {
 					//         edit
 					// ----------------------------------
 
-					requestMethod = 'PATCH';
+					requestMethod = 'PUT';
 
 					const issueNumber = this.getNodeParameter('issueNumber', i) as string;
 
