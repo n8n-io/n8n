@@ -1,72 +1,167 @@
-# Node
+# Nodes
+
+## Function and Function Item Node
+
+These are the most powerful nodes in n8n. With these, almost everything can be done if you know how to
+write JavaScript code. Both nodes work very similarly. They simply give you access to the incoming data
+and you can manipulate it.
 
 
-## Types
+### Difference between both nodes
 
-There are two main node types in n8n Trigger- and Regular-Nodes.
+The difference is that the code of the Function-Node does get executed only once and it receives the
+full items (JSON and binary data) as an array and expects as return value again an array of items. The items
+returned can be totally different from the incoming ones. So is it not just possible to remove and edit
+existing items it is also possible to add or return totally new ones.
 
+The code of the Function Item-Node on the other does get executed once for every item. It receives
+as input one item at a time and also just the JSON data. As a return value, it again expects the JSON data
+of one single item. That makes it possible to very easily add, remove and edit JSON properties of items
+but it is not possible to add new or remove existing items. Accessing and changing binary data is only
+possible via the methods `getBinaryData` and `setBinaryData`.
 
-### Trigger Nodes
-
-The Trigger-Nodes start a workflow and supply the initial data. A workflow can contain multiple trigger nodes but with each execution, just one of them will execute as they do not have any input and they are the nodes from which the execution starts.
-
-
-### Regular Nodes
-
-These nodes do the actual “work”. They can add, remove and edit the data in the flow, request and send data to external APIs and can do everything possible with Node.js in general.
-
-
-## Credentials
-
-External services need a way to identify and authenticate users. That data, which can range from API key over email/password combination to a very long multi-line private key, get saved in n8n as credentials.
-
-To make sure that the data is secure, it gets saved to the database encrypted. As encryption key does a random personal encryption key gets used which gets automatically generated on the first start of n8n and then saved under `~/.n8n/config`.
-
-Nodes in n8n can then request that credential information. As an additional layer of security can credentials only be accessed by node types which specifically got the right to do so.
+Both nodes support promises. So instead of returning the item or items directly, it is also possible to
+return a promise which resolves accordingly.
 
 
-## Expressions
+### Function-Node
 
-With the help of expressions, it is possible to set node parameters dynamically by referencing other data. That can be data from the flow, nodes, the environment or self-generated data. They are normal text with placeholders (everything between {{...}}) that can execute JavaScript code which offers access to special variables to access data.
+#### Variable: items
 
-An expression could look like this:
+It contains all the items the node received as input.
 
-My name is: `{{$node["Webhook"].data["query"]["name"]}}`
+Information about how the data is structured can be found on the page [Data Structure](data-structure.md)
 
-This one would return "My name is: " and then attach the value that the node with the name "Webhook" outputs and there select the property "query" and its key "name". So if the node would output this data:
+The data can be accessed and manipulated like this:
 
-```json
-{
-  "query": {
-    "name": "Jim"
-  }
-}
+```typescript
+// Sets the JSON data property "myFileName" of the first item to the name of the
+// file which is set in the binary property "image" of the same item.
+items[0].json.myFileName = items[0].binary.image.fileName;
+
+return items;
 ```
 
-the value would be: "My name is: Jim"
+This example creates 10 dummy items with the ids 0 to 9:
 
-The following special variables are available:
+```typescript
+const newItems = [];
 
- - **$binary**: Incoming binary data of a node
- - **$data**: Incoming JSON data of a node
- - **$env**: Environment variables
- - **$node**: Data of other nodes (output-data, parameters)
- - **$parameters**: Parameters of the current node
+for (let i=0;i<10;i++) {
+  newItems.push({
+    json: {
+      id: i
+    }
+  });
+}
 
-Normally it is not needed to write the JavaScript variables manually as they can be simply selected with the help of the Expression Editor.
-
-
-## Parameters
-
-On the most nodes in n8n parameters can be set. The values that get set define what exactly a node does.
-
-That values which are set are by default static and are always the same no matter what data they process. It is however also possible to set the values dynamically with the help of Expressions. With them, it is possible to make the value depending on other factors like the data of flow or parameters of other nodes.
-
-More information about it can be found under [Expressions](#expressions).
+return newItems;
+```
 
 
-## Pausing Node
+#### Method: $item(index)
 
-Sometimes when creating and debugging a workflow it is helpful to not execute some specific nodes. To make that as simple as possible and not having to disconnect each node, it is possible to pause them. When a node gets paused the data simple passes through the node without being changed.
+With `$item` it is possible to access the data of parent nodes. That can be the item data but also
+the parameters. It expects as input an index of the item the data should be returned for. This is
+needed because for each item the data returned can be different. This is probably obvious for the
+item data itself but maybe less for data like parameters. The reason why it is also needed there is
+that they may contain an expression. Expressions get always executed of the context for an item.
+If that would not be the case, for example, the Email Send-Node not would be able to send multiple
+emails at once to different people. Instead, the same person would receive multiple emails.
 
-There are two ways to pause a node. Either pressing the pause button which gets displayed above the node when hovering over it. Or by selecting the node and pressing “d”.
+The index is 0 based. So `$item(0)` will return the first item, `$item(1)` the second one, ...
+
+Example:
+
+```typescript
+// Returns the value of the JSON data property "myNumber" of Node "Set" (first item)
+const myNumber = $item(0).$node["Set"].data["myNumber"];
+// Like above but data of the 6th item
+const myNumber = $item(5).$node["Set"].data["myNumber"];
+
+// Returns the value of the parameter "channel" of Node "Slack".
+// If it contains an expression the value will be resolved with the
+// data of the first item.
+const channel = $item(0).$node["Slack"].parameter["channel"];
+// Like above but resolved with the value of the 10th item.
+const channel = $item(9).$node["Slack"].parameter["channel"];
+```
+
+
+#### Variable: $node
+
+Works exactly like `$item` with the difference that it will always return the data of the first item.
+
+```typescript
+const myNumber = $node["Set"].data['myNumber'];
+
+const channel = $node["Slack"].parameter["channel"];
+```
+
+
+#### Method: getWorkflowStaticData(type)
+
+Gives access to the static workflow data.
+It is possible to save data directly with the workflow. This data should, however, be very small.
+A common use case is to for example to save a timestamp of the last item that got processed from
+an RSS-Feed or database. It will always return an object. Properties can then read, deleted or
+set on that object. When the workflow execution did succeed n8n will check automatically if data
+changed and will save it if necessary.
+
+There are two types of static data. The "global" and the "node" one. Global static data is the
+same in the whole workflow. And every node in the workflow can access it. The node static data
+, however, is different for every node and only the node which did set it can retrieve it again.
+
+Example:
+
+```typescript
+// Get the global workflow static data
+const staticData = getWorkflowStaticData('global');
+// Get the static data of the node
+const staticData = getWorkflowStaticData('node');
+
+// Access its data
+const lastExecution = staticData.lastExecution;
+
+// Update its data
+staticData.lastExecution = new Date().getTime();
+
+// Delete data
+delete staticData.lastExecution;
+```
+
+It is important to know that static data can not be read and written when testing via the UI.
+The data will there always be empty and changes will not be persisted. Only when a workflow
+is active and it gets called by a Trigger or Webhook will the static data be saved.
+
+
+
+### Function Item-Node
+
+
+#### Variable: item
+
+It contains the "json" data of the currently processed item.
+
+The data can be accessed and manipulated like this:
+
+```json
+// Uses the data of an already existing key to create a new additional one
+item.newIncrementedCounter = item.existingCounter + 1;
+return item;
+```
+
+
+#### Method: getBinaryData()
+
+Returns all the binary data (all keys) of the item which gets currently processed.
+
+
+#### Method: setBinaryData(binaryData)
+
+Sets all the binary data (all keys) of the item which gets currently processed.
+
+
+#### Method: getWorkflowStaticData(type)
+
+As described above for Function-Node.
