@@ -10,11 +10,22 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import {
-	todoistApiRequest
+	todoistApiRequest,
 } from './GenericFunctions';
 
-import moment = require('moment');
-import _ = require('lodash')
+
+interface IBodyCreateTask {
+	content: string;
+	project_id?: number;
+	parent?: number;
+	order?: number;
+	label_ids?: number[];
+	priority?: number;
+	due_string?: string;
+	due_datetime?: string;
+	due_date?: string;
+	due_lang?: string;
+}
 
 export class Todoist implements INodeType {
 
@@ -37,9 +48,9 @@ export class Todoist implements INodeType {
 				name: 'todoistApi',
 				required: true,
 			}
-        ],
+		],
 		properties: [
-            {
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
@@ -50,7 +61,7 @@ export class Todoist implements INodeType {
 						description: 'Task resource.',
 					},
 				],
-				default: '',
+				default: 'task',
 				required: true,
 				description: 'Resource to consume.',
 			},
@@ -75,22 +86,22 @@ export class Todoist implements INodeType {
 				],
 				default: 'create',
 				description: 'The operation to perform.',
-            },
-            {
+			},
+			{
 				displayName: 'Project',
 				name: 'project',
-                type: 'options',
-                typeOptions: {
+				type: 'options',
+				typeOptions: {
 					loadOptionsMethod: 'getProjects',
 				},
 				displayOptions: {
 					show: {
 						resource: [
 							'task',
-                        ],
-                        operation: [
-                            'create'
-                        ]
+						],
+						operation: [
+							'create',
+						]
 					},
 				},
 				default: [],
@@ -107,38 +118,38 @@ export class Todoist implements INodeType {
 					show: {
 						resource: [
 							'task',
-                        ],
-                        operation: [
-                            'create'
-                        ]
+						],
+						operation: [
+							'create',
+						]
 					},
 				},
-                default: [],
-                required: false,
+				default: [],
+				required: false,
 				description: 'Labels',
-            },
-            {
+			},
+			{
 				displayName: 'Content',
 				name: 'content',
-                type: 'string',
-                typeOptions: {
+				type: 'string',
+				typeOptions: {
 					rows: 5,
 				},
 				displayOptions: {
 					show: {
 						resource: [
 							'task',
-                        ],
-                        operation: [
-                            'create'
-                        ]
+						],
+						operation: [
+							'create',
+						]
 					},
 				},
-                default: [],
-                required: true,
+				default: [],
+				required: true,
 				description: 'Task content',
 			},
-            {
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -148,46 +159,46 @@ export class Todoist implements INodeType {
 					show: {
 						resource: [
 							'task',
-                        ],
-                        operation: [
-                            'create'
-                        ]
+						],
+						operation: [
+							'create',
+						]
 					},
 				},
 				options: [
 					{
 						displayName: 'Priority',
 						name: 'priority',
-                        type: 'number',
-                        typeOptions: {
-                            numberStepSize: 1,
-                            maxValue: 4,
-                            minValue: 1
-                        },
+						type: 'number',
+						typeOptions: {
+							numberStepSize: 1,
+							maxValue: 4,
+							minValue: 1,
+						},
 						default: 1,
 						description: 'Task priority from 1 (normal) to 4 (urgent).',
-                    },
-                    {
+					},
+					{
 						displayName: 'Due Date Time',
 						name: 'dueDateTime',
-                        type: 'dateTime',
+						type: 'dateTime',
 						default: '',
 						description: 'Specific date and time in RFC3339 format in UTC.',
 					},
 					{
 						displayName: 'Due String',
 						name: 'dueString',
-                        type: 'string',
+						type: 'string',
 						default: '',
 						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 					},
-                ]
-            }
-        ]
-    };
-    
+				]
+			}
+		]
+	};
 
-    methods = {
+
+	methods = {
 		loadOptions: {
 			// Get all the available projects to display them to user so that he can
 			// select them easily
@@ -209,7 +220,7 @@ export class Todoist implements INodeType {
 					});
 				}
 
-				return returnData
+				return returnData;
 			},
 
 			// Get all the available labels to display them to user so that he can
@@ -232,38 +243,23 @@ export class Todoist implements INodeType {
 					});
 				}
 
-				return returnData
+				return returnData;
 			}
 		}
-    };
-    
+	};
+
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		
+
 		const resource = this.getNodeParameter('resource') as string;
 		const opeation = this.getNodeParameter('operation') as string;
 		let response;
 
 		if (resource === 'task' && opeation === 'create') {
-
-		//https://developer.todoist.com/rest/v1/#create-a-new-task
-
+			//https://developer.todoist.com/rest/v1/#create-a-new-task
 			const content = this.getNodeParameter('content') as string;
 			const projectId = this.getNodeParameter('project') as number;
-			const labels = this.getNodeParameter('labels') as [number];
+			const labels = this.getNodeParameter('labels') as number[];
 			const options = this.getNodeParameter('options') as IDataObject;
-
-			interface IBodyCreateTask {
-				content: string;
-				project_id?: number;
-				parent?: number;
-				order?: number;
-				label_ids?: [number];
-				priority?: number;
-				due_string?: string;
-				due_datetime?: string;
-				due_date?: string;
-				due_lang?: string; 
-			}
 
 			const body: IBodyCreateTask = {
 				content,
@@ -272,15 +268,15 @@ export class Todoist implements INodeType {
 			};
 
 			if (options.dueDateTime) {
-				body.due_datetime = moment(options.dueDateTime as string).utc().format();
+				body.due_datetime = options.dueDateTime as string;
 			}
 
 			if (options.dueString) {
 				body.due_string = options.dueString as string;
 			}
 
-			if (!_.isEmpty(labels)) {
-				body.label_ids = labels
+			if (labels !== undefined && labels.length !== 0) {
+				body.label_ids = labels;
 			}
 
 			try {

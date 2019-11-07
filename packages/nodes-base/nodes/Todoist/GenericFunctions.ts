@@ -8,7 +8,6 @@ import {
 } from 'n8n-core';
 
 import * as _ from 'lodash';
-import { IDataObject } from 'n8n-workflow';
 
 export async function todoistApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('todoistApi');
@@ -24,20 +23,17 @@ export async function todoistApiRequest(this: IHookFunctions | IExecuteFunctions
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
 		method,
-		body,
 		uri: `https://${endpoint}${resource}`,
 		json: true
 	};
 
-	if (_.isEmpty(options.body)) {
-		delete options.body
+	if (Object.keys(body).length !== 0) {
+		options.body = body;
 	}
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		//console.error(error);
-
 		const errorMessage = error.response.body.message || error.response.body.Message;
 
 		if (errorMessage !== undefined) {
