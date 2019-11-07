@@ -19,9 +19,9 @@ export async function freshdeskApiRequest(this: IHookFunctions | IExecuteFunctio
 		throw new Error('No credentials got returned!');
 	}
 
-	const userpass = `${credentials.username}:${credentials.password}`
+	const  apiKey = `${credentials.apiKey}:X`;
 
-	const headerWithAuthentication = Object.assign({}, headers, { Authorization: `Basic ${Buffer.from(userpass).toString(BINARY_ENCODING)}` });
+	const headerWithAuthentication = Object.assign({}, headers, { Authorization: `${Buffer.from(apiKey).toString(BINARY_ENCODING)}` });
 
 	const endpoint = 'freshdesk.com/api/v2/';
 
@@ -34,7 +34,7 @@ export async function freshdeskApiRequest(this: IHookFunctions | IExecuteFunctio
 	};
 
 	if (_.isEmpty(options.body)) {
-		delete options.body
+		delete options.body;
 	}
 
 	try {
