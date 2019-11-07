@@ -13,9 +13,6 @@ import {
 	freshdeskApiRequest
 } from './GenericFunctions';
 
-import moment = require('moment');
-import _ = require('lodash')
-
 enum Status {
 	Open = 1,
 	Pending = 2,
@@ -30,6 +27,16 @@ enum Priority {
 	Urgent = 4
 }
 
+enum Source {
+	Email = 1,
+	Portal = 2,
+	Phone = 3,
+	Chat = 4,
+	Mobihelp = 5,
+	FeedbackWidget = 6,
+	OutboundEmail	=7	
+}
+
 interface ICreateTicketBody  {
 	name?: string;
 	requester_id?: number;
@@ -37,13 +44,13 @@ interface ICreateTicketBody  {
 	facebook_id?: string;
 	phone?: string;
 	twitter_id?: string;
-	unique_external_id?: string,
-	subject?: string,
-	type?: string,
-	status: Status,
-	priority: Priority,
-	description?: string,
-	responder_id?: number,
+	unique_external_id?: string;
+	subject?: string;
+	type?: string;
+	status: Status;
+	priority: Priority;
+	description?: string;
+	responder_id?: number;
 	cc_emails?: [string];
 	custom_fields?: IDataObject;
 	due_by?: string;
@@ -51,7 +58,7 @@ interface ICreateTicketBody  {
 	fr_due_by?: string;
 	group_id?: number;
 	product_id?: number;
-	source: number;
+	source: Source;
 	tags: [string];
 	company_id: number;
 }
@@ -256,6 +263,54 @@ export class Freshdesk implements INodeType {
 				description: 'Priority',
 			},
 			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'options',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'ticket',
+						],
+						operation: [
+							'create'
+						]
+					},
+				},
+				options: [
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'Portal',
+						value: 'portal',
+					},
+					{
+						name: 'Phone',
+						value: 'phone',
+					},
+					{
+						name: 'Chat',
+						value: 'chat',
+					},
+					{
+						name: 'Mobihelp',
+						value: 'mobileHelp',
+					},
+					{
+						name: 'Feedback Widget',
+						value: 'feedbackWidget',
+					},
+					{
+						name: 'Outbound Email',
+						value: 'OutboundEmail',
+					}
+				],
+				default: 'portal',
+				description: 'The channel through which the ticket was created.',
+			},
+			{
 				displayName: 'JSON Parameters',
 				name: 'jsonParameters',
 				type: 'boolean',
@@ -316,6 +371,7 @@ export class Freshdesk implements INodeType {
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
+						required: false,
 						default: '',
 						typeOptions: {
 							rows: 5,
@@ -327,6 +383,7 @@ export class Freshdesk implements INodeType {
 						displayName: 'Agent',
 						name: 'agent',
 						type: 'options',
+						required: false,
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getAgents'
@@ -336,9 +393,77 @@ export class Freshdesk implements INodeType {
 					{
 						displayName: 'CC Emails',
 						name: 'ccEmails',
+						required: false,
 						type: 'string',
 						default: '',
 						description: `separated by , email addresses added in the 'cc' field of the incoming ticket email`,
+					},
+					{
+						displayName: 'Tags',
+						name: 'tags',
+						required: false,
+						type: 'string',
+						default: '',
+						description: `separated by , tags that have been associated with the ticket`,
+					},
+					{
+						displayName: 'Due By',
+						name: 'dueBy',
+						required: false,
+						type: 'dateTime',
+						default: '',
+						description: `Timestamp that denotes when the ticket is due to be resolved`,
+					},
+					{
+						displayName: 'Email config Id',
+						name: 'emailConfigId',
+						type: 'number',
+						required: false,
+						default: '',
+						description: `ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com)
+						If product_id is given and email_config_id is not given, product's primary email_config_id will be set`,
+					},
+					{
+						displayName: 'FR Due By',
+						name: 'frDueBy',
+						type: 'number',
+						required: false,
+						default: '',
+						description: `Timestamp that denotes when the first response is due`,
+					},
+					{
+						displayName: 'Group',
+						name: 'group',
+						required: false,
+						type: 'options',
+						default: '',
+						typeOptions: {
+							loadOptionsMethod: 'getGroups'
+						},
+						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
+					},
+					{
+						displayName: 'Product',
+						name: 'product',
+						required: false,
+						type: 'options',
+						default: '',
+						typeOptions: {
+							loadOptionsMethod: 'getProducts'
+						},
+						description: `ID of the product to which the ticket is associated.
+						It will be ignored if the email_config_id attribute is set in the request.`,
+					},
+					{
+						displayName: 'Company',
+						name: 'company',
+						required: false,
+						type: 'options',
+						default: '',
+						typeOptions: {
+							loadOptionsMethod: 'getCompanies'
+						},
+						description: `Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above)`,
 					},
 				]
 			},
@@ -347,6 +472,7 @@ export class Freshdesk implements INodeType {
 				name: 'customFieldsUi',
 				placeholder: 'Add Custom fields',
 				type: 'fixedCollection',
+				required: false,
 				default: '',
 				typeOptions: {
 					multipleValues: true,
@@ -372,6 +498,7 @@ export class Freshdesk implements INodeType {
 						values: [
 							{
 								displayName: 'Key',
+								required: false,
 								name: 'key',
 								type: 'string',
 								default: '',
@@ -380,6 +507,7 @@ export class Freshdesk implements INodeType {
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
+								required: false,
 								default: '',
 							},
 						],
@@ -407,6 +535,7 @@ export class Freshdesk implements INodeType {
 					},
 				},
 				default: '',
+				required: false,
 				placeholder: `{
 					"gadget":"Cold Welder"
 				}`,
@@ -425,7 +554,7 @@ export class Freshdesk implements INodeType {
 				try {
 					agents = await freshdeskApiRequest.call(this, '/agents', 'GET');
 				} catch (err) {
-					throw new Error(`Mandrill Error: ${err}`);
+					throw new Error(`Freshdesk Error: ${err}`);
 				}
 				for (const agent of agents) {
 					const agentName = agent.contact.name;
@@ -436,19 +565,82 @@ export class Freshdesk implements INodeType {
 						value: agentId,
 					});
 				}
-
 				return returnData;
-			}
+			},
+
+			// Get all the groups to display them to user so that he can
+			// select them easily
+			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let groups;
+				try {
+					groups = await freshdeskApiRequest.call(this, '/groups', 'GET');
+				} catch (err) {
+					throw new Error(`Freshdesk Error: ${err}`);
+				}
+				for (const group of groups) {
+					const groupName = group.name;
+					const groupId = group.id;
+
+					returnData.push({
+						name: groupName,
+						value: groupId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the products to display them to user so that he can
+			// select them easily
+			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let products;
+				try {
+					products = await freshdeskApiRequest.call(this, '/products', 'GET');
+				} catch (err) {
+					throw new Error(`Freshdesk Error: ${err}`);
+				}
+				for (const product of products) {
+					const productName = product.name;
+					const productId = product.id;
+
+					returnData.push({
+						name: productName,
+						value: productId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the companies to display them to user so that he can
+			// select them easily
+			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let companies;
+				try {
+					companies = await freshdeskApiRequest.call(this, '/companies', 'GET');
+				} catch (err) {
+					throw new Error(`Freshdesk Error: ${err}`);
+				}
+				for (const company of companies) {
+					const companyName = company.name;
+					const companyId = company.id;
+
+					returnData.push({
+						name: companyName,
+						value: companyId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
-
-    
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
 
 		return {
 			json: {}
-		}
+		};
 
     }
 }
