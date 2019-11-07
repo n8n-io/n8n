@@ -19,6 +19,7 @@ so also used with internal tools.
 - [Securing n8n](#securing-n8n)
 - [Persist data](#persist-data)
 - [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
+- [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
 - [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
 - [Support](#support)
 - [Upgrading](#upgrading)
@@ -191,6 +192,12 @@ The following environment variables support file input:
  - DB_POSTGRESDB_USER_FILE
  - N8N_BASIC_AUTH_PASSWORD_FILE
  - N8N_BASIC_AUTH_USER_FILE
+
+
+## Example Setup with Lets Encrypt
+
+A basic step by step example setup of n8n with docker-compose and Lets Encrypt is available on the
+[Server Setup](https://docs.n8n.io/#/server-setup) page.
 
 
 ## Setting Timezone
