@@ -9,6 +9,12 @@ import {
 
 import { OptionsWithUri } from 'request';
 
+export interface IProduct {
+	fields: {
+		item?: object[];
+	};
+}
+
 
 /**
  * Make an API request to ActiveCampaign
@@ -99,10 +105,14 @@ export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IE
 
 		if (dataKey === undefined) {
 			returnData.push.apply(returnData, responseData);
-			itemsReceived += returnData.length;
+			if (returnData !== undefined) {
+				itemsReceived += returnData.length;
+			}
 		} else {
 			returnData.push.apply(returnData, responseData[dataKey]);
-			itemsReceived += responseData[dataKey].length;
+			if (responseData[dataKey] !== undefined) {
+				itemsReceived += responseData[dataKey].length;
+			}
 		}
 
 		query.offset = itemsReceived;
