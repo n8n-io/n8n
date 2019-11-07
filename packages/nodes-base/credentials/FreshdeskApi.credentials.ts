@@ -9,10 +9,23 @@ export class FreshdeskApi implements ICredentialType {
 	displayName = 'Freshdesk API';
 	properties = [
 		{
-			displayName: 'API Key',
-			name: 'apiKey',
+			displayName: 'Username',
+			name: 'username',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+        },
+        {
+			displayName: 'Password',
+			name: 'password',
+			type: 'password' as NodePropertyTypes,
+			default: '',
+        },
+        {
+			displayName: 'Domain',
+			name: 'domain',
+			type: 'string' as NodePropertyTypes,
+            default: '',
+            placeholder: 'https://domain.freshdesk.com'
 		},
 	];
 }
