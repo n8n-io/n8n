@@ -241,7 +241,7 @@ export class Gitlab implements INodeType {
 			},
 			{
 				displayName: 'Body',
-				name: 'body',
+				name: 'description',
 				type: 'string',
 				typeOptions: {
 					rows: 5,
