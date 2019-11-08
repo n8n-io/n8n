@@ -10,7 +10,9 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import {
-	freshdeskApiRequest
+	freshdeskApiRequest,
+	validateJSON,
+	capitalize
 } from './GenericFunctions';
 
 enum Status {
@@ -34,7 +36,7 @@ enum Source {
 	Chat = 4,
 	Mobihelp = 5,
 	FeedbackWidget = 6,
-	OutboundEmail	=7	
+	OutboundEmail = 7	
 }
 
 interface ICreateTicketBody  {
@@ -45,7 +47,7 @@ interface ICreateTicketBody  {
 	phone?: string;
 	twitter_id?: string;
 	unique_external_id?: string;
-	subject?: string;
+	subject?: string | null;
 	type?: string;
 	status: Status;
 	priority: Priority;
@@ -59,8 +61,8 @@ interface ICreateTicketBody  {
 	group_id?: number;
 	product_id?: number;
 	source: Source;
-	tags: [string];
-	company_id: number;
+	tags?: [string];
+	company_id?: number;
 }
 
 export class Freshdesk implements INodeType {
@@ -310,23 +312,23 @@ export class Freshdesk implements INodeType {
 				default: 'portal',
 				description: 'The channel through which the ticket was created.',
 			},
-			{
-				displayName: 'JSON Parameters',
-				name: 'jsonParameters',
-				type: 'boolean',
-				default: false,
-				description: '',
-				displayOptions: {
-					show: {
-						resource: [
-							'ticket'
-						],
-						operation: [
-							'create',
-						]
-					},
-				},
-			},
+			// {
+			// 	displayName: 'JSON Parameters',
+			// 	name: 'jsonParameters',
+			// 	type: 'boolean',
+			// 	default: false,
+			// 	description: '',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'ticket'
+			// 			],
+			// 			operation: [
+			// 				'create',
+			// 			]
+			// 		},
+			// 	},
+			// },
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -363,9 +365,31 @@ export class Freshdesk implements INodeType {
 					{
 						displayName: 'Type',
 						name: 'type',
-						type: 'string',
-						default: '',
+						type: 'options',
+						default: 'Question',
 						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with.',
+						options: [
+							{
+								name: 'Question',
+								value: 'Question'
+							},
+							{
+								name: 'Incident',
+								value: 'Incident'
+							},
+							{
+								name: 'Problem',
+								value: 'Problem'
+							},
+							{
+								name: 'Feature Request',
+								value: 'Feature Request'
+							},
+							{
+								name: 'Refund',
+								value: 'Refund'
+							},
+						]
 					},
 					{
 						displayName: 'Description',
@@ -426,7 +450,7 @@ export class Freshdesk implements INodeType {
 					{
 						displayName: 'FR Due By',
 						name: 'frDueBy',
-						type: 'number',
+						type: 'dateTime',
 						required: false,
 						default: '',
 						description: `Timestamp that denotes when the first response is due`,
@@ -467,80 +491,80 @@ export class Freshdesk implements INodeType {
 					},
 				]
 			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customFieldsUi',
-				placeholder: 'Add Custom fields',
-				type: 'fixedCollection',
-				required: false,
-				default: '',
-				typeOptions: {
-					multipleValues: true,
-				},
-				displayOptions: {
-					show: {
-						resource: [
-							'ticket'
-						],
-						operation: [
-							'create'
-						],
-						jsonParameters: [
-							false,
-						],
-					},
-				},
-				description: 'Key value pairs containing the names and values of custom fields.',
-				options: [
-					{
-						name: 'customFieldsValues',
-						displayName: 'Custom fields',
-						values: [
-							{
-								displayName: 'Key',
-								required: false,
-								name: 'key',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								required: false,
-								default: '',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customFieldsJson',
-				type: 'json',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				displayOptions: {
-					show: {
-						resource: [
-							'ticket'
-						],
-						operation: [
-							'create'
-						],
-						jsonParameters: [
-							true,
-						],
-					},
-				},
-				default: '',
-				required: false,
-				placeholder: `{
-					"gadget":"Cold Welder"
-				}`,
-				description: 'Key value pairs containing the names and values of custom fields.',
-			},
+			// {
+			// 	displayName: 'Custom Fields',
+			// 	name: 'customFieldsUi',
+			// 	placeholder: 'Add Custom fields',
+			// 	type: 'fixedCollection',
+			// 	required: false,
+			// 	default: '',
+			// 	typeOptions: {
+			// 		multipleValues: true,
+			// 	},
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'ticket'
+			// 			],
+			// 			operation: [
+			// 				'create'
+			// 			],
+			// 			jsonParameters: [
+			// 				false,
+			// 			],
+			// 		},
+			// 	},
+			// 	description: 'Key value pairs containing the names and values of custom fields.',
+			// 	options: [
+			// 		{
+			// 			name: 'customFieldsValues',
+			// 			displayName: 'Custom fields',
+			// 			values: [
+			// 				{
+			// 					displayName: 'Key',
+			// 					required: false,
+			// 					name: 'key',
+			// 					type: 'string',
+			// 					default: '',
+			// 				},
+			// 				{
+			// 					displayName: 'Value',
+			// 					name: 'value',
+			// 					type: 'string',
+			// 					required: false,
+			// 					default: '',
+			// 				},
+			// 			],
+			// 		},
+			// 	],
+			// },
+			// {
+			// 	displayName: 'Custom Fields',
+			// 	name: 'customFieldsJson',
+			// 	type: 'json',
+			// 	typeOptions: {
+			// 		alwaysOpenEditWindow: true,
+			// 	},
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'ticket'
+			// 			],
+			// 			operation: [
+			// 				'create'
+			// 			],
+			// 			jsonParameters: [
+			// 				true,
+			// 			],
+			// 		},
+			// 	},
+			// 	default: '',
+			// 	required: false,
+			// 	placeholder: `{
+			// 		"gadget":"Cold Welder"
+			// 	}`,
+			// 	description: 'Key value pairs containing the names and values of custom fields.',
+			// },
         ]
 	};
 
@@ -637,10 +661,124 @@ export class Freshdesk implements INodeType {
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
+		const resource = this.getNodeParameter('resource') as string;
+		const opeation = this.getNodeParameter('operation') as string;
+		let response;
+
+		if (resource === 'ticket') {
+			if (opeation === 'create') {
+				const requester = this.getNodeParameter('requester') as string;
+				const value = this.getNodeParameter('requesterIdentificationValue') as string;
+				const status = this.getNodeParameter('status') as string;
+				const priority = this.getNodeParameter('priority') as string;
+				const source = this.getNodeParameter('source') as string;
+				const options = this.getNodeParameter('options') as IDataObject;
+				//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
+
+				const body: ICreateTicketBody = {
+					// @ts-ignore
+					status: Status[capitalize(status)],
+					// @ts-ignore
+					priority: Priority[capitalize(priority)],
+					// @ts-ignore
+					source: Source[capitalize(source)]
+				};
+				
+				if (requester === 'requesterId') {
+					// @ts-ignore
+					if (isNaN(value)) {
+						throw new Error('Requester Id must be a number');
+					}
+					body.requester_id = parseInt(value, 10);
+				} else  if (requester === 'email'){
+					body.email = value;
+				} else  if (requester === 'facebookId'){
+					body.facebook_id = value;
+				} else  if (requester === 'phone'){
+					body.phone = value;
+				} else  if (requester === 'twitterId'){
+					body.twitter_id = value;
+				} else  if (requester === 'uniqueExternalId'){
+					body.unique_external_id = value;
+				}
+
+				// if (!jsonActive) {
+				// 	const customFieldsUi = this.getNodeParameter('customFieldsUi') as IDataObject;
+				// 	if (Object.keys(customFieldsUi).length > 0) {
+				// 		const aux: IDataObject = {};
+				// 		// @ts-ignore
+				// 		customFieldsUi.customFieldsValues.forEach( o => {
+				// 			aux[`${o.key}`] = o.value;
+				// 			return aux;
+				// 		});
+				// 		body.custom_fields = aux;
+				// } else {
+				// 	body.custom_fields = validateJSON(this.getNodeParameter('customFielsJson') as string);
+				// }
+
+				if (options.name) {
+					body.name = options.name as string;
+				}
+
+				if (options.subject) {
+					body.subject = options.subject as string;
+				} else {
+					body.subject = 'null';
+				}
+
+				if (options.type) {
+					body.type = options.type as string;
+				}
+
+				if (options.description) {
+					body.description = options.description as string;
+				} else {
+					body.description = 'null';
+				}
+
+				if (options.agent) {
+					options.responder_id = options.agent as number;
+				}
+
+				if (options.company) {
+					options.company_id = options.company as number;
+				}
+
+				if (options.product) {
+					options.product_id = options.product as number;
+				}
+				
+				if (options.group) {
+					options.group_id = options.group as number;
+				}
+
+				if (options.frDueBy) {
+					options.fr_due_by = options.frDueBy as string;
+				}
+
+				if (options.emailConfigId) {
+					options.email_config_id = options.emailConfigId as number;
+				}
+
+				if (options.dueBy) {
+					options.due_by = options.dueBy as string;
+				}
+
+				if (options.ccEmails) {
+					// @ts-ignore
+					options.cc_emails = options.ccEmails.split(',') as [string];
+				}
+
+				try {
+					response = await freshdeskApiRequest.call(this, '/tickets', 'POST', body);
+				} catch (err) {
+					throw new Error(`Freskdesk Error: ${JSON.stringify(err)}`);
+				}
+			}
+		}
 
 		return {
-			json: {}
+			json: response
 		};
-
     }
 }
