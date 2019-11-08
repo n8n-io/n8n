@@ -312,7 +312,7 @@ export class GoogleSheet {
 				// Property exists so add it to the data to update
 
 				// Get the column name in which the property data can be found
-				updateColumnName = String.fromCharCode(characterCode + keyColumnOrder.indexOf(propertyName));
+				updateColumnName = String.fromCharCode(rangeStart.toUpperCase().charCodeAt(0) + keyColumnOrder.indexOf(propertyName));
 
 				updateData.push({
 					range: `${sheet ? sheet + '!' : ''}${updateColumnName}${updateRowIndex}`,
