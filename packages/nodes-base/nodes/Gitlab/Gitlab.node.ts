@@ -317,7 +317,31 @@ export class Gitlab implements INodeType {
 					},
 				],
 			},
-
+			{
+				displayName: 'Due Date',
+				name: 'date_date',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'issue',
+						],
+					},
+				},
+				default: { 'due_date': '' },
+				options: [
+					{
+						displayName: 'Due Date',
+						name: 'date_date',
+						type: 'string',
+						default: 0,
+						description: 'Due Date for issue. Date time string in the format YEAR-MONTH-DAY, e.g. 2016-03-11',
+					},
+				],
+			},
 			// ----------------------------------
 			//         issue:createComment
 			// ----------------------------------
@@ -473,6 +497,13 @@ export class Gitlab implements INodeType {
 								description: 'User to assign issue too.',
 							},
 						],
+					},
+					{
+						displayName: 'Due Date',
+						name: 'due_date',
+						type: 'string',
+						default: '',
+						description: 'The Due Date of the issue. Date time string in the format YEAR-MONTH-DAY, e.g. 2016-03-11',
 					},
 				],
 			},
