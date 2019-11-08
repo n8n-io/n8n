@@ -9,7 +9,6 @@ import {
 } from 'n8n-core';
 
 import * as _ from 'lodash';
-import { IDataObject } from 'n8n-workflow';
 
 export async function freshdeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	
@@ -49,4 +48,19 @@ export async function freshdeskApiRequest(this: IHookFunctions | IExecuteFunctio
 		}
 		throw error.response.body;
 	}
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = [];
+	}
+	return result;
+}
+
+export function capitalize (s: string) : string {
+	if (typeof s !== 'string') return '';
+	return s.charAt(0).toUpperCase() + s.slice(1);
 }
