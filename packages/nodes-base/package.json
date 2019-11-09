@@ -57,7 +57,8 @@
             "dist/credentials/TwilioApi.credentials.js",
             "dist/credentials/TypeformApi.credentials.js",
             "dist/credentials/MandrillApi.credentials.js",
-            "dist/credentials/TodoistApi.credentials.js"
+            "dist/credentials/TodoistApi.credentials.js",
+            "dist/credentials/RocketchatApi.credentials.js"
         ],
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
@@ -124,7 +125,8 @@
             "dist/nodes/Webhook.node.js",
             "dist/nodes/Xml.node.js",
             "dist/nodes/Mandrill/Mandrill.node.js",
-            "dist/nodes/Todoist/Todoist.node.js"
+            "dist/nodes/Todoist/Todoist.node.js",
+            "dist/nodes/Rocketchat/Rocketchat.node.js"
         ]
     },
     "devDependencies": {
