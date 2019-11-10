@@ -11,14 +11,14 @@ import {
 import * as _ from 'lodash';
 
 export async function freshdeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	
+
 	const credentials = this.getCredentials('freshdeskApi');
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
 
-	const  apiKey = `${credentials.apiKey}:X`;
+	const apiKey = `${credentials.apiKey}:X`;
 
 	const headerWithAuthentication = Object.assign({}, headers, { Authorization: `${Buffer.from(apiKey).toString(BINARY_ENCODING)}` });
 
@@ -60,7 +60,7 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	return result;
 }
 
-export function capitalize (s: string) : string {
+export function capitalize(s: string): string {
 	if (typeof s !== 'string') return '';
 	return s.charAt(0).toUpperCase() + s.slice(1);
 }
