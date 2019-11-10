@@ -39,7 +39,7 @@ enum Source {
 	OutboundEmail = 10
 }
 
-interface ICreateTicketBody  {
+interface ICreateTicketBody {
 	name?: string;
 	requester_id?: number;
 	email?: string;
@@ -86,7 +86,7 @@ export class Freshdesk implements INodeType {
 				name: 'freshdeskApi',
 				required: true,
 			}
-        ],
+		],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -565,7 +565,7 @@ export class Freshdesk implements INodeType {
 			// 	}`,
 			// 	description: 'Key value pairs containing the names and values of custom fields.',
 			// },
-        ]
+		]
 	};
 
 	methods = {
@@ -689,15 +689,15 @@ export class Freshdesk implements INodeType {
 						throw new Error('Requester Id must be a number');
 					}
 					body.requester_id = parseInt(value, 10);
-				} else  if (requester === 'email'){
+				} else if (requester === 'email') {
 					body.email = value;
-				} else  if (requester === 'facebookId'){
+				} else if (requester === 'facebookId') {
 					body.facebook_id = value;
-				} else  if (requester === 'phone'){
+				} else if (requester === 'phone') {
 					body.phone = value;
-				} else  if (requester === 'twitterId'){
+				} else if (requester === 'twitterId') {
 					body.twitter_id = value;
-				} else  if (requester === 'uniqueExternalId'){
+				} else if (requester === 'uniqueExternalId') {
 					body.unique_external_id = value;
 				}
 
@@ -782,5 +782,5 @@ export class Freshdesk implements INodeType {
 		return {
 			json: response
 		};
-    }
+	}
 }
