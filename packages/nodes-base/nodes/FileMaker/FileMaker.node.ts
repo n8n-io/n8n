@@ -9,7 +9,7 @@ import {
 
 
 import {OptionsWithUri} from 'request';
-import {layoutsApiRequest, getFields, getToken, logout} from "./GenericFunctions";
+import {layoutsApiRequest, getFields, getPortals, getToken, logout} from "./GenericFunctions";
 
 export class FileMaker implements INodeType {
     description: INodeTypeDescription = {
@@ -36,6 +36,7 @@ export class FileMaker implements INodeType {
                 displayName: 'Action',
                 name: 'action',
                 type: 'options',
+                default: 'record',
                 options: [
                     /*{
                         name: 'Login',
@@ -78,7 +79,6 @@ export class FileMaker implements INodeType {
                         value: 'delete',
                     },
                 ],
-                default: 'login',
                 description: 'Action to perform.',
             },
 
@@ -124,9 +124,7 @@ export class FileMaker implements INodeType {
                 placeholder: 'Record ID',
                 description: 'Internal Record ID returned by get (recordid)',
             },
-            // ----------------------------------
-            //         find/records
-            // ----------------------------------
+
             {
                 displayName: 'offset',
                 name: 'offset',
@@ -160,6 +158,49 @@ export class FileMaker implements INodeType {
                 }
             },
             {
+                displayName: 'Get portals',
+                name: 'getPortals',
+                type: 'boolean',
+                default: false,
+                description: 'Should we get portal data as well ?',
+            },
+            {
+                displayName: 'Portals',
+                name: 'portals',
+                type: 'options',
+                typeOptions: {
+                    multipleValues: true,
+                    multipleValueButtonText: 'Add portal',
+                    loadOptionsMethod: 'getPortals',
+                },
+                options: [],
+                default: [],
+                displayOptions: {
+                    show: {
+                        action: [
+                            'record',
+                            'records',
+                            'find',
+                        ],
+                        getPortals: [
+                            true,
+                        ],
+                    },
+                },
+                placeholder: 'Portals',
+                description: 'The portal result set to return. Use the portal object name or portal table name. If this parameter is omitted, the API will return all portal objects and records in the layout. For best performance, pass the portal object name or portal table name.',
+            },
+            // ----------------------------------
+            //         find/records
+            // ----------------------------------
+            {
+                displayName: 'Sort data ?',
+                name: 'setSort',
+                type: 'boolean',
+                default: false,
+                description: 'Should we sort data ?',
+            },
+            {
                 displayName: 'Sort',
                 name: 'sortParametersUi',
                 placeholder: 'Add Sort Rules',
@@ -169,6 +210,9 @@ export class FileMaker implements INodeType {
                 },
                 displayOptions: {
                     show: {
+                        setSort: [
+                            true,
+                        ],
                         action: [
                             'find',
                             'records',
@@ -183,7 +227,7 @@ export class FileMaker implements INodeType {
                         displayName: 'Rules',
                         values: [
                             {
-                                displayName: 'Name',
+                                displayName: 'Field',
                                 name: 'name',
                                 type: 'options',
                                 default: '',
@@ -194,7 +238,7 @@ export class FileMaker implements INodeType {
                                 description: 'Field Name.',
                             },
                             {
-                                displayName: 'Value',
+                                displayName: 'Order',
                                 name: 'value',
                                 type: 'options',
                                 default: 'ascend',
@@ -318,6 +362,25 @@ export class FileMaker implements INodeType {
                 }
                 return returnData;
             },
+
+            async getPortals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+                const returnData: INodePropertyOptions[] = [];
+
+                let portals;
+                try {
+                    portals = await getPortals.call(this);
+                } catch (err) {
+                    throw new Error(`FileMaker Error: ${err}`);
+                }
+                Object.keys(portals).forEach((portal) => {
+                    returnData.push({
+                        name: portal,
+                        value: portal,
+                    });
+                });
+
+                return returnData;
+            },
         },
     };
 
@@ -379,22 +442,39 @@ export class FileMaker implements INodeType {
                     'Authorization': `Bearer ${token}`,
                 };
 
-                const sort = [];
-                const sortParametersUi =  this.getNodeParameter('sortParametersUi', 0, {}) as IDataObject;
-                if (sortParametersUi.parameter !== undefined) {
-                    // @ts-ignore
-                    for (const parameterData of sortParametersUi!.rules as IDataObject[]) {
+                //Handle Sort
+                let sort;
+                const setSort =  this.getNodeParameter('setSort', 0, false);
+                if (setSort) {
+                    sort = null;
+                } else {
+                    const sortParametersUi =  this.getNodeParameter('sortParametersUi', 0, {}) as IDataObject;
+                    if (sortParametersUi.rules !== undefined) {
                         // @ts-ignore
-                        sort.push({
-                            'fieldName': parameterData!.name as string,
-                            'sortOrder': parameterData!.value
-                        });
+                        for (const parameterData of sortParametersUi!.rules as IDataObject[]) {
+                            // @ts-ignore
+                            sort.push({
+                                'fieldName': parameterData!.name as string,
+                                'sortOrder': parameterData!.value
+                            });
+                        }
                     }
                 }
+
+                //handle portals
+                let portals;
+                const getPortals = this.getNodeParameter('getPortals', 0);
+                if (!getPortals) {
+                    portals = [];
+                } else {
+                     portals = this.getNodeParameter('portals', 0);
+                }
+
                 requestOptions.qs = {
                     '_offset': this.getNodeParameter('offset', 0),
                     '_limit': this.getNodeParameter('limit', 0),
                     '_sort': JSON.stringify(sort),
+                    'portal': JSON.stringify(portals),
                 };
             } else {
                 throw new Error(`The action "${action}" is not implemented yet!`);
