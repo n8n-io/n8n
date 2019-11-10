@@ -241,7 +241,7 @@ export class Gitlab implements INodeType {
 			},
 			{
 				displayName: 'Body',
-				name: 'description',
+				name: 'body',
 				type: 'string',
 				typeOptions: {
 					rows: 5,
@@ -258,6 +258,23 @@ export class Gitlab implements INodeType {
 					},
 				},
 				description: 'The body of the issue.',
+			},
+			{
+				displayName: 'Due Date',
+				name: 'due_date',
+				type: 'dateTime',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'issue',
+						],
+					},
+				},
+				default: '',
+				description: 'Due Date for issue.',
 			},
 			{
 				displayName: 'Labels',
@@ -317,31 +334,8 @@ export class Gitlab implements INodeType {
 					},
 				],
 			},
-			{
-				displayName: 'Due Date',
-				name: 'date_date',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'issue',
-						],
-					},
-				},
-				default: { 'due_date': '' },
-				options: [
-					{
-						displayName: 'Due Date',
-						name: 'date_date',
-						type: 'string',
-						default: 0,
-						description: 'Due Date for issue. Date time string in the format YEAR-MONTH-DAY, e.g. 2016-03-11',
-					},
-				],
-			},
+
+
 			// ----------------------------------
 			//         issue:createComment
 			// ----------------------------------
@@ -501,9 +495,9 @@ export class Gitlab implements INodeType {
 					{
 						displayName: 'Due Date',
 						name: 'due_date',
-						type: 'string',
+						type: 'dateTime',
 						default: '',
-						description: 'The Due Date of the issue. Date time string in the format YEAR-MONTH-DAY, e.g. 2016-03-11',
+						description: 'Due Date for issue.',
 					},
 				],
 			},
@@ -860,6 +854,7 @@ export class Gitlab implements INodeType {
 
 					body.title = this.getNodeParameter('title', i) as string;
 					body.description = this.getNodeParameter('body', i) as string;
+					body.due_date = this.getNodeParameter('due_date', i) as string;
 					const labels = this.getNodeParameter('labels', i) as IDataObject[];
 
 					const assigneeIds = this.getNodeParameter('assignee_ids', i) as IDataObject[];
