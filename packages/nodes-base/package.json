@@ -57,6 +57,7 @@
             "dist/credentials/TwilioApi.credentials.js",
             "dist/credentials/TypeformApi.credentials.js",
             "dist/credentials/MandrillApi.credentials.js",
+            "dist/credentials/FreshdeskApi.credentials.js"
             "dist/credentials/TodoistApi.credentials.js"
         ],
         "nodes": [
@@ -124,6 +125,7 @@
             "dist/nodes/Webhook.node.js",
             "dist/nodes/Xml.node.js",
             "dist/nodes/Mandrill/Mandrill.node.js",
+            "dist/nodes/Freshdesk/Freshdesk.node.js"
             "dist/nodes/Todoist/Todoist.node.js"
         ]
     },
