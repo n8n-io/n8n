@@ -53,9 +53,8 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
  * Make an API request to ActiveCampaign
  *
  * @returns {Promise<any>}
- * @param layout
  */
-export async function getFields(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<any> { // tslint:disable-line:no-any
+export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
 	const credentials = this.getCredentials('FileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
@@ -79,6 +78,43 @@ export async function getFields(this: ILoadOptionsFunctions | IExecuteFunctions 
 	try {
 		const responseData = await this.helpers.request!(options);
 		return responseData.response.fieldMetaData;
+
+	} catch (error) {
+		// If that data does not exist for some reason return the actual error
+		throw error;
+	}
+}
+
+
+/**
+ * Make an API request to ActiveCampaign
+ *
+ * @returns {Promise<any>}
+ */
+export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
+	const token = await getToken.call(this);
+	const credentials = this.getCredentials('FileMaker');
+	const layout = this.getCurrentNodeParameter('layout') as string;
+
+	if (credentials === undefined) {
+		throw new Error('No credentials got returned!');
+	}
+	const host = credentials.host as string;
+	const db = credentials.db as string;
+
+	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
+	const options: OptionsWithUri = {
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		},
+		method: 'GET',
+		uri: url,
+		json: true
+	};
+
+	try {
+		const responseData = await this.helpers.request!(options);
+		return responseData.response.portalMetaData;
 
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
