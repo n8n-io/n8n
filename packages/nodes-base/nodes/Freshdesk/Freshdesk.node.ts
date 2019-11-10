@@ -16,10 +16,17 @@ import {
 } from './GenericFunctions';
 
 enum Status {
+<<<<<<< HEAD
 	Open = 1,
 	Pending = 2,
 	Resolved = 3,
 	Closed = 4
+=======
+	Open = 2,
+	Pending = 3,
+	Resolved = 4,
+	Closed = 5,
+>>>>>>> 0689f4e403043c5e3f13bc393f1164785772cb19
 }
 
 enum Priority {
@@ -36,7 +43,7 @@ enum Source {
 	Chat = 4,
 	Mobihelp = 5,
 	FeedbackWidget = 6,
-	OutboundEmail = 7	
+	OutboundEmail = 7
 }
 
 interface ICreateTicketBody  {
@@ -683,7 +690,6 @@ export class Freshdesk implements INodeType {
 					// @ts-ignore
 					source: Source[capitalize(source)]
 				};
-				
 				if (requester === 'requesterId') {
 					// @ts-ignore
 					if (isNaN(value)) {
@@ -737,36 +743,39 @@ export class Freshdesk implements INodeType {
 				}
 
 				if (options.agent) {
-					options.responder_id = options.agent as number;
+					body.responder_id = options.agent as number;
 				}
 
 				if (options.company) {
-					options.company_id = options.company as number;
+					body.company_id = options.company as number;
 				}
 
 				if (options.product) {
-					options.product_id = options.product as number;
+					body.product_id = options.product as number;
 				}
-				
+
 				if (options.group) {
-					options.group_id = options.group as number;
+					body.group_id = options.group as number;
 				}
 
 				if (options.frDueBy) {
-					options.fr_due_by = options.frDueBy as string;
+					body.fr_due_by = options.frDueBy as string;
 				}
 
 				if (options.emailConfigId) {
-					options.email_config_id = options.emailConfigId as number;
+					body.email_config_id = options.emailConfigId as number;
 				}
 
 				if (options.dueBy) {
-					options.due_by = options.dueBy as string;
+					body.due_by = options.dueBy as string;
+				}
+
+				if (options.tags) {
+					body.tags = (options.tags as string).split(',') as [string];
 				}
 
 				if (options.ccEmails) {
-					// @ts-ignore
-					options.cc_emails = options.ccEmails.split(',') as [string];
+					body.cc_emails = (options.ccEmails as string).split(',') as [string];
 				}
 
 				try {
