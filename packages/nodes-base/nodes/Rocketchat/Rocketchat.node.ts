@@ -5,14 +5,46 @@ import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeExecutionData,
-	INodeType,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
+	INodeType
 } from 'n8n-workflow';
 import {
-	rocketchatApiRequest
+    rocketchatApiRequest,
+    validateJSON
 } from './GenericFunctions';
 
+interface IField {
+    short?: boolean;
+    title?: string;
+    value?: string;
+}
+
+interface IAttachment {
+    color?: string;
+	text?: string;
+    ts?: string;
+    title?: string;
+    thumb_url?: string;
+    message_link?: string;
+    collapsed?: boolean;
+    author_name?: string;
+    author_link?: string;
+    author_icon?: string;
+    title_link?: string;
+    title_link_download?: boolean;
+    image_url?: string;
+    audio_url?: string;
+    video_url?: string;
+    fields?: IField[];
+}
+
+interface IPostMessageBody {
+	channel: string;
+	text?: string;
+	alias?: string;
+    emoji?: string;
+    avatar?: string;
+	attachments?: IAttachment[];
+}
 
 export class Rocketchat implements INodeType {
 
@@ -72,6 +104,24 @@ export class Rocketchat implements INodeType {
 				description: 'The operation to perform.',
             },
             {
+				displayName: 'Channel',
+				name: 'channel',
+                type: 'string',
+                required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'chat',
+                        ],
+                        operation: [
+                            'postMessage'
+                        ]
+					},
+				},
+				default: '',
+				description: 'TThe channel name with the prefix in front of it.',
+            },
+            {
 				displayName: 'Alias',
 				name: 'alias',
 				type: 'string',
@@ -105,6 +155,40 @@ export class Rocketchat implements INodeType {
 				default: '',
 				description: 'If provided, this will make the avatar use the provided image url.',
             },
+            {
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'chat',
+                        ],
+                        operation: [
+                            'postMessage'
+                        ]
+					},
+				},
+				default: '',
+				description: 'The text of the message to send, is optional because of attachments.',
+            },
+            {
+				displayName: 'JSON Parameters',
+				name: 'jsonParameters',
+				type: 'boolean',
+				default: false,
+				description: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'chat'
+						],
+						operation: [
+							'postMessage',
+						]
+					},
+				},
+			},
             {
 				displayName: 'Options',
 				name: 'options',
@@ -150,6 +234,9 @@ export class Rocketchat implements INodeType {
 						operation: [
 							'postMessage',
                         ],
+                        jsonParameters: [
+                            false
+                        ],
 					},
 				},
 				options: [
@@ -169,7 +256,7 @@ export class Rocketchat implements INodeType {
                     },
                     {
                         displayName: 'Timestamp',
-                        name: 'timestamp',
+                        name: 'ts',
                         type: 'dateTime',
                         default: '',
                         description: 'Displays the time next to the text portion.',
@@ -247,7 +334,7 @@ export class Rocketchat implements INodeType {
                     },
                     {
                         displayName: 'Audio URL',
-                        name: 'AudioUrl',
+                        name: 'audioUrl',
                         type: 'string',
                         default: '',
                         placeholder: 'https://site.com/aud.mp3',
@@ -301,17 +388,137 @@ export class Rocketchat implements INodeType {
                         ],
                     },
                 ]
+            },
+            {
+                displayName: 'Attachments',
+                name: 'attachmentsJson',
+                type: 'json',
+                typeOptions: {
+                    alwaysOpenEditWindow: true,
+                },
+                displayOptions: {
+                    show: {
+                        resource: [
+                            'chat'
+                        ],
+                        operation: [
+                            'postMessage'
+                        ],
+                        jsonParameters: [
+                            true
+                        ],
+                    },
+                },
+                default: '',
+                required: false,
+                description: '',
             }
         ]
 	};
 
-	methods = {
-	
-    };
-
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
+        
+        const resource = this.getNodeParameter('resource') as string;
+		const opeation = this.getNodeParameter('operation') as string;
+		let response;
+
+		if (resource === 'chat') {
+            //https://rocket.chat/docs/developer-guides/rest-api/chat/postmessage
+            if (opeation === 'postMessage') {
+                const channel = this.getNodeParameter('channel') as string;
+                const alias = this.getNodeParameter('alias') as string;
+                const avatar = this.getNodeParameter('avatar') as string;
+                const text = this.getNodeParameter('text') as string;
+				const options = this.getNodeParameter('options') as IDataObject;
+				const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
+
+                const body: IPostMessageBody = {
+                    channel,
+                    alias,
+                    avatar,
+                    text,
+                };
+
+                if (options.emoji) {
+                    body.emoji = options.emoji as string;
+                }
+
+				if (!jsonActive) {
+                    const optionsAttachments = this.getNodeParameter('attachments') as IDataObject[];
+                    if (optionsAttachments.length > 0) {
+                        const attachments: IAttachment[] = [];
+                        for (let i = 0; i < optionsAttachments.length; i++) {
+                            const attachment: IAttachment = {};
+                            for (const option of Object.keys(optionsAttachments[i])) {
+                                if (option === 'color') {
+                                    attachment.color = optionsAttachments[i][option] as string;
+                                } else if (option === 'text') {
+                                    attachment.text = optionsAttachments[i][option] as string;
+                                } else if (option === 'ts') {
+                                    attachment.ts = optionsAttachments[i][option] as string;
+                                } else if (option === 'messageLinks') {
+                                    attachment.message_link = optionsAttachments[i][option] as string;
+                                } else if (option === 'thumbUrl') {
+                                    attachment.thumb_url = optionsAttachments[i][option] as string;
+                                } else if (option === 'collapsed') {
+                                    attachment.collapsed = optionsAttachments[i][option] as boolean;
+                                } else if (option === 'authorName') {
+                                    attachment.author_name = optionsAttachments[i][option] as string;
+                                } else if (option === 'authorLink') {
+                                    attachment.author_link = optionsAttachments[i][option] as string;
+                                } else if (option === 'authorIcon') {
+                                    attachment.author_icon = optionsAttachments[i][option] as string;
+                                } else if (option === 'title') {
+                                    attachment.title = optionsAttachments[i][option] as string;
+                                } else if (option === 'titleLink') {
+                                    attachment.title_link = optionsAttachments[i][option] as string;
+                                } else if (option === 'titleLinkDownload') {
+                                    attachment.title_link_download = optionsAttachments[i][option] as boolean;
+                                } else if (option === 'imageUrl') {
+                                    attachment.image_url = optionsAttachments[i][option] as string;
+                                } else if (option === 'audioUrl') {
+                                    attachment.audio_url = optionsAttachments[i][option] as string;
+                                } else if (option === 'videoUrl') {
+                                    attachment.video_url = optionsAttachments[i][option] as string;
+                                } else if (option === 'fields') {
+                                   const fieldsValues = (optionsAttachments[i][option] as IDataObject).fieldsValues as IDataObject[];
+                                   if (fieldsValues.length > 0) {
+                                        const fields: IField[] = [];
+                                        for (let i = 0; i < fieldsValues.length; i++) {
+                                            const field: IField = {};
+                                            for (const key of Object.keys(fieldsValues[i])) {
+                                                if (key === 'short') {
+                                                    field.short = fieldsValues[i][key] as boolean;
+                                                } else if (key === 'title') {
+                                                    field.title = fieldsValues[i][key] as string;
+                                                } else if (key === 'value') {
+                                                    field.value = fieldsValues[i][key] as string;
+                                                }
+                                            }
+                                            fields.push(field);
+                                            attachment.fields = fields;
+                                        }
+                                    }
+                                }
+                            }
+                            attachments.push(attachment);
+                        }
+                        body.attachments = attachments;
+                    }
+                } else {
+                    body.attachments = validateJSON(this.getNodeParameter('attachmentsJson') as string);
+                }
+
+                try {
+                    response = await rocketchatApiRequest.call(this, '/chat', 'POST', 'postMessage', body);
+                } catch (err) {
+                    throw new Error(`Rocketchat Error: ${err}`);
+                }
+            }
+        }
+        
         return {
-            json: {}
-        };
+			json: response
+		};
     }
 }
