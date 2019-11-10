@@ -16,17 +16,10 @@ import {
 } from './GenericFunctions';
 
 enum Status {
-<<<<<<< HEAD
-	Open = 1,
-	Pending = 2,
-	Resolved = 3,
-	Closed = 4
-=======
 	Open = 2,
 	Pending = 3,
 	Resolved = 4,
 	Closed = 5,
->>>>>>> 0689f4e403043c5e3f13bc393f1164785772cb19
 }
 
 enum Priority {
@@ -40,10 +33,10 @@ enum Source {
 	Email = 1,
 	Portal = 2,
 	Phone = 3,
-	Chat = 4,
-	Mobihelp = 5,
-	FeedbackWidget = 6,
-	OutboundEmail = 7
+	Chat = 7,
+	Mobihelp = 8,
+	FeedbackWidget = 9,
+	OutboundEmail = 10
 }
 
 interface ICreateTicketBody  {
