@@ -9,10 +9,23 @@ export class RocketchatApi implements ICredentialType {
 	displayName = 'Rocket API';
 	properties = [
 		{
-			displayName: 'API Key',
-			name: 'apiKey',
+			displayName: 'User Id',
+			name: 'userId',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+		},
+		{
+			displayName: 'Auth Key',
+			name: 'authKey',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
+		{
+			displayName: 'Sub Domain',
+			name: 'subdomain',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			placeholder: 'n8n'
 		},
 	];
 }
