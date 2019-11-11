@@ -6,6 +6,32 @@ It is possible to change some of the n8n defaults via special environment variab
 The ones that currently exist are:
 
 
+## Publish
+
+Sets how n8n should be made available.
+
+```bash
+# The port n8n should be made available on
+N8N_PORT=5678
+
+# This ones are currently only important for the webhook URL creation.
+# So if "WEBHOOK_TUNNEL_URL" got set they do get ignored. It is however
+# encouraged to set them correctly anyway in case they will become
+# important in the future.
+N8N_PROTOCOL=https
+N8N_HOST=n8n.example.com
+```
+
+
+## Base URL
+
+Tells the frontend how to reach the REST API of the backend.
+
+```bash
+export VUE_APP_URL_BASE_API="https://n8n.example.com/"
+```
+
+
 ## Execution Data Manual Runs
 
 n8n creates a random encryption key automatically on the first launch and saves
@@ -98,4 +124,19 @@ user-folder via an environment variable.
 
 ```bash
 export N8N_USER_FOLDER="/home/jim/n8n"
+```
+
+
+## Webhook URL
+
+The webhook URL will normally be created automatically by combining
+`N8N_PROTOCOL`, `N8N_HOST` and `N8N_PORT`. If n8n runs, however, behind a
+reverse proxy that would not work. Because n8n does for example run internally
+on port 5678 but is exposed to the web via the reverse proxy on port 443. In
+that case, it is important to set the webhook URL manually that it can be
+displayed correctly in the Editor UI and even more important that the correct
+webhook URLs get registred with external services.
+
+```bash
+export WEBHOOK_TUNNEL_URL="https://n8n.example.com/"
 ```
