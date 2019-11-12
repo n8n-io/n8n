@@ -13,8 +13,10 @@
 - Advanced
 
   - [Configuration](configuration.md)
+  - [Data Structure](data-structure.md)
   - [Database](database.md)
   - [Keyboard Shortcuts](keyboard-shortcuts.md)
+  - [Node Basics](node-basics.md)
   - [Nodes](nodes.md)
   - [Security](security.md)
   - [Sensitive Data](sensitive-data.md)
