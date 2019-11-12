@@ -10,8 +10,16 @@ import {
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
+import {Url} from "url";
 
-
+interface ScriptsOptions {
+	script?: any; //tslint:disable-line:no-any
+	'script.param'?: any; //tslint:disable-line:no-any
+	'script.prerequest'?: any; //tslint:disable-line:no-any
+	'script.prerequest.param'?: any; //tslint:disable-line:no-any
+	'script.presort'?: any; //tslint:disable-line:no-any
+	'script.presort.param'?: any; //tslint:disable-line:no-any
+}
 /**
  * Make an API request to ActiveCampaign
  *
@@ -205,12 +213,16 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 	} catch (error) {
 		console.error(error);
 
-		const errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
-
+		let errorMessage;
+		if (error.response) {
+			errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
+		} else {
+			errorMessage = `${error.message} (${error.name})`;
+		}
 		if (errorMessage !== undefined) {
 			throw errorMessage;
 		}
-		throw error.response.body;
+		throw error.message;
 	}
 }
 
@@ -286,11 +298,10 @@ export function parseScripts(this: IExecuteFunctions): object | null {
 	if (!setScriptAfter && setScriptBefore && setScriptSort) {
 		return {};
 	} else {
-		const scripts = {
-		};
+		const scripts = {} as ScriptsOptions;
 		if (setScriptAfter) {
 			scripts.script = this.getNodeParameter('scriptAfter', 0);
-			scripts['script.param'] = this.getNodeParameter('scriptAfter', 0);
+			scripts!['script.param'] = this.getNodeParameter('scriptAfter', 0);
 		}
 		if (setScriptBefore) {
 			scripts['script.prerequest'] = this.getNodeParameter('scriptBefore', 0);
