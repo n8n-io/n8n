@@ -122,6 +122,42 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
 	}
 }
 
+/**
+ * Make an API request to ActiveCampaign
+ *
+ * @returns {Promise<any>}
+ */
+export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
+	const token = await getToken.call(this);
+	const credentials = this.getCredentials('FileMaker');
+	const layout = this.getCurrentNodeParameter('layout') as string;
+
+	if (credentials === undefined) {
+		throw new Error('No credentials got returned!');
+	}
+	const host = credentials.host as string;
+	const db = credentials.db as string;
+
+	const url = `https://${host}/fmi/data/v1/databases/${db}/scripts`;
+	const options: OptionsWithUri = {
+		headers: {
+			'Authorization': `Bearer ${token}`,
+		},
+		method: 'GET',
+		uri: url,
+		json: true
+	};
+
+	try {
+		const responseData = await this.helpers.request!(options);
+		return responseData.response.scripts;
+
+	} catch (error) {
+		// If that data does not exist for some reason return the actual error
+		throw error;
+	}
+}
+
 export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('FileMaker');
 	if (credentials === undefined) {
@@ -217,5 +253,108 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 		}
 		throw error.response.body;
 	}
+}
+
+export function parseSort(this: IExecuteFunctions): object | null {
+	let sort;
+	const setSort =  this.getNodeParameter('setSort', 0, false);
+	if (!setSort) {
+		sort = null;
+	} else {
+		sort = [];
+		const sortParametersUi =  this.getNodeParameter('sortParametersUi', 0, {}) as IDataObject;
+		if (sortParametersUi.rules !== undefined) {
+			// @ts-ignore
+			for (const parameterData of sortParametersUi!.rules as IDataObject[]) {
+				// @ts-ignore
+				sort.push({
+					'fieldName': parameterData!.name as string,
+					'sortOrder': parameterData!.value
+				});
+			}
+		}
+	}
+	return sort;
+}
+
+
+export function parseScripts(this: IExecuteFunctions): object | null {
+	const setScriptAfter =  this.getNodeParameter('setScriptAfter', 0, false);
+	const setScriptBefore =  this.getNodeParameter('setScriptBefore', 0, false);
+	const setScriptSort =  this.getNodeParameter('setScriptSort', 0, false);
+
+	if (!setScriptAfter && setScriptBefore && setScriptSort) {
+		return {};
+	} else {
+		const scripts = {
+		};
+		if (setScriptAfter) {
+			scripts.script = this.getNodeParameter('scriptAfter', 0);
+			scripts['script.param'] = this.getNodeParameter('scriptAfter', 0);
+		}
+		if (setScriptBefore) {
+			scripts['script.prerequest'] = this.getNodeParameter('scriptBefore', 0);
+			scripts['script.prerequest.param'] = this.getNodeParameter('scriptBeforeParam', 0);
+		}
+		if (setScriptSort) {
+			scripts['script.presort'] = this.getNodeParameter('scriptSort', 0);
+			scripts['script.presort.param'] = this.getNodeParameter('scriptSortParam', 0);
+		}
+		return scripts;
+	}
+}
+
+export function parsePortals(this: IExecuteFunctions): object | null {
+	let portals;
+	const getPortals = this.getNodeParameter('getPortals', 0);
+	if (!getPortals) {
+		portals = [];
+	} else {
+		portals = this.getNodeParameter('portals', 0);
+	}
+	// @ts-ignore
+	return portals;
+}
+
+
+export function parseQuery(this: IExecuteFunctions): object | null {
+	let queries;
+	const queriesParamUi =  this.getNodeParameter('queries', 0, {}) as IDataObject;
+	if (queriesParamUi.query !== undefined) {
+		// @ts-ignore
+		queries = [];
+		for (const queryParam of queriesParamUi!.query as IDataObject[]) {
+			const query = {
+				'omit': queryParam.omit ? 'true' : 'false',
+			};
+			// @ts-ignore
+			for (const field of queryParam!.fields!.field as IDataObject[]) {
+				// @ts-ignore
+					query[field.name] =field!.value;
+			}
+			queries.push(query);
+		}
+	} else {
+		queries = null;
+	}
+	// @ts-ignore
+	return queries;
+}
+
+export function parseFields(this: IExecuteFunctions): object | null {
+	let fieldData;
+	const fieldsParametersUi =  this.getNodeParameter('fieldsParametersUi', 0, {}) as IDataObject;
+	if (fieldsParametersUi.fields !== undefined) {
+		// @ts-ignore
+		fieldData = {};
+		for (const field of fieldsParametersUi!.fields as IDataObject[]) {
+			// @ts-ignore
+			fieldData[field.name] =field!.value;
+		}
+	} else {
+		fieldData = null;
+	}
+	// @ts-ignore
+	return fieldData;
 }
 
