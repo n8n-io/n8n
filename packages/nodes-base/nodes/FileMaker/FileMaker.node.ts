@@ -9,7 +9,19 @@ import {
 
 
 import {OptionsWithUri} from 'request';
-import {layoutsApiRequest, getFields, getPortals, getToken, logout} from "./GenericFunctions";
+import {
+    layoutsApiRequest,
+    getFields,
+    getPortals,
+    getScripts,
+    getToken,
+    parseSort,
+    parsePortals,
+    parseQuery,
+    parseScripts,
+    parseFields,
+    logout
+} from "./GenericFunctions";
 
 export class FileMaker implements INodeType {
     description: INodeTypeDescription = {
@@ -96,11 +108,6 @@ export class FileMaker implements INodeType {
                 default: '',
                 required: true,
                 displayOptions: {
-                    hide: {
-                        action: [
-                            'performscript'
-                        ],
-                    },
                 },
                 placeholder: 'Layout Name',
                 description: 'FileMaker Layout Name.',
@@ -124,7 +131,6 @@ export class FileMaker implements INodeType {
                 placeholder: 'Record ID',
                 description: 'Internal Record ID returned by get (recordid)',
             },
-
             {
                 displayName: 'offset',
                 name: 'offset',
@@ -163,6 +169,15 @@ export class FileMaker implements INodeType {
                 type: 'boolean',
                 default: false,
                 description: 'Should we get portal data as well ?',
+                displayOptions: {
+                    show: {
+                        action: [
+                            'record',
+                            'records',
+                            'find',
+                        ],
+                    },
+                },
             },
             {
                 displayName: 'Portals',
@@ -194,11 +209,106 @@ export class FileMaker implements INodeType {
             //         find/records
             // ----------------------------------
             {
+                displayName: 'Response Layout',
+                name: 'responseLayout',
+                type: 'options',
+                typeOptions: {
+                    loadOptionsMethod: 'getLayouts',
+                },
+                options: [],
+                default: '',
+                required: false,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find'
+                        ],
+                    },
+                },
+            },
+            {
+                displayName: 'Queries',
+                name: 'queries',
+                placeholder: 'Add query',
+                type: 'fixedCollection',
+                typeOptions: {
+                    multipleValues: true,
+                },
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                        ],
+                    },
+                },
+                description: 'Queries ',
+                default: {},
+                options: [
+                    {
+                        name: 'query',
+                        displayName: 'Query',
+                        values: [
+                            {
+                                displayName: 'Fields',
+                                name: 'fields',
+                                placeholder: 'Add field',
+                                type: 'fixedCollection',
+                                default: {},
+                                typeOptions: {
+                                    multipleValues: true,
+                                },
+                                options: [{
+                                    name: 'field',
+                                    displayName: 'Field',
+                                    values: [
+                                        {
+                                            displayName: 'Field',
+                                            name: 'name',
+                                            type: 'options',
+                                            default: '',
+                                            typeOptions: {
+                                                loadOptionsMethod: 'getFields',
+                                            },
+                                            options: [],
+                                            description: 'Search Field',
+                                        },
+                                        {
+                                            displayName: 'Value',
+                                            name: 'value',
+                                            type: 'string',
+                                            default: '',
+                                            description: 'Value to search',
+                                        },
+                                    ]
+                                }
+                                ],
+                                description: 'Field Name',
+                            },
+                            {
+                                displayName: 'Omit',
+                                name: 'omit',
+                                type: 'boolean',
+                                default: false
+                            },
+                        ]
+                    },
+                ],
+            },
+            {
                 displayName: 'Sort data ?',
                 name: 'setSort',
                 type: 'boolean',
                 default: false,
                 description: 'Should we sort data ?',
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                    },
+                },
             },
             {
                 displayName: 'Sort',
@@ -258,6 +368,192 @@ export class FileMaker implements INodeType {
                     },
                 ],
             },
+            {
+                displayName: 'Before find script',
+                name: 'setScriptBefore',
+                type: 'boolean',
+                default: false,
+                description: 'Define a script to be run before the action specified by the API call and after the subsequent sort.',
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                    }
+                },
+            },
+            {
+                displayName: 'Script Name',
+                name: 'scriptBefore',
+                type: 'options',
+                typeOptions: {
+                    loadOptionsMethod: 'getScripts',
+                },
+                options: [],
+                default: '',
+                required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                        setScriptBefore: [
+                            true
+                        ],
+                    },
+                },
+                placeholder: 'Script Name',
+                description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort.',
+            },
+            {
+                displayName: 'Script Parameter',
+                name: 'scriptBeforeParam',
+                type: 'string',
+                default: '',
+                required: false,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                        setScriptBefore: [
+                            true
+                        ],
+                    },
+                },
+                placeholder: 'Script Parameters',
+                description: 'A parameter for the FileMaker script.',
+            },
+            {
+                displayName: 'Before sort script',
+                name: 'setScriptSort',
+                type: 'boolean',
+                default: false,
+                description: 'Define a script to be run after the action specified by the API call but before the subsequent sort.',
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                    }
+                },
+            },
+            {
+                displayName: 'Script Name',
+                name: 'scriptSort',
+                type: 'options',
+                typeOptions: {
+                    loadOptionsMethod: 'getScripts',
+                },
+                options: [],
+                default: '',
+                required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                        setScriptSort: [
+                            true
+                        ],
+                    },
+                },
+                placeholder: 'Script Name',
+                description: 'The name of the FileMaker script to be run after the action specified by the API call but before the subsequent sort.',
+            },
+            {
+                displayName: 'Script Parameter',
+                name: 'scriptSortParam',
+                type: 'string',
+                default: '',
+                required: false,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                        setScriptSort: [
+                            true
+                        ],
+                    },
+                },
+                placeholder: 'Script Parameters',
+                description: 'A parameter for the FileMaker script.',
+            },
+            {
+                displayName: 'After sort script',
+                name: 'setScriptAfter',
+                type: 'boolean',
+                default: false,
+                description: 'Define a script to be run after the action specified by the API call but before the subsequent sort.',
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                    }
+                },
+            },
+            {
+                displayName: 'Script Name',
+                name: 'scriptAfter',
+                type: 'options',
+                typeOptions: {
+                    loadOptionsMethod: 'getScripts',
+                },
+                options: [],
+                default: '',
+                required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                        setScriptAfter: [
+                            true
+                        ],
+                    },
+                },
+                placeholder: 'Script Name',
+                description: 'The name of the FileMaker script to be run after the action specified by the API call and after the subsequent sort.',
+            },
+            {
+                displayName: 'Script Parameter',
+                name: 'scriptAfterParam',
+                type: 'string',
+                default: '',
+                required: false,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'find',
+                            'record',
+                            'records',
+                        ],
+                        setScriptAfter: [
+                            true
+                        ],
+                    },
+                },
+                placeholder: 'Script Parameters',
+                description: 'A parameter for the FileMaker script.',
+            },
             // ----------------------------------
             //         create/edit
             // ----------------------------------
@@ -278,15 +574,27 @@ export class FileMaker implements INodeType {
                 }
             },
             {
-                displayName: 'Fields',
-                name: 'Fields',
-                type: 'collection',
-                typeOptions: {
-                    loadOptionsMethod: 'getFields',
-                },
-                options: [],
+                displayName: 'Mod Id',
+                name: 'modId',
+                description: 'The last modification ID. When you use modId, a record is edited only when the modId matches.',
+                type: 'number',
                 default: '',
-                required: true,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'edit',
+                        ],
+                    },
+                }
+            },
+            {
+                displayName: 'Fields',
+                name: 'fieldsParametersUi',
+                placeholder: 'Add field',
+                type: 'fixedCollection',
+                typeOptions: {
+                    multipleValues: true,
+                },
                 displayOptions: {
                     show: {
                         action: [
@@ -295,8 +603,33 @@ export class FileMaker implements INodeType {
                         ],
                     },
                 },
-                placeholder: 'Layout Name',
-                description: 'FileMaker Layout Name.',
+                description: 'Fields to define',
+                default: {},
+                options: [
+                    {
+                        name: 'fields',
+                        displayName: 'Fields',
+                        values: [
+                            {
+                                displayName: 'Field',
+                                name: 'name',
+                                type: 'options',
+                                default: '',
+                                typeOptions: {
+                                    loadOptionsMethod: 'getFields',
+                                },
+                                options: [],
+                                description: 'Field Name.',
+                            },
+                            {
+                                displayName: 'Value',
+                                name: 'value',
+                                type: 'string',
+                                default: '',
+                            },
+                        ]
+                    },
+                ],
             },
             // ----------------------------------
             //         performscript
@@ -318,8 +651,24 @@ export class FileMaker implements INodeType {
                         ],
                     },
                 },
-                placeholder: 'Layout Name',
-                description: 'FileMaker Layout Name.',
+                placeholder: 'Script Name',
+                description: 'The name of the FileMaker script to be run.',
+            },
+            {
+                displayName: 'Script Parameter',
+                name: 'scriptParam',
+                type: 'string',
+                default: '',
+                required: false,
+                displayOptions: {
+                    show: {
+                        action: [
+                            'performscript'
+                        ],
+                    },
+                },
+                placeholder: 'Script Parameters',
+                description: 'A parameter for the FileMaker script.',
             },
         ]
     };
@@ -363,6 +712,26 @@ export class FileMaker implements INodeType {
                 return returnData;
             },
 
+            async getScripts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+                const returnData: INodePropertyOptions[] = [];
+
+                let scripts;
+                try {
+                    scripts = await getScripts.call(this);
+                } catch (err) {
+                    throw new Error(`FileMaker Error: ${err}`);
+                }
+                for (const script of scripts) {
+                    if (!script.isFolder) {
+                        returnData.push({
+                            name: script.name,
+                            value: script.name,
+                        });
+                    }
+                }
+                return returnData;
+            },
+
             async getPortals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
                 const returnData: INodePropertyOptions[] = [];
 
@@ -396,85 +765,89 @@ export class FileMaker implements INodeType {
         if (credentials === undefined) {
             throw new Error('No credentials got returned!');
         }
+        const token = await getToken.call(this);
+
         const staticData = this.getWorkflowStaticData('global');
-        // Operations which overwrite the returned data
-        const overwriteDataOperations = [];
-        // Operations which overwrite the returned data and return arrays
-        // and has so to be merged with the data of other items
-        const overwriteDataOperationsArray = [];
 
         let requestOptions: OptionsWithUri;
 
         const host = credentials.host as string;
         const database = credentials.db as string;
 
-        //const layout = this.getNodeParameter('layout', 0, null) as string;
-        //const recid = this.getNodeParameter('recid', 0, null) as number;
-
         const url = `https://${host}/fmi/data/v1`;
-        //const fullOperation = `${resource}:${operation}`;
 
         for (let i = 0; i < items.length; i++) {
             // Reset all values
             requestOptions = {
                 uri: '',
-                headers: {},
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
                 method: 'GET',
                 json: true
                 //rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
             };
 
             const layout = this.getNodeParameter('layout', 0) as string;
-            const token = await getToken.call(this);
 
             if (action === 'record') {
                 const recid = this.getNodeParameter('recid', 0) as string;
-
                 requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
-                requestOptions.method = 'GET';
-                requestOptions.headers = {
-                    'Authorization': `Bearer ${token}`,
+                requestOptions.qs = {
+                    'portal': JSON.stringify(parsePortals.call(this)),
+                    ...parseScripts.call(this)
                 };
             } else if (action === 'records') {
                 requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
-                requestOptions.method = 'GET';
-                requestOptions.headers = {
-                    'Authorization': `Bearer ${token}`,
-                };
-
-                //Handle Sort
-                let sort;
-                const setSort =  this.getNodeParameter('setSort', 0, false);
-                if (setSort) {
-                    sort = null;
-                } else {
-                    const sortParametersUi =  this.getNodeParameter('sortParametersUi', 0, {}) as IDataObject;
-                    if (sortParametersUi.rules !== undefined) {
-                        // @ts-ignore
-                        for (const parameterData of sortParametersUi!.rules as IDataObject[]) {
-                            // @ts-ignore
-                            sort.push({
-                                'fieldName': parameterData!.name as string,
-                                'sortOrder': parameterData!.value
-                            });
-                        }
-                    }
-                }
-
-                //handle portals
-                let portals;
-                const getPortals = this.getNodeParameter('getPortals', 0);
-                if (!getPortals) {
-                    portals = [];
-                } else {
-                     portals = this.getNodeParameter('portals', 0);
-                }
-
                 requestOptions.qs = {
                     '_offset': this.getNodeParameter('offset', 0),
                     '_limit': this.getNodeParameter('limit', 0),
-                    '_sort': JSON.stringify(sort),
-                    'portal': JSON.stringify(portals),
+                    '_sort': JSON.stringify(parseSort.call(this)),
+                    'portal': JSON.stringify(parsePortals.call(this)),
+                    ...parseScripts.call(this)
+                };
+            } else if (action === 'find') {
+                requestOptions.uri = url + `/databases/${database}/layouts/${layout}/_find`;
+                requestOptions.method = 'POST';
+                requestOptions.body = {
+                    'query': parseQuery.call(this),
+                    'offset': this.getNodeParameter('offset', 0),
+                    'limit': this.getNodeParameter('limit', 0),
+                    'layout.response': this.getNodeParameter('responseLayout', 0),
+                    ...parseScripts.call(this)
+                };
+                const sort = parseSort.call(this);
+                if (sort) {
+                    requestOptions.body.sort = sort;
+                }
+            } else if (action === 'create') {
+                requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
+                requestOptions.method = 'POST';
+                requestOptions.headers['Content-Type'] = 'application/json';
+
+                //TODO: handle portalData
+                requestOptions.body = {
+                    fieldData: {...parseFields.call(this)},
+                    portalData: {},
+                    ...parseScripts.call(this)
+                };
+            }  else if (action === 'edit') {
+                const recid = this.getNodeParameter('recid', 0) as string;
+                requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+                requestOptions.method = 'PATCH';
+                requestOptions.headers['Content-Type'] = 'application/json';
+
+                //TODO: handle portalData
+                requestOptions.body = {
+                    fieldData: {...parseFields.call(this)},
+                    portalData: {},
+                    ...parseScripts.call(this)
+                };
+            }  else if (action === 'performscript') {
+                const scriptName = this.getNodeParameter('script', 0) as string;
+                requestOptions.uri = url + `/databases/${database}/layouts/${layout}/script/${scriptName}`;
+                requestOptions.qs = {
+                    'script.param': this.getNodeParameter('scriptParam', 0),
                 };
             } else {
                 throw new Error(`The action "${action}" is not implemented yet!`);
