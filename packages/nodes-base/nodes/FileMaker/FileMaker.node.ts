@@ -213,7 +213,7 @@ export class FileMaker implements INodeType {
                 name: 'responseLayout',
                 type: 'options',
                 typeOptions: {
-                    loadOptionsMethod: 'getLayouts',
+                    loadOptionsMethod: 'getResponseLayouts',
                 },
                 options: [],
                 default: '',
@@ -557,7 +557,7 @@ export class FileMaker implements INodeType {
             // ----------------------------------
             //         create/edit
             // ----------------------------------
-            {
+            /*{
                 displayName: 'fieldData',
                 name: 'fieldData',
                 placeholder: '{"field1": "value", "field2": "value", ...}',
@@ -572,7 +572,7 @@ export class FileMaker implements INodeType {
                         ],
                     },
                 }
-            },
+            },*/
             {
                 displayName: 'Mod Id',
                 name: 'modId',
@@ -679,6 +679,28 @@ export class FileMaker implements INodeType {
             // select them easily
             async getLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
                 const returnData: INodePropertyOptions[] = [];
+
+                let layouts;
+                try {
+                    layouts = await layoutsApiRequest.call(this);
+                } catch (err) {
+                    throw new Error(`FileMaker Error: ${err}`);
+                }
+                for (const layout of layouts) {
+                    returnData.push({
+                        name: layout.name,
+                        value: layout.name,
+                    });
+                }
+                return returnData;
+            },
+            async getResponseLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+                const returnData: INodePropertyOptions[] = [];
+                returnData.push({
+                    name: 'Use main layout',
+                    value: '',
+                });
+
                 let layouts;
                 try {
                     layouts = await layoutsApiRequest.call(this);
@@ -760,14 +782,16 @@ export class FileMaker implements INodeType {
 
         const credentials = this.getCredentials('FileMaker');
 
-        const action = this.getNodeParameter('action', 0) as string;
-
         if (credentials === undefined) {
             throw new Error('No credentials got returned!');
         }
-        const token = await getToken.call(this);
 
-        const staticData = this.getWorkflowStaticData('global');
+        let token;
+        try {
+            token = await getToken.call(this);
+        } catch (e) {
+            throw new Error(`Login fail: ${e}`);
+        }
 
         let requestOptions: OptionsWithUri;
 
@@ -775,6 +799,8 @@ export class FileMaker implements INodeType {
         const database = credentials.db as string;
 
         const url = `https://${host}/fmi/data/v1`;
+
+        const action = this.getNodeParameter('action', 0) as string;
 
         for (let i = 0; i < items.length; i++) {
             // Reset all values
@@ -785,7 +811,6 @@ export class FileMaker implements INodeType {
                 },
                 method: 'GET',
                 json: true
-                //rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
             };
 
             const layout = this.getNodeParameter('layout', 0) as string;
@@ -802,10 +827,13 @@ export class FileMaker implements INodeType {
                 requestOptions.qs = {
                     '_offset': this.getNodeParameter('offset', 0),
                     '_limit': this.getNodeParameter('limit', 0),
-                    '_sort': JSON.stringify(parseSort.call(this)),
                     'portal': JSON.stringify(parsePortals.call(this)),
                     ...parseScripts.call(this)
                 };
+                const sort = parseSort.call(this);
+                if (sort) {
+                    requestOptions.body.sort = sort;
+                }
             } else if (action === 'find') {
                 requestOptions.uri = url + `/databases/${database}/layouts/${layout}/_find`;
                 requestOptions.method = 'POST';
@@ -823,7 +851,7 @@ export class FileMaker implements INodeType {
             } else if (action === 'create') {
                 requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
                 requestOptions.method = 'POST';
-                requestOptions.headers['Content-Type'] = 'application/json';
+                requestOptions.headers!['Content-Type'] = 'application/json';
 
                 //TODO: handle portalData
                 requestOptions.body = {
@@ -835,7 +863,7 @@ export class FileMaker implements INodeType {
                 const recid = this.getNodeParameter('recid', 0) as string;
                 requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
                 requestOptions.method = 'PATCH';
-                requestOptions.headers['Content-Type'] = 'application/json';
+                requestOptions.headers!['Content-Type'] = 'application/json';
 
                 //TODO: handle portalData
                 requestOptions.body = {
@@ -848,6 +876,21 @@ export class FileMaker implements INodeType {
                 requestOptions.uri = url + `/databases/${database}/layouts/${layout}/script/${scriptName}`;
                 requestOptions.qs = {
                     'script.param': this.getNodeParameter('scriptParam', 0),
+                };
+            } else if (action === 'duplicate') {
+                const recid = this.getNodeParameter('recid', 0) as string;
+                requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+                requestOptions.method = 'POST';
+                requestOptions.headers!['Content-Type'] = 'application/json';
+                requestOptions.qs = {
+                    ...parseScripts.call(this)
+                };
+            } else if (action === 'delete') {
+                const recid = this.getNodeParameter('recid', 0) as string;
+                requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+                requestOptions.method = 'DELETE';
+                requestOptions.qs = {
+                    ...parseScripts.call(this)
                 };
             } else {
                 throw new Error(`The action "${action}" is not implemented yet!`);
