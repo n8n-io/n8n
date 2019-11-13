@@ -303,9 +303,6 @@ export class Redis implements INodeType {
 				type = await clientType(keyName);
 			}
 
-			console.log(keyName + ': ' + type);
-
-
 			if (type === 'string') {
 				const clientGet = util.promisify(client.get).bind(client);
 				return await clientGet(keyName);
@@ -394,6 +391,7 @@ export class Redis implements INodeType {
 
 				} else if (['delete', 'get', 'keys', 'set'].includes(operation)) {
 					const items = this.getInputData();
+					const returnItems: INodeExecutionData[] = [];
 
 					let item: INodeExecutionData;
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -405,6 +403,7 @@ export class Redis implements INodeType {
 							const clientDel = util.promisify(client.del).bind(client);
 							// @ts-ignore
 							await clientDel(keyDelete);
+							returnItems.push(items[itemIndex]);
 						} else if (operation === 'get') {
 							const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
 							const keyGet = this.getNodeParameter('key', itemIndex) as string;
@@ -412,6 +411,7 @@ export class Redis implements INodeType {
 
 							const value = await getValue(client, keyGet, keyType);
 							set(item.json, propertyName, value);
+							returnItems.push(item);
 						} else if (operation === 'keys') {
 							const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
 
@@ -424,23 +424,23 @@ export class Redis implements INodeType {
 
 							for (const keyName of keys) {
 								promises[keyName] = await getValue(client, keyName);
-								console.log(promises[keyName]);
-
 							}
 
 							for (const keyName of keys) {
 								set(item.json, keyName, await promises[keyName]);
 							}
+							returnItems.push(item);
 						} else if (operation === 'set') {
 							const keySet = this.getNodeParameter('key', itemIndex) as string;
 							const value = this.getNodeParameter('value', itemIndex) as string;
 							const keyType = this.getNodeParameter('keyType', itemIndex) as string;
 
 							await setValue(client, keySet, value, keyType);
+							returnItems.push(items[itemIndex]);
 						}
 					}
 
-					resolve(this.prepareOutputData(items));
+					resolve(this.prepareOutputData(returnItems));
 				}
 			});
 		});
