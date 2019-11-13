@@ -394,11 +394,7 @@ export class Redis implements INodeType {
 
 				} else if (['delete', 'get', 'keys', 'set'].includes(operation)) {
 					const items = this.getInputData();
-
-					let item: INodeExecutionData;
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-						item = { json: {} };
-
 						if (operation === 'delete') {
 							const keyDelete = this.getNodeParameter('key', itemIndex) as string;
 
@@ -411,7 +407,7 @@ export class Redis implements INodeType {
 							const keyType = this.getNodeParameter('keyType', itemIndex) as string;
 
 							const value = await getValue(client, keyGet, keyType);
-							set(item.json, propertyName, value);
+							set(items[itemIndex].json, propertyName, value);
 						} else if (operation === 'keys') {
 							const keyPattern = this.getNodeParameter('keyPattern', itemIndex) as string;
 
@@ -429,7 +425,7 @@ export class Redis implements INodeType {
 							}
 
 							for (const keyName of keys) {
-								set(item.json, keyName, await promises[keyName]);
+								set(items[itemIndex].json, keyName, await promises[keyName]);
 							}
 						} else if (operation === 'set') {
 							const keySet = this.getNodeParameter('key', itemIndex) as string;
