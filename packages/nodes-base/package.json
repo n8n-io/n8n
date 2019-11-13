@@ -51,6 +51,7 @@
             "dist/credentials/PipedriveApi.credentials.js",
             "dist/credentials/Postgres.credentials.js",
             "dist/credentials/Redis.credentials.js",
+            "dist/credentials/RocketchatApi.credentials.js",
             "dist/credentials/SlackApi.credentials.js",
             "dist/credentials/Smtp.credentials.js",
             "dist/credentials/StripeApi.credentials.js",
@@ -58,6 +59,9 @@
             "dist/credentials/TodoistApi.credentials.js",
             "dist/credentials/TrelloApi.credentials.js",
             "dist/credentials/TwilioApi.credentials.js",
+            "dist/credentials/TypeformApi.credentials.js",
+            "dist/credentials/MandrillApi.credentials.js",
+            "dist/credentials/TodoistApi.credentials.js",
             "dist/credentials/TypeformApi.credentials.js"
         ],
         "nodes": [
@@ -105,6 +109,7 @@
             "dist/nodes/Pipedrive/Pipedrive.node.js",
             "dist/nodes/Pipedrive/PipedriveTrigger.node.js",
             "dist/nodes/Postgres/Postgres.node.js",
+            "dist/nodes/Rocketchat/Rocketchat.node.js",
             "dist/nodes/ReadBinaryFile.node.js",
             "dist/nodes/ReadBinaryFiles.node.js",
             "dist/nodes/Redis/Redis.node.js",
@@ -126,6 +131,9 @@
             "dist/nodes/Typeform/TypeformTrigger.node.js",
             "dist/nodes/WriteBinaryFile.node.js",
             "dist/nodes/Webhook.node.js",
+            "dist/nodes/Xml.node.js",
+            "dist/nodes/Mandrill/Mandrill.node.js",
+            "dist/nodes/Todoist/Todoist.node.js",
             "dist/nodes/Xml.node.js"
         ]
     },
