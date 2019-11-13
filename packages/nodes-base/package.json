@@ -171,7 +171,7 @@
         "lodash.set": "^4.3.2",
         "lodash.unset": "^4.5.2",
         "mongodb": "^3.3.2",
-        "n8n-core": "~0.14.0",
+        "n8n-core": "~0.15.0",
         "nodemailer": "^5.1.1",
         "pdf-parse": "^1.1.1",
         "pg-promise": "^9.0.3",
