@@ -78,7 +78,7 @@ export class Rocketchat implements INodeType {
 						value: 'chat',
 					},
 				],
-				default: '',
+				default: 'chat',
 				description: 'The resource to operate on.',
 			},
 			{
@@ -99,7 +99,7 @@ export class Rocketchat implements INodeType {
 						description: 'Post a message to a channel or a direct message',
 					},
 				],
-				default: '',
+				default: 'postMessage',
 				description: 'The operation to perform.',
 			},
 			{
@@ -118,41 +118,7 @@ export class Rocketchat implements INodeType {
 					},
 				},
 				default: '',
-				description: 'TThe channel name with the prefix in front of it.',
-			},
-			{
-				displayName: 'Alias',
-				name: 'alias',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'chat',
-						],
-						operation: [
-							'postMessage'
-						]
-					},
-				},
-				default: '',
-				description: 'This will cause the message’s name to appear as the given alias, but your username will still display.',
-			},
-			{
-				displayName: 'Avatar',
-				name: 'avatar',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'chat',
-						],
-						operation: [
-							'postMessage'
-						]
-					},
-				},
-				default: '',
-				description: 'If provided, this will make the avatar use the provided image url.',
+				description: 'The channel name with the prefix in front of it.',
 			},
 			{
 				displayName: 'Text',
@@ -206,6 +172,20 @@ export class Rocketchat implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'Alias',
+						name: 'alias',
+						type: 'string',
+						default: '',
+						description: 'This will cause the message’s name to appear as the given alias, but your username will still display.',
+					},
+					{
+						displayName: 'Avatar',
+						name: 'avatar',
+						type: 'string',
+						default: '',
+						description: 'If provided, this will make the avatar use the provided image url.',
+					},
+					{
 						displayName: 'Emoji',
 						name: 'emoji',
 						type: 'string',
@@ -242,8 +222,8 @@ export class Rocketchat implements INodeType {
 					{
 						displayName: 'Color',
 						name: 'color',
-						type: 'string',
-						default: '',
+						type: 'color',
+						default: '#ff0000',
 						description: 'The color you want the order on the left side to be, any value background-css supports.',
 					},
 					{
@@ -424,19 +404,21 @@ export class Rocketchat implements INodeType {
 			//https://rocket.chat/docs/developer-guides/rest-api/chat/postmessage
 			if (opeation === 'postMessage') {
 				const channel = this.getNodeParameter('channel') as string;
-				const alias = this.getNodeParameter('alias') as string;
-				const avatar = this.getNodeParameter('avatar') as string;
 				const text = this.getNodeParameter('text') as string;
 				const options = this.getNodeParameter('options') as IDataObject;
 				const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
 
 				const body: IPostMessageBody = {
 					channel,
-					alias,
-					avatar,
 					text,
 				};
 
+				if (options.alias) {
+					body.alias = options.alias as string;
+				}
+				if (options.avatar) {
+					body.avatar = options.avatar as string;
+				}
 				if (options.emoji) {
 					body.emoji = options.emoji as string;
 				}
@@ -514,7 +496,7 @@ export class Rocketchat implements INodeType {
 				}
 			}
 		}
-		
+
 		return {
 			json: response
 		};
