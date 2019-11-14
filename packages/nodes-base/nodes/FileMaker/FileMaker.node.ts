@@ -889,7 +889,7 @@ export class FileMaker implements INodeType {
                 const recid = this.getNodeParameter('recid', 0) as string;
                 requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
                 requestOptions.method = 'DELETE';
-                requestOptions.qs = {
+				requestOptions.qs = {
                     ...parseScripts.call(this)
                 };
             } else {
