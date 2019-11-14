@@ -52,6 +52,7 @@
             "dist/credentials/MandrillApi.credentials.js",
             "dist/credentials/MattermostApi.credentials.js",
             "dist/credentials/MongoDb.credentials.js",
+            "dist/credentials/MySQL.credentials.js",
             "dist/credentials/NextCloudApi.credentials.js",
             "dist/credentials/OpenWeatherMapApi.credentials.js",
             "dist/credentials/PipedriveApi.credentials.js",
