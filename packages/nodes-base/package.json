@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-base",
-    "version": "0.29.0",
+    "version": "0.30.0",
     "description": "Base nodes of n8n",
     "license": "SEE LICENSE IN LICENSE.md",
     "homepage": "https://n8n.io",
@@ -52,6 +52,7 @@
             "dist/credentials/PipedriveApi.credentials.js",
             "dist/credentials/Postgres.credentials.js",
             "dist/credentials/Redis.credentials.js",
+            "dist/credentials/RocketchatApi.credentials.js",
             "dist/credentials/SlackApi.credentials.js",
             "dist/credentials/Smtp.credentials.js",
             "dist/credentials/StripeApi.credentials.js",
@@ -59,6 +60,9 @@
             "dist/credentials/TodoistApi.credentials.js",
             "dist/credentials/TrelloApi.credentials.js",
             "dist/credentials/TwilioApi.credentials.js",
+            "dist/credentials/TypeformApi.credentials.js",
+            "dist/credentials/MandrillApi.credentials.js",
+            "dist/credentials/TodoistApi.credentials.js",
             "dist/credentials/TypeformApi.credentials.js"
         ],
         "nodes": [
@@ -107,6 +111,7 @@
             "dist/nodes/Pipedrive/Pipedrive.node.js",
             "dist/nodes/Pipedrive/PipedriveTrigger.node.js",
             "dist/nodes/Postgres/Postgres.node.js",
+            "dist/nodes/Rocketchat/Rocketchat.node.js",
             "dist/nodes/ReadBinaryFile.node.js",
             "dist/nodes/ReadBinaryFiles.node.js",
             "dist/nodes/Redis/Redis.node.js",
@@ -128,6 +133,9 @@
             "dist/nodes/Typeform/TypeformTrigger.node.js",
             "dist/nodes/WriteBinaryFile.node.js",
             "dist/nodes/Webhook.node.js",
+            "dist/nodes/Xml.node.js",
+            "dist/nodes/Mandrill/Mandrill.node.js",
+            "dist/nodes/Todoist/Todoist.node.js",
             "dist/nodes/Xml.node.js"
         ]
     },
@@ -165,7 +173,7 @@
         "lodash.set": "^4.3.2",
         "lodash.unset": "^4.5.2",
         "mongodb": "^3.3.2",
-        "n8n-core": "~0.14.0",
+        "n8n-core": "~0.15.0",
         "nodemailer": "^5.1.1",
         "pdf-parse": "^1.1.1",
         "pg-promise": "^9.0.3",

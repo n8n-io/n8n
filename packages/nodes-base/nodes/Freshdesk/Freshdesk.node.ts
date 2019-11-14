@@ -36,7 +36,7 @@ enum Source {
 	Chat = 7,
 	Mobihelp = 8,
 	FeedbackWidget = 9,
-	OutboundEmail = 10
+	OutboundEmail = 10,
 }
 
 interface ICreateTicketBody {
@@ -683,6 +683,7 @@ export class Freshdesk implements INodeType {
 					// @ts-ignore
 					source: Source[capitalize(source)]
 				};
+
 				if (requester === 'requesterId') {
 					// @ts-ignore
 					if (isNaN(value)) {
