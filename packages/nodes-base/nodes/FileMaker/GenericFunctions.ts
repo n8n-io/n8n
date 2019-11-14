@@ -9,7 +9,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import {OptionsWithUri} from 'request';
 import {Url} from "url";
 
 interface ScriptsOptions {
@@ -20,6 +20,7 @@ interface ScriptsOptions {
 	'script.presort'?: any; //tslint:disable-line:no-any
 	'script.presort.param'?: any; //tslint:disable-line:no-any
 }
+
 /**
  * Make an API request to ActiveCampaign
  *
@@ -269,12 +270,12 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 
 export function parseSort(this: IExecuteFunctions): object | null {
 	let sort;
-	const setSort =  this.getNodeParameter('setSort', 0, false);
+	const setSort = this.getNodeParameter('setSort', 0, false);
 	if (!setSort) {
 		sort = null;
 	} else {
 		sort = [];
-		const sortParametersUi =  this.getNodeParameter('sortParametersUi', 0, {}) as IDataObject;
+		const sortParametersUi = this.getNodeParameter('sortParametersUi', 0, {}) as IDataObject;
 		if (sortParametersUi.rules !== undefined) {
 			// @ts-ignore
 			for (const parameterData of sortParametersUi!.rules as IDataObject[]) {
@@ -291,9 +292,9 @@ export function parseSort(this: IExecuteFunctions): object | null {
 
 
 export function parseScripts(this: IExecuteFunctions): object | null {
-	const setScriptAfter =  this.getNodeParameter('setScriptAfter', 0, false);
-	const setScriptBefore =  this.getNodeParameter('setScriptBefore', 0, false);
-	const setScriptSort =  this.getNodeParameter('setScriptSort', 0, false);
+	const setScriptAfter = this.getNodeParameter('setScriptAfter', 0, false);
+	const setScriptBefore = this.getNodeParameter('setScriptBefore', 0, false);
+	const setScriptSort = this.getNodeParameter('setScriptSort', 0, false);
 
 	if (!setScriptAfter && setScriptBefore && setScriptSort) {
 		return {};
@@ -330,7 +331,7 @@ export function parsePortals(this: IExecuteFunctions): object | null {
 
 export function parseQuery(this: IExecuteFunctions): object | null {
 	let queries;
-	const queriesParamUi =  this.getNodeParameter('queries', 0, {}) as IDataObject;
+	const queriesParamUi = this.getNodeParameter('queries', 0, {}) as IDataObject;
 	if (queriesParamUi.query !== undefined) {
 		// @ts-ignore
 		queries = [];
@@ -341,7 +342,7 @@ export function parseQuery(this: IExecuteFunctions): object | null {
 			// @ts-ignore
 			for (const field of queryParam!.fields!.field as IDataObject[]) {
 				// @ts-ignore
-					query[field.name] =field!.value;
+				query[field.name] = field!.value;
 			}
 			queries.push(query);
 		}
@@ -354,13 +355,13 @@ export function parseQuery(this: IExecuteFunctions): object | null {
 
 export function parseFields(this: IExecuteFunctions): object | null {
 	let fieldData;
-	const fieldsParametersUi =  this.getNodeParameter('fieldsParametersUi', 0, {}) as IDataObject;
+	const fieldsParametersUi = this.getNodeParameter('fieldsParametersUi', 0, {}) as IDataObject;
 	if (fieldsParametersUi.fields !== undefined) {
 		// @ts-ignore
 		fieldData = {};
 		for (const field of fieldsParametersUi!.fields as IDataObject[]) {
 			// @ts-ignore
-			fieldData[field.name] =field!.value;
+			fieldData[field.name] = field!.value;
 		}
 	} else {
 		fieldData = null;
