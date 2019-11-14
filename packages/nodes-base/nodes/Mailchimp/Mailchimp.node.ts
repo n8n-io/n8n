@@ -374,7 +374,7 @@ export class Mailchimp implements INodeType {
 								name: 'name',
 								type: 'string',
 								required: true,
-								description: 'The tag used in Mailchimp campaigns and for the /members endpoint.',
+								description: 'Merge Field name',
 								default: ''
 							},
 							{
@@ -383,7 +383,7 @@ export class Mailchimp implements INodeType {
 								required: true,
 								type: 'string',
 								default: '',
-								description: 'The name of the merge field.',
+								description: 'Merge field value.',
 							},
 						],
 					},
