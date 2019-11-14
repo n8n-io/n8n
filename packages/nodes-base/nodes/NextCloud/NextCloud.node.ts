@@ -349,7 +349,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						binaryDataUpload: [
-							true
+							false
 						],
 						operation: [
 							'upload'
