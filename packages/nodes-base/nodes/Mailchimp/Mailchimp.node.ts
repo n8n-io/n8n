@@ -1,26 +1,27 @@
+import * as moment from 'moment';
+
 import {
 	IExecuteSingleFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
-	ILoadOptionsFunctions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import {
 	mailchimpApiRequest,
-	validateJSON
+	validateJSON,
 } from './GenericFunctions';
-import * as moment from 'moment';
 
 enum Status {
 	subscribe = 'subscribe',
 	unsubscribed = 'unsubscribe',
 	cleaned = 'cleaned',
 	pending = 'pending',
-	transactional = 'transactional'
+	transactional = 'transactional',
 }
 
 interface ILocation {
@@ -78,7 +79,7 @@ export class Mailchimp implements INodeType {
 						description: 'Add member to list',
 					},
 				],
-				default: '',
+				default: 'member',
 				required: true,
 				description: 'Resource to consume.',
 			},
@@ -101,7 +102,7 @@ export class Mailchimp implements INodeType {
 						description: 'Create a new member on list',
 					},
 				],
-				default: '',
+				default: 'create',
 				description: 'The operation to perform.',
 			},
 			{
@@ -114,7 +115,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -124,7 +125,7 @@ export class Mailchimp implements INodeType {
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists'
+				description: 'List of lists',
 			},
 			{
 				displayName: 'Email',
@@ -215,7 +216,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -298,12 +299,12 @@ export class Mailchimp implements INodeType {
 				name: 'locationFieldsUi',
 				type: 'fixedCollection',
 				placeholder: 'Add Location',
-				default: false,
+				default: {},
 				description: `Subscriber location information.n`,
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -324,7 +325,7 @@ export class Mailchimp implements INodeType {
 								type: 'string',
 								required: true,
 								description: 'The location latitude.',
-								default: ''
+								default: '',
 							},
 							{
 								displayName: 'Longitude',
@@ -332,7 +333,7 @@ export class Mailchimp implements INodeType {
 								type: 'string',
 								required: true,
 								description: 'The location longitude.',
-								default: ''
+								default: '',
 							},
 						],
 					}
@@ -343,7 +344,7 @@ export class Mailchimp implements INodeType {
 				name: 'mergeFieldsUi',
 				placeholder: 'Add Merge Fields',
 				type: 'fixedCollection',
-				default: '',
+				default: {},
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -366,19 +367,19 @@ export class Mailchimp implements INodeType {
 						name: 'mergeFieldsValues',
 						displayName: 'Field',
 						typeOptions: {
-							multipleValueButtonText: 'Add Field'
+							multipleValueButtonText: 'Add Field',
 						},
 						values: [
 							{
-								displayName: 'Merge Field Name',
+								displayName: 'Field Name',
 								name: 'name',
 								type: 'string',
 								required: true,
 								description: 'Merge Field name',
-								default: ''
+								default: '',
 							},
 							{
-								displayName: 'Merge Field Value',
+								displayName: 'Field Value',
 								name: 'value',
 								required: true,
 								type: 'string',
@@ -394,20 +395,20 @@ export class Mailchimp implements INodeType {
 				name: 'mergeFieldsJson',
 				type: 'json',
 				typeOptions: {
-					alwaysOpenEditWindow: true
+					alwaysOpenEditWindow: true,
 				},
 				default: '',
 				description: '',
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
 						],
 						jsonParameters: [
-							true
+							true,
 						],
 					},
 				},
@@ -417,20 +418,20 @@ export class Mailchimp implements INodeType {
 				name: 'locationJson',
 				type: 'json',
 				typeOptions: {
-					alwaysOpenEditWindow: true
+					alwaysOpenEditWindow: true,
 				},
 				default: '',
 				description: '',
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
 						],
 						jsonParameters: [
-							true
+							true,
 						],
 					},
 				},
@@ -441,7 +442,6 @@ export class Mailchimp implements INodeType {
 
 	methods = {
 		loadOptions: {
-
 
 			// Get all the available lists to display them to user so that he can
 			// select them easily
@@ -552,7 +552,7 @@ export class Mailchimp implements INodeType {
 			}
 		}
 		return {
-			json: response
+			json: response,
 		};
 	}
 }

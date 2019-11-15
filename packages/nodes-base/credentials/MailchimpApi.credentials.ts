@@ -13,11 +13,5 @@ export class MailchimpApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
-		{
-			displayName: 'Datacenter',
-			name: 'datacenter',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-		},
 	];
 }
