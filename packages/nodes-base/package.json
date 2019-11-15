@@ -152,7 +152,7 @@
         "@types/node": "^10.10.1",
         "@types/nodemailer": "^4.6.5",
         "@types/redis": "^2.8.11",
-        "@types/request-promise-native": "^1.0.15",
+        "@types/request-promise-native": "~1.0.15",
         "@types/xml2js": "^0.4.3",
         "gulp": "^4.0.0",
         "jest": "^24.9.0",
