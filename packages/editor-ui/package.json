@@ -71,7 +71,7 @@
     "typescript": "~3.5.2",
     "vue": "^2.6.9",
     "vue-cli-plugin-webpack-bundle-analyzer": "^1.3.0",
-    "vue-json-pretty": "^1.4.1",
+    "vue-json-viewer": "^2.2.8",
     "vue-prism-editor": "^0.3.0",
     "vue-router": "^3.0.6",
     "vue-template-compiler": "^2.5.17",
