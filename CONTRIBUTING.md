@@ -38,7 +38,7 @@ The most important directories:
  - [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
  - [/packages/node-dev](/packages/node-dev) - Simple CLI to create new n8n-nodes
  - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
- - [/packages/worflow](/packages/worflow) - Workflow code with interfaces which
+ - [/packages/worflow](/packages/workflow) - Workflow code with interfaces which
                                             get used by front- & backend
 
 
