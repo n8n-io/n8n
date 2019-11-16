@@ -9,6 +9,13 @@ import {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+import {
+	leadOpeations,
+	leadFields,
+} from './LeadDescription';
+import {
+	intercomApiRequest,
+} from './GenericFunctions';
 
 export class Intercom implements INodeType {
 
@@ -47,7 +54,35 @@ export class Intercom implements INodeType {
 				default: '',
 				description: 'Resource to consume.',
 			},
+			...leadOpeations,
+			...leadFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the available companies to display them to user so that he can
+			// select them easily
+			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let companies, response;
+				try {
+					response = await intercomApiRequest.call(this, '/companies', 'GET');
+				} catch (err) {
+					throw new Error(`Intercom Error: ${err}`);
+				}
+				companies = response.companies;
+				for (const company of companies) {
+					const companyName = company.name;
+					const companyId = company.id;
+					returnData.push({
+						name: companyName,
+						value: companyId,
+					});
+				}
+				return returnData;
+			}
+		},
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
