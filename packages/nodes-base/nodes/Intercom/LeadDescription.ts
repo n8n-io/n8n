@@ -125,7 +125,31 @@ export const leadFields = [
 	},
 	{
 		displayName: 'Custom Attributes',
-		name: 'customAttributes',
+		name: 'customAttributesJson',
+		type: 'json',
+		required: false,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'create',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		default: '',
+		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
+	},
+	{
+		displayName: 'Custom Attributes',
+		name: 'customAttributesUi',
 		type: 'fixedCollection',
 		default: '',
 		placeholder: 'Add Attribute',

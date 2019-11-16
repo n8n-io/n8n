@@ -15,7 +15,12 @@ import {
 } from './LeadDescription';
 import {
 	intercomApiRequest,
+	validateJSON,
 } from './GenericFunctions';
+import {
+	ILead,
+	ILeadCompany
+ } from './LeadInterface';
 
 export class Intercom implements INodeType {
 
@@ -74,7 +79,7 @@ export class Intercom implements INodeType {
 				companies = response.companies;
 				for (const company of companies) {
 					const companyName = company.name;
-					const companyId = company.id;
+					const companyId = company.company_id;
 					returnData.push({
 						name: companyName,
 						value: companyId,
@@ -86,9 +91,67 @@ export class Intercom implements INodeType {
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-
+		const resource = this.getNodeParameter('resource') as string;
+		const opeation = this.getNodeParameter('operation') as string;
+		let response;
+		if (resource === 'lead') {
+			if (opeation === 'create') {
+				const email = this.getNodeParameter('email') as string;
+				const options = this.getNodeParameter('options') as IDataObject;
+				const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
+				const body: ILead = {
+					email,
+				};
+				if (options.phone) {
+					body.phone = options.phone as string;
+				}
+				if (options.name) {
+					body.name = options.name as string;
+				}
+				if (options.name) {
+					body.name = options.name as string;
+				}
+				if (options.unsubscribedFromEmails) {
+					body.unsubscribed_from_emails = options.unsubscribedFromEmails as boolean;
+				}
+				if (options.updateLastRequestAt) {
+					body.update_last_request_at = options.updateLastRequestAt as boolean;
+				}
+				if (options.companies) {
+					const companies: ILeadCompany[] = [];
+					// @ts-ignore
+					options.companies.forEach( o => {
+						const company: ILeadCompany = {};
+						company.company_id = o;
+						companies.push(company);
+					});
+					body.companies = companies;
+				}
+				if (!jsonActive) {
+					const customAttributesValues = (this.getNodeParameter('customAttributesUi') as IDataObject).customAttributesValues as IDataObject[];
+					if (customAttributesValues) {
+						const customAttributes = {};
+						for (let i = 0; i < customAttributesValues.length; i++) {
+							// @ts-ignore
+							customAttributes[customAttributesValues[i].name] = customAttributesValues[i].value;
+						}
+						body.custom_attributes = customAttributes;
+					}
+				} else {
+					const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson') as string);
+					if (customAttributesJson) {
+						body.custom_attributes = customAttributesJson;
+					}
+				}
+				try {
+					response = await intercomApiRequest.call(this, '/contacts', 'POST', body);
+				} catch (err) {
+					throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
+				}
+			}
+		}
 		return {
-			json: {},
+			json: response,
 		};
 	}
 }
