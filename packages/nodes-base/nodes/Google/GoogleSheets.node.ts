@@ -81,7 +81,7 @@ export class GoogleSheets implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of the Google Sheet.',
+				description: 'The ID of the Google Sheet.<br />Found as part of the sheet URL https://docs.google.com/spreadsheets/d/{ID}/',
 			},
 			{
 				displayName: 'Range',
@@ -89,7 +89,7 @@ export class GoogleSheets implements INodeType {
 				type: 'string',
 				default: 'A:F',
 				required: true,
-				description: 'The columns to read and append data to.<br />If it contains multiple sheets it can also be<br />added like this: "MySheet!A:F"',
+				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.<br />If it contains multiple sheets it can also be<br />added like this: "MySheet!A:F"',
 			},
 
 			// ----------------------------------
@@ -208,7 +208,7 @@ export class GoogleSheets implements INodeType {
 					},
 				},
 				default: 0,
-				description: 'Index of the row which contains the key. Starts with 0.',
+				description: 'Index of the row which contains the keys. Starts at 0.<br />The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
 			},
 
 
