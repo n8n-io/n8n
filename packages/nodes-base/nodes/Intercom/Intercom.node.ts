@@ -108,9 +108,6 @@ export class Intercom implements INodeType {
 				if (options.name) {
 					body.name = options.name as string;
 				}
-				if (options.name) {
-					body.name = options.name as string;
-				}
 				if (options.unsubscribedFromEmails) {
 					body.unsubscribed_from_emails = options.unsubscribedFromEmails as boolean;
 				}
