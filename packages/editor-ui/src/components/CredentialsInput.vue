@@ -22,8 +22,12 @@
 			</el-tooltip>
 		</div>
 		<el-row v-for="parameter in credentialTypeData.properties" :key="parameter.name" class="parameter-wrapper">
-			<el-col :span="6">
+			<el-col :span="6" class="parameter-name">
 				{{parameter.displayName}}:
+				<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
+					<div slot="content" v-html="parameter.description"></div>
+					<font-awesome-icon icon="question-circle"/>
+				</el-tooltip>
 			</el-col>
 			<el-col :span="18">
 				<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" @valueChanged="valueChanged" />
@@ -299,6 +303,20 @@ export default mixins(
 
 	.parameter-wrapper {
 		line-height: 3em;
+
+		.parameter-name {
+			position: relative;
+
+			&:hover {
+				.parameter-info {
+					display: inline;
+				}
+			}
+
+			.parameter-info {
+				display: none;
+			}
+		}
 	}
 
 	.credentials-info {
