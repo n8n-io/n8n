@@ -135,6 +135,15 @@ Method get called when the workflow gets executed
  - `execute`: Executed once no matter how many items
  - `executeSingle`: Executed once for every item
 
+By default always `execute` should be used especially when creating a
+third-party integration. The reason for that is that it is way more flexible
+and allows to, for example, return a different amount of items than it received
+as input. This is very important when a node should query data like return
+all users. In that case, does the node normally just receive one input-item
+but returns as many as users exist. So in doubt always `execute` should be
+used!
+
+
 **Trigger node**
 
 Method gets called once when the workflow gets activated. It can then trigger
