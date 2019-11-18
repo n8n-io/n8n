@@ -1,5 +1,5 @@
 import {
-	IExecuteSingleFunctions,
+	IExecuteFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
@@ -90,65 +90,73 @@ export class Intercom implements INodeType {
 		},
 	};
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		const resource = this.getNodeParameter('resource') as string;
-		const opeation = this.getNodeParameter('operation') as string;
-		let response;
-		if (resource === 'lead') {
-			if (opeation === 'create') {
-				const email = this.getNodeParameter('email') as string;
-				const options = this.getNodeParameter('options') as IDataObject;
-				const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
-				const body: ILead = {
-					email,
-				};
-				if (options.phone) {
-					body.phone = options.phone as string;
-				}
-				if (options.name) {
-					body.name = options.name as string;
-				}
-				if (options.unsubscribedFromEmails) {
-					body.unsubscribed_from_emails = options.unsubscribedFromEmails as boolean;
-				}
-				if (options.updateLastRequestAt) {
-					body.update_last_request_at = options.updateLastRequestAt as boolean;
-				}
-				if (options.companies) {
-					const companies: ILeadCompany[] = [];
-					// @ts-ignore
-					options.companies.forEach( o => {
-						const company: ILeadCompany = {};
-						company.company_id = o;
-						companies.push(company);
-					});
-					body.companies = companies;
-				}
-				if (!jsonActive) {
-					const customAttributesValues = (this.getNodeParameter('customAttributesUi') as IDataObject).customAttributesValues as IDataObject[];
-					if (customAttributesValues) {
-						const customAttributes = {};
-						for (let i = 0; i < customAttributesValues.length; i++) {
-							// @ts-ignore
-							customAttributes[customAttributesValues[i].name] = customAttributesValues[i].value;
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: IDataObject[] = [];
+		const length = items.length as unknown as number;
+		let responseData;
+		for (let i = 0; i < length; i++) {
+			const resource = this.getNodeParameter('resource', 0) as string;
+			const opeation = this.getNodeParameter('operation', 0) as string;
+			if (resource === 'lead') {
+				if (opeation === 'create') {
+					const email = this.getNodeParameter('email', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const body: ILead = {
+						email,
+					};
+					if (options.phone) {
+						body.phone = options.phone as string;
+					}
+					if (options.name) {
+						body.name = options.name as string;
+					}
+					if (options.unsubscribedFromEmails) {
+						body.unsubscribed_from_emails = options.unsubscribedFromEmails as boolean;
+					}
+					if (options.updateLastRequestAt) {
+						body.update_last_request_at = options.updateLastRequestAt as boolean;
+					}
+					if (options.companies) {
+						const companies: ILeadCompany[] = [];
+						// @ts-ignore
+						options.companies.forEach( o => {
+							const company: ILeadCompany = {};
+							company.company_id = o;
+							companies.push(company);
+						});
+						body.companies = companies;
+					}
+					if (!jsonActive) {
+						const customAttributesValues = (this.getNodeParameter('customAttributesUi', i) as IDataObject).customAttributesValues as IDataObject[];
+						if (customAttributesValues) {
+							const customAttributes = {};
+							for (let i = 0; i < customAttributesValues.length; i++) {
+								// @ts-ignore
+								customAttributes[customAttributesValues[i].name] = customAttributesValues[i].value;
+							}
+							body.custom_attributes = customAttributes;
 						}
-						body.custom_attributes = customAttributes;
+					} else {
+						const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson', i) as string);
+						if (customAttributesJson) {
+							body.custom_attributes = customAttributesJson;
+						}
 					}
-				} else {
-					const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson') as string);
-					if (customAttributesJson) {
-						body.custom_attributes = customAttributesJson;
+					try {
+						responseData = await intercomApiRequest.call(this, '/contacts', 'POST', body);
+					} catch (err) {
+						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
-				}
-				try {
-					response = await intercomApiRequest.call(this, '/contacts', 'POST', body);
-				} catch (err) {
-					throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 				}
 			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
+			}
 		}
-		return {
-			json: response,
-		};
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
