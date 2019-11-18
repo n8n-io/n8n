@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Feature request
+    url: https://community.n8n.io
+    about: Suggest an idea for this project
+  - name: Question / Problem
+    url: https://community.n8n.io
+    about: Questions and problems with n8n
