@@ -97,9 +97,9 @@ export class Intercom implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			const resource = this.getNodeParameter('resource', 0) as string;
-			const opeation = this.getNodeParameter('operation', 0) as string;
+			const operation = this.getNodeParameter('operation', 0) as string;
 			if (resource === 'lead') {
-				if (opeation === 'create') {
+				if (operation === 'create' || operation === 'update') {
 					const email = this.getNodeParameter('email', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
@@ -142,6 +142,16 @@ export class Intercom implements INodeType {
 						const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson', i) as string);
 						if (customAttributesJson) {
 							body.custom_attributes = customAttributesJson;
+						}
+					}
+					if (operation === 'update') {
+						const updateBy = this.getNodeParameter('updateBy', 0) as string;
+						const value = this.getNodeParameter('value', i) as string;
+						if (updateBy === 'userId') {
+							body.user_id = value;
+						}
+						if (updateBy === 'id') {
+							body.id = value;
 						}
 					}
 					try {
