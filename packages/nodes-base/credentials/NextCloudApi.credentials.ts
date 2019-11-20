@@ -12,15 +12,14 @@ export class NextCloudApi implements ICredentialType {
 			displayName: 'Web DAV URL',
 			name: 'webDavUrl',
 			type: 'string' as NodePropertyTypes,
+			placeholder: 'https://nextcloud.exampl.com/remote.php/webdav/',
 			default: '',
-
 		},
 		{
 			displayName: 'User',
 			name: 'user',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-
 		},
 		{
 			displayName: 'Password',
