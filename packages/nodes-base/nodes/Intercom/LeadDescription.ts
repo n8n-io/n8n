@@ -18,6 +18,11 @@ export const leadOpeations = [
 				value: 'create',
 				description: 'Create a new lead',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a new lead',
+			},
 		],
 		default: '',
 		description: 'The operation to perform.',
@@ -25,6 +30,55 @@ export const leadOpeations = [
 ] as INodeProperties[];
 
 export const leadFields = [
+	{
+		displayName: 'Update By',
+		name: 'updateBy',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'User Id',
+				value: 'userId',
+				default: '',
+				description: 'Automatically generated identifier for the Lead',
+			},
+			{
+				name: 'Id',
+				value: 'id',
+				default: '',
+				description: 'The Intercom defined id representing the Lead',
+			},
+		],
+		default: '',
+		description: 'Update by',
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		description: 'Update by value',
+	},
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -44,6 +98,24 @@ export const leadFields = [
 		description: 'The email of the user.',
 	},
 	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		required: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		description: 'The email of the user.',
+	},
+	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
@@ -53,6 +125,7 @@ export const leadFields = [
 			show: {
 				operation: [
 					'create',
+					'update',
 				],
 				resource: [
 					'lead'
@@ -70,6 +143,7 @@ export const leadFields = [
 			show: {
 				operation: [
 					'create',
+					'update',
 				],
 				resource: [
 					'lead'
@@ -82,7 +156,6 @@ export const leadFields = [
 				name: 'phone',
 				type: 'string',
 				default: '',
-				required: false,
 				description: 'The phone number of the user',
 			},
 			{
@@ -107,7 +180,6 @@ export const leadFields = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				required: false,
 				description: `A boolean value, which if true, instructs Intercom to update the users' last_request_at value to the current API service time in UTC. default value if not sent is false.`,
 			},
 			{
@@ -118,7 +190,6 @@ export const leadFields = [
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				required: false,
 				description: 'Identifies the companies this user belongs to.',
 			},
 		]
@@ -138,6 +209,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'update',
 				],
 				jsonParameters: [
 					true,
@@ -164,6 +236,7 @@ export const leadFields = [
 				],
 				operation: [
 					'create',
+					'update',
 				],
 				jsonParameters: [
 					false,
