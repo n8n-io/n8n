@@ -5,6 +5,8 @@ export interface ILeadCompany {
 }
 
 export interface ILead {
+	user_id?: string;
+	id?: string;
 	email: string;
 	phone?: string;
 	name?: string;
