@@ -9,7 +9,6 @@ import {
 
 export async function intercomApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('intercomApi');
-
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}

@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const leadOpeations = [
+export const userOpeations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,7 +8,7 @@ export const leadOpeations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
 				],
 			},
 		},
@@ -16,27 +16,27 @@ export const leadOpeations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new lead',
+				description: 'Create a new user',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update new lead',
+				description: 'Update a user',
 			},
 			{
 				name: 'View',
 				value: 'view',
-				description: 'View a lead',
+				description: 'View a user',
 			},
 			{
 				name: 'List',
 				value: 'list',
-				description: 'List leads',
+				description: 'List users',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a lead',
+				description: 'Delete a user',
 			}
 		],
 		default: '',
@@ -44,123 +44,33 @@ export const leadOpeations = [
 	},
 ] as INodeProperties[];
 
-export const leadFields = [
+export const userFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                 lead:delete                                */
+/*                                 user:delete                                */
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Delete By',
-		name: 'deleteBy',
-		type: 'options',
+		displayName: 'ID',
+		name: 'id',
+		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
 				],
 				operation: [
 					'delete',
 				],
 			},
 		},
-		options: [
-			{
-				name: 'ID',
-				value: 'id',
-				default: '',
-				description: 'The Intercom defined id representing the Lead',
-			},
-			{
-				name: 'User ID',
-				value: 'userId',
-				default: '',
-				description: 'Automatically generated identifier for the Lead',
-			},
-		],
 		default: '',
-		description: 'Delete by'
-	},
-	{
-		displayName: 'Value',
-		name: 'value',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'delete',
-				],
-			},
-		},
-		description: 'Delete by value',
+		description: 'The Intercom defined id representing the Lead',
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                  lead:view                                 */
-/* -------------------------------------------------------------------------- */
-
-	{
-		displayName: 'View By',
-		name: 'viewBy',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'view',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'ID',
-				value: 'id',
-				default: '',
-				description: 'The Intercom defined id representing the Lead',
-			},
-			{
-				name: 'User ID',
-				value: 'userId',
-				default: '',
-				description: 'Automatically generated identifier for the Lead',
-			},
-			{
-				name: 'Phone',
-				value: 'phone',
-				default: '',
-				description: 'Phone representing the Lead',
-			},
-		],
-		default: '',
-		description: 'View by'
-	},
-	{
-		displayName: 'Value',
-		name: 'value',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'view',
-				],
-			},
-		},
-		description: 'View by value',
-	},
-
-/* -------------------------------------------------------------------------- */
-/*                                  lead:list                                 */
+/*                                  user:list                                 */
 /* -------------------------------------------------------------------------- */
 
 	{
@@ -170,7 +80,7 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
 				],
 				operation: [
 					'list',
@@ -185,16 +95,28 @@ export const leadFields = [
 				description: 'Email representing the Lead',
 			},
 			{
-				name: 'Phone',
-				value: 'phone',
+				name: 'Segment ID',
+				value: 'segmentId',
 				default: '',
-				description: 'Phone representing the Lead',
+				description: 'Segment representing the Lead',
+			},
+			{
+				name: 'Tag ID',
+				value: 'tagId',
+				default: '',
+				description: 'Tag representing the Lead',
+			},
+			{
+				name: 'Company ID',
+				value: 'companyId',
+				default: '',
+				description: 'Company representing the Lead',
 			},
 			{
 				name: 'All',
 				value: 'all',
 				default: '',
-				description: 'List all leads',
+				description: 'List all users',
 			},
 		],
 		default: '',
@@ -209,7 +131,7 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
 				],
 				operation: [
 					'list',
@@ -225,39 +147,39 @@ export const leadFields = [
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                 lead:update                                */
+/*                                  view:user                                 */
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Update By',
-		name: 'updateBy',
+		displayName: 'View By',
+		name: 'viewBy',
 		type: 'options',
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
 				],
 				operation: [
-					'update',
+					'view',
 				],
 			},
 		},
 		options: [
-			{
-				name: 'User ID',
-				value: 'userId',
-				default: '',
-				description: 'Automatically generated identifier for the Lead',
-			},
 			{
 				name: 'ID',
 				value: 'id',
 				default: '',
 				description: 'The Intercom defined id representing the Lead',
 			},
+			{
+				name: 'User ID',
+				value: 'userId',
+				default: '',
+				description: 'Automatically generated identifier for the Lead',
+			},
 		],
 		default: '',
-		description: 'Update by',
+		description: 'View by'
 	},
 	{
 		displayName: 'Value',
@@ -268,55 +190,125 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
+				],
+				operation: [
+					'view',
+				],
+			},
+		},
+		description: 'View by value',
+	},
+
+/* -------------------------------------------------------------------------- */
+/*                                 user:update                                */
+/* -------------------------------------------------------------------------- */
+
+	{
+		displayName: 'Id',
+		name: 'id',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
 				],
 				operation: [
 					'update',
 				],
 			},
 		},
-		description: 'Update by value',
+		description: 'id is matched - the user_id and email will be updated if they are sent.',
 	},
-
-/* -------------------------------------------------------------------------- */
-/*                                 lead:create                                */
-/* -------------------------------------------------------------------------- */
-
+	{
+		displayName: 'User Id',
+		name: 'userId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		description: 'user_id match - the email will be updated, the id is not updated.',
+	},
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
 		default: '',
-		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		description: `email match where no user_id set on the matching user - the user_id will be set to the value sent in the request, the id is not updated.
+		email match where there is a user_id set on the matching user - a new unique record with new id will be created if a new value for user_id is sent in the request.`,
+	},
+
+/* -------------------------------------------------------------------------- */
+/*                                 user:create                                */
+/* -------------------------------------------------------------------------- */
+
+	{
+		displayName: 'Id',
+		name: 'id',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
 				],
 				operation: [
 					'create',
 				],
 			},
 		},
-		description: 'The email of the user.',
+		options: [
+			{
+				name: 'User Id',
+				value: 'userId',
+				default: '',
+				description: 'A unique string identifier for the user. It is required on creation if an email is not supplied.',
+			},
+			{
+				name: 'Email',
+				value: 'email',
+				default: '',
+				description: `The user's email address. It is required on creation if a user_id is not supplied.`,
+			},
+		],
+		default: '',
+		description: 'Unique string identifier',
 	},
 	{
-		displayName: 'Email',
-		name: 'email',
+		displayName: 'Value',
+		name: 'idValue',
 		type: 'string',
 		default: '',
-		required: false,
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
 				],
 				operation: [
-					'update',
+					'create',
 				],
 			},
 		},
-		description: 'The email of the user.',
+		description: 'Unique string identifier value',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -331,7 +323,7 @@ export const leadFields = [
 					'update',
 				],
 				resource: [
-					'lead'
+					'user'
 				],
 			},
 		},
@@ -349,7 +341,7 @@ export const leadFields = [
 					'update',
 				],
 				resource: [
-					'lead'
+					'user'
 				],
 			},
 		},
@@ -375,7 +367,7 @@ export const leadFields = [
 				type: 'boolean',
 				default: '',
 				placeholder: '',
-				description: 'Whether the Lead is unsubscribed from emails',
+				description: 'Whether the user is unsubscribed from emails',
 			},
 			{
 				displayName: 'Update Last Request At',
@@ -384,6 +376,14 @@ export const leadFields = [
 				default: false,
 				options: [],
 				description: `A boolean value, which if true, instructs Intercom to update the users' last_request_at value to the current API service time in UTC. default value if not sent is false.`,
+			},
+			{
+				displayName: 'Session Count',
+				name: 'sessionCount',
+				type: 'number',
+				default: false,
+				options: [],
+				description: `How many sessions the user has recorded`,
 			},
 			{
 				displayName: 'Companies',
@@ -450,7 +450,7 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
 				],
 				operation: [
 					'create',
@@ -477,7 +477,7 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'user',
 				],
 				operation: [
 					'create',
