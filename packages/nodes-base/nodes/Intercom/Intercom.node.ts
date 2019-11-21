@@ -508,7 +508,7 @@ export class Intercom implements INodeType {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
-				if (operation === 'companyUsers') {
+				if (operation === 'users') {
 					let query = '';
 					const listBy = this.getNodeParameter('listBy', 0) as string;
 					const value = this.getNodeParameter('value', i) as string;
