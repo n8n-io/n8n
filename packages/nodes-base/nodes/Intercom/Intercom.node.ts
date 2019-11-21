@@ -170,18 +170,6 @@ export class Intercom implements INodeType {
 						});
 						body.companies = companies;
 					}
-					// console.log(options.segments)
-					// if (options.segments) {
-					// 	const segments: ISegment[] = [];
-					// 	// @ts-ignore
-					// 	options.segments.forEach( o => {
-					// 		const segment: ISegment = {};
-					// 		segment.id = o;
-					// 		segment.type = 'segment';
-					// 		segments.push(segment);
-					// 	});
-					// 	body.segments = { segments };
-					// }
 					if (!jsonActive) {
 						const customAttributesValues = (this.getNodeParameter('customAttributesUi', i) as IDataObject).customAttributesValues as IDataObject[];
 						if (customAttributesValues) {
@@ -192,25 +180,7 @@ export class Intercom implements INodeType {
 							}
 							body.custom_attributes = customAttributes;
 						}
-						// const socialProfilesValues = (this.getNodeParameter('socialProfilesUi', i) as IDataObject).socialProfilesValues as IDataObject[];
-						// if (socialProfilesValues && socialProfilesValues.length > 0) {
-						// 	const socialProfiles: ISocialProfile[] = [];
-						// 	socialProfilesValues.forEach( o => {
-						// 		const socialProfile: ISocialProfile = {};
-						// 		socialProfile.name = o.name as string;
-						// 		socialProfile.type = 'social_profile';
-						// 		socialProfile.username = o.username as string;
-						// 		socialProfile.url = o.url as string;
-						// 		socialProfile.id = o.id as string;
-						// 		socialProfiles.push(socialProfile);
-						// 	});
-						// 	body.social_profiles = socialProfiles;
-						// }
 					} else {
-						// const  socialProfilesJson = validateJSON(this.getNodeParameter('socialProfilesJson', i) as string);
-						// if (socialProfilesJson) {
-						// 	body.social_profiles = socialProfilesJson;
-						// }
 						const customAttributesJson = validateJSON(this.getNodeParameter('customAttributesJson', i) as string);
 						if (customAttributesJson) {
 							body.custom_attributes = customAttributesJson;
