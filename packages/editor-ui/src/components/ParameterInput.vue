@@ -326,11 +326,20 @@ export default mixins(
 					// and the error is not displayed on the node in the workflow
 					const validOptions = this.parameterOptions!.map((options: INodePropertyOptions) => options.value);
 
-					if (this.displayValue === null || !validOptions.includes(this.displayValue as string)) {
-						if (issues.parameters === undefined) {
-							issues.parameters = {};
+					const checkValues: string[] = [];
+					if (Array.isArray(this.displayValue)) {
+						checkValues.push.apply(checkValues, this.displayValue);
+					} else {
+						checkValues.push(this.displayValue as string);
+					}
+
+					for (const checkValue of checkValues) {
+						if (checkValue === null || !validOptions.includes(checkValue)) {
+							if (issues.parameters === undefined) {
+								issues.parameters = {};
+							}
+							issues.parameters[this.parameter.name] = [`The value "${checkValue}" is not supported!`];
 						}
-						issues.parameters[this.parameter.name] = [`The value "${this.displayValue}" is not supported!`];
 					}
 				} else if (this.remoteParameterOptionsLoadingIssues !== null) {
 					if (issues.parameters === undefined) {
