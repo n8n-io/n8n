@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const leadOpeations = [
+export const companyOpeations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,7 +8,7 @@ export const leadOpeations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'company',
 				],
 			},
 		},
@@ -16,185 +16,66 @@ export const leadOpeations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new lead',
+				description: 'Create a new company',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update new lead',
+				description: 'Update a company',
 			},
 			{
 				name: 'View',
 				value: 'view',
-				description: 'View a lead',
+				description: 'View a company',
 			},
 			{
 				name: 'List',
 				value: 'list',
-				description: 'List leads',
+				description: 'List companies',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a lead',
-			}
+				name: 'Company Users',
+				value: 'companyUsers',
+				description: `List company's users`,
+			},
 		],
 		default: '',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
-export const leadFields = [
+export const companyFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                 lead:delete                                */
-/* -------------------------------------------------------------------------- */
-
-	{
-		displayName: 'Delete By',
-		name: 'deleteBy',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'delete',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'ID',
-				value: 'id',
-				default: '',
-				description: 'The Intercom defined id representing the Lead',
-			},
-			{
-				name: 'User ID',
-				value: 'userId',
-				default: '',
-				description: 'Automatically generated identifier for the Lead',
-			},
-		],
-		default: '',
-		description: 'Delete by'
-	},
-	{
-		displayName: 'Value',
-		name: 'value',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'delete',
-				],
-			},
-		},
-		description: 'Delete by value',
-	},
-
-/* -------------------------------------------------------------------------- */
-/*                                  lead:view                                 */
+/*                            company:companyUsers                            */
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'View By',
-		name: 'viewBy',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'view',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'ID',
-				value: 'id',
-				default: '',
-				description: 'The Intercom defined id representing the Lead',
-			},
-			{
-				name: 'User ID',
-				value: 'userId',
-				default: '',
-				description: 'Automatically generated identifier for the Lead',
-			},
-			{
-				name: 'Phone',
-				value: 'phone',
-				default: '',
-				description: 'Phone representing the Lead',
-			},
-		],
-		default: '',
-		description: 'View by'
-	},
-	{
-		displayName: 'Value',
-		name: 'value',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'view',
-				],
-			},
-		},
-		description: 'View by value',
-	},
-
-/* -------------------------------------------------------------------------- */
-/*                                  lead:list                                 */
-/* -------------------------------------------------------------------------- */
-
-	{
-		displayName: 'List by',
+		displayName: 'List By',
 		name: 'listBy',
 		type: 'options',
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'company',
 				],
 				operation: [
-					'list',
+					'companyUsers',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Email',
-				value: 'email',
+				name: 'ID',
+				value: 'id',
 				default: '',
-				description: 'Email representing the Lead',
+				description: 'The Intercom defined id representing the company',
 			},
 			{
-				name: 'Phone',
-				value: 'phone',
+				name: 'Company ID',
+				value: 'companyId',
 				default: '',
-				description: 'Phone representing the Lead',
-			},
-			{
-				name: 'All',
-				value: 'all',
-				default: '',
-				description: 'List all leads',
+				description: 'The company_id you have given to the company',
 			},
 		],
 		default: '',
@@ -209,7 +90,66 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'company',
+				],
+				operation: [
+					'companyUsers',
+				],
+			},
+		},
+		description: 'View by value',
+	},
+/* -------------------------------------------------------------------------- */
+/*                                company:list                                */
+/* -------------------------------------------------------------------------- */
+
+	{
+		displayName: 'List by',
+		name: 'listBy',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'list',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Segment ID',
+				value: 'segmentId',
+				default: '',
+				description: 'Segment representing the Lead',
+			},
+			{
+				name: 'Tag ID',
+				value: 'tagId',
+				default: '',
+				description: 'Tag representing the Lead',
+			},
+			{
+				name: 'All',
+				value: 'all',
+				default: '',
+				description: 'List all users',
+			},
+		],
+		default: '',
+		description: 'List by'
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
 				],
 				operation: [
 					'list',
@@ -225,39 +165,45 @@ export const leadFields = [
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                 lead:update                                */
+/*                                company:view                                */
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Update By',
-		name: 'updateBy',
+		displayName: 'View By',
+		name: 'viewBy',
 		type: 'options',
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'company',
 				],
 				operation: [
-					'update',
+					'view',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'User ID',
-				value: 'userId',
-				default: '',
-				description: 'Automatically generated identifier for the Lead',
-			},
-			{
 				name: 'ID',
 				value: 'id',
 				default: '',
-				description: 'The Intercom defined id representing the Lead',
+				description: 'The Intercom defined id representing the company',
+			},
+			{
+				name: 'Company ID',
+				value: 'companyId',
+				default: '',
+				description: 'The company_id you have given to the company',
+			},
+			{
+				name: 'Name',
+				value: 'name',
+				default: '',
+				description: 'The name of the company',
 			},
 		],
 		default: '',
-		description: 'Update by',
+		description: 'View by'
 	},
 	{
 		displayName: 'Value',
@@ -268,55 +214,37 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'company',
 				],
 				operation: [
-					'update',
+					'view',
 				],
 			},
 		},
-		description: 'Update by value',
+		description: 'View by value',
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                 lead:create                                */
+/*                            company:create/update                           */
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Email',
-		name: 'email',
+		displayName: 'Company Id',
+		name: 'companyId',
 		type: 'string',
 		default: '',
-		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'company',
 				],
 				operation: [
 					'create',
+					'update'
 				],
 			},
 		},
-		description: 'The email of the user.',
-	},
-	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		default: '',
-		required: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		description: 'The email of the user.',
+		description: 'The company id you have defined for the company',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -331,7 +259,7 @@ export const leadFields = [
 					'update',
 				],
 				resource: [
-					'lead'
+					'company'
 				],
 			},
 		},
@@ -349,14 +277,14 @@ export const leadFields = [
 					'update',
 				],
 				resource: [
-					'lead'
+					'company'
 				],
 			},
 		},
 		options: [
 			{
-				displayName: 'Phone',
-				name: 'phone',
+				displayName: 'Monthly Spend',
+				name: 'monthlySpend',
 				type: 'string',
 				default: '',
 				description: 'The phone number of the user',
@@ -370,72 +298,32 @@ export const leadFields = [
 				description: 'Name of the user',
 			},
 			{
-				displayName: 'Unsubscribed From Emails',
-				name: 'unsubscribedFromEmails',
-				type: 'boolean',
+				displayName: 'Plan',
+				name: 'plan',
+				type: 'string',
 				default: '',
 				placeholder: '',
-				description: 'Whether the Lead is unsubscribed from emails',
+				description: 'The name of the plan you have associated with the company',
 			},
 			{
-				displayName: 'Update Last Request At',
-				name: 'updateLastRequestAt',
-				type: 'boolean',
-				default: false,
-				options: [],
-				description: `A boolean value, which if true, instructs Intercom to update the users' last_request_at value to the current API service time in UTC. default value if not sent is false.`,
+				displayName: 'Size',
+				name: 'size',
+				type: 'number',
+				default: '',
+				description: 'The number of employees in this company',
 			},
 			{
-				displayName: 'Companies',
-				name: 'companies',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCompanies',
-				},
-				default: [],
-				description: 'Identifies the companies this user belongs to.',
-			},
-			{
-				displayName: 'Avatar',
-				name: 'avatar',
+				displayName: 'Website',
+				name: 'website',
 				type: 'string',
 				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
+				description: `The URL for this company's website. Please note that the value specified here is not validated. Accepts any string.`,
 			},
 			{
-				displayName: 'UTM Source',
-				name: 'utmSource',
+				displayName: 'Industry',
+				name: 'industry',
 				type: 'string',
-				default: '',
-				description: 'An avatar image URL. note: the image url needs to be https.',
-			},
-			{
-				displayName: 'UTM Medium',
-				name: 'utmMedium',
-				type: 'string',
-				default: '',
-				description: 'Identifies what type of link was used',
-			},
-			{
-				displayName: 'UTM Campaign',
-				name: 'utmCampaign',
-				type: 'string',
-				default: '',
-				description: 'Identifies a specific product promotion or strategic campaign',
-			},
-			{
-				displayName: 'UTM Term',
-				name: 'utmTerm',
-				type: 'string',
-				default: '',
-				description: 'Identifies search terms',
-			},
-			{
-				displayName: 'UTM Content',
-				name: 'utmContent',
-				type: 'string',
-				default: '',
-				description: 'Identifies what specifically was clicked to bring the user to the site',
+				description: 'The industry that this company operates in',
 			},
 		]
 	},
@@ -450,7 +338,7 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'company',
 				],
 				operation: [
 					'create',
@@ -477,7 +365,7 @@ export const leadFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'lead',
+					'company',
 				],
 				operation: [
 					'create',
