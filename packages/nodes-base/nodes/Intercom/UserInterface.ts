@@ -1,6 +1,6 @@
 import { IDataObject } from "n8n-workflow";
 
-export interface ILeadCompany {
+export interface IUserCompany {
 	company_id?: string;
 }
 
@@ -9,17 +9,20 @@ export interface IAvatar {
 	image_url?: string;
 }
 
-export interface ILead {
+export interface IUser {
 	user_id?: string;
 	id?: string;
 	email?: string;
 	phone?: string;
 	name?: string;
 	custom_attributes?: IDataObject;
-	companies?: ILeadCompany[];
+	companies?: IUserCompany[];
 	last_request_at?: number;
+	signed_up_at?: string;
 	unsubscribed_from_emails?: boolean;
 	update_last_request_at?: boolean;
+	last_seen_user_agent?: boolean;
+	session_count?: number;
 	avatar?: IAvatar;
 	utm_source?: string;
 	utm_medium?: string;
