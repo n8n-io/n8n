@@ -34,8 +34,8 @@ export const companyOpeations = [
 				description: 'List companies',
 			},
 			{
-				name: 'Company Users',
-				value: 'companyUsers',
+				name: 'Users',
+				value: 'users',
 				description: `List company's users`,
 			},
 		],
@@ -47,7 +47,7 @@ export const companyOpeations = [
 export const companyFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                            company:companyUsers                            */
+/*                                company:users                               */
 /* -------------------------------------------------------------------------- */
 
 	{
@@ -60,7 +60,7 @@ export const companyFields = [
 					'company',
 				],
 				operation: [
-					'companyUsers',
+					'users',
 				],
 			},
 		},
@@ -93,7 +93,7 @@ export const companyFields = [
 					'company',
 				],
 				operation: [
-					'companyUsers',
+					'users',
 				],
 			},
 		},
