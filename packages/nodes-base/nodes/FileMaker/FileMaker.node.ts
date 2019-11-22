@@ -1,6 +1,5 @@
 import {IExecuteFunctions} from 'n8n-core';
 import {
-	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData, INodePropertyOptions,
 	INodeType,
@@ -51,19 +50,19 @@ export class FileMaker implements INodeType {
 				default: 'record',
 				options: [
 					/*{
-                        name: 'Login',
-                        value: 'login',
-                    },
-                    {
-                        name: 'Logout',
-                        value: 'logout',
-                    },*/
+						name: 'Login',
+						value: 'login',
+					},
+					{
+						name: 'Logout',
+						value: 'logout',
+					},*/
 					{
 						name: 'Find Records',
 						value: 'find',
 					},
 					{
-						name: 'get Records',
+						name: 'Get Records',
 						value: 'records',
 					},
 					{
@@ -131,7 +130,7 @@ export class FileMaker implements INodeType {
 				description: 'Internal Record ID returned by get (recordid)',
 			},
 			{
-				displayName: 'offset',
+				displayName: 'Offset',
 				name: 'offset',
 				placeholder: '0',
 				description: 'The record number of the first record in the range of records.',
@@ -147,7 +146,7 @@ export class FileMaker implements INodeType {
 				}
 			},
 			{
-				displayName: 'limit',
+				displayName: 'Limit',
 				name: 'limit',
 				placeholder: '100',
 				description: 'The maximum number of records that should be returned. If not specified, the default value is 100.',
@@ -202,7 +201,7 @@ export class FileMaker implements INodeType {
 					},
 				},
 				placeholder: 'Portals',
-				description: 'The portal result set to return. Use the portal object name or portal table name. If this parameter is omitted, the API will return all portal objects and records in the layout. For best performance, pass the portal object name or portal table name.',
+				description: 'The portal result set to return. Use the portal object name or portal<br />table name. If this parameter is omitted, the API will return all<br />portal objects and records in the layout. For best performance<br />, pass the portal object name or portal table name.',
 			},
 			// ----------------------------------
 			//         find/records
@@ -294,7 +293,7 @@ export class FileMaker implements INodeType {
 				],
 			},
 			{
-				displayName: 'Sort data ?',
+				displayName: 'Sort data?',
 				name: 'setSort',
 				type: 'boolean',
 				default: false,
@@ -557,21 +556,21 @@ export class FileMaker implements INodeType {
 			//         create/edit
 			// ----------------------------------
 			/*{
-                displayName: 'fieldData',
-                name: 'fieldData',
-                placeholder: '{"field1": "value", "field2": "value", ...}',
-                description: 'Additional fields to add.',
-                type: 'string',
-                default: '{}',
-                displayOptions: {
-                    show: {
-                        action: [
-                            'create',
-                            'edit',
-                        ],
-                    },
-                }
-            },*/
+				displayName: 'fieldData',
+				name: 'fieldData',
+				placeholder: '{"field1": "value", "field2": "value", ...}',
+				description: 'Additional fields to add.',
+				type: 'string',
+				default: '{}',
+				displayOptions: {
+					show: {
+						action: [
+							'create',
+							'edit',
+						],
+					},
+				}
+			},*/
 			{
 				displayName: 'Mod Id',
 				name: 'modId',
@@ -779,7 +778,7 @@ export class FileMaker implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const credentials = this.getCredentials('FileMaker');
+		const credentials = this.getCredentials('fileMaker');
 
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
