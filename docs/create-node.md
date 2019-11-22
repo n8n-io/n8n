@@ -123,7 +123,7 @@ Some third-party services have their own libraries on npm which make it a little
 const response = await this.helpers.request(options);
 ```
 
-That is simply using the npm package `request-promise-native` which is the basic npm `request` module but with promises.
+That is simply using the npm package [`request-promise-native`](https://github.com/request/request-promise-native) which is the basic npm `request` module but with promises. For a full set of `options` consider looking at [the underlying `request` options documentation](https://github.com/request/request#requestoptions-callback).
 
 
 ### Reuse parameter names
