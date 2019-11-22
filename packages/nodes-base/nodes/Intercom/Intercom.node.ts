@@ -15,6 +15,7 @@ import {
 } from './LeadDescription';
 import {
 	intercomApiRequest,
+	intercomApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
 import {
@@ -24,7 +25,7 @@ import {
  } from './LeadInterface';
 import { userOpeations, userFields } from './UserDescription';
 import { IUser, IUserCompany } from './UserInterface';
-import { companyOpeations, companyFields } from './CompanyDescription';
+import { companyOperations, companyFields } from './CompanyDescription';
 import { ICompany } from './CompanyInteface';
 
 export class Intercom implements INodeType {
@@ -55,9 +56,9 @@ export class Intercom implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'User',
-						value: 'user',
-						description: 'The Users resource is the primary way of interacting with Intercom',
+						name: 'Company',
+						value: 'company',
+						description: 'Companies allow you to represent commercial organizations using your product.',
 					},
 					{
 						name: 'Lead',
@@ -65,17 +66,17 @@ export class Intercom implements INodeType {
 						description: 'Leads are useful for representing logged-out users of your application.',
 					},
 					{
-						name: 'Company',
-						value: 'company',
-						description: 'Companies allow you to represent commercial organizations using your product.',
+						name: 'User',
+						value: 'user',
+						description: 'The Users resource is the primary way of interacting with Intercom',
 					},
 				],
-				default: '',
+				default: 'user',
 				description: 'Resource to consume.',
 			},
 			...leadOpeations,
 			...userOpeations,
-			...companyOpeations,
+			...companyOperations,
 			...userFields,
 			...leadFields,
 			...companyFields,
@@ -112,58 +113,62 @@ export class Intercom implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
+		let qs: IDataObject;
 		let responseData;
 		for (let i = 0; i < length; i++) {
+			qs = {};
 			const resource = this.getNodeParameter('resource', 0) as string;
 			const operation = this.getNodeParameter('operation', 0) as string;
 			//https://developers.intercom.com/intercom-api-reference/reference#leads
 			if (resource === 'lead') {
 				if (operation === 'create' || operation === 'update') {
-					const email = this.getNodeParameter('email', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					const body: ILead = {};
-					if (email) {
+					if (operation === 'create') {
 						body.email = this.getNodeParameter('email', i) as string;
 					}
-					if (options.phone) {
-						body.phone = options.phone as string;
+					if (additionalFields.email) {
+						body.email = additionalFields.email as string;
 					}
-					if (options.name) {
-						body.name = options.name as string;
+					if (additionalFields.phone) {
+						body.phone = additionalFields.phone as string;
 					}
-					if (options.unsubscribedFromEmails) {
-						body.unsubscribed_from_emails = options.unsubscribedFromEmails as boolean;
+					if (additionalFields.name) {
+						body.name = additionalFields.name as string;
 					}
-					if (options.updateLastRequestAt) {
-						body.update_last_request_at = options.updateLastRequestAt as boolean;
+					if (additionalFields.unsubscribedFromEmails) {
+						body.unsubscribed_from_emails = additionalFields.unsubscribedFromEmails as boolean;
 					}
-					if (options.utmSource) {
-						body.utm_source = options.utmSource as string;
+					if (additionalFields.updateLastRequestAt) {
+						body.update_last_request_at = additionalFields.updateLastRequestAt as boolean;
 					}
-					if (options.utmMedium) {
-						body.utm_medium = options.utmMedium as string;
+					if (additionalFields.utmSource) {
+						body.utm_source = additionalFields.utmSource as string;
 					}
-					if (options.utmCampaign) {
-						body.utm_campaign = options.utmCampaign as string;
+					if (additionalFields.utmMedium) {
+						body.utm_medium = additionalFields.utmMedium as string;
 					}
-					if (options.utmTerm) {
-						body.utm_term = options.utmTerm as string;
+					if (additionalFields.utmCampaign) {
+						body.utm_campaign = additionalFields.utmCampaign as string;
 					}
-					if (options.utmContent) {
-						body.utm_content = options.utmContent as string;
+					if (additionalFields.utmTerm) {
+						body.utm_term = additionalFields.utmTerm as string;
 					}
-					if(options.avatar) {
+					if (additionalFields.utmContent) {
+						body.utm_content = additionalFields.utmContent as string;
+					}
+					if (additionalFields.avatar) {
 						const avatar: IAvatar = {
 							type: 'avatar',
-							image_url: options.avatar as string,
+							image_url: additionalFields.avatar as string,
 						};
 						body.avatar = avatar;
 					}
-					if (options.companies) {
+					if (additionalFields.companies) {
 						const companies: ILeadCompany[] = [];
 						// @ts-ignore
-						options.companies.forEach( o => {
+						additionalFields.companies.forEach( o => {
 							const company: ILeadCompany = {};
 							company.company_id = o;
 							companies.push(company);
@@ -186,6 +191,7 @@ export class Intercom implements INodeType {
 							body.custom_attributes = customAttributesJson;
 						}
 					}
+
 					if (operation === 'update') {
 						const updateBy = this.getNodeParameter('updateBy', 0) as string;
 						const value = this.getNodeParameter('value', i) as string;
@@ -196,43 +202,49 @@ export class Intercom implements INodeType {
 							body.id = value;
 						}
 					}
+
 					try {
 						responseData = await intercomApiRequest.call(this, '/contacts', 'POST', body);
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
-				if (operation === 'view') {
-					let query = '';
-					const viewBy = this.getNodeParameter('viewBy', 0) as string;
+				if (operation === 'get') {
+					const selectBy = this.getNodeParameter('selectBy', 0) as string;
 					const value = this.getNodeParameter('value', i) as string;
-					if (viewBy === 'userId') {
-						query = `user_id=${value}`;
+					if (selectBy === 'email') {
+						qs.email = value;
 					}
-					if (viewBy === 'phone') {
-						query = `phone=${value}`;
+					if (selectBy === 'userId') {
+						qs.user_id = value;
+					}
+					if (selectBy === 'phone') {
+						qs.phone = value;
 					}
 					try {
-					if (viewBy === 'id') {
-						responseData = await intercomApiRequest.call(this, `/contacts/${value}`, 'GET');
-					} else {
-						responseData = await intercomApiRequest.call(this, `/contacts?${query}`, 'GET');
-					}
+						if (selectBy === 'id') {
+							responseData = await intercomApiRequest.call(this, `/contacts/${value}`, 'GET');
+						} else {
+							responseData = await intercomApiRequest.call(this, '/contacts', 'GET', {}, qs);
+							responseData = responseData.contacts;
+						}
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
-				if (operation === 'list') {
-					let query = '';
-					const listBy = this.getNodeParameter('listBy', 0) as string;
-					if (listBy === 'email') {
-						query = `email=${this.getNodeParameter('value', i) as string}`;
-					}
-					if (listBy === 'phone') {
-						query = `phone=${this.getNodeParameter('value', i) as string}`;
-					}
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					Object.assign(qs, filters);
+
 					try {
-						responseData = await intercomApiRequest.call(this, `/contacts?${query}`, 'GET');
+						if (returnAll === true) {
+							responseData = await intercomApiRequestAllItems.call(this, 'contacts', '/contacts', 'GET', {}, qs);
+						} else {
+							qs.per_page = this.getNodeParameter('limit', i) as number;
+							responseData = await intercomApiRequest.call(this, '/contacts', 'GET', {}, qs);
+							responseData = responseData.contacts;
+						}
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
@@ -244,7 +256,8 @@ export class Intercom implements INodeType {
 						if (deleteBy === 'id') {
 							responseData = await intercomApiRequest.call(this, `/contacts/${value}`, 'DELETE');
 						} else {
-							responseData = await intercomApiRequest.call(this, `/contacts?user_id=${value}`, 'DELETE');
+							qs.user_id = value;
+							responseData = await intercomApiRequest.call(this, '/contacts', 'DELETE', {}, qs);
 						}
 						} catch (err) {
 							throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
@@ -254,65 +267,74 @@ export class Intercom implements INodeType {
 			//https://developers.intercom.com/intercom-api-reference/reference#users
 			if (resource === 'user') {
 				if (operation === 'create' || operation === 'update') {
-					const id = this.getNodeParameter('id', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					const body: IUser = {};
-					if (id === 'email') {
-						body.email =  this.getNodeParameter('idValue', i) as string;
+
+					if (operation === 'create') {
+						const identifierType = this.getNodeParameter('identifierType', i) as string;
+						if (identifierType === 'email') {
+							body.email = this.getNodeParameter('idValue', i) as string;
+						} else if (identifierType === 'userId') {
+							body.user_id = this.getNodeParameter('idValue', i) as string;
+						}
 					}
-					if (id === 'userId') {
-						body.user_id =  this.getNodeParameter('idValue', i) as string;
+
+					if (additionalFields.email) {
+						body.email = additionalFields.email as string;
 					}
-					if (options.phone) {
-						body.phone = options.phone as string;
+					if (additionalFields.userId) {
+						body.user_id = additionalFields.userId as string;
 					}
-					if (options.name) {
-						body.name = options.name as string;
+					if (additionalFields.phone) {
+						body.phone = additionalFields.phone as string;
 					}
-					if (options.unsubscribedFromEmails) {
-						body.unsubscribed_from_emails = options.unsubscribedFromEmails as boolean;
+					if (additionalFields.name) {
+						body.name = additionalFields.name as string;
 					}
-					if (options.updateLastRequestAt) {
-						body.update_last_request_at = options.updateLastRequestAt as boolean;
+					if (additionalFields.unsubscribedFromEmails) {
+						body.unsubscribed_from_emails = additionalFields.unsubscribedFromEmails as boolean;
 					}
-					if (options.sessionCount) {
-						body.session_count = options.sessionCount as number;
+					if (additionalFields.updateLastRequestAt) {
+						body.update_last_request_at = additionalFields.updateLastRequestAt as boolean;
 					}
-					if(options.avatar) {
+					if (additionalFields.sessionCount) {
+						body.session_count = additionalFields.sessionCount as number;
+					}
+					if (additionalFields.avatar) {
 						const avatar: IAvatar = {
 							type: 'avatar',
-							image_url: options.avatar as string,
+							image_url: additionalFields.avatar as string,
 						};
 						body.avatar = avatar;
 					}
-					if (options.utmSource) {
-						body.utm_source = options.utmSource as string;
+					if (additionalFields.utmSource) {
+						body.utm_source = additionalFields.utmSource as string;
 					}
-					if (options.utmMedium) {
-						body.utm_medium = options.utmMedium as string;
+					if (additionalFields.utmMedium) {
+						body.utm_medium = additionalFields.utmMedium as string;
 					}
-					if (options.utmCampaign) {
-						body.utm_campaign = options.utmCampaign as string;
+					if (additionalFields.utmCampaign) {
+						body.utm_campaign = additionalFields.utmCampaign as string;
 					}
-					if (options.utmTerm) {
-						body.utm_term = options.utmTerm as string;
+					if (additionalFields.utmTerm) {
+						body.utm_term = additionalFields.utmTerm as string;
 					}
-					if (options.utmContent) {
-						body.utm_content = options.utmContent as string;
+					if (additionalFields.utmContent) {
+						body.utm_content = additionalFields.utmContent as string;
 					}
-					if (options.companies) {
+					if (additionalFields.companies) {
 						const companies: IUserCompany[] = [];
 						// @ts-ignore
-						options.companies.forEach( o => {
+						additionalFields.companies.forEach( o => {
 							const company: IUserCompany = {};
 							company.company_id = o;
 							companies.push(company);
 						});
 						body.companies = companies;
 					}
-					if (options.sessionCount) {
-						body.session_count = options.sessionCount as number;
+					if (additionalFields.sessionCount) {
+						body.session_count = additionalFields.sessionCount as number;
 					}
 					if (!jsonActive) {
 						const customAttributesValues = (this.getNodeParameter('customAttributesUi', i) as IDataObject).customAttributesValues as IDataObject[];
@@ -330,57 +352,56 @@ export class Intercom implements INodeType {
 							body.custom_attributes = customAttributesJson;
 						}
 					}
+
 					if (operation === 'update') {
-						const id = this.getNodeParameter('id', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
-						const userId = this.getNodeParameter('userId', i) as string;
-						if (id) {
-							body.id = id;
+						const updateBy = this.getNodeParameter('updateBy', 0) as string;
+						const value = this.getNodeParameter('value', i) as string;
+						if (updateBy === 'userId') {
+							body.user_id = value;
 						}
-						if (email) {
-							body.email = email;
+						if (updateBy === 'id') {
+							body.id = value;
 						}
-						if (userId) {
-							body.user_id = userId;
+						if (updateBy === 'email') {
+							body.email = value;
 						}
 					}
+
 					try {
-						responseData = await intercomApiRequest.call(this, '/users', 'POST', body);
+						responseData = await intercomApiRequest.call(this, '/users', 'POST', body, qs);
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
-				if (operation === 'view') {
-					let query = '';
-					const viewBy = this.getNodeParameter('viewBy', 0) as string;
+				if (operation === 'get') {
+					const selectBy = this.getNodeParameter('selectBy', 0) as string;
 					const value = this.getNodeParameter('value', i) as string;
-					if (viewBy === 'userId') {
-						query = `user_id=${value}`;
+					if (selectBy === 'userId') {
+						qs.user_id = value;
 					}
 					try {
-					if (viewBy === 'id') {
-						responseData = await intercomApiRequest.call(this, `/users/${value}`, 'GET');
-					} else {
-						responseData = await intercomApiRequest.call(this, `/users?${query}`, 'GET');
-					}
+						if (selectBy === 'id') {
+							responseData = await intercomApiRequest.call(this, `/users/${value}`, 'GET', {}, qs);
+						} else {
+							responseData = await intercomApiRequest.call(this, '/users', 'GET', {}, qs);
+						}
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
-				if (operation === 'list') {
-					let query = '';
-					const listBy = this.getNodeParameter('listBy', 0) as string;
-					if (listBy === 'email') {
-						query = `email=${this.getNodeParameter('value', i) as string}`;
-					}
-					if (listBy === 'segmentId') {
-						query = `segment_id=${this.getNodeParameter('value', i) as string}`;
-					}
-					if (listBy === 'tagId') {
-						query = `tag_id=${this.getNodeParameter('value', i) as string}`;
-					}
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					Object.assign(qs, filters);
+
 					try {
-						responseData = await intercomApiRequest.call(this, `/users?${query}`, 'GET');
+						if (returnAll === true) {
+							responseData = await intercomApiRequestAllItems.call(this, 'users', '/users', 'GET', {}, qs);
+						} else {
+							qs.per_page = this.getNodeParameter('limit', i) as number;
+							responseData = await intercomApiRequest.call(this, '/users', 'GET', {}, qs);
+							responseData = responseData.users;
+						}
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
@@ -398,28 +419,28 @@ export class Intercom implements INodeType {
 			if (resource === 'company') {
 				if (operation === 'create' || operation === 'update') {
 					const id = this.getNodeParameter('companyId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					const body: ICompany = {
 						company_id: id,
 					};
-					if (options.monthlySpend) {
-						body.monthly_spend = options.monthlySpend as number;
+					if (additionalFields.monthlySpend) {
+						body.monthly_spend = additionalFields.monthlySpend as number;
 					}
-					if (options.name) {
-						body.name = options.name as string;
+					if (additionalFields.name) {
+						body.name = additionalFields.name as string;
 					}
-					if (options.plan) {
-						body.plan = options.plan as string;
+					if (additionalFields.plan) {
+						body.plan = additionalFields.plan as string;
 					}
-					if (options.size) {
-						body.size = options.size as number;
+					if (additionalFields.size) {
+						body.size = additionalFields.size as number;
 					}
-					if (options.website) {
-						body.website = options.website as string;
+					if (additionalFields.website) {
+						body.website = additionalFields.website as string;
 					}
-					if (options.industry) {
-						body.industry = options.industry as string;
+					if (additionalFields.industry) {
+						body.industry = additionalFields.industry as string;
 					}
 					if (!jsonActive) {
 						const customAttributesValues = (this.getNodeParameter('customAttributesUi', i) as IDataObject).customAttributesValues as IDataObject[];
@@ -438,58 +459,59 @@ export class Intercom implements INodeType {
 						}
 					}
 					try {
-						responseData = await intercomApiRequest.call(this, '/companies', 'POST', body);
+						responseData = await intercomApiRequest.call(this, '/companies', 'POST', body, qs);
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
-				if (operation === 'view') {
-					let query = '';
-					const viewBy = this.getNodeParameter('viewBy', 0) as string;
+				if (operation === 'get') {
+					const selectBy = this.getNodeParameter('selectBy', 0) as string;
 					const value = this.getNodeParameter('value', i) as string;
-					if (viewBy === 'companyId') {
-						query = `company_id=${value}`;
+					if (selectBy === 'companyId') {
+						qs.company_id = value;
 					}
-					if (viewBy === 'name') {
-						query = `name=${value}`;
+					if (selectBy === 'name') {
+						qs.name = value;
 					}
 					try {
-					if (viewBy === 'id') {
-						responseData = await intercomApiRequest.call(this, `/companies/${value}`, 'GET');
-					} else {
-						responseData = await intercomApiRequest.call(this, `/companies?${query}`, 'GET');
-					}
+						if (selectBy === 'id') {
+							responseData = await intercomApiRequest.call(this, `/companies/${value}`, 'GET', {}, qs);
+						} else {
+							responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
+						}
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
-				if (operation === 'list') {
-					let query = '';
-					const listBy = this.getNodeParameter('listBy', 0) as string;
-					if (listBy === 'segmentId') {
-						query = `segment_id=${this.getNodeParameter('value', i) as string}`;
-					}
-					if (listBy === 'tagId') {
-						query = `tag_id=${this.getNodeParameter('value', i) as string}`;
-					}
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					Object.assign(qs, filters);
+
 					try {
-						responseData = await intercomApiRequest.call(this, `/companies?${query}`, 'GET');
+						if (returnAll === true) {
+							responseData = await intercomApiRequestAllItems.call(this, 'companies', '/companies', 'GET', {}, qs);
+						} else {
+							qs.per_page = this.getNodeParameter('limit', i) as number;
+							responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
+							responseData = responseData.companies;
+						}
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'users') {
-					let query = '';
-					const listBy = this.getNodeParameter('listBy', 0) as string;
+					const filterBy = this.getNodeParameter('filterBy', 0) as string;
 					const value = this.getNodeParameter('value', i) as string;
-					if (listBy === 'companyId') {
-						query = `company_id=${value}`;
+					if (filterBy === 'companyId') {
+						qs.company_id = value;
 					}
 					try {
-						if (listBy === 'id') {
-							responseData = await intercomApiRequest.call(this, `/companies/${value}/users`, 'GET');
+						if (filterBy === 'id') {
+							responseData = await intercomApiRequest.call(this, `/companies/${value}/users`, 'GET', {}, qs);
 						} else {
-							responseData = await intercomApiRequest.call(this, `/companies?${query}&type=users`, 'GET');
+							qs.type = 'users';
+							responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
 						}
 					} catch (err) {
 						throw new Error(`Intercom Error: ${JSON.stringify(err)}`);
