@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const companyOpeations = [
+export const companyOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -19,19 +19,19 @@ export const companyOpeations = [
 				description: 'Create a new company',
 			},
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a company',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get data of all companies',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a company',
-			},
-			{
-				name: 'View',
-				value: 'view',
-				description: 'View a company',
-			},
-			{
-				name: 'List',
-				value: 'list',
-				description: 'List companies',
 			},
 			{
 				name: 'Users',
@@ -39,7 +39,7 @@ export const companyOpeations = [
 				description: `List company's users`,
 			},
 		],
-		default: '',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -68,18 +68,16 @@ export const companyFields = [
 			{
 				name: 'ID',
 				value: 'id',
-				default: '',
 				description: 'The Intercom defined id representing the company',
 			},
 			{
 				name: 'Company ID',
 				value: 'companyId',
-				default: '',
 				description: 'The company_id you have given to the company',
 			},
 		],
 		default: '',
-		description: 'List by'
+		description: 'List by',
 	},
 	{
 		displayName: 'Value',
@@ -100,77 +98,91 @@ export const companyFields = [
 		description: 'View by value',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                company:list                                */
+/*                                company:getAll                                */
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'List by',
-		name: 'listBy',
-		type: 'options',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
 		displayOptions: {
 			show: {
 				resource: [
 					'company',
 				],
 				operation: [
-					'list',
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'company',
+				],
+				operation: [
+					'getAll',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Segment ID',
-				value: 'segmentId',
+				displayName: 'Segment ID',
+				name: 'segment_id',
+				type: 'string',
 				default: '',
 				description: 'Segment representing the Lead',
 			},
 			{
-				name: 'Tag ID',
-				value: 'tagId',
+				displayName: 'Tag ID',
+				name: 'tag_id',
+				type: 'string',
 				default: '',
 				description: 'Tag representing the Lead',
 			},
-			{
-				name: 'All',
-				value: 'all',
-				default: '',
-				description: 'List all users',
-			},
-		],
-		default: '',
-		description: 'List by'
-	},
-	{
-		displayName: 'Value',
-		name: 'value',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'list',
-				],
-			},
-			hide: {
-				listBy: [
-					'all'
-				]
-			}
-		},
-		description: 'list by value',
+		]
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                company:view                                */
+/*                                company:get                                */
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'View By',
-		name: 'viewBy',
+		displayName: 'Select By',
+		name: 'selectBy',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -178,32 +190,29 @@ export const companyFields = [
 					'company',
 				],
 				operation: [
-					'view',
+					'get',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'ID',
-				value: 'id',
-				default: '',
-				description: 'The Intercom defined id representing the company',
-			},
-			{
 				name: 'Company ID',
 				value: 'companyId',
-				default: '',
 				description: 'The company_id you have given to the company',
+			},
+			{
+				name: 'ID',
+				value: 'id',
+				description: 'The Intercom defined id representing the company',
 			},
 			{
 				name: 'Name',
 				value: 'name',
-				default: '',
 				description: 'The name of the company',
 			},
 		],
 		default: '',
-		description: 'View by'
+		description: 'What property to use to query the company.',
 	},
 	{
 		displayName: 'Value',
@@ -217,7 +226,7 @@ export const companyFields = [
 					'company',
 				],
 				operation: [
-					'view',
+					'get',
 				],
 			},
 		},
@@ -240,7 +249,7 @@ export const companyFields = [
 				],
 				operation: [
 					'create',
-					'update'
+					'update',
 				],
 			},
 		},
@@ -259,16 +268,16 @@ export const companyFields = [
 					'update',
 				],
 				resource: [
-					'company'
+					'company',
 				],
 			},
 		},
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -277,11 +286,18 @@ export const companyFields = [
 					'update',
 				],
 				resource: [
-					'company'
+					'company',
 				],
 			},
 		},
 		options: [
+			{
+				displayName: 'Industry',
+				name: 'industry',
+				type: 'string',
+				default: '',
+				description: 'The industry that this company operates in',
+			},
 			{
 				displayName: 'Monthly Spend',
 				name: 'monthlySpend',
@@ -317,13 +333,7 @@ export const companyFields = [
 				name: 'website',
 				type: 'string',
 				default: '',
-				description: `The URL for this company's website. Please note that the value specified here is not validated. Accepts any string.`,
-			},
-			{
-				displayName: 'Industry',
-				name: 'industry',
-				type: 'string',
-				description: 'The industry that this company operates in',
+				description: `The URL for this company's website. Please note that the value<br />specified here is not validated. Accepts any string.`,
 			},
 		]
 	},
@@ -399,4 +409,3 @@ export const companyFields = [
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
 ] as INodeProperties[];
-

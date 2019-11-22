@@ -19,19 +19,19 @@ export const userOpeations = [
 				description: 'Create a new user',
 			},
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a user',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get data of all users',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
-			},
-			{
-				name: 'View',
-				value: 'view',
-				description: 'View a user',
-			},
-			{
-				name: 'List',
-				value: 'list',
-				description: 'List users',
 			},
 			{
 				name: 'Delete',
@@ -39,7 +39,7 @@ export const userOpeations = [
 				description: 'Delete a user',
 			}
 		],
-		default: '',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -70,89 +70,106 @@ export const userFields = [
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                  user:list                                 */
+/*                                  user:getAll                                 */
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'List by',
-		name: 'listBy',
-		type: 'options',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
 		displayOptions: {
 			show: {
 				resource: [
 					'user',
 				],
 				operation: [
-					'list',
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Email',
-				value: 'email',
+				displayName: 'Company ID',
+				name: 'company_id',
+				type: 'string',
 				default: '',
-				description: 'Email representing the Lead',
+				description: 'Company ID representing the user',
 			},
 			{
-				name: 'Segment ID',
-				value: 'segmentId',
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
 				default: '',
-				description: 'Segment representing the Lead',
+				description: 'The email address of the user',
 			},
 			{
-				name: 'Tag ID',
-				value: 'tagId',
+				displayName: 'Tag ID',
+				name: 'tag_id',
+				type: 'string',
 				default: '',
-				description: 'Tag representing the Lead',
+				description: 'Tag representing the user',
 			},
 			{
-				name: 'Company ID',
-				value: 'companyId',
+				displayName: 'Segment ID',
+				name: 'segment_id',
+				type: 'string',
 				default: '',
-				description: 'Company representing the Lead',
-			},
-			{
-				name: 'All',
-				value: 'all',
-				default: '',
-				description: 'List all users',
+				description: 'Segment representing the user',
 			},
 		],
-		default: '',
-		description: 'List by'
-	},
-	{
-		displayName: 'Value',
-		name: 'value',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'list',
-				],
-			},
-			hide: {
-				listBy: [
-					'all'
-				]
-			}
-		},
-		description: 'list by value',
 	},
 
+
 /* -------------------------------------------------------------------------- */
-/*                                  view:user                                 */
+/*                                  user:get                                 */
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'View By',
-		name: 'viewBy',
+		displayName: 'Select By',
+		name: 'selectBy',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -160,7 +177,7 @@ export const userFields = [
 					'user',
 				],
 				operation: [
-					'view',
+					'get',
 				],
 			},
 		},
@@ -179,7 +196,7 @@ export const userFields = [
 			},
 		],
 		default: '',
-		description: 'View by'
+		description: 'The property to select the user by.',
 	},
 	{
 		displayName: 'Value',
@@ -193,7 +210,7 @@ export const userFields = [
 					'user',
 				],
 				operation: [
-					'view',
+					'get',
 				],
 			},
 		},
@@ -205,10 +222,9 @@ export const userFields = [
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Id',
-		name: 'id',
-		type: 'string',
-		default: '',
+		displayName: 'Update By',
+		name: 'updateBy',
+		type: 'options',
 		displayOptions: {
 			show: {
 				resource: [
@@ -219,13 +235,33 @@ export const userFields = [
 				],
 			},
 		},
-		description: 'id is matched - the user_id and email will be updated if they are sent.',
+		options: [
+			{
+				name: 'ID',
+				value: 'id',
+				description: 'The Intercom defined id representing the user',
+			},
+			{
+				name: 'Email',
+				value: 'email',
+				description: 'The email address of user',
+			},
+			{
+				name: 'User ID',
+				value: 'userId',
+				description: 'Automatically generated identifier for the user',
+			},
+
+		],
+		default: 'id',
+		description: 'The property via which to query the user.',
 	},
 	{
-		displayName: 'User Id',
-		name: 'userId',
+		displayName: 'Value',
+		name: 'value',
 		type: 'string',
 		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -236,25 +272,7 @@ export const userFields = [
 				],
 			},
 		},
-		description: 'user_id match - the email will be updated, the id is not updated.',
-	},
-	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		description: `email match where no user_id set on the matching user - the user_id will be set to the value sent in the request, the id is not updated.
-		email match where there is a user_id set on the matching user - a new unique record with new id will be created if a new value for user_id is sent in the request.`,
+		description: 'Value of the property to identify the user to update',
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -262,8 +280,8 @@ export const userFields = [
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Id',
-		name: 'id',
+		displayName: 'Identifier Type',
+		name: 'identifierType',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -277,15 +295,13 @@ export const userFields = [
 		},
 		options: [
 			{
-				name: 'User Id',
+				name: 'User ID',
 				value: 'userId',
-				default: '',
 				description: 'A unique string identifier for the user. It is required on creation if an email is not supplied.',
 			},
 			{
 				name: 'Email',
 				value: 'email',
-				default: '',
 				description: `The user's email address. It is required on creation if a user_id is not supplied.`,
 			},
 		],
@@ -329,10 +345,10 @@ export const userFields = [
 		},
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
@@ -346,6 +362,51 @@ export const userFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Email',
+				name: 'email',
+				displayOptions: {
+					show: {
+						'/operation': [
+							'update',
+						],
+						'/resource': [
+							'user'
+						],
+					},
+					hide: {
+						'/updateBy': [
+							'email',
+						]
+					},
+				},
+				type: 'string',
+				default: '',
+				description: 'Email of the user',
+			},
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				displayOptions: {
+					show: {
+						'/operation': [
+							'update',
+						],
+						'/resource': [
+							'user'
+						],
+					},
+					hide: {
+						'/updateBy': [
+							'email',
+							'userId',
+						]
+					},
+				},
+				type: 'string',
+				default: '',
+				description: 'Email of the user',
+			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
@@ -375,7 +436,7 @@ export const userFields = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				description: `A boolean value, which if true, instructs Intercom to update the users' last_request_at value to the current API service time in UTC. default value if not sent is false.`,
+				description: 'A boolean value, which if true, instructs Intercom to update the users<br />last_request_at value to the current API service time in UTC.',
 			},
 			{
 				displayName: 'Session Count',
@@ -511,4 +572,3 @@ export const userFields = [
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},
 ] as INodeProperties[];
-
