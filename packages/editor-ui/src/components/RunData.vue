@@ -95,12 +95,12 @@
 								</tr>
 							</table>
 						</div>
-						<json-viewer
+						<json-tree
 							v-else-if="displayMode === 'JSON'"
+							:data="jsonData"
+							:level="10"
 							class="json-data"
-							:value="jsonData"
-							:expand-depth=10
-						></json-viewer>
+						/>
 					</div>
 					<div v-else-if="displayMode === 'Binary'">
 						<div v-if="binaryData.length === 0" class="no-data">
@@ -163,7 +163,7 @@
 <script lang="ts">
 import Vue from 'vue';
 // @ts-ignore
-import JsonViewer from 'vue-json-viewer';
+import JsonTree from 'vue-json-tree';
 import {
 	GenericValue,
 	IBinaryData,
@@ -201,7 +201,7 @@ export default mixins(
 		name: 'RunData',
 		components: {
 			BinaryDataDisplay,
-			JsonViewer,
+			JsonTree,
 		},
 		data () {
 			return {
@@ -573,10 +573,15 @@ export default mixins(
 		}
 
 		.json-data {
-			background: none;
+			.json-tree {
+				color: $--custom-input-font;
 
-			.jv-code {
-				padding: 0;
+				.json-tree-value-number {
+					color: #b03030;
+				}
+				.json-tree-value-string {
+					color: #8aab1a;
+				}
 			}
 		}
 
