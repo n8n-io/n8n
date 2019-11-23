@@ -82,7 +82,6 @@
         "dotenv": "^8.0.0",
         "express": "^4.16.4",
         "flatted": "^2.0.0",
-        "full-icu": "^1.3.0",
         "glob-promise": "^3.4.0",
         "google-timezones-json": "^1.0.2",
         "inquirer": "^6.5.1",

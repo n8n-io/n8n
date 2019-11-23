@@ -22,9 +22,9 @@ import {
 
 const tunnel = promisify(localtunnel);
 
-// Add support for internationalization
-const fullIcuPath = require.resolve('full-icu');
-process.env.NODE_ICU_DATA = dirname(fullIcuPath);
+// // Add support for internationalization
+// const fullIcuPath = require.resolve('full-icu');
+// process.env.NODE_ICU_DATA = dirname(fullIcuPath);
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
