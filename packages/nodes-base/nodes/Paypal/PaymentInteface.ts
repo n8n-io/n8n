@@ -13,7 +13,7 @@ export enum RecipientWallet {
 
 export interface IAmount {
 	currency?: string;
-	value?: string;
+	value?: number;
 }
 
 export interface ISenderBatchHeader {
