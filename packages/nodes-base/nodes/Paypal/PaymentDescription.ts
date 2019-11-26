@@ -21,7 +21,17 @@ export const payoutOpeations = [
 			{
 				name: 'Get',
 				value: 'get',
+				description: 'Show payout item details',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
 				description: 'Show payout batch details',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Cancels an unclaimed payout item, by ID.',
 			},
 		],
 		default: 'create',
@@ -276,7 +286,7 @@ export const payoutFields = [
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                 payout:get                                 */
+/*                                 payout:getAll                              */
 /* -------------------------------------------------------------------------- */
 
 {
@@ -290,7 +300,7 @@ export const payoutFields = [
 				'payout',
 			],
 			operation: [
-				'get',
+				'getAll',
 			],
 		},
 	},
@@ -300,14 +310,14 @@ export const payoutFields = [
 	displayName: 'Return All',
 	name: 'returnAll',
 	type: 'boolean',
-	required: false,
+	default: false,
 	displayOptions: {
 		show: {
 			resource: [
 				'payout',
 			],
 			operation: [
-				'get',
+				'getAll',
 			],
 		},
 	},
@@ -328,7 +338,7 @@ export const payoutFields = [
 				'payout',
 			],
 			operation: [
-				'get',
+				'getAll',
 			],
 			returnAll: [
 				false,
@@ -336,5 +346,48 @@ export const payoutFields = [
 		},
 	},
 	description: 'If all results should be returned or only up to a given limit.',
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                 payout:get                                 */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Payout Item Id',
+	name: 'payoutItemId',
+	type: 'string',
+	required: true,
+	displayOptions: {
+		show: {
+			resource: [
+				'payout',
+			],
+			operation: [
+				'get',
+			],
+		},
+	},
+	description: 'The ID of the payout item for which to show details.',
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                payout:delete                               */
+/* -------------------------------------------------------------------------- */
+
+{
+	displayName: 'Payout Item Id',
+	name: 'payoutItemId',
+	type: 'string',
+	required: true,
+	displayOptions: {
+		show: {
+			resource: [
+				'payout',
+			],
+			operation: [
+				'delete',
+			],
+		},
+	},
+	description: 'The ID of the payout item to cancel.',
 },
 ] as INodeProperties[];

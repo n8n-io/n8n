@@ -22,6 +22,7 @@ import {
 import {
 	validateJSON,
 	paypalApiRequest,
+	paypalApiRequestAllItems
  } from './GenericFunctions';
 
 export class PayPal implements INodeType {
@@ -69,8 +70,8 @@ export class PayPal implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
-		let qs: IDataObject;
 		let responseData;
+		let qs: IDataObject = {};
 		for (let i = 0; i < length; i++) {
 			const resource = this.getNodeParameter('resource', 0) as string;
 			const operation = this.getNodeParameter('operation', 0) as string;
@@ -100,10 +101,10 @@ export class PayPal implements INodeType {
 							const payoutItem: IItem = {};
 							const amount: IAmount = {};
 							amount.currency = o.currency as string;
-							amount.value = o.receiverValue as string;
+							amount.value = parseFloat(o.amount as string);
 							payoutItem.amount = amount;
 							payoutItem.note = o.note as string || '';
-							payoutItem.receiver = o.receiver as string;
+							payoutItem.receiver = o.receiverValue as string;
 							payoutItem.recipient_type = o.recipientType as RecipientType;
 							payoutItem.recipient_wallet = o.recipientWallet as RecipientWallet;
 							payoutItem.sender_item_id = o.senderItemId as string || '';
@@ -111,14 +112,45 @@ export class PayPal implements INodeType {
 							});
 							body.items = payoutItems;
 						} else {
-							throw new Error('You must have at least one item.')
+							throw new Error('You must have at least one item.');
 						}
 					} else {
 						const itemsJson = validateJSON(this.getNodeParameter('itemsJson', i) as string);
 						body.items = itemsJson;
 					}
 					try {
-						responseData = await paypalApiRequest.call(this, '/payouts', 'POST', body);
+						responseData = await paypalApiRequest.call(this, '/payments/payouts', 'POST', body);
+					} catch (err) {
+						throw new Error(`Paypal Error: ${JSON.stringify(err)}`);
+					}
+				}
+				if (operation === 'get') {
+					const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
+					try {
+						responseData = await paypalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}`, 'GET', {}, qs);
+					} catch (err) {
+						throw new Error(`Paypal Error: ${JSON.stringify(err)}`);
+					}
+				}
+				if (operation === 'getAll') {
+					const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					try {
+						if (returnAll === true) {
+							responseData = await paypalApiRequestAllItems.call(this, 'items', `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
+						} else {
+							qs.page_size = this.getNodeParameter('limit', i) as number;
+							responseData = await paypalApiRequest.call(this,`/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
+							responseData = responseData.items;
+						}
+					} catch (err) {
+						throw new Error(`Paypal Error: ${JSON.stringify(err)}`);
+					}
+				}
+				if (operation === 'delete') {
+					const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
+					try {
+						responseData = await paypalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}/cancel`, 'POST', {}, qs);
 					} catch (err) {
 						throw new Error(`Paypal Error: ${JSON.stringify(err)}`);
 					}
@@ -130,6 +162,6 @@ export class PayPal implements INodeType {
 				returnData.push(responseData as IDataObject);
 			}
 		}
-		return [this.helpers.returnJsonArray({})];
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
