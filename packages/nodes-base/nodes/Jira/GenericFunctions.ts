@@ -4,7 +4,8 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
+	IExecuteSingleFunctions,
+	BINARY_ENCODING
 } from 'n8n-core';
 
 import {
@@ -16,15 +17,16 @@ export async function jiraApiRequest(this: IHookFunctions | IExecuteFunctions | 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-
+	const data = Buffer.from(`${credentials!.email}:${credentials!.apiToken}`).toString(BINARY_ENCODING);
+	console.log(data)
 	const headerWithAuthentication = Object.assign({},
-		{ Authorization: `Bearer ${credentials.apiKey}`, Accept: 'application/json' });
+		{ Authorization: `Basic ${data}`, Accept: 'application/json', 'Content-Type': 'application/json' });
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
 		method,
 		qs: query,
-		uri: uri || `https://api.intercom.io${endpoint}`,
+		uri: uri || `${credentials.domain}/rest/api/2${endpoint}`,
 		body,
 		json: true
 	};
