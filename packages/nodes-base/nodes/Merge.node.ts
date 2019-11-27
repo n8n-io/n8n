@@ -54,7 +54,7 @@ export class Merge implements INodeType {
 					{
 						name: 'Pass-through',
 						value: 'passThrough',
-						description: 'Passes through data of one input. The output will conain only items of the defined input.',
+						description: 'Passes through data of one input. The output will contain only items of the defined input.',
 					},
 					{
 						name: 'Remove Key Matches',
