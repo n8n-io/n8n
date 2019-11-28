@@ -88,10 +88,9 @@ export const issueFields = [
 		description: 'Summary',
 	},
 	{
-		displayName: 'Parent Issue Identifier',
-		name: 'parentIssueId',
-		type: 'options',
-		required: false,
+		displayName: 'Has Parent Issue?',
+		name: 'hasParentIssue',
+		type: 'boolean',
 		displayOptions: {
 			show: {
 				resource: [
@@ -102,25 +101,12 @@ export const issueFields = [
 				],
 			},
 		},
-		default: 'id',
-		options: [
-			{
-				name: 'ID',
-				value: 'id',
-				description: 'Issue ID',
-			},
-			{
-				name: 'Key',
-				value: 'key',
-				description: 'Issue Key',
-
-			}
-		],
-		description: 'Parent Issue Identifier',
+		default: false,
+		description: 'Weather The Issue Has A Parent Issue ID/Key or Not',
 	},
 	{
-		displayName: 'Parent Issue Identifier Value',
-		name: 'parentIssueIdValue',
+		displayName: 'Parent Issue Key',
+		name: 'parentIssueKey',
 		type: 'string',
 		required: false,
 		displayOptions: {
@@ -131,10 +117,13 @@ export const issueFields = [
 				operation: [
 					'create',
 				],
+				hasParentIssue: [
+					true,
+				],
 			},
 		},
 		default: '',
-		description: 'Parent Issue ID/Key valie',
+		description: 'Parent Issue Key',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -185,6 +174,14 @@ export const issueFields = [
 				default: [],
 				required : false,
 				description: 'Assignee',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				required : false,
+				description: 'Description',
 			},
 		],
 	},

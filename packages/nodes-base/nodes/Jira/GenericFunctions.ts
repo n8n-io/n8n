@@ -12,13 +12,12 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function jiraApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('jiraApi');
+export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+	const credentials = this.getCredentials('jiraSoftwareCloudApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
 	const data = Buffer.from(`${credentials!.email}:${credentials!.apiToken}`).toString(BINARY_ENCODING);
-	console.log(data)
 	const headerWithAuthentication = Object.assign({},
 		{ Authorization: `Basic ${data}`, Accept: 'application/json', 'Content-Type': 'application/json' });
 
@@ -49,7 +48,7 @@ export async function jiraApiRequest(this: IHookFunctions | IExecuteFunctions | 
  * Make an API request to paginated intercom endpoint
  * and return all results
  */
-export async function jiraApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -60,7 +59,7 @@ export async function jiraApiRequestAllItems(this: IHookFunctions | IExecuteFunc
 	let uri: string | undefined;
 
 	do {
-		responseData = await jiraApiRequest.call(this, endpoint, method, body, query, uri);
+		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query, uri);
 		uri = responseData.pages.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
