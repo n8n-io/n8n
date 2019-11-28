@@ -3,9 +3,9 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class JiraApi implements ICredentialType {
-	name = 'jiraApi';
-	displayName = 'Jira API';
+export class JiraSoftwareCloudApi implements ICredentialType {
+	name = 'jiraSoftwareCloudApi';
+	displayName = 'Jira Software Cloud API';
 	properties = [
 		{
 			displayName: 'Email',

@@ -10,33 +10,37 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import {
-	jiraApiRequest,
-	jiraApiRequestAllItems,
+	jiraSoftwareCloudApiRequest,
+	jiraSoftwareCloudApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
 import {
 	issueOpeations,
 	issueFields,
 } from './IssueDescription';
+import {
+	IIssue,
+	IFields,
+ } from './IssueInterface';
 
-export class Jira implements INodeType {
+export class JiraSoftwareCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Jira',
-		name: 'Jira',
+		displayName: 'Jira Software Cloud',
+		name: 'Jira Software Cloud',
 		icon: 'file:jira.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Jira API',
+		description: 'Consume Jira Software Cloud API',
 		defaults: {
-			name: 'Jira',
+			name: 'Jira Software Cloud',
 			color: '#c02428',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'jiraApi',
+				name: 'jiraSoftwareCloudApi',
 				required: true,
 			}
 		],
@@ -68,7 +72,7 @@ export class Jira implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				let projects;
 				try {
-					projects = await jiraApiRequest.call(this, '/project/search', 'GET');
+					projects = await jiraSoftwareCloudApiRequest.call(this, '/project/search', 'GET');
 				} catch (err) {
 					throw new Error(`Jira Error: ${err}`);
 				}
@@ -90,7 +94,7 @@ export class Jira implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				let issueTypes;
 				try {
-					issueTypes = await jiraApiRequest.call(this, '/issuetype', 'GET');
+					issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/issuetype', 'GET');
 				} catch (err) {
 					throw new Error(`Jira Error: ${err}`);
 				}
@@ -112,7 +116,7 @@ export class Jira implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				let labels;
 				try {
-					labels = await jiraApiRequest.call(this, '/label', 'GET');
+					labels = await jiraSoftwareCloudApiRequest.call(this, '/label', 'GET');
 				} catch (err) {
 					throw new Error(`Jira Error: ${err}`);
 				}
@@ -134,7 +138,7 @@ export class Jira implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				let priorities;
 				try {
-					priorities = await jiraApiRequest.call(this, '/priority', 'GET');
+					priorities = await jiraSoftwareCloudApiRequest.call(this, '/priority', 'GET');
 				} catch (err) {
 					throw new Error(`Jira Error: ${err}`);
 				}
@@ -156,7 +160,7 @@ export class Jira implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				let users;
 				try {
-					users = await jiraApiRequest.call(this, '/users/search', 'GET');
+					users = await jiraSoftwareCloudApiRequest.call(this, '/users/search', 'GET');
 				} catch (err) {
 					throw new Error(`Jira Error: ${err}`);
 				}
@@ -188,50 +192,48 @@ export class Jira implements INodeType {
 					const summary = this.getNodeParameter('summary', i) as string;
 					const projectId = this.getNodeParameter('project', i) as string;
 					const issueTypeId = this.getNodeParameter('issueType', i) as string;
-					const parentIssueId = this.getNodeParameter('parentIssueId', i) as string;
-					const parentIssueIdValue = this.getNodeParameter('parentIssueIdValue', i) as string;
+					const hasParentIssue = this.getNodeParameter('hasParentIssue', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body = {
-						fields: {
-							summary,
-							project: {
-								id: projectId,
-							},
-							issuetype: {
-								id: issueTypeId
-							},
-						}
+					const body: IIssue = {};
+					const fields: IFields = {
+						summary,
+						project: {
+							id: projectId,
+						},
+						issuetype: {
+							id: issueTypeId,
+						},
 					};
 					if (additionalFields.labels) {
-						body.fields.labels = additionalFields.labels as string[];
+						fields.labels = additionalFields.labels as string[];
 					}
 					if (additionalFields.priority) {
-						body.fields.priority = {
+						fields.priority = {
 							id: additionalFields.priority as string,
 						};
 					}
 					if (additionalFields.assignee) {
-						body.fields.assignee = {
+						fields.assignee = {
 							id: additionalFields.assignee as string,
 						};
 					}
-					if (!parentIssueIdValue && issueTypeId === 'sub-task') {
-						throw new Error('You must define a Parent ID/Key when Issue type is sub-task');
+					if (additionalFields.description) {
+						fields.description = additionalFields.description as string;
+					}
+					if (hasParentIssue) {
+						const parentIssueKey = this.getNodeParameter('parentIssueKey', i) as string;
+						if (!parentIssueKey && issueTypeId === 'sub-task') {
+							throw new Error('You must define a Parent Issue Key when Issue type is sub-task');
 
-					} else if (parentIssueIdValue && issueTypeId === 'sub-task') {
-						if (parentIssueId === 'id') {
-							body.fields.parent = {
-								id: parentIssueIdValue,
-							};
-						}
-						if (parentIssueId === 'key') {
-							body.fields.parent = {
-								key: parentIssueIdValue,
+						} else if (parentIssueKey && issueTypeId === 'sub-task') {
+							fields.parent = {
+								key: parentIssueKey,
 							};
 						}
 					}
+					body.fields = fields;
 					try {
-						responseData = await jiraApiRequest.call(this, '/issue', 'POST', body);
+						responseData = await jiraSoftwareCloudApiRequest.call(this, '/issue', 'POST', body);
 					} catch (err) {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
 					}
