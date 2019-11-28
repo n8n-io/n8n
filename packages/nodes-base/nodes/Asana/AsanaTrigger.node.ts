@@ -53,6 +53,14 @@ export class AsanaTrigger implements INodeType {
 				required: true,
 				description: 'The resource ID to subscribe to. The resource can be a task or project.',
 			},
+			{
+				displayName: 'Workspace',
+				name: 'workspace',
+				type: 'string',
+				default: '',
+				required: false,
+				description: 'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks.',
+			},
 		],
 
 	};
@@ -93,6 +101,8 @@ export class AsanaTrigger implements INodeType {
 
 				const resource = this.getNodeParameter('resource') as string;
 
+				const workspace = this.getNodeParameter('workspace') as string;
+
 				const endpoint = `webhooks`;
 
 				const body = {
@@ -100,7 +110,22 @@ export class AsanaTrigger implements INodeType {
 					target: webhookUrl,
 				};
 
-				const responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
+				let responseData
+				try {
+					 responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
+				} catch(error) {
+					// delete webhook if it already exists
+					if (error.statusCode === 403) {
+						const webhookData = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
+						const webhook = webhookData.data.find((webhook: any) => {
+							return webhook.target === webhookUrl && webhook.resource.gid === resource
+						});
+						await asanaApiRequest.call(this, 'DELETE', `${endpoint}/${webhook.gid}`, {});
+						responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
+					} else {
+						throw error
+					}
+				}
 
 				if (responseData.data === undefined || responseData.data.id === undefined) {
 					// Required data is missing so was not successful
