@@ -14,3 +14,24 @@ export interface IFields {
 export interface IIssue {
 	fields?: IFields;
 }
+
+export interface INotify {
+	subject?: string;
+	textBody?: string;
+	htmlBody?: string;
+	to?: INotificationRecipients;
+	restrict?: NotificationRecipientsRestrictions;
+}
+
+export interface INotificationRecipients {
+	reporter?: boolean;
+	assignee?: boolean;
+	watchers?: boolean;
+	voters?: boolean;
+	users?: IDataObject[];
+	groups?: IDataObject[];
+}
+
+export interface NotificationRecipientsRestrictions {
+	groups?: IDataObject[];
+}
