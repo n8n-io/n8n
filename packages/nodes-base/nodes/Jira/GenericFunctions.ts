@@ -20,7 +20,6 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	const data = Buffer.from(`${credentials!.email}:${credentials!.apiToken}`).toString(BINARY_ENCODING);
 	const headerWithAuthentication = Object.assign({},
 		{ Authorization: `Basic ${data}`, Accept: 'application/json', 'Content-Type': 'application/json' });
-
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
 		method,
@@ -33,7 +32,8 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
+		const errorMessage =
+		 error.response.body.message || error.response.body.Message;
 
 		if (errorMessage !== undefined) {
 			throw errorMessage;
@@ -54,18 +54,18 @@ export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions |
 
 	let responseData;
 
-	query.per_page = 60;
+	query.maxResults = 100;
 
 	let uri: string | undefined;
 
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query, uri);
-		uri = responseData.pages.next;
+		uri = responseData.nextPage;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		responseData.pages !== undefined &&
-		responseData.pages.next !== undefined &&
-		responseData.pages.next !== null
+		responseData.isLast !== false &&
+		responseData.nextPage !== undefined &&
+		responseData.nextPage !== null
 	);
 
 	return returnData;
