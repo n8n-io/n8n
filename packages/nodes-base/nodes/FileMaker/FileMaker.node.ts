@@ -38,7 +38,7 @@ export class FileMaker implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'FileMaker',
+				name: 'fileMaker',
 				required: true,
 			},
 		],
