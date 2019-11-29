@@ -213,6 +213,7 @@ export class JiraSoftwareCloud implements INodeType {
 			const resource = this.getNodeParameter('resource', 0) as string;
 			const operation = this.getNodeParameter('operation', 0) as string;
 			if (resource === 'issue') {
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-post
 				if (operation === 'create') {
 					const summary = this.getNodeParameter('summary', i) as string;
 					const projectId = this.getNodeParameter('project', i) as string;
@@ -270,6 +271,7 @@ export class JiraSoftwareCloud implements INodeType {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
 					}
 				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-put
 				if (operation === 'update') {
 					const summary = this.getNodeParameter('summary', i) as string;
 					const issueTypeId = this.getNodeParameter('issueType', i) as string;
@@ -321,6 +323,7 @@ export class JiraSoftwareCloud implements INodeType {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
 					}
 				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
 				if (operation === 'get') {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const fields = this.getNodeParameter('fields', i) as string;
@@ -339,6 +342,7 @@ export class JiraSoftwareCloud implements INodeType {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
 					}
 				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-changelog-get
 				if (operation === 'changelog') {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -354,6 +358,7 @@ export class JiraSoftwareCloud implements INodeType {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
 					}
 				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-notify-post
 				if (operation === 'notify') {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const textBody = this.getNodeParameter('textBody', i) as string;
@@ -436,6 +441,7 @@ export class JiraSoftwareCloud implements INodeType {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
 					}
 				}
+				https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-transitions-get
 				if (operation === 'transitions') {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const transitionId = this.getNodeParameter('transitionId', i) as string;
@@ -455,6 +461,7 @@ export class JiraSoftwareCloud implements INodeType {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
 					}
 				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-delete
 				if (operation === 'delete') {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const deleteSubtasks = this.getNodeParameter('deleteSubtasks', i) as boolean;
