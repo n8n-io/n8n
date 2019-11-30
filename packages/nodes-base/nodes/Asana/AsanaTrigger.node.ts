@@ -110,20 +110,20 @@ export class AsanaTrigger implements INodeType {
 					target: webhookUrl,
 				};
 
-				let responseData
+				let responseData;
 				try {
 					 responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
 				} catch(error) {
 					// delete webhook if it already exists
 					if (error.statusCode === 403) {
 						const webhookData = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
-						const webhook = webhookData.data.find((webhook: any) => {
-							return webhook.target === webhookUrl && webhook.resource.gid === resource
+						const webhook = webhookData.data.find((webhook: any) => { // tslint:disable-line:no-any
+							return webhook.target === webhookUrl && webhook.resource.gid === resource;
 						});
 						await asanaApiRequest.call(this, 'DELETE', `${endpoint}/${webhook.gid}`, {});
 						responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
 					} else {
-						throw error
+						throw error;
 					}
 				}
 
