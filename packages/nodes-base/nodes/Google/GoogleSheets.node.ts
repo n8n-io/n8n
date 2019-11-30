@@ -1,7 +1,11 @@
+import { sheets_v4 } from 'googleapis';
+
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -11,6 +15,7 @@ import {
 	IGoogleAuthCredentials,
 	ILookupValues,
 	ISheetUpdateData,
+	IToDelete,
 	ValueInputOption,
 	ValueRenderOption,
 } from './GoogleSheet';
@@ -53,6 +58,11 @@ export class GoogleSheets implements INodeType {
 						description: 'Clears data from a Sheet',
 					},
 					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete columns and rows from a Sheet',
+					},
+					{
 						name: 'Lookup',
 						value: 'lookup',
 						description: 'Looks for a specific column value and then returns the matching row'
@@ -87,10 +97,119 @@ export class GoogleSheets implements INodeType {
 				displayName: 'Range',
 				name: 'range',
 				type: 'string',
+				displayOptions: {
+					hide: {
+						operation: [
+							'delete'
+						],
+					},
+				},
 				default: 'A:F',
 				required: true,
 				description: 'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.<br />If it contains multiple sheets it can also be<br />added like this: "MySheet!A:F"',
 			},
+
+
+			// ----------------------------------
+			//         Delete
+			// ----------------------------------
+			{
+				displayName: 'To Delete',
+				name: 'toDelete',
+				placeholder: 'Add Columns/Rows to delete',
+				description: 'Deletes colums and rows from a sheet.',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'delete'
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Columns',
+						name: 'columns',
+						values: [
+							{
+								displayName: 'Sheet',
+								name: 'sheetId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getSheets',
+								},
+								options: [],
+								default: '',
+								required: true,
+								description: 'The sheet to delete columns from',
+							},
+							{
+								displayName: 'Start Index',
+								name: 'startIndex',
+								type: 'number',
+								typeOptions: {
+									minValue: 0,
+								},
+								default: 0,
+								description: 'The start index (0 based and inclusive) of column to delete.',
+							},
+							{
+								displayName: 'Amount',
+								name: 'amount',
+								type: 'number',
+								typeOptions: {
+									minValue: 1,
+								},
+								default: 1,
+								description: 'Number of columns to delete.',
+							},
+						]
+					},
+					{
+						displayName: 'Rows',
+						name: 'rows',
+						values: [
+							{
+								displayName: 'Sheet',
+								name: 'sheetId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getSheets',
+								},
+								options: [],
+								default: '',
+								required: true,
+								description: 'The sheet to delete columns from',
+							},
+							{
+								displayName: 'Start Index',
+								name: 'startIndex',
+								type: 'number',
+								typeOptions: {
+									minValue: 0,
+								},
+								default: 0,
+								description: 'The start index (0 based and inclusive) of row to delete.',
+							},
+							{
+								displayName: 'Amount',
+								name: 'amount',
+								type: 'number',
+								typeOptions: {
+									minValue: 1,
+								},
+								default: 1,
+								description: 'Number of rows to delete.',
+							},
+						]
+					},
+				],
+			},
+
 
 			// ----------------------------------
 			//         Read
@@ -178,6 +297,7 @@ export class GoogleSheets implements INodeType {
 						operation: [
 							'append',
 							'clear',
+							'delete',
 						],
 						rawData: [
 							true
@@ -201,6 +321,7 @@ export class GoogleSheets implements INodeType {
 					hide: {
 						operation: [
 							'clear',
+							'delete',
 						],
 						rawData: [
 							true
@@ -401,6 +522,48 @@ export class GoogleSheets implements INodeType {
 	};
 
 
+	methods = {
+		loadOptions: {
+			// Get all the sheets in a Spreadsheet
+			async getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const spreadsheetId = this.getCurrentNodeParameter('sheetId') as string;
+
+				const credentials = this.getCredentials('googleApi');
+
+				if (credentials === undefined) {
+					throw new Error('No credentials got returned!');
+				}
+
+				const googleCredentials = {
+					email: credentials.email,
+					privateKey: credentials.privateKey,
+				} as IGoogleAuthCredentials;
+
+				const sheet = new GoogleSheet(spreadsheetId, googleCredentials);
+				const responseData = await sheet.spreadsheetGetSheets();
+
+				if (responseData === undefined) {
+					throw new Error('No data got returned');
+				}
+
+				const returnData: INodePropertyOptions[] = [];
+				for (const sheet of responseData.sheets!) {
+					if (sheet.properties!.sheetType !== 'GRID') {
+						continue;
+					}
+
+					returnData.push({
+						name: sheet.properties!.title as string,
+						value: sheet.properties!.sheetId as unknown as string,
+					});
+				}
+
+				return returnData;
+			},
+		},
+	};
+
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const spreadsheetId = this.getNodeParameter('sheetId', 0) as string;
 		const credentials = this.getCredentials('googleApi');
@@ -416,9 +579,12 @@ export class GoogleSheets implements INodeType {
 
 		const sheet = new GoogleSheet(spreadsheetId, googleCredentials);
 
-		const range = this.getNodeParameter('range', 0) as string;
-
 		const operation = this.getNodeParameter('operation', 0) as string;
+
+		let range = '';
+		if (operation !== 'delete') {
+			range = this.getNodeParameter('range', 0) as string;
+		}
 
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
@@ -451,6 +617,41 @@ export class GoogleSheets implements INodeType {
 			// ----------------------------------
 
 			await sheet.clearData(range);
+
+			const items = this.getInputData();
+			return this.prepareOutputData(items);
+		} else if (operation === 'delete') {
+			// ----------------------------------
+			//         delete
+			// ----------------------------------
+
+			const requests: sheets_v4.Schema$Request[] = [];
+
+			const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
+
+			const deletePropertyToDimensions: IDataObject = {
+				'columns': 'COLUMNS',
+				'rows': 'ROWS',
+			};
+
+			for (const propertyName of Object.keys(deletePropertyToDimensions)) {
+				if (toDelete[propertyName] !== undefined) {
+					toDelete[propertyName]!.forEach(range => {
+						requests.push({
+							deleteDimension: {
+								range: {
+									sheetId: range.sheetId,
+									dimension: deletePropertyToDimensions[propertyName] as string,
+									startIndex: range.startIndex,
+									endIndex: range.startIndex + range.amount,
+								}
+							}
+						});
+					});
+				}
+			}
+
+			const data = await sheet.spreadsheetBatchUpdate(requests);
 
 			const items = this.getInputData();
 			return this.prepareOutputData(items);
