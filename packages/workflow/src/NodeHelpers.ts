@@ -321,8 +321,8 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 
 			if (returnDefaults === true) {
 				// Set also when it has the default value
-				if (['boolean', 'number'].includes(nodeProperties.type)) {
-					// Boolean and numbers are special as false and 0 are valid values
+				if (['boolean', 'number', 'options'].includes(nodeProperties.type)) {
+					// Boolean, numbers and options are special as false and 0 are valid values
 					// and should not be replaced with default value
 					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name] !== undefined ? nodeValues[nodeProperties.name] : nodeProperties.default;
 				} else {
