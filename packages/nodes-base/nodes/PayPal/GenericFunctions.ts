@@ -5,6 +5,7 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
+	IWebhookFunctions,
 	BINARY_ENCODING
 } from 'n8n-core';
 
@@ -12,7 +13,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('payPalApi');
 	const env = getEnviroment(credentials!.env as string);
 	const tokenInfo =  await getAccessToken.call(this);
@@ -29,12 +30,16 @@ export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
 
-		if (errorMessage !== undefined) {
-			throw errorMessage;
+		if (error.response.body) {
+			let errorMessage = error.response.body.message;
+			if (error.response.body.details) {
+				errorMessage += ` - Details: ${JSON.stringify(error.response.body.details)}`;
+			}
+			throw new Error(errorMessage);
 		}
-		throw error.response.body;
+
+		throw error;
 	}
 }
 
@@ -42,11 +47,11 @@ function getEnviroment(env: string): string {
 	// @ts-ignore
 	return {
 		'sanbox': 'https://api.sandbox.paypal.com',
-		'live': 'https://api.paypal.com'
+		'live': 'https://api.paypal.com',
 	}[env];
 }
 
-async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
+async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('payPalApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -70,9 +75,9 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
 		const errorMessage = error.response.body.message || error.response.body.Message;
 
 		if (errorMessage !== undefined) {
-			throw errorMessage;
+			throw new Error(errorMessage);
 		}
-		throw error.response.body;
+		throw new Error(error.response.body);
 	}
 }
 
@@ -116,4 +121,10 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = '';
 	}
 	return result;
+}
+
+export function upperFist(s: string): string {
+	return s.split('.').map(e => {
+		return e.toLowerCase().charAt(0).toUpperCase() + e.toLowerCase().slice(1);
+	}).join(' ');
 }
