@@ -21,9 +21,9 @@ import {
 	RecipientWallet,
  } from './PaymentInteface';
 import {
-	validateJSON,
 	payPalApiRequest,
-	payPalApiRequestAllItems
+	payPalApiRequestAllItems,
+	validateJSON,
  } from './GenericFunctions';
 
 export class PayPal implements INodeType {
