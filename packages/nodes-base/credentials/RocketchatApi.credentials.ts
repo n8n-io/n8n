@@ -21,11 +21,11 @@ export class RocketchatApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Sub Domain',
-			name: 'subdomain',
+			displayName: 'Domain',
+			name: 'domain',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			placeholder: 'n8n'
+			placeholder: 'https://n8n.rocket.chat',
 		},
 	];
 }

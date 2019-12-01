@@ -2,6 +2,23 @@
 
 This list shows all the versions which include breaking changes and how to upgrade
 
+## 0.37.0
+
+### What changed?
+
+To make it possible to support also Rocketchat on-premise the credentials had to be changed.
+The `subdomain` parameter had to get renamed to `domain`.
+
+### When is action necessary?
+
+When you currently use the Rocketchat-Node.
+
+### How to upgrade:
+
+Open the Rocketchat credentials and fill the parameter `domain`. If you had previously the
+subdomain "example" set you have to set now "https://example.rocket.chat".
+
+
 ## 0.19.0
 
 ### What changed?
