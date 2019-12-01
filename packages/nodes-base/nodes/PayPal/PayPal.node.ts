@@ -1,7 +1,6 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
-
 import {
 	IDataObject,
 	INodeTypeDescription,
@@ -9,8 +8,10 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 import {
-	payoutOpeations,
+	payoutOperations,
+	payoutItemOperations,
 	payoutFields,
+	payoutItemFields,
 } from './PaymentDescription';
 import {
 	IPaymentBatch,
@@ -21,14 +22,14 @@ import {
  } from './PaymentInteface';
 import {
 	validateJSON,
-	paypalApiRequest,
-	paypalApiRequestAllItems
+	payPalApiRequest,
+	payPalApiRequestAllItems
  } from './GenericFunctions';
 
 export class PayPal implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'PayPal',
-		name: 'paypal',
+		name: 'payPal',
 		icon: 'file:paypal.png',
 		group: ['output'],
 		version: 1,
@@ -42,7 +43,7 @@ export class PayPal implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'paypalApi',
+				name: 'payPalApi',
 				required: true,
 			}
 		],
@@ -55,14 +56,21 @@ export class PayPal implements INodeType {
 					{
 						name: 'Payout',
 						value: 'payout',
-						description: 'Use the Payouts API to make payments to multiple PayPal or Venmo recipients. The Payouts API is a fast, convenient way to send commissions, rebates, rewards, and general disbursements. You can send up to 15,000 payments per call. If you integrated the Payouts API before September 1, 2017, you receive transaction reports through Mass Payments Reporting.',
+					},
+					{
+						name: 'Payout Item',
+						value: 'payoutItem',
 					},
 				],
 				default: 'payout',
 				description: 'Resource to consume.',
 			},
-			...payoutOpeations,
+
+			// Payout
+			...payoutOperations,
+			...payoutItemOperations,
 			...payoutFields,
+			...payoutItemFields,
 		],
 	};
 
@@ -71,10 +79,12 @@ export class PayPal implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
 		let responseData;
-		let qs: IDataObject = {};
+		const qs: IDataObject = {};
+
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
 			if (resource === 'payout') {
 				if (operation === 'create') {
 					const body: IPaymentBatch = {};
@@ -97,18 +107,18 @@ export class PayPal implements INodeType {
 						const payoutItems: IItem[] = [];
 						const itemsValues = (this.getNodeParameter('itemsUi', i) as IDataObject).itemsValues as IDataObject[];
 						if (itemsValues && itemsValues.length > 0) {
-							itemsValues.forEach( o => {
-							const payoutItem: IItem = {};
-							const amount: IAmount = {};
-							amount.currency = o.currency as string;
-							amount.value = parseFloat(o.amount as string);
-							payoutItem.amount = amount;
-							payoutItem.note = o.note as string || '';
-							payoutItem.receiver = o.receiverValue as string;
-							payoutItem.recipient_type = o.recipientType as RecipientType;
-							payoutItem.recipient_wallet = o.recipientWallet as RecipientWallet;
-							payoutItem.sender_item_id = o.senderItemId as string || '';
-							payoutItems.push(payoutItem);
+							itemsValues.forEach(o => {
+								const payoutItem: IItem = {};
+								const amount: IAmount = {};
+								amount.currency = o.currency as string;
+								amount.value = parseFloat(o.amount as string);
+								payoutItem.amount = amount;
+								payoutItem.note = o.note as string || '';
+								payoutItem.receiver = o.receiverValue as string;
+								payoutItem.recipient_type = o.recipientType as RecipientType;
+								payoutItem.recipient_wallet = o.recipientWallet as RecipientWallet;
+								payoutItem.sender_item_id = o.senderItemId as string || '';
+								payoutItems.push(payoutItem);
 							});
 							body.items = payoutItems;
 						} else {
@@ -119,40 +129,41 @@ export class PayPal implements INodeType {
 						body.items = itemsJson;
 					}
 					try {
-						responseData = await paypalApiRequest.call(this, '/payments/payouts', 'POST', body);
+						responseData = await payPalApiRequest.call(this, '/payments/payouts', 'POST', body);
 					} catch (err) {
-						throw new Error(`Paypal Error: ${JSON.stringify(err)}`);
+						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
 					}
 				}
 				if (operation === 'get') {
-					const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
-					try {
-						responseData = await paypalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}`, 'GET', {}, qs);
-					} catch (err) {
-						throw new Error(`Paypal Error: ${JSON.stringify(err)}`);
-					}
-				}
-				if (operation === 'getAll') {
 					const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					try {
 						if (returnAll === true) {
-							responseData = await paypalApiRequestAllItems.call(this, 'items', `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
+							responseData = await payPalApiRequestAllItems.call(this, 'items', `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
 						} else {
 							qs.page_size = this.getNodeParameter('limit', i) as number;
-							responseData = await paypalApiRequest.call(this,`/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
+							responseData = await payPalApiRequest.call(this, `/payments/payouts/${payoutBatchId}`, 'GET', {}, qs);
 							responseData = responseData.items;
 						}
 					} catch (err) {
-						throw new Error(`Paypal Error: ${JSON.stringify(err)}`);
+						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
 					}
 				}
-				if (operation === 'delete') {
+			} else if (resource === 'payoutItem') {
+				if (operation === 'get') {
 					const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
 					try {
-						responseData = await paypalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}/cancel`, 'POST', {}, qs);
+						responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}`, 'GET', {}, qs);
 					} catch (err) {
-						throw new Error(`Paypal Error: ${JSON.stringify(err)}`);
+						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
+					}
+				}
+				if (operation === 'cancel') {
+					const payoutItemId = this.getNodeParameter('payoutItemId', i) as string;
+					try {
+						responseData = await payPalApiRequest.call(this,`/payments/payouts-item/${payoutItemId}/cancel`, 'POST', {}, qs);
+					} catch (err) {
+						throw new Error(`PayPal Error: ${JSON.stringify(err)}`);
 					}
 				}
 			}

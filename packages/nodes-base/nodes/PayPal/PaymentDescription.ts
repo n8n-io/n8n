@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const payoutOpeations = [
+export const payoutOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -21,17 +21,7 @@ export const payoutOpeations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Show payout item details',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Show payout batch details',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Cancels an unclaimed payout item, by ID.',
+				description: 'Show batch payout details',
 			},
 		],
 		default: 'create',
@@ -120,7 +110,7 @@ export const payoutFields = [
 							{
 								name: 'Email',
 								value: 'email',
-								description: 'The unencrypted email. Value is a string of up to 127 single-byte characters.',
+								description: 'The unencrypted email.',
 							},
 							{
 								name: 'PayPal ID',
@@ -137,7 +127,7 @@ export const payoutFields = [
 						type: 'string',
 						required: true,
 						default: '',
-						description: 'The receiver of the payment. Corresponds to the recipient_type value in the request. Max value of up to 127 single-byte characters.',
+						description: 'The receiver of the payment. Corresponds to the recipient_type value<br />in the request. Max length: 127 characters.',
 					},
 					{
 						displayName: 'Currency',
@@ -190,7 +180,7 @@ export const payoutFields = [
 						type: 'string',
 						required: false,
 						default: '',
-						description: 'The sender-specified note for notifications. Supports up to 4000 ASCII characters and 1000 non-ASCII characters.',
+						description: 'The sender-specified note for notifications. Supports up to<br />4000 ASCII characters and 1000 non-ASCII characters.',
 					},
 					{
 						displayName: 'Sender Item ID',
@@ -266,128 +256,164 @@ export const payoutFields = [
 				name: 'emailSubject',
 				type: 'string',
 				default: '',
-				description: 'The subject line for the email that PayPal sends when payment for a payout item completes. The subject line is the same for all recipients. Value is an alphanumeric string of up to 255 single-byte characters.',
+				description: 'The subject line for the email that PayPal sends when payment<br />for a payout item completes. The subject line is the same for all<br />recipients. Max length: 255 characters.',
 			},
 			{
 				displayName: 'Email Message',
 				name: 'emailMessage',
 				type: 'string',
 				default: '',
-				description: 'The email message that PayPal sends when the payout item completes. The message is the same for all recipients.',
+				description: 'The email message that PayPal sends when the payout item completes.<br />The message is the same for all recipients.',
 			},
 			{
 				displayName: 'Note',
 				name: 'note',
 				type: 'string',
 				default: '',
-				description: 'The payouts and item-level notes are concatenated in the email. The maximum combined length of the notes is 1000 characters.',
+				description: 'The payouts and item-level notes are concatenated in the email.<br />Max length: 1000 characters.',
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 payout:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 payout:get                              */
+	/* -------------------------------------------------------------------------- */
 
-{
-	displayName: 'Payout Batch Id',
-	name: 'payoutBatchId',
-	type: 'string',
-	required: true,
-	displayOptions: {
-		show: {
-			resource: [
-				'payout',
-			],
-			operation: [
-				'getAll',
-			],
+	{
+		displayName: 'Payout Batch Id',
+		name: 'payoutBatchId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'payout',
+				],
+				operation: [
+					'get',
+				],
+			},
 		},
+		description: 'The ID of the payout for which to show details.',
 	},
-	description: 'The ID of the payout for which to show details.',
-},
-{
-	displayName: 'Return All',
-	name: 'returnAll',
-	type: 'boolean',
-	default: false,
-	displayOptions: {
-		show: {
-			resource: [
-				'payout',
-			],
-			operation: [
-				'getAll',
-			],
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'payout',
+				],
+				operation: [
+					'get',
+				],
+			},
 		},
+		description: 'If all results should be returned or only up to a given limit.',
 	},
-	description: 'If all results should be returned or only up to a given limit.',
-},
-{
-	displayName: 'Limit',
-	name: 'limit',
-	type: 'number',
-	typeOptions: {
-		maxValue: 1000,
-		minValue: 1
-	},
-	default: 100,
-	displayOptions: {
-		show: {
-			resource: [
-				'payout',
-			],
-			operation: [
-				'getAll',
-			],
-			returnAll: [
-				false,
-			],
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		typeOptions: {
+			maxValue: 1000,
+			minValue: 1
 		},
+		default: 100,
+		displayOptions: {
+			show: {
+				resource: [
+					'payout',
+				],
+				operation: [
+					'get',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		description: 'If all results should be returned or only up to a given limit.',
 	},
-	description: 'If all results should be returned or only up to a given limit.',
-},
 
-/* -------------------------------------------------------------------------- */
-/*                                 payout:get                                 */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Payout Item Id',
-	name: 'payoutItemId',
-	type: 'string',
-	required: true,
-	displayOptions: {
-		show: {
-			resource: [
-				'payout',
-			],
-			operation: [
-				'get',
-			],
-		},
-	},
-	description: 'The ID of the payout item for which to show details.',
-},
+] as INodeProperties[];
 
-/* -------------------------------------------------------------------------- */
-/*                                payout:delete                               */
-/* -------------------------------------------------------------------------- */
 
-{
-	displayName: 'Payout Item Id',
-	name: 'payoutItemId',
-	type: 'string',
-	required: true,
-	displayOptions: {
-		show: {
-			resource: [
-				'payout',
-			],
-			operation: [
-				'delete',
-			],
+export const payoutItemOperations = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'payoutItem',
+				],
+			},
 		},
+		options: [
+			{
+				name: 'Cancel',
+				value: 'cancel',
+				description: 'Cancels an unclaimed payout item',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Show payout item details',
+			},
+		],
+		default: 'get',
+		description: 'The operation to perform.',
 	},
-	description: 'The ID of the payout item to cancel.',
-},
+] as INodeProperties[];
+
+export const payoutItemFields = [
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 payoutItem:get                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Payout Item Id',
+		name: 'payoutItemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'payoutItem',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		description: 'The ID of the payout item for which to show details.',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                payoutItem:cancel                               */
+	/* -------------------------------------------------------------------------- */
+
+	{
+		displayName: 'Payout Item Id',
+		name: 'payoutItemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'payoutItem',
+				],
+				operation: [
+					'cancel',
+				],
+			},
+		},
+		description: 'The ID of the payout item to cancel.',
+	},
 ] as INodeProperties[];

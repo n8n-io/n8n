@@ -71,11 +71,12 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
 		throw error.response.body;
 	}
 }
+
 /**
  * Make an API request to paginated paypal endpoint
  * and return all results
  */
-export async function paypalApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function payPalApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -84,7 +85,7 @@ export async function paypalApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	query!.page_size = 1000;
 
 	do {
-		responseData = await paypalApiRequest.call(this, endpoint, method, body, query, uri);
+		responseData = await payPalApiRequest.call(this, endpoint, method, body, query, uri);
 		uri = getNext(responseData.links);
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (

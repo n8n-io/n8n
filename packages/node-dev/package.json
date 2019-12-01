@@ -23,7 +23,6 @@
         "build": "tsc",
         "postpack": "rm -f oclif.manifest.json",
         "prepack": "echo \"Building project...\" && rm -rf dist && tsc -b && oclif-dev manifest",
-        "test": "jest",
         "tslint": "tslint -p tsconfig.json -c tslint.json",
         "watch": "tsc --watch"
     },
@@ -65,23 +64,5 @@
         "request": "^2.88.0",
         "tmp-promise": "^2.0.2",
         "typescript": "~3.5.2"
-    },
-    "jest": {
-        "transform": {
-            "^.+\\.tsx?$": "ts-jest"
-        },
-        "testURL": "http://localhost/",
-        "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-        "testPathIgnorePatterns": [
-            "/dist/",
-            "/node_modules/"
-        ],
-        "moduleFileExtensions": [
-            "ts",
-            "tsx",
-            "js",
-            "json",
-            "node"
-        ]
     }
 }

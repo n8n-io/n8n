@@ -1061,6 +1061,15 @@ export class Workflow {
 			return null;
 		}
 
+		if (runExecutionData.resultData.lastNodeExecuted === node.name && runExecutionData.resultData.error !== undefined) {
+			// The node did already fail. So throw an error here that it displays and logs it correctly.
+			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
+			// to log the error and display in Editor-UI.
+			const error = new Error(runExecutionData.resultData.error.message);
+			error.stack = runExecutionData.resultData.error.stack;
+			throw error;
+		}
+
 		if (nodeType.executeSingle) {
 			const returnPromises: Array<Promise<INodeExecutionData>> = [];
 
