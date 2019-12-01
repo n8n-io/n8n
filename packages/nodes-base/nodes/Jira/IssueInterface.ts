@@ -1,7 +1,7 @@
 import { IDataObject } from "n8n-workflow";
 
 export interface IFields {
-	summary: string;
+	summary?: string;
 	project?: IDataObject;
 	issuetype?: IDataObject;
 	labels?: string[];
