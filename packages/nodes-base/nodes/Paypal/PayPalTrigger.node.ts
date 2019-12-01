@@ -15,7 +15,6 @@ import {
 	paypalApiRequest,
 	upperFist
  } from './GenericFunctions';
-import { queryResult } from 'pg-promise';
 
   export class PayPalTrigger implements INodeType {
 	description: INodeTypeDescription = {
