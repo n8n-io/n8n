@@ -20,7 +20,7 @@ export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFuncti
 		headers: headerWithAuthentication,
 		method,
 		body,
-		uri: `${credentials.endpoint}${resource}.${operation}`,
+		uri: `${credentials.domain}${resource}.${operation}`,
 		json: true
 	};
 
