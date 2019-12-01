@@ -1,5 +1,5 @@
 import { IDataObject } from 'n8n-workflow';
-import { google } from 'googleapis';
+import { google, sheets_v4 } from 'googleapis';
 import { JWT } from 'google-auth-library';
 import { getAuthenticationClient } from './GoogleApi';
 
@@ -22,6 +22,18 @@ export interface ISheetUpdateData {
 export interface ILookupValues {
 	lookupColumn: string;
 	lookupValue: string;
+}
+
+export interface IToDeleteRange {
+	amount: number;
+	startIndex: number;
+	sheetId: number;
+}
+
+export interface IToDelete {
+	[key: string]: IToDeleteRange[] | undefined;
+	columns?: IToDeleteRange[];
+	rows?: IToDeleteRange[];
 }
 
 export type ValueInputOption = 'RAW' | 'USER_ENTERED';
@@ -82,6 +94,44 @@ export class GoogleSheet {
 		);
 
 		return response.data.values;
+	}
+
+
+	/**
+	 * Returns the sheets in a Spreadsheet
+	 */
+	async spreadsheetGetSheets() {
+		const client = await this.getAuthenticationClient();
+
+		const response = await Sheets.spreadsheets.get(
+			{
+				auth: client,
+				spreadsheetId: this.id,
+				fields: 'sheets.properties'
+			}
+		);
+
+		return response.data;
+	}
+
+
+	/**
+	 * Sets values in one or more ranges of a spreadsheet.
+	 */
+	async spreadsheetBatchUpdate(requests: sheets_v4.Schema$Request[]) { // tslint:disable-line:no-any
+		const client = await this.getAuthenticationClient();
+
+		const response = await Sheets.spreadsheets.batchUpdate(
+			{
+				auth: client,
+				spreadsheetId: this.id,
+				requestBody: {
+					requests,
+				},
+			}
+		);
+
+		return response.data;
 	}
 
 
