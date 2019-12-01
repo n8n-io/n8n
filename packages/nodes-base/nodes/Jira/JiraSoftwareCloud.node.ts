@@ -219,7 +219,6 @@ export class JiraSoftwareCloud implements INodeType {
 					const projectId = this.getNodeParameter('project', i) as string;
 					const issueTypeId = this.getNodeParameter('issueType', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const parentIssueKey = this.getNodeParameter('parentIssueKey', i) as string;
 					const body: IIssue = {};
 					const fields: IFields = {
 						summary,
@@ -256,12 +255,14 @@ export class JiraSoftwareCloud implements INodeType {
 							subtaskIssues.push(issueType.id);
 						}
 					}
-					if (!parentIssueKey && subtaskIssues.includes(issueTypeId)) {
+					if (!additionalFields.parentIssueKey
+						&& subtaskIssues.includes(issueTypeId)) {
 						throw new Error('You must define a Parent Issue Key when Issue type is sub-task');
 
-					} else if (parentIssueKey && subtaskIssues.includes(issueTypeId)) {
+					} else if (additionalFields.parentIssueKey
+						&& subtaskIssues.includes(issueTypeId)) {
 						fields.parent = {
-							key: parentIssueKey.toUpperCase(),
+							key: (additionalFields.parentIssueKey as string).toUpperCase(),
 						};
 					}
 					body.fields = fields;
@@ -273,33 +274,33 @@ export class JiraSoftwareCloud implements INodeType {
 				}
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-put
 				if (operation === 'update') {
-					const summary = this.getNodeParameter('summary', i) as string;
-					const issueTypeId = this.getNodeParameter('issueType', i) as string;
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const parentIssueKey = this.getNodeParameter('parentIssueKey', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IIssue = {};
-					const fields: IFields = {
-						summary,
-						issuetype: {
-							id: issueTypeId
-						}
-					};
-					if (additionalFields.labels) {
-						fields.labels = additionalFields.labels as string[];
+					const fields: IFields = {};
+					if (updateFields.summary) {
+						fields.summary = updateFields.summary as string;
 					}
-					if (additionalFields.priority) {
+					if (updateFields.issueType) {
+						fields.issuetype = {
+							id: updateFields.issueType as string,
+						};
+					}
+					if (updateFields.labels) {
+						fields.labels = updateFields.labels as string[];
+					}
+					if (updateFields.priority) {
 						fields.priority = {
-							id: additionalFields.priority as string,
+							id: updateFields.priority as string,
 						};
 					}
-					if (additionalFields.assignee) {
+					if (updateFields.assignee) {
 						fields.assignee = {
-							id: additionalFields.assignee as string,
+							id: updateFields.assignee as string,
 						};
 					}
-					if (additionalFields.description) {
-						fields.description = additionalFields.description as string;
+					if (updateFields.description) {
+						fields.description = updateFields.description as string;
 					}
 					const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/issuetype', 'GET', body);
 					const subtaskIssues = [];
@@ -308,12 +309,14 @@ export class JiraSoftwareCloud implements INodeType {
 							subtaskIssues.push(issueType.id);
 						}
 					}
-					if (!parentIssueKey && subtaskIssues.includes(issueTypeId)) {
+					if (!updateFields.parentIssueKey
+						&& subtaskIssues.includes(updateFields.issueType)) {
 						throw new Error('You must define a Parent Issue Key when Issue type is sub-task');
 
-					} else if (parentIssueKey && subtaskIssues.includes(issueTypeId)) {
+					} else if (updateFields.parentIssueKey
+						&& subtaskIssues.includes(updateFields.issueType)) {
 						fields.parent = {
-							key: parentIssueKey.toUpperCase(),
+							key: (updateFields.parentIssueKey as string).toUpperCase(),
 						};
 					}
 					body.fields = fields;
@@ -326,16 +329,22 @@ export class JiraSoftwareCloud implements INodeType {
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
 				if (operation === 'get') {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const fields = this.getNodeParameter('fields', i) as string;
-					const fieldsByKey = this.getNodeParameter('fieldsByKey', i) as boolean;
-					const expand = this.getNodeParameter('expand', i) as string;
-					const properties = this.getNodeParameter('properties', i) as string;
-					const updateHistory = this.getNodeParameter('updateHistory', i) as boolean;
-					qs.fields = fields;
-					qs.fieldsByKey = fieldsByKey;
-					qs.expand = expand;
-					qs.properties = properties;
-					qs.updateHistory = updateHistory;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (additionalFields.fields) {
+						qs.fields = additionalFields.fields as string;
+					}
+					if (additionalFields.fieldsByKey) {
+						qs.fieldsByKey = additionalFields.fieldsByKey as boolean;
+					}
+					if (additionalFields.expand) {
+						qs.expand = additionalFields.expand as string;
+					}
+					if (additionalFields.properties) {
+						qs.properties = additionalFields.properties as string;
+					}
+					if (additionalFields.updateHistory) {
+						qs.updateHistory = additionalFields.updateHistory as string;
+					}
 					try {
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}`, 'GET', {}, qs);
 					} catch (err) {
@@ -361,12 +370,15 @@ export class JiraSoftwareCloud implements INodeType {
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-notify-post
 				if (operation === 'notify') {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const textBody = this.getNodeParameter('textBody', i) as string;
-					const htmlBody = this.getNodeParameter('htmlBody', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', 0) as boolean;
 					const body: INotify = {};
-					body.htmlBody = htmlBody;
-					body.textBody = textBody;
+					if (additionalFields.textBody) {
+						body.textBody = additionalFields.textBody as string;
+					}
+					if (additionalFields.htmlBody) {
+						body.htmlBody = additionalFields.htmlBody as string;
+					}
 					if (!jsonActive) {
 						const notificationRecipientsValues = (this.getNodeParameter('notificationRecipientsUi', i) as IDataObject).notificationRecipientsValues as IDataObject[];
 						const notificationRecipients: INotificationRecipients = {};
@@ -441,19 +453,19 @@ export class JiraSoftwareCloud implements INodeType {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
 					}
 				}
-				https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-transitions-get
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-transitions-get
 				if (operation === 'transitions') {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const transitionId = this.getNodeParameter('transitionId', i) as string;
-					const expand = this.getNodeParameter('expand', i) as string;
-					if (transitionId) {
-						qs.transitionId = transitionId;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (additionalFields.transitionId) {
+						qs.transitionId = additionalFields.transitionId as string;
 					}
-					if (expand) {
-						qs.expand = expand;
+					if (additionalFields.expand) {
+						qs.expand = additionalFields.expand as string;
 					}
-					qs.skipRemoteOnlyCondition = this.getNodeParameter('skipRemoteOnlyCondition', i) as boolean;
-
+					if (additionalFields.skipRemoteOnlyCondition) {
+						qs.skipRemoteOnlyCondition = additionalFields.skipRemoteOnlyCondition as boolean;
+					}
 					try {
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}/transitions`, 'GET', {}, qs);
 						responseData = responseData.transitions;
