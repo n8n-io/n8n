@@ -5,6 +5,7 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
+	IWebhookFunctions,
 	BINARY_ENCODING
 } from 'n8n-core';
 
@@ -12,7 +13,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function paypalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function paypalApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('paypalApi');
 	const env = getEnviroment(credentials!.env as string);
 	const tokenInfo =  await getAccessToken.call(this);
@@ -29,11 +30,6 @@ export async function paypalApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
-
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
 		throw error.response.body;
 	}
 }
@@ -46,7 +42,7 @@ function getEnviroment(env: string): string {
 	}[env];
 }
 
-async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
+async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('paypalApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -115,4 +111,10 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = '';
 	}
 	return result;
+}
+
+export function upperFist(s: string): string {
+	return s.split('.').map(e => {
+		return e.toLowerCase().charAt(0).toUpperCase() + e.toLowerCase().slice(1);
+	}).join(' ');
 }
