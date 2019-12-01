@@ -676,20 +676,14 @@ export class FileMaker implements INodeType {
 			// Get all the available topics to display them to user so that he can
 			// select them easily
 			async getLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
+				let returnData: INodePropertyOptions[];
 
-				let layouts;
 				try {
-					layouts = await layoutsApiRequest.call(this);
+					returnData = await layoutsApiRequest.call(this);
 				} catch (err) {
 					throw new Error(`FileMaker Error: ${err}`);
 				}
-				for (const layout of layouts) {
-					returnData.push({
-						name: layout.name,
-						value: layout.name,
-					});
-				}
+
 				return returnData;
 			},
 			async getResponseLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
