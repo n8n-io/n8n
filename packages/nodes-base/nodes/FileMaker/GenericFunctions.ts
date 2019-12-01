@@ -5,7 +5,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {OptionsWithUri} from 'request';
@@ -19,6 +19,11 @@ interface ScriptsOptions {
 	'script.presort'?: any; //tslint:disable-line:no-any
 	'script.presort.param'?: any; //tslint:disable-line:no-any
 }
+interface LayoutObject {
+	name: string;
+	isFolder?: boolean;
+	folderLayoutNames?:LayoutObject[];
+}
 
 /**
  * Make an API request to ActiveCampaign
@@ -27,7 +32,7 @@ interface ScriptsOptions {
  * @param {string} method
  * @returns {Promise<any>}
  */
-export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<any> { // tslint:disable-line:no-any
+export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<INodePropertyOptions[]> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
 	const credentials = this.getCredentials('fileMaker');
 
@@ -49,12 +54,28 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 
 	try {
 		const responseData = await this.helpers.request!(options);
-		return responseData.response.layouts;
-
+		const items = parseLayouts(responseData.response.layouts);
+		items.sort((a, b) => a.name > b.name ? 0 : 1);
+		return items;
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
 		throw error;
 	}
+}
+
+function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
+	const returnData: INodePropertyOptions[] = [];
+	for (const layout of layouts) {
+		if (layout.isFolder!)  {
+			returnData.push(...parseLayouts(layout.folderLayoutNames!));
+		} else {
+			returnData.push({
+				name: layout.name,
+				value: layout.name,
+			});
+		}
+	}
+	return returnData;
 }
 
 /**
@@ -138,7 +159,6 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
 export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
 	const token = await getToken.call(this);
 	const credentials = this.getCredentials('fileMaker');
-	const layout = this.getCurrentNodeParameter('layout') as string;
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
