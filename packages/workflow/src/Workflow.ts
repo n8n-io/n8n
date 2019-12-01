@@ -865,16 +865,16 @@ export class Workflow {
 		// Execute the expression
 		try {
 			const returnValue = tmpl.tmpl(parameterValue, dataProxy.getDataProxy());
-			if (typeof returnValue === 'object' && Object.keys(returnValue).length === 0) {
-				// When expression is incomplete it returns a Proxy which causes problems.
-				// Catch it with this code and return a proper error.
-				throw new Error('Expression is not valid.');
+			if (returnValue !== null && typeof returnValue === 'object') {
+				if (Object.keys(returnValue).length === 0) {
+					// When expression is incomplete it returns a Proxy which causes problems.
+					// Catch it with this code and return a proper error.
+					throw new Error('Expression is not valid.');
+				}
+				if (returnObjectAsString === true)  {
+					return this.convertObjectValueToString(returnValue);
+				}
 			}
-
-			if (returnObjectAsString === true && typeof returnValue === 'object') {
-				return this.convertObjectValueToString(returnValue);
-			}
-
 			return returnValue;
 		} catch (e) {
 			throw new Error('Expression is not valid.');
