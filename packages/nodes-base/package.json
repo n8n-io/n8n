@@ -115,14 +115,9 @@
             "dist/nodes/OpenWeatherMap.node.js",
             "dist/nodes/Pipedrive/Pipedrive.node.js",
             "dist/nodes/Pipedrive/PipedriveTrigger.node.js",
-<<<<<<< HEAD
-			"dist/nodes/Postgres/Postgres.node.js",
-			"dist/nodes/Paypal/PayPal.node.js",
-			"dist/nodes/Paypal/PayPalTrigger.node.js",
-=======
             "dist/nodes/Postgres/Postgres.node.js",
             "dist/nodes/PayPal/PayPal.node.js",
->>>>>>> master
+            "dist/nodes/PayPal/PayPalTrigger.node.js",
             "dist/nodes/Rocketchat/Rocketchat.node.js",
             "dist/nodes/ReadBinaryFile.node.js",
             "dist/nodes/ReadBinaryFiles.node.js",
