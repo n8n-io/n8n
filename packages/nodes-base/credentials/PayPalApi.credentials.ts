@@ -5,7 +5,7 @@ import {
 
 
 export class PayPalApi implements ICredentialType {
-	name = 'paypalApi';
+	name = 'payPalApi';
 	displayName = 'PayPal API';
 	properties = [
 		{

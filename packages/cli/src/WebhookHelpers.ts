@@ -28,6 +28,7 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	IWebhookData,
+	IWebhookResponseData,
 	IWorkflowExecuteAdditionalData,
 	NodeHelpers,
 	Workflow,
@@ -76,6 +77,8 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	let parentNodes: string[] | undefined;
 	if (destinationNode !== undefined) {
 		parentNodes = workflow.getParentNodes(destinationNode);
+		// Also add the destination node in case it itself is a webhook node
+		parentNodes.push(destinationNode);
 	}
 
 	for (const node of Object.values(workflow.nodes)) {
@@ -122,7 +125,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 		// If the mode is not known we error. Is probably best like that instead of using
 		// the default that people know as early as possible (probably already testing phase)
 		// that something does not resolve properly.
-		const errorMessage = `The response mode ${responseMode} is not valid!.`;
+		const errorMessage = `The response mode ${responseMode} is not valid!`;
 		responseCallback(new Error(errorMessage), {});
 		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
 	}
@@ -136,12 +139,41 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	additionalData.httpResponse = res;
 
 	let didSendResponse = false;
+	let runExecutionDataMerge = {};
 	try {
 		// Run the webhook function to see what should be returned and if
 		// the workflow should be executed or not
-		const webhookResultData = await webhookData.workflow.runWebhook(webhookData, workflowStartNode, additionalData, NodeExecuteFunctions, executionMode);
+		let webhookResultData: IWebhookResponseData;
 
-		if (webhookResultData.noWebhookResponse === true) {
+		try {
+			webhookResultData = await webhookData.workflow.runWebhook(webhookData, workflowStartNode, additionalData, NodeExecuteFunctions, executionMode);
+		} catch (e) {
+			// Send error response to webhook caller
+			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
+			responseCallback(new Error(errorMessage), {});
+			didSendResponse = true;
+
+			// Add error to execution data that it can be logged and send to Editor-UI
+			runExecutionDataMerge = {
+				resultData: {
+					runData: {},
+					lastNodeExecuted: workflowStartNode.name,
+					error: {
+						message: e.message,
+						stack: e.stack,
+					},
+				},
+			};
+
+			webhookResultData = {
+				noWebhookResponse: true,
+				// Add empty data that it at least tries to "execute" the webhook
+				// which then so gets the chance to throw the error.
+				workflowData: [[{json: {}}]],
+			};
+		}
+
+		if (webhookResultData.noWebhookResponse === true && didSendResponse === false) {
 			// The response got already send
 			responseCallback(null, {
 				noWebhookResponse: true,
@@ -153,18 +185,24 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 			// Workflow should not run
 			if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
-				responseCallback(null, {
-					data: webhookResultData.webhookResponse,
-					responseCode,
-				});
+				if (didSendResponse === false) {
+					responseCallback(null, {
+						data: webhookResultData.webhookResponse,
+						responseCode,
+					});
+					didSendResponse = true;
+				}
 			} else {
 				// Send default response
-				responseCallback(null, {
-					data: {
-						message: 'Webhook call got received.',
-					},
-					responseCode,
-				});
+				if (didSendResponse === false) {
+					responseCallback(null, {
+						data: {
+							message: 'Webhook call got received.',
+						},
+						responseCode,
+					});
+					didSendResponse = true;
+				}
 			}
 			return;
 		}
@@ -214,6 +252,11 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				waitingExecution: {},
 			},
 		};
+
+		if (Object.keys(runExecutionDataMerge).length !== 0) {
+			// If data to merge got defined add it to the execution data
+			Object.assign(runExecutionData, runExecutionDataMerge);
+		}
 
 		const runData: IWorkflowExecutionDataProcess = {
 			credentials,

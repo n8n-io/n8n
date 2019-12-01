@@ -4,8 +4,7 @@
 			"es2017"
 		],
 		"types": [
-			"node",
-			"jest"
+			"node"
 		],
 		"module": "commonjs",
 		"esModuleInterop": true,
