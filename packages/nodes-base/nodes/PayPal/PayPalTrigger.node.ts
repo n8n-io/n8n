@@ -12,7 +12,7 @@ import {
 	INodePropertyOptions,
   } from 'n8n-workflow';
   import {
-	paypalApiRequest,
+	payPalApiRequest,
 	upperFist
  } from './GenericFunctions';
 
@@ -32,7 +32,7 @@ import {
 	  outputs: ['main'],
 	  credentials: [
 			  {
-				  name: 'paypalApi',
+				  name: 'payPalApi',
 				  required: true,
 			  }
 		  ],
@@ -65,11 +65,17 @@ import {
 			// Get all the events types to display them to user so that he can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
+				const returnData: INodePropertyOptions[] = [
+					{
+						name: '*',
+						value: '*',
+						description: 'Any time any event is triggered (Wildcard Event).',
+					}
+				];
 				let events;
 				try {
 					const endpoint = '/notifications/webhooks-event-types';
-					events = await paypalApiRequest.call(this, endpoint, 'GET');
+					events = await payPalApiRequest.call(this, endpoint, 'GET');
 				} catch (err) {
 					throw new Error(`PayPal Error: ${err}`);
 				}
@@ -88,6 +94,7 @@ import {
 			},
 		},
 	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
@@ -99,7 +106,7 @@ import {
 				}
 				const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 				try {
-					await paypalApiRequest.call(this, endpoint, 'GET');
+					await payPalApiRequest.call(this, endpoint, 'GET');
 				} catch (err) {
 					if (err.response && err.response.name === 'INVALID_RESOURCE_ID') {
 						// Webhook does not exist
@@ -123,7 +130,7 @@ import {
 				};
 				const endpoint = '/notifications/webhooks';
 				try {
-					webhook = await paypalApiRequest.call(this, endpoint, 'POST', body);
+					webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
 				} catch (e) {
 					throw e;
 				}
@@ -141,7 +148,7 @@ import {
 				if (webhookData.webhookId !== undefined) {
 					const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 					try {
-						await paypalApiRequest.call(this, endpoint, 'DELETE', {});
+						await payPalApiRequest.call(this, endpoint, 'DELETE', {});
 					} catch (e) {
 						return false;
 					}
@@ -175,7 +182,7 @@ import {
 				webhook_event: bodyData,
 			};
 			try {
-				webhook = await paypalApiRequest.call(this, endpoint, 'POST', body);
+				webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
 			} catch (e) {
 				throw e;
 			}
