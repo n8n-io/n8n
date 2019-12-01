@@ -13,16 +13,14 @@ export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFuncti
 		throw new Error('No credentials got returned!');
 	}
 
-	const headerWithAuthentication = Object.assign({}, headers, 
+	const headerWithAuthentication = Object.assign({}, headers,
 		{ 'X-Auth-Token': credentials.authKey, 'X-User-Id': credentials.userId   });
-
-	const endpoint = 'rocket.chat/api/v1';
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
 		method,
 		body,
-		uri: `https://${credentials.subdomain}.${endpoint}${resource}.${operation}`,
+		uri: `${credentials.endpoint}${resource}.${operation}`,
 		json: true
 	};
 
