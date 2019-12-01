@@ -25,6 +25,7 @@ export class RocketchatApi implements ICredentialType {
 			name: 'domain',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			placeholder: 'https://n8n.rocket.chat',
 		},
 	];
 }
