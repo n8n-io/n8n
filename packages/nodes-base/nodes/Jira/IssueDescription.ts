@@ -41,8 +41,7 @@ export const issueOpeations = [
 			{
 				name: 'Transitions',
 				value: 'transitions',
-				description: `Returns either all transitions or a transition that can be performed by<br/>
-				the user on an issue, based on the issue's status.`,
+				description: `Returns either all transitions or a transition that can be performed by the user on an issue, based on the issue's status.`,
 			},
 			{
 				name: 'Delete',
