@@ -209,9 +209,11 @@ export class JiraSoftwareCloud implements INodeType {
 		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
+
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
 			if (resource === 'issue') {
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-post
 				if (operation === 'create') {
