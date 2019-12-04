@@ -22,7 +22,8 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs: query,
 		uri: uri || `https://api.hubapi.com${endpoint}`,
 		body,
-		json: true
+		json: true,
+		useQuerystring: true,
 	};
 
 	try {
