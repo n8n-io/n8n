@@ -163,6 +163,7 @@ export class Hubspot implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			//https://developers.hubspot.com/docs/methods/deals/deals_overview
 			if (resource === 'deal') {
 				if (operation === 'create') {
 					const body: IDeal = {};
