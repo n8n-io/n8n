@@ -36,8 +36,8 @@ export const dealFields = [
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Stages',
-		name: 'stages',
+		displayName: 'Stage',
+		name: 'stage',
 		type: 'options',
 		required: true,
 		typeOptions: {
@@ -107,8 +107,11 @@ export const dealFields = [
 			{
 				displayName: 'Deal Type',
 				name: 'dealType',
-				type: 'string',
-				default: '',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDealTypes',
+				},
+				default: [],
 			},
 			{
 				displayName: 'Associated Company',

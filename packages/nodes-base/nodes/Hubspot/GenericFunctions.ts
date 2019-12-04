@@ -10,7 +10,6 @@ import {
 import {
 	IDataObject,
 } from 'n8n-workflow';
-import { response } from 'express';
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('hubspotApi');
