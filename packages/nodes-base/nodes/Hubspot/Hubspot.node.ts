@@ -12,7 +12,6 @@ import {
 import {
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
-	validateJSON,
  } from './GenericFunctions';
 import {
 	dealOperations,
@@ -167,6 +166,7 @@ export class Hubspot implements INodeType {
 			if (resource === 'deal') {
 				if (operation === 'create') {
 					const body: IDeal = {};
+					body.properties = [];
 					const association: IAssociation = {};
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const stage = this.getNodeParameter('stage', i) as string;
@@ -218,10 +218,139 @@ export class Hubspot implements INodeType {
 							value: additionalFields.pipeline as string
 						});
 					}
-					body.association = association;
+					body.associations = association;
 					try {
 						const endpoint = '/deals/v1/deal';
 						responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
+					} catch (err) {
+						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
+					}
+				}
+				if (operation === 'update') {
+					const body: IDeal = {};
+					body.properties = [];
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const dealId = this.getNodeParameter('dealId', i) as string;
+					if (updateFields.stage) {
+						body.properties.push({
+							name: 'dealstage',
+							value: updateFields.stage as string,
+						});
+					}
+					if (updateFields.dealName) {
+						// @ts-ignore
+						body.properties.push({
+							name: 'dealname',
+							value: updateFields.dealName as string
+						});
+					}
+					if (updateFields.closeDate) {
+						// @ts-ignore
+						body.properties.push({
+							name: 'closedate',
+							value: new Date(updateFields.closeDate as string).getTime()
+						});
+					}
+					if (updateFields.amount) {
+						// @ts-ignore
+						body.properties.push({
+							name: 'amount',
+							value: updateFields.amount as string
+						});
+					}
+					if (updateFields.dealType) {
+						// @ts-ignore
+						body.properties.push({
+							name: 'dealtype',
+							value: updateFields.dealType as string
+						});
+					}
+					if (updateFields.pipeline) {
+						// @ts-ignore
+						body.properties.push({
+							name: 'pipeline',
+							value: updateFields.pipeline as string
+						});
+					}
+					try {
+						const endpoint = `/deals/v1/deal/${dealId}`;
+						responseData = await hubspotApiRequest.call(this, 'PUT', endpoint, body);
+					} catch (err) {
+						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
+					}
+				}
+				if (operation === 'get') {
+					const dealId = this.getNodeParameter('dealId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (additionalFields.includePropertyVersions) {
+						qs.includePropertyVersions = additionalFields.includePropertyVersions as boolean;
+					}
+					try {
+						const endpoint = `/deals/v1/deal/${dealId}`;
+						responseData = await hubspotApiRequest.call(this, 'GET', endpoint);
+					} catch (err) {
+						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
+					}
+				}
+				if (operation === 'getAll') {
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					if (filters.includeAssociations) {
+						qs.includeAssociations = filters.includeAssociations as boolean;
+					}
+					if (filters.properties) {
+						// @ts-ignore
+						qs.properties = filters.properties.split(',');
+					}
+					if (filters.propertiesWithHistory) {
+						// @ts-ignore
+						qs.propertiesWithHistory = filters.propertiesWithHistory.split(',');
+					}
+					try {
+						const endpoint = `/deals/v1/deal/paged`;
+						if (returnAll) {
+							responseData = await hubspotApiRequestAllItems.call(this, 'deals', 'GET', endpoint, {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', 0) as number;
+							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+							responseData = responseData.deals;
+						}
+					} catch (err) {
+						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
+					}
+				}
+				if (operation === 'getRecentsCreated' || operation === 'getRecentsModified') {
+					let endpoint;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					if (filters.since) {
+						qs.since = new Date(filters.since as string).getTime();
+					}
+					if (filters.includePropertyVersions) {
+						qs.includePropertyVersions = filters.includePropertyVersions as boolean;
+					}
+					try {
+						if (operation === 'getRecentsCreated') {
+							endpoint = `/deals/v1/deal/recent/created`;
+						} else {
+							endpoint = `/deals/v1/deal/recent/modified`;
+						}
+						if (returnAll) {
+							responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
+						} else {
+							qs.count = this.getNodeParameter('limit', 0) as number;
+							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+							responseData = responseData.results;
+						}
+					} catch (err) {
+						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
+					}
+				}
+				if (operation === 'delete') {
+					const dealId = this.getNodeParameter('dealId', i) as string;
+					try {
+						const endpoint = `/deals/v1/deal/${dealId}`;
+						responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
 					} catch (err) {
 						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
 					}

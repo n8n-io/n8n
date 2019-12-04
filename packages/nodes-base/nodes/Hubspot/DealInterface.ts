@@ -7,6 +7,6 @@ export interface IAssociation {
 }
 
 export interface IDeal {
-	association?: IAssociation;
+	associations?: IAssociation;
 	properties?: IDataObject[];
 }
