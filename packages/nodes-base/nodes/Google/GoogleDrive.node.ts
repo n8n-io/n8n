@@ -235,24 +235,6 @@ export class GoogleDrive implements INodeType {
 				description: 'Query to use to return only specific files.',
 			},
 			{
-				displayName: 'Drive Id',
-				name: 'driveId',
-				type: 'string',
-				default: '',
-				required: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'list'
-						],
-						resource: [
-							'file',
-						],
-					},
-				},
-				description: 'ID of the shared drive to search.',
-			},
-			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
@@ -693,7 +675,7 @@ export class GoogleDrive implements INodeType {
 					{
 						displayName: 'Corpora',
 						name: 'corpora',
-						type: 'multiOptions',
+						type: 'options',
 						displayOptions: {
 							show: {
 								'/operation': [
@@ -729,6 +711,27 @@ export class GoogleDrive implements INodeType {
 						required: true,
 						default: [],
 						description: 'The corpora to operate on.',
+					},
+					{
+						displayName: 'Drive Id',
+						name: 'driveId',
+						type: 'string',
+						default: '',
+						required: false,
+						displayOptions: {
+							show: {
+								'/operation': [
+									'list'
+								],
+								'/resource': [
+									'file',
+								],
+								corpora: [
+									'drive'
+								]
+							},
+						},
+						description: 'ID of the shared drive to search. The driveId parameter must be specified if and only if corpora is set to drive.',
 					},
 				],
 			},
@@ -839,8 +842,11 @@ export class GoogleDrive implements INodeType {
 						queryCorpora = (options.corpora as string[]).join(', ');
 					}
 
-					let driveId = '';
-					driveId = this.getNodeParameter('driveId', i) as string;
+					let driveId : string | undefined;
+					driveId = options.driveId as string;
+					if (driveId === '') {
+						driveId = undefined;
+					}
 
 					let queryString = '';
 					const useQueryString = this.getNodeParameter('useQueryString', i) as boolean;
