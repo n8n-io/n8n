@@ -53,10 +53,6 @@ export class Mattermost implements INodeType {
 						name: 'User',
 						value: 'user',
 					},
-					{
-						name: 'Post',
-						value: 'post',
-					},
 				],
 				default: 'message',
 				description: 'The resource to operate on.',
@@ -110,6 +106,11 @@ export class Mattermost implements INodeType {
 					},
 				},
 				options: [
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Soft deletes a post, by marking the post as deleted in the database.',
+					},
 					{
 						name: 'Post',
 						value: 'post',
@@ -294,6 +295,28 @@ export class Mattermost implements INodeType {
 			// ----------------------------------
 			//         message
 			// ----------------------------------
+
+			// ----------------------------------
+			//         message:delete
+			// ----------------------------------
+			{
+				displayName: 'Post ID',
+				name: 'postId',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'message',
+						],
+						operation: [
+							'delete',
+						],
+					},
+				},
+				default: '',
+				description: 'ID of the post to delete',
+			},
 
 			// ----------------------------------
 			//         message:post
@@ -600,51 +623,7 @@ export class Mattermost implements INodeType {
 				default: '',
 				description: 'User GUID'
 			},
-			// ----------------------------------
-			//             post
-			// ----------------------------------
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'post',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Delete',
-						value: 'delete',
-						description: 'Soft deletes a post, by marking the post as deleted in the database. Soft deleted posts will not be returned in post queries.',
-					},
-				],
-				default: '',
-				description: 'The operation to perform.',
-			},
-			// ----------------------------------
-			//         post:delete
-			// ----------------------------------
-			{
-				displayName: 'Post ID',
-				name: 'postId',
-				type: 'string',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'post',
-						],
-						operation: [
-							'delete',
-						],
-					},
-				},
-				default: '',
-				description: 'ID of the post to delete',
-			},
+
 		],
 	};
 
@@ -797,7 +776,15 @@ export class Mattermost implements INodeType {
 					endpoint = `channels/${channelId}/stats`;
 				}
 			} else if (resource === 'message') {
-				if (operation === 'post') {
+				if (operation === 'delete') {
+					// ----------------------------------
+					//          message:delete
+					// ----------------------------------
+
+					const postId = this.getNodeParameter('postId', i) as string;
+					requestMethod = 'DELETE';
+					endpoint = `posts/${postId}`;
+				} else if (operation === 'post') {
 					// ----------------------------------
 					//         message:post
 					// ----------------------------------
@@ -841,15 +828,6 @@ export class Mattermost implements INodeType {
 					const userId = this.getNodeParameter('userId', i) as string;
 					requestMethod = 'DELETE';
 					endpoint = `users/${userId}`;
-				}
-			} else if (resource === 'post') {
-				if (operation === 'delete') {
-					// ----------------------------------
-					//          post:delete
-					// ----------------------------------
-					const postId = this.getNodeParameter('postId', i) as string;
-					requestMethod = 'DELETE';
-					endpoint = `posts/${postId}`;
 				}
 			}
 			else {
