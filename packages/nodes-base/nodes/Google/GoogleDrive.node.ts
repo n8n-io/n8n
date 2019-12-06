@@ -900,9 +900,9 @@ export class GoogleDrive implements INodeType {
 						fields: `nextPageToken, files(${queryFields})`,
 						spaces: querySpaces,
 						corpora: queryCorpora,
-						driveId: driveId,
+						driveId,
 						q: queryString,
-						includeItemsFromAllDrives: (queryCorpora !== '' || driveId !== ''), // Actually depracated, 
+						includeItemsFromAllDrives: (queryCorpora !== '' || driveId !== ''), // Actually depracated,
 						supportsAllDrives: (queryCorpora !== '' || driveId !== ''), 		// see https://developers.google.com/drive/api/v3/reference/files/list
 																							// However until June 2020 still needs to be set, to avoid API errors.
 					});
