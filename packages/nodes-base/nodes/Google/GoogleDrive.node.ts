@@ -672,6 +672,67 @@ export class GoogleDrive implements INodeType {
 						default: [],
 						description: 'The spaces to operate on.',
 					},
+					{
+						displayName: 'Corpora',
+						name: 'corpora',
+						type: 'options',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'list'
+								],
+								'/resource': [
+									'file',
+								],
+							},
+						},
+						options: [
+							{
+								name: 'user',
+								value: 'user',
+								description: 'All files in "My Drive" and "Shared with me"',
+							},
+							{
+								name: 'domain',
+								value: 'domain',
+								description:"All files shared to the user's domain that are searchable",
+							},
+							{
+								name: 'drive',
+								value: 'drive',
+								description: 'All files contained in a single shared drive',
+							},
+							{
+								name: 'allDrives',
+								value: 'allDrives',
+								description: 'All drives',
+							},
+						],
+						required: true,
+						default: [],
+						description: 'The corpora to operate on.',
+					},
+					{
+						displayName: 'Drive Id',
+						name: 'driveId',
+						type: 'string',
+						default: '',
+						required: false,
+						displayOptions: {
+							show: {
+								'/operation': [
+									'list'
+								],
+								'/resource': [
+									'file',
+								],
+								corpora: [
+									'drive'
+								]
+							},
+						},
+						description: 'ID of the shared drive to search. The driveId parameter must be specified if and only if corpora is set to drive.',
+					},
 				],
 			},
 
@@ -776,6 +837,17 @@ export class GoogleDrive implements INodeType {
 						}
 					}
 
+					let queryCorpora = '';
+					if (options.corpora) {
+						queryCorpora = (options.corpora as string[]).join(', ');
+					}
+
+					let driveId : string | undefined;
+					driveId = options.driveId as string;
+					if (driveId === '') {
+						driveId = undefined;
+					}
+
 					let queryString = '';
 					const useQueryString = this.getNodeParameter('useQueryString', i) as boolean;
 					if (useQueryString === true) {
@@ -827,7 +899,12 @@ export class GoogleDrive implements INodeType {
 						orderBy: 'modifiedTime',
 						fields: `nextPageToken, files(${queryFields})`,
 						spaces: querySpaces,
+						corpora: queryCorpora,
+						driveId,
 						q: queryString,
+						includeItemsFromAllDrives: (queryCorpora !== '' || driveId !== ''), // Actually depracated,
+						supportsAllDrives: (queryCorpora !== '' || driveId !== ''), 		// see https://developers.google.com/drive/api/v3/reference/files/list
+																							// However until June 2020 still needs to be set, to avoid API errors.
 					});
 
 					const files = res!.data.files;
