@@ -22,8 +22,8 @@ export class ShopifyApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Shop Name',
-			name: 'shopName',
+			displayName: 'Shop Subdomain',
+			name: 'shopSubdomain',
 			required: true,
 			type: 'string' as NodePropertyTypes,
 			default: '',

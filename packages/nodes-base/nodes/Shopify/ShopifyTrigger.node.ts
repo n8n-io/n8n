@@ -53,239 +53,239 @@ export class ShopifyTrigger implements INodeType {
 				options:
 					[
 						{
-						  name: 'app uninstalled',
+						  name: 'App uninstalled',
 						  value: 'app/uninstalled'
 						},
 						{
-						  name: 'carts create',
+						  name: 'Carts create',
 						  value: 'carts/create'
 						},
 						{
-						  name: 'carts update',
+						  name: 'Carts update',
 						  value: 'carts/update'
 						},
 						{
-						  name: 'checkouts create',
+						  name: 'Checkouts create',
 						  value: 'checkouts/create'
 						},
 						{
-						  name: 'checkouts delete',
+						  name: 'Checkouts delete',
 						  value: 'checkouts/delete'
 						},
 						{
-						  name: 'checkouts update',
+						  name: 'Checkouts update',
 						  value: 'checkouts/update'
 						},
 						{
-						  name: 'collection_listings add',
+						  name: 'Collection listings add',
 						  value: 'collection_listings/add'
 						},
 						{
-						  name: 'collection_listings remove',
+						  name: 'Collection listings remove',
 						  value: 'collection_listings/remove'
 						},
 						{
-						  name: 'collection_listings update',
+						  name: 'Collection listings update',
 						  value: 'collection_listings/update'
 						},
 						{
-						  name: 'collections create',
+						  name: 'Collections create',
 						  value: 'collections/create'
 						},
 						{
-						  name: 'collections delete',
+						  name: 'Collections delete',
 						  value: 'collections/delete'
 						},
 						{
-						  name: 'collections update',
+						  name: 'Collections update',
 						  value: 'collections/update'
 						},
 						{
-						  name: 'customer_groups create',
+						  name: 'Customer groups create',
 						  value: 'customer_groups/create'
 						},
 						{
-						  name: 'customer_groups delete',
+						  name: 'Customer groups delete',
 						  value: 'customer_groups/delete'
 						},
 						{
-						  name: 'customer_groups update',
+						  name: 'Customer groups update',
 						  value: 'customer_groups/update'
 						},
 						{
-						  name: 'customers create',
+						  name: 'Customers create',
 						  value: 'customers/create'
 						},
 						{
-						  name: 'customers delete',
+						  name: 'Customers delete',
 						  value: 'customers/delete'
 						},
 						{
-						  name: 'customers disable',
+						  name: 'Customers disable',
 						  value: 'customers/disable'
 						},
 						{
-						  name: 'customers enable',
+						  name: 'Customers enable',
 						  value: 'customers/enable'
 						},
 						{
-						  name: 'customers update',
+						  name: 'Customers update',
 						  value: 'customers/update'
 						},
 						{
-						  name: 'draft_orders create',
+						  name: 'Draft orders create',
 						  value: 'draft_orders/create'
 						},
 						{
-						  name: 'draft_orders delete',
+						  name: 'Draft orders delete',
 						  value: 'draft_orders/delete'
 						},
 						{
-						  name: 'draft_orders update',
+						  name: 'Draft orders update',
 						  value: 'draft_orders/update'
 						},
 						{
-						  name: 'fulfillment_events create',
+						  name: 'Fulfillment events create',
 						  value: 'fulfillment_events/create'
 						},
 						{
-						  name: 'fulfillment_events delete',
+						  name: 'Fulfillment events delete',
 						  value: 'fulfillment_events/delete'
 						},
 						{
-						  name: 'fulfillments create',
+						  name: 'Fulfillments create',
 						  value: 'fulfillments/create'
 						},
 						{
-						  name: 'fulfillments update',
+						  name: 'Fulfillments update',
 						  value: 'fulfillments/update'
 						},
 						{
-						  name: 'inventory_items create',
+						  name: 'Inventory_items create',
 						  value: 'inventory_items/create'
 						},
 						{
-						  name: 'inventory_items delete',
+						  name: 'Inventory_items delete',
 						  value: 'inventory_items/delete'
 						},
 						{
-						  name: 'inventory_items update',
+						  name: 'Inventory_items update',
 						  value: 'inventory_items/update'
 						},
 						{
-						  name: 'inventory_levels connect',
+						  name: 'Inventory_levels connect',
 						  value: 'inventory_levels/connect'
 						},
 						{
-						  name: 'inventory_levels disconnect',
+						  name: 'Inventory_levels disconnect',
 						  value: 'inventory_levels/disconnect'
 						},
 						{
-						  name: 'inventory_levels update',
+						  name: 'Inventory_levels update',
 						  value: 'inventory_levels/update'
 						},
 						{
-						  name: 'locales create',
+						  name: 'Locales create',
 						  value: 'locales/create'
 						},
 						{
-						  name: 'locales update',
+						  name: 'Locales update',
 						  value: 'locales/update'
 						},
 						{
-						  name: 'locations create',
+						  name: 'Locations create',
 						  value: 'locations/create'
 						},
 						{
-						  name: 'locations delete',
+						  name: 'Locations delete',
 						  value: 'locations/delete'
 						},
 						{
-						  name: 'locations update',
+						  name: 'Locations update',
 						  value: 'locations/update'
 						},
 						{
-						  name: 'order_transactions create',
+						  name: 'Order transactions create',
 						  value: 'order_transactions/create'
 						},
 						{
-						  name: 'orders cancelled',
+						  name: 'Orders cancelled',
 						  value: 'orders/cancelled'
 						},
 						{
-						  name: 'orders create',
+						  name: 'Orders create',
 						  value: 'orders/create'
 						},
 						{
-						  name: 'orders delete',
+						  name: 'Orders delete',
 						  value: 'orders/delete'
 						},
 						{
-						  name: 'orders fulfilled',
+						  name: 'Orders fulfilled',
 						  value: 'orders/fulfilled'
 						},
 						{
-						  name: 'orders paid',
+						  name: 'Orders paid',
 						  value: 'orders/paid'
 						},
 						{
-						  name: 'orders partially_fulfilled',
+						  name: 'Orders partially fulfilled',
 						  value: 'orders/partially_fulfilled'
 						},
 						{
-						  name: 'orders updated',
+						  name: 'Orders updated',
 						  value: 'orders/updated'
 						},
 						{
-						  name: 'product_listings add',
+						  name: 'Product listings add',
 						  value: 'product_listings/add'
 						},
 						{
-						  name: 'product_listings remove',
+						  name: 'Product listings remove',
 						  value: 'product_listings/remove'
 						},
 						{
-						  name: 'product_listings update',
+						  name: 'Product listings update',
 						  value: 'product_listings/update'
 						},
 						{
-						  name: 'products create',
+						  name: 'Products create',
 						  value: 'products/create'
 						},
 						{
-						  name: 'products delete',
+						  name: 'Products delete',
 						  value: 'products/delete'
 						},
 						{
-						  name: 'products update',
+						  name: 'Products update',
 						  value: 'products/update'
 						},
 						{
-						  name: 'refunds create',
+						  name: 'Refunds create',
 						  value: 'refunds/create'
 						},
 						{
-						  name: 'shop update',
+						  name: 'Shop update',
 						  value: 'shop/update'
 						},
 						{
-						  name: 'tender_transactions create',
+						  name: 'Tender transactions create',
 						  value: 'tender_transactions/create'
 						},
 						{
-						  name: 'themes create',
+						  name: 'Themes create',
 						  value: 'themes/create'
 						},
 						{
-						  name: 'themes delete',
+						  name: 'Themes delete',
 						  value: 'themes/delete'
 						},
 						{
-						  name: 'themes publish',
+						  name: 'Themes publish',
 						  value: 'themes/publish'
 						},
 						{
-						  name: 'themes update',
+						  name: 'Themes update',
 						  value: 'themes/update'
 						}
 					],

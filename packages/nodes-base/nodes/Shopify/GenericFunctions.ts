@@ -24,7 +24,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		headers: headerWithAuthentication,
 		method,
 		qs: query,
-		uri: uri || `https://${credentials.shopName}.myshopify.com/admin/api/2019-10${resource}`,
+		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
 		body,
 		json: true
 	};
