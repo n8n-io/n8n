@@ -39,13 +39,13 @@ export const dealOperations = [
 				description: 'Delete a deals',
 			},
 			{
-				name: 'Recents Created',
-				value: 'getRecentsCreated',
+				name: 'Get Recently Created',
+				value: 'getRecentlyCreated',
 				description: 'Get recently created deals',
 			},
 			{
-				name: 'Recents Modified',
-				value: 'getRecentsModified',
+				name: 'Get Recently Modified',
+				value: 'getRecentlyModified',
 				description: 'Get recently modified deals',
 			},
 		],
@@ -406,7 +406,7 @@ export const dealFields = [
 	description: 'Unique identifier for a particular deal',
 },
 /* -------------------------------------------------------------------------- */
-/*               deal:getRecentsCreated deal:getRecentsModified               */
+/*               deal:getRecentlyCreated deal:getRecentlyModified               */
 /* -------------------------------------------------------------------------- */
 {
 	displayName: 'Return All',
@@ -418,8 +418,8 @@ export const dealFields = [
 				'deal',
 			],
 			operation: [
-				'getRecentsCreated',
-				'getRecentsModified',
+				'getRecentlyCreated',
+				'getRecentlyModified',
 			],
 		},
 	},
@@ -436,8 +436,8 @@ export const dealFields = [
 				'deal',
 			],
 			operation: [
-				'getRecentsCreated',
-				'getRecentsModified',
+				'getRecentlyCreated',
+				'getRecentlyModified',
 			],
 			returnAll: [
 				false,
@@ -463,8 +463,8 @@ export const dealFields = [
 				'deal',
 			],
 			operation: [
-				'getRecentsCreated',
-				'getRecentsModified',
+				'getRecentlyCreated',
+				'getRecentlyModified',
 			],
 		},
 	},

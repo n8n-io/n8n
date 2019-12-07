@@ -320,7 +320,7 @@ export class Hubspot implements INodeType {
 						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
 					}
 				}
-				if (operation === 'getRecentsCreated' || operation === 'getRecentsModified') {
+				if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
 					let endpoint;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
@@ -331,7 +331,7 @@ export class Hubspot implements INodeType {
 						qs.includePropertyVersions = filters.includePropertyVersions as boolean;
 					}
 					try {
-						if (operation === 'getRecentsCreated') {
+						if (operation === 'getRecentlyCreated') {
 							endpoint = `/deals/v1/deal/recent/created`;
 						} else {
 							endpoint = `/deals/v1/deal/recent/modified`;
