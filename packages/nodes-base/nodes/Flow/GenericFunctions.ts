@@ -25,17 +25,16 @@ export async function flowApiRequest(this: IHookFunctions | IExecuteFunctions | 
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.error(error);
-
-		const errorMessage = error.response.body.message || error.response.body.Message;
-
-		if (errorMessage !== undefined) {
-			throw errorMessage;
+		let errorMessage = error.message;
+		if (error.response.body) {
+			errorMessage = error.response.body.message || error.response.body.Message || error.message;
 		}
-		throw error.response.body;
+
+		throw new Error(errorMessage);
 	}
 }
 

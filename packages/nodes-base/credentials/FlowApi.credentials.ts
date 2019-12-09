@@ -9,6 +9,12 @@ export class FlowApi implements ICredentialType {
 	displayName = 'Flow API';
 	properties = [
 		{
+			displayName: 'Organization ID',
+			name: 'organizationId',
+			type: 'number' as NodePropertyTypes,
+			default: 0,
+		},
+		{
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string' as NodePropertyTypes,
