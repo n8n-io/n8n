@@ -235,7 +235,11 @@ class App {
 
 		// Support application/xml type post data
 		// @ts-ignore
-		this.app.use(bodyParser.xml({ limit: "16mb" }));
+		this.app.use(bodyParser.xml({ limit: "16mb", xmlParseOptions: {
+			normalize: true,     // Trim whitespace inside text nodes
+			normalizeTags: true, // Transform tags to lowercase
+			explicitArray: false // Only put properties in array if length > 1
+		  } }));
 
 		// Make sure that Vue history mode works properly
 		this.app.use(history({
