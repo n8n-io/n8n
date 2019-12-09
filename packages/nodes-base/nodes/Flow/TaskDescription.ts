@@ -45,23 +45,6 @@ export const taskFields = [
 /*                                task:create                                */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
-		name: 'organizationId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'create'
-				]
-			},
-		},
-		description: 'Select resources belonging to an organization.',
-	},
-	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
 		type: 'string',
@@ -246,23 +229,6 @@ export const taskFields = [
 /* -------------------------------------------------------------------------- */
 /*                                 task:update                                */
 /* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Organization ID',
-		name: 'organizationId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'update'
-				]
-			},
-		},
-		description: 'Select resources belonging to an organization.',
-	},
 	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
@@ -450,23 +416,6 @@ export const taskFields = [
 /*                                  task:get                                  */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Organization ID',
-		name: 'organizationId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'get'
-				]
-			},
-		},
-		description: 'Select resources belonging to an organization.',
-	},
-	{
 		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
@@ -529,23 +478,6 @@ export const taskFields = [
 /* -------------------------------------------------------------------------- */
 /*                                 task:getAll                                */
 /* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Organization ID',
-		name: 'organizationId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'task',
-				],
-				operation: [
-					'getAll'
-				]
-			},
-		},
-		description: 'Select resources belonging to an organization.',
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

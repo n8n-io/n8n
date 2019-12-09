@@ -64,6 +64,12 @@ export class Flow implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const credentials = this.getCredentials('flowApi');
+
+		if (credentials === undefined) {
+			throw new Error('No credentials got returned!');
+		}
+
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
@@ -76,12 +82,11 @@ export class Flow implements INodeType {
 			if (resource === 'task') {
 				//https://developer.getflow.com/api/#tasks_create-task
 				if (operation === 'create') {
-					const organizationId = this.getNodeParameter('organizationId', i) as string;
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: ITask = {
-						organization_id: parseInt(organizationId, 10),
+						organization_id: credentials.organizationId as number,
 					};
 					const task: TaskInfo = {
 						name,
@@ -134,17 +139,16 @@ export class Flow implements INodeType {
 						responseData = await flowApiRequest.call(this, 'POST', '/tasks', body);
 						responseData = responseData.task;
 					} catch (err) {
-						throw new Error(`Flow Error: ${JSON.stringify(err)}`);
+						throw new Error(`Flow Error: ${err.message}`);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_update-a-task
 				if (operation === 'update') {
-					const organizationId = this.getNodeParameter('organizationId', i) as string;
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: ITask = {
-						organization_id: parseInt(organizationId, 10),
+						organization_id: credentials.organizationId as number,
 					};
 					const task: TaskInfo = {
 						workspace_id: parseInt(workspaceId, 10),
@@ -203,30 +207,28 @@ export class Flow implements INodeType {
 						responseData = await flowApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
 						responseData = responseData.task;
 					} catch (err) {
-						throw new Error(`Flow Error: ${JSON.stringify(err)}`);
+						throw new Error(`Flow Error: ${err.message}`);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_get-task
 				if (operation === 'get') {
-					const organizationId = this.getNodeParameter('organizationId', i) as string;
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					qs.organization_id = organizationId;
+					qs.organization_id = credentials.organizationId as number;
 					if (filters.include) {
 						qs.include = (filters.include as string[]).join(',');
 					}
 					try {
 						responseData = await flowApiRequest.call(this,'GET', `/tasks/${taskId}`, {}, qs);
 					} catch (err) {
-						throw new Error(`Flow Error: ${JSON.stringify(err)}`);
+						throw new Error(`Flow Error: ${err.message}`);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_get-tasks
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const organizationId = this.getNodeParameter('organizationId', i) as string;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					qs.organization_id = organizationId;
+					qs.organization_id = credentials.organizationId as number;
 					if (filters.include) {
 						qs.include = (filters.include as string[]).join(',');
 					}
@@ -263,7 +265,7 @@ export class Flow implements INodeType {
 							responseData = responseData.tasks;
 						}
 					} catch (err) {
-						throw new Error(`Flow Error: ${JSON.stringify(err)}`);
+						throw new Error(`Flow Error: ${err.message}`);
 					}
 				}
 			}

@@ -44,14 +44,6 @@ export class FlowTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Organization ID',
-				name: 'organizationId',
-				type: 'string',
-				required: true,
-				default: '',
-				description: 'Organization',
-			},
-			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
@@ -116,6 +108,12 @@ export class FlowTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const credentials = this.getCredentials('flowApi');
+
+				if (credentials === undefined) {
+					throw new Error('No credentials got returned!');
+				}
+
 				let webhooks;
 				const qs: IDataObject = {};
 				const webhookData = this.getWorkflowStaticData('node');
@@ -125,7 +123,7 @@ export class FlowTrigger implements INodeType {
 				if (!(webhookData.webhookIds as [number]).length) {
 					return false;
 				}
-				qs.organization_id = this.getNodeParameter('organizationId') as string;
+				qs.organization_id = credentials.organizationId as number;
 				const endpoint = `/integration_webhooks`;
 				try {
 					webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
@@ -144,10 +142,15 @@ export class FlowTrigger implements INodeType {
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
+				const credentials = this.getCredentials('flowApi');
+
+				if (credentials === undefined) {
+					throw new Error('No credentials got returned!');
+				}
+
 				let resourceIds, body, responseData;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const organizationId = this.getNodeParameter('organizationId') as string;
 				const resource = this.getNodeParameter('resource') as string;
 				const endpoint = `/integration_webhooks`;
 				if (resource === 'list') {
@@ -159,7 +162,7 @@ export class FlowTrigger implements INodeType {
 				// @ts-ignore
 				for (const resourceId of resourceIds ) {
 					body = {
-						organization_id: organizationId,
+						organization_id: credentials.organizationId as number,
 						integration_webhook: {
 							name: 'n8n-trigger',
 							url: webhookUrl,
@@ -183,9 +186,15 @@ export class FlowTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
+				const credentials = this.getCredentials('flowApi');
+
+				if (credentials === undefined) {
+					throw new Error('No credentials got returned!');
+				}
+
 				const qs: IDataObject = {};
 				const webhookData = this.getWorkflowStaticData('node');
-				qs.organization_id = this.getNodeParameter('organizationId') as string;
+				qs.organization_id = credentials.organizationId as number;
 				// @ts-ignore
 				if (webhookData.webhookIds.length > 0) {
 					// @ts-ignore
