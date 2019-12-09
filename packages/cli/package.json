@@ -76,6 +76,7 @@
         "@oclif/errors": "^1.2.2",
         "basic-auth": "^2.0.1",
         "body-parser": "^1.18.3",
+        "body-parser-xml": "^1.1.0",
         "compression": "^1.7.4",
         "connect-history-api-fallback": "^1.6.0",
         "convict": "^5.0.0",
