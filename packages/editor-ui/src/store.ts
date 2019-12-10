@@ -502,7 +502,7 @@ export const store = new Vuex.Store({
 			state.lastSelectedNode = nodeName;
 		},
 
-		setLastSelectedNodeOutputIndex(state, outputIndex: number | null) {
+		setLastSelectedNodeOutputIndex (state, outputIndex: number | null) {
 			state.lastSelectedNodeOutputIndex = outputIndex;
 		},
 

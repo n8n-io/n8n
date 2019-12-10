@@ -50,6 +50,7 @@ declare module 'jsplumb' {
 	interface OnConnectionBindInfo {
 		originalSourceEndpoint: Endpoint;
 		originalTargetEndpoint: Endpoint;
+		getParameters(): { index: number };
 	}
 }
 
