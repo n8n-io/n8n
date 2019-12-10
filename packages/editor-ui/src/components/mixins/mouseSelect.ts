@@ -173,6 +173,7 @@ export const mouseSelect = mixins(nodeIndex).extend({
 			this.instance.clearDragSelection();
 			this.$store.commit('resetSelectedNodes');
 			this.$store.commit('setLastSelectedNode', null);
+			this.$store.commit('setLastSelectedNodeOutputIndex', null);
 			this.$store.commit('setActiveNode', null);
 		},
 	},
