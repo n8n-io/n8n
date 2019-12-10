@@ -171,14 +171,16 @@ export default mixins(
 					return returnData;
 				} else if (Array.isArray(inputData)) {
 					let newPropertyName = propertyName;
+					let newParentPath = parentPath;
 					if (propertyIndex !== undefined) {
-						newPropertyName += `[${propertyIndex}]`;
+						newParentPath += `["${propertyName}"]`;
+						newPropertyName = propertyIndex.toString();
 					}
 
 					const arrayData: IVariableSelectorOption[] = [];
 
 					for (let i = 0; i < inputData.length; i++) {
-						arrayData.push.apply(arrayData, this.jsonDataToFilterOption(inputData[i], parentPath, newPropertyName, filterText, i, `[Item: ${i}]`, skipKey));
+						arrayData.push.apply(arrayData, this.jsonDataToFilterOption(inputData[i], newParentPath, newPropertyName, filterText, i, `[Item: ${i}]`, skipKey));
 					}
 
 					returnData.push(
