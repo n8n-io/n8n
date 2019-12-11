@@ -806,6 +806,7 @@ export default mixins(
 				}
 
 				this.$store.commit('setLastSelectedNode', node.name);
+				this.$store.commit('setLastSelectedNodeOutputIndex', null);
 
 				if (setActive === true) {
 					this.$store.commit('setActiveNode', node.name);
@@ -936,6 +937,7 @@ export default mixins(
 
 				// Check if there is a last selected node
 				const lastSelectedNode = this.$store.getters.lastSelectedNode;
+				const lastSelectedNodeOutputIndex = this.$store.getters.lastSelectedNodeOutputIndex;
 				if (lastSelectedNode) {
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
@@ -960,6 +962,8 @@ export default mixins(
 					this.nodeSelectedByName(newNodeData.name, true);
 				});
 
+				const outputIndex = lastSelectedNodeOutputIndex || 0;
+
 				if (lastSelectedNode) {
 					// If a node is last selected then connect between the active and its child ones
 					await Vue.nextTick();
@@ -971,15 +975,15 @@ export default mixins(
 					connections = JSON.parse(JSON.stringify(connections));
 
 					for (const type of Object.keys(connections)) {
-						for (let inputIndex = 0; inputIndex < connections[type].length; inputIndex++) {
-							connections[type][inputIndex].forEach((connectionInfo: IConnection) => {
+						if (outputIndex <= connections[type].length) {
+							connections[type][outputIndex].forEach((connectionInfo: IConnection) => {
 								// Remove currenct connection
 
 								const connectionDataDisonnect = [
 									{
 										node: lastSelectedNode.name,
 										type,
-										index: inputIndex,
+										index: outputIndex,
 									},
 									connectionInfo,
 								] as [IConnection, IConnection];
@@ -990,7 +994,7 @@ export default mixins(
 									{
 										node: newNodeData.name,
 										type,
-										index: inputIndex,
+										index: 0,
 									},
 									connectionInfo,
 								] as [IConnection, IConnection];
@@ -1007,7 +1011,7 @@ export default mixins(
 						{
 							node: lastSelectedNode.name,
 							type: 'main',
-							index: 0,
+							index: outputIndex,
 						},
 						{
 							node: newNodeData.name,
@@ -1062,6 +1066,9 @@ export default mixins(
 					// to it.
 					const sourceNodeName = this.$store.getters.getNodeNameByIndex(info.sourceId.slice(NODE_NAME_PREFIX.length));
 					this.$store.commit('setLastSelectedNode', sourceNodeName);
+
+					const sourceInfo = info.getParameters();
+					this.$store.commit('setLastSelectedNodeOutputIndex', sourceInfo.index);
 
 					// Display the node-creator
 					this.createNodeActive = true;
