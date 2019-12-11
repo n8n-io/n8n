@@ -36,12 +36,18 @@ export class MailchimpTrigger implements INodeType {
 			}
 		],
 		webhooks: [
-		{
-			name: 'default',
-			httpMethod: 'POST',
-			reponseMode: 'onReceived',
-			path: 'webhook',
-		},
+			{
+				name: 'setup',
+				httpMethod: 'GET',
+				reponseMode: 'onReceived',
+				path: 'webhook',
+			},
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				reponseMode: 'onReceived',
+				path: 'webhook',
+			}
 		],
 		properties: [
 			{
@@ -229,6 +235,15 @@ export class MailchimpTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+		const webhookName = this.getWebhookName();
+		if (webhookName === 'setup') {
+			// Is a create webhook confirmation request
+			const res = this.getResponseObject();
+			res.status(200).end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
 		const req = this.getRequestObject();
 		if (req.body.id !== webhookData.id) {
 			return {};
