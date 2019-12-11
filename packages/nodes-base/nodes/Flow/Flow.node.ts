@@ -1,0 +1,280 @@
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+import {
+	IDataObject,
+	INodeTypeDescription,
+	INodeExecutionData,
+	INodeType,
+} from 'n8n-workflow';
+import {
+	flowApiRequest,
+	FlowApiRequestAllItems,
+} from './GenericFunctions';
+import {
+	taskOpeations,
+	taskFields,
+} from './TaskDescription';
+import {
+	ITask, TaskInfo,
+ } from './TaskInterface';
+import { response } from 'express';
+
+export class Flow implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Flow',
+		name: 'Flow',
+		icon: 'file:flow.png',
+		group: ['output'],
+		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume Flow API',
+		defaults: {
+			name: 'Flow',
+			color: '#c02428',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'flowApi',
+				required: true,
+			}
+		],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Task',
+						value: 'task',
+						description: `The primary unit within Flow; tasks track units of work and can be assigned, sorted, nested, and tagged.</br>
+						Tasks can either be part of a List, or "private" (meaning "without a list", essentially).</br>
+						Through this endpoint you are able to do anything you wish to your tasks in Flow, including create new ones.`,
+					},
+				],
+				default: 'task',
+				description: 'Resource to consume.',
+			},
+			...taskOpeations,
+			...taskFields,
+		],
+	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const credentials = this.getCredentials('flowApi');
+
+		if (credentials === undefined) {
+			throw new Error('No credentials got returned!');
+		}
+
+		const items = this.getInputData();
+		const returnData: IDataObject[] = [];
+		const length = items.length as unknown as number;
+		let responseData;
+		const qs: IDataObject = {};
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
+		for (let i = 0; i < length; i++) {
+			if (resource === 'task') {
+				//https://developer.getflow.com/api/#tasks_create-task
+				if (operation === 'create') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: ITask = {
+						organization_id: credentials.organizationId as number,
+					};
+					const task: TaskInfo = {
+						name,
+						workspace_id: parseInt(workspaceId, 10)
+					};
+					if (additionalFields.ownerId) {
+						task.owner_id = parseInt(additionalFields.ownerId as string, 10);
+					}
+					if (additionalFields.listId) {
+						task.list_id = parseInt(additionalFields.listId as string, 10);
+					}
+					if (additionalFields.startsOn) {
+						task.starts_on = additionalFields.startsOn as string;
+					}
+					if (additionalFields.dueOn) {
+						task.due_on = additionalFields.dueOn as string;
+					}
+					if (additionalFields.mirrorParentSubscribers) {
+						task.mirror_parent_subscribers = additionalFields.mirrorParentSubscribers as boolean;
+					}
+					if (additionalFields.mirrorParentTags) {
+						task.mirror_parent_tags = additionalFields.mirrorParentTags as boolean;
+					}
+					if (additionalFields.noteContent) {
+						task.note_content = additionalFields.noteContent as string;
+					}
+					if (additionalFields.noteMimeType) {
+						task.note_mime_type = additionalFields.noteMimeType as string;
+					}
+					if (additionalFields.parentId) {
+						task.parent_id = parseInt(additionalFields.parentId as string, 10);
+					}
+					if (additionalFields.positionList) {
+						task.position_list = additionalFields.positionList as number;
+					}
+					if (additionalFields.positionUpcoming) {
+						task.position_upcoming = additionalFields.positionUpcoming as number;
+					}
+					if (additionalFields.position) {
+						task.position = additionalFields.position as number;
+					}
+					if (additionalFields.sectionId) {
+						task.section_id = additionalFields.sectionId as number;
+					}
+					if (additionalFields.tags) {
+						task.tags = (additionalFields.tags as string).split(',');
+					}
+					body.task = task;
+					try {
+						responseData = await flowApiRequest.call(this, 'POST', '/tasks', body);
+						responseData = responseData.task;
+					} catch (err) {
+						throw new Error(`Flow Error: ${err.message}`);
+					}
+				}
+				//https://developer.getflow.com/api/#tasks_update-a-task
+				if (operation === 'update') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+					const taskId = this.getNodeParameter('taskId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: ITask = {
+						organization_id: credentials.organizationId as number,
+					};
+					const task: TaskInfo = {
+						workspace_id: parseInt(workspaceId, 10),
+						id: parseInt(taskId, 10),
+					};
+					if (updateFields.name) {
+						task.name = updateFields.name as string;
+					}
+					if (updateFields.ownerId) {
+						task.owner_id = parseInt(updateFields.ownerId as string, 10);
+					}
+					if (updateFields.listId) {
+						task.list_id = parseInt(updateFields.listId as string, 10);
+					}
+					if (updateFields.startsOn) {
+						task.starts_on = updateFields.startsOn as string;
+					}
+					if (updateFields.dueOn) {
+						task.due_on = updateFields.dueOn as string;
+					}
+					if (updateFields.mirrorParentSubscribers) {
+						task.mirror_parent_subscribers = updateFields.mirrorParentSubscribers as boolean;
+					}
+					if (updateFields.mirrorParentTags) {
+						task.mirror_parent_tags = updateFields.mirrorParentTags as boolean;
+					}
+					if (updateFields.noteContent) {
+						task.note_content = updateFields.noteContent as string;
+					}
+					if (updateFields.noteMimeType) {
+						task.note_mime_type = updateFields.noteMimeType as string;
+					}
+					if (updateFields.parentId) {
+						task.parent_id = parseInt(updateFields.parentId as string, 10);
+					}
+					if (updateFields.positionList) {
+						task.position_list = updateFields.positionList as number;
+					}
+					if (updateFields.positionUpcoming) {
+						task.position_upcoming = updateFields.positionUpcoming as number;
+					}
+					if (updateFields.position) {
+						task.position = updateFields.position as number;
+					}
+					if (updateFields.sectionId) {
+						task.section_id = updateFields.sectionId as number;
+					}
+					if (updateFields.tags) {
+						task.tags = (updateFields.tags as string).split(',');
+					}
+					if (updateFields.completed) {
+						task.completed = updateFields.completed as boolean;
+					}
+					body.task = task;
+					try {
+						responseData = await flowApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
+						responseData = responseData.task;
+					} catch (err) {
+						throw new Error(`Flow Error: ${err.message}`);
+					}
+				}
+				//https://developer.getflow.com/api/#tasks_get-task
+				if (operation === 'get') {
+					const taskId = this.getNodeParameter('taskId', i) as string;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					qs.organization_id = credentials.organizationId as number;
+					if (filters.include) {
+						qs.include = (filters.include as string[]).join(',');
+					}
+					try {
+						responseData = await flowApiRequest.call(this,'GET', `/tasks/${taskId}`, {}, qs);
+					} catch (err) {
+						throw new Error(`Flow Error: ${err.message}`);
+					}
+				}
+				//https://developer.getflow.com/api/#tasks_get-tasks
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					qs.organization_id = credentials.organizationId as number;
+					if (filters.include) {
+						qs.include = (filters.include as string[]).join(',');
+					}
+					if (filters.order) {
+						qs.order = filters.order as string;
+					}
+					if (filters.workspaceId) {
+						qs.workspace_id = filters.workspaceId as string;
+					}
+					if (filters.createdBefore) {
+						qs.created_before = filters.createdBefore as string;
+					}
+					if (filters.createdAfter) {
+						qs.created_after = filters.createdAfter as string;
+					}
+					if (filters.updateBefore) {
+						qs.updated_before = filters.updateBefore as string;
+					}
+					if (filters.updateAfter) {
+						qs.updated_after = filters.updateAfter as string;
+					}
+					if (filters.deleted) {
+						qs.deleted = filters.deleted as boolean;
+					}
+					if (filters.cleared) {
+						qs.cleared = filters.cleared as boolean;
+					}
+					try {
+						if (returnAll === true) {
+							responseData = await FlowApiRequestAllItems.call(this, 'tasks', 'GET', '/tasks', {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+							responseData = await flowApiRequest.call(this, 'GET', '/tasks', {}, qs);
+							responseData = responseData.tasks;
+						}
+					} catch (err) {
+						throw new Error(`Flow Error: ${err.message}`);
+					}
+				}
+			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
+			}
+		}
+		return [this.helpers.returnJsonArray(returnData)];
+	}
+}
