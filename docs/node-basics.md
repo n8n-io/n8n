@@ -60,7 +60,7 @@ Normally it is not needed to write the JavaScript variables manually as they can
 
 Parameters can be set for most nodes in n8n. The values that get set define what exactly a node does.
 
-That values which are set are by default static and are always the same no matter what data they process. It is however also possible to set the values dynamically with the help of an Expression. Using Expressions, it is possible to make the parameter value dependent on other factors like the data of flow or parameters of other nodes.
+Parameter values are static by default, and are always the same no matter what data the node processes. However, it is possible to set the values dynamically with the help of an Expression. Using Expressions, it is possible to make the parameter value dependent on other factors like the data of flow or parameters of other nodes.
 
 More information about it can be found under [Expressions](#expressions).
 
