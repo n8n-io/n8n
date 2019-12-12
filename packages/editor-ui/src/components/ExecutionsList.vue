@@ -333,16 +333,16 @@ export default mixins(
 			this.isDataLoading = true;
 
 			const filter = this.workflowFilter;
-			let lastStartedAt: Date | undefined;
+			let lastId: string | number | undefined;
 
 			if (this.finishedExecutions.length !== 0) {
 				const lastItem = this.finishedExecutions.slice(-1)[0];
-				lastStartedAt = lastItem.startedAt as Date;
+				lastId = lastItem.id;
 			}
 
 			let data: IExecutionsListResponse;
 			try {
-				data = await this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, lastStartedAt);
+				data = await this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, lastId);
 			} catch (error) {
 				this.isDataLoading = false;
 				this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');

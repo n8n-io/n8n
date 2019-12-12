@@ -269,12 +269,12 @@ export const restApi = Vue.extend({
 
 				// Returns all saved executions
 				// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
-				getPastExecutions: (filter: object, limit: number, lastStartedAt?: Date): Promise<IExecutionsListResponse> => {
+				getPastExecutions: (filter: object, limit: number, lastId?: string | number): Promise<IExecutionsListResponse> => {
 					let sendData = {};
 					if (filter) {
 						sendData = {
 							filter,
-							lastStartedAt,
+							lastId,
 							limit,
 						};
 					}
