@@ -187,7 +187,6 @@
         "gm": "^1.23.1",
         "googleapis": "^42.0.0",
         "imap-simple": "^4.3.0",
-        "knex": "^0.20.1",
         "lodash.get": "^4.4.2",
         "lodash.set": "^4.3.2",
         "lodash.unset": "^4.5.2",

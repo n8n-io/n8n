@@ -5,7 +5,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import * as knex from 'knex';
+// @ts-ignore
+import * as mysql2 from 'mysql2/promise';
 
 import { copyInputItems } from './GenericFunctions';
 
@@ -174,7 +175,7 @@ export class MySQL implements INodeType {
 			throw new Error('No credentials got returned!');
 		}
 
-		const client = knex({ client: 'mysql2', connection: credentials });
+		const connection = await mysql2.createConnection(credentials);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 		let returnItems = [];
@@ -187,18 +188,20 @@ export class MySQL implements INodeType {
 			const queryQueue = items.map((item, index) => {
 				const rawQuery = this.getNodeParameter('query', index) as string;
 
-				return client.raw(rawQuery);
+				return connection.query(rawQuery);
 			});
 			let queryResult = await Promise.all(queryQueue);
 
-			queryResult = queryResult.reduce((result, current) => {
-				if (Array.isArray(current[0])) {
-					return result.concat(current[0]);
+			queryResult = queryResult.reduce((collection, result) => {
+				const [rows, fields] = result;
+ 
+				if (Array.isArray(rows)) {
+					return collection.concat(rows);
 				}
 
-				result.push(current[0]);
+				collection.push(rows);
 
-				return result;
+				return collection;
 			}, []);
 
 			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
@@ -212,9 +215,12 @@ export class MySQL implements INodeType {
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map(column => column.trim());
 			const insertItems = copyInputItems(items, columns);
-			const insertData = await client.insert(insertItems).into(table);
+			const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
+			const insertSQL = `INSERT INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
+			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []);
+			const queryResult = await connection.query(insertSQL, queryItems);
 
-			returnItems = [{ json: { row_count: insertData[0] }}];
+			returnItems = this.helpers.returnJsonArray(queryResult[0] as IDataObject);
 
 		} else if (operation === 'update') {
 			// ----------------------------------
@@ -231,15 +237,12 @@ export class MySQL implements INodeType {
 			}
 
 			const updateItems = copyInputItems(items, columns);
-			const queryQueue = updateItems.map((item) => {
-				return client(table)
-					.where(updateKey, '=', item[updateKey])
-					.update(item);
-			});
+			const updateSQL = `UPDATE ${table} SET ${columns.map(column => `${column} = ?`).join(',')} WHERE ${updateKey} = ?;`;
+			const queryQueue = updateItems.map((item) => connection.query(updateSQL, Object.values(item).concat(item[updateKey])));
+			let queryResult = await Promise.all(queryQueue);
 
-			await Promise.all(queryQueue);
-
-			returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
+			queryResult = queryResult.map(result => result[0]);
+			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 
 		} else {
 			throw new Error(`The operation "${operation}" is not supported!`);
