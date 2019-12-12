@@ -853,8 +853,8 @@ class App {
 			}
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
-			if (req.query.lastStartedAt) {
-				filter.startedAt = LessThan(req.query.lastStartedAt);
+			if (req.query.lastId) {
+				filter.id = LessThan(req.query.lastId);
 			}
 			countFilter.select = ['id'];
 
@@ -871,7 +871,7 @@ class App {
 				],
 				where: filter,
 				order: {
-					startedAt: "DESC",
+					id: 'DESC',
 				},
 				take: limit,
 			});
