@@ -22,7 +22,7 @@ External services need a way to identify and authenticate users. That data, whic
 
 To make sure that the data is secure, it gets saved to the database encrypted. As encryption key does a random personal encryption key gets used which gets automatically generated on the first start of n8n and then saved under `~/.n8n/config`.
 
-Nodes in n8n can then request that credential information. As an additional layer of security can credentials only be accessed by node types which specifically got the right to do so.
+Nodes in n8n can then request that credential information. As an additional layer of security credentials can only be accessed by node types which specifically have the right to do so.
 
 
 ## Expressions
@@ -58,9 +58,9 @@ Normally it is not needed to write the JavaScript variables manually as they can
 
 ## Parameters
 
-On the most nodes in n8n parameters can be set. The values that get set define what exactly a node does.
+Parameters can be set for most nodes in n8n. The values that get set define what exactly a node does.
 
-That values which are set are by default static and are always the same no matter what data they process. It is however also possible to set the values dynamically with the help of Expressions. With them, it is possible to make the value depending on other factors like the data of flow or parameters of other nodes.
+That values which are set are by default static and are always the same no matter what data they process. It is however also possible to set the values dynamically with the help of an Expression. Using Expressions, it is possible to make the parameter value dependent on other factors like the data of flow or parameters of other nodes.
 
 More information about it can be found under [Expressions](#expressions).
 
