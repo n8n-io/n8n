@@ -4,8 +4,8 @@ import {
 } from 'n8n-workflow';
 
 
-export class MySQL implements ICredentialType {
-	name = 'mysql';
+export class MySql implements ICredentialType {
+	name = 'mySql';
 	displayName = 'MySQL';
 	properties = [
 		{
