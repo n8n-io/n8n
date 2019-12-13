@@ -72,6 +72,11 @@ export class GoogleDrive implements INodeType {
 				},
 				options: [
 					{
+						name: 'Copy',
+						value: 'copy',
+						description: 'Copy a file',
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a file',
@@ -127,6 +132,29 @@ export class GoogleDrive implements INodeType {
 			// ----------------------------------
 			//         file
 			// ----------------------------------
+
+			// ----------------------------------
+			//         file:copy
+			// ----------------------------------
+			{
+				displayName: 'ID',
+				name: 'fileId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'copy'
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'The ID of the file to copy.',
+			},
+
 
 			// ----------------------------------
 			//         file/folder:delete
@@ -635,6 +663,45 @@ export class GoogleDrive implements INodeType {
 						default: [],
 						description: 'The fields to return.',
 					},
+
+					{
+						displayName: 'File Name',
+						name: 'name',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'copy'
+								],
+								'/resource': [
+									'file',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'invoice_1.pdf',
+						description: 'The name the file should be saved as.',
+					},
+					{
+						displayName: 'Parents',
+						name: 'parents',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'copy'
+								],
+								'/resource': [
+									'file',
+								],
+							},
+						},
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: [],
+						description: 'The IDs of the parent folders the file should be saved in.',
+					},
 					{
 						displayName: 'Spaces',
 						name: 'spaces',
@@ -780,7 +847,31 @@ export class GoogleDrive implements INodeType {
 			}
 
 			if (resource === 'file') {
-				if (operation === 'download') {
+				if (operation === 'copy') {
+					// ----------------------------------
+					//         copy
+					// ----------------------------------
+
+					const fileId = this.getNodeParameter('fileId', i) as string;
+
+					const copyOptions = {
+						fileId,
+						fields: queryFields,
+						requestBody: {} as IDataObject,
+					};
+
+					const optionProperties = ['name', 'parents'];
+					for (const propertyName of optionProperties) {
+						if (options[propertyName] !== undefined) {
+							copyOptions.requestBody[propertyName] = options[propertyName];
+						}
+					}
+
+					const response = await drive.files.copy(copyOptions);
+
+					returnData.push(response.data as IDataObject);
+
+				} else if (operation === 'download') {
 					// ----------------------------------
 					//         download
 					// ----------------------------------
