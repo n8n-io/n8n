@@ -836,7 +836,11 @@ export class Gitlab implements INodeType {
 			qs = {};
 
 			// Request the parameters which almost all operations need
-			const owner = this.getNodeParameter('owner', i) as string;
+			let owner = this.getNodeParameter('owner', i) as string;
+
+			// Replace all slashes to work with subgroups
+			owner = owner.replace(new RegExp(/\//g), '%2F');
+
 			let repository = '';
 			if (fullOperation !== 'user:getRepositories') {
 				repository = this.getNodeParameter('repository', i) as string;
