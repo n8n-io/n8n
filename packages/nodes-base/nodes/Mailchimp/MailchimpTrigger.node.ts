@@ -1,0 +1,263 @@
+import {
+	IHookFunctions,
+	IWebhookFunctions,
+  } from 'n8n-core';
+
+  import {
+	IDataObject,
+	INodeTypeDescription,
+	INodeType,
+	IWebhookResponseData,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+  } from 'n8n-workflow';
+  import {
+	mailchimpApiRequest,
+ } from './GenericFunctions';
+
+export class MailchimpTrigger implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Mailchimp Trigger',
+		name: 'Mailchimp',
+		icon: 'file:mailchimp.png',
+		group: ['trigger'],
+		version: 1,
+		description: 'Handle Mailchimp events via webhooks',
+		defaults: {
+		name: 'Mailchimp Trigger',
+		color: '#32325d',
+		},
+		inputs: [],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'mailchimpApi',
+				required: true,
+			}
+		],
+		webhooks: [
+			{
+				name: 'setup',
+				httpMethod: 'GET',
+				reponseMode: 'onReceived',
+				path: 'webhook',
+			},
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				reponseMode: 'onReceived',
+				path: 'webhook',
+			}
+		],
+		properties: [
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'options',
+				required: true,
+				default: [],
+				description: 'The list that is gonna fire the event.',
+				typeOptions: {
+					loadOptionsMethod: 'getLists'
+				},
+				options: [],
+			},
+			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'multiOptions',
+				required: true,
+				default: [],
+				description: 'The events that can trigger the webhook and whether they are enabled.',
+				options: [
+					{
+						name: 'Subscribe',
+						value: 'subscribe',
+						description: 'Whether the webhook is triggered when a list subscriber is added.',
+					},
+					{
+						name: 'Unsubscribe',
+						value: 'unsubscribe',
+						description: 'Whether the webhook is triggered when a list member unsubscribes.',
+					},
+					{
+						name: 'Profile Updated',
+						value: 'profile',
+						description: `Whether the webhook is triggered when a subscriber's profile is updated.`,
+					},
+					{
+						name: 'Cleaned',
+						value: 'cleaned',
+						description: `Whether the webhook is triggered when a subscriber's email address is cleaned from the list.`,
+					},
+					{
+						name: 'Email Address Updated',
+						value: 'upemail',
+						description: `Whether the webhook is triggered when a subscriber's email address is changed.`,
+					},
+					{
+						name: 'Campaign Sent',
+						value: 'campaign',
+						description: `Whether the webhook is triggered when a campaign is sent or cancelled.`,
+					},
+				],
+			},
+			{
+				displayName: 'Sources',
+				name: 'sources',
+				type: 'multiOptions',
+				required: true,
+				default: [],
+				description: 'The possible sources of any events that can trigger the webhook and whether they are enabled.',
+				options: [
+					{
+						name: 'User',
+						value: 'user',
+						description: 'Whether the webhook is triggered by subscriber-initiated actions.',
+					},
+					{
+						name: 'Admin',
+						value: 'admin',
+						description: 'Whether the webhook is triggered by admin-initiated actions in the web interface.',
+					},
+					{
+						name: 'API',
+						value: 'api',
+						description: `Whether the webhook is triggered by actions initiated via the API.`,
+					},
+				],
+			}
+		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the available lists to display them to user so that he can
+			// select them easily
+			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let lists, response;
+				try {
+					response = await mailchimpApiRequest.call(this, '/lists', 'GET');
+					lists = response.lists;
+				} catch (err) {
+					throw new Error(`Mailchimp Error: ${err}`);
+				}
+				for (const list of lists) {
+					const listName = list.name;
+					const listId = list.id;
+
+					returnData.push({
+						name: listName,
+						value: listId,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
+
+	// @ts-ignore (because of request)
+	webhookMethods = {
+		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+				const listId = this.getNodeParameter('list') as string;
+				if (webhookData.webhookId === undefined) {
+					// No webhook id is set so no webhook can exist
+					return false;
+				}
+				const endpoint = `/lists/${listId}/webhooks/${webhookData.webhookId}`;
+				try {
+					await mailchimpApiRequest.call(this, endpoint, 'GET');
+				} catch (err) {
+					if (err.statusCode === 404) {
+						return false;
+					}
+					throw new Error(`Mailchimp Error: ${err}`);
+				}
+				return true;
+			},
+
+			async create(this: IHookFunctions): Promise<boolean> {
+				let webhook;
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const listId = this.getNodeParameter('list') as string;
+				const events = this.getNodeParameter('events', []) as string[];
+				const sources = this.getNodeParameter('sources', []) as string[];
+				const body = {
+					url: webhookUrl,
+					events: events.reduce((object, currentValue) => {
+						// @ts-ignore
+						object[currentValue] = true;
+						return object;
+					}, {}),
+					sources: sources.reduce((object, currentValue) => {
+						// @ts-ignore
+						object[currentValue] = true;
+						return object;
+					}, {}),
+				};
+				const endpoint = `/lists/${listId}/webhooks`;
+				try {
+					webhook = await mailchimpApiRequest.call(this, endpoint, 'POST', body);
+				} catch (e) {
+					throw e;
+				}
+				if (webhook.id === undefined) {
+					return false;
+				}
+				const webhookData = this.getWorkflowStaticData('node');
+				webhookData.webhookId = webhook.id as string;
+				webhookData.events = events;
+				webhookData.sources = sources;
+				return true;
+			},
+
+			async delete(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+				const listId = this.getNodeParameter('list') as string;
+				if (webhookData.webhookId !== undefined) {
+					const endpoint = `/lists/${listId}/webhooks/${webhookData.webhookId}`;
+					try {
+						await mailchimpApiRequest.call(this, endpoint, 'DELETE', {});
+					} catch (e) {
+						return false;
+					}
+					delete webhookData.webhookId;
+					delete webhookData.events;
+					delete webhookData.sources;
+				}
+				return true;
+			},
+		},
+	};
+
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+		const webhookName = this.getWebhookName();
+		if (webhookName === 'setup') {
+			// Is a create webhook confirmation request
+			const res = this.getResponseObject();
+			res.status(200).end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+		const req = this.getRequestObject();
+		if (req.body.id !== webhookData.id) {
+			return {};
+		}
+		// @ts-ignore
+		if (!webhookData.events.includes(req.body.type)
+		// @ts-ignore
+		&& !webhookData.sources.includes(req.body.type)) {
+			return {};
+		}
+		return {
+			workflowData: [
+				this.helpers.returnJsonArray(req.body)
+			],
+		};
+	}
+}
