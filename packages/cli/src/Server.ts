@@ -7,6 +7,7 @@ import {
 	getConnectionManager,
 } from 'typeorm';
 import * as bodyParser from 'body-parser';
+require('body-parser-xml')(bodyParser);
 import * as history from 'connect-history-api-fallback';
 import * as requestPromise from 'request-promise-native';
 
@@ -234,6 +235,14 @@ class App {
 			// @ts-ignore
 			req.rawBody = buf;
 		}}));
+
+		// Support application/xml type post data
+		// @ts-ignore
+		this.app.use(bodyParser.xml({ limit: "16mb", xmlParseOptions: {
+			normalize: true,     // Trim whitespace inside text nodes
+			normalizeTags: true, // Transform tags to lowercase
+			explicitArray: false // Only put properties in array if length > 1
+		  } }));
 
 		// Make sure that Vue history mode works properly
 		this.app.use(history({
