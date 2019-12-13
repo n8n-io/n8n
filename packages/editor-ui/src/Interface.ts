@@ -142,7 +142,7 @@ export interface IRestApi {
 	getCredentialTypes(): Promise<ICredentialType[]>;
 	getExecution(id: string): Promise<IExecutionResponse>;
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
-	retryExecution(id: string): Promise<boolean>;
+	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 }
 

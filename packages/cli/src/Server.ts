@@ -947,6 +947,18 @@ class App {
 				retryOf: req.params.id,
 				workflowData: fullExecutionData.workflowData,
 			};
+
+			if (req.body.loadWorkflow === true) {
+				// Loads the currently saved workflow to execute instead of the
+				// one saved at the time of the execution.
+				const workflowId = fullExecutionData.workflowData.id;
+				data.workflowData = await Db.collections.Workflow!.findOne(workflowId) as IWorkflowBase;
+
+				if (data.workflowData === undefined) {
+					throw new Error(`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`);
+				}
+			}
+
 			const workflowRunner = new WorkflowRunner();
 			const executionId = await workflowRunner.run(data);
 

@@ -91,9 +91,17 @@
 							</span>
 						</el-tooltip>
 
-						<el-button class="retry-button" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" @click.stop="retryExecution(scope.row)" type="text" size="small" title="Retry execution">
-							<font-awesome-icon icon="redo" />
-						</el-button>
+						<el-dropdown trigger="click" @command="handleRetryClick">
+							<span class="el-dropdown-link">
+								<el-button class="retry-button" circle v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined" type="text" size="small" title="Retry execution">
+									<font-awesome-icon icon="redo" />
+								</el-button>
+							</span>
+							<el-dropdown-menu slot="dropdown">
+								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">Retry with currently saved workflow</el-dropdown-item>
+								<el-dropdown-item :command="{command: 'original', row: scope.row}">Retry with original workflow</el-dropdown-item>
+							</el-dropdown-menu>
+						</el-dropdown>
 
 					</template>
 				</el-table-column>
@@ -343,6 +351,14 @@ export default mixins(
 		handleFilterChanged () {
 			this.refreshData();
 		},
+		handleRetryClick (commandData: { command: string, row: IExecutionShortResponse }) {
+			let loadWorkflow = false;
+			if (commandData.command === 'currentlySaved') {
+				loadWorkflow = true;
+			}
+
+			this.retryExecution(commandData.row, loadWorkflow);
+		},
 		getRowClass (data: IDataObject): string {
 			const classes: string[] = [];
 			if ((data.row as IExecutionsSummary).stoppedAt === undefined) {
@@ -440,11 +456,11 @@ export default mixins(
 			await this.loadWorkflows();
 			await this.refreshData();
 		},
-		async retryExecution (execution: IExecutionShortResponse) {
+		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
 
 			try {
-				const retrySuccessful = await this.restApi().retryExecution(execution.id);
+				const retrySuccessful = await this.restApi().retryExecution(execution.id, loadWorkflow);
 
 				if (retrySuccessful === true) {
 					this.$showMessage({
