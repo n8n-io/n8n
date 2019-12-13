@@ -10,10 +10,10 @@ import * as mysql2 from 'mysql2/promise';
 
 import { copyInputItems } from './GenericFunctions';
 
-export class MySQL implements INodeType {
+export class MySql implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MySQL',
-		name: 'mysql',
+		name: 'mySql',
 		icon: 'file:mysql.png',
 		group: ['input'],
 		version: 1,
@@ -26,7 +26,7 @@ export class MySQL implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'mysql',
+				name: 'mySql',
 				required: true,
 			}
 		],
@@ -169,7 +169,7 @@ export class MySQL implements INodeType {
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('mysql');
+		const credentials = this.getCredentials('mySql');
 
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
@@ -194,7 +194,7 @@ export class MySQL implements INodeType {
 
 			queryResult = queryResult.reduce((collection, result) => {
 				const [rows, fields] = result;
- 
+
 				if (Array.isArray(rows)) {
 					return collection.concat(rows);
 				}
@@ -217,7 +217,7 @@ export class MySQL implements INodeType {
 			const insertItems = copyInputItems(items, columns);
 			const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
 			const insertSQL = `INSERT INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
-			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []);
+			const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
 			const queryResult = await connection.query(insertSQL, queryItems);
 
 			returnItems = this.helpers.returnJsonArray(queryResult[0] as IDataObject);
