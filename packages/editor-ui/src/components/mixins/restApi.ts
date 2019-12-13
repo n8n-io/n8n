@@ -263,8 +263,14 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns the execution with the given name
-				retryExecution: (id: string): Promise<boolean> => {
-					return self.restApi().makeRestApiRequest('POST', `/executions/${id}/retry`);
+				retryExecution: (id: string, loadWorkflow?: boolean): Promise<boolean> => {
+					let sendData;
+					if (loadWorkflow === true) {
+						sendData = {
+							loadWorkflow: true,
+						};
+					}
+					return self.restApi().makeRestApiRequest('POST', `/executions/${id}/retry`, sendData);
 				},
 
 				// Returns all saved executions
