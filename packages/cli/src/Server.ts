@@ -188,8 +188,8 @@ class App {
 				}
 
 				const jwkClient = jwks({ cache: true, jwksUri });
-				function getKey(header: any, callback: Function) {
-					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => {
+				function getKey(header: any, callback: Function) { // tslint:disable-line:no-any
+					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => { // tslint:disable-line:no-any
 						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
 
 						const signingKey = key.publicKey || key.rsaPublicKey;
