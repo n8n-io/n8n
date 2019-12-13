@@ -59,14 +59,21 @@ export class Function implements INodeType {
 		// By default use data from first item
 		Object.assign(sandbox, sandbox.$item(0));
 
-		const vm = new NodeVM({
+		const options = {
 			console: 'inherit',
 			sandbox,
 			require: {
 				external: false,
+				builtin: [] as string[],
 				root: './',
 			}
-		});
+		};
+
+		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
+			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+		}
+
+		const vm = new NodeVM(options);
 
 		// Get the code to execute
 		const functionCode = this.getNodeParameter('functionCode', 0) as string;

@@ -100,6 +100,24 @@ export N8N_CUSTOM_EXTENSIONS="/home/jim/n8n/custom-nodes;/data/n8n/nodes"
 ```
 
 
+## Use built-in modules in Function-Nodes
+
+By default is it for security reasons not allowed to import modules in Function-Nodes.
+It is, however, possible to lift that restriction for built-in modules by setting the
+environment variable `NODE_FUNCTION_ALLOW_BUILTIN`.
+
+```bash
+# Allows usage of all builtin modules
+export NODE_FUNCTION_ALLOW_BUILTIN=*
+
+# Allows usage of only crypto
+export NODE_FUNCTION_ALLOW_BUILTIN=crypto
+
+# Allows usage of only crypto and fs
+export NODE_FUNCTION_ALLOW_BUILTIN=crypto,fs
+```
+
+
 ## Timezone
 
 The timezone is set by default to "America/New_York". It gets for example used by the

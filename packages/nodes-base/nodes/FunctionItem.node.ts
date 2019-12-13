@@ -64,14 +64,21 @@ export class FunctionItem implements INodeType {
 		const dataProxy = this.getWorkflowDataProxy();
 		Object.assign(sandbox, dataProxy);
 
-		const vm = new NodeVM({
+		const options = {
 			console: 'inherit',
 			sandbox,
 			require: {
 				external: false,
+				builtin: [] as string[],
 				root: './',
 			}
-		});
+		};
+
+		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
+			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+		}
+
+		const vm = new NodeVM(options);
 
 		// Get the code to execute
 		const functionCode = this.getNodeParameter('functionCode') as string;
