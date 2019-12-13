@@ -167,6 +167,11 @@ export class Telegram implements INodeType {
 						description: 'Send a text message',
 					},
 					{
+						name: 'Send Media Group',
+						value: 'sendMediaGroup',
+						description: 'Send group of photos or videos to album',
+					},
+					{
 						name: 'Send Photo',
 						value: 'sendPhoto',
 						description: 'Send a photo',
@@ -208,6 +213,7 @@ export class Telegram implements INodeType {
 							'sendChatAction',
 							'sendDocument',
 							'sendMessage',
+							'sendMediaGroup',
 							'sendPhoto',
 							'sendSticker',
 							'sendVideo',
@@ -614,6 +620,100 @@ export class Telegram implements INodeType {
 					},
 				},
 				description: 'Document to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+			},
+
+
+			// ----------------------------------
+			//         message:sendMediaGroup
+			// ----------------------------------
+			{
+				displayName: 'Media',
+				name: 'media',
+				type: 'fixedCollection',
+				displayOptions: {
+					show: {
+						operation: [
+							'sendMediaGroup'
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'The media to add.',
+				placeholder: 'Add Media',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Media',
+						name: 'media',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Photo',
+										value: 'photo',
+									},
+									{
+										name: 'Video',
+										value: 'video',
+									},
+								],
+								default: 'photo',
+								description: 'The type of the media to add.',
+							},
+							{
+								displayName: 'Media File',
+								name: 'media',
+								type: 'string',
+								default: '',
+								description: 'Media to send. Pass a file_id to send a file that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get a file from the Internet.',
+							},
+							{
+								displayName: 'Additional Fields',
+								name: 'additionalFields',
+								type: 'collection',
+								placeholder: 'Add Field',
+								default: {},
+								options: [
+									{
+										displayName: 'Caption',
+										name: 'caption',
+										type: 'string',
+										typeOptions: {
+											alwaysOpenEditWindow: true,
+										},
+										default: '',
+										description: 'Caption text to set, 0-1024 characters.',
+									},
+									{
+										displayName: 'Parse Mode',
+										name: 'parse_mode',
+										type: 'options',
+										options: [
+											{
+												name: 'Markdown',
+												value: 'Markdown',
+											},
+											{
+												name: 'HTML',
+												value: 'HTML',
+											},
+										],
+										default: 'HTML',
+										description: 'How to parse the text.',
+									},
+								],
+							},
+						],
+					},
+				],
 			},
 
 
@@ -1049,6 +1149,7 @@ export class Telegram implements INodeType {
 							'editMessageText',
 							'sendDocument',
 							'sendMessage',
+							'sendMediaGroup',
 							'sendPhoto',
 							'sendSticker',
 							'sendVideo',
@@ -1416,6 +1517,28 @@ export class Telegram implements INodeType {
 
 					// Add additional fields and replyMarkup
 					addAdditionalFields.call(this, body, i);
+
+				} else if (operation === 'sendMediaGroup') {
+					// ----------------------------------
+					//         message:sendMediaGroup
+					// ----------------------------------
+
+					endpoint = 'sendMediaGroup';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
+
+					const mediaItems = this.getNodeParameter('media', i) as IDataObject;
+					body.media = [];
+					for (const mediaItem of mediaItems.media as IDataObject[]) {
+						if (mediaItem.additionalFields !== undefined) {
+							Object.assign(mediaItem, mediaItem.additionalFields);
+							delete mediaItem.additionalFields;
+						}
+						(body.media as IDataObject[]).push(mediaItem);
+					}
 
 				} else if (operation === 'sendPhoto') {
 					// ----------------------------------
