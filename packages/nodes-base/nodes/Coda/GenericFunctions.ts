@@ -1,12 +1,10 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
-	IHookFunctions,
 	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
-import { response } from 'express';
 
 export async function codaApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('codaApi');
