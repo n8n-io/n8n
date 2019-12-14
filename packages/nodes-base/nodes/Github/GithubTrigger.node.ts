@@ -352,12 +352,31 @@ export class GithubTrigger implements INodeType {
 					active: true,
 				};
 
+				const webhookData = this.getWorkflowStaticData('node');
 
 				let responseData;
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (e) {
 					if (e.message.includes('[422]:')) {
+						// Webhook exists already
+
+						// Get the data of the already registered webhook
+						responseData = await githubApiRequest.call(this, 'GET', endpoint, body);
+
+						for (const webhook of responseData as IDataObject[]) {
+							if ((webhook!.config! as IDataObject).url! === webhookUrl) {
+								// Webhook got found
+								if (JSON.stringify(webhook.events) === JSON.stringify(events)) {
+									// Webhook with same events exists already so no need to
+									// create it again simply save the webhook-id
+									webhookData.webhookId = webhook.id as string;
+									webhookData.webhookEvents = webhook.events as string[];
+									return true;
+								}
+							}
+						}
+
 						throw new Error('A webhook with the identical URL exists already. Please delete it manually on Github!');
 					}
 
@@ -369,7 +388,6 @@ export class GithubTrigger implements INodeType {
 					throw new Error('Github webhook creation response did not contain the expected data.');
 				}
 
-				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = responseData.id as string;
 				webhookData.webhookEvents = responseData.events as string[];
 
