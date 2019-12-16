@@ -15,10 +15,10 @@ export class Switch implements INodeType {
 		icon: 'fa:map-signs',
 		group: ['transform'],
 		version: 1,
-		description: 'Splits a stream depending on defined compare operations.',
+		description: 'Route items depending on defined expression or rules.',
 		defaults: {
 			name: 'Switch',
-			color: '#408000',
+			color: '#506000',
 		},
 		inputs: ['main'],
 		outputs: ['main', 'main', 'main', 'main'],
