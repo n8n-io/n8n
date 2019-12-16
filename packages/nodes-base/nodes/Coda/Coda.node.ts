@@ -63,24 +63,23 @@ export class Coda implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available tables to display them to user so that he can
+			// Get all the available docs to display them to user so that he can
 			// select them easily
-			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getDocs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const credentials = this.getCredentials('codaApi');
 				const qs = {};
-				let tables;
+				let docs;
 				try {
-					tables = await codaApiRequestAllItems.call(this,'items', 'GET', `/docs/${credentials!.docId}/tables`, {}, qs);
+					docs = await codaApiRequestAllItems.call(this,'items', 'GET', `/docs`, {}, qs);
 				} catch (err) {
 					throw new Error(`Coda Error: ${err}`);
 				}
-				for (const table of tables) {
-					const tableName = table.name;
-					const tableId = table.id;
+				for (const doc of docs) {
+					const docName = doc.name;
+					const docId = doc.id;
 					returnData.push({
-						name: tableName,
-						value: tableId,
+						name: docName,
+						value: docId,
 					});
 				}
 				return returnData;
@@ -91,9 +90,6 @@ export class Coda implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: IDataObject[] = [];
 		const items = this.getInputData();
-		const credentials = this.getCredentials('codaApi');
-		const docId = credentials!.docId;
-		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
@@ -101,6 +97,7 @@ export class Coda implements INodeType {
 		if (resource === 'row') {
 			//https://coda.io/developers/apis/v1beta1#operation/upsertRows
 			if (operation === 'create') {
+				const docId = this.getNodeParameter('docId', 0) as string;
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 				const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
@@ -119,6 +116,7 @@ export class Coda implements INodeType {
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/getRow
 			if (operation === 'get') {
+				const docId = this.getNodeParameter('docId', 0) as string;
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const rowId = this.getNodeParameter('rowId', 0) as string;
 				const filters = this.getNodeParameter('filters', 0) as IDataObject;
@@ -137,6 +135,7 @@ export class Coda implements INodeType {
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listRows
 			if (operation === 'getAll') {
+				const docId = this.getNodeParameter('docId', 0) as string;
 				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const filters = this.getNodeParameter('filters', 0) as IDataObject;
@@ -167,13 +166,19 @@ export class Coda implements INodeType {
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/deleteRows
 			if (operation === 'delete') {
+				const docId = this.getNodeParameter('docId', 0) as string;
 				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const rowId = this.getNodeParameter('rowId', 0) as string;
 				const body = {};
+				let rowIds = '';
 				const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
+				for (let i = 0; i < items.length; i++) {
+					const rowId = this.getNodeParameter('rowId', i) as string;
+					rowIds += rowId;
+				}
+				// @ts-ignore
+				body['rowIds'] = rowIds.split(',') as string[];
 				try {
 					// @ts-ignore
-					body['rowIds'] = rowId.split(',') as string[];
 					responseData = await codaApiRequest.call(this, 'DELETE', endpoint, body, qs);
 				} catch (err) {
 					throw new Error(`Coda Error: ${err.message}`);
