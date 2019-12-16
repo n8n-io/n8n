@@ -45,12 +45,12 @@ export const rowFields = [
 /*                                row:create                                */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Table',
-		name: 'tableId',
+		displayName: 'Doc',
+		name: 'docId',
 		type: 'options',
 		required: true,
 		typeOptions: {
-			loadOptionsMethod: 'getTables',
+			loadOptionsMethod: 'getDocs',
 		},
 		default: [],
 		displayOptions: {
@@ -63,7 +63,27 @@ export const rowFields = [
 				]
 			},
 		},
-		description: 'Tables on document',
+		description: 'ID of the doc.',
+	},
+	{
+		displayName: 'Table ID',
+		name: 'tableId',
+		type: 'string',
+		required: true,
+		default: [],
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'create'
+				]
+			},
+		},
+		description: `ID or name of the table. Names are discouraged because</br>
+		they're easily prone to being changed by users.</br>
+		If you're using a name, be sure to URI-encode it.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -103,278 +123,336 @@ export const rowFields = [
 /* -------------------------------------------------------------------------- */
 /*                                   row:get                                  */
 /* -------------------------------------------------------------------------- */
-{
-	displayName: 'Table',
-	name: 'tableId',
-	type: 'options',
-	required: true,
-	typeOptions: {
-		loadOptionsMethod: 'getTables',
+	{
+		displayName: 'Doc',
+		name: 'docId',
+		type: 'options',
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getDocs',
+		},
+		default: [],
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'get'
+				]
+			},
+		},
+		description: 'ID of the doc.',
 	},
-	default: [],
-	displayOptions: {
-		show: {
-			resource: [
-				'row',
-			],
-			operation: [
-				'get'
-			]
+	{
+		displayName: 'Table ID',
+		name: 'tableId',
+		type: 'string',
+		required: true,
+		default: [],
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'get'
+				]
+			},
 		},
+		description: `ID or name of the table. Names are discouraged because</br>
+		they're easily prone to being changed by users.</br>
+		If you're using a name, be sure to URI-encode it.`,
 	},
-	description: 'Tables on document',
-},
-{
-	displayName: 'Row ID',
-	name: 'rowId',
-	type: 'string',
-	required: true,
-	default: '',
-	displayOptions: {
-		show: {
-			resource: [
-				'row',
-			],
-			operation: [
-				'get'
-			]
+	{
+		displayName: 'Row ID',
+		name: 'rowId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'get'
+				]
+			},
 		},
+		description: `ID or name of the row. Names are discouraged because they're easily prone to being changed by users.
+		If you're using a name, be sure to URI-encode it.
+		If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected`,
 	},
-	description: `ID or name of the row. Names are discouraged because they're easily prone to being changed by users.
-	 If you're using a name, be sure to URI-encode it.
-	 If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected`,
-},
-{
-	displayName: 'Filters',
-	name: 'filters',
-	type: 'collection',
-	placeholder: 'Add Filter',
-	default: {},
-	displayOptions: {
-		show: {
-			resource: [
-				'row',
-			],
-			operation: [
-				'get',
-			],
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'get',
+				],
+			},
 		},
+		options: [
+			{
+				displayName: 'Use Column Names',
+				name: 'useColumnNames',
+				type: 'boolean',
+				default: false,
+				description: `Use column names instead of column IDs in the returned output.</br>
+				This is generally discouraged as it is fragile. If columns are renamed,</br>
+				code using original names may throw errors.`,
+			},
+			{
+				displayName: 'ValueFormat',
+				name: 'valueFormat',
+				type: 'options',
+				default: [],
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+					},
+					{
+						name: 'Simple With Arrays',
+						value: 'simpleWithArrays',
+					},
+					{
+						name: 'Rich',
+						value: 'rich',
+					},
+				],
+				description: `The format that cell values are returned as.`,
+			},
+		]
 	},
-	options: [
-		{
-			displayName: 'Use Column Names',
-			name: 'useColumnNames',
-			type: 'boolean',
-			default: false,
-			description: `Use column names instead of column IDs in the returned output.</br>
-			This is generally discouraged as it is fragile. If columns are renamed,</br>
-			code using original names may throw errors.`,
-		},
-		{
-			displayName: 'ValueFormat',
-			name: 'valueFormat',
-			type: 'options',
-			default: [],
-			options: [
-				{
-					name: 'Simple',
-					value: 'simple',
-				},
-				{
-					name: 'Simple With Arrays',
-					value: 'simpleWithArrays',
-				},
-				{
-					name: 'Rich',
-					value: 'rich',
-				},
-			],
-			description: `The format that cell values are returned as.`,
-		},
-	]
-},
-
 /* -------------------------------------------------------------------------- */
 /*                                   get:all                                  */
 /* -------------------------------------------------------------------------- */
-{
-	displayName: 'Table',
-	name: 'tableId',
-	type: 'options',
-	required: true,
-	typeOptions: {
-		loadOptionsMethod: 'getTables',
+	{
+		displayName: 'Doc',
+		name: 'docId',
+		type: 'options',
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getDocs',
+		},
+		default: [],
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'getAll'
+				]
+			},
+		},
+		description: 'ID of the doc.',
 	},
-	default: [],
-	displayOptions: {
-		show: {
-			resource: [
-				'row',
-			],
-			operation: [
-				'getAll'
-			]
+	{
+		displayName: 'Table ID',
+		name: 'tableId',
+		type: 'string',
+		required: true,
+		default: [],
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'getAll'
+				]
+			},
 		},
+		description: `ID or name of the table. Names are discouraged because</br>
+		they're easily prone to being changed by users.</br>
+		If you're using a name, be sure to URI-encode it.`,
 	},
-	description: 'Tables on document',
-},
-{
-	displayName: 'Return All',
-	name: 'returnAll',
-	type: 'boolean',
-	displayOptions: {
-		show: {
-			resource: [
-				'row',
-			],
-			operation: [
-				'getAll'
-			]
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'getAll'
+				]
+			},
 		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
 	},
-	default: false,
-	description: 'If all results should be returned or only up to a given limit.',
-},
-{
-	displayName: 'Limit',
-	name: 'limit',
-	type: 'number',
-	displayOptions: {
-		show: {
-			resource: [
-				'row',
-			],
-			operation: [
-				'getAll'
-			],
-			returnAll: [
-				false,
-			],
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'getAll'
+				],
+				returnAll: [
+					false,
+				],
+			},
 		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
 	},
-	typeOptions: {
-		minValue: 1,
-		maxValue: 100,
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Use Column Names',
+				name: 'useColumnNames',
+				type: 'boolean',
+				default: false,
+				description: `Use column names instead of column IDs in the returned output.</br>
+				This is generally discouraged as it is fragile. If columns are renamed,</br>
+				code using original names may throw errors.`,
+			},
+			{
+				displayName: 'ValueFormat',
+				name: 'valueFormat',
+				type: 'options',
+				default: [],
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+					},
+					{
+						name: 'Simple With Arrays',
+						value: 'simpleWithArrays',
+					},
+					{
+						name: 'Rich',
+						value: 'rich',
+					},
+				],
+				description: `The format that cell values are returned as.`,
+			},
+			{
+				displayName: 'Sort By',
+				name: 'sortBy',
+				type: 'options',
+				default: [],
+				options: [
+					{
+						name: 'Created At',
+						value: 'createdAt',
+					},
+					{
+						name: 'Natural',
+						value: 'natural',
+					},
+				],
+				description: `Specifies the sort order of the rows returned.
+				If left unspecified, rows are returned by creation time ascending.`,
+			},
+			{
+				displayName: 'Visible Only',
+				name: 'visibleOnly',
+				type: 'boolean',
+				default: false,
+				description: `If true, returns only visible rows and columns for the table.`,
+			},
+		]
 	},
-	default: 50,
-	description: 'How many results to return.',
-},
-{
-	displayName: 'Filters',
-	name: 'filters',
-	type: 'collection',
-	placeholder: 'Add Filter',
-	default: {},
-	displayOptions: {
-		show: {
-			resource: [
-				'row',
-			],
-			operation: [
-				'getAll',
-			],
-		},
-	},
-	options: [
-		{
-			displayName: 'Use Column Names',
-			name: 'useColumnNames',
-			type: 'boolean',
-			default: false,
-			description: `Use column names instead of column IDs in the returned output.</br>
-			This is generally discouraged as it is fragile. If columns are renamed,</br>
-			code using original names may throw errors.`,
-		},
-		{
-			displayName: 'ValueFormat',
-			name: 'valueFormat',
-			type: 'options',
-			default: [],
-			options: [
-				{
-					name: 'Simple',
-					value: 'simple',
-				},
-				{
-					name: 'Simple With Arrays',
-					value: 'simpleWithArrays',
-				},
-				{
-					name: 'Rich',
-					value: 'rich',
-				},
-			],
-			description: `The format that cell values are returned as.`,
-		},
-		{
-			displayName: 'Sort By',
-			name: 'sortBy',
-			type: 'options',
-			default: [],
-			options: [
-				{
-					name: 'Created At',
-					value: 'createdAt',
-				},
-				{
-					name: 'Natural',
-					value: 'natural',
-				},
-			],
-			description: `Specifies the sort order of the rows returned.
-			If left unspecified, rows are returned by creation time ascending.`,
-		},
-		{
-			displayName: 'Visible Only',
-			name: 'visibleOnly',
-			type: 'boolean',
-			default: false,
-			description: `If true, returns only visible rows and columns for the table.`,
-		},
-	]
-},
-
 /* -------------------------------------------------------------------------- */
 /*                                 row:delete                                 */
 /* -------------------------------------------------------------------------- */
-{
-	displayName: 'Table',
-	name: 'tableId',
-	type: 'options',
-	required: true,
-	typeOptions: {
-		loadOptionsMethod: 'getTables',
-	},
-	default: [],
-	displayOptions: {
-		show: {
-			resource: [
-				'row',
-			],
-			operation: [
-				'delete'
-			]
+	{
+		displayName: 'Doc',
+		name: 'docId',
+		type: 'options',
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getDocs',
 		},
-	},
-	description: 'Tables on document',
-},
-{
-	displayName: 'Row ID',
-	name: 'rowId',
-	type: 'string',
-	required: true,
-	default: '',
-	displayOptions: {
-		show: {
-			resource: [
-				'row',
-			],
-			operation: [
-				'delete'
-			]
+		default: [],
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'delete'
+				]
+			},
 		},
+		description: 'ID of the doc.',
 	},
-	description: `Row IDs to delete separated by ,.`,
-},
+	{
+		displayName: 'Table ID',
+		name: 'tableId',
+		type: 'string',
+		required: true,
+		default: [],
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'delete'
+				]
+			},
+		},
+		description: `ID or name of the table. Names are discouraged because</br>
+		they're easily prone to being changed by users.</br>
+		If you're using a name, be sure to URI-encode it.`,
+	},
+	{
+		displayName: 'Row ID',
+		name: 'rowId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'row',
+				],
+				operation: [
+					'delete'
+				]
+			},
+		},
+		description: `Row IDs to delete separated by ,.`,
+	},
 
 ] as INodeProperties[];

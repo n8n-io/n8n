@@ -8,12 +8,6 @@ export class CodaApi implements ICredentialType {
 	displayName = 'Coda API';
 	properties = [
 		{
-			displayName: 'Doc ID',
-			name: 'docId',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-		},
-		{
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string' as NodePropertyTypes,
