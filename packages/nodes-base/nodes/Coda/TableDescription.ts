@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-export const rowOpeations = [
+export const tableOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,41 +8,41 @@ export const rowOpeations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
+				name: 'Create Row',
+				value: 'createRow',
 				description: 'Create/Upsert a row',
 			},
 			{
-				name: 'Get',
-				value: 'get',
+				name: 'Get Row',
+				value: 'getRow',
 				description: 'Get row',
 			},
 			{
-				name: 'Get All',
-				value: 'getAll',
+				name: 'Get All Rows',
+				value: 'getAllRows',
 				description: 'Get all the rows',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
+				name: 'Delete Row',
+				value: 'deleteRow',
 				description: 'Delete one or multiple rows',
 			},
 		],
-		default: 'create',
+		default: 'createRow',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
-export const rowFields = [
+export const tableFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                row:create                                */
+/*                                table:createRow                                */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc',
@@ -52,38 +52,39 @@ export const rowFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getDocs',
 		},
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'create'
+					'createRow',
 				]
 			},
 		},
 		description: 'ID of the doc.',
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table',
 		name: 'tableId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 		required: true,
 		default: [],
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'create'
+					'createRow',
 				]
 			},
 		},
-		description: `ID or name of the table. Names are discouraged because</br>
-		they're easily prone to being changed by users.</br>
-		If you're using a name, be sure to URI-encode it.`,
+		description: 'The table to create the row in.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -94,10 +95,10 @@ export const rowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'create',
+					'createRow',
 				],
 			},
 		},
@@ -121,7 +122,7 @@ export const rowFields = [
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                   row:get                                  */
+/*                                   table:get                                  */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc',
@@ -131,38 +132,39 @@ export const rowFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getDocs',
 		},
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'get'
+					'getRow',
 				]
 			},
 		},
 		description: 'ID of the doc.',
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table',
 		name: 'tableId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 		required: true,
 		default: [],
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'get'
+					'getRow',
 				]
 			},
 		},
-		description: `ID or name of the table. Names are discouraged because</br>
-		they're easily prone to being changed by users.</br>
-		If you're using a name, be sure to URI-encode it.`,
+		description: 'The table to get the row from.',
 	},
 	{
 		displayName: 'Row ID',
@@ -173,10 +175,10 @@ export const rowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'get'
+					'getRow',
 				]
 			},
 		},
@@ -185,18 +187,18 @@ export const rowFields = [
 		If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected`,
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'get',
+					'getRow',
 				],
 			},
 		},
@@ -209,6 +211,13 @@ export const rowFields = [
 				description: `Use column names instead of column IDs in the returned output.</br>
 				This is generally discouraged as it is fragile. If columns are renamed,</br>
 				code using original names may throw errors.`,
+			},
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: `Returns the data exactly in the way it got received from the API.`,
 			},
 			{
 				displayName: 'ValueFormat',
@@ -234,7 +243,7 @@ export const rowFields = [
 		]
 	},
 /* -------------------------------------------------------------------------- */
-/*                                   get:all                                  */
+/*                                   table:getAll                                  */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc',
@@ -244,38 +253,39 @@ export const rowFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getDocs',
 		},
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'getAll'
+					'getAllRows',
 				]
 			},
 		},
 		description: 'ID of the doc.',
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table',
 		name: 'tableId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 		required: true,
 		default: [],
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'getAll'
+					'getAllRows',
 				]
 			},
 		},
-		description: `ID or name of the table. Names are discouraged because</br>
-		they're easily prone to being changed by users.</br>
-		If you're using a name, be sure to URI-encode it.`,
+		description: 'The table to get the rows from.',
 	},
 	{
 		displayName: 'Return All',
@@ -284,10 +294,10 @@ export const rowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'getAll'
+					'getAllRows',
 				]
 			},
 		},
@@ -301,10 +311,10 @@ export const rowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'getAll'
+					'getAllRows',
 				],
 				returnAll: [
 					false,
@@ -319,18 +329,18 @@ export const rowFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'getAll',
+					'getAllRows',
 				],
 			},
 		},
@@ -364,6 +374,13 @@ export const rowFields = [
 					},
 				],
 				description: `The format that cell values are returned as.`,
+			},
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: `Returns the data exactly in the way it got received from the API.`,
 			},
 			{
 				displayName: 'Sort By',
@@ -403,38 +420,39 @@ export const rowFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getDocs',
 		},
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'delete'
+					'deleteRow',
 				]
 			},
 		},
 		description: 'ID of the doc.',
 	},
 	{
-		displayName: 'Table ID',
+		displayName: 'Table',
 		name: 'tableId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+		},
 		required: true,
 		default: [],
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'delete'
+					'deleteRow',
 				]
 			},
 		},
-		description: `ID or name of the table. Names are discouraged because</br>
-		they're easily prone to being changed by users.</br>
-		If you're using a name, be sure to URI-encode it.`,
+		description: 'The table to delete the row in.',
 	},
 	{
 		displayName: 'Row ID',
@@ -445,14 +463,14 @@ export const rowFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'row',
+					'table',
 				],
 				operation: [
-					'delete'
+					'deleteRow',
 				]
 			},
 		},
-		description: `Row IDs to delete separated by ,.`,
+		description: 'Row IDs to delete.',
 	},
 
 ] as INodeProperties[];
