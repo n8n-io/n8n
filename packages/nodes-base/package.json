@@ -143,6 +143,7 @@
             "dist/nodes/Start.node.js",
             "dist/nodes/Stripe/StripeTrigger.node.js",
             "dist/nodes/Shopify/ShopifyTrigger.node.js",
+            "dist/nodes/Switch.node.js",
             "dist/nodes/Telegram/Telegram.node.js",
             "dist/nodes/Telegram/TelegramTrigger.node.js",
             "dist/nodes/Todoist/Todoist.node.js",
