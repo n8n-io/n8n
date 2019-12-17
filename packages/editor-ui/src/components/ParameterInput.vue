@@ -125,6 +125,7 @@ import {
 import {
 	NodeHelpers,
 	NodeParameterValue,
+	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
 } from 'n8n-workflow';
@@ -421,6 +422,21 @@ export default mixins(
 			},
 		},
 		methods: {
+			getResolveNodeParameters (nodeParameters: INodeParameters): INodeParameters {
+				const returnData: INodeParameters = {};
+				for (const key of Object.keys(nodeParameters)) {
+					if (Array.isArray(nodeParameters[key])) {
+						returnData[key] = (nodeParameters[key] as string[]).map(value => {
+							return this.resolveExpression(value as string) as string;
+						});
+					} else if (typeof nodeParameters[key] === 'object') {
+						returnData[key] = this.getResolveNodeParameters(nodeParameters[key] as INodeParameters);
+					} else {
+						returnData[key] = this.resolveExpression(nodeParameters[key] as string);
+					}
+				}
+				return returnData;
+			},
 			async loadRemoteParameterOptions () {
 				if (this.node === null || this.remoteMethod === undefined || this.remoteParameterOptionsLoading) {
 					return;
@@ -429,8 +445,12 @@ export default mixins(
 				this.remoteParameterOptionsLoading = true;
 				this.remoteParameterOptions.length = 0;
 
+				// Get the resolved parameter values of the current node
+				const currentNodeParameters = this.$store.getters.activeNode.parameters;
+				const resolvedNodeParameters = this.getResolveNodeParameters(currentNodeParameters);
+
 				try {
-					const options = await this.restApi().getNodeParameterOptions(this.node.type, this.remoteMethod, this.node.credentials);
+					const options = await this.restApi().getNodeParameterOptions(this.node.type, this.remoteMethod, resolvedNodeParameters, this.node.credentials);
 					this.remoteParameterOptions.push.apply(this.remoteParameterOptions, options);
 				} catch (error) {
 					this.remoteParameterOptionsLoadingIssues = error.message;

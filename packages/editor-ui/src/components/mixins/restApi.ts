@@ -26,6 +26,7 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
+	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -152,12 +153,12 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns all the parameter options from the server
-				getNodeParameterOptions: (nodeType: string, methodName: string, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
+				getNodeParameterOptions: (nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]> => {
 					const sendData = {
 						nodeType,
 						methodName,
 						credentials,
-						currentNodeParameters: this.$store.getters.activeNode.parameters,
+						currentNodeParameters,
 					};
 					return self.restApi().makeRestApiRequest('GET', '/node-parameter-options', sendData);
 				},
