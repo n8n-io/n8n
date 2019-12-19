@@ -9,6 +9,7 @@ import {
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 	ResponseHelper,
+	WorkflowHelpers,
 	WorkflowRunner,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
@@ -24,9 +25,7 @@ import {
 	IDataObject,
 	IExecuteData,
 	INode,
-	IRun,
 	IRunExecutionData,
-	ITaskData,
 	IWebhookData,
 	IWebhookResponseData,
 	IWorkflowExecuteAdditionalData,
@@ -36,29 +35,6 @@ import {
 } from 'n8n-workflow';
 
 const activeExecutions = ActiveExecutions.getInstance();
-
-
-/**
- * Returns the data of the last executed node
- *
- * @export
- * @param {IRun} inputData
- * @returns {(ITaskData | undefined)}
- */
-export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const runData = inputData.data.resultData.runData;
-	const lastNodeExecuted = inputData.data.resultData.lastNodeExecuted;
-
-	if (lastNodeExecuted === undefined) {
-		return undefined;
-	}
-
-	if (runData[lastNodeExecuted] === undefined) {
-		return undefined;
-	}
-
-	return runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
-}
 
 
 /**
@@ -132,7 +108,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 
 	// Prepare everything that is needed to run the workflow
 	const credentials = await WorkflowCredentials(workflowData.nodes);
-	const additionalData = await WorkflowExecuteAdditionalData.getBase(executionMode, credentials);
+	const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 
 	// Add the Response and Request so that this data can be accessed in the node
 	additionalData.httpRequest = req;
@@ -286,7 +262,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				return undefined;
 			}
 
-			const returnData = getDataLastExecutedNodeData(data);
+			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 			if (returnData === undefined) {
 				if (didSendResponse === false) {
 					responseCallback(null, {

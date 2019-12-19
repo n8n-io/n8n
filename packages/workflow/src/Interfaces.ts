@@ -1,4 +1,5 @@
 import { Workflow } from './Workflow';
+import { WorkflowHooks } from './WorkflowHooks';
 import * as express from 'express';
 
 export interface IBinaryData {
@@ -149,6 +150,7 @@ export interface IExecuteContextData {
 
 
 export interface IExecuteFunctions {
+	executeWorkflow(workflowId: string, inputData?: INodeExecutionData[]): Promise<any>; // tslint:disable-line:no-any
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
@@ -156,6 +158,7 @@ export interface IExecuteFunctions {
 	getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
+	getRestApiUrl(): string;
 	getTimezone(): string;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
 	helpers: {
@@ -170,6 +173,7 @@ export interface IExecuteSingleFunctions {
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
 	getMode(): WorkflowExecuteMode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflowDataProxy(): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
@@ -184,6 +188,7 @@ export interface ILoadOptionsFunctions {
 	getCurrentNodeParameter(parameterName: string): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 	getTimezone(): string;
+	getRestApiUrl(): string;
 	helpers: {
 		[key: string]: ((...args: any[]) => any) | undefined; //tslint:disable-line:no-any
 	};
@@ -208,6 +213,7 @@ export interface ITriggerFunctions {
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
@@ -574,6 +580,18 @@ export interface IWaitingForExecution {
 }
 
 
+export interface IWorkflowBase {
+	id?: number | string | any; // tslint:disable-line:no-any
+	name: string;
+	active: boolean;
+	createdAt: Date;
+	updatedAt: Date;
+	nodes: INode[];
+	connections: IConnections;
+	settings?: IWorkflowSettings;
+	staticData?: IDataObject;
+}
+
 export interface IWorkflowCredentials {
 	// Credential type
 	[key: string]: {
@@ -581,6 +599,7 @@ export interface IWorkflowCredentials {
 		[key: string]: ICredentialsEncrypted;
 	};
 }
+
 
 export interface IWorkflowExecuteHooks {
 	[key: string]: Array<((...args: any[]) => Promise<void>)> | undefined; // tslint:disable-line:no-any
@@ -593,16 +612,26 @@ export interface IWorkflowExecuteHooks {
 export interface IWorkflowExecuteAdditionalData {
 	credentials: IWorkflowCredentials;
 	encryptionKey: string;
-	hooks?: IWorkflowExecuteHooks;
+	executeWorkflow: (workflowId: string, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[]) => Promise<any>; // tslint:disable-line:no-any
+	// hooks?: IWorkflowExecuteHooks;
+	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
+	restApiUrl: string;
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
 	currentNodeParameters? : INodeParameters[];
 }
 
-export type WorkflowExecuteMode = 'cli' | 'error' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
+export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
+
+export interface IWorkflowHooksOptionalParameters {
+	parentProcessMode?: string;
+	retryOf?: string;
+	sessionId?: string;
+}
+
 
 export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;

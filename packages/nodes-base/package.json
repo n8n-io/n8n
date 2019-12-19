@@ -94,6 +94,7 @@
             "dist/nodes/EmailSend.node.js",
             "dist/nodes/ErrorTrigger.node.js",
             "dist/nodes/ExecuteCommand.node.js",
+            "dist/nodes/ExecuteWorkflow.node.js",
             "dist/nodes/FileMaker/FileMaker.node.js",
             "dist/nodes/Freshdesk/Freshdesk.node.js",
             "dist/nodes/Flow/Flow.node.js",

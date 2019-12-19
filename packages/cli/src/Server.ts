@@ -497,7 +497,7 @@ class App {
 			if (WorkflowHelpers.isWorkflowIdValid(workflowData.id) === true && (runData === undefined || startNodes === undefined || startNodes.length === 0 || destinationNode === undefined)) {
 				// Webhooks can only be tested with saved workflows
 				const credentials = await WorkflowCredentials(workflowData.nodes);
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(executionMode, credentials);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
 				const workflowInstance = new Workflow(workflowData.id, workflowData.nodes, workflowData.connections, false, nodeTypes, undefined, workflowData.settings);
 				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, sessionId, destinationNode);
@@ -544,13 +544,12 @@ class App {
 			const methodName = req.query.methodName;
 
 			const nodeTypes = NodeTypes();
-			const executionMode = 'manual';
 
 			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, credentials);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(executionMode, workflowCredentials, currentNodeParameters);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowCredentials, currentNodeParameters);
 
 			return loadDataInstance.getOptions(methodName, additionalData);
 		}));

@@ -226,25 +226,8 @@ export class WorkflowExecute {
 		if (this.additionalData.hooks === undefined) {
 			return;
 		}
-		if (this.additionalData.hooks[hookName] === undefined || this.additionalData.hooks[hookName]!.length === 0) {
-			return;
-		}
 
-		for (const hookFunction of this.additionalData.hooks[hookName]!) {
-			await hookFunction.apply(this, parameters as [IRun, IWaitingForExecution])
-				.catch((error) => {
-					// Catch all errors here because when "executeHook" gets called
-					// we have the most time no "await" and so the errors would so
-					// not be caught by anything.
-
-					// TODO: Add proper logging
-					console.error(`There was a problem executing hook: "${hookName}"`);
-					console.error('Parameters:');
-					console.error(parameters);
-					console.error('Error:');
-					console.error(error);
-				});
-		}
+		return this.additionalData.hooks.executeHookFunctions(hookName, parameters);
 	}
 
 
