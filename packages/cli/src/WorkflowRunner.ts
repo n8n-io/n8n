@@ -1,11 +1,9 @@
-
 import {
 	ActiveExecutions,
 	IProcessMessageDataHook,
 	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
-	NodeTypes,
 	Push,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
@@ -17,9 +15,8 @@ import {
 
 import {
 	IExecutionError,
-	INode,
 	IRun,
-	IWorkflowExecuteHooks,
+	WorkflowHooks,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -39,69 +36,14 @@ export class WorkflowRunner {
 
 
 	/**
-	 * Returns the data of the node types that are needed
-	 * to execute the given nodes
-	 *
-	 * @param {INode[]} nodes
-	 * @returns {ITransferNodeTypes}
-	 * @memberof WorkflowRunner
-	 */
-	getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
-		const nodeTypes = NodeTypes();
-
-		// Check which node-types have to be loaded
-		const neededNodeTypes: string[] = [];
-		for (const node of nodes) {
-			if (!neededNodeTypes.includes(node.type)) {
-				neededNodeTypes.push(node.type);
-			}
-		}
-
-		// Get all the data of the needed node types that they
-		// can be loaded again in the process
-		const returnData: ITransferNodeTypes = {};
-		for (const nodeTypeName of neededNodeTypes) {
-			if (nodeTypes.nodeTypes[nodeTypeName] === undefined) {
-				throw new Error(`The NodeType "${nodeTypeName}" could not be found!`);
-			}
-
-			returnData[nodeTypeName] = {
-				className: nodeTypes.nodeTypes[nodeTypeName].type.constructor.name,
-				sourcePath: nodeTypes.nodeTypes[nodeTypeName].sourcePath,
-			};
-		}
-
-		return returnData;
-	}
-
-
-	/**
 	 * The process did send a hook message so execute the appropiate hook
 	 *
-	 * @param {IWorkflowExecuteHooks} hookFunctions
+	 * @param {WorkflowHooks} workflowHooks
 	 * @param {IProcessMessageDataHook} hookData
 	 * @memberof WorkflowRunner
 	 */
-	processHookMessage(hookFunctions: IWorkflowExecuteHooks, hookData: IProcessMessageDataHook) {
-		if (hookFunctions[hookData.hook] !== undefined && Array.isArray(hookFunctions[hookData.hook])) {
-
-			for (const hookFunction of hookFunctions[hookData.hook]!) {
-				// TODO: Not sure if that is 100% correct or something is still missing like to wait
-				hookFunction.apply(this, hookData.parameters)
-					.catch((error: Error) => {
-						// Catch all errors here because when "executeHook" gets called
-						// we have the most time no "await" and so the errors would so
-						// not be uncaught by anything.
-
-						// TODO: Add proper logging
-						console.error(`There was a problem executing hook: "${hookData.hook}"`);
-						console.error('Parameters:');
-						console.error(hookData.parameters);
-						console.error('Error:');
-						console.error(error);
-					});
-			}
-		}
+	processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
+		workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
 	}
 
 
@@ -133,7 +75,7 @@ export class WorkflowRunner {
 		this.activeExecutions.remove(executionId, fullRunData);
 
 		// Also send to Editor UI
-		WorkflowExecuteAdditionalData.pushExecutionFinished(fullRunData, executionId);
+		WorkflowExecuteAdditionalData.pushExecutionFinished(executionMode, fullRunData, executionId);
 	}
 
 
@@ -157,12 +99,30 @@ export class WorkflowRunner {
 		// Register the active execution
 		const executionId = this.activeExecutions.add(subprocess, data);
 
-		const nodeTypeData = this.getNodeTypeData(data.workflowData.nodes);
+		// Check if workflow contains a "executeWorkflow" Node as in this
+		// case we can not know which nodeTypes will be needed and so have
+		// to load all of them in the workflowRunnerProcess
+		let loadAllNodeTypes = false;
+		for (const node of data.workflowData.nodes) {
+			if (node.type === 'n8n-nodes-base.executeWorkflow') {
+				loadAllNodeTypes = true;
+				break;
+			}
+		}
+
+		let nodeTypeData: ITransferNodeTypes;
+		if (loadAllNodeTypes === true) {
+			// Supply all nodeTypes
+			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
+		} else {
+			// Supply only nodeTypes which the workflow needs
+			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
+		}
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
 
-		const hookFunctions = WorkflowExecuteAdditionalData.getHookMethods(data, executionId);
+		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 
 		// Send all data to subprocess it needs to run the workflow
 		subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
@@ -178,7 +138,7 @@ export class WorkflowRunner {
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 
 			} else if (message.type === 'processHook') {
-				this.processHookMessage(hookFunctions, message.data as IProcessMessageDataHook);
+				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
 			}
 		});
 

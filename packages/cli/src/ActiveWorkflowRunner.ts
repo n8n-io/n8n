@@ -301,7 +301,7 @@ export class ActiveWorkflowRunner {
 
 			const mode = 'trigger';
 			const credentials = await WorkflowCredentials(workflowData.nodes);
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(mode, credentials);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 			const getTriggerFunctions = this.getExecuteTriggerFunctions(workflowData, additionalData, mode);
 
 			// Add the workflows which have webhooks defined

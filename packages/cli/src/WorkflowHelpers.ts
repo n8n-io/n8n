@@ -1,5 +1,6 @@
 import {
 	Db,
+	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
 	NodeTypes,
@@ -11,13 +12,40 @@ import {
 	IDataObject,
 	IExecuteData,
 	INode,
+	IRun,
 	IRunExecutionData,
+	ITaskData,
 	Workflow,
 } from 'n8n-workflow';
 
 import * as config from '../config';
 
 const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+
+
+/**
+ * Returns the data of the last executed node
+ *
+ * @export
+ * @param {IRun} inputData
+ * @returns {(ITaskData | undefined)}
+ */
+export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
+	const runData = inputData.data.resultData.runData;
+	const lastNodeExecuted = inputData.data.resultData.lastNodeExecuted;
+
+	if (lastNodeExecuted === undefined) {
+		return undefined;
+	}
+
+	if (runData[lastNodeExecuted] === undefined) {
+		return undefined;
+	}
+
+	return runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+}
+
+
 
 /**
  * Returns if the given id is a valid workflow id
@@ -125,6 +153,89 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 	} catch (error) {
 		console.error(`ERROR: Calling Error Workflow for "${workflowErrorData.workflow.id}": ${error.message}`);
 	}
+}
+
+
+
+/**
+ * Returns all the defined NodeTypes
+ *
+ * @export
+ * @returns {ITransferNodeTypes}
+ */
+export function getAllNodeTypeData(): ITransferNodeTypes {
+	const nodeTypes = NodeTypes();
+
+	// Get the data of all thenode types that they
+	// can be loaded again in the process
+	const returnData: ITransferNodeTypes = {};
+	for (const nodeTypeName of Object.keys(nodeTypes.nodeTypes)) {
+		if (nodeTypes.nodeTypes[nodeTypeName] === undefined) {
+			throw new Error(`The NodeType "${nodeTypeName}" could not be found!`);
+		}
+
+		returnData[nodeTypeName] = {
+			className: nodeTypes.nodeTypes[nodeTypeName].type.constructor.name,
+			sourcePath: nodeTypes.nodeTypes[nodeTypeName].sourcePath,
+		};
+	}
+
+	return returnData;
+}
+
+
+
+/**
+ * Returns the data of the node types that are needed
+ * to execute the given nodes
+ *
+ * @export
+ * @param {INode[]} nodes
+ * @returns {ITransferNodeTypes}
+ */
+export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
+	const nodeTypes = NodeTypes();
+
+	// Check which node-types have to be loaded
+	const neededNodeTypes = getNeededNodeTypes(nodes);
+
+	// Get all the data of the needed node types that they
+	// can be loaded again in the process
+	const returnData: ITransferNodeTypes = {};
+	for (const nodeTypeName of neededNodeTypes) {
+		if (nodeTypes.nodeTypes[nodeTypeName] === undefined) {
+			throw new Error(`The NodeType "${nodeTypeName}" could not be found!`);
+		}
+
+		returnData[nodeTypeName] = {
+			className: nodeTypes.nodeTypes[nodeTypeName].type.constructor.name,
+			sourcePath: nodeTypes.nodeTypes[nodeTypeName].sourcePath,
+		};
+	}
+
+	return returnData;
+}
+
+
+
+/**
+ * Returns the names of the NodeTypes which are are needed
+ * to execute the gives nodes
+ *
+ * @export
+ * @param {INode[]} nodes
+ * @returns {string[]}
+ */
+export function getNeededNodeTypes(nodes: INode[]): string[] {
+	// Check which node-types have to be loaded
+	const neededNodeTypes: string[] = [];
+	for (const node of nodes) {
+		if (!neededNodeTypes.includes(node.type)) {
+			neededNodeTypes.push(node.type);
+		}
+	}
+
+	return neededNodeTypes;
 }
 
 

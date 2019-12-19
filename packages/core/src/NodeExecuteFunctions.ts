@@ -341,6 +341,9 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 
 				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
 			},
+			getRestApiUrl: (): string => {
+				return additionalData.restApiUrl;
+			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
@@ -375,6 +378,10 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
+			async executeWorkflow(workflowId: string, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
+				// return additionalData.executeWorkflow(workflowId, additionalData, inputData);
+				return additionalData.executeWorkflow(workflowId, additionalData, inputData);
+			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
@@ -407,6 +414,9 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
+			},
+			getRestApiUrl: (): string => {
+				return additionalData.restApiUrl;
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
@@ -482,6 +492,9 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
 			},
+			getRestApiUrl: (): string => {
+				return additionalData.restApiUrl;
+			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
 			},
@@ -539,6 +552,9 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
 			},
 			getTimezone: (): string => {
 				return getTimezone(workflow, additionalData);
+			},
+			getRestApiUrl: (): string => {
+				return additionalData.restApiUrl;
 			},
 			helpers: {
 				request: requestPromise,
