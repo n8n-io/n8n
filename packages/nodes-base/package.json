@@ -72,7 +72,8 @@
             "dist/credentials/TypeformApi.credentials.js",
             "dist/credentials/MandrillApi.credentials.js",
             "dist/credentials/TodoistApi.credentials.js",
-            "dist/credentials/TypeformApi.credentials.js"
+            "dist/credentials/TypeformApi.credentials.js",
+            "dist/credentials/VeroApi.credentials.js"
         ],
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
@@ -154,6 +155,7 @@
             "dist/nodes/Trello/TrelloTrigger.node.js",
             "dist/nodes/Twilio/Twilio.node.js",
             "dist/nodes/Typeform/TypeformTrigger.node.js",
+            "dist/nodes/Vero/Vero.node.js",
             "dist/nodes/WriteBinaryFile.node.js",
             "dist/nodes/Webhook.node.js",
             "dist/nodes/Xml.node.js",
