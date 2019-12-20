@@ -121,7 +121,7 @@ export const eventFields = [
 					'track',
 				],
 				jsonParameters: [
-					false
+					false,
 				],
 			},
 		},
@@ -167,7 +167,7 @@ export const eventFields = [
 					'track',
 				],
 				jsonParameters: [
-					false
+					false,
 				],
 			},
 		},
