@@ -24,19 +24,15 @@ export async function msg91ApiRequest(this: IHookFunctions | IExecuteFunctions, 
 
 	if (query === undefined) {
 		query = {};
-    }
-    
-    query.authkey = credentials.authkey as string;
+	}
+
+	query.authkey = credentials.authkey as string;
 
 	const options = {
 		method,
 		form: body,
 		qs: query,
-		uri: `https://api.msg91.com/api/sendhttp.php`,
-		auth: {
-			user: '',
-			pass: '',
-		},
+		uri: `https://api.msg91.com/api${endpoint}`,
 		json: true
 	};
 

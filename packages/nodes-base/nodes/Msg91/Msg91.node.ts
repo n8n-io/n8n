@@ -46,7 +46,6 @@ export class Msg91 implements INodeType {
 				default: 'sms',
 				description: 'The resource to operate on.',
 			},
-
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -69,8 +68,27 @@ export class Msg91 implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Sender',
-				name: 'sender',
+				displayName: 'From',
+				name: 'from',
+				type: 'string',
+				default: '',
+				placeholder: '4155238886',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
+				description: 'The number from which to send the message.',
+			},
+			{
+				displayName: 'To',
+				name: 'to',
 				type: 'string',
 				default: '',
 				placeholder: '+14155238886',
@@ -85,26 +103,7 @@ export class Msg91 implements INodeType {
 						],
 					},
 				},
-				description: 'The number from which to send the message',
-			},
-			{
-				displayName: 'To',
-				name: 'mobiles',
-				type: 'string',
-				default: '',
-				placeholder: 'Mobile Number With Country Code',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
-					},
-				},
-				description: 'The number to which to send the message',
+				description: 'The number, with coutry code, to which to send the message.',
 			},
 			{
 				displayName: 'Message',
@@ -145,7 +144,6 @@ export class Msg91 implements INodeType {
 		let endpoint: string;
 
 		for (let i = 0; i < items.length; i++) {
-			requestMethod = 'GET';
 			endpoint = '';
 			body = {};
 			qs = {};
@@ -160,12 +158,12 @@ export class Msg91 implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'GET';
-					endpoint = 'https://api.msg91.com/api/sendhttp.php';
+					endpoint = '/sendhttp.php';
 
 					qs.route = 4;
 					qs.country = 0;
-					qs.sender = this.getNodeParameter('sender', i) as string;
-					qs.mobiles = this.getNodeParameter('mobiles', i) as string;
+					qs.sender = this.getNodeParameter('from', i) as string;
+					qs.mobiles = this.getNodeParameter('to', i) as string;
 					qs.message = this.getNodeParameter('message', i) as string;
 
 				} else {
@@ -177,7 +175,7 @@ export class Msg91 implements INodeType {
 
 			const responseData = await msg91ApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-			returnData.push(responseData as IDataObject);
+			returnData.push({ requestId: responseData });
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
