@@ -141,7 +141,7 @@ export const userFields = [
 					'create',
 				],
 				jsonParameters: [
-					false
+					false,
 				],
 			},
 		},
@@ -332,7 +332,7 @@ export const userFields = [
 				]
 			},
 		},
-		description: 'Tags to add separated by ,',
+		description: 'Tags to add separated by ","',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 user:removeTags                            */
@@ -371,6 +371,6 @@ export const userFields = [
 				]
 			},
 		},
-		description: 'Tags to remove separated by ,',
+		description: 'Tags to remove separated by ","',
 	},
 ] as INodeProperties[];

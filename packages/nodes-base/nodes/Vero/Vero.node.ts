@@ -23,7 +23,7 @@ import {
 export class Vero implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vero',
-		name: 'Vero',
+		name: 'vero',
 		icon: 'file:vero.png',
 		group: ['output'],
 		version: 1,
