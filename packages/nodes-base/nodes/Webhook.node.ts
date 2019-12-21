@@ -296,9 +296,10 @@ export class Webhook implements INodeType {
 				body: this.getBodyData(),
 				headers,
 				query: this.getQueryData(),
+				// @ts-ignore
+				rawBody: req.rawBody,
 			}
 		);
-
 		return {
 			workflowData: [
 				this.helpers.returnJsonArray(returnData)
