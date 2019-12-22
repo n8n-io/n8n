@@ -8,7 +8,9 @@ import {
 	INodeTypeData,
 	IRun,
 	ITaskData,
+	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	WorkflowHooks,
 } from 'n8n-workflow';
 
 import {
@@ -248,20 +250,33 @@ export function NodeTypes(): NodeTypesClass {
 
 
 export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun>, nodeExecutionOrder: string[]): IWorkflowExecuteAdditionalData {
+	const hookFunctions = {
+		nodeExecuteAfter: [
+			async (nodeName: string, data: ITaskData): Promise<void> => {
+				nodeExecutionOrder.push(nodeName);
+			},
+		],
+		workflowExecuteAfter: [
+			async (fullRunData: IRun): Promise<void> => {
+				waitPromise.resolve(fullRunData);
+			},
+		],
+	};
+
+	const workflowData: IWorkflowBase = {
+		name: '',
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		active: true,
+		nodes: [],
+		connections: {},
+	};
+
 	return {
 		credentials: {},
-		hooks: {
-			nodeExecuteAfter: [
-				async (nodeName: string, data: ITaskData): Promise<void> => {
-					nodeExecutionOrder.push(nodeName);
-				},
-			],
-			workflowExecuteAfter: [
-				async (fullRunData: IRun): Promise<void> => {
-					waitPromise.resolve(fullRunData);
-				},
-			],
-		},
+		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
+		executeWorkflow: async (workflowId: string): Promise<any> => {}, // tslint:disable-line:no-any
+		restApiUrl: '',
 		encryptionKey: 'test',
 		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',

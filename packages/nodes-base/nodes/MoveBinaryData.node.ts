@@ -267,7 +267,7 @@ export class MoveBinaryData implements INodeType {
 				}
 
 				const encoding = (options.encoding as string) || 'utf8';
-				let convertedValue = new Buffer(value.data, 'base64').toString(encoding);
+				let convertedValue = Buffer.from(value.data, 'base64').toString(encoding);
 
 				if (setAllData === true) {
 					// Set the full data
@@ -321,7 +321,7 @@ export class MoveBinaryData implements INodeType {
 				}
 
 				const convertedValue = {
-					data: new Buffer(value as string).toString('base64'),
+					data: Buffer.from(value as string).toString('base64'),
 					mimeType: options.mimeType || 'application/json',
 				};
 				set(newItem.binary!, destinationKey, convertedValue);

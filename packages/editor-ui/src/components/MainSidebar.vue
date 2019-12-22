@@ -56,6 +56,12 @@
 							<span slot="title" class="item-title">Save As</span>
 						</template>
 					</el-menu-item>
+					<el-menu-item index="workflow-rename" :disabled="!currentWorkflow">
+						<template slot="title">
+							<font-awesome-icon icon="edit"/>
+							<span slot="title" class="item-title">Rename</span>
+						</template>
+					</el-menu-item>
 					<el-menu-item index="workflow-delete" :disabled="!currentWorkflow">
 						<template slot="title">
 							<font-awesome-icon icon="trash"/>
@@ -347,6 +353,49 @@ export default mixins(
 
 						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
+				} else if (key === 'workflow-rename') {
+					const workflowName = await this.$prompt(
+						'Enter new workflow name',
+						'Rename',
+						{
+							inputValue: this.workflowName,
+							confirmButtonText: 'Rename',
+							cancelButtonText: 'Cancel',
+						}
+					)
+						.then((data) => {
+							// @ts-ignore
+							return data.value;
+						})
+						.catch(() => {
+							// User did cancel
+							return undefined;
+						});
+
+					if (workflowName === undefined || workflowName === this.workflowName) {
+						return;
+					}
+
+					const workflowId = this.$store.getters.workflowId;
+
+					const updateData = {
+						name: workflowName,
+					};
+
+					try {
+						await this.restApi().updateWorkflow(workflowId, updateData);
+					} catch (error) {
+						this.$showError(error, 'Problem renaming the workflow', 'There was a problem renaming the workflow:');
+						return;
+					}
+
+					this.$store.commit('setWorkflowName', workflowName);
+
+					this.$showMessage({
+						title: 'Workflow renamed',
+						message: `The workflow got renamed to "${workflowName}"!`,
+						type: 'success',
+					});
 				} else if (key === 'workflow-delete') {
 					const deleteConfirmed = await this.confirmMessage(`Are you sure that you want to delete the workflow "${this.workflowName}"?`, 'Delete Workflow?', 'warning', 'Yes, delete!');
 
