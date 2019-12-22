@@ -181,7 +181,7 @@
         "@types/xml2js": "^0.4.3",
         "gulp": "^4.0.0",
         "jest": "^24.9.0",
-        "n8n-workflow": "~0.17.0",
+        "n8n-workflow": "~0.18.0",
         "ts-jest": "^24.0.2",
         "tslint": "^5.17.0",
         "typescript": "~3.5.2"
@@ -199,7 +199,7 @@
         "lodash.unset": "^4.5.2",
         "mongodb": "^3.3.2",
         "mysql2": "^2.0.1",
-        "n8n-core": "~0.17.0",
+        "n8n-core": "~0.18.0",
         "nodemailer": "^5.1.1",
         "pdf-parse": "^1.1.1",
         "pg-promise": "^9.0.3",
