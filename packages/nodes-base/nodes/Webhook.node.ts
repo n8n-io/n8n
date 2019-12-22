@@ -4,6 +4,7 @@ import {
 
 import {
 	IDataObject,
+	INodeExecutionData,
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
@@ -208,16 +209,6 @@ export class Webhook implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
-				displayOptions: {
-					show: {
-						responseData: [
-							'firstEntryJson',
-						],
-						responseMode: [
-							'lastNode',
-						],
-					},
-				},
 				placeholder: 'Add Option',
 				default: {},
 				options: [
@@ -225,6 +216,16 @@ export class Webhook implements INodeType {
 						displayName: 'Response Content-Type',
 						name: 'responseContentType',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/responseData': [
+									'firstEntryJson',
+								],
+								'/responseMode': [
+									'lastNode',
+								],
+							},
+						},
 						default: '',
 						placeholder: 'application/xml',
 						description: 'Set a custom content-type to return if another one as the "application/json" should be returned.',
@@ -233,32 +234,19 @@ export class Webhook implements INodeType {
 						displayName: 'Property Name',
 						name: 'responsePropertyName',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/responseData': [
+									'firstEntryJson',
+								],
+								'/responseMode': [
+									'lastNode',
+								],
+							},
+						},
 						default: 'data',
 						description: 'Name of the property to return the data of instead of the whole JSON.',
 					},
-					{
-						displayName: 'Raw Body',
-						name: 'rawBody',
-						type: 'boolean',
-						default: false,
-						description: 'Raw body (binary)',
-					},
-				],
-			},
-			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				displayOptions: {
-					show: {
-						responseMode: [
-							'onReceived',
-						],
-					},
-				},
-				placeholder: 'Add Option',
-				default: {},
-				options: [
 					{
 						displayName: 'Raw Body',
 						name: 'rawBody',
@@ -274,7 +262,7 @@ export class Webhook implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const authentication = this.getNodeParameter('authentication', 0) as string;
-		const options = this.getNodeParameter('options', 0) as string;
+		const options = this.getNodeParameter('options', 0) as IDataObject;
 		const req = this.getRequestObject();
 		const resp = this.getResponseObject();
 		const headers = this.getHeaderData();
@@ -316,19 +304,24 @@ export class Webhook implements INodeType {
 				return authorizationError(resp, realm, 403);
 			}
 		}
-		const response = {
+
+		// @ts-ignore
+		const mimeType = headers['content-type'] || 'application/json';
+
+		const response: INodeExecutionData = {
 			json: {
 				body: this.getBodyData(),
 				headers,
 				query: this.getQueryData(),
 			},
 		};
-		// @ts-ignore
 		if (options.rawBody) {
-			// @ts-ignore
 			response.binary = {
-				// @ts-ignore
-				data: req.rawBody.toString('base64'),
+				data: {
+					// @ts-ignore
+					data: req.rawBody.toString('base64'),
+					mimeType,
+				}
 			};
 		}
 
