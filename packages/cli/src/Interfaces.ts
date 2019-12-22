@@ -1,16 +1,14 @@
 import {
-	IConnections,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	IDataObject,
 	IExecutionError,
-	INode,
 	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	IWorkflowBase as IWorkflowBaseWorkflow,
 	IWorkflowCredentials,
-	IWorkflowSettings,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -44,16 +42,9 @@ export interface IDatabaseCollections {
 }
 
 
-export interface IWorkflowBase {
+export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 	id?: number | string | ObjectID;
-	name: string;
-	active: boolean;
-	createdAt: Date;
-	updatedAt: Date;
-	nodes: INode[];
-	connections: IConnections;
-	settings?: IWorkflowSettings;
-	staticData?: IDataObject;
+
 }
 
 

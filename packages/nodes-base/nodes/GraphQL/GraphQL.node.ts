@@ -221,10 +221,14 @@ export class GraphQL implements INodeType {
 				});
 			} else {
 				if (typeof response === 'string') {
-					throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					try {
+						returnItems.push({ json: JSON.parse(response) });
+					} catch (e) {
+						throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					}
+				} else {
+					returnItems.push({ json: response });
 				}
-
-				returnItems.push({ json: response });
 			}
 		}
 
