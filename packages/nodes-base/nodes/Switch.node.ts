@@ -240,6 +240,10 @@ export class Switch implements INodeType {
 										value: 'smaller'
 									},
 									{
+										name: 'Smaller Equal',
+										value: 'smallerEqual'
+									},
+									{
 										name: 'Equal',
 										value: 'equal'
 									},
@@ -250,6 +254,10 @@ export class Switch implements INodeType {
 									{
 										name: 'Larger',
 										value: 'larger'
+									},
+									{
+										name: 'Larger Equal',
+										value: 'largerEqual'
 									},
 								],
 								default: 'smaller',
@@ -465,7 +473,9 @@ export class Switch implements INodeType {
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
 			larger: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 > value2,
+			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 >= value2,
 			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 < value2,
+			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 <= value2,
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
 				const regexMatch = value2.toString().match(new RegExp('^/(.*?)/([gimy]*)$'));
 
