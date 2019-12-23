@@ -332,7 +332,11 @@ export class GithubTrigger implements INodeType {
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+
+				if (webhookUrl.includes('//localhost')) {
+					throw new Error('The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
+				}
 
 				const owner = this.getNodeParameter('owner') as string;
 				const repository = this.getNodeParameter('repository') as string;
@@ -377,7 +381,7 @@ export class GithubTrigger implements INodeType {
 							}
 						}
 
-						throw new Error('A webhook with the identical URL exists already. Please delete it manually on Github!');
+						throw new Error('A webhook with the identical URL probably exists already. Please delete it manually on Github!');
 					}
 
 					throw e;
