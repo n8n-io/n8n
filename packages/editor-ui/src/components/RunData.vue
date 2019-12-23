@@ -324,7 +324,7 @@ export default mixins(
 			},
 			jsonData (): IDataObject[] {
 				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
-				if (inputData.length === 0) {
+				if (inputData.length === 0 || !Array.isArray(inputData)) {
 					return [];
 				}
 

@@ -226,7 +226,7 @@ export const nodeHelpers = mixins(
 
 			// Returns the data of the main input
 			getMainInputData (connectionsData: ITaskDataConnections, outputIndex: number): INodeExecutionData[] {
-				if (!connectionsData || !connectionsData.hasOwnProperty('main') || connectionsData.main === undefined || connectionsData.main.length < outputIndex) {
+				if (!connectionsData || !connectionsData.hasOwnProperty('main') || connectionsData.main === undefined || connectionsData.main.length < outputIndex || connectionsData.main[outputIndex] === null) {
 					return [];
 				}
 				return connectionsData.main[outputIndex] as INodeExecutionData[];
