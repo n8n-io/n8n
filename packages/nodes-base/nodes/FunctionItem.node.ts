@@ -92,6 +92,11 @@ export class FunctionItem implements INodeType {
 			return Promise.reject(e);
 		}
 
+		// Do very basic validation of the data
+		if (jsonData === undefined) {
+			throw new Error('No data got returned. Always an object has to be returned!');
+		}
+
 		return {
 			json: jsonData
 		};

@@ -80,9 +80,34 @@ export class Function implements INodeType {
 
 		try {
 			// Execute the function code
-			items = await vm.run(`module.exports = async function() {${functionCode}}()`);
+			items = (await vm.run(`module.exports = async function() {${functionCode}}()`));
 		} catch (e) {
 			return Promise.reject(e);
+		}
+
+
+		// Do very basic validation of the data
+		if (items === undefined) {
+			throw new Error('No data got returned. Always return an Array of items!');
+		}
+		if (!Array.isArray(items)) {
+			throw new Error('Always an Array of items has to be returned!');
+		}
+		for (const item of items) {
+			if (item.json === undefined) {
+				throw new Error('All returned items have to contain property named "json"!');
+			}
+			if (item.json === undefined) {
+				throw new Error('All returned items have to contain a property named "json"!');
+			}
+			if (typeof item.json !== 'object') {
+				throw new Error('The json-property has to be an object!');
+			}
+			if (item.binary !== undefined) {
+				if (Array.isArray(item.binary) || typeof item.binary !== 'object') {
+					throw new Error('The binary-property has to be an object!');
+				}
+			}
 		}
 
 		return this.prepareOutputData(items);
