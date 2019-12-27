@@ -166,21 +166,35 @@ export class SpreadsheetFile implements INodeType {
 				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Option',
-				displayOptions: {
-					show: {
-						operation: [
-							'toFile',
-						],
-					},
-				},
 				default: {},
 				options: [
 					{
 						displayName: 'File Name',
 						name: 'fileName',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'toFile',
+								],
+							},
+						},
 						default: '',
 						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
+					},
+					{
+						displayName: 'RAW Data',
+						name: 'rawData',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile'
+								],
+							},
+						},
+						default: false,
+						description: 'If the data should be returned RAW instead of parsed.',
 					},
 				],
 			},
@@ -203,7 +217,8 @@ export class SpreadsheetFile implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				item = items[i];
 
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+				const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 				if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
 					// Property did not get found on item
@@ -212,7 +227,7 @@ export class SpreadsheetFile implements INodeType {
 
 				// Read the binary spreadsheet data
 				const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
-				const workbook = xlsxRead(binaryData);
+				const workbook = xlsxRead(binaryData, { raw: options.rawData as boolean });
 
 				if (workbook.SheetNames.length === 0) {
 					throw new Error('File does not have any sheets!');
@@ -235,9 +250,9 @@ export class SpreadsheetFile implements INodeType {
 			return this.prepareOutputData(newItems);
 		} else if (operation === 'toFile') {
 			// Write the workflow data to spreadsheet file
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-			const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+			const fileFormat = this.getNodeParameter('fileFormat', i) as string;
+			const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 			// Get the json data of the items and flatten it
 			let item: INodeExecutionData;
