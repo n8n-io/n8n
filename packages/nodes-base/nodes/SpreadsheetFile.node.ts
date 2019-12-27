@@ -203,6 +203,20 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'fromFile',
+								],
+							},
+						},
+						default: 'Sheet',
+						description: 'Name of the sheet to read from in the spreadsheet (if supported). If not set, the first one gets chosen.',
+					},
+					{
+						displayName: 'Sheet Name',
+						name: 'sheetName',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
 									'toFile',
 								],
 								'/fileFormat': [
@@ -212,7 +226,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: 'Sheet',
-						description: 'Name of the Sheet in the Spreadsheet.',
+						description: 'Name of the sheet to create in the spreadsheet.',
 					},
 				],
 			},
@@ -248,11 +262,19 @@ export class SpreadsheetFile implements INodeType {
 				const workbook = xlsxRead(binaryData, { raw: options.rawData as boolean });
 
 				if (workbook.SheetNames.length === 0) {
-					throw new Error('File does not have any sheets!');
+					throw new Error('Spreadsheet does not have any sheets!');
+				}
+
+				let sheetName = workbook.SheetNames[0];
+				if (options.sheetName) {
+					if (!workbook.SheetNames.includes(options.sheetName as string)) {
+						throw new Error(`Spreadsheet does not contain sheet called "${options.sheetName}"!`);
+					}
+					sheetName = options.sheetName as string;
 				}
 
 				// Convert it to json
-				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName]);
 
 				// Check if data could be found in file
 				if (sheetJson.length === 0) {
