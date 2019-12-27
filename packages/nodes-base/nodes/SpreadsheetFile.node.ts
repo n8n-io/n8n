@@ -109,27 +109,27 @@ export class SpreadsheetFile implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'csv',
+						name: 'CSV',
 						value: 'csv',
 						description: 'Comma-separated values',
 					},
 					{
-						name: 'ods',
-						value: 'ods',
-						description: 'OpenDocument Spreadsheet',
-					},
-					{
-						name: 'rtf',
-						value: 'rtf',
-						description: 'Rich Text Format',
-					},
-					{
-						name: 'html',
+						name: 'HTML',
 						value: 'html',
 						description: 'HTML Table',
 					},
 					{
-						name: 'xls',
+						name: 'ODS',
+						value: 'ods',
+						description: 'OpenDocument Spreadsheet',
+					},
+					{
+						name: 'RTF',
+						value: 'rtf',
+						description: 'Rich Text Format',
+					},
+					{
+						name: 'XLS',
 						value: 'xls',
 						description: 'Excel',
 					},
