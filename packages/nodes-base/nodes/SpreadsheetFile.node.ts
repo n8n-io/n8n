@@ -250,9 +250,9 @@ export class SpreadsheetFile implements INodeType {
 			return this.prepareOutputData(newItems);
 		} else if (operation === 'toFile') {
 			// Write the workflow data to spreadsheet file
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-			const fileFormat = this.getNodeParameter('fileFormat', i) as string;
-			const options = this.getNodeParameter('options', i, {}) as IDataObject;
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+			const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 			// Get the json data of the items and flatten it
 			let item: INodeExecutionData;
