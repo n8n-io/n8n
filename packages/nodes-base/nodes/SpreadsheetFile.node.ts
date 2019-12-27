@@ -196,6 +196,24 @@ export class SpreadsheetFile implements INodeType {
 						default: false,
 						description: 'If the data should be returned RAW instead of parsed.',
 					},
+					{
+						displayName: 'Sheet Name',
+						name: 'sheetName',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'toFile',
+								],
+								'/fileFormat': [
+									'ods',
+									'xls',
+								],
+							},
+						},
+						default: 'Sheet',
+						description: 'Name of the Sheet in the Spreadsheet.',
+					},
 				],
 			},
 		]
@@ -282,7 +300,7 @@ export class SpreadsheetFile implements INodeType {
 			}
 
 			// Convert the data in the correct format
-			const sheetName = 'Sheet';
+			const sheetName = options.sheetName as string || 'Sheet';
 			const wb: WorkBook = {
 				SheetNames: [sheetName],
 				Sheets: {
