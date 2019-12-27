@@ -100,11 +100,13 @@ export N8N_CUSTOM_EXTENSIONS="/home/jim/n8n/custom-nodes;/data/n8n/nodes"
 ```
 
 
-## Use built-in modules in Function-Nodes
+## Use built-in and external modules in Function-Nodes
 
-By default is it for security reasons not allowed to import modules in Function-Nodes.
-It is, however, possible to lift that restriction for built-in modules by setting the
-environment variable `NODE_FUNCTION_ALLOW_BUILTIN`.
+For security reasons, importing modules is restricted by default in Function-Nodes.
+It is, however, possible to lift that restriction for built-in and external modules by
+setting the following environment variables:
+`NODE_FUNCTION_ALLOW_BUILTIN`: For builtin modules
+`NODE_FUNCTION_ALLOW_EXTERNAL`: For external modules sourced from n8n/node_modules directory. External module support is disabled when env variable is not set.
 
 ```bash
 # Allows usage of all builtin modules
@@ -115,6 +117,9 @@ export NODE_FUNCTION_ALLOW_BUILTIN=crypto
 
 # Allows usage of only crypto and fs
 export NODE_FUNCTION_ALLOW_BUILTIN=crypto,fs
+
+# Allow usage of external npm modules. Wildcard matching is not supported.
+export NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash
 ```
 
 
