@@ -5,8 +5,7 @@ import {
 } from "n8n-core";
 import { Command, flags } from '@oclif/command';
 const open = require('open');
-import { promisify } from 'util';
-import { dirname } from 'path';
+// import { dirname } from 'path';
 
 import * as config from '../config';
 import {
@@ -20,7 +19,6 @@ import {
 	TestWebhooks,
 } from "../src";
 
-const tunnel = promisify(localtunnel);
 
 // // Add support for internationalization
 // const fullIcuPath = require.resolve('full-icu');
@@ -151,7 +149,7 @@ export class Start extends Command {
 					const port = config.get('port') as number;
 
 					// @ts-ignore
-					const webhookTunnel = await tunnel(port, tunnelSettings);
+					const webhookTunnel = await localtunnel(port, tunnelSettings);
 
 					process.env.WEBHOOK_TUNNEL_URL = webhookTunnel.url + '/';
 					this.log(`Tunnel URL: ${process.env.WEBHOOK_TUNNEL_URL}\n`);
