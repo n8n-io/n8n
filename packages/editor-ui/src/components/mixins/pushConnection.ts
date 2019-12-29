@@ -122,7 +122,7 @@ export const pushConnection = mixins(
 					// @ts-ignore
 					receivedData = JSON.parse(event.data);
 				} catch (error) {
-					console.error('The received push data is not valid JSON.');
+					console.error('The received push data is not valid JSON.'); // eslint-disable-line no-console
 					return;
 				}
 
