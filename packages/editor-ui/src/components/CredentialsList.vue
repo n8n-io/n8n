@@ -37,8 +37,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
 import { restApi } from '@/components/mixins/restApi';
 import { ICredentialsResponse } from '@/Interface';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -72,7 +70,7 @@ export default mixins(
 		};
 	},
 	watch: {
-		dialogVisible (newValue, oldValue) {
+		dialogVisible (newValue) {
 			if (newValue) {
 				this.loadCredentials();
 				this.loadCredentialTypes();
@@ -146,9 +144,8 @@ export default mixins(
 				return;
 			}
 
-			let result;
 			try {
-				result = await this.restApi().deleteCredentials(credential.id!);
+				await this.restApi().deleteCredentials(credential.id!);
 			} catch (error) {
 				this.$showError(error, 'Problem deleting credentials', 'There was a problem deleting the credentials:');
 				return;
