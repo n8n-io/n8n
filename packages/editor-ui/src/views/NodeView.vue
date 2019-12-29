@@ -102,6 +102,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
 import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
@@ -943,7 +944,7 @@ export default mixins(
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = this.getNewNodePosition(
 						[lastSelectedNode.position[0] + 150, lastSelectedNode.position[1]],
-						[100, 0]
+						[100, 0],
 					);
 				} else {
 					// If no node is active find a free spot
@@ -970,7 +971,7 @@ export default mixins(
 
 					// Add connections of active node to newly created one
 					let connections = this.$store.getters.connectionsByNodeName(
-						lastSelectedNode.name
+						lastSelectedNode.name,
 					);
 					connections = JSON.parse(JSON.stringify(connections));
 
@@ -1406,7 +1407,7 @@ export default mixins(
 
 				newNodeData.position = this.getNewNodePosition(
 					[node.position[0], node.position[1] + 150],
-					[0, 150]
+					[0, 150],
 				);
 
 				await this.addNodes([newNodeData]);
@@ -1504,7 +1505,7 @@ export default mixins(
 						nameInput.select();
 					}
 
-					const promptResponse = await promptResponsePromise;
+					const promptResponse = await promptResponsePromise as MessageBoxInputData;
 
 					this.renameNode(currentName, promptResponse.value);
 				} catch (e) {}
@@ -1602,7 +1603,7 @@ export default mixins(
 						for (const type of Object.keys(connections[sourceNode])) {
 							for (let sourceIndex = 0; sourceIndex < connections[sourceNode][type].length; sourceIndex++) {
 								connections[sourceNode][type][sourceIndex].forEach((
-									targetData
+									targetData,
 								) => {
 									connectionData = [
 										{

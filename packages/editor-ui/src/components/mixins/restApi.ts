@@ -1,7 +1,7 @@
 import Vue from 'vue';
 import { parse } from 'flatted';
 
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig, Method } from 'axios';
 import {
 	IActivationError,
 	ICredentialsDecryptedResponse,
@@ -94,7 +94,7 @@ export const restApi = Vue.extend({
 		restApi (): IRestApi {
 			const self = this;
 			return {
-				async makeRestApiRequest (method: string, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+				async makeRestApiRequest (method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 					try {
 						const options: AxiosRequestConfig = {
 							method,
