@@ -73,7 +73,8 @@
             "dist/credentials/MandrillApi.credentials.js",
             "dist/credentials/TodoistApi.credentials.js",
             "dist/credentials/TypeformApi.credentials.js",
-            "dist/credentials/VeroApi.credentials.js"
+            "dist/credentials/VeroApi.credentials.js",
+            "dist/credentials/WordpressApi.credentials.js"
         ],
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
@@ -125,7 +126,8 @@
             "dist/nodes/MoveBinaryData.node.js",
             "dist/nodes/MongoDb/MongoDb.node.js",
             "dist/nodes/MySql/MySql.node.js",
-            "dist/nodes/NextCloud/NextCloud.node.js",
+			"dist/nodes/NextCloud/NextCloud.node.js",
+			"dist/nodes/Mandrill/Mandrill.node.js",
             "dist/nodes/NoOp.node.js",
             "dist/nodes/OpenWeatherMap.node.js",
             "dist/nodes/Pipedrive/Pipedrive.node.js",
@@ -157,11 +159,9 @@
             "dist/nodes/Typeform/TypeformTrigger.node.js",
             "dist/nodes/Vero/Vero.node.js",
             "dist/nodes/WriteBinaryFile.node.js",
-            "dist/nodes/Webhook.node.js",
-            "dist/nodes/Xml.node.js",
-            "dist/nodes/Mandrill/Mandrill.node.js",
-            "dist/nodes/Todoist/Todoist.node.js",
-            "dist/nodes/Xml.node.js"
+			"dist/nodes/Webhook.node.js",
+			"dist/nodes/Wordpress/Wordpress.node.js",
+			"dist/nodes/Xml.node.js"
         ]
     },
     "devDependencies": {
