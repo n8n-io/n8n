@@ -185,7 +185,7 @@ export default mixins(
 						key: 'none',
 						value: 'Do not save',
 					},
-				]
+				],
 			);
 		},
 		async loadSaveDataSuccessExecutionOptions () {
@@ -204,7 +204,7 @@ export default mixins(
 						key: 'none',
 						value: 'Do not save',
 					},
-				]
+				],
 			);
 		},
 		async loadSaveManualOptions () {

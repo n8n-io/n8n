@@ -5,7 +5,6 @@ module.exports = {
 	},
 	'extends': [
 		'plugin:vue/essential',
-		'@vue/standard',
 		'@vue/typescript',
 	],
 	rules: {
@@ -18,6 +17,6 @@ module.exports = {
 		'no-labels': 0,
 	},
 	parserOptions: {
-		parser: 'typescript-eslint-parser',
+		parser: '@typescript-eslint/parser',
 	},
 };
