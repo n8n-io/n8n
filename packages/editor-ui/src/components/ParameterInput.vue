@@ -10,7 +10,7 @@
 				<prism-editor v-if="!codeEditDialogVisible" :lineNumbers="true" :readonly="true" :code="displayValue" language="js"></prism-editor>
 			</div>
 
-			<el-input v-else ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
+			<el-input v-else v-model="tempValue" ref="inputField" size="small" :type="getStringInputType" :rows="getArgument('rows')" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" :placeholder="isValueExpression?'':parameter.placeholder">
 				<font-awesome-icon v-if="!isValueExpression && !isReadOnly" slot="suffix" icon="external-link-alt" class="edit-window-button clickable" title="Open Edit Window" @click="displayEditDialog()" />
 			</el-input>
 		</div>
@@ -83,7 +83,7 @@
 
 		<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
 			<el-color-picker :value="displayValue" :disabled="isReadOnly" @change="valueChanged" size="small" class="color-picker" @focus="setFocus" :title="displayTitle" ></el-color-picker>
-			<el-input size="small" type="text" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></el-input>
+			<el-input v-model="tempValue" size="small" type="text" :value="displayValue" :disabled="isReadOnly" @change="valueChanged" @keydown.stop @focus="setFocus" :title="displayTitle" ></el-input>
 		</div>
 
 		<div v-else-if="parameter.type === 'boolean'">
@@ -173,7 +173,7 @@ export default mixins(
 				remoteParameterOptionsLoading: false,
 				remoteParameterOptionsLoadingIssues: null as string | null,
 				textEditDialogVisible: false,
-				tempValue: '', // el-date-picker does not seem to work without v-model so add one
+				tempValue: '', //  el-date-picker and el-input does not seem to work without v-model so add one
 				dateTimePickerOptions: {
 					shortcuts: [
 						{

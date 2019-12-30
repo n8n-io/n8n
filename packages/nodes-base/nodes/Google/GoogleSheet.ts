@@ -93,7 +93,7 @@ export class GoogleSheet {
 			}
 		);
 
-		return response.data.values;
+		return response.data.values as string[][] | undefined;
 	}
 
 
@@ -141,9 +141,9 @@ export class GoogleSheet {
 	async batchUpdate(updateData: ISheetUpdateData[], valueInputMode: ValueInputOption) {
 		const client = await this.getAuthenticationClient();
 
+		// @ts-ignore
 		const response = await Sheets.spreadsheets.values.batchUpdate(
 			{
-				// @ts-ignore
 				auth: client,
 				spreadsheetId: this.id,
 				valueInputOption: valueInputMode,
@@ -163,6 +163,7 @@ export class GoogleSheet {
 	async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 		const client = await this.getAuthenticationClient();
 
+		// @ts-ignore
 		const response = await Sheets.spreadsheets.values.update(
 			{
 				// @ts-ignore
@@ -186,9 +187,9 @@ export class GoogleSheet {
 	async appendData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 		const client = await this.getAuthenticationClient();
 
+		// @ts-ignore
 		const response = await Sheets.spreadsheets.values.append(
 			{
-				// @ts-ignore
 				auth: client,
 				spreadsheetId: this.id,
 				range,

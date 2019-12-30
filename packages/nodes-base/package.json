@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-base",
-    "version": "0.35.0",
+    "version": "0.36.0",
     "description": "Base nodes of n8n",
     "license": "SEE LICENSE IN LICENSE.md",
     "homepage": "https://n8n.io",
@@ -110,6 +110,7 @@
             "dist/nodes/Google/GoogleDrive.node.js",
             "dist/nodes/Google/GoogleSheets.node.js",
             "dist/nodes/GraphQL/GraphQL.node.js",
+            "dist/nodes/HtmlExtract/HtmlExtract.node.js",
             "dist/nodes/HttpRequest.node.js",
             "dist/nodes/Hubspot/Hubspot.node.js",
             "dist/nodes/If.node.js",
@@ -167,6 +168,7 @@
     "devDependencies": {
         "@types/aws4": "^1.5.1",
         "@types/basic-auth": "^1.1.2",
+        "@types/cheerio": "^0.22.15",
         "@types/cron": "^1.6.1",
         "@types/express": "^4.16.1",
         "@types/gm": "^1.18.2",
@@ -184,15 +186,16 @@
         "n8n-workflow": "~0.18.0",
         "ts-jest": "^24.0.2",
         "tslint": "^5.17.0",
-        "typescript": "~3.5.2"
+        "typescript": "~3.7.4"
     },
     "dependencies": {
         "aws4": "^1.8.0",
         "basic-auth": "^2.0.1",
+        "cheerio": "^1.0.0-rc.3",
         "cron": "^1.6.0",
         "glob-promise": "^3.4.0",
         "gm": "^1.23.1",
-        "googleapis": "^42.0.0",
+        "googleapis": "^46.0.0",
         "imap-simple": "^4.3.0",
         "lodash.get": "^4.4.2",
         "lodash.set": "^4.3.2",

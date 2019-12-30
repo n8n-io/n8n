@@ -29,7 +29,7 @@ export const workflowSave = mixins(
 						{
 							confirmButtonText: 'Save',
 							cancelButtonText: 'Cancel',
-						}
+						},
 					)
 						.then((data) => {
 							// @ts-ignore
@@ -62,7 +62,7 @@ export const workflowSave = mixins(
 					if (currentWorkflow === undefined || withNewName === true) {
 						// Workflow is new or is supposed to get saved under a new name
 						// so create a new entry in database
-						workflowData.name = workflowName.trim() as string;
+						workflowData.name = workflowName!.trim() as string;
 
 						if (withNewName === true) {
 							// If an existing workflow gets resaved with a new name

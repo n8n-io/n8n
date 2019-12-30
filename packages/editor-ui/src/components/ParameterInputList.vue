@@ -123,7 +123,7 @@ export default mixins(
 			},
 			getArgument (
 				argumentName: string,
-				parameter: INodeProperties
+				parameter: INodeProperties,
 			): string | number | boolean | undefined {
 				if (parameter.typeOptions === undefined) {
 					return undefined;

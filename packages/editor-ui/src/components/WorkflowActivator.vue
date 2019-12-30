@@ -158,7 +158,7 @@ export default mixins(
 					});
 				},
 			},
-		}
+		},
 	);
 </script>
 
