@@ -148,14 +148,7 @@ export class Evernote implements INodeType {
 					} catch (err) {
 						throw new Error(`Evernote Error: ${JSON.stringify(err)}`);
 					}
-					let jsonArray = this.helpers.returnJsonArray(responseData);
-					// @ts-ignore
-					jsonArray = jsonArray.map(object => {
-						delete object.json.contentHash;
-						return object;
-					});
-					// @ts-ignore
-					return [jsonArray];
+					delete responseData.contentHash;
 				}
 				//http://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_findNotesMetadata
 				if (operation === 'getAll') {
@@ -189,7 +182,6 @@ export class Evernote implements INodeType {
 					} catch (err) {
 						throw new Error(`Evernote Error: ${JSON.stringify(err)}`);
 					}
-					return [this.helpers.returnJsonArray(responseData)];
 				}
 				//http://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_getNote
 				if (operation === 'get') {
@@ -208,7 +200,6 @@ export class Evernote implements INodeType {
 					} catch (err) {
 						throw new Error(`Evernote Error: ${JSON.stringify(err)}`);
 					}
-					return [this.helpers.returnJsonArray(responseData)];
 				}
 				//http://dev.evernote.com/doc/reference/NoteStore.html#Fn_NoteStore_deleteNote
 				if (operation === 'delete') {
@@ -219,10 +210,14 @@ export class Evernote implements INodeType {
 					} catch (err) {
 						throw new Error(`Evernote Error: ${JSON.stringify(err)}`);
 					}
-					return [this.helpers.returnJsonArray(responseData)];
 				}
 			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
+			}
 		}
-		return [];
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
