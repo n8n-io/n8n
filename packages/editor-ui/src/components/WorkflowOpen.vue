@@ -104,13 +104,13 @@ export default mixins(
 							workflowData.updatedAt = this.convertToDisplayDate(workflowData.updatedAt as number);
 						});
 						this.isDataLoading = false;
-					}
+					},
 				)
 				.catch(
 					(error: Error) => {
 						this.$showError(error, 'Problem loading workflows', 'There was a problem loading the workflows:');
 						this.isDataLoading = false;
-					}
+					},
 				);
 		},
 		workflowActiveChanged (data: { id: string, active: boolean }) {

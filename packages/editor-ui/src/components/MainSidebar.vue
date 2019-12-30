@@ -160,6 +160,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { MessageBoxInputData } from 'element-ui/types/message-box';
 
 import {
 	IExecutionResponse,
@@ -349,7 +350,7 @@ export default mixins(
 							cancelButtonText: 'Cancel',
 							inputErrorMessage: 'Invalid URL',
 							inputPattern: /^http[s]?:\/\/.*\.json$/i,
-						});
+						}) as MessageBoxInputData;
 
 						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
@@ -361,7 +362,7 @@ export default mixins(
 							inputValue: this.workflowName,
 							confirmButtonText: 'Rename',
 							cancelButtonText: 'Cancel',
-						}
+						},
 					)
 						.then((data) => {
 							// @ts-ignore
