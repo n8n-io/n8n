@@ -7,17 +7,13 @@ import {
 	INodeExecutionData,
 	INodeType,
 } from 'n8n-workflow';
-// import {
-// 	flowApiRequest,
-// 	FlowApiRequestAllItems,
-// } from './GenericFunctions';
-// import {
-// 	taskOpeations,
-// 	taskFields,
-// } from './TaskDescription';
-// import {
-// 	ITask, TaskInfo,
-//  } from './TaskInterface';
+import {
+	wordpressApiRequest,
+} from './GenericFunctions';
+import {
+	postOperations,
+	postFields,
+} from './PostDescription';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
@@ -49,16 +45,14 @@ export class Wordpress implements INodeType {
 					{
 						name: 'Post',
 						value: 'post',
-						description: `The primary unit within Flow; tasks track units of work and can be assigned, sorted, nested, and tagged.</br>
-						Tasks can either be part of a List, or "private" (meaning "without a list", essentially).</br>
-						Through this endpoint you are able to do anything you wish to your tasks in Flow, including create new ones.`,
+						description: ``,
 					},
 				],
-				default: 'task',
+				default: 'post',
 				description: 'Resource to consume.',
 			},
-			// ...taskOpeations,
-			// ...taskFields,
+			...postOperations,
+			...postFields,
 		],
 	};
 
