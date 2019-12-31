@@ -1217,6 +1217,28 @@ class App {
 		});
 
 
+		// HEAD webhook requests (test for UI)
+		this.app.head(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-test/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookTest.length + 2);
+
+			let response;
+			try {
+				response = await this.testWebhooks.callTestWebhook('HEAD', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+
 		// Serve the website
 		const startTime = (new Date()).toUTCString();
 		const editorUiPath = require.resolve('n8n-editor-ui');
