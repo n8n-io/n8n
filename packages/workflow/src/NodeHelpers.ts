@@ -78,6 +78,10 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 										value: 'everyMonth',
 									},
 									{
+										name: 'Every X',
+										value: 'everyX',
+									},
+									{
 										name: 'Custom',
 										value: 'custom',
 									},
@@ -99,6 +103,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 											'custom',
 											'everyHour',
 											'everyMinute',
+											'everyX',
 										],
 									},
 								},
@@ -118,6 +123,7 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 										mode: [
 											'custom',
 											'everyMinute',
+											'everyX',
 										],
 									},
 								},
@@ -199,6 +205,48 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								},
 								default: '* * * * * *',
 								description: 'Use custom cron expression. Values and ranges as follows:<ul><li>Seconds: 0-59</li><li>Minutes: 0 - 59</li><li>Hours: 0 - 23</li><li>Day of Month: 1 - 31</li><li>Months: 0 - 11 (Jan - Dec)</li><li>Day of Week: 0 - 6 (Sun - Sat)</li></ul>',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'number',
+								typeOptions: {
+									minValue: 0,
+									maxValue: 1000,
+								},
+								displayOptions: {
+									show: {
+										mode: [
+											'everyX',
+										],
+									},
+								},
+								default: 2,
+								description: 'All how many X minutes/hours it should trigger.',
+							},
+							{
+								displayName: 'Unit',
+								name: 'unit',
+								type: 'options',
+								displayOptions: {
+									show: {
+										mode: [
+											'everyX',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'Minutes',
+										value: 'minutes'
+									},
+									{
+										name: 'Hours',
+										value: 'hours'
+									},
+								],
+								default: 'hours',
+								description: 'If it should trigger all X minutes or hours.',
 							},
 						],
 					},
