@@ -107,6 +107,10 @@ export interface IDataObject {
 }
 
 
+export interface IGetExecutePollFunctions {
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IPollFunctions;
+}
+
 export interface IGetExecuteTriggerFunctions {
 	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): ITriggerFunctions;
 }
@@ -208,6 +212,19 @@ export interface IHookFunctions {
 	};
 }
 
+export interface IPollFunctions {
+	__emit(data: INodeExecutionData[][]): void;
+	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
+	getMode(): WorkflowExecuteMode;
+	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getRestApiUrl(): string;
+	getTimezone(): string;
+	getWorkflowStaticData(type: string): IDataObject;
+	helpers: {
+		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
+	};
+}
+
 export interface ITriggerFunctions {
 	emit(data: INodeExecutionData[][]): void;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
@@ -285,6 +302,7 @@ export interface INodeExecutionData {
 
 
 export interface INodeExecuteFunctions {
+	getExecutePollFunctions: IGetExecutePollFunctions;
 	getExecuteTriggerFunctions: IGetExecuteTriggerFunctions;
 	getExecuteFunctions: IGetExecuteFunctions;
 	getExecuteSingleFunctions: IGetExecuteSingleFunctions;
@@ -363,6 +381,10 @@ export interface IParameterDependencies {
 	[key: string]: string[];
 }
 
+export interface IPollResponse {
+	closeFunction?: () => Promise<void>;
+}
+
 export interface ITriggerResponse {
 	closeFunction?: () => Promise<void>;
 	// To manually trigger the run
@@ -376,6 +398,7 @@ export interface INodeType {
 	description: INodeTypeDescription;
 	execute?(this: IExecuteFunctions): Promise<INodeExecutionData[][] | null>;
 	executeSingle?(this: IExecuteSingleFunctions): Promise<INodeExecutionData>;
+	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;
 	hooks?: {
@@ -447,6 +470,7 @@ export interface INodeTypeDescription {
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
+	polling?: boolean;
 	subtitle?: string;
 	hooks?: {
 		[key: string]: INodeHookDescription[] | undefined;

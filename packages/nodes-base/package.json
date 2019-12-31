@@ -73,6 +73,7 @@
             "dist/credentials/MandrillApi.credentials.js",
             "dist/credentials/TodoistApi.credentials.js",
             "dist/credentials/TypeformApi.credentials.js",
+            "dist/credentials/TogglApi.credentials.js",
             "dist/credentials/VeroApi.credentials.js"
         ],
         "nodes": [
@@ -156,6 +157,7 @@
             "dist/nodes/Trello/TrelloTrigger.node.js",
             "dist/nodes/Twilio/Twilio.node.js",
             "dist/nodes/Typeform/TypeformTrigger.node.js",
+            "dist/nodes/Toggl/TogglTrigger.node.js",
             "dist/nodes/Vero/Vero.node.js",
             "dist/nodes/WriteBinaryFile.node.js",
             "dist/nodes/Webhook.node.js",
@@ -192,7 +194,7 @@
         "aws4": "^1.8.0",
         "basic-auth": "^2.0.1",
         "cheerio": "^1.0.0-rc.3",
-        "cron": "^1.6.0",
+        "cron": "^1.7.2",
         "glob-promise": "^3.4.0",
         "gm": "^1.23.1",
         "googleapis": "^46.0.0",
