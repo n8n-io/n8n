@@ -3,27 +3,28 @@ import {
 	IConnections,
 	IGetExecuteTriggerFunctions,
 	INode,
-	NodeHelpers,
 	INodes,
 	INodeExecuteFunctions,
 	INodeExecutionData,
-	INodeParameters,
 	INodeIssues,
-	NodeParameterValue,
+	INodeParameters,
 	INodeType,
 	INodeTypes,
-	ObservableObject,
+	IPollFunctions,
 	IRunExecutionData,
 	ITaskDataConnections,
 	ITriggerResponse,
 	IWebhookData,
 	IWebhookResponseData,
-	WebhookSetupMethodNames,
-	WorkflowDataProxy,
 	IWorfklowIssues,
 	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
 	IWorkflowSettings,
+	NodeHelpers,
+	NodeParameterValue,
+	ObservableObject,
+	WebhookSetupMethodNames,
+	WorkflowDataProxy,
+	WorkflowExecuteMode,
 } from './';
 
 // @ts-ignore
@@ -188,7 +189,7 @@ export class Workflow {
 				continue;
 			}
 
-			if (nodeType.trigger !== undefined || nodeType.webhook !== undefined) {
+			if (nodeType.poll !== undefined || nodeType.trigger !== undefined || nodeType.webhook !== undefined) {
 				// Is a trigger node. So workflow can be activated.
 				return true;
 			}
@@ -289,6 +290,30 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	getTriggerNodes(): INode[] {
+		return this.queryNodes((nodeType: INodeType) => !!nodeType.trigger );
+	}
+
+
+	/**
+	 * Returns all the poll nodes in the workflow
+	 *
+	 * @returns {INode[]}
+	 * @memberof Workflow
+	 */
+	getPollNodes(): INode[] {
+		return this.queryNodes((nodeType: INodeType) => !!nodeType.poll );
+	}
+
+
+	/**
+	 * Returns all the nodes in the workflow for which the given
+	 * checkFunction return true
+	 *
+	 * @param {(nodeType: INodeType) => boolean} checkFunction
+	 * @returns {INode[]}
+	 * @memberof Workflow
+	 */
+	queryNodes(checkFunction: (nodeType: INodeType) => boolean): INode[] {
 		const returnNodes: INode[] = [];
 
 		// Check if it has any of them
@@ -304,7 +329,7 @@ export class Workflow {
 
 			nodeType = this.nodeTypes.getByName(node.type);
 
-			if (nodeType !== undefined && nodeType.trigger) {
+			if (nodeType !== undefined && checkFunction(nodeType)) {
 				returnNodes.push(node);
 			}
 		}
@@ -729,14 +754,14 @@ export class Workflow {
 
 			// Check which node to return as start node
 
-			// Check if there are any trigger nodes and then return the first one
+			// Check if there are any trigger or poll nodes and then return the first one
 			let node: INode;
 			let nodeType: INodeType;
 			for (const nodeName of nodeNames) {
 				node = this.nodes[nodeName];
 				nodeType = this.nodeTypes.getByName(node.type) as INodeType;
 
-				if (nodeType.trigger !== undefined) {
+				if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
 					return node;
 				}
 			}
@@ -995,6 +1020,30 @@ export class Workflow {
 
 
 	/**
+	 * Runs the given trigger node so that it can trigger the workflow
+	 * when the node has data.
+	 *
+	 * @param {INode} node
+	 * @param {IPollFunctions} pollFunctions
+	 * @returns
+	 * @memberof Workflow
+	 */
+	async runPoll(node: INode, pollFunctions: IPollFunctions): Promise<INodeExecutionData[][] | null> {
+		const nodeType = this.nodeTypes.getByName(node.type);
+
+		if (nodeType === undefined) {
+			throw new Error(`The node type "${node.type}" of node "${node.name}" is not known.`);
+		}
+
+		if (!nodeType.poll) {
+			throw new Error(`The node type "${node.type}" of node "${node.name}" does not have a poll function defined.`);
+		}
+
+		return nodeType.poll!.call(pollFunctions);
+	}
+
+
+	/**
 	 * Executes the webhook data to see what it should return and if the
 	 * workflow should be started or not
 	 *
@@ -1096,6 +1145,9 @@ export class Workflow {
 		} else if (nodeType.execute) {
 			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(this, runExecutionData, runIndex, connectionInputData, inputData, node, additionalData, mode);
 			return nodeType.execute.call(thisArgs);
+		} else if (nodeType.poll) {
+			const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(this, node, additionalData, mode);
+			return nodeType.poll.call(thisArgs);
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
