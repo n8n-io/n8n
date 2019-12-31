@@ -489,7 +489,7 @@ export interface IWorkflowDataProxyData {
 	$parameter: any; // tslint:disable-line:no-any
 }
 
-export type WebhookHttpMethod = 'GET' | 'POST';
+export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];

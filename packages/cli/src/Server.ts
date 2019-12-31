@@ -1151,6 +1151,28 @@ class App {
 		});
 
 
+		// HEAD webhook requests
+		this.app.head(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
+
+			let response;
+			try {
+				response = await this.activeWorkflowRunner.executeWebhook('HEAD', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+
 		// GET webhook requests (test for UI)
 		this.app.get(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
 			// Cut away the "/webhook-test/" to get the registred part of the url
