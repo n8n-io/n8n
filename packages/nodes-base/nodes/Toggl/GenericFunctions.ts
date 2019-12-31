@@ -5,22 +5,21 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
+	IPollFunctions,
 	ITriggerFunctions,
-	BINARY_ENCODING,
-	getLoadOptionsFunctions
 } from 'n8n-core';
 
 import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function togglApiRequest(this: ITriggerFunctions | IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function togglApiRequest(this: ITriggerFunctions | IPollFunctions | IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('togglApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
 	const headerWithAuthentication = Object.assign({},
-		{ Authorization: ` Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString(BINARY_ENCODING)}` });
+		{ Authorization: ` Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64')}` });
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
@@ -36,11 +35,15 @@ export async function togglApiRequest(this: ITriggerFunctions | IHookFunctions |
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
-
-		if (errorMessage !== undefined) {
-			throw errorMessage;
+		if (error.statusCode === 403) {
+			throw new Error('The Toggle credentials are probably invalid!');
 		}
-		throw error.response.body;
+
+		const errorMessage = error.response.body && (error.response.body.message || error.response.body.Message);
+		if (errorMessage !== undefined) {
+			throw new Error(errorMessage);
+		}
+
+		throw error;
 	}
 }
