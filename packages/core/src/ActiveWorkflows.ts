@@ -134,6 +134,14 @@ export class ActiveWorkflows {
 					cronTimes.push(`${Math.floor(Math.random() * 60).toString()} * * * * *`);
 					continue;
 				}
+				if (item.mode === 'everyX') {
+					if (item.unit === 'minutes') {
+						cronTimes.push(`${Math.floor(Math.random() * 60).toString()} */${item.value} * * * *`);
+					} else if (item.unit === 'hours') {
+						cronTimes.push(`${Math.floor(Math.random() * 60).toString()} 0 */${item.value} * * *`);
+					}
+					continue;
+				}
 
 				for (parameterName of parameterOrder) {
 					if (item[parameterName] !== undefined) {
