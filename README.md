@@ -2,9 +2,8 @@
 
 ![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-logo.png)
 
-n8n is a free node based "Open Source" (with Commons Clause)
-Workflow Automation Tool. It can be self-hosted, easily extended, and
-so also used with internal tools.
+n8n is a free and open node based Workflow Automation Tool. It can be
+self-hosted, easily extended, and so also used with internal tools.
 
 <a href="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
