@@ -40,6 +40,29 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 	}
 }
 
+export async function intercomApiRequestAllItems(this: IExecuteFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.per_page = 10;
+	query.page = 1;
+
+	let uri: string | undefined;
+
+	do {
+		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, uri);
+		uri = responseData.pages.next;
+	} while (
+		responseData.pages !== undefined &&
+		responseData.pages.next !== undefined &&
+		responseData.pages.next !== null
+	);
+
+	return returnData;
+}
+
 export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
 	let result;
 	try {

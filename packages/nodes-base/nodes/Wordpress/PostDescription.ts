@@ -31,39 +31,22 @@ export const postFields = [
 /* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'ID',
-		name: 'id',
+		displayName: 'Title',
+		name: 'title',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'user',
+					'post',
 				],
 				operation: [
 					'create',
 				]
 			},
 		},
-		description: 'The unique identifier of the customer',
-	},
-	{
-		displayName: 'JSON Parameters',
-		name: 'jsonParameters',
-		type: 'boolean',
-		default: false,
-		description: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				]
-			},
-		}
+		description: 'The title for the post',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -74,7 +57,7 @@ export const postFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'user',
+					'post',
 				],
 				operation: [
 					'create',
@@ -83,83 +66,107 @@ export const postFields = [
 		},
 		options: [
 			{
-				displayName: 'Email',
-				name: 'email',
+				displayName: 'Content',
+				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The table to create the row in.',
+				description: 'The content for the post',
+			},
+			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+				description: 'An alphanumeric identifier for the object unique to its type.',
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				default: '',
+				description: 'A password to protect access to the content and excerpt.',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Publish',
+						value: 'publish'
+					},
+					{
+						name: 'Future',
+						value: 'future'
+					},
+					{
+						name: 'Draft',
+						value: 'draft'
+					},
+					{
+						name: 'Pending',
+						value: 'pending'
+					},
+					{
+						name: 'Private',
+						value: 'private'
+					},
+				],
+				default: '',
+				description: 'A named status for the post.',
+			},
+			{
+				displayName: 'Content Status',
+				name: 'contentStatus',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open'
+					},
+					{
+						name: 'Close',
+						value: 'closed'
+					},
+				],
+				default: '',
+				description: 'Whether or not comments are open on the post.',
+			},
+			{
+				displayName: 'Ping Status',
+				name: 'pingStatus',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open'
+					},
+					{
+						name: 'Close',
+						value: 'closed'
+					},
+				],
+				default: '',
+				description: 'Whether or not comments are open on the post.',
+			},
+			{
+				displayName: 'Sticky',
+				name: 'sticky',
+				type: 'boolean',
+				default: '',
+				description: 'Whether or not the object should be treated as sticky.',
+			},
+			{
+				displayName: 'Categories',
+				name: 'categories',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getCategories',
+				},
+				default: [],
+				description: 'The terms assigned to the object in the category taxonomy.',
 			},
 		]
-	},
-	{
-		displayName: 'Data',
-		name: 'dataAttributesUi',
-		placeholder: 'Add Data',
-		description: 'key value pairs that represent the custom user properties you want to update',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
-			},
-		},
-		options: [
-			{
-				name: 'dataAttributesValues',
-				displayName: 'Data',
-				values: [
-					{
-						displayName: 'Key',
-						name: 'key',
-						type: 'string',
-						default: '',
-						description: 'Name of the property to set.',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: 'Value of the property to set.',
-					},
-				]
-			},
-		],
-	},
-	{
-		displayName: 'Data',
-		name: 'dataAttributesJson',
-		type: 'json',
-		default: '',
-		required: false,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		description: 'key value pairs that represent the custom user properties you want to update',
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
-			},
-		},
 	},
 
 /* -------------------------------------------------------------------------- */
