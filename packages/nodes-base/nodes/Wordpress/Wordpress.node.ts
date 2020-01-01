@@ -6,6 +6,8 @@ import {
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 import {
 	wordpressApiRequest,
@@ -54,6 +56,33 @@ export class Wordpress implements INodeType {
 			...postOperations,
 			...postFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the available categories to display them to user so that he can
+			// select them easily
+			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let categories;
+				try {
+					categories = await wordpressApiRequest.call(this, 'GET', '/categories', {});
+				} catch (err) {
+					throw new Error(`Mandrill Error: ${err}`);
+				}
+				for (const category of categories) {
+					const categoryName = category.name;
+					const categoryId = category.id;
+
+					returnData.push({
+						name: categoryName,
+						value: categoryId,
+					});
+				}
+
+				return returnData;
+			}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
