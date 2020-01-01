@@ -68,14 +68,17 @@ export class FunctionItem implements INodeType {
 			console: 'inherit',
 			sandbox,
 			require: {
-				external: false,
+				external: false as boolean | { modules: string[] },
 				builtin: [] as string[],
-				root: './',
 			}
 		};
 
 		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
 			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+		}
+
+		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
+			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
 		}
 
 		const vm = new NodeVM(options);
@@ -87,7 +90,7 @@ export class FunctionItem implements INodeType {
 		let jsonData: IDataObject;
 		try {
 			// Execute the function code
-			jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`);
+			jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, './');
 		} catch (e) {
 			return Promise.reject(e);
 		}
