@@ -71,11 +71,11 @@
             "dist/credentials/TwilioApi.credentials.js",
             "dist/credentials/TypeformApi.credentials.js",
             "dist/credentials/MandrillApi.credentials.js",
-            "dist/credentials/TodoistApi.credentials.js",
-            "dist/credentials/TypeformApi.credentials.js",
+			"dist/credentials/TodoistApi.credentials.js",
+			"dist/credentials/TypeformApi.credentials.js",
+			"dist/credentials/TogglApi.credentials.js",
             "dist/credentials/VeroApi.credentials.js",
             "dist/credentials/WordpressApi.credentials.js"
-            "dist/credentials/TogglApi.credentials.js",
         ],
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
