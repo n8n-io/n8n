@@ -18,6 +18,7 @@ jobs:
       run: echo ::set-output name=tag::$(echo ${GITHUB_REF:14})
     - name: Log in to Docker registry
       run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
     - name: Build the Docker image of version
       run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}} docker/images/n8n
     - name: Push Docker image of version
@@ -26,3 +27,8 @@ jobs:
       run: docker tag n8nio/n8n:${{steps.vars.outputs.tag}} n8nio/n8n:latest
     - name: Push docker images of latest
       run: docker push n8nio/n8n:latest
+
+    - name: Build the Docker image of version (Ubuntu)
+      run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}}-ubuntu docker/images/n8n-ubuntu
+    - name: Push Docker image of version (Ubuntu)
+      run: docker push n8nio/n8n:${{steps.vars.outputs.tag}}-ubuntu
