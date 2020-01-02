@@ -40,24 +40,24 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 	}
 }
 
-export async function intercomApiRequestAllItems(this: IExecuteFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
 	query.per_page = 10;
-	query.page = 1;
+	query.page = 0;
 
 	let uri: string | undefined;
 
 	do {
-		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, uri);
-		uri = responseData.pages.next;
+		query.page++;
+		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, uri,  { resolveWithFullResponse: true });
+		returnData.push.apply(returnData, responseData.body);
 	} while (
-		responseData.pages !== undefined &&
-		responseData.pages.next !== undefined &&
-		responseData.pages.next !== null
+		responseData.headers['x-wp-totalpages'] !== undefined &&
+		parseInt(responseData.headers['x-wp-totalpages'], 10) < query.page
 	);
 
 	return returnData;
