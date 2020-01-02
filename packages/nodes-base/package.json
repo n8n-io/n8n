@@ -166,7 +166,8 @@
             "dist/nodes/Xml.node.js",
             "dist/nodes/Mandrill/Mandrill.node.js",
             "dist/nodes/Todoist/Todoist.node.js",
-            "dist/nodes/Xml.node.js"
+            "dist/nodes/Xml.node.js",
+            "dist/nodes/OAuth.node.js"
         ]
     },
     "devDependencies": {
