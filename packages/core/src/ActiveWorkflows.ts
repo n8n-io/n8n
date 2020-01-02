@@ -1,19 +1,23 @@
+import { CronJob } from 'cron';
+
 import {
+	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
+	INode,
+	IPollResponse,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
 
-
-export interface WorkflowData {
-	workflow: Workflow;
-	triggerResponse?: ITriggerResponse;
-}
+import {
+	ITriggerTime,
+	IWorkflowData,
+} from './';
 
 export class ActiveWorkflows {
 	private workflowData: {
-		[key: string]: WorkflowData;
+		[key: string]: IWorkflowData;
 	} = {};
 
 
@@ -48,7 +52,7 @@ export class ActiveWorkflows {
 	 * @returns {(WorkflowData | undefined)}
 	 * @memberof ActiveWorkflows
 	 */
-	get(id: string): WorkflowData | undefined {
+	get(id: string): IWorkflowData | undefined {
 		return this.workflowData[id];
 	}
 
@@ -62,7 +66,7 @@ export class ActiveWorkflows {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflows
 	 */
-	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getTriggerFunctions: IGetExecuteTriggerFunctions): Promise<void> {
+	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
 		console.log('ADD ID (active): ' + id);
 
 		this.workflowData[id] = {
@@ -78,8 +82,117 @@ export class ActiveWorkflows {
 				this.workflowData[id].triggerResponse = triggerResponse;
 			}
 		}
+
+		const pollNodes = workflow.getPollNodes();
+		for (const pollNode of pollNodes) {
+			this.workflowData[id].pollResponse = await this.activatePolling(pollNode, workflow, additionalData, getPollFunctions);
+		}
 	}
 
+
+	/**
+	 * Activates polling for the given node
+	 *
+	 * @param {INode} node
+	 * @param {Workflow} workflow
+	 * @param {IWorkflowExecuteAdditionalData} additionalData
+	 * @param {IGetExecutePollFunctions} getPollFunctions
+	 * @returns {Promise<IPollResponse>}
+	 * @memberof ActiveWorkflows
+	 */
+	async activatePolling(node: INode, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getPollFunctions: IGetExecutePollFunctions): Promise<IPollResponse> {
+		const mode = 'trigger';
+
+		const pollFunctions = getPollFunctions(workflow, node, additionalData, mode);
+
+		const pollTimes = pollFunctions.getNodeParameter('pollTimes') as unknown as {
+			item: ITriggerTime[];
+		};
+
+		// Define the order the cron-time-parameter appear
+		const parameterOrder = [
+			'second',     // 0 - 59
+			'minute',     // 0 - 59
+			'hour',       // 0 - 23
+			'dayOfMonth', // 1 - 31
+			'month',      // 0 - 11(Jan - Dec)
+			'weekday',    // 0 - 6(Sun - Sat)
+		];
+
+		// Get all the trigger times
+		const cronTimes: string[] = [];
+		let cronTime: string[];
+		let parameterName: string;
+		if (pollTimes.item !== undefined) {
+			for (const item of pollTimes.item) {
+				cronTime = [];
+				if (item.mode === 'custom') {
+					cronTimes.push(item.cronExpression as string);
+					continue;
+				}
+				if (item.mode === 'everyMinute') {
+					cronTimes.push(`${Math.floor(Math.random() * 60).toString()} * * * * *`);
+					continue;
+				}
+				if (item.mode === 'everyX') {
+					if (item.unit === 'minutes') {
+						cronTimes.push(`${Math.floor(Math.random() * 60).toString()} */${item.value} * * * *`);
+					} else if (item.unit === 'hours') {
+						cronTimes.push(`${Math.floor(Math.random() * 60).toString()} 0 */${item.value} * * *`);
+					}
+					continue;
+				}
+
+				for (parameterName of parameterOrder) {
+					if (item[parameterName] !== undefined) {
+						// Value is set so use it
+						cronTime.push(item[parameterName] as string);
+					} else if (parameterName === 'second') {
+						// For seconds we use by default a random one to make sure to
+						// balance the load a little bit over time
+						cronTime.push(Math.floor(Math.random() * 60).toString());
+					} else {
+						// For all others set "any"
+						cronTime.push('*');
+					}
+				}
+
+				cronTimes.push(cronTime.join(' '));
+			}
+		}
+
+		// The trigger function to execute when the cron-time got reached
+		const executeTrigger = async () => {
+			const pollResponse = await workflow.runPoll(node, pollFunctions);
+
+			if (pollResponse !== null) {
+				// TODO: Run workflow
+				pollFunctions.__emit(pollResponse);
+			}
+		};
+
+		// Execute the trigger directly to be able to know if it works
+		await executeTrigger();
+
+		const timezone = pollFunctions.getTimezone();
+
+		// Start the cron-jobs
+		const cronJobs: CronJob[] = [];
+		for (const cronTime of cronTimes) {
+			cronJobs.push(new CronJob(cronTime, executeTrigger, undefined, true, timezone));
+		}
+
+		// Stop the cron-jobs
+		async function closeFunction() {
+			for (const cronJob of cronJobs) {
+				cronJob.stop();
+			}
+		}
+
+		return {
+			closeFunction,
+		};
+	}
 
 
 	/**
@@ -101,6 +214,10 @@ export class ActiveWorkflows {
 
 		if (workflowData.triggerResponse && workflowData.triggerResponse.closeFunction) {
 			await workflowData.triggerResponse.closeFunction();
+		}
+
+		if (workflowData.pollResponse && workflowData.pollResponse.closeFunction) {
+			await workflowData.pollResponse.closeFunction();
 		}
 
 		delete this.workflowData[id];

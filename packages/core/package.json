@@ -1,6 +1,6 @@
 {
     "name": "n8n-core",
-    "version": "0.18.0",
+    "version": "0.19.0",
     "description": "Core functionality of n8n",
     "license": "SEE LICENSE IN LICENSE.md",
     "homepage": "https://n8n.io",
@@ -39,10 +39,11 @@
         "typescript": "~3.7.4"
     },
     "dependencies": {
+        "cron": "^1.7.2",
         "crypto-js": "^3.1.9-1",
         "lodash.get": "^4.4.2",
         "mmmagic": "^0.5.2",
-        "n8n-workflow": "~0.18.0",
+        "n8n-workflow": "~0.19.0",
         "request-promise-native": "^1.0.7"
     },
     "jest": {

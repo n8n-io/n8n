@@ -17,6 +17,7 @@ import {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
+	IPollFunctions,
 	IRunExecutionData,
 	ITaskDataConnections,
 	ITriggerFunctions,
@@ -306,6 +307,57 @@ export function getWebhookDescription(name: string, workflow: Workflow, node: IN
 	}
 
 	return undefined;
+}
+
+
+
+/**
+ * Returns the execute functions the poll nodes have access to.
+ *
+ * @export
+ * @param {Workflow} workflow
+ * @param {INode} node
+ * @param {IWorkflowExecuteAdditionalData} additionalData
+ * @param {WorkflowExecuteMode} mode
+ * @returns {ITriggerFunctions}
+ */
+// TODO: Check if I can get rid of: additionalData, and so then maybe also at ActiveWorkflowRunner.add
+export function getExecutePollFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IPollFunctions {
+	return ((workflow: Workflow, node: INode) => {
+		return {
+			__emit: (data: INodeExecutionData[][]): void => {
+				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
+			},
+			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
+				return getCredentials(workflow, node, type, additionalData);
+			},
+			getMode: (): WorkflowExecuteMode => {
+				return mode;
+			},
+			getNodeParameter: (parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object => { //tslint:disable-line:no-any
+				const runExecutionData: IRunExecutionData | null = null;
+				const itemIndex = 0;
+				const runIndex = 0;
+				const connectionInputData: INodeExecutionData[] = [];
+
+				return getNodeParameter(workflow, runExecutionData, runIndex, connectionInputData, node, parameterName, itemIndex, fallbackValue);
+			},
+			getRestApiUrl: (): string => {
+				return additionalData.restApiUrl;
+			},
+			getTimezone: (): string => {
+				return getTimezone(workflow, additionalData);
+			},
+			getWorkflowStaticData(type: string): IDataObject {
+				return workflow.getStaticData(type, node);
+			},
+			helpers: {
+				prepareBinaryData,
+				request: requestPromise,
+				returnJsonArray,
+			},
+		};
+	})(workflow, node);
 }
 
 

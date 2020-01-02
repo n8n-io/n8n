@@ -21,6 +21,7 @@ import {
 
 import {
 	IExecuteData,
+	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
 	INode,
 	INodeExecutionData,
@@ -219,6 +220,73 @@ export class ActiveWorkflowRunner {
 
 
 	/**
+	 * Runs the given workflow
+	 *
+	 * @param {IWorkflowDb} workflowData
+	 * @param {INode} node
+	 * @param {INodeExecutionData[][]} data
+	 * @param {IWorkflowExecuteAdditionalDataWorkflow} additionalData
+	 * @param {WorkflowExecuteMode} mode
+	 * @returns
+	 * @memberof ActiveWorkflowRunner
+	 */
+	runWorkflow(workflowData: IWorkflowDb, node: INode, data: INodeExecutionData[][], additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode) {
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node,
+				data: {
+					main: data,
+				}
+			}
+		];
+
+		const executionData: IRunExecutionData = {
+			startData: {},
+			resultData: {
+				runData: {},
+			},
+			executionData: {
+				contextData: {},
+				nodeExecutionStack,
+				waitingExecution: {},
+			},
+		};
+
+		// Start the workflow
+		const runData: IWorkflowExecutionDataProcess = {
+			credentials: additionalData.credentials,
+			executionMode: mode,
+			executionData,
+			workflowData,
+		};
+
+		const workflowRunner = new WorkflowRunner();
+		return workflowRunner.run(runData, true);
+	}
+
+
+	/**
+	 * Return poll function which gets the global functions from n8n-core
+	 * and overwrites the __emit to be able to start it in subprocess
+	 *
+	 * @param {IWorkflowDb} workflowData
+	 * @param {IWorkflowExecuteAdditionalDataWorkflow} additionalData
+	 * @param {WorkflowExecuteMode} mode
+	 * @returns {IGetExecutePollFunctions}
+	 * @memberof ActiveWorkflowRunner
+	 */
+	getExecutePollFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode): IGetExecutePollFunctions {
+		return ((workflow: Workflow, node: INode) => {
+			const returnFunctions = NodeExecuteFunctions.getExecutePollFunctions(workflow, node, additionalData, mode);
+			returnFunctions.__emit = (data: INodeExecutionData[][]): void => {
+				this.runWorkflow(workflowData, node, data, additionalData, mode);
+			};
+			return returnFunctions;
+		});
+	}
+
+
+	/**
 	 * Return trigger function which gets the global functions from n8n-core
 	 * and overwrites the emit to be able to start it in subprocess
 	 *
@@ -232,42 +300,12 @@ export class ActiveWorkflowRunner {
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(workflow, node, additionalData, mode);
 			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
-
-				const nodeExecutionStack: IExecuteData[] = [
-					{
-						node,
-						data: {
-							main: data,
-						}
-					}
-				];
-
-				const executionData: IRunExecutionData = {
-					startData: {},
-					resultData: {
-						runData: {},
-					},
-					executionData: {
-						contextData: {},
-						nodeExecutionStack,
-						waitingExecution: {},
-					},
-				};
-
-				// Start the workflow
-				const runData: IWorkflowExecutionDataProcess = {
-					credentials: additionalData.credentials,
-					executionMode: mode,
-					executionData,
-					workflowData,
-				};
-
-				const workflowRunner = new WorkflowRunner();
-				workflowRunner.run(runData, true);
+				this.runWorkflow(workflowData, node, data, additionalData, mode);
 			};
 			return returnFunctions;
 		});
 	}
+
 
 	/**
 	 * Makes a workflow active
@@ -303,10 +341,11 @@ export class ActiveWorkflowRunner {
 			const credentials = await WorkflowCredentials(workflowData.nodes);
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 			const getTriggerFunctions = this.getExecuteTriggerFunctions(workflowData, additionalData, mode);
+			const getPollFunctions = this.getExecutePollFunctions(workflowData, additionalData, mode);
 
 			// Add the workflows which have webhooks defined
 			await this.addWorkflowWebhooks(workflowInstance, additionalData, mode);
-			await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, getTriggerFunctions);
+			await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, getTriggerFunctions, getPollFunctions);
 
 			if (this.activationErrors[workflowId] !== undefined) {
 				// If there were any activation errors delete them
