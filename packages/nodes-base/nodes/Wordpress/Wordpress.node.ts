@@ -10,15 +10,23 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import {
-	wordpressApiRequest, wordpressApiRequestAllItems,
+	wordpressApiRequest,
+	wordpressApiRequestAllItems,
 } from './GenericFunctions';
 import {
 	postOperations,
 	postFields,
 } from './PostDescription';
 import {
+	userOperations,
+	userFields,
+} from './UserDescription';
+import {
 	IPost,
 } from './PostInterface';
+import {
+	IUser,
+} from './UserInterface';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,7 +58,12 @@ export class Wordpress implements INodeType {
 					{
 						name: 'Post',
 						value: 'post',
-						description: ``,
+						description: '',
+					},
+					{
+						name: 'User',
+						value: 'user',
+						description: '',
 					},
 				],
 				default: 'post',
@@ -58,6 +71,8 @@ export class Wordpress implements INodeType {
 			},
 			...postOperations,
 			...postFields,
+			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -233,7 +248,6 @@ export class Wordpress implements INodeType {
 				if (operation === 'get') {
 					const postId = this.getNodeParameter('postId', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					options.id = postId;
 					if (options.password) {
 						qs.password = options.password as string;
 					}
@@ -303,6 +317,144 @@ export class Wordpress implements INodeType {
 					}
 					try {
 						responseData = await wordpressApiRequest.call(this, 'DELETE', `/posts/${postId}`, {}, qs);
+					} catch (err) {
+						throw new Error(`Wordpress Error: ${err.message}`);
+					}
+				}
+			}
+			if (resource === 'user') {
+				//https://developer.wordpress.org/rest-api/reference/users/#create-a-user
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const username = this.getNodeParameter('username', i) as string;
+					const firstName = this.getNodeParameter('firstName', i) as string;
+					const lastName = this.getNodeParameter('lastName', i) as string;
+					const email = this.getNodeParameter('email', i) as string;
+					const password = this.getNodeParameter('password', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IUser = {
+						name,
+						username,
+						first_name: firstName,
+						last_name: lastName,
+						email,
+						password,
+					};
+					// if (operation === 'update') {
+					// 	const userId = this.getNodeParameter('userId', i) as number;
+					// 	body.id = userId;
+					// }
+					if (additionalFields.url) {
+						body.url = additionalFields.url as string;
+					}
+					if (additionalFields.description) {
+						body.description = additionalFields.description as string;
+					}
+					if (additionalFields.nickname) {
+						body.nickname = additionalFields.nickname as string;
+					}
+					if (additionalFields.slug) {
+						body.slug = additionalFields.slug as string;
+					}
+					try{
+						responseData = await wordpressApiRequest.call(this, 'POST', '/users', body);
+					} catch (err) {
+						throw new Error(`Wordpress Error: ${err.message}`);
+					}
+				}
+				//https://developer.wordpress.org/rest-api/reference/users/#update-a-user
+				if (operation === 'update') {
+					const userId = this.getNodeParameter('userId', i) as number;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IUser = {
+						id: userId,
+					};
+					if (updateFields.name) {
+						body.name = updateFields.name as string;
+					}
+					if (updateFields.firstName) {
+						body.first_name = updateFields.firstName as string;
+					}
+					if (updateFields.lastName) {
+						body.last_name = updateFields.lastName as string;
+					}
+					if (updateFields.email) {
+						body.email = updateFields.email as string;
+					}
+					if (updateFields.password) {
+						body.password = updateFields.password as string;
+					}
+					if (updateFields.username) {
+						body.username = updateFields.username as string;
+					}
+					if (updateFields.url) {
+						body.url = updateFields.url as string;
+					}
+					if (updateFields.description) {
+						body.description = updateFields.description as string;
+					}
+					if (updateFields.nickname) {
+						body.nickname = updateFields.nickname as string;
+					}
+					if (updateFields.slug) {
+						body.slug = updateFields.slug as string;
+					}
+					try{
+						responseData = await wordpressApiRequest.call(this, 'POST', `/users/${userId}`, body);
+					} catch (err) {
+						throw new Error(`Wordpress Error: ${err.message}`);
+					}
+				}
+				//https://developer.wordpress.org/rest-api/reference/users/#retrieve-a-user
+				if (operation === 'get') {
+					const userId = this.getNodeParameter('userId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					if (options.context) {
+						qs.context = options.context as string;
+					}
+					try {
+						responseData = await wordpressApiRequest.call(this,'GET', `/users/${userId}`, {}, qs);
+					} catch (err) {
+						throw new Error(`Wordpress Error: ${err.message}`);
+					}
+				}
+				//https://developer.wordpress.org/rest-api/reference/users/#list-users
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					if (filters.context) {
+						qs.context = filters.context as string;
+					}
+					if (filters.orderBy) {
+						qs.orderby = filters.orderBy as string;
+					}
+					if (filters.order) {
+						qs.order = filters.order as string;
+					}
+					if (filters.search) {
+						qs.search = filters.search as string;
+					}
+					if (filters.who) {
+						qs.who = filters.who as string;
+					}
+					try {
+						if (returnAll === true) {
+							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
+						} else {
+							qs.per_page = this.getNodeParameter('limit', i) as number;
+							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
+						}
+					} catch (err) {
+						throw new Error(`Wordpress Error: ${err.message}`);
+					}
+				}
+				//https://developer.wordpress.org/rest-api/reference/users/#delete-a-user
+				if (operation === 'delete') {
+					const reassign = this.getNodeParameter('reassign', i) as string;
+					qs.reassign = reassign;
+					qs.force = true;
+					try {
+						responseData = await wordpressApiRequest.call(this, 'DELETE', `/users/me`, {}, qs);
 					} catch (err) {
 						throw new Error(`Wordpress Error: ${err.message}`);
 					}
