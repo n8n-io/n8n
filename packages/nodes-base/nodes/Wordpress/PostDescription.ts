@@ -652,7 +652,7 @@ export const postFields = [
 					},
 					{
 						name: 'Include Slugs',
-						value: 'includeSlugs',
+						value: 'include_slugs',
 					},
 					{
 						name: 'Title',
