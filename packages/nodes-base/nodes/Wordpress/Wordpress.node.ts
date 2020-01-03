@@ -340,10 +340,6 @@ export class Wordpress implements INodeType {
 						email,
 						password,
 					};
-					// if (operation === 'update') {
-					// 	const userId = this.getNodeParameter('userId', i) as number;
-					// 	body.id = userId;
-					// }
 					if (additionalFields.url) {
 						body.url = additionalFields.url as string;
 					}
