@@ -18,11 +18,11 @@ export const postOperations = [
 				value: 'create',
 				description: 'Create a post',
 			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a post',
-			},
+			// {
+			// 	name: 'Delete',
+			// 	value: 'delete',
+			// 	description: 'Delete a post',
+			// },
 			{
 				name: 'Get',
 				value: 'get',
@@ -34,9 +34,9 @@ export const postOperations = [
 				description: 'Get all posts',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a post',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a post',
 			},
 		],
 		default: 'create',
@@ -114,27 +114,27 @@ export const postFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Publish',
-						value: 'publish'
+						name: 'Draft',
+						value: 'draft',
 					},
 					{
 						name: 'Future',
-						value: 'future'
-					},
-					{
-						name: 'Draft',
-						value: 'draft'
+						value: 'future',
 					},
 					{
 						name: 'Pending',
-						value: 'pending'
+						value: 'pending',
 					},
 					{
 						name: 'Private',
-						value: 'private'
+						value: 'private',
+					},
+					{
+						name: 'Publish',
+						value: 'publish',
 					},
 				],
-				default: '',
+				default: 'draft',
 				description: 'A named status for the post.',
 			},
 			{
@@ -144,14 +144,14 @@ export const postFields = [
 				options: [
 					{
 						name: 'Open',
-						value: 'open'
+						value: 'open',
 					},
 					{
 						name: 'Close',
-						value: 'closed'
+						value: 'closed',
 					},
 				],
-				default: '',
+				default: 'open',
 				description: 'Whether or not comments are open on the post.',
 			},
 			{
@@ -161,15 +161,15 @@ export const postFields = [
 				options: [
 					{
 						name: 'Open',
-						value: 'open'
+						value: 'open',
 					},
 					{
 						name: 'Close',
-						value: 'closed'
+						value: 'closed',
 					},
 				],
-				default: '',
-				description: 'Whether or not comments are open on the post.',
+				default: 'open',
+				description: 'If the a message should be send to announce the post.',
 			},
 			{
 				displayName: 'Format',
@@ -178,46 +178,46 @@ export const postFields = [
 				options: [
 					{
 						name: 'Standard',
-						value: 'standard'
+						value: 'standard',
 					},
 					{
 						name: 'Aside',
-						value: 'aside'
+						value: 'aside',
 					},
 					{
 						name: 'Chat',
-						value: 'chat'
+						value: 'chat',
 					},
 					{
 						name: 'Gallery',
-						value: 'gallery'
+						value: 'gallery',
 					},
 					{
 						name: 'Link',
-						value: 'link'
+						value: 'link',
 					},
 					{
 						name: 'Image',
-						value: 'image'
+						value: 'image',
 					},
 					{
 						name: 'Quote',
-						value: 'quote'
+						value: 'quote',
 					},
 					{
 						name: 'Status',
-						value: 'status'
+						value: 'status',
 					},
 					{
 						name: 'Video',
-						value: 'video'
+						value: 'video',
 					},
 					{
 						name: 'Audio',
-						value: 'audio'
+						value: 'audio',
 					},
 				],
-				default: '',
+				default: 'standard',
 				description: 'Whether or not comments are open on the post.',
 			},
 			{
@@ -325,26 +325,26 @@ export const postFields = [
 				options: [
 					{
 						name: 'Publish',
-						value: 'publish'
+						value: 'publish',
 					},
 					{
 						name: 'Future',
-						value: 'future'
+						value: 'future',
 					},
 					{
 						name: 'Draft',
-						value: 'draft'
+						value: 'draft',
 					},
 					{
 						name: 'Pending',
-						value: 'pending'
+						value: 'pending',
 					},
 					{
 						name: 'Private',
-						value: 'private'
+						value: 'private',
 					},
 				],
-				default: '',
+				default: 'draft',
 				description: 'A named status for the post.',
 			},
 			{
@@ -354,14 +354,14 @@ export const postFields = [
 				options: [
 					{
 						name: 'Open',
-						value: 'open'
+						value: 'open',
 					},
 					{
 						name: 'Close',
-						value: 'closed'
+						value: 'closed',
 					},
 				],
-				default: '',
+				default: 'open',
 				description: 'Whether or not comments are open on the post.',
 			},
 			{
@@ -371,14 +371,14 @@ export const postFields = [
 				options: [
 					{
 						name: 'Open',
-						value: 'open'
+						value: 'open',
 					},
 					{
 						name: 'Close',
-						value: 'closed'
+						value: 'closed',
 					},
 				],
-				default: '',
+				default: 'open',
 				description: 'Whether or not comments are open on the post.',
 			},
 			{
@@ -388,47 +388,47 @@ export const postFields = [
 				options: [
 					{
 						name: 'Standard',
-						value: 'standard'
+						value: 'standard',
 					},
 					{
 						name: 'Aside',
-						value: 'aside'
+						value: 'aside',
 					},
 					{
 						name: 'Chat',
-						value: 'chat'
+						value: 'chat',
 					},
 					{
 						name: 'Gallery',
-						value: 'gallery'
+						value: 'gallery',
 					},
 					{
 						name: 'Link',
-						value: 'link'
+						value: 'link',
 					},
 					{
 						name: 'Image',
-						value: 'image'
+						value: 'image',
 					},
 					{
 						name: 'Quote',
-						value: 'quote'
+						value: 'quote',
 					},
 					{
 						name: 'Status',
-						value: 'status'
+						value: 'status',
 					},
 					{
 						name: 'Video',
-						value: 'video'
+						value: 'video',
 					},
 					{
 						name: 'Audio',
-						value: 'audio'
+						value: 'audio',
 					},
 				],
-				default: '',
-				description: 'Whether or not comments are open on the post.',
+				default: 'standard',
+				description: 'The format of the post.',
 			},
 			{
 				displayName: 'Sticky',
@@ -572,10 +572,10 @@ export const postFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -606,7 +606,7 @@ export const postFields = [
 						value: 'edit',
 					},
 				],
-				default: [],
+				default: 'view',
 				description: 'Scope under which the request is made; determines fields present in response.',
 			},
 			{
@@ -621,10 +621,6 @@ export const postFields = [
 					{
 						name: 'Date',
 						value: 'date',
-					},
-					{
-						name: 'ID',
-						value: 'id',
 					},
 					{
 						name: 'ID',
@@ -659,7 +655,7 @@ export const postFields = [
 						value: 'title',
 					},
 				],
-				default: [],
+				default: 'id',
 				description: 'Sort collection by object attribute.',
 			},
 			{
@@ -668,12 +664,12 @@ export const postFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Desc',
-						value: 'desc',
+						name: 'ASC',
+						value: 'asc',
 					},
 					{
-						name: 'Asc',
-						value: 'asc',
+						name: 'DESC',
+						value: 'desc',
 					},
 				],
 				default: 'desc',
