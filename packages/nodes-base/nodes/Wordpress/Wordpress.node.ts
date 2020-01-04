@@ -3,10 +3,10 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
-	ILoadOptionsFunctions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import {
@@ -14,12 +14,12 @@ import {
 	wordpressApiRequestAllItems,
 } from './GenericFunctions';
 import {
-	postOperations,
 	postFields,
+	postOperations,
 } from './PostDescription';
 import {
-	userOperations,
 	userFields,
+	userOperations,
 } from './UserDescription';
 import {
 	IPost,
@@ -31,7 +31,7 @@ import {
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wordpress',
-		name: 'Wordpress',
+		name: 'wordpress',
 		icon: 'file:wordpress.png',
 		group: ['output'],
 		version: 1,
@@ -39,7 +39,7 @@ export class Wordpress implements INodeType {
 		description: 'Consume Wordpress API',
 		defaults: {
 			name: 'Wordpress',
-			color: '#c02428',
+			color: '#016087',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -82,12 +82,7 @@ export class Wordpress implements INodeType {
 			// select them easily
 			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let categories;
-				try {
-					categories = await wordpressApiRequestAllItems.call(this, 'GET', '/categories', {});
-				} catch (err) {
-					throw new Error(`Wordpress Error: ${err}`);
-				}
+				const categories = await wordpressApiRequestAllItems.call(this, 'GET', '/categories', {});
 				for (const category of categories) {
 					const categoryName = category.name;
 					const categoryId = category.id;
@@ -103,12 +98,7 @@ export class Wordpress implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let tags;
-				try {
-					tags = await wordpressApiRequestAllItems.call(this, 'GET', '/tags', {});
-				} catch (err) {
-					throw new Error(`Wordpress Error: ${err}`);
-				}
+				const tags = await wordpressApiRequestAllItems.call(this, 'GET', '/tags', {});
 				for (const tag of tags) {
 					const tagName = tag.name;
 					const tagId = tag.id;
@@ -124,12 +114,7 @@ export class Wordpress implements INodeType {
 			// select them easily
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let authors;
-				try {
-					authors = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, { who: 'authors' });
-				} catch (err) {
-					throw new Error(`Wordpress Error: ${err}`);
-				}
+				const authors = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, { who: 'authors' });
 				for (const author of authors) {
 					const authorName = author.name;
 					const authorId = author.id;
@@ -192,11 +177,7 @@ export class Wordpress implements INodeType {
 					if (additionalFields.format) {
 						body.format = additionalFields.format as string;
 					}
-					try{
-						responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
-					}
+					responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
 				}
 				//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
 				if (operation === 'update') {
@@ -238,11 +219,7 @@ export class Wordpress implements INodeType {
 					if (updateFields.format) {
 						body.format = updateFields.format as string;
 					}
-					try {
-						responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
-					}
+					responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
 				}
 				//https://developer.wordpress.org/rest-api/reference/posts/#retrieve-a-post
 				if (operation === 'get') {
@@ -254,58 +231,50 @@ export class Wordpress implements INodeType {
 					if (options.context) {
 						qs.context = options.context as string;
 					}
-					try {
-						responseData = await wordpressApiRequest.call(this,'GET', `/posts/${postId}`, {}, qs);
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
-					}
+					responseData = await wordpressApiRequest.call(this,'GET', `/posts/${postId}`, {}, qs);
 				}
 				//https://developer.wordpress.org/rest-api/reference/posts/#list-posts
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					if (filters.context) {
-						qs.context = filters.context as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					if (options.context) {
+						qs.context = options.context as string;
 					}
-					if (filters.orderBy) {
-						qs.orderby = filters.orderBy as string;
+					if (options.orderBy) {
+						qs.orderby = options.orderBy as string;
 					}
-					if (filters.order) {
-						qs.order = filters.order as string;
+					if (options.order) {
+						qs.order = options.order as string;
 					}
-					if (filters.search) {
-						qs.search = filters.search as string;
+					if (options.search) {
+						qs.search = options.search as string;
 					}
-					if (filters.after) {
-						qs.after = filters.after as string;
+					if (options.after) {
+						qs.after = options.after as string;
 					}
-					if (filters.author) {
-						qs.author = filters.author as number[];
+					if (options.author) {
+						qs.author = options.author as number[];
 					}
-					if (filters.categories) {
-						qs.categories = filters.categories as number[];
+					if (options.categories) {
+						qs.categories = options.categories as number[];
 					}
-					if (filters.excludedCategories) {
-						qs.categories_exclude = filters.excludedCategories as number[];
+					if (options.excludedCategories) {
+						qs.categories_exclude = options.excludedCategories as number[];
 					}
-					if (filters.tags) {
-						qs.tags = filters.tags as number[];
+					if (options.tags) {
+						qs.tags = options.tags as number[];
 					}
-					if (filters.excludedTags) {
-						qs.tags_exclude = filters.excludedTags as number[];
+					if (options.excludedTags) {
+						qs.tags_exclude = options.excludedTags as number[];
 					}
-					if (filters.sticky) {
-						qs.sticky = filters.sticky as boolean;
+					if (options.sticky) {
+						qs.sticky = options.sticky as boolean;
 					}
-					try {
-						if (returnAll === true) {
-							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
-						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
-							responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
-						}
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
+					if (returnAll === true) {
+						responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
+					} else {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+						responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
 					}
 				}
 				//https://developer.wordpress.org/rest-api/reference/posts/#delete-a-post
@@ -315,11 +284,7 @@ export class Wordpress implements INodeType {
 					if (options.force) {
 						qs.force = options.force as boolean;
 					}
-					try {
-						responseData = await wordpressApiRequest.call(this, 'DELETE', `/posts/${postId}`, {}, qs);
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
-					}
+					responseData = await wordpressApiRequest.call(this, 'DELETE', `/posts/${postId}`, {}, qs);
 				}
 			}
 			if (resource === 'user') {
@@ -352,11 +317,7 @@ export class Wordpress implements INodeType {
 					if (additionalFields.slug) {
 						body.slug = additionalFields.slug as string;
 					}
-					try{
-						responseData = await wordpressApiRequest.call(this, 'POST', '/users', body);
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
-					}
+					responseData = await wordpressApiRequest.call(this, 'POST', '/users', body);
 				}
 				//https://developer.wordpress.org/rest-api/reference/users/#update-a-user
 				if (operation === 'update') {
@@ -395,11 +356,7 @@ export class Wordpress implements INodeType {
 					if (updateFields.slug) {
 						body.slug = updateFields.slug as string;
 					}
-					try{
-						responseData = await wordpressApiRequest.call(this, 'POST', `/users/${userId}`, body);
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
-					}
+					responseData = await wordpressApiRequest.call(this, 'POST', `/users/${userId}`, body);
 				}
 				//https://developer.wordpress.org/rest-api/reference/users/#retrieve-a-user
 				if (operation === 'get') {
@@ -408,40 +365,32 @@ export class Wordpress implements INodeType {
 					if (options.context) {
 						qs.context = options.context as string;
 					}
-					try {
-						responseData = await wordpressApiRequest.call(this,'GET', `/users/${userId}`, {}, qs);
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
-					}
+					responseData = await wordpressApiRequest.call(this,'GET', `/users/${userId}`, {}, qs);
 				}
 				//https://developer.wordpress.org/rest-api/reference/users/#list-users
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					if (filters.context) {
-						qs.context = filters.context as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					if (options.context) {
+						qs.context = options.context as string;
 					}
-					if (filters.orderBy) {
-						qs.orderby = filters.orderBy as string;
+					if (options.orderBy) {
+						qs.orderby = options.orderBy as string;
 					}
-					if (filters.order) {
-						qs.order = filters.order as string;
+					if (options.order) {
+						qs.order = options.order as string;
 					}
-					if (filters.search) {
-						qs.search = filters.search as string;
+					if (options.search) {
+						qs.search = options.search as string;
 					}
-					if (filters.who) {
-						qs.who = filters.who as string;
+					if (options.who) {
+						qs.who = options.who as string;
 					}
-					try {
-						if (returnAll === true) {
-							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
-						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
-							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
-						}
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
+					if (returnAll === true) {
+						responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
+					} else {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+						responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
 					}
 				}
 				//https://developer.wordpress.org/rest-api/reference/users/#delete-a-user
@@ -449,11 +398,7 @@ export class Wordpress implements INodeType {
 					const reassign = this.getNodeParameter('reassign', i) as string;
 					qs.reassign = reassign;
 					qs.force = true;
-					try {
-						responseData = await wordpressApiRequest.call(this, 'DELETE', `/users/me`, {}, qs);
-					} catch (err) {
-						throw new Error(`Wordpress Error: ${err.message}`);
-					}
+					responseData = await wordpressApiRequest.call(this, 'DELETE', `/users/me`, {}, qs);
 				}
 			}
 			if (Array.isArray(responseData)) {

@@ -18,11 +18,11 @@ export const userOperations = [
 				value: 'create',
 				description: 'Create a user',
 			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a user',
-			},
+			// {
+			// 	name: 'Delete',
+			// 	value: 'delete',
+			// 	description: 'Delete a user',
+			// },
 			{
 				name: 'Get',
 				value: 'get',
@@ -34,9 +34,9 @@ export const userOperations = [
 				description: 'Get all users',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a user',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a user',
 			},
 		],
 		default: 'create',
@@ -86,7 +86,7 @@ export const userFields = [
 		description: 'Display name for the user.',
 	},
 	{
-		displayName: 'Fistname',
+		displayName: 'First Name',
 		name: 'firstName',
 		type: 'string',
 		required: true,
@@ -104,7 +104,7 @@ export const userFields = [
 		description: 'First name for the user.',
 	},
 	{
-		displayName: 'Lastname',
+		displayName: 'Last Name',
 		name: 'lastName',
 		type: 'string',
 		required: true,
@@ -260,14 +260,14 @@ export const userFields = [
 				description: 'Display name for the user.',
 			},
 			{
-				displayName: 'Fistname',
+				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
 				description: 'First name for the user.',
 			},
 			{
-				displayName: 'Lastname',
+				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
@@ -283,7 +283,7 @@ export const userFields = [
 			{
 				displayName: 'Password',
 				name: 'password',
-				type: 'password',
+				type: 'string',
 				default: '',
 				description: 'Password for the user (never included)',
 			},
@@ -426,10 +426,10 @@ export const userFields = [
 	description: 'How many results to return.',
 },
 {
-	displayName: 'Filters',
-	name: 'filters',
+	displayName: 'Options',
+	name: 'options',
 	type: 'collection',
-	placeholder: 'Add Filter',
+	placeholder: 'Add Option',
 	default: {},
 	displayOptions: {
 		show: {
@@ -460,7 +460,7 @@ export const userFields = [
 					value: 'edit',
 				},
 			],
-			default: [],
+			default: 'view',
 			description: 'Scope under which the request is made; determines fields present in response.',
 		},
 		{
@@ -469,8 +469,8 @@ export const userFields = [
 			type: 'options',
 			options: [
 				{
-					name: 'Name',
-					value: 'name',
+					name: 'Email',
+					value: 'email',
 				},
 				{
 					name: 'ID',
@@ -481,6 +481,14 @@ export const userFields = [
 					value: 'include',
 				},
 				{
+					name: 'Include Slugs',
+					value: 'include_slugs',
+				},
+				{
+					name: 'Name',
+					value: 'name',
+				},
+				{
 					name: 'Registered Date',
 					value: 'registered_date',
 				},
@@ -489,19 +497,11 @@ export const userFields = [
 					value: 'slug',
 				},
 				{
-					name: 'Include Slugs',
-					value: 'include_slugs',
-				},
-				{
-					name: 'Email',
-					value: 'email',
-				},
-				{
 					name: 'URL',
 					value: 'url',
 				},
 			],
-			default: [],
+			default: 'id',
 			description: 'Sort collection by object attribute.',
 		},
 		{
@@ -510,12 +510,12 @@ export const userFields = [
 			type: 'options',
 			options: [
 				{
-					name: 'Desc',
-					value: 'desc',
+					name: 'ASC',
+					value: 'asc',
 				},
 				{
-					name: 'Asc',
-					value: 'asc',
+					name: 'DESC',
+					value: 'desc',
 				},
 			],
 			default: 'desc',

@@ -20,10 +20,11 @@ export class WordpressApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Domain',
-			name: 'domain',
+			displayName: 'Wordpress URL',
+			name: 'url',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			placeholder: 'https://example.com',
 		},
 	];
 }

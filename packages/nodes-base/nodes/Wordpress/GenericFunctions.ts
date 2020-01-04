@@ -1,9 +1,8 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
-	BINARY_ENCODING,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 
@@ -12,16 +11,20 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const data = Buffer.from(`${credentials!.username}:${credentials!.password}`).toString(BINARY_ENCODING);
-	const headerWithAuthentication = Object.assign({},
-		{ Authorization: `Basic ${data}`, Accept: 'application/json', 'Content-Type': 'application/json' });
 
 	let options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+		},
+		auth: {
+			user: credentials!.username as string,
+			password: credentials!.password as string,
+		},
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials!.domain}/wp-json/wp/v2${resource}`,
+		uri: uri ||`${credentials!.url}/wp-json/wp/v2${resource}`,
 		json: true
 	};
 	options = Object.assign({}, options, option);
@@ -36,7 +39,7 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 			errorMessage = error.response.body.message || error.response.body.Message || error.message;
 		}
 
-		throw new Error(errorMessage);
+		throw new Error('Wordpress Error: ' + errorMessage);
 	}
 }
 
@@ -49,11 +52,9 @@ export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoa
 	query.per_page = 10;
 	query.page = 0;
 
-	let uri: string | undefined;
-
 	do {
 		query.page++;
-		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, uri,  { resolveWithFullResponse: true });
+		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, undefined, { resolveWithFullResponse: true });
 		returnData.push.apply(returnData, responseData.body);
 	} while (
 		responseData.headers['x-wp-totalpages'] !== undefined &&
@@ -61,14 +62,4 @@ export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoa
 	);
 
 	return returnData;
-}
-
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
 }
