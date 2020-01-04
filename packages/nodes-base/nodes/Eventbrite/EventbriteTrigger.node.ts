@@ -4,16 +4,17 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
-	eventbriteApiRequestAllItems,
 	eventbriteApiRequest,
+	eventbriteApiRequestAllItems,
 } from './GenericFunctions';
 
 export class EventbriteTrigger implements INodeType {
@@ -26,7 +27,7 @@ export class EventbriteTrigger implements INodeType {
 		description: 'Handle Eventbrite events via webhooks',
 		defaults: {
 			name: 'Eventbrite Trigger',
-			color: '#559922',
+			color: '#dc5237',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -137,6 +138,13 @@ export class EventbriteTrigger implements INodeType {
 				default: [],
 				description: '',
 			},
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				default: true,
+				description: 'By default does the webhook-data only contain the URL to receive<br />the object data manually. If this option gets activated it<br />will resolve the data automatically.',
+			},
 		],
 
 	};
@@ -147,8 +155,7 @@ export class EventbriteTrigger implements INodeType {
 			// select them easily
 			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let organizations;
-				organizations = await eventbriteApiRequestAllItems.call(this, 'organizations', 'GET', '/users/me/organizations');
+				const organizations = await eventbriteApiRequestAllItems.call(this, 'organizations', 'GET', '/users/me/organizations');
 				for (const organization of organizations) {
 					const organizationName = organization.name;
 					const organizationId = organization.id;
@@ -164,8 +171,7 @@ export class EventbriteTrigger implements INodeType {
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const organization = this.getCurrentNodeParameter('organization');
-				let events;
-				events = await eventbriteApiRequestAllItems.call(this, 'events', 'GET', `/organizations/${organization}/events`);
+				const events = await eventbriteApiRequestAllItems.call(this, 'events', 'GET', `/organizations/${organization}/events`);
 				for (const event of events) {
 					const eventName = event.name.text;
 					const eventId = event.id;
@@ -182,39 +188,32 @@ export class EventbriteTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				let webhooks;
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
 				const endpoint = `/webhooks/${webhookData.webhookId}/`;
 				try {
-					webhooks = await eventbriteApiRequest.call(this, 'GET', endpoint);
+					await eventbriteApiRequest.call(this, 'GET', endpoint);
 				} catch (e) {
 					return false;
 				}
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				let body, responseData;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
 				const actions = this.getNodeParameter('actions') as string[];
 				const endpoint = `/webhooks/`;
-				// @ts-ignore
-				body = {
+				const body: IDataObject = {
 					endpoint_url: webhookUrl,
 					actions: actions.join(','),
 					event_id: event,
 				};
-				try {
-					responseData = await eventbriteApiRequest.call(this, 'POST', endpoint, body);
-				} catch(error) {
-					console.log(error)
-					return false;
-				}
-				// @ts-ignore
+
+				const responseData = await eventbriteApiRequest.call(this, 'POST', endpoint, body);
+
 				webhookData.webhookId = responseData.id;
 				return true;
 			},
@@ -238,9 +237,37 @@ export class EventbriteTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
+
+		if (req.body.api_url === undefined) {
+			throw new Error('The received data does not contain required "api_url" property!');
+		}
+
+		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
+
+		if (resolveData === false) {
+			// Return the data as it got received
+			return {
+				workflowData: [
+					this.helpers.returnJsonArray(req.body),
+				],
+			};
+		}
+
+		if (req.body.api_url.includes('api-endpoint-to-fetch-object-details')) {
+			return {
+				workflowData: [
+					this.helpers.returnJsonArray({
+						placeholder: 'Test received. To display actual data of object get the webhook triggered by performing the action which triggers it.',
+					})
+				],
+			};
+		}
+
+		const responseData = await eventbriteApiRequest.call(this, 'GET', '', {}, undefined, req.body.api_url);
+
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(responseData),
 			],
 		};
 	}

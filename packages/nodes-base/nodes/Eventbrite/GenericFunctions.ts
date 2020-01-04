@@ -1,13 +1,14 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
+	IWebhookFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 
-export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('eventbriteApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -30,11 +31,11 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 		return await this.helpers.request!(options);
 	} catch (error) {
 		let errorMessage = error.message;
-		if (error.response.body) {
-			errorMessage = error.response.body.message || error.response.body.Message || error.message;
+		if (error.response.body && error.response.body.error_description) {
+			errorMessage = error.response.body.error_description;
 		}
 
-		throw new Error(errorMessage);
+		throw new Error('Eventbrite Error: ' + errorMessage);
 	}
 }
 
@@ -48,10 +49,8 @@ export async function eventbriteApiRequestAllItems(this: IHookFunctions | IExecu
 
 	let responseData;
 
-	let uri: string | undefined;
-
 	do {
-		responseData = await eventbriteApiRequest.call(this, method, resource, body, query, uri);
+		responseData = await eventbriteApiRequest.call(this, method, resource, body, query);
 		query.continuation = responseData.pagination.continuation;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
