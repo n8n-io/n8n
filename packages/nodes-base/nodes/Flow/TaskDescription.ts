@@ -158,7 +158,7 @@ export const taskFields = [
 				displayName: 'Note Mime Type',
 				name: 'noteMimeType',
 				type: 'options',
-				default: [],
+				default: 'text/plain',
 				options: [
 					{
 						name: 'text/plain',
@@ -351,7 +351,7 @@ export const taskFields = [
 				displayName: 'Note Mime Type',
 				name: 'noteMimeType',
 				type: 'options',
-				default: [],
+				default: 'text/plain',
 				options: [
 					{
 						name: 'text/plain',
@@ -564,7 +564,7 @@ export const taskFields = [
 				displayName: 'Order',
 				name: 'order',
 				type: 'options',
-				default: [],
+				default: 'created_at',
 				options: [
 					{
 						name: 'Due On',
