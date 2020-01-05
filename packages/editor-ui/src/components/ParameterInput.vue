@@ -228,9 +228,9 @@ export default mixins(
 				const currentNodeParameters = this.$store.getters.activeNode.parameters;
 				const resolvedNodeParameters = this.getResolveNodeParameters(currentNodeParameters);
 
-				let returnValues: string[] = [];
+				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {
-					returnValues.push(get(resolvedNodeParameters, parameterPath));
+					returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 				}
 
 				return returnValues.join('|');
