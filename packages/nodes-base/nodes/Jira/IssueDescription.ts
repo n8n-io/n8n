@@ -160,7 +160,7 @@ export const issueFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getPriorities',
 				},
-				default: [],
+				default: '',
 				required : false,
 				description: 'Priority',
 			},
@@ -171,7 +171,7 @@ export const issueFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: [],
+				default: '',
 				required : false,
 				description: 'Assignee',
 			},
@@ -278,7 +278,7 @@ export const issueFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getPriorities',
 				},
-				default: [],
+				default: '',
 				required : false,
 				description: 'Priority',
 			},
@@ -289,7 +289,7 @@ export const issueFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				default: [],
+				default: '',
 				required : false,
 				description: 'Assignee',
 			},

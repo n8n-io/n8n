@@ -107,7 +107,7 @@ export const taskFields = [
 				displayName: 'List ID',
 				name: 'listID',
 				type: 'string',
-				default: [],
+				default: '',
 				required : false,
 				description: 'Put the new task in a list ("project"). Omit this param to have the task be private.',
 			},
