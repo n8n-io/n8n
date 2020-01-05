@@ -63,6 +63,9 @@ export class EventbriteTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				typeOptions: {
+					loadOptionsDependsOn: [
+						'organization',
+					],
 					loadOptionsMethod: 'getEvents'
 				},
 				default: '',

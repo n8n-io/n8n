@@ -70,6 +70,9 @@ export const tableFields = [
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
+			loadOptionsDependsOn: [
+				'docId',
+			],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
@@ -150,6 +153,9 @@ export const tableFields = [
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
+			loadOptionsDependsOn: [
+				'docId',
+			],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
@@ -271,6 +277,9 @@ export const tableFields = [
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
+			loadOptionsDependsOn: [
+				'docId',
+			],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
@@ -438,6 +447,9 @@ export const tableFields = [
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
+			loadOptionsDependsOn: [
+				'docId',
+			],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
