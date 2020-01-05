@@ -73,7 +73,7 @@ export const tableFields = [
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -153,7 +153,7 @@ export const tableFields = [
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -223,7 +223,7 @@ export const tableFields = [
 				displayName: 'ValueFormat',
 				name: 'valueFormat',
 				type: 'options',
-				default: [],
+				default: '',
 				options: [
 					{
 						name: 'Simple',
@@ -274,7 +274,7 @@ export const tableFields = [
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -358,7 +358,7 @@ export const tableFields = [
 				displayName: 'ValueFormat',
 				name: 'valueFormat',
 				type: 'options',
-				default: [],
+				default: '',
 				options: [
 					{
 						name: 'Simple',
@@ -386,7 +386,7 @@ export const tableFields = [
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
-				default: [],
+				default: '',
 				options: [
 					{
 						name: 'Created At',
@@ -441,7 +441,7 @@ export const tableFields = [
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
-		default: [],
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [

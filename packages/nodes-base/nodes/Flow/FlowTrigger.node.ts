@@ -66,7 +66,7 @@ export class FlowTrigger implements INodeType {
 				name: 'listIds',
 				type: 'string',
 				required: true,
-				default: [],
+				default: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -86,7 +86,7 @@ export class FlowTrigger implements INodeType {
 				name: 'taskIds',
 				type: 'string',
 				required: true,
-				default: [],
+				default: '',
 				displayOptions: {
 					show: {
 						resource:[

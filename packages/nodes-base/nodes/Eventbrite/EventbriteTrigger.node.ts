@@ -54,7 +54,7 @@ export class EventbriteTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getOrganizations'
 				},
-				default: [],
+				default: '',
 				description: '',
 			},
 			{
@@ -65,7 +65,7 @@ export class EventbriteTrigger implements INodeType {
 				typeOptions: {
 					loadOptionsMethod: 'getEvents'
 				},
-				default: [],
+				default: '',
 				description: '',
 			},
 			{
