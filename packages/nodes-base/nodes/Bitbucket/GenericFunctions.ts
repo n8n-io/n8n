@@ -28,13 +28,11 @@ export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctio
 
 	try {
 		return await this.helpers.request!(options);
-	} catch (error) {
-		console.log(error)
-		let errorMessage = error.message;
-		if (error.response.body) {
-			errorMessage = error.response.body.message || error.response.body.Message || error.message;
+	} catch (err) {
+		let errorMessage = '';
+		if (err.error && err.error.message) {
+			errorMessage = err.error.message;
 		}
-
 		throw new Error(errorMessage);
 	}
 }
