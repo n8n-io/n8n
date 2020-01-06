@@ -14,7 +14,7 @@ export class BitbucketApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'APP Password',
+			displayName: 'App Password',
 			name: 'appPassword',
 			type: 'string' as NodePropertyTypes,
 			default: '',

@@ -1,9 +1,9 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 
@@ -12,12 +12,15 @@ export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctio
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const userpass = `${credentials.username}:${credentials.appPassword}`
 	let options: OptionsWithUri = {
 		method,
+		auth: {
+			user: credentials.username as string,
+			password: credentials.appPassword as string,
+		},
 		qs,
 		body,
-		uri: uri ||`https://${userpass}@api.bitbucket.org/2.0${resource}`,
+		uri: uri ||`https://api.bitbucket.org/2.0${resource}`,
 		json: true
 	};
 	options = Object.assign({}, options, option);
@@ -28,11 +31,7 @@ export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctio
 	try {
 		return await this.helpers.request!(options);
 	} catch (err) {
-		let errorMessage = '';
-		if (err.error && err.error.message) {
-			errorMessage = err.error.message;
-		}
-		throw new Error(errorMessage);
+		throw new Error('Bitbucket Error: ' + err.message);
 	}
 }
 
@@ -50,7 +49,7 @@ export async function bitbucketApiRequestAllItems(this: IHookFunctions | IExecut
 
 	do {
 		responseData = await bitbucketApiRequest.call(this, method, resource, body, query, uri);
-		uri = responseData.next
+		uri = responseData.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
 		responseData.next !== undefined

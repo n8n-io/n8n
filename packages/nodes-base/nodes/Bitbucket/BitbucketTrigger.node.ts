@@ -4,12 +4,12 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodeType,
+	INodeTypeDescription,
+	INodePropertyOptions,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -27,7 +27,7 @@ export class BitbucketTrigger implements INodeType {
 		description: 'Handle Bitbucket events via webhooks',
 		defaults: {
 			name: 'Bitbucket Trigger',
-			color: '#559922',
+			color: '#0052cc',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -66,7 +66,7 @@ export class BitbucketTrigger implements INodeType {
 					},
 				],
 				default: 'user',
-				description: '',
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Events',
@@ -85,7 +85,7 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: '',
+				description: 'The events to listen to.',
 			},
 			{
 				displayName: 'Team',
@@ -103,7 +103,7 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: '',
+				description: 'The team of which to listen to the events.',
 			},
 			{
 				displayName: 'Events',
@@ -122,7 +122,7 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: '',
+				description: 'The events to listen to.',
 			},
 			{
 				displayName: 'Repository',
@@ -140,7 +140,7 @@ export class BitbucketTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: '',
+				description: 'The repository of which to listen to the events.',
 			},
 			{
 				displayName: 'Events',
@@ -159,7 +159,7 @@ export class BitbucketTrigger implements INodeType {
 				options: [],
 				required: true,
 				default: [],
-				description: '',
+				description: 'The events to listen to.',
 			},
 		],
 
@@ -260,7 +260,7 @@ export class BitbucketTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				let endpoint: string = '';
+				let endpoint = '';
 				const credentials = this.getCredentials('bitbucketApi');
 				const resource = this.getNodeParameter('resource', 0) as string;
 				const webhookData = this.getWorkflowStaticData('node');
@@ -287,7 +287,7 @@ export class BitbucketTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				let responseData;
-				let endpoint: string = '';
+				let endpoint = '';
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
@@ -306,7 +306,7 @@ export class BitbucketTrigger implements INodeType {
 					endpoint = `/repositories/${credentials!.username}/${repository}/hooks`;
 				}
 				const body: IDataObject = {
-					description: 'N8N webhook',
+					description: 'n8n webhook',
 					url: webhookUrl,
 					active: true,
 					events,
@@ -316,7 +316,7 @@ export class BitbucketTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				let endpoint: string = '';
+				let endpoint = '';
 				const webhookData = this.getWorkflowStaticData('node');
 				const credentials = this.getCredentials('bitbucketApi');
 				const resource = this.getNodeParameter('resource', 0) as string;
