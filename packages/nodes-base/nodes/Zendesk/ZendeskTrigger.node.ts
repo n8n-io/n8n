@@ -7,6 +7,7 @@ import {
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
+	IDataObject,
 } from 'n8n-workflow';
 
 import {
@@ -59,7 +60,7 @@ export class ZendeskTrigger implements INodeType {
 			{
 				displayName: 'Events',
 				name: 'events',
-				type: 'multiOptions',
+				type: 'options',
 				displayOptions: {
 					show: {
 						service: [
@@ -69,12 +70,12 @@ export class ZendeskTrigger implements INodeType {
 				},
 				options: [
 					{
-						name: 'ticket.status.open',
-						value: 'ticket.status.open'
+						name: 'ticket.created',
+						value: 'ticket.created',
 					},
 				],
 				required: true,
-				default: [],
+				default: '',
 				description: '',
 			},
 		],
@@ -84,55 +85,72 @@ export class ZendeskTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				let webhooks;
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
-				const endpoint = `/webhooks/${webhookData.webhookId}/`;
+				const endpoint = `/triggers/${webhookData.webhookId}`;
 				try {
-					webhooks = await zendeskApiRequest.call(this, 'GET', endpoint);
+					await zendeskApiRequest.call(this, 'GET', endpoint);
 				} catch (e) {
 					return false;
 				}
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				let body, responseData;
+				let condition: IDataObject = {};
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
-				const actions = this.getNodeParameter('actions') as string[];
-				const endpoint = `/webhooks/`;
-				// @ts-ignore
-				body = {
-					endpoint_url: webhookUrl,
-					actions: actions.join(','),
-					event_id: event,
-				};
-				try {
-					responseData = await zendeskApiRequest.call(this, 'POST', endpoint, body);
-				} catch(error) {
-					console.log(error)
-					return false;
+				if (event === 'ticket.created') {
+					condition = {
+						all: [
+							{
+								field: 'status',
+								value: 'open',
+							},
+						],
+					}
 				}
+				const bodyTrigger: IDataObject = {
+					trigger: {
+						conditions: { ...condition },
+						actions: [
+							{
+								field: 'notification_target',
+								value: [],
+							}
+						]
+					},
+				}
+				const bodyTarget: IDataObject = {
+					target: {
+						title: 'N8N webhook',
+						type: 'http_target',
+						target_url: webhookUrl,
+						method: 'POST',
+						active: true,
+						content_type: 'application/json',
+					},
+				}
+				const { target } = await zendeskApiRequest.call(this, 'POST', '/targets', bodyTarget);
 				// @ts-ignore
-				webhookData.webhookId = responseData.id;
+				bodyTrigger.trigger.actions[0].value = [target.id, ''];
+				const { trigger } = await zendeskApiRequest.call(this, 'POST', '/triggers', bodyTrigger);
+				webhookData.webhookId = trigger.id;
+				webhookData.targetId = target.id;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				let responseData;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhooks/${webhookData.webhookId}/`;
 				try {
-					responseData = await zendeskApiRequest.call(this, 'DELETE', endpoint);
+					await zendeskApiRequest.call(this, 'DELETE', `/triggers/${webhookData.webhookId}`);
+					await zendeskApiRequest.call(this, 'DELETE', `/targets/${webhookData.targetId}`);
 				} catch(error) {
 					return false;
 				}
-				if (!responseData.success) {
-					return false;
-				}
 				delete webhookData.webhookId;
+				delete webhookData.targetId
 				return true;
 			},
 		},
