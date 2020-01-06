@@ -13,7 +13,6 @@ export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctio
 		throw new Error('No credentials got returned!');
 	}
 	const userpass = `${credentials.username}:${credentials.appPassword}`
-	console.log()
 	let options: OptionsWithUri = {
 		method,
 		qs,
