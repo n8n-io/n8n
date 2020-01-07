@@ -28,11 +28,7 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (err) {
-		let errorMessage = '';
-		if (err.message && err.error) {
-			errorMessage = err.message;
-		}
-		throw new Error(errorMessage);
+		throw new Error(err);
 	}
 }
 
