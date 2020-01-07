@@ -16,6 +16,9 @@ import {
 	zendeskApiRequest,
 	zendeskApiRequestAllItems,
 } from './GenericFunctions';
+import {
+	conditionFields
+ } from './ConditionDescription';
 
 export class ZendeskTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -346,347 +349,16 @@ export class ZendeskTrigger implements INodeType {
 						name: 'all',
 						displayName: 'All',
 						values: [
-							{
-								displayName: 'Resource',
-								name: 'resource',
-								type: 'options',
-								options: [
-									{
-										name: 'Ticket',
-										value: 'ticket',
-									},
-								],
-								default: 'ticket',
-								description: '',
-							},
-							{
-								displayName: 'Field',
-								name: 'field',
-								type: 'options',
-								displayOptions: {
-									show: {
-										'resource': [
-											'ticket'
-										]
-									}
-								},
-								options: [
-									{
-										name: 'Status',
-										value: 'status',
-									},
-									{
-										name: 'Type',
-										value: 'type',
-									},
-									{
-										name: 'Priority',
-										value: 'priority',
-									},
-									{
-										name: 'Group',
-										value: 'group',
-									},
-									{
-										name: 'Assignee',
-										value: 'assignee',
-									},
-								],
-								default: 'status',
-								description: '',
-							},
-							{
-								displayName: 'Operation',
-								name: 'operation',
-								type: 'options',
-								options: [
-									{
-										name: 'Is',
-										value: 'is',
-									},
-									{
-										name: 'Is Not',
-										value: 'is_not',
-									},
-									{
-										name: 'Less Than',
-										value: 'less_than',
-									},
-									{
-										name: 'Greater Than',
-										value: 'greater_than',
-									},
-									{
-										name: 'Changed',
-										value: 'changed',
-									},
-									{
-										name: 'Changed To',
-										value: 'value',
-									},
-									{
-										name: 'Changed From',
-										value: 'value_previous',
-									},
-									{
-										name: 'Not Changed',
-										value: 'not_changed',
-									},
-									{
-										name: 'Not Changed To',
-										value: 'not_value',
-									},
-											{
-										name: 'Not Changed From',
-										value: 'not_value_previous',
-									},
-								],
-								displayOptions: {
-									hide: {
-										field: [
-											'assignee',
-										]
-									}
-								},
-								default: 'is',
-								description: '',
-							},
-							{
-								displayName: 'Operation',
-								name: 'operation',
-								type: 'options',
-								options: [
-									{
-										name: 'Is',
-										value: 'is',
-									},
-									{
-										name: 'Is Not',
-										value: 'is_not',
-									},
-									{
-										name: 'Changed',
-										value: 'changed',
-									},
-									{
-										name: 'Changed To',
-										value: 'value',
-									},
-									{
-										name: 'Changed From',
-										value: 'value_previous',
-									},
-									{
-										name: 'Not Changed',
-										value: 'not_changed',
-									},
-									{
-										name: 'Not Changed To',
-										value: 'not_value',
-									},
-											{
-										name: 'Not Changed From',
-										value: 'not_value_previous',
-									},
-								],
-								displayOptions: {
-									show: {
-										field: [
-											'assignee',
-										]
-									}
-								},
-								default: 'is',
-								description: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'options',
-								displayOptions: {
-									show: {
-										field: [
-											'status'
-										],
-									},
-									hide: {
-										operation:[
-											'changed',
-											'not_changed',
-										],
-										field: [
-											'assignee',
-											'group',
-											'priority',
-											'type',
-										],
-									}
-								},
-								options: [
-									{
-										name: 'Open',
-										value: 'open',
-									},
-									{
-										name: 'New',
-										value: 'new',
-									},
-									{
-										name: 'Pending',
-										value: 'pending',
-									},
-									{
-										name: 'Solved',
-										value: 'solved',
-									},
-									{
-										name: 'Closed',
-										value: 'closed',
-									},
-								],
-								default: 'open',
-								description: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'options',
-								displayOptions: {
-									show: {
-										field: [
-											'type'
-										],
-									},
-									hide: {
-										operation:[
-											'changed',
-											'not_changed',
-										],
-										field: [
-											'assignee',
-											'group',
-											'priority',
-											'status',
-										],
-									}
-								},
-								options: [
-									{
-										name: 'Question',
-										value: 'question',
-									},
-									{
-										name: 'Incident',
-										value: 'incident',
-									},
-									{
-										name: 'Problem',
-										value: 'problem',
-									},
-									{
-										name: 'Task',
-										value: 'task',
-									},
-								],
-								default: 'question',
-								description: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'options',
-								displayOptions: {
-									show: {
-										field: [
-											'priority'
-										],
-									},
-									hide: {
-										operation:[
-											'changed',
-											'not_changed',
-										],
-										field: [
-											'assignee',
-											'group',
-											'type',
-											'status',
-										],
-									}
-								},
-								options: [
-									{
-										name: 'Low',
-										value: 'low',
-									},
-									{
-										name: 'Normal',
-										value: 'normal',
-									},
-									{
-										name: 'High',
-										value: 'high',
-									},
-									{
-										name: 'Urgent',
-										value: 'urgent',
-									},
-								],
-								default: 'low',
-								description: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getGroups',
-								},
-								displayOptions: {
-									show: {
-										field: [
-											'group'
-										],
-									},
-									hide: {
-										field: [
-											'assignee',
-											'priority',
-											'type',
-											'status',
-										],
-									},
-								},
-								default: '',
-								description: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getUsers',
-								},
-								displayOptions: {
-									show: {
-										field: [
-											'assignee'
-										],
-									},
-									hide: {
-										field: [
-											'group',
-											'priority',
-											'type',
-											'status',
-										],
-									},
-								},
-								default: '',
-								description: '',
-							},
+							...conditionFields,
 						]
-					}
+					},
+					{
+						name: 'any',
+						displayName: 'Any',
+						values: [
+							...conditionFields,
+						]
+					},
 				],
 			},
 		],
@@ -757,14 +429,13 @@ export class ZendeskTrigger implements INodeType {
 				if (service === 'support') {
 					const aux: IDataObject = {};
 					const message: IDataObject = {};
-					const resultAll = [];
+					const resultAll = [], resultAny = [];
 					const title = this.getNodeParameter('title') as string;
 					const conditions = this.getNodeParameter('conditions') as IDataObject;
 					const options = this.getNodeParameter('options') as IDataObject;
 					if (Object.keys(conditions).length === 0) {
 						throw new Error('You must have at least one condition');
 					}
-					console.log(options)
 					if (options.fields) {
 						// @ts-ignore
 						for (let field of options.fields) {
@@ -775,23 +446,39 @@ export class ZendeskTrigger implements INodeType {
 						message['ticket.id'] = '{{ticket.id}}'
 					}
 					const conditionsAll = conditions.all as [IDataObject];
-					for (let conditionAll of conditionsAll) {
-						aux.field = conditionAll.field;
-						aux.operator = conditionAll.operation;
-						if (conditionAll.operation !== 'changed'
-						&& conditionAll.operation !== 'not_changed') {
-							aux.value = conditionAll.value;
-						} else {
-							aux.value = null;
+					if (conditionsAll) {
+						for (let conditionAll of conditionsAll) {
+							aux.field = conditionAll.field;
+							aux.operator = conditionAll.operation;
+							if (conditionAll.operation !== 'changed'
+							&& conditionAll.operation !== 'not_changed') {
+								aux.value = conditionAll.value;
+							} else {
+								aux.value = null;
+							}
+							resultAll.push(aux)
 						}
-						resultAll.push(aux)
+					}
+					const conditionsAny = conditions.any as [IDataObject];
+					if (conditionsAny) {
+						for (let conditionAny of conditionsAny) {
+							aux.field = conditionAny.field;
+							aux.operator = conditionAny.operation;
+							if (conditionAny.operation !== 'changed'
+							&& conditionAny.operation !== 'not_changed') {
+								aux.value = conditionAny.value;
+							} else {
+								aux.value = null;
+							}
+							resultAny.push(aux)
+						}
 					}
 					const bodyTrigger: IDataObject = {
 						trigger: {
 							title,
 							conditions: {
 								all: resultAll,
-								any: [],
+								any: resultAny,
 							 },
 							actions: [
 								{
