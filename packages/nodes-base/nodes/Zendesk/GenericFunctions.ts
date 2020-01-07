@@ -18,7 +18,7 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials.domain}/api/v2${resource}.json`,
+		uri: uri ||`${credentials.url}/api/v2${resource}.json`,
 		json: true
 	};
 	options = Object.assign({}, options, option);
@@ -29,9 +29,33 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 		return await this.helpers.request!(options);
 	} catch (err) {
 		let errorMessage = '';
-		if (err.error && err.description) {
-			errorMessage = err.description;
+		if (err.message && err.error) {
+			errorMessage = err.message;
 		}
 		throw new Error(errorMessage);
 	}
+}
+
+/**
+ * Make an API request to paginated flow endpoint
+ * and return all results
+ */
+export async function zendeskApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	let uri: string | undefined;
+
+	do {
+		responseData = await zendeskApiRequest.call(this, method, resource, body, query, uri);
+		uri = responseData.next_page
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		responseData.next_page !== undefined &&
+		responseData.next_page !== null
+	);
+
+	return returnData;
 }
