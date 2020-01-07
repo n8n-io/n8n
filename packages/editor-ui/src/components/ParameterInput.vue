@@ -116,6 +116,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { get } from 'lodash';
 
 import {
 	INodeUi,
@@ -206,11 +207,34 @@ export default mixins(
 			};
 		},
 		watch: {
+			dependentParametersValues () {
+				// Reload the remote parameters whenever a parameter
+				// on which the current field depends on changes
+				this.loadRemoteParameterOptions();
+			},
 			value () {
 				this.tempValue = this.displayValue as string;
 			},
 		},
 		computed: {
+			dependentParametersValues (): string | null {
+				const loadOptionsDependsOn = this.getArgument('loadOptionsDependsOn') as string[] | undefined;
+
+				if (loadOptionsDependsOn === undefined) {
+					return null;
+				}
+
+				// Get the resolved parameter values of the current node
+				const currentNodeParameters = this.$store.getters.activeNode.parameters;
+				const resolvedNodeParameters = this.getResolveNodeParameters(currentNodeParameters);
+
+				const returnValues: string[] = [];
+				for (const parameterPath of loadOptionsDependsOn) {
+					returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
+				}
+
+				return returnValues.join('|');
+			},
 			node (): INodeUi | null {
 				if (this.isCredential === true) {
 					return null;

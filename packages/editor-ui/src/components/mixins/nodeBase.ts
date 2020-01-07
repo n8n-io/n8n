@@ -79,8 +79,8 @@ export const nodeBase = mixins(nodeIndex).extend({
 						maxConnections: -1,
 						endpoint: 'Rectangle',
 						endpointStyle: {
-							width: nodeTypeData.outputs.length > 2 ? 9 : 10,
-							height: nodeTypeData.outputs.length > 2 ? 18 : 24,
+							width: nodeTypeData && nodeTypeData.outputs.length > 2 ? 9 : 10,
+							height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 24,
 							fill: '#777',
 							stroke: '#777',
 							lineWidth: 0,
@@ -92,7 +92,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 						maxConnections: -1,
 						endpoint: 'Dot',
 						endpointStyle: {
-							radius: nodeTypeData.outputs.length > 2 ? 7 : 11,
+							radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 11,
 							fill: '#555',
 							outlineStroke: 'none',
 						},

@@ -55,7 +55,7 @@ export class MailchimpTrigger implements INodeType {
 				name: 'list',
 				type: 'options',
 				required: true,
-				default: [],
+				default: '',
 				description: 'The list that is gonna fire the event.',
 				typeOptions: {
 					loadOptionsMethod: 'getLists'
