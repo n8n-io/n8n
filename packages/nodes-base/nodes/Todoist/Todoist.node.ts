@@ -104,7 +104,7 @@ export class Todoist implements INodeType {
 						]
 					},
 				},
-				default: [],
+				default: '',
 				description: 'The project you want to add the task to.',
 			},
 			{
@@ -145,7 +145,7 @@ export class Todoist implements INodeType {
 						]
 					},
 				},
-				default: [],
+				default: '',
 				required: true,
 				description: 'Task content',
 			},
