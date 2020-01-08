@@ -255,6 +255,13 @@ export class Redis implements INodeType {
 				displayName: 'Expire',
 				name: 'expire',
 				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'set'
+						],
+					},
+				},
 				default: false,
 				description: 'Set a timeout on key ?',
 			},
