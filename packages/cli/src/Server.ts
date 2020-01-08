@@ -2,6 +2,7 @@ import * as express from 'express';
 import {
 	dirname as pathDirname,
 	join as pathJoin,
+	resolve as pathResolve,
 } from 'path';
 import {
 	getConnectionManager,
@@ -850,7 +851,7 @@ class App {
 		// ----------------------------------------
 
 
-		// Returns all the credential types which are defined in the loaded n8n-modules
+		// Authorize OAuth Data
 		this.app.get('/rest/oauth2-credential/auth', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
 			if (req.query.id === undefined) {
 				throw new Error('Required credential id is missing!');
@@ -877,13 +878,13 @@ class App {
 				throw new Error('Unable to read OAuth credentials');
 			}
 
-			let token = new csrf();
+			const token = new csrf();
 			// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
 			oauthCredentials.csrfSecret = token.secretSync();
 			const state = {
-				'token': token.create(oauthCredentials.csrfSecret),
-				'cid': req.query.id
-			}
+				token: token.create(oauthCredentials.csrfSecret),
+				cid: req.query.id
+			};
 			const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
 
 			const oAuthObj = new clientOAuth2({
@@ -891,9 +892,9 @@ class App {
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: _.get(oauthCredentials, 'callbackUrl', WebhookHelpers.getWebhookBaseUrl()) as string,
+				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}rest/oauth2-credential/callback`,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
-				state: stateEncodedStr
+				state: stateEncodedStr,
 			});
 
 			credentials.setData(oauthCredentials, encryptionKey);
@@ -913,42 +914,46 @@ class App {
 		// ----------------------------------------
 
 		// Verify and store app code. Generate access tokens and store for respective credential.
-		this.app.get('/rest/oauth2-credential/callback', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+		this.app.get('/rest/oauth2-credential/callback', async (req: express.Request, res: express.Response) => {
 			const {code, state: stateEncoded} = req.query;
+
 			if (code === undefined || stateEncoded === undefined) {
-				throw new Error('Insufficient parameters for OAuth2 callback')
+				throw new Error('Insufficient parameters for OAuth2 callback');
 			}
 
 			let state;
 			try {
 				state = JSON.parse(Buffer.from(stateEncoded, 'base64').toString());
 			} catch (error) {
-				throw new Error('Invalid state format returned');
+				const errorResponse = new ResponseHelper.ResponseError('Invalid state format returned', undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			const result = await Db.collections.Credentials!.findOne(state.cid);
 			if (result === undefined) {
-				res.status(404).send('The credential is not known.');
-				return '';
+				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', undefined, 404);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			let encryptionKey = undefined;
 			encryptionKey = await UserSettings.getEncryptionKey();
 			if (encryptionKey === undefined) {
-				throw new Error('No encryption key got found to decrypt the credentials!');
+				const errorResponse = new ResponseHelper.ResponseError('No encryption key got found to decrypt the credentials!', undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			const credentials = new Credentials(result.name, result.type, result.nodesAccess, result.data);
 			(result as ICredentialsDecryptedDb).data = credentials.getData(encryptionKey!);
 			const oauthCredentials = (result as ICredentialsDecryptedDb).data;
 			if (oauthCredentials === undefined) {
-				throw new Error('Unable to read OAuth credentials');
+				const errorResponse = new ResponseHelper.ResponseError('Unable to read OAuth credentials!', undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			let token = new csrf();
+			const token = new csrf();
 			if (oauthCredentials.csrfSecret === undefined || !token.verify(oauthCredentials.csrfSecret as string, state.token)) {
-				res.status(404).send('The OAuth2 callback state is invalid.');
-				return '';
+				const errorResponse = new ResponseHelper.ResponseError('The OAuth2 callback state is invalid!', undefined, 404);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			const oAuthObj = new clientOAuth2({
@@ -956,13 +961,15 @@ class App {
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: _.get(oauthCredentials, 'callbackUrl', WebhookHelpers.getWebhookBaseUrl()) as string,
+				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}rest/oauth2-credential/callback`,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
 			});
 
 			const oauthToken = await oAuthObj.code.getToken(req.originalUrl);
+
 			if (oauthToken === undefined) {
-				throw new Error('Unable to get access tokens');
+				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			oauthCredentials.oauthTokenData = JSON.stringify(oauthToken.data);
@@ -974,8 +981,9 @@ class App {
 			// Save the credentials in DB
 			await Db.collections.Credentials!.update(state.cid, newCredentialsData);
 
-			return 'Success!';
-		}));
+			res.sendFile(pathResolve('templates/oauth-callback.html'));
+		});
+
 
 		// ----------------------------------------
 		// Executions

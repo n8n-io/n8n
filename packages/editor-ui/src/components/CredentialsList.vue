@@ -25,12 +25,10 @@
 				<el-table-column property="updatedAt" label="Updated" class-name="clickable" sortable></el-table-column>
 				<el-table-column
 					label="Operations"
-					width="180">
+					width="120">
 					<template slot-scope="scope">
 						<el-button title="Edit Credentials" @click.stop="editCredential(scope.row)" icon="el-icon-edit" circle></el-button>
 						<el-button title="Delete Credentials" @click.stop="deleteCredential(scope.row)" type="danger" icon="el-icon-delete" circle></el-button>
-						<!-- Would be nice to have this button switch from connect to disconnect based on the credential status -->
-						<el-button title="Connect OAuth Credentials" @click.stop="OAuth2CredentialAuthorize(scope.row)" icon="el-icon-caret-right" v-if="scope.row.type == 'OAuth2Api'" circle></el-button>
 					</template>
 				</el-table-column>
 			</el-table>
@@ -92,20 +90,6 @@ export default mixins(
 		createCredential () {
 			this.editCredentials = null;
 			this.credentialEditDialogVisible = true;
-		},
-		async OAuth2CredentialAuthorize (credential: ICredentialsResponse) {
-			let url;
-			try {
-				url = await this.restApi().OAuth2CredentialAuthorize(credential) as string;
-			} catch (error) {
-				this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
-				return;
-			}
-
-			const params = `scrollbars=no,resizable=no,status=no,location=no,toolbar=no,menubar=no,width=0,height=0,left=-1000,top=-1000`;
-			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
-
-			console.log(oauthPopup);
 		},
 		editCredential (credential: ICredentialsResponse) {
 			const editCredentials = {
