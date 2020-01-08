@@ -261,7 +261,7 @@ export const restApi = Vue.extend({
 				OAuth2Callback: (code: string, state: string): Promise<string> => {
 					const sendData = {
 						'code': code,
-						'state': state
+						'state': state,
 					};
 
 					return self.restApi().makeRestApiRequest('POST', `/oauth2-credential/callback`, sendData);
