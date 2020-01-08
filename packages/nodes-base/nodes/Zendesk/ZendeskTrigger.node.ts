@@ -1,4 +1,8 @@
 import {
+	parse as urlParse,
+} from 'url';
+
+import {
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
@@ -23,7 +27,7 @@ import {
 export class ZendeskTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zendesk Trigger',
-		name: 'zendesk',
+		name: 'zendeskTrigger',
 		icon: 'file:zendesk.png',
 		group: ['trigger'],
 		version: 1,
@@ -64,21 +68,6 @@ export class ZendeskTrigger implements INodeType {
 				description: '',
 			},
 			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				displayOptions: {
-					show: {
-						service: [
-							'support'
-						]
-					}
-				},
-				required: true,
-				default: '',
-				description: '',
-			},
-			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -94,6 +83,7 @@ export class ZendeskTrigger implements INodeType {
 					{
 						displayName: 'Fields',
 						name: 'fields',
+						description: 'The fields to return the values of.',
 						type: 'multiOptions',
 						default: [],
 						options: [
@@ -397,11 +387,11 @@ export class ZendeskTrigger implements INodeType {
 				returnData.push({
 					name: 'Current User',
 					value: 'current_user',
-				})
+				});
 				returnData.push({
 					name: 'Requester',
 					value: 'requester_id',
-				})
+				});
 				return returnData;
 			},
 		}
@@ -423,14 +413,13 @@ export class ZendeskTrigger implements INodeType {
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const service = this.getNodeParameter('service') as string;
 				if (service === 'support') {
 					const aux: IDataObject = {};
 					const message: IDataObject = {};
 					const resultAll = [], resultAny = [];
-					const title = this.getNodeParameter('title') as string;
 					const conditions = this.getNodeParameter('conditions') as IDataObject;
 					const options = this.getNodeParameter('options') as IDataObject;
 					if (Object.keys(conditions).length === 0) {
@@ -438,16 +427,16 @@ export class ZendeskTrigger implements INodeType {
 					}
 					if (options.fields) {
 						// @ts-ignore
-						for (let field of options.fields) {
+						for (const field of options.fields) {
 							// @ts-ignore
 							message[field] = `{{${field}}}`;
 						}
 					} else {
-						message['ticket.id'] = '{{ticket.id}}'
+						message['ticket.id'] = '{{ticket.id}}';
 					}
 					const conditionsAll = conditions.all as [IDataObject];
 					if (conditionsAll) {
-						for (let conditionAll of conditionsAll) {
+						for (const conditionAll of conditionsAll) {
 							aux.field = conditionAll.field;
 							aux.operator = conditionAll.operation;
 							if (conditionAll.operation !== 'changed'
@@ -456,12 +445,12 @@ export class ZendeskTrigger implements INodeType {
 							} else {
 								aux.value = null;
 							}
-							resultAll.push(aux)
+							resultAll.push(aux);
 						}
 					}
 					const conditionsAny = conditions.any as [IDataObject];
 					if (conditionsAny) {
-						for (let conditionAny of conditionsAny) {
+						for (const conditionAny of conditionsAny) {
 							aux.field = conditionAny.field;
 							aux.operator = conditionAny.operation;
 							if (conditionAny.operation !== 'changed'
@@ -470,12 +459,13 @@ export class ZendeskTrigger implements INodeType {
 							} else {
 								aux.value = null;
 							}
-							resultAny.push(aux)
+							resultAny.push(aux);
 						}
 					}
+					const urlParts = urlParse(webhookUrl);
 					const bodyTrigger: IDataObject = {
 						trigger: {
-							title,
+							title: `n8n-webhook:${urlParts.path}`,
 							conditions: {
 								all: resultAll,
 								any: resultAny,
@@ -487,10 +477,10 @@ export class ZendeskTrigger implements INodeType {
 								}
 							]
 						},
-					}
+					};
 					const bodyTarget: IDataObject = {
 						target: {
-							title: 'N8N webhook',
+							title: 'n8n webhook',
 							type: 'http_target',
 							target_url: webhookUrl,
 							method: 'POST',
@@ -516,7 +506,7 @@ export class ZendeskTrigger implements INodeType {
 					return false;
 				}
 				delete webhookData.webhookId;
-				delete webhookData.targetId
+				delete webhookData.targetId;
 				return true;
 			},
 		},

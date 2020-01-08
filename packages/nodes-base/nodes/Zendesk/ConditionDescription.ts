@@ -12,7 +12,6 @@ export const conditionFields = [
 			},
 		],
 		default: 'ticket',
-		description: '',
 	},
 	{
 		displayName: 'Field',
@@ -48,7 +47,6 @@ export const conditionFields = [
 			},
 		],
 		default: 'status',
-		description: '',
 	},
 	{
 		displayName: 'Operation',
@@ -104,7 +102,6 @@ export const conditionFields = [
 			}
 		},
 		default: 'is',
-		description: '',
 	},
 	{
 		displayName: 'Operation',
@@ -152,7 +149,6 @@ export const conditionFields = [
 			}
 		},
 		default: 'is',
-		description: '',
 	},
 	{
 		displayName: 'Value',
@@ -200,7 +196,6 @@ export const conditionFields = [
 			},
 		],
 		default: 'open',
-		description: '',
 	},
 	{
 		displayName: 'Value',
@@ -244,7 +239,6 @@ export const conditionFields = [
 			},
 		],
 		default: 'question',
-		description: '',
 	},
 	{
 		displayName: 'Value',
@@ -288,7 +282,6 @@ export const conditionFields = [
 			},
 		],
 		default: 'low',
-		description: '',
 	},
 	{
 		displayName: 'Value',
@@ -313,7 +306,6 @@ export const conditionFields = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 	{
 		displayName: 'Value',
@@ -338,6 +330,5 @@ export const conditionFields = [
 			},
 		},
 		default: '',
-		description: '',
 	},
 ] as INodeProperties[];

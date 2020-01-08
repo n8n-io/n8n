@@ -102,7 +102,7 @@ export class Zendesk implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
-		let qs: IDataObject = {};
+		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			const resource = this.getNodeParameter('resource', 0) as string;
@@ -194,9 +194,9 @@ export class Zendesk implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					qs.query = 'type:ticket'
+					qs.query = 'type:ticket';
 					if (options.status) {
-						qs.query += ` status:${options.status}`
+						qs.query += ` status:${options.status}`;
 					}
 					if (options.sortBy) {
 						qs.sort_by = options.sortBy;
