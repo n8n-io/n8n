@@ -250,6 +250,35 @@ export class Redis implements INodeType {
 				default: 'automatic',
 				description: 'The type of the key to set.',
 			},
+
+			{
+				displayName: 'Expire',
+				name: 'expire',
+				type: 'boolean',
+				default: false,
+				description: 'Set a timeout on key ?',
+			},
+
+			{
+				displayName: 'TTL',
+				name: 'ttl',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'set'
+						],
+						expire: [
+							true,
+						],
+					},
+				},
+				default: 60,
+				description: 'Number of seconds before key expiration.',
+			}
 		]
 	};
 
@@ -319,7 +348,7 @@ export class Redis implements INodeType {
 		}
 
 
-		async function setValue(client: redis.RedisClient, keyName: string, value: string | number | object | string[] | number[], type?: string) {
+		async function setValue(client: redis.RedisClient, keyName: string, value: string | number | object | string[] | number[], expire: boolean, ttl: number, type?: string) {
 			if (type === undefined || type === 'automatic') {
 				// Request the type first
 				if (typeof value === 'string') {
@@ -335,20 +364,24 @@ export class Redis implements INodeType {
 
 			if (type === 'string') {
 				const clientSet = util.promisify(client.set).bind(client);
-				return await clientSet(keyName, value.toString());
+				await clientSet(keyName, value.toString());
 			} else if (type === 'hash') {
 				const clientHset = util.promisify(client.hset).bind(client);
 				for (const key of Object.keys(value)) {
 					await clientHset(keyName, key, (value as IDataObject)[key]!.toString());
 				}
-				return;
 			} else if (type === 'list') {
 				const clientLset = util.promisify(client.lset).bind(client);
 				for (let index = 0; index < (value as string[]).length; index++) {
 					await clientLset(keyName, index, (value as IDataObject)[index]!.toString());
 				}
-				return;
 			}
+
+			if (expire === true) {
+				const clientExpire = util.promisify(client.expire).bind(client);
+				await clientExpire(keyName, ttl);
+			}
+			return;
 		}
 
 
@@ -434,8 +467,10 @@ export class Redis implements INodeType {
 							const keySet = this.getNodeParameter('key', itemIndex) as string;
 							const value = this.getNodeParameter('value', itemIndex) as string;
 							const keyType = this.getNodeParameter('keyType', itemIndex) as string;
+							const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
+							const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
 
-							await setValue(client, keySet, value, keyType);
+							await setValue(client, keySet, value, expire, ttl, keyType);
 							returnItems.push(items[itemIndex]);
 						}
 					}
