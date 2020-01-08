@@ -78,7 +78,8 @@
             "dist/credentials/TypeformApi.credentials.js",
             "dist/credentials/TogglApi.credentials.js",
             "dist/credentials/VeroApi.credentials.js",
-            "dist/credentials/WordpressApi.credentials.js"
+            "dist/credentials/WordpressApi.credentials.js",
+            "dist/credentials/ZendeskApi.credentials.js"
         ],
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
@@ -171,7 +172,9 @@
             "dist/nodes/WriteBinaryFile.node.js",
             "dist/nodes/Webhook.node.js",
             "dist/nodes/Wordpress/Wordpress.node.js",
-            "dist/nodes/Xml.node.js"
+            "dist/nodes/Xml.node.js",
+            "dist/nodes/Zendesk/ZendeskTrigger.node.js",
+            "dist/nodes/Zendesk/Zendesk.node.js"
         ]
     },
     "devDependencies": {
