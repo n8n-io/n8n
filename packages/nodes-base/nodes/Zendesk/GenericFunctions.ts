@@ -1,9 +1,9 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 
@@ -12,7 +12,7 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const base64Key =  Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64')
+	const base64Key =  Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64');
 	let options: OptionsWithUri = {
 		headers: { 'Authorization': `Basic ${base64Key}`},
 		method,
@@ -46,7 +46,7 @@ export async function zendeskApiRequestAllItems(this: IHookFunctions | IExecuteF
 
 	do {
 		responseData = await zendeskApiRequest.call(this, method, resource, body, query, uri);
-		uri = responseData.next_page
+		uri = responseData.next_page;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
 		responseData.next_page !== undefined &&

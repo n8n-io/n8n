@@ -21,22 +21,22 @@ export const ticketOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a ticket'
+				description: 'Update a ticket',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a ticket'
+				description: 'Get a ticket',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all tickets'
+				description: 'Get all tickets',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a ticket'
+				description: 'Delete a ticket',
 			},
 		],
 		default: 'create',
