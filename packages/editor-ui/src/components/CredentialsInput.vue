@@ -13,6 +13,26 @@
 			</el-col>
 		</el-row>
 
+		<el-row v-if="isOAuthType" class="oauth-information">
+			<el-col :span="6" class="headline">
+				OAuth
+			</el-col>
+			<el-col :span="18">
+				<span v-if="isOAuthConnected === true">
+					<el-button title="Reconnect OAuth Credentials" @click.stop="oAuth2CredentialAuthorize()" circle>
+						<font-awesome-icon icon="redo" />
+					</el-button>
+					Is connected
+				</span>
+				<span v-else>
+					<el-button title="Connect OAuth Credentials" @click.stop="oAuth2CredentialAuthorize()" circle>
+						<font-awesome-icon icon="sign-in-alt" />
+					</el-button>
+					Is NOT connected
+				</span>
+			</el-col>
+		</el-row>
+
 		<br />
 		<div class="headline">
 			Credential Data:
@@ -152,6 +172,16 @@ export default mixins(
 				};
 			});
 		},
+		isOAuthType (): boolean {
+			return this.credentialData && this.credentialData.type === 'oAuth2Api';
+		},
+		isOAuthConnected (): boolean {
+			if (this.isOAuthType === false) {
+				return false;
+			}
+
+			return !!this.credentialData.data.oauthTokenData;
+		},
 	},
 	methods: {
 		valueChanged (parameterData: IUpdateInformation) {
@@ -188,6 +218,48 @@ export default mixins(
 			this.$store.commit('addCredentials', result);
 
 			this.$emit('credentialsCreated', result);
+		},
+		async oAuth2CredentialAuthorize () {
+			let url;
+			try {
+				url = await this.restApi().oAuth2CredentialAuthorize(this.credentialData) as string;
+			} catch (error) {
+				this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
+				return;
+			}
+
+			const params = `scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700`;
+			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
+
+			const receiveMessage = (event: MessageEvent) => {
+				// // TODO: Add check that it came from n8n
+				// if (event.origin !== 'http://example.org:8080') {
+				// 	return;
+				// }
+
+				if (event.data === 'success') {
+
+					// Set some kind of data that status changes.
+					// As data does not get displayed directly it does not matter what data.
+					this.credentialData.data.oauthTokenData = {};
+
+					// Close the window
+					if (oauthPopup) {
+						oauthPopup.close();
+					}
+
+					this.$showMessage({
+						title: 'Connected',
+						message: 'Got connected!',
+						type: 'success',
+					});
+				}
+
+				// Make sure that the event gets removed again
+				window.removeEventListener('message', receiveMessage, false);
+			};
+
+			window.addEventListener('message', receiveMessage, false);
 		},
 		async updateCredentials () {
 			const nodesAccess: ICredentialNodeAccess[] = [];
@@ -299,6 +371,11 @@ export default mixins(
 		margin: 1em 0;
 		color: $--color-primary;
 		line-height: 1.75em;
+	}
+
+	.oauth-information {
+		line-height: 2.5em;
+		margin-top: 2em;
 	}
 
 	.parameter-wrapper {

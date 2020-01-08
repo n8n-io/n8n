@@ -21,7 +21,7 @@ export default new Router({
 		},
 		{
 			path: '/oauth2/callback',
-			name: 'OAuth2Callback',
+			name: 'oAuth2Callback',
 			components: {
 			},
 		},
