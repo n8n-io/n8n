@@ -1,6 +1,7 @@
 import { set } from 'lodash';
 
 import {
+	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -275,7 +276,7 @@ export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun
 	return {
 		credentials: {},
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
-		executeWorkflow: async (workflowId: string): Promise<any> => {}, // tslint:disable-line:no-any
+		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {}, // tslint:disable-line:no-any
 		restApiUrl: '',
 		encryptionKey: 'test',
 		timezone: 'America/New_York',

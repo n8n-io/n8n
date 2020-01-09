@@ -776,7 +776,7 @@ export class GoogleDrive implements INodeType {
 							},
 						],
 						required: true,
-						default: [],
+						default: '',
 						description: 'The corpora to operate on.',
 					},
 					{

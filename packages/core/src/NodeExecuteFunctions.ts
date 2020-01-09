@@ -13,6 +13,7 @@ import {
 	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
+	IExecuteWorkflowInfo,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
@@ -430,9 +431,8 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
-			async executeWorkflow(workflowId: string, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
-				// return additionalData.executeWorkflow(workflowId, additionalData, inputData);
-				return additionalData.executeWorkflow(workflowId, additionalData, inputData);
+			async executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
+				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);

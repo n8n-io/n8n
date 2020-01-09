@@ -7,7 +7,7 @@
 					{{parameter.displayName}}:
 				</div>
 				<div class="text-editor" @keydown.stop @keydown.esc="closeDialog()">
-					<el-input type="textarea" ref="inputField" :value="value" :placeholder="parameter.placeholder" @change="valueChanged" @keydown.stop="noOp" rows="15" />
+					<el-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="parameter.placeholder" @change="valueChanged" @keydown.stop="noOp" rows="15" />
 				</div>
 			</div>
 
@@ -32,6 +32,7 @@ export default Vue.extend({
 	],
 	data () {
 		return {
+			tempValue: '', // el-input does not seem to work without v-model so add one
 		};
 	},
 	methods: {
@@ -46,6 +47,9 @@ export default Vue.extend({
 			return false;
 		},
 	},
+	mounted () {
+		this.tempValue = this.value as string;
+	},
 	watch: {
 		dialogVisible () {
 			if (this.dialogVisible === true) {
@@ -53,6 +57,9 @@ export default Vue.extend({
 					(this.$refs.inputField as HTMLInputElement).focus();
 				});
 			}
+		},
+		value () {
+			this.tempValue = this.value as string;
 		},
 	},
 });

@@ -135,7 +135,7 @@ export const dealFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getDealTypes',
 				},
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Associated Company',
@@ -209,7 +209,7 @@ export const dealFields = [
 			typeOptions: {
 				loadOptionsMethod: 'getDealStages'
 			},
-			default: [],
+			default: '',
 			description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
 		},
 		{
@@ -243,7 +243,7 @@ export const dealFields = [
 			typeOptions: {
 				loadOptionsMethod: 'getDealTypes',
 			},
-			default: [],
+			default: '',
 		},
 	]
 },
