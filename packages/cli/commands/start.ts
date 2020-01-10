@@ -176,7 +176,7 @@ export class Start extends Command {
 						Start.openBrowser();
 					}
 					this.log(`\nPress "o" to open in Browser.`);
-					process.stdin.on("data", (key: string) => {
+					process.stdin.on("data", (key) => {
 						if (key === 'o') {
 							Start.openBrowser();
 							inputText = '';
