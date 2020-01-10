@@ -123,7 +123,7 @@ export interface INodeInputDataConnections {
 
 
 export interface IWorkflowData {
-	pollResponse?: IPollResponse;
-	triggerResponse?: ITriggerResponse;
+	pollResponses?: IPollResponse[];
+	triggerResponses?: ITriggerResponse[];
 	workflow: Workflow;
 }
