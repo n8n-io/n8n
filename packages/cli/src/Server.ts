@@ -657,6 +657,10 @@ class App {
 				throw new Error('No encryption key got found to encrypt the credentials!');
 			}
 
+			if (incomingData.name === '') {
+				throw new Error('Credentials have to have a name set!');
+			}
+
 			// Check if credentials with the same name and type exist already
 			const findQuery = {
 				where: {
@@ -695,6 +699,10 @@ class App {
 			const incomingData = req.body;
 
 			const id = req.params.id;
+
+			if (incomingData.name === '') {
+				throw new Error('Credentials have to have a name set!');
+			}
 
 			// Add the date for newly added node access permissions
 			for (const nodeAccess of incomingData.nodesAccess) {
