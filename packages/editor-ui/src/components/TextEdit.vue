@@ -47,6 +47,9 @@ export default Vue.extend({
 			return false;
 		},
 	},
+	mounted () {
+		this.tempValue = this.value as string;
+	},
 	watch: {
 		dialogVisible () {
 			if (this.dialogVisible === true) {
