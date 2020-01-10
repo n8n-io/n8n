@@ -22,15 +22,28 @@ import {
 	contactOperations,
 } from './ContactDescription';
 import {
+	opportunityOperations,
+	opportunityFields,
+ } from './OpportunityDescription';
+ import {
+	accountOperations,
+	accountFields,
+ } from './AccountDescription';
+ import {
+	IOpportunity,
+} from './OpportunityInterface';
+import {
 	ICampaignMember,
 } from './CampaignMemberInterface';
 import {
 	ILead,
 } from './LeadInterface';
-
 import {
 	IContact,
  } from './ContactInterface';
+ import {
+	IAccount,
+ } from './AccountInterface';
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -69,6 +82,16 @@ export class Salesforce implements INodeType {
 						value: 'contact',
 						description: 'Represents a contact, which is an individual associated with an account.',
 					},
+					{
+						name: 'Opportunity',
+						value: 'opportunity',
+						description: 'Represents an opportunity, which is a sale or pending deal.',
+					},
+					{
+						name: 'Account',
+						value: 'account',
+						description: 'Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners).',
+					},
 				],
 				default: 'lead',
 				description: 'Resource to consume.',
@@ -77,6 +100,10 @@ export class Salesforce implements INodeType {
 			...leadFields,
 			...contactOperations,
 			...contactFields,
+			...opportunityOperations,
+			...opportunityFields,
+			...accountOperations,
+			...accountFields,
 		],
 	};
 
@@ -171,6 +198,66 @@ export class Salesforce implements INodeType {
 						name: campaignName,
 						value: campaignId,
 					});
+				}
+				return returnData;
+			},
+			// Get all the stages to display them to user so that he can
+			// select them easily
+			async getStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/opportunity/describe');
+				for (const field of fields) {
+					if (field.name === 'StageName') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the stages to display them to user so that he can
+			// select them easily
+			async getAccountTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/account/describe');
+				for (const field of fields) {
+					if (field.name === 'Type') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the account sources to display them to user so that he can
+			// select them easily
+			async getAccountSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/account/describe');
+				for (const field of fields) {
+					if (field.name === 'AccountSource') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
 				}
 				return returnData;
 			},
@@ -350,7 +437,6 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const qs: IDataObject = {};
 					const fields = ['id'];
 					if (options.fields) {
 						// @ts-ignore
@@ -606,7 +692,6 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const qs: IDataObject = {};
 					const fields = ['id'];
 					if (options.fields) {
 						// @ts-ignore
@@ -651,6 +736,348 @@ export class Salesforce implements INodeType {
 						body.Status = options.status as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/CampaignMember', body);
+				}
+			}
+			if (resource === 'opportunity') {
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/post-opportunity
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const closeDate = this.getNodeParameter('closeDate', i) as string;
+					const stageName = this.getNodeParameter('stageName', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IOpportunity = {
+						Name: name,
+						CloseDate: closeDate,
+						StageName: stageName,
+					};
+					if (additionalFields.type) {
+						body.Type = additionalFields.type as string;
+					}
+					if (additionalFields.ammount) {
+						body.Amount = additionalFields.ammount as number;
+					}
+					if (additionalFields.ownerId) {
+						body.OwnerId = additionalFields.ownerId as string;
+					}
+					if (additionalFields.nextStep) {
+						body.NextStep = additionalFields.nextStep as string;
+					}
+					if (additionalFields.accountId) {
+						body.AccountId = additionalFields.accountId as string;
+					}
+					if (additionalFields.campaignId) {
+						body.CampaignId = additionalFields.campaignId as string;
+					}
+					if (additionalFields.leadSource) {
+						body.LeadSource = additionalFields.leadSource as string;
+					}
+					if (additionalFields.description) {
+						body.Description = additionalFields.description as string;
+					}
+					if (additionalFields.probability) {
+						body.Probability = additionalFields.probability as number;
+					}
+					if (additionalFields.pricebook2Id) {
+						body.Pricebook2Id = additionalFields.pricebook2Id as string;
+					}
+					if (additionalFields.forecastCategoryName) {
+						body.ForecastCategoryName = additionalFields.forecastCategoryName as string;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/opportunity', body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/post-opportunity
+				if (operation === 'update') {
+					const opportunityId = this.getNodeParameter('opportunityId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IOpportunity = {};
+					if (updateFields.name) {
+						body.Name = updateFields.name as string;
+					}
+					if (updateFields.closeDate) {
+						body.CloseDate = updateFields.closeDate as string;
+					}
+					if (updateFields.stageName) {
+						body.StageName = updateFields.stageName as string;
+					}
+					if (updateFields.type) {
+						body.Type = updateFields.type as string;
+					}
+					if (updateFields.ammount) {
+						body.Amount = updateFields.ammount as number;
+					}
+					if (updateFields.ownerId) {
+						body.OwnerId = updateFields.ownerId as string;
+					}
+					if (updateFields.nextStep) {
+						body.NextStep = updateFields.nextStep as string;
+					}
+					if (updateFields.accountId) {
+						body.AccountId = updateFields.accountId as string;
+					}
+					if (updateFields.campaignId) {
+						body.CampaignId = updateFields.campaignId as string;
+					}
+					if (updateFields.leadSource) {
+						body.LeadSource = updateFields.leadSource as string;
+					}
+					if (updateFields.description) {
+						body.Description = updateFields.description as string;
+					}
+					if (updateFields.probability) {
+						body.Probability = updateFields.probability as number;
+					}
+					if (updateFields.pricebook2Id) {
+						body.Pricebook2Id = updateFields.pricebook2Id as string;
+					}
+					if (updateFields.forecastCategoryName) {
+						body.ForecastCategoryName = updateFields.forecastCategoryName as string;
+					}
+					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/opportunity/${opportunityId}`, body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/get-opportunity-id
+				if (operation === 'get') {
+					const opportunityId = this.getNodeParameter('opportunityId', i) as string;
+					responseData = await salesforceApiRequest.call(this, 'GET', `/sobjects/opportunity/${opportunityId}`);
+				}
+				//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const fields = ['id'];
+					if (options.fields) {
+						// @ts-ignore
+						fields.push(...options.fields.split(','))
+					}
+					try {
+						if (returnAll) {
+							qs.q = `SELECT ${fields.join(',')} FROM Opportunity`,
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.q = `SELECT ${fields.join(',')} FROM Opportunity Limit ${limit}`;
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						}
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/delete-opportunity-id
+				if (operation === 'delete') {
+					const opportunityId = this.getNodeParameter('opportunityId', i) as string;
+					try {
+						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/opportunity/${opportunityId}`);
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/get-opportunity
+				if (operation === 'getSummary') {
+					responseData = await salesforceApiRequest.call(this, 'GET', '/sobjects/opportunity');
+				}
+			}
+			if (resource === 'account') {
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/post-account
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IAccount = {
+						Name: name,
+					};
+					if (additionalFields.fax) {
+						body.Fax = additionalFields.fax as string;
+					}
+					if (additionalFields.type) {
+						body.Type = additionalFields.type as string;
+					}
+					if (additionalFields.jigsaw) {
+						body.Jigsaw = additionalFields.jigsaw as string;
+					}
+					if (additionalFields.phone) {
+						body.Phone = additionalFields.phone as string;
+					}
+					if (additionalFields.ownerId) {
+						body.OwnerId = additionalFields.ownerId as string;
+					}
+					if (additionalFields.sicDesc) {
+						body.SicDesc = additionalFields.sicDesc as string;
+					}
+					if (additionalFields.website) {
+						body.Website = additionalFields.website as string;
+					}
+					if (additionalFields.industry) {
+						body.Industry = additionalFields.industry as string;
+					}
+					if (additionalFields.parentId) {
+						body.ParentId = additionalFields.parentId as string;
+					}
+					if (additionalFields.billingCity) {
+						body.BillingCity = additionalFields.billingCity as string;
+					}
+					if (additionalFields.description) {
+						body.Description = additionalFields.description as string;
+					}
+					if (additionalFields.billingState) {
+						body.BillingState = additionalFields.billingState as string;
+					}
+					if (additionalFields.shippingCity) {
+						body.ShippingCity = additionalFields.shippingCity as string;
+					}
+					if (additionalFields.accountSource) {
+						body.AccountSource = additionalFields.accountSource as string;
+					}
+					if (additionalFields.annualRevenue) {
+						body.AnnualRevenue = additionalFields.annualRevenue as number;
+					}
+					if (additionalFields.billingStreet) {
+						body.BillingStreet = additionalFields.billingStreet as string;
+					}
+					if (additionalFields.shippingState) {
+						body.ShippingState = additionalFields.shippingState as string;
+					}
+					if (additionalFields.billingCountry) {
+						body.BillingCountry = additionalFields.billingCountry as string;
+					}
+					if (additionalFields.shippingStreet) {
+						body.ShippingStreet = additionalFields.shippingStreet as string;
+					}
+					if (additionalFields.shippingCountry) {
+						body.ShippingCountry = additionalFields.shippingCountry as string;
+					}
+					if (additionalFields.billingPostalCode) {
+						body.BillingPostalCode = additionalFields.billingPostalCode as string;
+					}
+					if (additionalFields.numberOfEmployees) {
+						body.NumberOfEmployees = additionalFields.numberOfEmployees as string;
+					}
+					if (additionalFields.shippingPostalCode) {
+						body.ShippingPostalCode = additionalFields.shippingPostalCode as string;
+					}
+					if (additionalFields.shippingPostalCode) {
+						body.ShippingPostalCode = additionalFields.shippingPostalCode as string;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/account', body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/patch-account-id
+				if (operation === 'update') {
+					const accountId = this.getNodeParameter('accountId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IAccount = {};
+					if (updateFields.name) {
+						body.Name = updateFields.name as string;
+					}
+					if (updateFields.fax) {
+						body.Fax = updateFields.fax as string;
+					}
+					if (updateFields.type) {
+						body.Type = updateFields.type as string;
+					}
+					if (updateFields.jigsaw) {
+						body.Jigsaw = updateFields.jigsaw as string;
+					}
+					if (updateFields.phone) {
+						body.Phone = updateFields.phone as string;
+					}
+					if (updateFields.ownerId) {
+						body.OwnerId = updateFields.ownerId as string;
+					}
+					if (updateFields.sicDesc) {
+						body.SicDesc = updateFields.sicDesc as string;
+					}
+					if (updateFields.website) {
+						body.Website = updateFields.website as string;
+					}
+					if (updateFields.industry) {
+						body.Industry = updateFields.industry as string;
+					}
+					if (updateFields.parentId) {
+						body.ParentId = updateFields.parentId as string;
+					}
+					if (updateFields.billingCity) {
+						body.BillingCity = updateFields.billingCity as string;
+					}
+					if (updateFields.description) {
+						body.Description = updateFields.description as string;
+					}
+					if (updateFields.billingState) {
+						body.BillingState = updateFields.billingState as string;
+					}
+					if (updateFields.shippingCity) {
+						body.ShippingCity = updateFields.shippingCity as string;
+					}
+					if (updateFields.accountSource) {
+						body.AccountSource = updateFields.accountSource as string;
+					}
+					if (updateFields.annualRevenue) {
+						body.AnnualRevenue = updateFields.annualRevenue as number;
+					}
+					if (updateFields.billingStreet) {
+						body.BillingStreet = updateFields.billingStreet as string;
+					}
+					if (updateFields.shippingState) {
+						body.ShippingState = updateFields.shippingState as string;
+					}
+					if (updateFields.billingCountry) {
+						body.BillingCountry = updateFields.billingCountry as string;
+					}
+					if (updateFields.shippingStreet) {
+						body.ShippingStreet = updateFields.shippingStreet as string;
+					}
+					if (updateFields.shippingCountry) {
+						body.ShippingCountry = updateFields.shippingCountry as string;
+					}
+					if (updateFields.billingPostalCode) {
+						body.BillingPostalCode = updateFields.billingPostalCode as string;
+					}
+					if (updateFields.numberOfEmployees) {
+						body.NumberOfEmployees = updateFields.numberOfEmployees as string;
+					}
+					if (updateFields.shippingPostalCode) {
+						body.ShippingPostalCode = updateFields.shippingPostalCode as string;
+					}
+					if (updateFields.shippingPostalCode) {
+						body.ShippingPostalCode = updateFields.shippingPostalCode as string;
+					}
+					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/account/${accountId}`, body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/get-account-id
+				if (operation === 'get') {
+					const accountId = this.getNodeParameter('accountId', i) as string;
+					responseData = await salesforceApiRequest.call(this, 'GET', `/sobjects/account/${accountId}`);
+				}
+				//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const fields = ['id'];
+					if (options.fields) {
+						// @ts-ignore
+						fields.push(...options.fields.split(','))
+					}
+					try {
+						if (returnAll) {
+							qs.q = `SELECT ${fields.join(',')} FROM Account`,
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.q = `SELECT ${fields.join(',')} FROM Account Limit ${limit}`;
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						}
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/delete-account-id
+				if (operation === 'delete') {
+					const accountId = this.getNodeParameter('accountId', i) as string;
+					try {
+						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/account/${accountId}`);
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/get-account
+				if (operation === 'getSummary') {
+					responseData = await salesforceApiRequest.call(this, 'GET', '/sobjects/account');
 				}
 			}
 			if (Array.isArray(responseData)) {
