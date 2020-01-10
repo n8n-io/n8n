@@ -18,7 +18,7 @@ export class Push {
 		this.channel = new sseChannel({
 			cors: {
 				// Allow access also from frontend when developing
-				origins: ['*'],
+				origins: ['http://localhost:8080'],
 			},
 		});
 
