@@ -12,6 +12,7 @@ module.exports = {
 		},
 	},
 	configureWebpack: {
+		devtool: 'source-map',
 		plugins: [
 			new GoogleFontsPlugin({
 				fonts: [

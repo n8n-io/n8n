@@ -1,5 +1,6 @@
 <template>
 	<div id="side-menu">
+		<about :dialogVisible="aboutDialogVisible" @closeDialog="closeAboutDialog"></about>
 		<executions-list :dialogVisible="executionsListDialogVisible" @closeDialog="closeExecutionsListOpenDialog"></executions-list>
 		<credentials-list :dialogVisible="credentialOpenDialogVisible" @closeDialog="closeCredentialOpenDialog"></credentials-list>
 		<credentials-edit :dialogVisible="credentialNewDialogVisible" @closeDialog="closeCredentialNewDialog"></credentials-edit>
@@ -14,15 +15,9 @@
 			<el-menu default-active="workflow" @select="handleSelect" :collapse="isCollapsed">
 
 				<el-menu-item index="logo" class="logo-item">
-					<el-tooltip placement="top" effect="light">
-						<div slot="content">
-							n8n.io - Currently installed version {{versionCli}}
-						</div>
+					<a href="https://n8n.io" target="_blank" class="logo">
 						<img src="/n8n-icon-small.png" class="icon" alt="n8n.io"/>
-
-					</el-tooltip>
-					<a href="https://n8n.io" class="logo-text" target="_blank" slot="title">
-						n8n.io
+						<span class="logo-text" slot="title">n8n.io</span>
 					</a>
 				</el-menu-item>
 
@@ -149,6 +144,12 @@
 							</a>
 						</template>
 					</el-menu-item>
+					<el-menu-item index="help-about">
+						<template slot="title">
+							<font-awesome-icon class="about-icon" icon="info"/>
+							<span slot="title" class="item-title">About n8n</span>
+						</template>
+					</el-menu-item>
 				</el-submenu>
 
 			</el-menu>
@@ -168,6 +169,7 @@ import {
 	IWorkflowDataUpdate,
 } from '../Interface';
 
+import About from '@/components/About.vue';
 import CredentialsEdit from '@/components/CredentialsEdit.vue';
 import CredentialsList from '@/components/CredentialsList.vue';
 import ExecutionsList from '@/components/ExecutionsList.vue';
@@ -196,6 +198,7 @@ export default mixins(
 	.extend({
 		name: 'MainHeader',
 		components: {
+			About,
 			CredentialsEdit,
 			CredentialsList,
 			ExecutionsList,
@@ -204,6 +207,7 @@ export default mixins(
 		},
 		data () {
 			return {
+				aboutDialogVisible: false,
 				isCollapsed: true,
 				credentialNewDialogVisible: false,
 				credentialOpenDialogVisible: false,
@@ -251,9 +255,6 @@ export default mixins(
 			currentWorkflow (): string {
 				return this.$route.params.name;
 			},
-			versionCli (): string {
-				return this.$store.getters.versionCli;
-			},
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;
 			},
@@ -268,6 +269,9 @@ export default mixins(
 			clearExecutionData () {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
+			},
+			closeAboutDialog () {
+				this.aboutDialogVisible = false;
 			},
 			closeWorkflowOpenDialog () {
 				this.workflowOpenDialogVisible = false;
@@ -434,6 +438,8 @@ export default mixins(
 					this.saveCurrentWorkflow();
 				} else if (key === 'workflow-save-as') {
 					this.saveCurrentWorkflow(true);
+				} else if (key === 'help-about') {
+					this.aboutDialogVisible = true;
 				} else if (key === 'workflow-settings') {
 					this.workflowSettingsDialogVisible = true;
 				} else if (key === 'workflow-new') {
@@ -466,6 +472,9 @@ export default mixins(
 </script>
 
 <style lang="scss">
+.about-icon {
+	padding-left: 5px;
+}
 
 #collapse-change-button {
 	position: absolute;
@@ -520,7 +529,11 @@ export default mixins(
 	}
 }
 
-a.logo-text {
+a.logo {
+	text-decoration: none;
+}
+
+.logo-text {
 	position: relative;
 	top: -3px;
 	left: 5px;
