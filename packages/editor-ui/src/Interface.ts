@@ -145,8 +145,6 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	OAuth2CredentialAuthorize(sendData: ICredentialsResponse): Promise<string>;
-	OAuth2Callback(code: string, state: string): Promise<string>;
 }
 
 export interface IBinaryDisplayData {
