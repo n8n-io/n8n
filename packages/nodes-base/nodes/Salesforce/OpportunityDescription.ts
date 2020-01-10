@@ -52,7 +52,7 @@ export const opportunityOperations = [
 export const opportunityFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                opportunity:create                                 */
+/*                                opportunity:create                          */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
@@ -243,7 +243,7 @@ export const opportunityFields = [
 		],
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 opportunity:update                                */
+/*                                 opportunity:update                         */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Opportunity ID',
@@ -420,7 +420,7 @@ export const opportunityFields = [
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                  opportunity:get                                  */
+/*                                  opportunity:get                           */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Opportunity ID',
@@ -441,7 +441,7 @@ export const opportunityFields = [
 		description: 'Id of opportunity that needs to be fetched',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                  opportunity:delete                               */
+/*                                  opportunity:delete                        */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Opportunity ID',
@@ -462,7 +462,7 @@ export const opportunityFields = [
 		description: 'Id of opportunity that needs to be fetched',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 opportunity:getAll                                */
+/*                                 opportunity:getAll                         */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
