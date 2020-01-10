@@ -11,6 +11,9 @@ module.exports = {
 			openAnalyzer: false,
 		},
 	},
+	devServer: {
+		disableHostCheck: true,
+	},
 	configureWebpack: {
 		devtool: 'source-map',
 		plugins: [
