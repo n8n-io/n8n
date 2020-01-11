@@ -48,6 +48,11 @@ export const leadOperations = [
 				value: 'addToCampaign',
 				description: 'Add lead to a campaign',
 			},
+			{
+				name: 'Add Note',
+				value: 'addNote',
+				description: 'Add note to a lead',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -395,7 +400,7 @@ export const leadFields = [
 			},
 			{
 				displayName: 'Owner',
-				name: 'ownerId',
+				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -666,6 +671,91 @@ export const leadFields = [
 				type: 'string',
 				default: '',
 				description: 'Controls the HasResponded flag on this object',
+			},
+		]
+	},
+/* -------------------------------------------------------------------------- */
+/*                             lead:addNote                                   */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Lead ID',
+		name: 'leadId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'addNote',
+				]
+			},
+		},
+		description: 'Id of lead that needs to be fetched',
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'addNote',
+				]
+			},
+		},
+		description: 'Title of the note.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'lead',
+				],
+				operation: [
+					'addNote',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Body',
+				name: 'body',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				description: 'Body of the note. Limited to 32 KB.',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'ID of the user who owns the note.',
+			},
+			{
+				displayName: 'Is Private',
+				name: 'isPrivate',
+				type: 'boolean',
+				default: false,
+				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 		]
 	},

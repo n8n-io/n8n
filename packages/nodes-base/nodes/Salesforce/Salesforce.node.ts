@@ -30,6 +30,10 @@ import {
 	accountFields,
  } from './AccountDescription';
  import {
+	caseOperations,
+	caseFields,
+ } from './CaseDescription';
+ import {
 	IOpportunity,
 } from './OpportunityInterface';
 import {
@@ -44,6 +48,13 @@ import {
  import {
 	IAccount,
  } from './AccountInterface';
+ import {
+	INote,
+} from './NoteInterface';
+import {
+	ICase,
+	ICaseComment,
+} from './CaseInterface';
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -92,6 +103,11 @@ export class Salesforce implements INodeType {
 						value: 'account',
 						description: 'Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners).',
 					},
+					{
+						name: 'Case',
+						value: 'case',
+						description: 'Represents a case, which is a customer issue or problem.',
+					},
 				],
 				default: 'lead',
 				description: 'Resource to consume.',
@@ -104,6 +120,8 @@ export class Salesforce implements INodeType {
 			...opportunityFields,
 			...accountOperations,
 			...accountFields,
+			...caseOperations,
+			...caseFields,
 		],
 	};
 
@@ -261,6 +279,106 @@ export class Salesforce implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the case types to display them to user so that he can
+			// select them easily
+			async getCaseTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
+				for (const field of fields) {
+					if (field.name === 'Type') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the case statuses to display them to user so that he can
+			// select them easily
+			async getCaseStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
+				for (const field of fields) {
+					if (field.name === 'Status') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the case reasons to display them to user so that he can
+			// select them easily
+			async getCaseReasons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
+				for (const field of fields) {
+					if (field.name === 'Reason') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the case origins to display them to user so that he can
+			// select them easily
+			async getCaseOrigins(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
+				for (const field of fields) {
+					if (field.name === 'Origin') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the case priorities to display them to user so that he can
+			// select them easily
+			async getCasePriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
+				for (const field of fields) {
+					if (field.name === 'Priority') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -314,8 +432,8 @@ export class Salesforce implements INodeType {
 					if (additionalFields.country) {
 						body.Country = additionalFields.country as string;
 					}
-					if (additionalFields.ownerId) {
-						body.OwnerId = additionalFields.ownerId as string;
+					if (additionalFields.owner) {
+						body.OwnerId = additionalFields.owner as string;
 					}
 					if (additionalFields.website) {
 						body.Website = additionalFields.website as string;
@@ -393,8 +511,8 @@ export class Salesforce implements INodeType {
 					if (updateFields.country) {
 						body.Country = updateFields.country as string;
 					}
-					if (updateFields.ownerId) {
-						body.OwnerId = updateFields.ownerId as string;
+					if (updateFields.owner) {
+						body.OwnerId = updateFields.owner as string;
 					}
 					if (updateFields.website) {
 						body.Website = updateFields.website as string;
@@ -482,6 +600,26 @@ export class Salesforce implements INodeType {
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/CampaignMember', body);
 				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Note/post-note
+				if (operation === 'addNote') {
+					const leadId = this.getNodeParameter('leadId', i) as string;
+					const title = this.getNodeParameter('title', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: INote = {
+						Title: title,
+						ParentId: leadId,
+					};
+					if (options.body) {
+						body.Body = options.body as string;
+					}
+					if (options.owner) {
+						body.OwnerId = options.owner as string;
+					}
+					if (options.isPrivate) {
+						body.IsPrivate = options.isPrivate as boolean;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/note', body);
+				}
 			}
 			if (resource === 'contact') {
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/post-contact
@@ -506,8 +644,8 @@ export class Salesforce implements INodeType {
 					if (additionalFields.jigsaw) {
 						body.Jigsaw = additionalFields.jigsaw as string;
 					}
-					if (additionalFields.ownerId) {
-						body.OwnerId = additionalFields.ownerId as string;
+					if (additionalFields.owner) {
+						body.OwnerId = additionalFields.owner as string;
 					}
 					if (additionalFields.acconuntId) {
 						body.AccountId = additionalFields.acconuntId as string;
@@ -606,8 +744,8 @@ export class Salesforce implements INodeType {
 					if (updateFields.jigsaw) {
 						body.Jigsaw = updateFields.jigsaw as string;
 					}
-					if (updateFields.ownerId) {
-						body.OwnerId = updateFields.ownerId as string;
+					if (updateFields.owner) {
+						body.OwnerId = updateFields.owner as string;
 					}
 					if (updateFields.acconuntId) {
 						body.AccountId = updateFields.acconuntId as string;
@@ -737,6 +875,26 @@ export class Salesforce implements INodeType {
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/CampaignMember', body);
 				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Note/post-note
+				if (operation === 'addNote') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const title = this.getNodeParameter('title', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: INote = {
+						Title: title,
+						ParentId: contactId,
+					};
+					if (options.body) {
+						body.Body = options.body as string;
+					}
+					if (options.owner) {
+						body.OwnerId = options.owner as string;
+					}
+					if (options.isPrivate) {
+						body.IsPrivate = options.isPrivate as boolean;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/note', body);
+				}
 			}
 			if (resource === 'opportunity') {
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/post-opportunity
@@ -756,8 +914,8 @@ export class Salesforce implements INodeType {
 					if (additionalFields.ammount) {
 						body.Amount = additionalFields.ammount as number;
 					}
-					if (additionalFields.ownerId) {
-						body.OwnerId = additionalFields.ownerId as string;
+					if (additionalFields.owner) {
+						body.OwnerId = additionalFields.owner as string;
 					}
 					if (additionalFields.nextStep) {
 						body.NextStep = additionalFields.nextStep as string;
@@ -805,8 +963,8 @@ export class Salesforce implements INodeType {
 					if (updateFields.ammount) {
 						body.Amount = updateFields.ammount as number;
 					}
-					if (updateFields.ownerId) {
-						body.OwnerId = updateFields.ownerId as string;
+					if (updateFields.owner) {
+						body.OwnerId = updateFields.owner as string;
 					}
 					if (updateFields.nextStep) {
 						body.NextStep = updateFields.nextStep as string;
@@ -874,6 +1032,26 @@ export class Salesforce implements INodeType {
 				if (operation === 'getSummary') {
 					responseData = await salesforceApiRequest.call(this, 'GET', '/sobjects/opportunity');
 				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Note/post-note
+				if (operation === 'addNote') {
+					const opportunityId = this.getNodeParameter('opportunityId', i) as string;
+					const title = this.getNodeParameter('title', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: INote = {
+						Title: title,
+						ParentId: opportunityId,
+					};
+					if (options.body) {
+						body.Body = options.body as string;
+					}
+					if (options.owner) {
+						body.OwnerId = options.owner as string;
+					}
+					if (options.isPrivate) {
+						body.IsPrivate = options.isPrivate as boolean;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/note', body);
+				}
 			}
 			if (resource === 'account') {
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/post-account
@@ -895,8 +1073,8 @@ export class Salesforce implements INodeType {
 					if (additionalFields.phone) {
 						body.Phone = additionalFields.phone as string;
 					}
-					if (additionalFields.ownerId) {
-						body.OwnerId = additionalFields.ownerId as string;
+					if (additionalFields.owner) {
+						body.OwnerId = additionalFields.owner as string;
 					}
 					if (additionalFields.sicDesc) {
 						body.SicDesc = additionalFields.sicDesc as string;
@@ -977,8 +1155,8 @@ export class Salesforce implements INodeType {
 					if (updateFields.phone) {
 						body.Phone = updateFields.phone as string;
 					}
-					if (updateFields.ownerId) {
-						body.OwnerId = updateFields.ownerId as string;
+					if (updateFields.owner) {
+						body.OwnerId = updateFields.owner as string;
 					}
 					if (updateFields.sicDesc) {
 						body.SicDesc = updateFields.sicDesc as string;
@@ -1078,6 +1256,186 @@ export class Salesforce implements INodeType {
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/get-account
 				if (operation === 'getSummary') {
 					responseData = await salesforceApiRequest.call(this, 'GET', '/sobjects/account');
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Note/post-note
+				if (operation === 'addNote') {
+					const accountId = this.getNodeParameter('accountId', i) as string;
+					const title = this.getNodeParameter('title', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: INote = {
+						Title: title,
+						ParentId: accountId,
+					};
+					if (options.body) {
+						body.Body = options.body as string;
+					}
+					if (options.owner) {
+						body.OwnerId = options.owner as string;
+					}
+					if (options.isPrivate) {
+						body.IsPrivate = options.isPrivate as boolean;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/note', body);
+				}
+			}
+			if (resource === 'case') {
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Case/post-case
+				if (operation === 'create') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: ICase = {};
+					if (additionalFields.type) {
+						body.Type = additionalFields.type as string;
+					}
+					if (additionalFields.origin) {
+						body.Origin = additionalFields.origin as string;
+					}
+					if (additionalFields.reason) {
+						body.Reason = additionalFields.reason as string;
+					}
+					if (additionalFields.owner) {
+						body.OwnerId = additionalFields.owner as string;
+					}
+					if (additionalFields.subject) {
+						body.Subject = additionalFields.subject as string;
+					}
+					if (additionalFields.parentId) {
+						body.ParentId = additionalFields.parentId as string;
+					}
+					if (additionalFields.priority) {
+						body.Priority = additionalFields.priority as string;
+					}
+					if (additionalFields.accountId) {
+						body.AccountId = additionalFields.accountId as string;
+					}
+					if (additionalFields.contactId) {
+						body.ContactId = additionalFields.contactId as string;
+					}
+					if (additionalFields.description) {
+						body.Description = additionalFields.description as string;
+					}
+					if (additionalFields.isEscalated) {
+						body.IsEscalated = additionalFields.isEscalated as boolean;
+					}
+					if (additionalFields.suppliedName) {
+						body.SuppliedName = additionalFields.suppliedName as string;
+					}
+					if (additionalFields.suppliedEmail) {
+						body.SuppliedEmail = additionalFields.suppliedEmail as string;
+					}
+					if (additionalFields.suppliedPhone) {
+						body.SuppliedPhone = additionalFields.suppliedPhone as string;
+					}
+					if (additionalFields.suppliedCompany) {
+						body.SuppliedCompany = additionalFields.suppliedCompany as string;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/case', body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Case/patch-case-id
+				if (operation === 'update') {
+					const caseId = this.getNodeParameter('caseId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: ICase = {};
+					if (updateFields.type) {
+						body.Type = updateFields.type as string;
+					}
+					if (updateFields.origin) {
+						body.Origin = updateFields.origin as string;
+					}
+					if (updateFields.reason) {
+						body.Reason = updateFields.reason as string;
+					}
+					if (updateFields.owner) {
+						body.OwnerId = updateFields.owner as string;
+					}
+					if (updateFields.subject) {
+						body.Subject = updateFields.subject as string;
+					}
+					if (updateFields.parentId) {
+						body.ParentId = updateFields.parentId as string;
+					}
+					if (updateFields.priority) {
+						body.Priority = updateFields.priority as string;
+					}
+					if (updateFields.accountId) {
+						body.AccountId = updateFields.accountId as string;
+					}
+					if (updateFields.contactId) {
+						body.ContactId = updateFields.contactId as string;
+					}
+					if (updateFields.description) {
+						body.Description = updateFields.description as string;
+					}
+					if (updateFields.isEscalated) {
+						body.IsEscalated = updateFields.isEscalated as boolean;
+					}
+					if (updateFields.suppliedName) {
+						body.SuppliedName = updateFields.suppliedName as string;
+					}
+					if (updateFields.suppliedEmail) {
+						body.SuppliedEmail = updateFields.suppliedEmail as string;
+					}
+					if (updateFields.suppliedPhone) {
+						body.SuppliedPhone = updateFields.suppliedPhone as string;
+					}
+					if (updateFields.suppliedCompany) {
+						body.SuppliedCompany = updateFields.suppliedCompany as string;
+					}
+					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/case/${caseId}`, body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Case/get-case-id
+				if (operation === 'get') {
+					const caseId = this.getNodeParameter('caseId', i) as string;
+					responseData = await salesforceApiRequest.call(this, 'GET', `/sobjects/case/${caseId}`);
+				}
+				//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const fields = ['id'];
+					if (options.fields) {
+						// @ts-ignore
+						fields.push(...options.fields.split(','))
+					}
+					try {
+						if (returnAll) {
+							qs.q = `SELECT ${fields.join(',')} FROM Case`,
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.q = `SELECT ${fields.join(',')} FROM Case Limit ${limit}`;
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						}
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Case/delete-case-id
+				if (operation === 'delete') {
+					const caseId = this.getNodeParameter('caseId', i) as string;
+					try {
+						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/case/${caseId}`);
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Case/get-case
+				if (operation === 'getSummary') {
+					responseData = await salesforceApiRequest.call(this, 'GET', '/sobjects/case');
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/CaseComment/post-casecomment
+				if (operation === 'addComment') {
+					const caseId = this.getNodeParameter('caseId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: ICaseComment = {
+						ParentId: caseId,
+					};
+					if (options.commentBody) {
+						body.CommentBody = options.commentBody as string;
+					}
+					if (options.isPublished) {
+						body.IsPublished = options.isPublished as boolean;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/casecomment', body);
 				}
 			}
 			if (Array.isArray(responseData)) {

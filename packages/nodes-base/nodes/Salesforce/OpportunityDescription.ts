@@ -43,6 +43,11 @@ export const opportunityOperations = [
 				value: 'delete',
 				description: 'Delete an opportunity',
 			},
+			{
+				name: 'Add Note',
+				value: 'addNote',
+				description: 'Add note to an opportunity',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -164,7 +169,7 @@ export const opportunityFields = [
 			},
 			{
 				displayName: 'Owner',
-				name: 'ownerId',
+				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -340,7 +345,7 @@ export const opportunityFields = [
 			},
 			{
 				displayName: 'Owner',
-				name: 'ownerId',
+				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -528,6 +533,92 @@ export const opportunityFields = [
 				type: 'string',
 				default: '',
 				description: 'Fields to include separated by ,',
+			},
+		]
+	},
+
+/* -------------------------------------------------------------------------- */
+/*                             opportunity:addNote                            */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Opportunity ID',
+		name: 'opportunityId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'addNote',
+				]
+			},
+		},
+		description: 'Id of opportunity that needs to be fetched',
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'addNote',
+				]
+			},
+		},
+		description: 'Title of the note.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'opportunity',
+				],
+				operation: [
+					'addNote',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Body',
+				name: 'body',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				description: 'Body of the note. Limited to 32 KB.',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'ID of the user who owns the note.',
+			},
+			{
+				displayName: 'Is Private',
+				name: 'isPrivate',
+				type: 'boolean',
+				default: false,
+				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 		]
 	},

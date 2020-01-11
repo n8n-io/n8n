@@ -43,6 +43,11 @@ export const accountOperations = [
 				value: 'delete',
 				description: 'Delete an account',
 			},
+			{
+				name: 'Add Note',
+				value: 'addNote',
+				description: 'Add note to an account',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -122,7 +127,7 @@ export const accountFields = [
 			},
 			{
 				displayName: 'Owner',
-				name: 'ownerId',
+				name: 'owner',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -604,6 +609,91 @@ export const accountFields = [
 				type: 'string',
 				default: '',
 				description: 'Fields to include separated by ,',
+			},
+		]
+	},
+/* -------------------------------------------------------------------------- */
+/*                             account:addNote                                */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Account ID',
+		name: 'accountId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'addNote',
+				]
+			},
+		},
+		description: 'Id of account that needs to be fetched',
+	},
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'addNote',
+				]
+			},
+		},
+		description: 'Title of the note.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'account',
+				],
+				operation: [
+					'addNote',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Body',
+				name: 'body',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				description: 'Body of the note. Limited to 32 KB.',
+			},
+			{
+				displayName: 'Owner',
+				name: 'ownerId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'ID of the user who owns the note.',
+			},
+			{
+				displayName: 'Is Private',
+				name: 'isPrivate',
+				type: 'boolean',
+				default: false,
+				description: 'If true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 		]
 	},
