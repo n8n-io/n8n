@@ -111,6 +111,11 @@ export class Salesforce implements INodeType {
 						description: 'Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners).',
 					},
 					{
+						name: 'Case',
+						value: 'case',
+						description: 'Represents a case, which is a customer issue or problem.',
+					},
+					{
 						name: 'Task',
 						value: 'task',
 						description: 'Represents a business activity such as making a phone call or other to-do items. In the user interface, and records are collectively referred to as activities.',
@@ -1410,11 +1415,11 @@ export class Salesforce implements INodeType {
 			if (resource === 'case') {
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Case/post-case
 				if (operation === 'create') {
+					const type = this.getNodeParameter('type', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: ICase = {};
-					if (additionalFields.type) {
-						body.Type = additionalFields.type as string;
-					}
+					const body: ICase = {
+						Type: type,
+					};
 					if (additionalFields.origin) {
 						body.Origin = additionalFields.origin as string;
 					}

@@ -60,6 +60,27 @@ export const caseFields = [
 /*                                case:create                                 */
 /* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		required: true,
+		typeOptions: {
+			loadOptionsMethod:  'getCaseTypes',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		description: 'The type of case',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -76,16 +97,6 @@ export const caseFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod:  'getCaseTypes',
-				},
-				default: '',
-				description: 'The type of case',
-			},
 			{
 				displayName: 'Origin',
 				name: 'origin',
