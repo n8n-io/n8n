@@ -38,6 +38,10 @@ import {
 	taskFields,
  } from './TaskDescription';
  import {
+	attachmentOperations,
+	attachmentFields,
+ } from './AttachmentDescription';
+ import {
 	IOpportunity,
 } from './OpportunityInterface';
 import {
@@ -62,6 +66,10 @@ import {
 import {
 	ITask,
 } from './TaskInterface';
+import {
+	IAttachment,
+} from './AttachmentInterface';
+
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -120,6 +128,11 @@ export class Salesforce implements INodeType {
 						value: 'task',
 						description: 'Represents a business activity such as making a phone call or other to-do items. In the user interface, and records are collectively referred to as activities.',
 					},
+					{
+						name: 'Attachment',
+						value: 'attachment',
+						description: 'Represents a file that a has uploaded and attached to a parent object.',
+					},
 				],
 				default: 'lead',
 				description: 'Resource to consume.',
@@ -136,6 +149,8 @@ export class Salesforce implements INodeType {
 			...caseFields,
 			...taskOperations,
 			...taskFields,
+			...attachmentOperations,
+			...attachmentFields,
 		],
 	};
 
@@ -1769,6 +1784,103 @@ export class Salesforce implements INodeType {
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Task/get-task
 				if (operation === 'getSummary') {
 					responseData = await salesforceApiRequest.call(this, 'GET', '/sobjects/task');
+				}
+			}
+			if (resource === 'attachment') {
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/post-attachment
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const parentId = this.getNodeParameter('parentId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const body: IAttachment = {
+						Name: name,
+						ParentId: parentId,
+					};
+					if (items[i].binary && items[i].binary![binaryPropertyName]) {
+						body.Body = items[i].binary![binaryPropertyName].data;
+						body.ContentType = items[i].binary![binaryPropertyName].mimeType;
+					} else {
+						throw new Error(`The property ${binaryPropertyName} does not exist`);
+					}
+					if (additionalFields.description) {
+						body.Description = additionalFields.description as string;
+					}
+					if (additionalFields.owner) {
+						body.OwnerId = additionalFields.owner as string;
+					}
+					if (additionalFields.isPrivate) {
+						body.IsPrivate = additionalFields.isPrivate as boolean;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/attachment', body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/patch-attachment-id
+				if (operation === 'update') {
+					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IAttachment = {};
+					if (updateFields.binaryPropertyName) {
+						const binaryPropertyName = updateFields.binaryPropertyName as string;
+						if (items[i].binary && items[i].binary![binaryPropertyName]) {
+							body.Body = items[i].binary![binaryPropertyName].data;
+							body.ContentType = items[i].binary![binaryPropertyName].mimeType;
+						} else {
+							throw new Error(`The property ${binaryPropertyName} does not exist`);
+						}
+					}
+					if (updateFields.name) {
+						body.Name = updateFields.name as string;
+					}
+					if (updateFields.description) {
+						body.Description = updateFields.description as string;
+					}
+					if (updateFields.owner) {
+						body.OwnerId = updateFields.owner as string;
+					}
+					if (updateFields.isPrivate) {
+						body.IsPrivate = updateFields.isPrivate as boolean;
+					}
+					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/attachment/${attachmentId}`, body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/get-attachment-id
+				if (operation === 'get') {
+					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
+					responseData = await salesforceApiRequest.call(this, 'GET', `/sobjects/attachment/${attachmentId}`);
+				}
+				//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const fields = ['id'];
+					if (options.fields) {
+						// @ts-ignore
+						fields.push(...options.fields.split(','))
+					}
+					try {
+						if (returnAll) {
+							qs.q = `SELECT ${fields.join(',')} FROM Attachment`,
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.q = `SELECT ${fields.join(',')} FROM Attachment Limit ${limit}`;
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						}
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/delete-attachment-id
+				if (operation === 'delete') {
+					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
+					try {
+						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/attachment/${attachmentId}`);
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/get-attachment-id
+				if (operation === 'getSummary') {
+					responseData = await salesforceApiRequest.call(this, 'GET', '/sobjects/attachment');
 				}
 			}
 			if (Array.isArray(responseData)) {
