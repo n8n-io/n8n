@@ -34,6 +34,10 @@ import {
 	caseFields,
  } from './CaseDescription';
  import {
+	taskOperations,
+	taskFields,
+ } from './TaskDescription';
+ import {
 	IOpportunity,
 } from './OpportunityInterface';
 import {
@@ -55,6 +59,9 @@ import {
 	ICase,
 	ICaseComment,
 } from './CaseInterface';
+import {
+	ITask,
+} from './TaskInterface';
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -104,9 +111,9 @@ export class Salesforce implements INodeType {
 						description: 'Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners).',
 					},
 					{
-						name: 'Case',
-						value: 'case',
-						description: 'Represents a case, which is a customer issue or problem.',
+						name: 'Task',
+						value: 'task',
+						description: 'Represents a business activity such as making a phone call or other to-do items. In the user interface, and records are collectively referred to as activities.',
 					},
 				],
 				default: 'lead',
@@ -122,6 +129,8 @@ export class Salesforce implements INodeType {
 			...accountFields,
 			...caseOperations,
 			...caseFields,
+			...taskOperations,
+			...taskFields,
 		],
 	};
 
@@ -367,6 +376,126 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
 				for (const field of fields) {
 					if (field.name === 'Priority') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the task statuses to display them to user so that he can
+			// select them easily
+			async getTaskStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
+				for (const field of fields) {
+					if (field.name === 'Status') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the task subjects to display them to user so that he can
+			// select them easily
+			async getTaskSubjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
+				for (const field of fields) {
+					if (field.name === 'Subject') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the task call types to display them to user so that he can
+			// select them easily
+			async getTaskCallTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
+				for (const field of fields) {
+					if (field.name === 'CallType') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the task call priorities to display them to user so that he can
+			// select them easily
+			async getTaskPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
+				for (const field of fields) {
+					if (field.name === 'Priority') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the task recurrence types to display them to user so that he can
+			// select them easily
+			async getTaskRecurrenceTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
+				for (const field of fields) {
+					if (field.name === 'RecurrenceType') {
+						for (const pickValue of field.picklistValues) {
+							const pickValueName = pickValue.label;
+							const pickValueId = pickValue.value;
+							returnData.push({
+								name: pickValueName,
+								value: pickValueId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+			// Get all the task recurrence instances to display them to user so that he can
+			// select them easily
+			async getTaskRecurrenceInstances(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
+				for (const field of fields) {
+					if (field.name === 'RecurrenceInstance') {
 						for (const pickValue of field.picklistValues) {
 							const pickValueName = pickValue.label;
 							const pickValueId = pickValue.value;
@@ -1436,6 +1565,205 @@ export class Salesforce implements INodeType {
 						body.IsPublished = options.isPublished as boolean;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/casecomment', body);
+				}
+			}
+			if (resource === 'task') {
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Task/post-task
+				if (operation === 'create') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const status = this.getNodeParameter('status', i) as string;
+					const body: ITask = {
+						Status: status,
+					};
+					if (additionalFields.whoId) {
+						body.WhoId = additionalFields.whoId as string;
+					}
+					if (additionalFields.whatId) {
+						body.WhatId = additionalFields.whatId as string;
+					}
+					if (additionalFields.owner) {
+						body.OwnerId = additionalFields.owner as string;
+					}
+					if (additionalFields.subject) {
+						body.Subject = additionalFields.subject as string;
+					}
+					if (additionalFields.callType) {
+						body.CallType = additionalFields.callType as string;
+					}
+					if (additionalFields.priority) {
+						body.Priority = additionalFields.priority as string;
+					}
+					if (additionalFields.callObject) {
+						body.CallObject = additionalFields.callObject as string;
+					}
+					if (additionalFields.description) {
+						body.Description = additionalFields.description as string;
+					}
+					if (additionalFields.activityDate) {
+						body.ActivityDate = additionalFields.activityDate as string;
+					}
+					if (additionalFields.isReminderSet) {
+						body.IsReminderSet = additionalFields.isReminderSet as boolean;
+					}
+					if (additionalFields.recurrenceType) {
+						body.RecurrenceType = additionalFields.recurrenceType as string;
+					}
+					if (additionalFields.callDisposition) {
+						body.CallDisposition = additionalFields.callDisposition as string;
+					}
+					if (additionalFields.reminderDateTime) {
+						body.ReminderDateTime = additionalFields.reminderDateTime as string;
+					}
+					if (additionalFields.recurrenceInstance) {
+						body.RecurrenceInstance = additionalFields.recurrenceInstance as string;
+					}
+					if (additionalFields.recurrenceInterval) {
+						body.RecurrenceInterval = additionalFields.recurrenceInterval as number;
+					}
+					if (additionalFields.recurrenceDayOfMonth) {
+						body.RecurrenceDayOfMonth = additionalFields.recurrenceDayOfMonth as number;
+					}
+					if (additionalFields.callDurationInSeconds) {
+						body.CallDurationInSeconds = additionalFields.callDurationInSeconds as number;
+					}
+					if (additionalFields.recurrenceEndDateOnly) {
+						body.RecurrenceEndDateOnly = additionalFields.recurrenceEndDateOnly as string;
+					}
+					if (additionalFields.recurrenceMonthOfYear) {
+						body.RecurrenceMonthOfYear = additionalFields.recurrenceMonthOfYear as string;
+					}
+					if (additionalFields.recurrenceDayOfWeekMask) {
+						body.RecurrenceDayOfWeekMask = additionalFields.recurrenceDayOfWeekMask as string;
+					}
+					if (additionalFields.recurrenceStartDateOnly) {
+						body.RecurrenceStartDateOnly = additionalFields.recurrenceStartDateOnly as string;
+					}
+					if (additionalFields.recurrenceTimeZoneSidKey) {
+						body.RecurrenceTimeZoneSidKey = additionalFields.recurrenceTimeZoneSidKey as string;
+					}
+					if (additionalFields.recurrenceRegeneratedType) {
+						body.RecurrenceRegeneratedType = additionalFields.recurrenceRegeneratedType as string;
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/task', body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Task/patch-task-id
+				if (operation === 'update') {
+					const taskId = this.getNodeParameter('taskId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: ITask = {};
+					if (updateFields.whoId) {
+						body.WhoId = updateFields.whoId as string;
+					}
+					if (updateFields.status) {
+						body.Status = updateFields.status as string;
+					}
+					if (updateFields.whatId) {
+						body.WhatId = updateFields.whatId as string;
+					}
+					if (updateFields.owner) {
+						body.OwnerId = updateFields.owner as string;
+					}
+					if (updateFields.subject) {
+						body.Subject = updateFields.subject as string;
+					}
+					if (updateFields.callType) {
+						body.CallType = updateFields.callType as string;
+					}
+					if (updateFields.priority) {
+						body.Priority = updateFields.priority as string;
+					}
+					if (updateFields.callObject) {
+						body.CallObject = updateFields.callObject as string;
+					}
+					if (updateFields.description) {
+						body.Description = updateFields.description as string;
+					}
+					if (updateFields.activityDate) {
+						body.ActivityDate = updateFields.activityDate as string;
+					}
+					if (updateFields.isReminderSet) {
+						body.IsReminderSet = updateFields.isReminderSet as boolean;
+					}
+					if (updateFields.recurrenceType) {
+						body.RecurrenceType = updateFields.recurrenceType as string;
+					}
+					if (updateFields.callDisposition) {
+						body.CallDisposition = updateFields.callDisposition as string;
+					}
+					if (updateFields.reminderDateTime) {
+						body.ReminderDateTime = updateFields.reminderDateTime as string;
+					}
+					if (updateFields.recurrenceInstance) {
+						body.RecurrenceInstance = updateFields.recurrenceInstance as string;
+					}
+					if (updateFields.recurrenceInterval) {
+						body.RecurrenceInterval = updateFields.recurrenceInterval as number;
+					}
+					if (updateFields.recurrenceDayOfMonth) {
+						body.RecurrenceDayOfMonth = updateFields.recurrenceDayOfMonth as number;
+					}
+					if (updateFields.callDurationInSeconds) {
+						body.CallDurationInSeconds = updateFields.callDurationInSeconds as number;
+					}
+					if (updateFields.recurrenceEndDateOnly) {
+						body.RecurrenceEndDateOnly = updateFields.recurrenceEndDateOnly as string;
+					}
+					if (updateFields.recurrenceMonthOfYear) {
+						body.RecurrenceMonthOfYear = updateFields.recurrenceMonthOfYear as string;
+					}
+					if (updateFields.recurrenceDayOfWeekMask) {
+						body.RecurrenceDayOfWeekMask = updateFields.recurrenceDayOfWeekMask as string;
+					}
+					if (updateFields.recurrenceStartDateOnly) {
+						body.RecurrenceStartDateOnly = updateFields.recurrenceStartDateOnly as string;
+					}
+					if (updateFields.recurrenceTimeZoneSidKey) {
+						body.RecurrenceTimeZoneSidKey = updateFields.recurrenceTimeZoneSidKey as string;
+					}
+					if (updateFields.recurrenceRegeneratedType) {
+						body.RecurrenceRegeneratedType = updateFields.recurrenceRegeneratedType as string;
+					}
+					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/task/${taskId}`, body);
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Task/get-task-id
+				if (operation === 'get') {
+					const taskId = this.getNodeParameter('taskId', i) as string;
+					responseData = await salesforceApiRequest.call(this, 'GET', `/sobjects/task/${taskId}`);
+				}
+				//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const fields = ['id'];
+					if (options.fields) {
+						// @ts-ignore
+						fields.push(...options.fields.split(','))
+					}
+					try {
+						if (returnAll) {
+							qs.q = `SELECT ${fields.join(',')} FROM Task`,
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.q = `SELECT ${fields.join(',')} FROM Task Limit ${limit}`;
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						}
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Task/delete-task-id
+				if (operation === 'delete') {
+					const taskId = this.getNodeParameter('taskId', i) as string;
+					try {
+						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/task/${taskId}`);
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				//https://developer.salesforce.com/docs/api-explorer/sobject/Task/get-task
+				if (operation === 'getSummary') {
+					responseData = await salesforceApiRequest.call(this, 'GET', '/sobjects/task');
 				}
 			}
 			if (Array.isArray(responseData)) {
