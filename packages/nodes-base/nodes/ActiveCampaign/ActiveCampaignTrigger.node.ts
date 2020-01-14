@@ -4,12 +4,12 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IDataObject,
-	INodePropertyOptions,
 	ILoadOptionsFunctions,
+	INodeType,
+	INodeTypeDescription,
+	INodePropertyOptions,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -124,8 +124,8 @@ export class ActiveCampaignTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				const events = this.getNodeParameter('events', 0) as string[];
-				const sources = this.getNodeParameter('sources', 0) as string[];
+				const events = this.getNodeParameter('events', []) as string[];
+				const sources = this.getNodeParameter('sources', '') as string[];
 				const body: IDataObject = {
 					webhook: {
 						name: `n8n-webhook:${webhookUrl}`,
@@ -133,7 +133,7 @@ export class ActiveCampaignTrigger implements INodeType {
 						events,
 						sources,
 					}
-				}
+				};
 				const { webhook } = await activeCampaignApiRequest.call(this, 'POST', '/api/3/webhooks', body);
 				webhookData.webhookId = webhook.id;
 				return true;
