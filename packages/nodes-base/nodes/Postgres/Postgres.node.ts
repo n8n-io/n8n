@@ -208,13 +208,11 @@ export class Postgres implements INodeType {
 			database: credentials.database as string,
 			user: credentials.user as string,
 			password: credentials.password as string,
-			ssl: credentials.ssl != 'disable',
-			sslmode: credentials.ssl as string
+			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
+			sslmode: credentials.ssl as string || 'disable',
 		};
 
 		const db = pgp(config);
-	
-		//const db = pgp(`postgres://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}/${credentials.database}`);
 
 		let returnItems = [];
 
