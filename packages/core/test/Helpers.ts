@@ -1,6 +1,7 @@
 import { set } from 'lodash';
 
 import {
+	ICredentialDataDecryptedObject,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeParameters,
@@ -280,6 +281,7 @@ export function WorkflowExecuteAdditionalData(waitPromise: IDeferredPromise<IRun
 		restApiUrl: '',
 		encryptionKey: 'test',
 		timezone: 'America/New_York',
+		updateCredentials: async (name: string, type: string, data: ICredentialDataDecryptedObject, encryptionKey: string): Promise<void> => {},
 		webhookBaseUrl: 'webhook',
 		webhookTestBaseUrl: 'webhook-test',
 	};

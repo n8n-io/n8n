@@ -67,6 +67,17 @@ export class HttpRequest implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'oAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -85,6 +96,10 @@ export class HttpRequest implements INodeType {
 					{
 						name: 'Header Auth',
 						value: 'headerAuth'
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2'
 					},
 					{
 						name: 'None',
@@ -504,6 +519,7 @@ export class HttpRequest implements INodeType {
 		const httpBasicAuth = this.getCredentials('httpBasicAuth');
 		const httpDigestAuth = this.getCredentials('httpDigestAuth');
 		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
+		const oAuth2Api = this.getCredentials('oAuth2Api');
 
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
@@ -658,7 +674,13 @@ export class HttpRequest implements INodeType {
 			}
 
 			// Now that the options are all set make the actual http request
-			const response = await this.helpers.request(requestOptions);
+			let response;
+
+			if (oAuth2Api !== undefined) {
+				response = await this.helpers.requestOAuth.call(this, 'oAuth2Api', requestOptions);
+			} else {
+				response = await this.helpers.request(requestOptions);
+			}
 
 			if (responseFormat === 'file') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;

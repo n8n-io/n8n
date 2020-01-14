@@ -169,13 +169,21 @@ export default mixins(
 	},
 	methods: {
 		getCredentialTypeData (name: string): ICredentialType | null {
-			for (const credentialData of this.credentialTypes) {
-				if (credentialData.name === name) {
-					return credentialData;
-				}
+			let credentialData = this.$store.getters.credentialType(name);
+
+			if (credentialData === null || credentialData.extends === undefined) {
+				return credentialData;
 			}
 
-			return null;
+			// Credentials extends another one. So get the properties of the one it
+			// extends and add them.
+			credentialData = JSON.parse(JSON.stringify(credentialData));
+			for (const credentialTypeName of credentialData.extends) {
+				const data = this.$store.getters.credentialType(credentialTypeName);
+				credentialData.properties.push.apply(credentialData.properties, data.properties);
+			}
+
+			return credentialData;
 		},
 		credentialsCreated (data: ICredentialsDecryptedResponse): void {
 			this.$emit('credentialsCreated', data);

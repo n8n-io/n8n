@@ -1,3 +1,5 @@
+import { OptionsWithUri } from 'request';
+
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,
@@ -36,11 +38,71 @@ export class OAuth implements INodeType {
 						value: 'get',
 						description: 'Returns the OAuth token data.',
 					},
+					{
+						name: 'Request',
+						value: 'request',
+						description: 'Make an OAuth signed requ.',
+					},
 				],
 				default: 'get',
 				description: 'The operation to perform.',
 			},
-
+			{
+				displayName: 'Request Method',
+				name: 'requestMethod',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: [
+							'request',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'DELETE',
+						value: 'DELETE'
+					},
+					{
+						name: 'GET',
+						value: 'GET'
+					},
+					{
+						name: 'HEAD',
+						value: 'HEAD'
+					},
+					{
+						name: 'PATCH',
+						value: 'PATCH'
+					},
+					{
+						name: 'POST',
+						value: 'POST'
+					},
+					{
+						name: 'PUT',
+						value: 'PUT'
+					},
+				],
+				default: 'GET',
+				description: 'The request method to use.',
+			},
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'request',
+						],
+					},
+				},
+				default: '',
+				placeholder: 'http://example.com/index.html',
+				description: 'The URL to make the request to.',
+				required: true,
+			},
 		]
 	};
 
@@ -62,6 +124,22 @@ export class OAuth implements INodeType {
 			// without knowledge of the node.
 
 			return [this.helpers.returnJsonArray(JSON.parse(credentials.oauthTokenData as string))];
+		} else if (operation === 'request') {
+			const url = this.getNodeParameter('url', 0) as string;
+			const requestMethod = this.getNodeParameter('requestMethod', 0) as string;
+
+			// Authorization Code Grant
+			const requestOptions: OptionsWithUri = {
+				headers: {
+					'User-Agent': 'some-user',
+				},
+				method: requestMethod,
+				uri: url,
+				json: true,
+			};
+
+			const responseData = await this.helpers.requestOAuth.call(this, 'oAuth2Api', requestOptions);
+			return [this.helpers.returnJsonArray(responseData)];
 		} else {
 			throw new Error('Unknown operation');
 		}
