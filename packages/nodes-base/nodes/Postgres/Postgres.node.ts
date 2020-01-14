@@ -202,7 +202,19 @@ export class Postgres implements INodeType {
 
 		const pgp = pgPromise();
 
-		const db = pgp(`postgres://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}/${credentials.database}`);
+		const config = {
+			host: credentials.host as string,
+			port: credentials.port as number,
+			database: credentials.database as string,
+			user: credentials.user as string,
+			password: credentials.password as string,
+			ssl: credentials.ssl != 'disable',
+			sslmode: credentials.ssl as string
+		};
+
+		const db = pgp(config);
+	
+		//const db = pgp(`postgres://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}/${credentials.database}`);
 
 		let returnItems = [];
 

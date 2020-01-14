@@ -36,6 +36,19 @@ export class Postgres implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'SSL',
+			name: 'ssl',
+			type: 'options' as NodePropertyTypes,
+			options: [
+				{ name: 'disable', value: 'disable' },
+				{ name: 'allow', value: 'allow' },
+				{ name: 'require', value: 'require' },
+				{ name: 'verify', value: 'verify (not implemented)' },
+				{ name: 'verify-full', value: 'verify-full (not implemented)' }
+			],
+			default: 'disable',
+		},
+		{
 			displayName: 'Port',
 			name: 'port',
 			type: 'number' as NodePropertyTypes,
