@@ -83,6 +83,7 @@
         ],
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
+            "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
             "dist/nodes/Airtable/Airtable.node.js",
             "dist/nodes/Amqp/Amqp.node.js",
             "dist/nodes/Amqp/AmqpTrigger.node.js",
