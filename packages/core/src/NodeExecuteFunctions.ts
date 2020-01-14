@@ -2,11 +2,13 @@ import {
 	Credentials,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	IResponseError,
 	IWorkflowSettings,
 	BINARY_ENCODING,
 } from './';
 
 import {
+	IAllExecuteFunctions,
 	IBinaryData,
 	IContextObject,
 	ICredentialDataDecryptedObject,
@@ -34,9 +36,11 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { get } from 'lodash';
+import * as clientOAuth2 from 'client-oauth2';
+import { get, unset } from 'lodash';
 import * as express from "express";
 import * as path from 'path';
+import { OptionsWithUri } from 'request';
 import * as requestPromise from 'request-promise-native';
 
 import { Magic, MAGIC_MIME_TYPE } from 'mmmagic';
@@ -97,6 +101,70 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 	}
 
 	return returnData;
+}
+
+
+
+/**
+ * Makes a request using OAuth data for authentication
+ *
+ * @export
+ * @param {IAllExecuteFunctions} this
+ * @param {string} credentialsType
+ * @param {(OptionsWithUri | requestPromise.RequestPromiseOptions)} requestOptions
+ * @param {INode} node
+ * @param {IWorkflowExecuteAdditionalData} additionalData
+ * @returns
+ */
+export function requestOAuth(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, node: INode, additionalData: IWorkflowExecuteAdditionalData) {
+	const credentials = this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
+
+	if (credentials === undefined) {
+		throw new Error('No credentials got returned!');
+	}
+
+	if (credentials.oauthTokenData === undefined) {
+		throw new Error('OAuth credentials not connected!');
+	}
+
+	const oAuthClient = new clientOAuth2({});
+	const oauthTokenData = JSON.parse(credentials.oauthTokenData as string);
+	const token = oAuthClient.createToken(oauthTokenData);
+
+	// Signs the request by adding authorization headers or query parameters depending
+	// on the token-type used.
+	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
+
+	return this.helpers.request!(newRequestOptions)
+		.catch(async (error: IResponseError) => {
+			// TODO: Check if also other codes are possible
+			if (error.statusCode === 401) {
+				// TODO: Whole refresh process is not tested yet
+				// Token is probably not valid anymore. So try refresh it.
+				const newToken = await token.refresh();
+
+				const newCredentialsData = newToken.data;
+				unset(newCredentialsData, 'csrfSecret');
+				unset(newCredentialsData, 'oauthTokenData');
+
+				// Find the name of the credentials
+				if (!node.credentials || !node.credentials[credentialsType]) {
+					throw new Error(`The node "${node.name}" does not have credentials of type "${credentialsType}"!`);
+				}
+				const name = node.credentials[credentialsType];
+
+				// Save the refreshed token
+				await additionalData.updateCredentials(name, credentialsType, newCredentialsData, additionalData.encryptionKey);
+
+				// Make the request again with the new token
+				const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+
+				return this.helpers.request!(newRequestOptions);
+			}
+
+			// Unknown error so simply throw it
+			throw error;
+		});
 }
 
 
@@ -355,6 +423,9 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
+				requestOAuth(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions): Promise<any> {
+					return requestOAuth.call(this, credentialsType, requestOptions, node, additionalData);
+				},
 				returnJsonArray,
 			},
 		};
@@ -406,6 +477,9 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
+				requestOAuth(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions): Promise<any> {
+					return requestOAuth.call(this, credentialsType, requestOptions, node, additionalData);
+				},
 				returnJsonArray,
 			},
 		};
@@ -484,6 +558,9 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
+				requestOAuth(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions): Promise<any> {
+					return requestOAuth.call(this, credentialsType, requestOptions, node, additionalData);
+				},
 				returnJsonArray,
 			},
 		};
@@ -563,6 +640,9 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
+				requestOAuth(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions): Promise<any> {
+					return requestOAuth.call(this, credentialsType, requestOptions, node, additionalData);
+				},
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
@@ -610,6 +690,9 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
 			},
 			helpers: {
 				request: requestPromise,
+				requestOAuth(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions): Promise<any> {
+					return requestOAuth.call(this, credentialsType, requestOptions, node, additionalData);
+				},
 			},
 		};
 		return that;
@@ -665,6 +748,9 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 			},
 			helpers: {
 				request: requestPromise,
+				requestOAuth(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions): Promise<any> {
+					return requestOAuth.call(this, credentialsType, requestOptions, node, additionalData);
+				},
 			},
 		};
 		return that;
@@ -747,6 +833,9 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
+				requestOAuth(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions): Promise<any> {
+					return requestOAuth.call(this, credentialsType, requestOptions, node, additionalData);
+				},
 				returnJsonArray,
 			},
 		};

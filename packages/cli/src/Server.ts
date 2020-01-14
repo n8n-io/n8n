@@ -758,11 +758,7 @@ class App {
 			const findQuery = {} as FindManyOptions;
 
 			// Make sure the variable has an expected value
-			if (req.query.includeData === 'true') {
-				req.query.includeData = true;
-			} else {
-				req.query.includeData = false;
-			}
+			req.query.includeData = (req.query.includeData === 'true' || req.query.includeData === true);
 
 			if (req.query.includeData !== true) {
 				// Return only the fields we need

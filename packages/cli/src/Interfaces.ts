@@ -70,7 +70,7 @@ export interface ICredentialsBase {
 	updatedAt: Date;
 }
 
-export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted{
+export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: number | string | ObjectID;
 }
 
