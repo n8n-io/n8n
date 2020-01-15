@@ -60,9 +60,10 @@ export async function mauticApiRequestAllItems(this: IHookFunctions | IExecuteFu
 		}
 		returnData.push.apply(returnData, data);
 		query.start++;
+		data = [];
 	} while (
 		responseData.total !== undefined &&
-		((query.limit * query.start) - parseInt(responseData.total)) <= 0
+		((query.limit * query.start) - parseInt(responseData.total)) < 0
 		);
 
 	return returnData;
