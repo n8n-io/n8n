@@ -53,7 +53,7 @@ export class Merge implements INodeType {
 					},
 					{
 						name: 'Multiplex',
-						value: 'mux',
+						value: 'multiplex',
 						description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.'
 					},
 					{
@@ -259,7 +259,7 @@ export class Merge implements INodeType {
 
 				returnData.push(newItem);
 			}
-		} else if (mode === 'mux') {
+		} else if (mode === 'multiplex') {
 			const dataInput1 = this.getInputData(0);
 			const dataInput2 = this.getInputData(1);
 
