@@ -158,7 +158,7 @@ export class ExecuteWorkflow implements INodeType {
 			async getWorkflows(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const options: OptionsWithUri = {
 					method: 'GET',
-					uri: this.getRestApiUrl() + '/workflows',
+					uri: (process.env.INTERNAL_API_URL || this.getRestApiUrl()) + '/workflows',
 					json: true
 				};
 
