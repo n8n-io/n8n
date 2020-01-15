@@ -52,6 +52,11 @@ export class Merge implements INodeType {
 						description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
 					},
 					{
+						name: 'Multiplex',
+						value: 'multiplex',
+						description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.'
+					},
+					{
 						name: 'Pass-through',
 						value: 'passThrough',
 						description: 'Passes through data of one input. The output will contain only items of the defined input.',
@@ -254,6 +259,23 @@ export class Merge implements INodeType {
 
 				returnData.push(newItem);
 			}
+		} else if (mode === 'multiplex') {
+			const dataInput1 = this.getInputData(0);
+			const dataInput2 = this.getInputData(1);
+
+			if (!dataInput1 || !dataInput2) {
+				return [returnData];
+			}
+
+			let entry1: INodeExecutionData;
+			let entry2: INodeExecutionData;
+
+			for (entry1 of dataInput1) {
+				for (entry2 of dataInput2) {
+					returnData.push({json: {...(entry1.json), ...(entry2.json)}});
+				}
+			}
+			return [returnData];
 		} else if (['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'].includes(mode)) {
 			const dataInput1 = this.getInputData(0);
 			if (!dataInput1) {
