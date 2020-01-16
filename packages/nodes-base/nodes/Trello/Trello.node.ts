@@ -1343,15 +1343,25 @@ export class Trello implements INodeType {
 				},
 				options: [
           {
-						name: 'List',
-						value: 'list',
-						description: 'List all attachments',
-          },
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new board',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a board',
+					},
           {
 						name: 'Get',
 						value: 'get',
 						description: 'Get the data of an attachments',
 					},
+          {
+						name: 'List',
+						value: 'list',
+						description: 'List all attachments',
+          }
 				],
 				default: 'list',
 				description: 'The operation to perform.',
@@ -1369,7 +1379,7 @@ export class Trello implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get',
+							'create',
 						],
 						resource: [
 							'attachment',
@@ -1379,15 +1389,49 @@ export class Trello implements INodeType {
 				description: 'The ID of the Card to get attachment.',
       },
       {
-				displayName: 'Attachment ID',
-				name: 'attachmentId',
+				displayName: 'Attachment URL',
+				name: 'url',
 				type: 'string',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
 						operation: [
-							'get',
+							'create',
+						],
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				description: 'The ID of the attachment to get.',
+      },
+      {
+				displayName: 'Attachment Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				description: 'The ID of the attachment to get.',
+      },
+      {
+				displayName: 'Attachment mimeType',
+				name: 'mimeType',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
 						],
 						resource: [
 							'attachment',
@@ -1404,7 +1448,7 @@ export class Trello implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get',
+							'create',
 						],
 						resource: [
 							'attachment',
@@ -1421,7 +1465,29 @@ export class Trello implements INodeType {
 						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
 					},
 				],
-			},
+      },
+
+      // ----------------------------------
+			//         attachment:delete
+			// ----------------------------------
+      {
+				displayName: 'Attachment ID',
+				name: 'attachmentId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				description: 'The ID of the attachment to get.',
+      },
 
       // ----------------------------------
 			//         attachment:list
@@ -1746,21 +1812,37 @@ export class Trello implements INodeType {
 
       } else if (resource === 'attachment') {
 
-        if (operation === 'list') {
+        if (operation === 'create') {
           // ----------------------------------
-          //         list
+          //         create
           // ----------------------------------
-
-          requestMethod = 'GET';
+          requestMethod = 'POST';
 
           const id = this.getNodeParameter('id', i) as string;
+          const name = this.getNodeParameter('name', i) as string;
+          const url = this.getNodeParameter('url', i) as string;
+          const mimeType = this.getNodeParameter('mimeType', i) as string;
 
           endpoint = `cards/${id}/attachments`;
 
           const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
           Object.assign(qs, additionalFields);
 
-        }  else if (operation === 'get') {
+        } else if (operation === 'delete') {
+          // ----------------------------------
+          //         create
+          // ----------------------------------
+          requestMethod = 'DELETE';
+
+          const id = this.getNodeParameter('id', i) as string;
+          const attachmentId = this.getNodeParameter('attachmentId', i) as string;
+
+          endpoint = `cards/${id}/attachments/${attachmentId}`;
+
+          const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+          Object.assign(qs, additionalFields);
+
+        } else if (operation === 'get') {
 					// ----------------------------------
 					//         get
 					// ----------------------------------
@@ -1775,7 +1857,20 @@ export class Trello implements INodeType {
           const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
           Object.assign(qs, additionalFields);
 
-				} else {
+				} else if {
+          // ----------------------------------
+          //         list
+          // ----------------------------------
+
+          requestMethod = 'GET';
+
+          const id = this.getNodeParameter('id', i) as string;
+
+          endpoint = `cards/${id}/attachments`;
+
+          const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+          Object.assign(qs, additionalFields);
+        } else {
           throw new Error(`The operation "${operation}" is not known!`);
         }
       } else {
