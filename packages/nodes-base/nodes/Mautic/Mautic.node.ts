@@ -1,3 +1,5 @@
+import { snakeCase } from 'change-case';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -89,10 +91,14 @@ export class Mautic implements INodeType {
 		const length = items.length as unknown as number;
 		let qs: IDataObject;
 		let responseData;
+
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
 			qs = {};
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const options = this.getNodeParameter('options', i) as IDataObject;
+
 			if (resource === 'contact') {
 				//https://developer.mautic.org/?php#create-contact
 				if (operation === 'create') {
@@ -115,7 +121,7 @@ export class Mautic implements INodeType {
 						if (json !== undefined) {
 							body = { ...json };
 						} else {
-							throw new Error('Invalid JSON')
+							throw new Error('Invalid JSON');
 						}
 					}
 					if (additionalFields.ipAddress) {
@@ -159,7 +165,7 @@ export class Mautic implements INodeType {
 						if (json !== undefined) {
 							body = { ...json };
 						} else {
-							throw new Error('Invalid JSON')
+							throw new Error('Invalid JSON');
 						}
 					}
 					if (updateFields.ipAddress) {
@@ -191,8 +197,14 @@ export class Mautic implements INodeType {
 				//https://developer.mautic.org/?php#list-contacts
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					qs = Object.assign(qs, filters);
+					qs = Object.assign(qs, options);
+					if (qs.orderBy) {
+						// For some reason does camelCase get used in the returned data
+						// but snake_case here. So convert it automatically to not confuse
+						// the users.
+						qs.orderBy = snakeCase(qs.orderBy as string);
+					}
+
 					try {
 						if (returnAll === true) {
 							responseData = await mauticApiRequestAllItems.call(this, 'contacts', 'GET', '/contacts', {}, qs);
@@ -203,6 +215,7 @@ export class Mautic implements INodeType {
 							responseData = responseData.contacts;
 							responseData = Object.values(responseData);
 						}
+
 					} catch (err) {
 						throw new Error(`Mautic Error: ${JSON.stringify(err)}`);
 					}
@@ -218,12 +231,22 @@ export class Mautic implements INodeType {
 					}
 				}
 			}
+
 			if (Array.isArray(responseData)) {
+				if (options.rawData !== true) {
+					// @ts-ignore
+					responseData = responseData.map(item => item.fields.all);
+				}
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
+				if (options.rawData !== true) {
+					// @ts-ignore
+					responseData = responseData.fields.all;
+				}
 				returnData.push(responseData as IDataObject);
 			}
 		}
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
