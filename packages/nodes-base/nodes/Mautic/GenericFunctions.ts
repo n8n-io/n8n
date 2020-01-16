@@ -31,9 +31,9 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		const errorMessage = err.error || err.error.message;
 
 		if (errorMessage !== undefined) {
-			throw errorMessage;
+			throw new Error(errorMessage);
 		}
-		throw err
+		throw err;
 	}
 }
 
@@ -50,20 +50,18 @@ export async function mauticApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	query.limit = 30;
 	query.start = 0;
 
-	let uri: string | undefined;
-
 	do {
-		responseData = await mauticApiRequest.call(this, method, endpoint, body, query, uri);
-		const values = Object.values(responseData[propertyName])
+		responseData = await mauticApiRequest.call(this, method, endpoint, body, query);
+		const values = Object.values(responseData[propertyName]);
 		for (const value of values) {
-			data.push(value as IDataObject)
+			data.push(value as IDataObject);
 		}
 		returnData.push.apply(returnData, data);
 		query.start++;
 		data = [];
 	} while (
 		responseData.total !== undefined &&
-		((query.limit * query.start) - parseInt(responseData.total)) < 0
+		((query.limit * query.start) - parseInt(responseData.total, 10)) < 0
 		);
 
 	return returnData;

@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations = [
 	{
@@ -104,7 +104,7 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'LastName',
+		description: 'Last Name',
 	},
 	{
 		displayName: 'Primary Company',
@@ -394,6 +394,7 @@ export const contactFields = [
 			},
 		],
 	},
+
 /* -------------------------------------------------------------------------- */
 /*                                 contact:get                                */
 /* -------------------------------------------------------------------------- */
@@ -414,6 +415,7 @@ export const contactFields = [
 		default: '',
 		description: 'Contact ID',
 	},
+
 /* -------------------------------------------------------------------------- */
 /*                                contact:getAll                              */
 /* -------------------------------------------------------------------------- */
@@ -458,74 +460,7 @@ export const contactFields = [
 		default: 30,
 		description: 'How many results to return.',
 	},
-	{
-		displayName: 'Filters',
-		name: 'filters',
-		type: 'collection',
-		placeholder: 'Add Filter',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Search',
-				name: 'search',
-				type: 'string',
-				default: '',
-				description: 'String or search command to filter entities by.',
-			},
-			{
-				displayName: 'Order By',
-				name: 'orderBy',
-				type: 'string',
-				default: '',
-				description: `Column to sort by. Can use any column listed in the response.<br/>
-				However, all properties in the response that are written in camelCase need to be<br/>
-				changed a bit. Before every capital add an underscore _ and then change the capital<br/>
-				letters to non-capital letters. So dateIdentified becomes date_identified, modifiedByUser
-				becomes modified_by_user etc.`,
-			},
-			{
-				displayName: 'Order By Dir',
-				name: 'orderByDir',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name: 'ASC',
-						valie: 'asc',
-					},
-					{
-						name: 'Desc',
-						valie: 'desc',
-					},
-				],
-				description: 'Sort direction: asc or desc.',
-			},
-			{
-				displayName: 'Published Only',
-				name: 'publishedOnly',
-				type: 'boolean',
-				default: false,
-				description: 'Only return currently published entities.',
-			},
-			{
-				displayName: 'Minimal',
-				name: 'minimal',
-				type: 'boolean',
-				default: false,
-				description: 'Return only array of entities without additional lists in it.',
-			},
-		]
-	},
+
 /* -------------------------------------------------------------------------- */
 /*                               contact:delete                               */
 /* -------------------------------------------------------------------------- */
@@ -546,4 +481,128 @@ export const contactFields = [
 		default: '',
 		description: 'Contact ID',
 	},
+
+/* -------------------------------------------------------------------------- */
+/*                                 contact:all                                */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				'resource': [
+					'contact',
+				],
+			},
+		},
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Search',
+				name: 'search',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/resource': [
+							'contact',
+						],
+						'/operation': [
+							'getAll',
+						],
+					},
+				},
+				default: '',
+				description: 'String or search command to filter entities by.',
+			},
+			{
+				displayName: 'Order By',
+				name: 'orderBy',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/resource': [
+							'contact',
+						],
+						'/operation': [
+							'getAll',
+						],
+					},
+				},
+				default: '',
+				description: 'Column to sort by. Can use any column listed in the response.',
+			},
+			{
+				displayName: 'Order By Dir',
+				name: 'orderByDir',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'/resource': [
+							'contact',
+						],
+						'/operation': [
+							'getAll',
+						],
+					},
+				},
+				default: '',
+				options: [
+					{
+						name: 'ASC',
+						value: 'asc',
+					},
+					{
+						name: 'DESC',
+						value: 'desc',
+					},
+				],
+				description: 'Sort direction: ASC or DESC.',
+			},
+			{
+				displayName: 'Published Only',
+				name: 'publishedOnly',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						'/resource': [
+							'contact',
+						],
+						'/operation': [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'Only return currently published entities.',
+			},
+			{
+				displayName: 'Minimal',
+				name: 'minimal',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						'/resource': [
+							'contact',
+						],
+						'/operation': [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'Return only array of entities without additional lists in it.',
+			},
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: `By default only the data of the fields get returned. If this<br />
+							  options gets set the RAW response with all data gets returned.`,
+			},
+		]
+	},
+
 ] as INodeProperties[];
