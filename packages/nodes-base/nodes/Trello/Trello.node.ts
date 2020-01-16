@@ -1346,11 +1346,82 @@ export class Trello implements INodeType {
 						name: 'List',
 						value: 'list',
 						description: 'List all attachments',
+          },
+          {
+						name: 'Get',
+						value: 'get',
+						description: 'Get the data of an attachments',
 					},
 				],
 				default: 'list',
 				description: 'The operation to perform.',
       },
+
+      // ----------------------------------
+			//         attachment:create
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				description: 'The ID of the Card to get attachment.',
+      },
+      {
+				displayName: 'Attachment ID',
+				name: 'attachmentId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				description: 'The ID of the attachment to get.',
+      },
+      {
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+					},
+				],
+			},
 
       // ----------------------------------
 			//         attachment:list
@@ -1371,7 +1442,7 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the list to get.',
+				description: 'The ID of the Card to get attachments.',
       },
       {
 				displayName: 'Additional Fields',
@@ -1382,6 +1453,72 @@ export class Trello implements INodeType {
 					show: {
 						operation: [
 							'list',
+						],
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+					},
+				],
+      },
+
+      // ----------------------------------
+			//         attachment:get
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				description: 'The ID of the Card to get attachment.',
+      },
+      {
+				displayName: 'Attachment ID',
+				name: 'attachmentId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'attachment',
+						],
+					},
+				},
+				description: 'The ID of the attachment to get.',
+      },
+      {
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
 						],
 						resource: [
 							'attachment',
@@ -1610,19 +1747,35 @@ export class Trello implements INodeType {
       } else if (resource === 'attachment') {
 
         if (operation === 'list') {
-        // ----------------------------------
-        //         list
-        // ----------------------------------
+          // ----------------------------------
+          //         list
+          // ----------------------------------
 
-        requestMethod = 'GET';
+          requestMethod = 'GET';
 
-        const id = this.getNodeParameter('id', i) as string;
+          const id = this.getNodeParameter('id', i) as string;
 
-        endpoint = `cards/${id}/attachments`;
+          endpoint = `cards/${id}/attachments`;
 
-        const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-        Object.assign(qs, additionalFields);
-        } else {
+          const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+          Object.assign(qs, additionalFields);
+
+        }  else if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+          const id = this.getNodeParameter('id', i) as string;
+          const attachmentId = this.getNodeParameter('attachmentId', i) as string;
+
+          endpoint = `cards/${id}/attachments/${attachmentId}`;
+
+          const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+          Object.assign(qs, additionalFields);
+
+				} else {
           throw new Error(`The operation "${operation}" is not known!`);
         }
       } else {
