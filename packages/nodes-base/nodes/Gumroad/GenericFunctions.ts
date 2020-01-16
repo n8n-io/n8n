@@ -13,7 +13,7 @@ export async function gumroadApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	body = Object.assign({ access_token: credentials.accessToken }, body)
+	body = Object.assign({ access_token: credentials.accessToken }, body);
 
 	let options: OptionsWithUri = {
 		method,
@@ -30,9 +30,9 @@ export async function gumroadApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error
+		let errorMessage = error;
 		if (!error.success) {
-			errorMessage.message
+			errorMessage.message;
 		}
 		throw new Error('Gumroad Error: ' + errorMessage);
 	}

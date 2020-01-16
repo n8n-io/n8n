@@ -79,9 +79,7 @@ export class GumroadTrigger implements INodeType {
 				description: 'The resource is gonna fire the event',
 			},
 		],
-
 	};
-
 	// @ts-ignore
 	webhookMethods = {
 		default: {
@@ -90,12 +88,12 @@ export class GumroadTrigger implements INodeType {
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
-				const endpoint = `/resource_subscriptions`;
+				const endpoint = '/resource_subscriptions';
 				const { resource_subscriptions } = await gumroadApiRequest.call(this, 'GET', endpoint);
 				if (Array.isArray(resource_subscriptions)) {
 					for (const resource of resource_subscriptions) {
 						if (resource.id === webhookData.webhookId) {
-							return true
+							return true;
 						}
 					}
 				}
