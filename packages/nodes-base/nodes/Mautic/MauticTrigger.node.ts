@@ -62,14 +62,14 @@ export class MauticTrigger implements INodeType {
 				displayName: 'Events Order',
 				name: 'eventsOrder',
 				type: 'options',
-				default: '',
+				default: 'ASC',
 				options: [
 					{
-						name: 'Asc',
+						name: 'ASC',
 						value: 'ASC',
 					},
 					{
-						name: 'Desc',
+						name: 'DESC',
 						value: 'DESC',
 					},
 				],
@@ -122,12 +122,12 @@ export class MauticTrigger implements INodeType {
 				const urlParts = urlParse(webhookUrl);
 				const body: IDataObject = {
 					name: `n8n-webhook:${urlParts.path}`,
-					description: `n8n webhook`,
-					webhookUrl: webhookUrl,
+					description: 'n8n webhook',
+					webhookUrl,
 					triggers: events,
 					eventsOrderbyDir: eventsOrder,
 					isPublished: true,
-				}
+				};
 				const { hook } = await mauticApiRequest.call(this, 'POST', '/hooks/new', body);
 				webhookData.webhookId = hook.id;
 				return true;

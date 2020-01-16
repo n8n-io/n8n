@@ -12,6 +12,7 @@ export class MauticApi implements ICredentialType {
 			name: 'url',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			placeholder: 'https://name.mautic.net',
 		},
 		{
 			displayName: 'Username',
@@ -22,7 +23,7 @@ export class MauticApi implements ICredentialType {
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'password' as NodePropertyTypes,
 			default: '',
 		},
 	];
