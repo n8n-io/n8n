@@ -656,8 +656,8 @@ export class Mattermost implements INodeType {
 				},
 				options: [
 					{
-						name: 'Desactive',
-						value: 'desactive',
+						name: 'Deactive',
+						value: 'deactive',
 						description: 'Deactivates the user and revokes all its sessions by archiving its user object.',
 					},
 				],
@@ -665,7 +665,7 @@ export class Mattermost implements INodeType {
 				description: 'The operation to perform.',
 			},
 			// ----------------------------------
-			//         user:desactivate
+			//         user:deactivate
 			// ----------------------------------
 			{
 				displayName: 'User ID',
@@ -678,7 +678,7 @@ export class Mattermost implements INodeType {
 							'user',
 						],
 						operation: [
-							'desactive',
+							'deactive',
 						],
 					},
 				},
@@ -900,9 +900,12 @@ export class Mattermost implements INodeType {
 					Object.assign(body, otherOptions);
 				}
 			} else if (resource === 'user') {
-				if (operation === 'desactive') {
+				// TODO: Remove the "deactive" again in the future. In here temporary
+				//       to not break workflows for people which set the option before
+				//       typo got fixed. JO 2020-01-17
+				if (operation === 'deactive' || operation === 'desactive') {
 					// ----------------------------------
-					//          user:desactive
+					//          user:deactive
 					// ----------------------------------
 					const userId = this.getNodeParameter('userId', i) as string;
 					requestMethod = 'DELETE';
