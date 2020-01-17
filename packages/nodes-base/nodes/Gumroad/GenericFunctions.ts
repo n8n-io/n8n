@@ -30,10 +30,6 @@ export async function gumroadApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error;
-		if (!error.success) {
-			errorMessage.message;
-		}
-		throw new Error('Gumroad Error: ' + errorMessage);
+		throw new Error('Gumroad Error: ' + error.message);
 	}
 }
