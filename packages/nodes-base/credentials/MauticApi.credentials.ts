@@ -23,7 +23,10 @@ export class MauticApi implements ICredentialType {
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'password' as NodePropertyTypes,
+			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 	];
