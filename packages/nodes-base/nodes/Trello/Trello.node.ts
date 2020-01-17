@@ -50,11 +50,11 @@ export class Trello implements INodeType {
 					{
 						name: 'List',
 						value: 'list',
-          },
-          {
-            name: "Attachment",
-            value: "attachment"
-          }
+					},
+					{
+						name: "Attachment",
+						value: "attachment"
+					}
 				],
 				default: 'card',
 				description: 'The resource to operate on.',
@@ -548,11 +548,11 @@ export class Trello implements INodeType {
 						name: 'Update',
 						value: 'update',
 						description: 'Update a card',
-          },
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
-      },
+			},
 
 			// ----------------------------------
 			//         card:create
@@ -1215,11 +1215,11 @@ export class Trello implements INodeType {
 						description: 'Whether the acting user is subscribed to the list.',
 					},
 				],
-      },
+			},
 
-      // ----------------------------------
+			// ----------------------------------
 			//         attachment
-      // ----------------------------------
+			// ----------------------------------
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -1232,7 +1232,7 @@ export class Trello implements INodeType {
 					},
 				},
 				options: [
-          {
+					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new board',
@@ -1242,22 +1242,22 @@ export class Trello implements INodeType {
 						value: 'delete',
 						description: 'Delete a board',
 					},
-          {
+					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get the data of an attachments',
 					},
-          {
+					{
 						name: 'List',
 						value: 'list',
 						description: 'List all attachments for the card',
-          }
+					}
 				],
 				default: 'list',
 				description: 'The operation to perform.',
-      },
+			},
 
-      // ----------------------------------
+			// ----------------------------------
 			//         attachment:create
 			// ----------------------------------
 			{
@@ -1277,8 +1277,8 @@ export class Trello implements INodeType {
 					},
 				},
 				description: 'The ID of the Card to get attachment.',
-      },
-      {
+			},
+			{
 				displayName: 'Attachment URL',
 				name: 'url',
 				type: 'string',
@@ -1295,8 +1295,8 @@ export class Trello implements INodeType {
 					},
 				},
 				description: 'The ID of the attachment to get.',
-      },
-      {
+			},
+			{
 				displayName: 'Attachment Name',
 				name: 'name',
 				type: 'string',
@@ -1312,8 +1312,8 @@ export class Trello implements INodeType {
 					},
 				},
 				description: 'The ID of the attachment to get.',
-      },
-      {
+			},
+			{
 				displayName: 'Attachment mimeType',
 				name: 'mimeType',
 				type: 'string',
@@ -1329,12 +1329,12 @@ export class Trello implements INodeType {
 					},
 				},
 				description: 'The ID of the attachment to get.',
-      },
+			},
 
-      // ----------------------------------
+			// ----------------------------------
 			//         attachment:delete
-      // ----------------------------------
-      {
+			// ----------------------------------
+			{
 				displayName: 'Card ID',
 				name: 'cardId',
 				type: 'string',
@@ -1351,8 +1351,8 @@ export class Trello implements INodeType {
 					},
 				},
 				description: 'The ID of the Card to get attachments.',
-      },
-      {
+			},
+			{
 				displayName: 'Attachment ID',
 				name: 'id',
 				type: 'string',
@@ -1369,9 +1369,9 @@ export class Trello implements INodeType {
 					},
 				},
 				description: 'The ID of the attachment to get.',
-      },
+			},
 
-      // ----------------------------------
+			// ----------------------------------
 			//         attachment:list
 			// ----------------------------------
 			{
@@ -1391,8 +1391,8 @@ export class Trello implements INodeType {
 					},
 				},
 				description: 'The ID of the Card to get attachments.',
-      },
-      {
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -1417,9 +1417,9 @@ export class Trello implements INodeType {
 						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
 					},
 				],
-      },
+			},
 
-      // ----------------------------------
+			// ----------------------------------
 			//         attachment:get
 			// ----------------------------------
 			{
@@ -1439,8 +1439,8 @@ export class Trello implements INodeType {
 					},
 				},
 				description: 'The ID of the Card to get attachment.',
-      },
-      {
+			},
+			{
 				displayName: 'Attachment ID',
 				name: 'id',
 				type: 'string',
@@ -1457,8 +1457,8 @@ export class Trello implements INodeType {
 					},
 				},
 				description: 'The ID of the attachment to get.',
-      },
-      {
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -1692,70 +1692,70 @@ export class Trello implements INodeType {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
 
-      } else if (resource === 'attachment') {
+			} else if (resource === 'attachment') {
 
-        if (operation === 'create') {
-          // ----------------------------------
-          //         create
-          // ----------------------------------
-          requestMethod = 'POST';
+				if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
+					requestMethod = 'POST';
 
-          const cardId = this.getNodeParameter('cardId', i) as string;
-          const name = this.getNodeParameter('name', i) as string;
-          const url = this.getNodeParameter('url', i) as string;
-          const mimeType = this.getNodeParameter('mimeType', i) as string;
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+					const url = this.getNodeParameter('url', i) as string;
+					const mimeType = this.getNodeParameter('mimeType', i) as string;
 
-          endpoint = `cards/${cardId}/attachments`;
+					endpoint = `cards/${cardId}/attachments`;
 
-          Object.assign(qs, {
-            name,
-            mimeType,
-            url
-          });
+					Object.assign(qs, {
+						name,
+						mimeType,
+						url
+					});
 
-        } else if (operation === 'delete') {
-          // ----------------------------------
-          //         delete
-          // ----------------------------------
-          requestMethod = 'DELETE';
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+					requestMethod = 'DELETE';
 
-          const cardId = this.getNodeParameter('cardId', i) as string;
-          const id = this.getNodeParameter('id', i) as string;
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
 
-          endpoint = `cards/${cardId}/attachments/${id}`;
+					endpoint = `cards/${cardId}/attachments/${id}`;
 
-        } else if (operation === 'get') {
+				} else if (operation === 'get') {
 					// ----------------------------------
 					//         get
 					// ----------------------------------
 
 					requestMethod = 'GET';
 
-          const cardId = this.getNodeParameter('cardId', i) as string;
-          const id = this.getNodeParameter('id', i) as string;
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
 
-          endpoint = `cards/${cardId}/attachments/${id}`;
+					endpoint = `cards/${cardId}/attachments/${id}`;
 
-          const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-          Object.assign(qs, additionalFields);
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'list') {
-          // ----------------------------------
-          //         list
-          // ----------------------------------
+					// ----------------------------------
+					//         list
+					// ----------------------------------
 
-          requestMethod = 'GET';
+					requestMethod = 'GET';
 
-          const cardId = this.getNodeParameter('cardId', i) as string;
+					const cardId = this.getNodeParameter('cardId', i) as string;
 
-          endpoint = `cards/${cardId}/attachments`;
+					endpoint = `cards/${cardId}/attachments`;
 
-          const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-          Object.assign(qs, additionalFields);
-        } else {
-          throw new Error(`The operation "${operation}" is not known!`);
-        }
-      } else {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
+				}
+			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
