@@ -39,6 +39,6 @@ export async function copperApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error('Zoom Error: ' + error.message);
+		throw new Error('Copper Error: ' + error.message);
 	}
 }
