@@ -40,6 +40,10 @@ export class Trello implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: "Attachment",
+						value: "attachment"
+					},
+					{
 						name: 'Board',
 						value: 'board',
 					},
@@ -51,10 +55,6 @@ export class Trello implements INodeType {
 						name: 'List',
 						value: 'list',
 					},
-					{
-						name: "Attachment",
-						value: "attachment"
-					}
 				],
 				default: 'card',
 				description: 'The resource to operate on.',
@@ -1248,12 +1248,12 @@ export class Trello implements INodeType {
 						description: 'Get the data of an attachments',
 					},
 					{
-						name: 'List',
-						value: 'list',
-						description: 'List all attachments for the card',
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Returns all attachments for the card',
 					}
 				],
-				default: 'list',
+				default: 'getAll',
 				description: 'The operation to perform.',
 			},
 
@@ -1276,10 +1276,10 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the Card to get attachment.',
+				description: 'The ID of the card to add attachment to.',
 			},
 			{
-				displayName: 'Attachment URL',
+				displayName: 'Source URL',
 				name: 'url',
 				type: 'string',
 				default: '',
@@ -1294,13 +1294,13 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the attachment to get.',
+				description: 'The URL of the attachment to add.',
 			},
 			{
-				displayName: 'Attachment Name',
-				name: 'name',
-				type: 'string',
-				default: '',
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: [
@@ -1311,24 +1311,24 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the attachment to get.',
-			},
-			{
-				displayName: 'Attachment mimeType',
-				name: 'mimeType',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'attachment',
-						],
+				default: {},
+				options: [
+					{
+						displayName: 'MIME Type',
+						name: 'mimeType',
+						type: 'string',
+						default: '',
+						placeholder: 'image/png',
+						description: 'The MIME type of the attachment to add.',
 					},
-				},
-				description: 'The ID of the attachment to get.',
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The name of the attachment to add.',
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -1350,7 +1350,7 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the Card to get attachments.',
+				description: 'The ID of the card to get delete.',
 			},
 			{
 				displayName: 'Attachment ID',
@@ -1368,11 +1368,11 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the attachment to get.',
+				description: 'The ID of the attachment to delete.',
 			},
 
 			// ----------------------------------
-			//         attachment:list
+			//         attachment:getAll
 			// ----------------------------------
 			{
 				displayName: 'Card ID',
@@ -1383,14 +1383,14 @@ export class Trello implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list',
+							'getAll',
 						],
 						resource: [
 							'attachment',
 						],
 					},
 				},
-				description: 'The ID of the Card to get attachments.',
+				description: 'The ID of the card to get attachments.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1400,7 +1400,7 @@ export class Trello implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list',
+							'getAll',
 						],
 						resource: [
 							'attachment',
@@ -1438,7 +1438,7 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the Card to get attachment.',
+				description: 'The ID of the card to get attachment.',
 			},
 			{
 				displayName: 'Attachment ID',
@@ -1698,25 +1698,26 @@ export class Trello implements INodeType {
 					// ----------------------------------
 					//         create
 					// ----------------------------------
+
 					requestMethod = 'POST';
 
 					const cardId = this.getNodeParameter('cardId', i) as string;
-					const name = this.getNodeParameter('name', i) as string;
 					const url = this.getNodeParameter('url', i) as string;
-					const mimeType = this.getNodeParameter('mimeType', i) as string;
-
-					endpoint = `cards/${cardId}/attachments`;
 
 					Object.assign(qs, {
-						name,
-						mimeType,
-						url
+						url,
 					});
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+
+					endpoint = `cards/${cardId}/attachments`;
 
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
 					// ----------------------------------
+
 					requestMethod = 'DELETE';
 
 					const cardId = this.getNodeParameter('cardId', i) as string;
@@ -1739,9 +1740,9 @@ export class Trello implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
 
-				} else if (operation === 'list') {
+				} else if (operation === 'getAll') {
 					// ----------------------------------
-					//         list
+					//         getAll
 					// ----------------------------------
 
 					requestMethod = 'GET';
@@ -1761,7 +1762,11 @@ export class Trello implements INodeType {
 
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-			returnData.push(responseData as IDataObject);
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
