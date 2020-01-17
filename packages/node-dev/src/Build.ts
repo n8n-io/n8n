@@ -43,7 +43,7 @@ export async function createCustomTsconfig () {
 	tsConfig.include = newIncludeFiles;
 
 	// Write new custom tsconfig file
-	const { fd, path, cleanup } = await file();
+	const { fd, path, cleanup } = await file({ dir: process.cwd() });
 	await fsWriteAsync(fd, Buffer.from(JSON.stringify(tsConfig, null, 2), 'utf8'));
 
 	return {
