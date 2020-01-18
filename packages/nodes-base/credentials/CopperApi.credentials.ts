@@ -21,11 +21,5 @@ export class CopperApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
-		{
-			displayName: 'Secret',
-			name: 'secret',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-		},
 	];
 }
