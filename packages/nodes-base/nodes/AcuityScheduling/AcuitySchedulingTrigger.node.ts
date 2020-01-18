@@ -17,7 +17,7 @@ import {
 export class AcuitySchedulingTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Acuity Scheduling Trigger',
-		name: 'acuityScheduling',
+		name: 'acuitySchedulingTrigger',
 		icon: 'file:acuityScheduling.png',
 		group: ['trigger'],
 		version: 1,
@@ -77,6 +77,13 @@ export class AcuitySchedulingTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				default: true,
+				description: 'By default does the webhook-data only contain the ID of the object.<br />If this option gets activated it will resolve the data automatically.',
+			},
 		],
 	};
 	// @ts-ignore
@@ -127,10 +134,30 @@ export class AcuitySchedulingTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
+
+		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
+
+		if (resolveData === false) {
+			// Return the data as it got received
+			return {
+				workflowData: [
+					this.helpers.returnJsonArray(req.body),
+				],
+			};
+		}
+
+		// Resolve the data by requesting the information via API
+		const event = this.getNodeParameter('event', false) as string;
+		const eventType = event.split('.').shift();
+		const endpoint = `/${eventType}s/${req.body.id}`;
+		const responseData = await acuitySchedulingApiRequest.call(this, 'GET', endpoint, {});
+
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body),
+				this.helpers.returnJsonArray(responseData),
 			],
 		};
+
+
 	}
 }
