@@ -17,6 +17,7 @@ import {
 } from 'n8n-core';
 
 
+import * as PCancelable from 'p-cancelable';
 import { ObjectID, Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
@@ -181,9 +182,10 @@ export interface IExecutionDeleteFilter {
 
 export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
-	process: ChildProcess;
+	process?: ChildProcess;
 	startedAt: Date;
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
+	workflowExecution?: PCancelable<IRun>;
 }
 
 export interface IN8nConfig {
