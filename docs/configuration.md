@@ -77,6 +77,20 @@ These settings can also be overwritten on a per workflow basis in the workflow
 settings in the Editor UI.
 
 
+## Execute In Same Process
+
+All workflows get executed in their own separate process. This ensures that all CPU cores
+get used and that they do not block each other on CPU intensive tasks. Additionally does
+the crash of one execution not take down the whole application. The disadvantage is, however,
+that it slows down the start-time considerably and uses much more memory. So in case, the
+workflows are not CPU intensive and they have to start very fast it is possible to run them
+all directly in the main-process with this setting.
+
+```bash
+export EXECUTIONS_SAME_PROCESS=true
+```
+
+
 ## Exclude Nodes
 
 It is possible to not allow users to use nodes of a specific node type. If you, for example,

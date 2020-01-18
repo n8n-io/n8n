@@ -84,6 +84,12 @@ const config = convict({
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS'
 		},
+
+		sameProcessExecution: {
+			doc: 'Executes the workflows in the same process instead of in a separate one',
+			default: false,
+			env: 'EXECUTIONS_SAME_PROCESS'
+		},
 	},
 
 	generic: {

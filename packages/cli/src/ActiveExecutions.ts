@@ -13,6 +13,7 @@ import {
 } from '.';
 
 import { ChildProcess } from 'child_process';
+import * as PCancelable from 'p-cancelable';
 
 
 export class ActiveExecutions {
@@ -30,7 +31,7 @@ export class ActiveExecutions {
 	 * @returns {string}
 	 * @memberof ActiveExecutions
 	 */
-	add(process: ChildProcess, executionData: IWorkflowExecutionDataProcess): string {
+	add(executionData: IWorkflowExecutionDataProcess, process?: ChildProcess): string {
 		const executionId = this.nextId++;
 
 		this.activeExecutions[executionId] = {
@@ -41,6 +42,22 @@ export class ActiveExecutions {
 		};
 
 		return executionId.toString();
+	}
+
+
+	/**
+	 * Attaches an execution
+	 *
+	 * @param {string} executionId
+	 * @param {PCancelable<IRun>} workflowExecution
+	 * @memberof ActiveExecutions
+	 */
+	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
+		if (this.activeExecutions[executionId] === undefined) {
+			throw new Error(`No active execution with id "${executionId}" got found to attach to workflowExecution to!`);
+		}
+
+		this.activeExecutions[executionId].workflowExecution = workflowExecution;
 	}
 
 
@@ -82,13 +99,20 @@ export class ActiveExecutions {
 
 		// In case something goes wrong make sure that promise gets first
 		// returned that it gets then also resolved correctly.
-		setTimeout(() => {
-			if (this.activeExecutions[executionId].process.connected) {
-				this.activeExecutions[executionId].process.send({
-					type: 'stopExecution'
-				});
-			}
-		}, 1);
+		if (this.activeExecutions[executionId].process !== undefined) {
+			// Workflow is running in subprocess
+			setTimeout(() => {
+				if (this.activeExecutions[executionId].process!.connected) {
+					this.activeExecutions[executionId].process!.send({
+						type: 'stopExecution'
+					});
+				}
+
+			}, 1);
+		} else {
+			// Workflow is running in current process
+			this.activeExecutions[executionId].workflowExecution!.cancel('Canceled by user');
+		}
 
 		return this.getPostExecutePromise(executionId);
 	}
