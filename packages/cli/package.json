@@ -66,6 +66,7 @@
         "@types/request-promise-native": "^1.0.15",
         "jest": "^24.9.0",
         "nodemon": "^2.0.2",
+        "p-cancelable": "^2.0.0",
         "run-script-os": "^1.0.7",
         "ts-jest": "^24.0.2",
         "tslint": "^5.17.0",
