@@ -1,4 +1,6 @@
+import { createHash } from 'crypto';
 import { OptionsWithUri } from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -6,18 +8,17 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+import {
+	ICredentialDataDecryptedObject,
+	IDataObject,
+} from 'n8n-workflow';
 
 export async function copperApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('copperApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	if (credentials.secret) {
-		body.secret = {
-			secret: credentials.secret as string,
-		};
-	};
+
 	let options: OptionsWithUri = {
 		headers: {
 			'X-PW-AccessToken': credentials.apiKey,
@@ -39,6 +40,24 @@ export async function copperApiRequest(this: IHookFunctions | IExecuteFunctions 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error('Copper Error: ' + error.message);
+		let errorMessage = error.message;
+		if (error.response.body && error.response.body.message) {
+			errorMessage = error.response.body.message;
+		}
+
+		throw new Error('Copper Error: ' + errorMessage);
 	}
+}
+
+
+/**
+ * Creates a secret from the credentials
+ *
+ * @export
+ * @param {ICredentialDataDecryptedObject} credentials
+ * @returns
+ */
+export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
+	const data = `${credentials.email},${credentials.apiKey}`;
+	return createHash('md5').update(data).digest("hex");
 }
