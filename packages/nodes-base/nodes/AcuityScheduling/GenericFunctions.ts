@@ -14,11 +14,13 @@ export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecute
 		throw new Error('No credentials got returned!');
 	}
 
-	const base64Key =  Buffer.from(`${credentials.userId}:${credentials.apiKey}`).toString('base64');
-	let options: OptionsWithUri = {
+	const options: OptionsWithUri = {
 		headers: {
-			Authorization: `Basic ${base64Key}`,
 			'Content-Type': 'application/json',
+		},
+		auth: {
+			user: credentials.userId as string,
+			password: credentials.apiKey as string,
 		},
 		method,
 		qs,
@@ -29,6 +31,12 @@ export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecute
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error('Acuity Scheduling Error: ' + error.message);
+
+		let errorMessage = error.message;
+		if (error.response.body && error.response.body.message) {
+			errorMessage = `[${error.response.body.status_code}] ${error.response.body.message}`;
+		}
+
+		throw new Error('Acuity Scheduling Error: ' + errorMessage);
 	}
 }
