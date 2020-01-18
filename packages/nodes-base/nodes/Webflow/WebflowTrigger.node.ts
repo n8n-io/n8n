@@ -67,8 +67,8 @@ export class WebflowTrigger implements INodeType {
 						value: 'form_submission',
 					},
 					{
-						name: 'Site Publish',
-						value: 'site_publish',
+						name: 'Ecomm Inventory Changed',
+						value: 'ecomm_inventory_changed',
 					},
 					{
 						name: 'Ecomm New Order',
@@ -79,8 +79,8 @@ export class WebflowTrigger implements INodeType {
 						value: 'ecomm_order_changed',
 					},
 					{
-						name: 'Ecomm Inventory Changed',
-						value: 'ecomm_inventory_changed',
+						name: 'Site Publish',
+						value: 'site_publish',
 					},
 				],
 				default: 'form_submission',
@@ -106,7 +106,7 @@ export class WebflowTrigger implements INodeType {
 				return returnData;
 			},
 		},
-	}
+	};
 
 	// @ts-ignore
 	webhookMethods = {
