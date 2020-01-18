@@ -33,6 +33,12 @@ export async function webflowApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error('Webflow Error: ' + error.message);
+
+		let errorMessage = error.message;
+		if (error.response.body && error.response.body.err) {
+			errorMessage = error.response.body.err;
+		}
+
+		throw new Error('Webflow Error: ' + errorMessage);
 	}
 }
