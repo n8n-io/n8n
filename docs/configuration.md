@@ -87,7 +87,7 @@ workflows are not CPU intensive and they have to start very fast it is possible 
 all directly in the main-process with this setting.
 
 ```bash
-export EXECUTIONS_SAME_PROCESS=true
+export EXECUTIONS_PROCESS=main
 ```
 
 

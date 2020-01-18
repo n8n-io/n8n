@@ -94,9 +94,9 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
-		const sameProcessExecution = config.get('executions.sameProcessExecution') as boolean;
-		if (sameProcessExecution === true) {
-			return this.runSameProcess(data, loadStaticData);
+		const executionsProcess = config.get('executions.process') as string;
+		if (executionsProcess === 'main') {
+			return this.runMainProcess(data, loadStaticData);
 		}
 
 		return this.runSubprocess(data, loadStaticData);
@@ -112,7 +112,7 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async runSameProcess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+	async runMainProcess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
 		if (loadStaticData === true && data.workflowData.id) {
 			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(data.workflowData.id as string);
 		}

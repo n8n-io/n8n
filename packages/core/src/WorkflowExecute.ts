@@ -478,8 +478,6 @@ export class WorkflowExecute {
 
 			onCancel.shouldReject = false;
 			onCancel(() => {
-				console.log('got cancellled');
-
 				gotCancel = true;
 			});
 
