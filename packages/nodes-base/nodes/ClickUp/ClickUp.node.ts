@@ -3,11 +3,11 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	clickupApiRequest,
@@ -23,7 +23,7 @@ import {
 export class ClickUp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ClickUp',
-		name: 'clickup',
+		name: 'clickUp',
 		icon: 'file:clickup.png',
 		group: ['output'],
 		version: 1,
@@ -182,9 +182,11 @@ export class ClickUp implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
+
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
 			if (resource === 'task') {
 				if (operation === 'create') {
 					const listId = this.getNodeParameter('list', i) as string;
@@ -233,11 +235,8 @@ export class ClickUp implements INodeType {
 						delete body.content;
 						body.markdown_content = additionalFields.content as string;
 					}
-					try {
-						responseData = await clickupApiRequest.call(this, 'POST', `/list/${listId}/task`, body);
-					} catch (err) {
-						throw new Error(`ClickUp Error: ${err}`);
-					}
+
+					responseData = await clickupApiRequest.call(this, 'POST', `/list/${listId}/task`, body);
 				}
 				if (operation === 'update') {
 					const taskId = this.getNodeParameter('id', i) as string;
@@ -267,6 +266,9 @@ export class ClickUp implements INodeType {
 					if (updateFields.notifyAll) {
 						body.notify_all = updateFields.notifyAll as boolean;
 					}
+					if (updateFields.name) {
+						body.name = updateFields.name as string;
+					}
 					if (updateFields.parentId) {
 						body.parent = updateFields.parentId as string;
 					}
@@ -274,27 +276,15 @@ export class ClickUp implements INodeType {
 						delete body.content;
 						body.markdown_content = updateFields.content as string;
 					}
-					try {
-						responseData = await clickupApiRequest.call(this, 'PUT', `/task/${taskId}`, body);
-					} catch (err) {
-						throw new Error(`ClickUp Error: ${err}`);
-					}
+					responseData = await clickupApiRequest.call(this, 'PUT', `/task/${taskId}`, body);
 				}
 				if (operation === 'get') {
 					const taskId = this.getNodeParameter('id', i) as string;
-					try {
-						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`);
-					} catch (err) {
-						throw new Error(`ClickUp Error: ${err}`);
-					}
+					responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`);
 				}
 				if (operation === 'delete') {
 					const taskId = this.getNodeParameter('id', i) as string;
-					try {
-						responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}`, {});
-					} catch (err) {
-						throw new Error(`ClickUp Error: ${err}`);
-					}
+					responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}`, {});
 				}
 			}
 			if (Array.isArray(responseData)) {
