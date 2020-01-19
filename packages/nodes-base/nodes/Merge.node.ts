@@ -179,14 +179,17 @@ export class Merge implements INodeType {
 					{
 						name: 'Always',
 						value: 'always',
+						description: 'Always overwrites everything.',
+					},
+					{
+						name: 'If Blank',
+						value: 'blank',
+						description: 'Overwrites only values of "null", "undefined" or empty string.',
 					},
 					{
 						name: 'If Missing',
 						value: 'undefined',
-					},
-					{
-						name: 'If Blank',
-						value: 'blank'
+						description: 'Only adds values which do not exist yet.',
 					},
 				],
 				default: 'always',
@@ -404,11 +407,18 @@ export class Merge implements INodeType {
 						entry = JSON.parse(JSON.stringify(entry));
 
 						for (key of Object.keys(copyData[referenceValue as string].json)) {
-							// TODO: Currently only copies json data and no binary one
-							let value = copyData[referenceValue as string].json[key];
+							if (key === propertyName2) {
+								continue;
+							}
 
-							if (overwrite === 'always' || (overwrite === 'undefined' && ['null', 'undefined'].includes(typeof value)) || (overwrite === 'blank' && !value)) {
-								entry.json[key] = value
+							// TODO: Currently only copies json data and no binary one
+							const value = copyData[referenceValue as string].json[key];
+							if (
+								overwrite === 'always' ||
+								(overwrite === 'undefined' && !entry.json.hasOwnProperty(key)) ||
+								(overwrite === 'blank' && [null, undefined, ''].includes(entry.json[key] as string))
+							) {
+								entry.json[key] = value;
 							}
 						}
 					} else {
