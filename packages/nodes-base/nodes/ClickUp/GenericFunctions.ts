@@ -14,7 +14,7 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 		throw new Error('No credentials got returned!');
 	}
 
-	let options: OptionsWithUri = {
+	const options: OptionsWithUri = {
 		headers: {
 			Authorization: credentials.accessToken,
 			'Content-Type': 'application/json',
@@ -30,8 +30,8 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 	} catch (error) {
 		let errorMessage = error;
 		if (error.err) {
-			errorMessage = error.err
+			errorMessage = error.err;
 		}
-		throw new Error('Click Up Error: ' + errorMessage);
+		throw new Error('ClickUp Error: ' + errorMessage);
 	}
 }

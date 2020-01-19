@@ -5,11 +5,11 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
-	INodePropertyOptions,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -21,7 +21,7 @@ import { createHmac } from 'crypto';
 export class ClickUpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ClickUp Trigger',
-		name: 'clickupTrigger',
+		name: 'clickUpTrigger',
 		icon: 'file:clickup.png',
 		group: ['trigger'],
 		version: 1,
@@ -69,88 +69,16 @@ export class ClickUpTrigger implements INodeType {
 						value: '*',
 					},
 					{
-						name: 'task.created',
-						value: 'taskCreated',
-					},
-					{
-						name: 'task.updated',
-						value: 'taskUpdated',
-					},
-					{
-						name: 'task.deleted',
-						value: 'taskDeleted',
-					},
-					{
-						name: 'task.status.updated',
-						value: 'taskStatusUpdated',
-					},
-					{
-						name: 'task.assignee.updated',
-						value: 'taskAssigneeUpdated',
-					},
-					{
-						name: 'task.dueDate.updated',
-						value: 'taskDueDateUpdated',
-					},
-					{
-						name: 'task.tag.updated',
-						value: 'taskTagUpdated',
-					},
-					{
-						name: 'task.moved',
-						value: 'taskMoved',
-					},
-					{
-						name: 'task.comment.posted',
-						value: 'taskCommentPosted',
-					},
-					{
-						name: 'task.comment.updated',
-						value: 'taskCommentUpdated',
-					},
-					{
-						name: 'task.timeEstimate.updated',
-						value: 'taskTimeEstimateUpdated',
-					},
-					{
-						name: 'task.timeTracked.updated',
-						value: 'taskTimeTrackedUpdated',
-					},
-					{
-						name: 'list.created',
-						value: 'listCreated',
-					},
-					{
-						name: 'list.updated',
-						value: 'listUpdated',
-					},
-					{
-						name: 'list.deleted',
-						value: 'listDeleted',
-					},
-					{
 						name: 'folder.created',
 						value: 'folderCreated',
-					},
-					{
-						name: 'folder.updated',
-						value: 'folderUpdated',
 					},
 					{
 						name: 'folder.deleted',
 						value: 'folderDeleted',
 					},
 					{
-						name: 'space.created',
-						value: 'spaceCreated',
-					},
-					{
-						name: 'space.updated',
-						value: 'spaceUpdated',
-					},
-					{
-						name: 'space.deleted',
-						value: 'spaceDeleted',
+						name: 'folder.updated',
+						value: 'folderUpdated',
 					},
 					{
 						name: 'goal.created',
@@ -169,21 +97,86 @@ export class ClickUpTrigger implements INodeType {
 						value: 'keyResultCreated',
 					},
 					{
+						name: 'keyResult.deleted',
+						value: 'keyResultDelete',
+					},
+					{
 						name: 'keyResult.updated',
 						value: 'keyResultUpdated',
 					},
 					{
-						name: 'keyResult.deleted',
-						value: 'keyResultDelete',
+						name: 'list.created',
+						value: 'listCreated',
+					},
+					{
+						name: 'list.deleted',
+						value: 'listDeleted',
+					},
+					{
+						name: 'list.updated',
+						value: 'listUpdated',
+					},
+					{
+						name: 'space.created',
+						value: 'spaceCreated',
+					},
+					{
+						name: 'space.deleted',
+						value: 'spaceDeleted',
+					},
+					{
+						name: 'space.updated',
+						value: 'spaceUpdated',
+					},
+					{
+						name: 'task.assignee.updated',
+						value: 'taskAssigneeUpdated',
+					},
+					{
+						name: 'task.comment.posted',
+						value: 'taskCommentPosted',
+					},
+					{
+						name: 'task.comment.updated',
+						value: 'taskCommentUpdated',
+					},
+					{
+						name: 'task.created',
+						value: 'taskCreated',
+					},
+					{
+						name: 'task.deleted',
+						value: 'taskDeleted',
+					},
+					{
+						name: 'task.dueDate.updated',
+						value: 'taskDueDateUpdated',
+					},
+					{
+						name: 'task.moved',
+						value: 'taskMoved',
+					},
+					{
+						name: 'task.status.updated',
+						value: 'taskStatusUpdated',
+					},
+					{
+						name: 'task.tag.updated',
+						value: 'taskTagUpdated',
+					},
+					{
+						name: 'task.timeEstimate.updated',
+						value: 'taskTimeEstimateUpdated',
+					},
+					{
+						name: 'task.timeTracked.updated',
+						value: 'taskTimeTrackedUpdated',
+					},
+					{
+						name: 'task.updated',
+						value: 'taskUpdated',
 					},
 				],
-			},
-			{
-				displayName: 'RAW Data',
-				name: 'rawData',
-				type: 'boolean',
-				default: false,
-				description: 'If the data should be returned RAW instead of parsed.',
 			},
 			{
 				displayName: 'Filters',
@@ -193,12 +186,6 @@ export class ClickUpTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Space ID',
-						name: 'spaceId',
-						type: 'string',
-						default: '',
-					},
-					{
 						displayName: 'Folder ID',
 						name: 'folderId',
 						type: 'string',
@@ -207,6 +194,12 @@ export class ClickUpTrigger implements INodeType {
 					{
 						displayName: 'List ID',
 						name: 'listId',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Space ID',
+						name: 'spaceId',
 						type: 'string',
 						default: '',
 					},
@@ -309,15 +302,11 @@ export class ClickUpTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookData = this.getWorkflowStaticData('node');
 		const headerData = this.getHeaderData() as IDataObject;
-		const rawData = this.getNodeParameter('rawData') as boolean;
 		const req = this.getRequestObject();
 		const computedSignature = createHmac('sha256', webhookData.secret as string).update(JSON.stringify(req.body)).digest('hex');
 		if (headerData['x-signature'] !== computedSignature) {
 			// Signature is not valid so ignore call
 			return {};
-		}
-		if (!rawData) {
-			delete req.body.history_items
 		}
 		return {
 			workflowData: [

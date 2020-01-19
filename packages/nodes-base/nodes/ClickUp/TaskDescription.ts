@@ -19,9 +19,9 @@ export const taskOperations = [
 				description: 'Create a task',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a task',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a task',
 			},
 			{
 				name: 'Get',
@@ -29,9 +29,9 @@ export const taskOperations = [
 				description: 'Get a task',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a task',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a task',
 			},
 		],
 		default: 'create',
@@ -169,6 +169,19 @@ export const taskFields = [
 		},
 		options: [
 			{
+				displayName: 'Assignees',
+				name: 'assignees',
+				type: 'multiOptions',
+				loadOptionsDependsOn: [
+					'list',
+				],
+				typeOptions: {
+					loadOptionsMethod: 'getAssignees',
+				},
+
+				default: [],
+			},
+			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
@@ -178,58 +191,22 @@ export const taskFields = [
 				default: '',
 			},
 			{
-				displayName: 'Is Markdown Content',
-				name: 'markdownContent',
+				displayName: 'Due Date',
+				name: 'dueDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Due Date Time',
+				name: 'dueDateTime',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Assignees',
-				name: 'assignees',
-				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'list',
-				],
-				typeOptions: {
-					loadOptionsMethod: 'getAssignees'
-				},
-
-				default: [],
-			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'multiOptions',
-				loadOptionsDependsOn: [
-					'space',
-				],
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				default: [],
-				description: 'The array of tags applied to this task',
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				loadOptionsDependsOn: [
-					'list',
-				],
-				typeOptions: {
-					loadOptionsMethod: 'getStatuses',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'number',
-				typeOptions: {
-					maxValue: 4,
-				},
-				description: 'Integer mapping as 1 : Urgent, 2 : High, 3 : Normal, 4 : Low',
-				default: 1,
+				displayName: 'Is Markdown Content',
+				name: 'markdownContent',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Notify All',
@@ -244,22 +221,45 @@ export const taskFields = [
 				default: '',
 			},
 			{
+				displayName: 'Priority',
+				name: 'priority',
+				type: 'number',
+				typeOptions: {
+					maxValue: 4,
+				},
+				description: 'Integer mapping as 1 : Urgent, 2 : High, 3 : Normal, 4 : Low',
+				default: 3,
+			},
+			{
 				displayName: 'Start Date Time',
 				name: 'startDateTime',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Due Date Time',
-				name: 'dueDateTime',
-				type: 'boolean',
-				default: false,
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				loadOptionsDependsOn: [
+					'list',
+				],
+				typeOptions: {
+					loadOptionsMethod: 'getStatuses',
+				},
+				default: '',
 			},
 			{
-				displayName: 'Due Date',
-				name: 'dueDate',
-				type: 'dateTime',
-				default: '',
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'multiOptions',
+				loadOptionsDependsOn: [
+					'space',
+				],
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				default: [],
+				description: 'The array of tags applied to this task',
 			},
 			{
 				displayName: 'Time Estimate',
@@ -318,20 +318,28 @@ export const taskFields = [
 				default: '',
 			},
 			{
+				displayName: 'Due Date',
+				name: 'dueDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Due Date Time',
+				name: 'dueDateTime',
+				type: 'boolean',
+				default: false,
+			},
+			{
 				displayName: 'Is Markdown Content',
 				name: 'markdownContent',
 				type: 'boolean',
 				default: false,
 			},
 			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'number',
-				typeOptions: {
-					maxValue: 4,
-				},
-				description: 'Integer mapping as 1 : Urgent, 2 : High, 3 : Normal, 4 : Low',
-				default: 1,
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Notify All',
@@ -346,22 +354,20 @@ export const taskFields = [
 				default: '',
 			},
 			{
+				displayName: 'Priority',
+				name: 'priority',
+				type: 'number',
+				typeOptions: {
+					maxValue: 4,
+				},
+				description: 'Integer mapping as 1 : Urgent, 2 : High, 3 : Normal, 4 : Low',
+				default: 3,
+			},
+			{
 				displayName: 'Start Date Time',
 				name: 'startDateTime',
 				type: 'boolean',
 				default: false,
-			},
-			{
-				displayName: 'Due Date Time',
-				name: 'dueDateTime',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Due Date',
-				name: 'dueDate',
-				type: 'dateTime',
-				default: '',
 			},
 			{
 				displayName: 'Time Estimate',
