@@ -316,7 +316,7 @@ export class Merge implements INodeType {
 
 			const propertyName1 = this.getNodeParameter('propertyName1', 0) as string;
 			const propertyName2 = this.getNodeParameter('propertyName2', 0) as string;
-			const overwrite = this.getNodeParameter('overwrite', 0) as string;
+			const overwrite = this.getNodeParameter('overwrite', 0, 'always') as string;
 
 			const dataInput2 = this.getInputData(1);
 			if (!dataInput2 || !propertyName1 || !propertyName2) {
