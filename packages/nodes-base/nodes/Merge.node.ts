@@ -159,6 +159,34 @@ export class Merge implements INodeType {
 				default: 'input1',
 				description: 'Defines of which input the data should be used as output of node.',
 			},
+			{
+				displayName: 'Overwrite',
+				name: 'overwrite',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: [
+							'mergeByKey',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Always',
+						value: 'always',
+					},
+					{
+						name: 'If Missing',
+						value: 'undefined',
+					},
+					{
+						name: 'If Blank',
+						value: 'blank'
+					},
+				],
+				default: 'always',
+				description: 'Select when to overwrite the values from Input1 with values from Input 2.',
+			}
 		]
 	};
 
@@ -263,6 +291,7 @@ export class Merge implements INodeType {
 
 			const propertyName1 = this.getNodeParameter('propertyName1', 0) as string;
 			const propertyName2 = this.getNodeParameter('propertyName2', 0) as string;
+			const overwrite = this.getNodeParameter('overwrite', 0) as string;
 
 			const dataInput2 = this.getInputData(1);
 			if (!dataInput2 || !propertyName1 || !propertyName2) {
@@ -354,7 +383,11 @@ export class Merge implements INodeType {
 
 						for (key of Object.keys(copyData[referenceValue as string].json)) {
 							// TODO: Currently only copies json data and no binary one
-							entry.json[key] = copyData[referenceValue as string].json[key];
+							let value = copyData[referenceValue as string].json[key];
+
+							if (overwrite === 'always' || (overwrite === 'undefined' && ['null', 'undefined'].includes(typeof value)) || (overwrite === 'blank' && !value)) {
+								entry.json[key] = value
+							}
 						}
 					} else {
 						// For "keepKeyMatches" we add it as it is
