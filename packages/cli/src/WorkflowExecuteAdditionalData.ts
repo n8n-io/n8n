@@ -9,6 +9,7 @@ import {
 	Push,
 	ResponseHelper,
 	WebhookHelpers,
+	WorkflowCredentials,
 	WorkflowHelpers,
 } from './';
 
@@ -305,6 +306,10 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// different webooks
 	const additionalDataIntegrated = await getBase(additionalData.credentials);
 	additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(mode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
+
+	// Get the needed credentials for the current workflow as they will differ to the ones of the
+	// calling workflow.
+	additionalDataIntegrated.credentials = await WorkflowCredentials(workflowData!.nodes);
 
 	// Find Start-Node
 	const requiredNodeTypes = ['n8n-nodes-base.start'];
