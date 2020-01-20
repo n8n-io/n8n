@@ -1512,7 +1512,12 @@ export class Trello implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a board',
+						description: 'Delete a checklist',
+					},
+					{
+						name: 'Delete CheckItem',
+						value: 'deleteCheckItem',
+						description: 'Delete a checklist item',
 					},
 					{
 						name: 'Get',
@@ -1520,9 +1525,19 @@ export class Trello implements INodeType {
 						description: 'Get the data of a checklist',
 					},
 					{
+						name: 'Get CheckItem',
+						value: 'getCheckItem',
+						description: 'Get a specific checkItem on a card',
+					},
+					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Returns all checklists for the card',
+					},
+					{
+						name: 'Update CheckItem',
+						value: 'updateCheckItem',
+						description: 'Update an item in a checklist on a card.',
 					}
 				],
 				default: 'getAll',
@@ -1735,6 +1750,199 @@ export class Trello implements INodeType {
 						type: 'string',
 						default: 'all',
 						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         checklist:deleteCheckItem
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'deleteCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card that checklist belongs to.',
+			},
+			{
+				displayName: 'CheckItem ID',
+				name: 'checkItemId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'deleteCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the checklist to delete.',
+			},
+
+			// ----------------------------------
+			//         checklist:getCheckItem
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card that checklist belongs to.',
+			},
+			{
+				displayName: 'CheckItem ID',
+				name: 'checkItemId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the checklist to get.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         checklist:updateCheckItem
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'updateCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card that checklist belongs to.',
+			},
+			{
+				displayName: 'CheckItem ID',
+				name: 'checkItemId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'updateCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the checklist item to update.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'updateCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The new name for the checklist item.',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'string',
+						default: '',
+						description: 'One of: complete, incomplete',
+					},
+					{
+						displayName: 'Checklist ID',
+						name: 'checklistId',
+						type: 'string',
+						default: '',
+						description: 'The ID of the checklist this item is in',
+					},
+					{
+						displayName: 'Position',
+						name: 'pos',
+						type: 'string',
+						default: '',
+						description: 'The position of the checklist on the card. One of: top, bottom, or a positive number.',
 					},
 				],
 			},
@@ -2067,6 +2275,45 @@ export class Trello implements INodeType {
 					const cardId = this.getNodeParameter('cardId', i) as string;
 
 					endpoint = `cards/${cardId}/checklists`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+				} else if (operation === 'getCheckItem') {
+					// ----------------------------------
+					//         getCheckItem
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const checkItemId = this.getNodeParameter('checkItemId', i) as string;
+
+					endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+				} else if (operation === 'deleteCheckItem') {
+					// ----------------------------------
+					//         deleteCheckItem
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const checkItemId = this.getNodeParameter('checkItemId', i) as string;
+
+					endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
+				} else if (operation === 'updateCheckItem') {
+					// ----------------------------------
+					//         updateCheckItem
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const checkItemId = this.getNodeParameter('checkItemId', i) as string;
+
+					endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
