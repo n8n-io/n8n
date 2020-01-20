@@ -2115,7 +2115,7 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The color for the label. See [fields](https://developers.trello.com/reference#label-object) for color options.',
+				description: 'The color for the label. See <a href="https://developers.trello.com/reference#label-object">fields</a> for color options.',
 			},
 
 			// ----------------------------------
@@ -2366,7 +2366,7 @@ export class Trello implements INodeType {
 						name: 'color',
 						type: 'string',
 						default: '',
-						description: 'The color for the label. See [fields](https://developers.trello.com/reference#label-object) for color options.',
+						description: 'The color for the label. See <a href="https://developers.trello.com/reference#label-object">fields</a> for color options.',
 					}
 				],
 			},
