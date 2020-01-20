@@ -376,7 +376,7 @@ export default mixins(
 					this.createNodeActive = false;
 					this.$store.commit('setActiveNode', null);
 				} else if (e.key === 'Tab') {
-					this.createNodeActive = !this.createNodeActive;
+					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
 				} else if (e.key === 'F2') {
