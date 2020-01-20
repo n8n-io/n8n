@@ -1505,6 +1505,11 @@ export class Trello implements INodeType {
 				},
 				options: [
 					{
+						name: "Completed CheckItems",
+						value: "completedCheckItems",
+						description: "Get the completed checklist items on a card"
+					},
+					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new checklist',
@@ -1947,6 +1952,54 @@ export class Trello implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         checklist:completedCheckItems
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'completedCheckItems',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card for checkItems.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'completedCheckItems',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of: "idCheckItem", "state".',
+					},
+				],
+			},
+
 		],
 
 
@@ -2317,6 +2370,20 @@ export class Trello implements INodeType {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
+				} else if(operation ==="completedCheckItems") {
+					// ----------------------------------
+					//         updateCheckItem
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+
+					endpoint = `cards/${cardId}/checkItemStates`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
