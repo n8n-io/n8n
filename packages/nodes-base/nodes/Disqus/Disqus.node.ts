@@ -508,12 +508,12 @@ export class Disqus implements INodeType {
 			} catch (error) {
 				if (error.statusCode === 401) {
 					// Return a clear error
-					throw new Error('The Dropbox credentials are not valid!');
+					throw new Error('The Disqus credentials are not valid!');
 				}
 
 				if (error.error && error.error.error_summary) {
 					// Try to return the error prettier
-					throw new Error(`Dropbox error response [${error.statusCode}]: ${error.error.error_summary}`);
+					throw new Error(`Disqus error response [${error.statusCode}]: ${error.error.error_summary}`);
 				}
 
 				// If that data does not exist for some reason return the actual error
