@@ -63,16 +63,16 @@ export class Disqus implements INodeType {
 					},
 				},
 				options: [
-          {
+					{
 						name: 'Get',
 						value: 'get',
 						description: 'Returns forum details.',
-          },
-          {
+					},
+					{
 						name: 'Get All Categories',
 						value: 'getCategories',
 						description: 'Returns a list of categories within a forum.',
-          },
+					},
 					{
 						name: 'Get All Threads',
 						value: 'getThreads',
@@ -194,43 +194,43 @@ export class Disqus implements INodeType {
 						type: 'string',
 						default: '[]',
 						description: 'You may specify relations to include with your response. Choices `author`',
-          },
-          {
+					},
+					{
 						displayName: 'Cursor',
 						name: 'cursor',
-            type: 'string',
+						type: 'string',
 						default: '',
 						description: 'You may specify cursor for your response.',
-          },
-          {
+					},
+					{
 						displayName: 'Limit',
 						name: 'limit',
 						type: 'string',
 						default: 25,
 						description: 'You may specify relations maximum number of posts to return. Maximum value is 100',
-          },
-          {
+					},
+					{
 						displayName: 'Filters',
 						name: 'filters',
 						type: 'string',
 						default: '[]',
-            description: 'You may specify filters for your response. Choices: `Is_Anonymous`, `Has_Link`, `Has_Low_Rep_Author`, `Has_Bad_Word`, `Is_Flagged`, `No_Issue`, `Is_Toxic`, `Modified_By_Rule`, `Shadow_Banned`, `Has_Media`, `Is_At_Flag_Limit`',
-          },
-          {
+						description: 'You may specify filters for your response. Choices: `Is_Anonymous`, `Has_Link`, `Has_Low_Rep_Author`, `Has_Bad_Word`, `Is_Flagged`, `No_Issue`, `Is_Toxic`, `Modified_By_Rule`, `Shadow_Banned`, `Has_Media`, `Is_At_Flag_Limit`',
+					},
+					{
 						displayName: 'Query',
 						name: 'query',
 						type: 'string',
 						default: '',
 						description: 'You may specify query for your response.',
-          },
-          {
+					},
+					{
 						displayName: 'Include',
 						name: 'include',
 						type: 'string',
 						default: false,
 						description: 'You may specify relations to include with your response. Choices `author`',
-          },
-          {
+					},
+					{
 						displayName: 'Order',
 						name: 'order',
 						type: 'string',
@@ -238,9 +238,9 @@ export class Disqus implements INodeType {
 						description: 'You may specify order to sort your response.Choices: asc, desc',
 					},
 				],
-      },
+			},
 
-      // ----------------------------------
+			// ----------------------------------
 			//         forum:getCategories
 			// ----------------------------------
 			{
@@ -285,14 +285,14 @@ export class Disqus implements INodeType {
 						default: `[]`,
 						description: 'You may specify cursor since_id for your response.',
 					},
-          {
+					{
 						displayName: 'Cursor',
 						name: 'cursor',
-            type: 'string',
+						type: 'string',
 						default: '',
 						description: 'You may specify cursor for your response.',
-          },
-          {
+					},
+					{
 						displayName: 'Order',
 						name: 'order',
 						type: 'string',
@@ -300,9 +300,9 @@ export class Disqus implements INodeType {
 						description: 'You may specify order to sort your response.Choices: asc, desc',
 					},
 				],
-      },
+			},
 
-      // ----------------------------------
+			// ----------------------------------
 			//         forum:getThreads
 			// ----------------------------------
 			{
@@ -339,8 +339,8 @@ export class Disqus implements INodeType {
 					},
 				},
 				default: {},
-        options: [
-          {
+				options: [
+					{
 						displayName: 'Thread',
 						name: 'threadId',
 						type: 'string',
@@ -360,29 +360,29 @@ export class Disqus implements INodeType {
 						type: 'string',
 						default: '[]',
 						description: 'You may specify relations to include with your response. Choices `author`',
-          },
-          {
+					},
+					{
 						displayName: 'Cursor',
 						name: 'cursor',
-            type: 'string',
+						type: 'string',
 						default: '',
 						description: 'You may specify cursor for your response.',
-          },
-          {
+					},
+					{
 						displayName: 'Limit',
 						name: 'limit',
 						type: 'string',
 						default: 25,
 						description: 'You may specify relations maximum number of posts to return. Maximum value is 100',
-          },
-          {
+					},
+					{
 						displayName: 'Include',
 						name: 'include',
 						type: 'string',
 						default: '',
 						description: 'You may specify relations to include with your response. Choices: open, closed, killed',
-          },
-          {
+					},
+					{
 						displayName: 'Order',
 						name: 'order',
 						type: 'string',
@@ -390,7 +390,7 @@ export class Disqus implements INodeType {
 						description: 'You may specify order to sort your response.Choices: asc, desc',
 					},
 				],
-      }
+			}
 		],
 	};
 
@@ -415,7 +415,7 @@ export class Disqus implements INodeType {
 
 
 		for (let i = 0; i < items.length; i++) {
-      body = {};
+			body = {};
 			qs = {};
 
 			if (resource === 'forum') {
@@ -426,10 +426,10 @@ export class Disqus implements INodeType {
 
 					requestMethod = 'GET';
 
-          endpoint = 'forums/details.json';
+					endpoint = 'forums/details.json';
 
-          const id = this.getNodeParameter('id', i) as string;
-          qs.forum = id;
+					const id = this.getNodeParameter('id', i) as string;
+					qs.forum = id;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -442,10 +442,10 @@ export class Disqus implements INodeType {
 
 					requestMethod = 'GET';
 
-          endpoint = 'forums/listPosts.json';
+					endpoint = 'forums/listPosts.json';
 
-          const id = this.getNodeParameter('id', i) as string;
-          qs.forum = id;
+					const id = this.getNodeParameter('id', i) as string;
+					qs.forum = id;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -458,10 +458,10 @@ export class Disqus implements INodeType {
 
 					requestMethod = 'GET';
 
-          endpoint = 'forums/listCategories.json';
+					endpoint = 'forums/listCategories.json';
 
-          const id = this.getNodeParameter('id', i) as string;
-          qs.forum = id;
+					const id = this.getNodeParameter('id', i) as string;
+					qs.forum = id;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -474,10 +474,10 @@ export class Disqus implements INodeType {
 
 					requestMethod = 'GET';
 
-          endpoint = 'forums/listThreads.json';
+					endpoint = 'forums/listThreads.json';
 
-          const id = this.getNodeParameter('id', i) as string;
-          qs.forum = id;
+					const id = this.getNodeParameter('id', i) as string;
+					qs.forum = id;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -485,14 +485,14 @@ export class Disqus implements INodeType {
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
-        }
+				}
 
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
-      qs.api_key = credentials.accessToken;
-      endpoint = `https://disqus.com/api/3.0/${endpoint}`;
+			qs.api_key = credentials.accessToken;
+			endpoint = `https://disqus.com/api/3.0/${endpoint}`;
 
 			const options: OptionsWithUri = {
 				method: requestMethod,
@@ -527,6 +527,6 @@ export class Disqus implements INodeType {
 			}
 		}
 
-    return [this.helpers.returnJsonArray(returnData)];
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
