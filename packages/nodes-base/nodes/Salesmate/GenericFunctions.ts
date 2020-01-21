@@ -27,6 +27,7 @@ export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctio
 		json: true
 	};
 	if (!Object.keys(body).length) {
+		delete options.body;
 	}
 	try {
 		return await this.helpers.request!(options);
