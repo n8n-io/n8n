@@ -261,7 +261,6 @@ export class Salesmate implements INodeType {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {
 								for (const condition of conditions.conditionsUi as IDataObject[]) {
-									console.log(condition)
 									const filter: IDataObject = {};
 									filter.moduleName = 'Company';
 									filter.field = {
