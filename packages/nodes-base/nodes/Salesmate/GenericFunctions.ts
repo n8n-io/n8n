@@ -27,12 +27,7 @@ export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctio
 		json: true
 	};
 	if (!Object.keys(body).length) {
-		delete options.body;
 	}
-	console.log(JSON.stringify(options.body))
-	// console.log(options.body.query.group.rules)
-	// console.log(options.body.query.group.operator)
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
