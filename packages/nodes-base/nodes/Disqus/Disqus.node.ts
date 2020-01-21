@@ -42,11 +42,7 @@ export class Disqus implements INodeType {
 					{
 						name: 'Forum',
 						value: 'forum',
-					},
-					{
-						name: 'User',
-						value: 'user',
-					},
+					}
 				],
 				default: 'forum',
 				description: 'The resource to operate on.',
@@ -394,97 +390,7 @@ export class Disqus implements INodeType {
 						description: 'You may specify order to sort your response.Choices: asc, desc',
 					},
 				],
-      },
-
-      // // ----------------------------------
-			// //         forum:getThreads
-			// // ----------------------------------
-			// {
-			// 	displayName: 'Forum name',
-			// 	name: 'id',
-			// 	type: 'string',
-			// 	default: '',
-			// 	required: true,
-			// 	displayOptions: {
-			// 		show: {
-			// 			operation: [
-			// 				'getThreads',
-			// 			],
-			// 			resource: [
-			// 				'forum',
-			// 			],
-			// 		},
-			// 	},
-			// 	description: 'The short name(aka ID) of the forum to get Threads.',
-			// },
-			// {
-			// 	displayName: 'Additional Fields',
-			// 	name: 'additionalFields',
-			// 	type: 'collection',
-			// 	placeholder: 'Add Field',
-			// 	displayOptions: {
-			// 		show: {
-			// 			operation: [
-			// 				'getCategories',
-			// 			],
-			// 			resource: [
-			// 				'forum',
-			// 			],
-			// 		},
-			// 	},
-			// 	default: {},
-      //   options: [
-      //     {
-			// 			displayName: 'Thread',
-			// 			name: 'threadId',
-			// 			type: 'string',
-			// 			default: '',
-			// 			description: 'Looks up a thread by ID. You may pass us the "ident" query type instead of an ID by including "forum". You may pass us the "link" query type to filter by URL. You must pass the "forum" if you do not have the Pro API Access addon.',
-			// 		},
-			// 		{
-			// 			displayName: 'Since',
-			// 			name: 'since',
-			// 			type: 'string',
-			// 			default: '',
-			// 			description: 'Unix timestamp (or ISO datetime standard)',
-			// 		},
-			// 		{
-			// 			displayName: 'Related',
-			// 			name: 'related',
-			// 			type: 'string',
-			// 			default: '[]',
-			// 			description: 'You may specify relations to include with your response. Choices `author`',
-      //     },
-      //     {
-			// 			displayName: 'Cursor',
-			// 			name: 'cursor',
-      //       type: 'string',
-			// 			default: '',
-			// 			description: 'You may specify cursor for your response.',
-      //     },
-      //     {
-			// 			displayName: 'Limit',
-			// 			name: 'limit',
-			// 			type: 'string',
-			// 			default: 25,
-			// 			description: 'You may specify relations maximum number of posts to return. Maximum value is 100',
-      //     },
-      //     {
-			// 			displayName: 'Include',
-			// 			name: 'include',
-			// 			type: 'string',
-			// 			default: '',
-			// 			description: 'You may specify relations to include with your response. Choices: open, closed, killed',
-      //     },
-      //     {
-			// 			displayName: 'Order',
-			// 			name: 'order',
-			// 			type: 'string',
-			// 			default: 'desc',
-			// 			description: 'You may specify order to sort your response.Choices: asc, desc',
-			// 		},
-			// 	],
-      // },
+      }
 		],
 	};
 
