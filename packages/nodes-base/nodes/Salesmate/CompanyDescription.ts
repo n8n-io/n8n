@@ -19,9 +19,9 @@ export const companyOperations = [
 				description: 'Create a company',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a company',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a company',
 			},
 			{
 				name: 'Get',
@@ -34,9 +34,9 @@ export const companyOperations = [
 				description: 'Get all companies',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a company',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a company',
 			},
 		],
 		default: 'create',
@@ -520,12 +520,14 @@ export const companyFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				description: 'Comma separated list of fields to return.',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
+				description: 'The field to sort by.',
 			},
 			{
 				displayName: 'Sort Order',
@@ -533,11 +535,11 @@ export const companyFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Asc',
+						name: 'ASC',
 						value: 'asc',
 					},
 					{
-						name: 'Desc',
+						name: 'DESC',
 						value: 'desc',
 					},
 				],
@@ -601,11 +603,11 @@ export const companyFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'And',
+								name: 'AND',
 								value: 'AND',
 							},
 							{
-								name: 'Or',
+								name: 'OR',
 								value: 'OR',
 							},
 						],
