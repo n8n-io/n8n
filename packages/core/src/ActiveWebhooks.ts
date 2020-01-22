@@ -1,6 +1,7 @@
 import {
 	IWebhookData,
 	WebhookHttpMethod,
+	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -29,29 +30,26 @@ export class ActiveWebhooks {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWebhooks
 	 */
-	async add(webhookData: IWebhookData, mode: WorkflowExecuteMode): Promise<void> {
-		if (webhookData.workflow.id === undefined) {
+	async add(workflow: Workflow, webhookData: IWebhookData, mode: WorkflowExecuteMode): Promise<void> {
+		if (workflow.id === undefined) {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
 
-		if (this.workflowWebhooks[webhookData.workflow.id] === undefined) {
-			this.workflowWebhooks[webhookData.workflow.id] = [];
+		if (this.workflowWebhooks[webhookData.workflowId] === undefined) {
+			this.workflowWebhooks[webhookData.workflowId] = [];
 		}
 
 		// Make the webhook available directly because sometimes to create it successfully
 		// it gets called
 		this.webhookUrls[this.getWebhookKey(webhookData.httpMethod, webhookData.path)] = webhookData;
 
-		const webhookExists = await webhookData.workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+		const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
 		if (webhookExists === false) {
 			// If webhook does not exist yet create it
-			await webhookData.workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+			await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
 		}
 
-		// Run the "activate" hooks on the nodes
-		await webhookData.workflow.runNodeHooks('activate', webhookData, NodeExecuteFunctions, mode);
-
-		this.workflowWebhooks[webhookData.workflow.id].push(webhookData);
+		this.workflowWebhooks[webhookData.workflowId].push(webhookData);
 	}
 
 
@@ -74,6 +72,17 @@ export class ActiveWebhooks {
 
 
 	/**
+	 * Returns the ids of all the workflows which have active webhooks
+	 *
+	 * @returns {string[]}
+	 * @memberof ActiveWebhooks
+	 */
+	getWorkflowIds(): string[] {
+		return Object.keys(this.workflowWebhooks);
+	}
+
+
+	/**
 	 * Returns key to uniquely identify a webhook
 	 *
 	 * @param {WebhookHttpMethod} httpMethod
@@ -89,11 +98,13 @@ export class ActiveWebhooks {
 	/**
 	 * Removes all webhooks of a workflow
 	 *
-	 * @param {string} workflowId
+	 * @param {Workflow} workflow
 	 * @returns {boolean}
 	 * @memberof ActiveWebhooks
 	 */
-	async removeByWorkflowId(workflowId: string): Promise<boolean> {
+	async removeWorkflow(workflow: Workflow): Promise<boolean> {
+		const workflowId = workflow.id!.toString();
+
 		if (this.workflowWebhooks[workflowId] === undefined) {
 			// If it did not exist then there is nothing to remove
 			return false;
@@ -105,10 +116,7 @@ export class ActiveWebhooks {
 
 		// Go through all the registered webhooks of the workflow and remove them
 		for (const webhookData of webhooks) {
-			await webhookData.workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
-
-			// Run the "deactivate" hooks on the nodes
-			await webhookData.workflow.runNodeHooks('deactivate', webhookData, NodeExecuteFunctions, mode);
+			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
 
 			delete this.webhookUrls[this.getWebhookKey(webhookData.httpMethod, webhookData.path)];
 		}
@@ -121,55 +129,16 @@ export class ActiveWebhooks {
 
 
 	/**
-	 * Removes all the currently active webhooks
+	 * Removes all the webhooks of the given workflow
 	 */
-	async removeAll(): Promise<void> {
-		const workflowIds = Object.keys(this.workflowWebhooks);
-
+	async removeAll(workflows: Workflow[]): Promise<void> {
 		const removePromises = [];
-		for (const workflowId of workflowIds) {
-			removePromises.push(this.removeByWorkflowId(workflowId));
+		for (const workflow of workflows) {
+			removePromises.push(this.removeWorkflow(workflow));
 		}
 
 		await Promise.all(removePromises);
 		return;
 	}
-
-
-	// /**
-	//  * Removes a single webhook by its key.
-	//  * Currently not used, runNodeHooks for "deactivate" is missing
-	//  *
-	//  * @param {string} webhookKey
-	//  * @returns {boolean}
-	//  * @memberof ActiveWebhooks
-	//  */
-	// removeByWebhookKey(webhookKey: string): boolean {
-	// 	if (this.webhookUrls[webhookKey] === undefined) {
-	// 		// If it did not exist then there is nothing to remove
-	// 		return false;
-	// 	}
-
-	// 	const webhookData = this.webhookUrls[webhookKey];
-
-	// 	// Remove from workflow-webhooks
-	// 	const workflowWebhooks = this.workflowWebhooks[webhookData.workflowId];
-	// 	for (let index = 0; index < workflowWebhooks.length; index++) {
-	// 		if (workflowWebhooks[index].path === webhookData.path) {
-	// 			workflowWebhooks.splice(index, 1);
-	// 			break;
-	// 		}
-	// 	}
-
-	// 	if (workflowWebhooks.length === 0) {
-	// 		// When there are no webhooks left for any workflow remove it totally
-	// 		delete this.workflowWebhooks[webhookData.workflowId];
-	// 	}
-
-	// 	// Remove from webhook urls
-	// 	delete this.webhookUrls[webhookKey];
-
-	// 	return true;
-	// }
 
 }
