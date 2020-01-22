@@ -771,7 +771,7 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			node: node.name,
 			path,
 			webhookDescription,
-			workflow,
+			workflowId: workflow.id,
 			workflowExecuteAdditionalData: additionalData,
 		});
 	}

@@ -117,22 +117,24 @@ export class ActiveWorkflowRunner {
 			throw new ResponseHelper.ResponseError('The requested webhook is not registred.', 404, 404);
 		}
 
+		const workflowData = await Db.collections.Workflow!.findOne(webhookData.workflowId);
+		if (workflowData === undefined) {
+			throw new ResponseHelper.ResponseError(`Could not find workflow with id "${webhookData.workflowId}"`, 404, 404);
+		}
+
+		const nodeTypes = NodeTypes();
+		const workflow = new Workflow(webhookData.workflowId, workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
-		const workflowStartNode = webhookData.workflow.getNode(webhookData.node);
+		const workflowStartNode = workflow.getNode(webhookData.node);
 		if (workflowStartNode === null) {
 			throw new ResponseHelper.ResponseError('Could not find node to process webhook.', 404, 404);
 		}
-		const executionMode = 'webhook';
-
-		const workflowData = await Db.collections.Workflow!.findOne(webhookData.workflow.id!);
-
-		if (workflowData === undefined) {
-			throw new ResponseHelper.ResponseError(`Could not find workflow with id "${webhookData.workflow.id}"`, 404, 404);
-		}
 
 		return new Promise((resolve, reject) => {
-			WebhookHelpers.executeWebhook(webhookData, workflowData, workflowStartNode, executionMode, undefined, req, res, (error: Error | null, data: object) => {
+			const executionMode = 'webhook';
+			WebhookHelpers.executeWebhook(workflow, webhookData, workflowData, workflowStartNode, executionMode, undefined, req, res, (error: Error | null, data: object) => {
 				if (error !== null) {
 					return reject(error);
 				}
@@ -202,7 +204,9 @@ export class ActiveWorkflowRunner {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
 
 		for (const webhookData of webhooks) {
-			await this.activeWebhooks!.add(webhookData, mode);
+			await this.activeWebhooks!.add(workflow, webhookData, mode);
+			// Save static data!
+			await WorkflowHelpers.saveStaticData(workflow);
 		}
 	}
 
@@ -214,8 +218,19 @@ export class ActiveWorkflowRunner {
 	 * @returns
 	 * @memberof ActiveWorkflowRunner
 	 */
-	removeWorkflowWebhooks(workflowId: string): Promise<boolean> {
-		return this.activeWebhooks!.removeByWorkflowId(workflowId);
+	async removeWorkflowWebhooks(workflowId: string): Promise<void> {
+		const workflowData = await Db.collections.Workflow!.findOne(workflowId);
+		if (workflowData === undefined) {
+			throw new Error(`Could not find workflow with id "${workflowId}"`);
+		}
+
+		const nodeTypes = NodeTypes();
+		const workflow = new Workflow(workflowId, workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+
+		await this.activeWebhooks!.removeWorkflow(workflow);
+
+		// Save the static workflow data if needed
+		await WorkflowHelpers.saveStaticData(workflow);
 	}
 
 
@@ -348,7 +363,7 @@ export class ActiveWorkflowRunner {
 			await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, getTriggerFunctions, getPollFunctions);
 
 			if (this.activationErrors[workflowId] !== undefined) {
-				// If there were any activation errors delete them
+				// If there were activation errors delete them
 				delete this.activationErrors[workflowId];
 			}
 		} catch (error) {
@@ -380,15 +395,8 @@ export class ActiveWorkflowRunner {
 	 */
 	async remove(workflowId: string): Promise<void> {
 		if (this.activeWorkflows !== null) {
-			const workflowData = this.activeWorkflows.get(workflowId);
-
 			// Remove all the webhooks of the workflow
 			await this.removeWorkflowWebhooks(workflowId);
-
-			if (workflowData) {
-				// Save the static workflow data if needed
-				await WorkflowHelpers.saveStaticData(workflowData.workflow);
-			}
 
 			if (this.activationErrors[workflowId] !== undefined) {
 				// If there were any activation errors delete them
