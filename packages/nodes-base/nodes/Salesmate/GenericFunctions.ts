@@ -65,3 +65,21 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	}
 	return result;
 }
+
+
+/**
+ * Converts data from the Salesmate format into a simple object
+ *
+ * @export
+ * @param {IDataObject[]} data
+ * @returns {IDataObject}
+ */
+export function simplifySalesmateData(data: IDataObject[]): IDataObject {
+	const returnData: IDataObject = {};
+
+	for (const item of data) {
+		returnData[item.fieldName as string] = item.value;
+	}
+
+	return returnData;
+}

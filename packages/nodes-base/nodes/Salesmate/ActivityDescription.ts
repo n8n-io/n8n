@@ -19,9 +19,9 @@ export const activityOperations = [
 				description: 'Create a activity',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a activity',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a activity',
 			},
 			{
 				name: 'Get',
@@ -34,9 +34,9 @@ export const activityOperations = [
 				description: 'Get all companies',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a activity',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a activity',
 			},
 		],
 		default: 'create',
@@ -427,12 +427,14 @@ export const activityFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
+				description: 'Comma separated list of fields to return.',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
+				description: 'The field to sort by.',
 			},
 			{
 				displayName: 'Sort Order',
@@ -440,11 +442,11 @@ export const activityFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Asc',
+						name: 'ASC',
 						value: 'asc',
 					},
 					{
-						name: 'Desc',
+						name: 'DESC',
 						value: 'desc',
 					},
 				],
@@ -508,11 +510,11 @@ export const activityFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'And',
+								name: 'AND',
 								value: 'AND',
 							},
 							{
-								name: 'Or',
+								name: 'OR',
 								value: 'OR',
 							},
 						],
