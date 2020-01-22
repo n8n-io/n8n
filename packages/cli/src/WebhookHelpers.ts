@@ -84,9 +84,9 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
   * @param {((error: Error | null, data: IResponseCallbackData) => void)} responseCallback
   * @returns {(Promise<string | undefined>)}
   */
- export async function executeWebhook(webhookData: IWebhookData, workflowData: IWorkflowDb, workflowStartNode: INode, executionMode: WorkflowExecuteMode, sessionId: string | undefined, req: express.Request, res: express.Response, responseCallback: (error: Error | null, data: IResponseCallbackData) => void): Promise<string | undefined> {
+ export async function executeWebhook(workflow: Workflow, webhookData: IWebhookData, workflowData: IWorkflowDb, workflowStartNode: INode, executionMode: WorkflowExecuteMode, sessionId: string | undefined, req: express.Request, res: express.Response, responseCallback: (error: Error | null, data: IResponseCallbackData) => void): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
-	const nodeType = webhookData.workflow.nodeTypes.getByName(workflowStartNode.type);
+	const nodeType = workflow.nodeTypes.getByName(workflowStartNode.type);
 	if (nodeType === undefined) {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known.`;
 		responseCallback(new Error(errorMessage), {});
@@ -94,8 +94,8 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	}
 
 	// Get the responseMode
-	const responseMode = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], 'onReceived');
-	const responseCode = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], 200) as number;
+	const responseMode = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], 'onReceived');
+	const responseCode = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], 200) as number;
 
 	if (!['onReceived', 'lastNode'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -122,7 +122,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 		let webhookResultData: IWebhookResponseData;
 
 		try {
-			webhookResultData = await webhookData.workflow.runWebhook(webhookData, workflowStartNode, additionalData, NodeExecuteFunctions, executionMode);
+			webhookResultData = await workflow.runWebhook(webhookData, workflowStartNode, additionalData, NodeExecuteFunctions, executionMode);
 		} catch (e) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
@@ -287,7 +287,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				return data;
 			}
 
-			const responseData = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseData'], 'firstEntryJson');
+			const responseData = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseData'], 'firstEntryJson');
 
 			if (didSendResponse === false) {
 				let data: IDataObject | IDataObject[];
@@ -296,13 +296,13 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 					// Return the JSON data of the first entry
 					data = returnData.data!.main[0]![0].json;
 
-					const responsePropertyName = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responsePropertyName'], undefined);
+					const responsePropertyName = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responsePropertyName'], undefined);
 
 					if (responsePropertyName !== undefined) {
 						data = get(data, responsePropertyName as string) as IDataObject;
 					}
 
-					const responseContentType = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseContentType'], undefined);
+					const responseContentType = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseContentType'], undefined);
 
 					if (responseContentType !== undefined) {
 						// Send the webhook response manually to be able to set the content-type
@@ -329,7 +329,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 						didSendResponse = true;
 					}
 
-					const responseBinaryPropertyName = webhookData.workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseBinaryPropertyName'], 'data');
+					const responseBinaryPropertyName = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseBinaryPropertyName'], 'data');
 
 					if (responseBinaryPropertyName === undefined && didSendResponse === false) {
 						responseCallback(new Error('No "responseBinaryPropertyName" is set.'), {});
