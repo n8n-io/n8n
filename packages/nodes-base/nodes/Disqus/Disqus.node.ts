@@ -9,7 +9,7 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import { disqusApiRequest, disqusApiRequestAllItems } from './GenericFunctions';
 
 
 export class Disqus implements INodeType {
@@ -165,6 +165,47 @@ export class Disqus implements INodeType {
 				description: 'The short name(aka ID) of the forum to get.',
 			},
 			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'forum',
+						],
+						operation: [
+							'getPosts',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'forum',
+						],
+						operation: [
+							'getPosts',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -262,6 +303,47 @@ export class Disqus implements INodeType {
 				description: 'The short name(aka ID) of the forum to get Categories.',
 			},
 			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'forum',
+						],
+						operation: [
+							'getCategories',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'forum',
+						],
+						operation: [
+							'getCategories',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -322,6 +404,47 @@ export class Disqus implements INodeType {
 					},
 				},
 				description: 'The short name(aka ID) of the forum to get Threads.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'forum',
+						],
+						operation: [
+							'getThreads',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'forum',
+						],
+						operation: [
+							'getThreads',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -399,11 +522,6 @@ export class Disqus implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const credentials = this.getCredentials('disqusApi');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -435,6 +553,13 @@ export class Disqus implements INodeType {
 
 					Object.assign(qs, additionalFields);
 
+					try {
+						const responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData.response);
+					} catch (error) {
+						throw error;
+					}
+
 				} else if (operation === 'getPosts') {
 					// ----------------------------------
 					//         getPosts
@@ -445,11 +570,27 @@ export class Disqus implements INodeType {
 					endpoint = 'forums/listPosts.json';
 
 					const id = this.getNodeParameter('id', i) as string;
-					qs.forum = id;
-
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
 					Object.assign(qs, additionalFields);
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					qs.forum = id;
+					qs.limit = 100;
+
+					try {
+						let responseData: IDataObject = {};
+						if(returnAll) {
+							responseData.response = await disqusApiRequestAllItems.call(this, requestMethod, qs, endpoint);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as string;
+							qs.limit = limit;
+							responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
+						}
+						returnData.push.apply(returnData, responseData.response as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
 
 				}  else if (operation === 'getCategories') {
 					// ----------------------------------
@@ -461,11 +602,27 @@ export class Disqus implements INodeType {
 					endpoint = 'forums/listCategories.json';
 
 					const id = this.getNodeParameter('id', i) as string;
-					qs.forum = id;
-
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
 					Object.assign(qs, additionalFields);
+
+					qs.forum = id;
+					qs.limit = 100;
+
+					try {
+						let responseData: IDataObject = {};
+
+						if(returnAll) {
+							responseData.response = await disqusApiRequestAllItems.call(this, requestMethod, qs, endpoint);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as string;
+							qs.limit = limit;
+							responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint) as IDataObject;
+						}
+						returnData.push.apply(returnData, responseData.response as IDataObject[]) ;
+					} catch (error) {
+						throw error;
+					}
 
 				}  else if (operation === 'getThreads') {
 					// ----------------------------------
@@ -477,11 +634,28 @@ export class Disqus implements INodeType {
 					endpoint = 'forums/listThreads.json';
 
 					const id = this.getNodeParameter('id', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
 					qs.forum = id;
+					qs.limit = 100;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					Object.assign(qs, additionalFields);
+
+					try {
+						let responseData: IDataObject = {};
+						if(returnAll) {
+							responseData.response = await disqusApiRequestAllItems.call(this, requestMethod, qs, endpoint);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as string;
+							qs.limit = limit;
+							responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
+						}
+						returnData.push.apply(returnData, responseData.response as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
@@ -489,41 +663,6 @@ export class Disqus implements INodeType {
 
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
-			}
-
-			qs.api_key = credentials.accessToken;
-			endpoint = `https://disqus.com/api/3.0/${endpoint}`;
-
-			const options: OptionsWithUri = {
-				method: requestMethod,
-				qs,
-				uri: endpoint,
-				json: true,
-			};
-
-
-			let responseData;
-			try {
-				responseData = await this.helpers.request(options);
-			} catch (error) {
-				if (error.statusCode === 401) {
-					// Return a clear error
-					throw new Error('The Disqus credentials are not valid!');
-				}
-
-				if (error.error && error.error.error_summary) {
-					// Try to return the error prettier
-					throw new Error(`Disqus error response [${error.statusCode}]: ${error.error.error_summary}`);
-				}
-
-				// If that data does not exist for some reason return the actual error
-				throw error;
-			}
-
-			if (responseData && Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
 			}
 		}
 
