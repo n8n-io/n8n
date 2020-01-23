@@ -132,7 +132,7 @@ class App {
 		const authIgnoreRegex = new RegExp(`^\/(rest|healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
 
 		// Check for basic auth credentials if activated
-		const basicAuthActive  = config.get('security.basicAuth.active') as boolean;
+		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
 		if (basicAuthActive === true) {
 			const basicAuthUser = await GenericHelpers.getConfigValue('security.basicAuth.user') as string;
 			if (basicAuthUser === '') {
@@ -1072,7 +1072,16 @@ class App {
 		// Removes a test webhook
 		this.app.delete('/rest/test-webhook/:id', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			const workflowId = req.params.id;
-			return this.testWebhooks.cancelTestWebhook(workflowId);
+
+			const workflowData = await Db.collections.Workflow!.findOne(workflowId);
+			if (workflowData === undefined) {
+				throw new ResponseHelper.ResponseError(`Could not find workflow with id "${workflowId}" so webhook could not be deleted!`);
+			}
+
+			const nodeTypes = NodeTypes();
+			const workflow = new Workflow(workflowId.toString(), workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+
+			return this.testWebhooks.cancelTestWebhook(workflowId, workflow);
 		}));
 
 
