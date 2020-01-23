@@ -12,8 +12,8 @@ export async function disqusApiRequest(
 		method: string,
 		qs: IDataObject = {},
 		uri?: string,
-		body: any = {},
-		option: IDataObject = {}
+		body: IDataObject = {},
+		option: IDataObject = {},
 	): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('disqusApi') as IDataObject;
@@ -22,11 +22,22 @@ export async function disqusApiRequest(
 		throw new Error('No credentials got returned!');
 	}
 
+	// Convert to query string into a format the API can read
+	const queryStringElements: string[] = [];
+	for (const key of Object.keys(qs)) {
+		if (Array.isArray(qs[key])) {
+			(qs[key] as string[]).forEach(value => {
+				queryStringElements.push(`${key}=${value}`);
+			});
+		} else {
+			queryStringElements.push(`${key}=${qs[key]}`);
+		}
+	}
+
 	let options: OptionsWithUri = {
 		method,
-		qs,
 		body,
-		uri: `https://disqus.com/api/3.0/${uri}`,
+		uri: `https://disqus.com/api/3.0/${uri}?${queryStringElements.join('&')}`,
 		json: true
 	};
 
@@ -35,10 +46,9 @@ export async function disqusApiRequest(
 		delete options.body;
 	}
 	try {
-		const result = await this.helpers.request!(options)
+		const result = await this.helpers.request!(options);
 		return result;
 	} catch (error) {
-		console.log(error)
 		if (error.statusCode === 401) {
 			// Return a clear error
 			throw new Error('The Disqus credentials are not valid!');
@@ -63,8 +73,8 @@ export async function disqusApiRequestAllItems(
 		method: string,
 		qs: IDataObject = {},
 		uri?: string,
-		body: any = {},
-		option: IDataObject = {}
+		body: IDataObject = {},
+		option: IDataObject = {},
 	): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];

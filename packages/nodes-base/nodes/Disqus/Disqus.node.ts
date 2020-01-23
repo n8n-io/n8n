@@ -1,5 +1,4 @@
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
@@ -42,7 +41,7 @@ export class Disqus implements INodeType {
 					{
 						name: 'Forum',
 						value: 'forum',
-					}
+					},
 				],
 				default: 'forum',
 				description: 'The resource to operate on.',
@@ -127,18 +126,62 @@ export class Disqus implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'attach',
+						displayName: 'Attach',
 						name: 'attach',
-						type: 'string',
-						default: '[]',
-						description: 'Choices: followsForum, forumCanDisableAds, forumForumCategory, counters, forumDaysAlive, forumFeatures, forumIntegration, forumNewPolicy, forumPermissions',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'counters',
+								value: 'counters',
+							},
+							{
+								name: 'followsForum',
+								value: 'followsForum',
+							},
+							{
+								name: 'forumCanDisableAds',
+								value: 'forumCanDisableAds',
+							},
+							{
+								name: 'forumDaysAlive',
+								value: 'forumDaysAlive',
+							},
+							{
+								name: 'forumFeatures',
+								value: 'forumFeatures',
+							},
+							{
+								name: 'forumForumCategory',
+								value: 'forumForumCategory',
+							},
+							{
+								name: 'forumIntegration',
+								value: 'forumIntegration',
+							},
+							{
+								name: 'forumNewPolicy',
+								value: 'forumNewPolicy',
+							},
+							{
+								name: 'forumPermissions',
+								value: 'forumPermissions',
+							},
+						],
+						default: [],
+						description: 'The resource to operate on.',
 					},
 					{
-						displayName: 'related',
+						displayName: 'Related',
 						name: 'related',
-						type: 'string',
-						default: false,
-						description: 'You may specify relations to include with your response. Choices `author`',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'author',
+								value: 'author',
+							},
+						],
+						default: [],
+						description: 'You may specify relations to include with your response',
 					},
 				],
 			},
@@ -223,60 +266,114 @@ export class Disqus implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Since',
-						name: 'since',
-						type: 'string',
-						default: `[]`,
-						description: 'Unix timestamp (or ISO datetime standard)',
-					},
-					{
-						displayName: 'Related',
-						name: 'related',
-						type: 'string',
-						default: '[]',
-						description: 'You may specify relations to include with your response. Choices `author`',
-					},
-					{
-						displayName: 'Cursor',
-						name: 'cursor',
-						type: 'string',
-						default: '',
-						description: 'You may specify cursor for your response.',
-					},
-					{
-						displayName: 'Limit',
-						name: 'limit',
-						type: 'string',
-						default: 25,
-						description: 'You may specify relations maximum number of posts to return. Maximum value is 100',
-					},
-					{
 						displayName: 'Filters',
 						name: 'filters',
-						type: 'string',
-						default: '[]',
-						description: 'You may specify filters for your response. Choices: `Is_Anonymous`, `Has_Link`, `Has_Low_Rep_Author`, `Has_Bad_Word`, `Is_Flagged`, `No_Issue`, `Is_Toxic`, `Modified_By_Rule`, `Shadow_Banned`, `Has_Media`, `Is_At_Flag_Limit`',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'Has_Bad_Word',
+								value: 'Has_Bad_Word',
+							},
+							{
+								name: 'Has_Link',
+								value: 'Has_Link',
+							},
+							{
+								name: 'Has_Low_Rep_Author',
+								value: 'Has_Low_Rep_Author',
+							},
+							{
+								name: 'Has_Media',
+								value: 'Has_Media',
+							},
+							{
+								name: 'Is_Anonymous',
+								value: 'Is_Anonymous',
+							},
+							{
+								name: 'Is_Flagged',
+								value: 'Is_Flagged',
+							},
+							{
+								name: 'No_Issue',
+								value: 'No_Issue',
+							},
+							{
+								name: 'Is_At_Flag_Limit',
+								value: 'Is_At_Flag_Limit',
+							},
+							{
+								name: 'Is_Toxic',
+								value: 'Is_Toxic',
+							},
+							{
+								name: 'Modified_By_Rule',
+								value: 'Modified_By_Rule',
+							},
+							{
+								name: 'Shadow_Banned',
+								value: 'Shadow_Banned',
+							},
+						],
+						default: [],
+						description: 'You may specify filters for your response. Choices: , ``, ``, ``',
+					},
+					{
+						displayName: 'Include',
+						name: 'include',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'author',
+								value: 'author',
+							},
+						],
+						default: [],
+						description: 'You may specify relations to include with your response.',
+					},
+					{
+						displayName: 'Order',
+						name: 'order',
+						type: 'options',
+						options: [
+							{
+								name: 'ASC',
+								value: 'asc',
+							},
+							{
+								name: 'DESC',
+								value: 'desc',
+							}
+						],
+						default: 'asc',
+						description: 'You may specify order to sort your response.',
 					},
 					{
 						displayName: 'Query',
 						name: 'query',
 						type: 'string',
 						default: '',
-						description: 'You may specify query for your response.',
+						description: 'You may specify query forChoices: asc, desc your response.',
 					},
 					{
-						displayName: 'Include',
-						name: 'include',
-						type: 'string',
-						default: false,
-						description: 'You may specify relations to include with your response. Choices `author`',
+						displayName: 'Related',
+						name: 'related',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'thread',
+								value: 'thread',
+							},
+						],
+						default: [],
+						description: 'You may specify relations to include with your response',
 					},
 					{
-						displayName: 'Order',
-						name: 'order',
-						type: 'string',
-						default: 'asc',
-						description: 'You may specify order to sort your response.Choices: asc, desc',
+						displayName: 'Since',
+						name: 'since',
+						type: 'dateTime',
+						default: '',
+						description: 'Unix timestamp (or ISO datetime standard)',
 					},
 				],
 			},
@@ -361,25 +458,21 @@ export class Disqus implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Since ID',
-						name: 'sinceId',
-						type: 'string',
-						default: `[]`,
-						description: 'You may specify cursor since_id for your response.',
-					},
-					{
-						displayName: 'Cursor',
-						name: 'cursor',
-						type: 'string',
-						default: '',
-						description: 'You may specify cursor for your response.',
-					},
-					{
 						displayName: 'Order',
 						name: 'order',
-						type: 'string',
+						type: 'options',
+						options: [
+							{
+								name: 'ASC',
+								value: 'asc',
+							},
+							{
+								name: 'DESC',
+								value: 'desc',
+							}
+						],
 						default: 'asc',
-						description: 'You may specify order to sort your response.Choices: asc, desc',
+						description: 'You may specify order to sort your response.',
 					},
 				],
 			},
@@ -464,53 +557,73 @@ export class Disqus implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Thread',
-						name: 'threadId',
-						type: 'string',
-						default: '',
-						description: 'Looks up a thread by ID. You may pass us the "ident" query type instead of an ID by including "forum". You may pass us the "link" query type to filter by URL. You must pass the "forum" if you do not have the Pro API Access addon.',
-					},
-					{
-						displayName: 'Since',
-						name: 'since',
-						type: 'string',
-						default: '',
-						description: 'Unix timestamp (or ISO datetime standard)',
-					},
-					{
 						displayName: 'Related',
 						name: 'related',
-						type: 'string',
-						default: '[]',
-						description: 'You may specify relations to include with your response. Choices `author`',
-					},
-					{
-						displayName: 'Cursor',
-						name: 'cursor',
-						type: 'string',
-						default: '',
-						description: 'You may specify cursor for your response.',
-					},
-					{
-						displayName: 'Limit',
-						name: 'limit',
-						type: 'string',
-						default: 25,
-						description: 'You may specify relations maximum number of posts to return. Maximum value is 100',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'author',
+								value: 'author',
+							},
+							{
+								name: 'forum',
+								value: 'forum',
+							},
+						],
+						default: [],
+						description: 'You may specify relations to include with your response',
 					},
 					{
 						displayName: 'Include',
 						name: 'include',
-						type: 'string',
-						default: '',
-						description: 'You may specify relations to include with your response. Choices: open, closed, killed',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'closed',
+								value: 'closed',
+							},
+							{
+								name: 'open',
+								value: 'open',
+							},
+							{
+								name: 'killed',
+								value: 'killed',
+							},
+						],
+						default: [],
+						description: 'You may specify relations to include with your response.',
 					},
 					{
 						displayName: 'Order',
 						name: 'order',
+						type: 'options',
+						options: [
+							{
+								name: 'ASC',
+								value: 'asc',
+							},
+							{
+								name: 'DESC',
+								value: 'desc',
+							}
+						],
+						default: 'asc',
+						description: 'You may specify order to sort your response.',
+					},
+					{
+						displayName: 'Since',
+						name: 'since',
+						type: 'dateTime',
+						default: '',
+						description: 'Unix timestamp (or ISO datetime standard)',
+					},
+					{
+						displayName: 'Thread',
+						name: 'threadId',
 						type: 'string',
-						default: 'desc',
-						description: 'You may specify order to sort your response.Choices: asc, desc',
+						default: '',
+						description: 'Looks up a thread by ID. You may pass us the "ident"<br />query type instead of an ID by including "forum". You may<br />pass us the "link" query type to filter by URL. You must pass<br />the "forum" if you do not have the Pro API Access addon.',
 					},
 				],
 			}
