@@ -316,7 +316,7 @@ export class Disqus implements INodeType {
 							},
 						],
 						default: [],
-						description: 'You may specify filters for your response. Choices: , ``, ``, ``',
+						description: 'You may specify filters for your response.'
 					},
 					{
 						displayName: 'Include',
@@ -324,8 +324,8 @@ export class Disqus implements INodeType {
 						type: 'multiOptions',
 						options: [
 							{
-								name: 'author',
-								value: 'author',
+								name: 'approved',
+								value: 'approved',
 							},
 						],
 						default: [],
