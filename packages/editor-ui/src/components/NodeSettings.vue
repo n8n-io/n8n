@@ -57,7 +57,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
-import { get, set } from 'lodash';
+import { get, set, unset } from 'lodash';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -369,8 +369,11 @@ export default mixins(
 							Vue.set(nodeParameters as object, path, data);
 						}
 					} else {
-						// For everything else
-						set(nodeParameters as object, parameterPath, newValue);
+						if (newValue === undefined) {
+							unset(nodeParameters as object, parameterPath);
+						} else {
+							set(nodeParameters as object, parameterPath, newValue);
+						}
 					}
 
 					// Get the parameters with the now new defaults according to the
