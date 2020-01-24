@@ -95,7 +95,7 @@ export const trackFields = [
 				values: [
 					{
 						displayName: 'Email',
-						name: 'emaiL',
+						name: 'email',
 						type: 'string',
 						default: '',
 						description: 'Email address of a user',
@@ -164,11 +164,11 @@ export const trackFields = [
 						description: 'User’s birthday',
 					},
 					{
-						displayName: 'eventd At',
-						name: 'eventdAt',
+						displayName: 'Created At',
+						name: 'createdAt',
 						type: 'dateTime',
 						default: '',
-						description: 'Date the user’s account was first eventd',
+						description: 'Date the user’s account was first created at',
 					},
 					{
 						displayName: 'Description',
@@ -642,7 +642,7 @@ export const trackFields = [
 				values: [
 					{
 						displayName: 'Email',
-						name: 'emaiL',
+						name: 'email',
 						type: 'string',
 						default: '',
 						description: 'Email address of a user',
@@ -711,11 +711,11 @@ export const trackFields = [
 						description: 'User’s birthday',
 					},
 					{
-						displayName: 'eventd At',
-						name: 'eventdAt',
+						displayName: 'Created At',
+						name: 'createdAt',
 						type: 'dateTime',
 						default: '',
-						description: 'Date the user’s account was first eventd',
+						description: 'Date the user’s account was first created at',
 					},
 					{
 						displayName: 'Description',

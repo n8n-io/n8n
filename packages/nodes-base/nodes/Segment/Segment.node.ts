@@ -323,11 +323,6 @@ export class Segment implements INodeType {
 					} else {
 						body.anonymousId = uuid();
 					}
-					if (userId) {
-						body.userId = userId as string;
-					} else {
-						body.anonymousId = uuid();
-					}
 					if (traits) {
 						if (traits.email) {
 							body.traits!.email = traits.email as string;
@@ -550,11 +545,6 @@ export class Segment implements INodeType {
 						integrations: {},
 						properties: {},
 					};
-					if (userId) {
-						body.userId = userId as string;
-					} else {
-						body.anonymousId = uuid();
-					}
 					if (userId) {
 						body.userId = userId as string;
 					} else {
