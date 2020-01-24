@@ -72,7 +72,7 @@ export const identifyFields = [
 				values: [
 					{
 						displayName: 'Email',
-						name: 'emaiL',
+						name: 'email',
 						type: 'string',
 						default: '',
 						description: 'Email address of a user',
