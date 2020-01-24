@@ -52,6 +52,14 @@ export class Trello implements INodeType {
 						value: 'card',
 					},
 					{
+						name: "Checklist",
+						value: "checklist",
+					},
+					{
+						name: "Label",
+						value: "label"
+					}
+					{
 						name: 'List',
 						value: 'list',
 					},
@@ -1235,12 +1243,12 @@ export class Trello implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create a new board',
+						description: 'Create a new attachment for a card',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a board',
+						description: 'Delete an attachment',
 					},
 					{
 						name: 'Get',
@@ -1350,7 +1358,7 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the card to get delete.',
+				description: 'The ID of the card that attachment belongs to.',
 			},
 			{
 				displayName: 'Attachment ID',
@@ -1485,7 +1493,885 @@ export class Trello implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         checklist
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				options: [
+					{
+						name: "Completed CheckItems",
+						value: "completedCheckItems",
+						description: "Get the completed checklist items on a card"
+					},
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new checklist',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a checklist',
+					},
+					{
+						name: 'Delete CheckItem',
+						value: 'deleteCheckItem',
+						description: 'Delete a checklist item',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get the data of a checklist',
+					},
+					{
+						name: 'Get CheckItem',
+						value: 'getCheckItem',
+						description: 'Get a specific checkItem on a card',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Returns all checklists for the card',
+					},
+					{
+						name: 'Update CheckItem',
+						value: 'updateCheckItem',
+						description: 'Update an item in a checklist on a card.',
+					}
+				],
+				default: 'getAll',
+				description: 'The operation to perform.',
+			},
+
+			// ----------------------------------
+			//         checklist:create
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card to add checklist to.',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The URL of the checklist to add.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Id Of Checklist Source',
+						name: 'idChecklistSource',
+						type: 'string',
+						default: '',
+						description: 'The ID of a source checklist to copy into the new one.',
+					},
+					{
+						displayName: 'Position',
+						name: 'pos',
+						type: 'string',
+						default: '',
+						description: 'The position of the checklist on the card. One of: top, bottom, or a positive number.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         checklist:delete
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card that checklist belongs to.',
+			},
+			{
+				displayName: 'Checklist ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the checklist to delete.',
+			},
+
+
+			// ----------------------------------
+			//         checklist:getAll
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card to get checklists.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         checklist:get
+			// ----------------------------------
+			{
+				displayName: 'Checklist ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the checklist to get.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         checklist:deleteCheckItem
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'deleteCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card that checklist belongs to.',
+			},
+			{
+				displayName: 'CheckItem ID',
+				name: 'checkItemId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'deleteCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the checklist to delete.',
+			},
+
+			// ----------------------------------
+			//         checklist:getCheckItem
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card that checklist belongs to.',
+			},
+			{
+				displayName: 'CheckItem ID',
+				name: 'checkItemId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the checklist to get.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         checklist:updateCheckItem
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'updateCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card that checklist belongs to.',
+			},
+			{
+				displayName: 'CheckItem ID',
+				name: 'checkItemId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'updateCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the checklist item to update.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'updateCheckItem',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'The new name for the checklist item.',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'string',
+						default: '',
+						description: 'One of: complete, incomplete',
+					},
+					{
+						displayName: 'Checklist ID',
+						name: 'checklistId',
+						type: 'string',
+						default: '',
+						description: 'The ID of the checklist this item is in',
+					},
+					{
+						displayName: 'Position',
+						name: 'pos',
+						type: 'string',
+						default: '',
+						description: 'The position of the checklist on the card. One of: top, bottom, or a positive number.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         checklist:completedCheckItems
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'completedCheckItems',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				description: 'The ID of the card for checkItems.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'completedCheckItems',
+						],
+						resource: [
+							'checklist',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of: "idCheckItem", "state".',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         label
+			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'label',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add to Card',
+						value: 'addLabel',
+						description: 'Add a label to a card.',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new label',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a label',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get the data of a label',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Returns all label for the board',
+					},
+					{
+						name: 'Remove From Card',
+						value: 'removeLabel',
+						description: 'Remove a label from a card.',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a label.',
+					}
+
+				],
+				default: 'getAll',
+				description: 'The operation to perform.',
+			},
+
+			// ----------------------------------
+			//         label:create
+			// ----------------------------------
+			{
+				displayName: 'Board ID',
+				name: 'boardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'The ID of the board to create the label on.',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'Name for the label.',
+			},
+			{
+				displayName: 'Color',
+				name: 'color',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'The color for the label. See <a href="https://developers.trello.com/reference#label-object">fields</a> for color options.',
+			},
+
+			// ----------------------------------
+			//         label:delete
+			// ----------------------------------
+			{
+				displayName: 'Label ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'The ID of the label to delete.',
+			},
+
+			// ----------------------------------
+			//         label:getAll
+			// ----------------------------------
+			{
+				displayName: 'Board ID',
+				name: 'boardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'The ID of the board to get label.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         label:get
+			// ----------------------------------
+			{
+				displayName: 'Label ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'Get information about a label by ID.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: 'all',
+						description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         label:addLabel
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'addLabel',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'The ID of the card to get label.',
+			},
+			{
+				displayName: 'Label ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'addLabel',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'The ID of the label to add.',
+			},
+
+			// ----------------------------------
+			//         label:removeLabel
+			// ----------------------------------
+			{
+				displayName: 'Card ID',
+				name: 'cardId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'removeLabel',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'The ID of the card to remove label from.',
+			},
+			{
+				displayName: 'Label ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'removeLabel',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'The ID of the label to remove.',
+			},
+
+			// ----------------------------------
+			//         label:update
+			// ----------------------------------
+			{
+				displayName: 'Label ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				description: 'The ID of the label to update.',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'label',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Name of the label.',
+					},
+					{
+						displayName: 'Color',
+						name: 'color',
+						type: 'string',
+						default: '',
+						description: 'The color for the label. See <a href="https://developers.trello.com/reference#label-object">fields</a> for color options.',
+					}
+				],
+			},
 		],
+
 	};
 
 
@@ -1753,6 +2639,225 @@ export class Trello implements INodeType {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
+				}
+			} else if (resource === 'checklist') {
+
+				if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+
+					Object.assign(qs, { name });
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+
+					endpoint = `cards/${cardId}/checklists`;
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `cards/${cardId}/checklists/${id}`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `checklists/${id}`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+
+					endpoint = `cards/${cardId}/checklists`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+				} else if (operation === 'getCheckItem') {
+					// ----------------------------------
+					//         getCheckItem
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const checkItemId = this.getNodeParameter('checkItemId', i) as string;
+
+					endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+				} else if (operation === 'deleteCheckItem') {
+					// ----------------------------------
+					//         deleteCheckItem
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const checkItemId = this.getNodeParameter('checkItemId', i) as string;
+
+					endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
+				} else if (operation === 'updateCheckItem') {
+					// ----------------------------------
+					//         updateCheckItem
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const checkItemId = this.getNodeParameter('checkItemId', i) as string;
+
+					endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+				} else if(operation ==="completedCheckItems") {
+					// ----------------------------------
+					//         updateCheckItem
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+
+					endpoint = `cards/${cardId}/checkItemStates`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
+				}
+			} else if (resource === 'label') {
+
+				if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					const idBoard = this.getNodeParameter('boardId', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+					const color = this.getNodeParameter('color', i) as string;
+
+
+					Object.assign(qs, {
+						idBoard,
+						name,
+						color
+					});
+
+
+					endpoint = "labels";
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `labels/${id}`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `labels/${id}`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const idBoard = this.getNodeParameter('boardId', i) as string;
+
+					endpoint = `board/${idBoard}/labels`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					Object.assign(qs, additionalFields);
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `labels/${id}`;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					Object.assign(qs, updateFields);
+
+				} else if (operation === 'addLabel') {
+					// ----------------------------------
+					//         addLabel
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
+
+					qs.value = id;
+
+					endpoint = `/cards/${cardId}/idLabels`;
+
+				} else if (operation === 'removeLabel') {
+					// ----------------------------------
+					//         addLabel
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const cardId = this.getNodeParameter('cardId', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `/cards/${cardId}/idLabels/${id}`;
+
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
