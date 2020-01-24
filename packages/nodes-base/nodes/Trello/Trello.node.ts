@@ -40,8 +40,8 @@ export class Trello implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: "Attachment",
-						value: "attachment"
+						name: 'Attachment',
+						value: 'attachment'
 					},
 					{
 						name: 'Board',
@@ -52,13 +52,13 @@ export class Trello implements INodeType {
 						value: 'card',
 					},
 					{
-						name: "Checklist",
-						value: "checklist",
+						name: 'Checklist',
+						value: 'checklist',
 					},
 					{
-						name: "Label",
-						value: "label"
-					}
+						name: 'Label',
+						value: 'label'
+					},
 					{
 						name: 'List',
 						value: 'list',
@@ -1509,11 +1509,6 @@ export class Trello implements INodeType {
 				},
 				options: [
 					{
-						name: "Completed CheckItems",
-						value: "completedCheckItems",
-						description: "Get the completed checklist items on a card"
-					},
-					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new checklist',
@@ -1524,7 +1519,7 @@ export class Trello implements INodeType {
 						description: 'Delete a checklist',
 					},
 					{
-						name: 'Delete CheckItem',
+						name: 'Delete Checklist Item',
 						value: 'deleteCheckItem',
 						description: 'Delete a checklist item',
 					},
@@ -1534,20 +1529,25 @@ export class Trello implements INodeType {
 						description: 'Get the data of a checklist',
 					},
 					{
-						name: 'Get CheckItem',
-						value: 'getCheckItem',
-						description: 'Get a specific checkItem on a card',
-					},
-					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Returns all checklists for the card',
 					},
 					{
-						name: 'Update CheckItem',
+						name: 'Get Checklist Items',
+						value: 'getCheckItem',
+						description: 'Get a specific Checklist on a card',
+					},
+					{
+						name: 'Get Completed Checklist Items',
+						value: 'completedCheckItems',
+						description: 'Get the completed Checklist items on a card',
+					},
+					{
+						name: 'Update Checklist Item',
 						value: 'updateCheckItem',
 						description: 'Update an item in a checklist on a card.',
-					}
+					},
 				],
 				default: 'getAll',
 				description: 'The operation to perform.',
@@ -1800,7 +1800,7 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the checklist to delete.',
+				description: 'The ID of the checklist item to delete.',
 			},
 
 			// ----------------------------------
@@ -1840,7 +1840,7 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the checklist to get.',
+				description: 'The ID of the checklist item to get.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1935,9 +1935,19 @@ export class Trello implements INodeType {
 					{
 						displayName: 'State',
 						name: 'state',
-						type: 'string',
-						default: '',
-						description: 'One of: complete, incomplete',
+						type: 'options',
+						options: [
+							{
+								name: 'complete',
+								value: 'complete'
+							},
+							{
+								name: 'incomplete',
+								value: 'incomplete',
+							},
+						],
+						default: 'complete',
+						description: 'The resource to operate on.',
 					},
 					{
 						displayName: 'Checklist ID',
@@ -2102,8 +2112,7 @@ export class Trello implements INodeType {
 			{
 				displayName: 'Color',
 				name: 'color',
-				type: 'string',
-				default: '',
+				type: 'options',
 				required: true,
 				displayOptions: {
 					show: {
@@ -2115,8 +2124,56 @@ export class Trello implements INodeType {
 						],
 					},
 				},
-				description: 'The color for the label. See <a href="https://developers.trello.com/reference#label-object">fields</a> for color options.',
+				options: [
+					{
+						name: 'black',
+						value: 'black',
+					},
+					{
+						name: 'blue',
+						value: 'blue',
+					},
+					{
+						name: 'green',
+						value: 'green'
+					},
+					{
+						name: 'orange',
+						value: 'orange',
+					},
+					{
+						name: 'lime',
+						value: 'lime',
+					},
+					{
+						name: 'null',
+						value: 'null',
+					},
+					{
+						name: 'pink',
+						value: 'pink',
+					},
+					{
+						name: 'purple',
+						value: 'purple',
+					},
+					{
+						name: 'red',
+						value: 'red',
+					},
+					{
+						name: 'sky',
+						value: 'sky',
+					},
+					{
+						name: 'yellow',
+						value: 'yellow'
+					},
+				],
+				default: 'null',
+				description: 'The color for the label.',
 			},
+
 
 			// ----------------------------------
 			//         label:delete
@@ -2364,10 +2421,56 @@ export class Trello implements INodeType {
 					{
 						displayName: 'Color',
 						name: 'color',
-						type: 'string',
-						default: '',
-						description: 'The color for the label. See <a href="https://developers.trello.com/reference#label-object">fields</a> for color options.',
-					}
+						type: 'options',
+						options: [
+							{
+								name: 'black',
+								value: 'black',
+							},
+							{
+								name: 'blue',
+								value: 'blue',
+							},
+							{
+								name: 'green',
+								value: 'green'
+							},
+							{
+								name: 'orange',
+								value: 'orange',
+							},
+							{
+								name: 'lime',
+								value: 'lime',
+							},
+							{
+								name: 'null',
+								value: 'null',
+							},
+							{
+								name: 'pink',
+								value: 'pink',
+							},
+							{
+								name: 'purple',
+								value: 'purple',
+							},
+							{
+								name: 'red',
+								value: 'red',
+							},
+							{
+								name: 'sky',
+								value: 'sky',
+							},
+							{
+								name: 'yellow',
+								value: 'yellow'
+							},
+						],
+						default: 'null',
+						description: 'The color for the label.',
+					},
 				],
 			},
 		],
@@ -2516,7 +2619,6 @@ export class Trello implements INodeType {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
 
-
 			} else if (resource === 'list') {
 
 				if (operation === 'archive') {
@@ -2642,6 +2744,7 @@ export class Trello implements INodeType {
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
+
 			} else if (resource === 'checklist') {
 
 				if (operation === 'create') {
@@ -2700,6 +2803,7 @@ export class Trello implements INodeType {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
+
 				} else if (operation === 'getCheckItem') {
 					// ----------------------------------
 					//         getCheckItem
@@ -2714,6 +2818,7 @@ export class Trello implements INodeType {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
+
 				} else if (operation === 'deleteCheckItem') {
 					// ----------------------------------
 					//         deleteCheckItem
@@ -2725,6 +2830,7 @@ export class Trello implements INodeType {
 					const checkItemId = this.getNodeParameter('checkItemId', i) as string;
 
 					endpoint = `cards/${cardId}/checkItem/${checkItemId}`;
+
 				} else if (operation === 'updateCheckItem') {
 					// ----------------------------------
 					//         updateCheckItem
@@ -2739,9 +2845,10 @@ export class Trello implements INodeType {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
-				} else if(operation ==="completedCheckItems") {
+
+				} else if (operation ==='completedCheckItems') {
 					// ----------------------------------
-					//         updateCheckItem
+					//         completedCheckItems
 					// ----------------------------------
 
 					requestMethod = 'GET';
@@ -2769,15 +2876,13 @@ export class Trello implements INodeType {
 					const name = this.getNodeParameter('name', i) as string;
 					const color = this.getNodeParameter('color', i) as string;
 
-
 					Object.assign(qs, {
 						idBoard,
 						name,
 						color
 					});
 
-
-					endpoint = "labels";
+					endpoint = 'labels';
 
 				} else if (operation === 'delete') {
 					// ----------------------------------
@@ -2848,7 +2953,7 @@ export class Trello implements INodeType {
 
 				} else if (operation === 'removeLabel') {
 					// ----------------------------------
-					//         addLabel
+					//         removeLabel
 					// ----------------------------------
 
 					requestMethod = 'DELETE';
