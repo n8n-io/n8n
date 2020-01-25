@@ -45,7 +45,7 @@ export async function hunterApiRequestAllItems(this: IHookFunctions | IExecuteFu
 
 	do {
 		responseData = await hunterApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push(responseData[propertyName]);
 		query.offset += query.limit;
 	} while (
 		responseData.meta !== undefined &&
