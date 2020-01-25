@@ -44,7 +44,7 @@ export class DateTime implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'format'
+							'format',
 						],
 					},
 				},
@@ -53,13 +53,45 @@ export class DateTime implements INodeType {
 				required: true,
 			},
 			{
+				displayName: 'Custom Format',
+				name: 'custom',
+				displayOptions: {
+					show: {
+						action:[
+							'format',
+						],
+					},
+				},
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'To Format',
+				name: 'toFormat',
+				displayOptions: {
+					show: {
+						action:[
+							'format',
+						],
+						custom: [
+							true,
+						],
+					},
+				},
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'To Format',
 				name: 'toFormat',
 				type: 'options',
 				displayOptions: {
 					show: {
 						action:[
-							'format'
+							'format',
+						],
+						custom:[
+							false,
 						],
 					},
 				},
