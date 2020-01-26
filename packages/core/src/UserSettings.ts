@@ -143,7 +143,6 @@ export async function writeUserSettings(userSettings: IUserSettings, settingsPat
  */
 export async function getUserSettings(settingsPath?: string, ignoreCache?: boolean): Promise<IUserSettings | undefined> {
 	if (settingsCache !== undefined && ignoreCache !== true) {
-
 		return settingsCache;
 	}
 

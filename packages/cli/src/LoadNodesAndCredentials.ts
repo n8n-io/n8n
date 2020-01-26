@@ -137,7 +137,7 @@ class LoadNodesAndCredentialsClass {
 			}
 		}
 
-		this.credentialTypes[credentialName] = tempCredential;
+		this.credentialTypes[tempCredential.name] = tempCredential;
 	}
 
 

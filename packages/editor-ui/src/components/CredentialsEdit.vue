@@ -8,7 +8,7 @@
 						Credential type:
 					</el-col>
 					<el-col :span="18">
-						<el-select v-model="credentialType" placeholder="Select Type" size="small">
+						<el-select v-model="credentialType" filterable placeholder="Select Type" size="small">
 							<el-option
 								v-for="item in credentialTypes"
 								:key="item.name"
