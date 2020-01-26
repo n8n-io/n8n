@@ -17,7 +17,7 @@ received or lost a star.
 
 ## Available integrations
 
-n8n has 80+ different nodes to automate workflows. The list can be found on: [https://n8n.io/nodes](https://n8n.io/nodes)
+n8n has 100+ different nodes to automate workflows. The list can be found on: [https://n8n.io/nodes](https://n8n.io/nodes)
 
 
 ## Documentation
