@@ -88,6 +88,23 @@ export const taskFields = [
 		required: true,
 	},
 	{
+		displayName: 'Forderless List',
+		name: 'fonderlessList',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		required: true,
+	},
+	{
 		displayName: 'Folder',
 		name: 'folder',
 		type: 'options',
@@ -100,13 +117,16 @@ export const taskFields = [
 				operation: [
 					'create',
 				],
+				fonderlessList: [
+					false,
+				],
 			},
 		},
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
 				'space',
-			]
+			],
 		},
 		required: true,
 	},
@@ -122,6 +142,35 @@ export const taskFields = [
 				],
 				operation: [
 					'create',
+				],
+				fonderlessList: [
+					true,
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getFolderlessLists',
+			loadOptionsDependsOn: [
+				'space',
+			],
+		},
+		required: true,
+	},
+	{
+		displayName: 'List',
+		name: 'list',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
+				fonderlessList: [
+					false,
 				],
 			},
 		},
