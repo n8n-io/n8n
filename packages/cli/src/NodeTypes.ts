@@ -15,7 +15,7 @@ class NodeTypesClass implements INodeTypes {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
 		for (const nodeTypeData of Object.values(nodeTypes)) {
-			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeTypeData.type)
+			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeTypeData.type);
 
 			if (applyParameters.length) {
 				nodeTypeData.type.description.properties.unshift.apply(nodeTypeData.type.description.properties, applyParameters);

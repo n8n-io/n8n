@@ -34,14 +34,14 @@
 		</el-row>
 
 		<br />
-		<div class="headline">
+		<div class="headline" v-if="credentialProperties.length">
 			Credential Data:
 			<el-tooltip class="credentials-info" placement="top" effect="light">
 				<div slot="content" v-html="helpTexts.credentialsData"></div>
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
 		</div>
-		<el-row v-for="parameter in credentialTypeData.properties" :key="parameter.name" class="parameter-wrapper">
+		<el-row v-for="parameter in credentialProperties" :key="parameter.name" class="parameter-wrapper">
 			<el-col :span="6" class="parameter-name">
 				{{parameter.displayName}}:
 				<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
@@ -97,7 +97,11 @@ import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
-import { ICredentialsDecryptedResponse, IUpdateInformation } from '@/Interface';
+import {
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+	IUpdateInformation,
+} from '@/Interface';
 import {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -105,6 +109,7 @@ import {
 	ICredentialType,
 	ICredentialNodeAccess,
 	INodeCredentialDescription,
+	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -172,15 +177,20 @@ export default mixins(
 				};
 			});
 		},
+		credentialProperties (): INodeProperties[] {
+			return this.credentialTypeData.properties.filter((propertyData: INodeProperties) => {
+				return !this.credentialTypeData.__overwrittenProperties || !this.credentialTypeData.__overwrittenProperties.includes(propertyData.name);
+			});
+		},
 		isOAuthType (): boolean {
-			return this.credentialData && this.credentialData.type === 'oAuth2Api';
+			return this.credentialTypeData.name === 'oAuth2Api' || (this.credentialTypeData.extends !== undefined && this.credentialTypeData.extends.includes('oAuth2Api'));
 		},
 		isOAuthConnected (): boolean {
 			if (this.isOAuthType === false) {
 				return false;
 			}
 
-			return !!this.credentialData.data.oauthTokenData;
+			return this.credentialData !== null && !!this.credentialData.data.oauthTokenData;
 		},
 	},
 	methods: {
@@ -192,7 +202,7 @@ export default mixins(
 			tempValue[name] = parameterData.value;
 			Vue.set(this, 'propertyValue', tempValue);
 		},
-		async createCredentials (): Promise<void> {
+		async createCredentials (doNotEmitData?: boolean): Promise<ICredentialsResponse | null> {
 			const nodesAccess = this.nodesAccess.map((nodeType) => {
 				return {
 					nodeType,
@@ -211,18 +221,35 @@ export default mixins(
 				result = await this.restApi().createNewCredentials(newCredentials);
 			} catch (error) {
 				this.$showError(error, 'Problem Creating Credentials', 'There was a problem creating the credentials:');
-				return;
+				return null;
 			}
 
 			// Add also to local store
 			this.$store.commit('addCredentials', result);
 
-			this.$emit('credentialsCreated', result);
+			if (doNotEmitData !== true) {
+				this.$emit('credentialsCreated', result);
+			}
+
+			return result;
 		},
 		async oAuth2CredentialAuthorize () {
 			let url;
+
+			let credentialData = this.credentialData;
+			let newCredentials = false;
+			if (!credentialData) {
+				// Credentials did not get created yet. So create first before
+				// doing oauth authorize
+				credentialData = await this.createCredentials(true);
+				newCredentials = true;
+				if (credentialData === null) {
+					return;
+				}
+			}
+
 			try {
-				url = await this.restApi().oAuth2CredentialAuthorize(this.credentialData) as string;
+				url = await this.restApi().oAuth2CredentialAuthorize(credentialData) as string;
 			} catch (error) {
 				this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
 				return;
@@ -241,11 +268,15 @@ export default mixins(
 
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
-					this.credentialData.data.oauthTokenData = {};
+					credentialData.data.oauthTokenData = {};
 
 					// Close the window
 					if (oauthPopup) {
 						oauthPopup.close();
+					}
+
+					if (newCredentials === true) {
+						this.$emit('credentialsCreated', credentialData);
 					}
 
 					this.$showMessage({

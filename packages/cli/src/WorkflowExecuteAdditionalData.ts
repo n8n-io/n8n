@@ -1,6 +1,6 @@
 import {
+	CredentialsHelper,
 	Db,
-	ICredentialsDb,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IPushDataExecutionFinished,
@@ -14,13 +14,11 @@ import {
 } from './';
 
 import {
-	Credentials,
 	UserSettings,
 	WorkflowExecute,
 } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
@@ -373,40 +371,6 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 
 /**
- * Updates credentials with new data
- *
- * @export
- * @param {string} name Name of the credentials to update
- * @param {string} type Type of the credentials to update
- * @param {ICredentialDataDecryptedObject} data The new credential data
- * @param {string} encryptionKey The encryption key to use
- * @returns {Promise<void>}
- */
-export async function updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject, encryptionKey: string): Promise<void> {
-	const foundCredentials = await Db.collections.Credentials!.find({ name, type });
-
-	if (!foundCredentials.length) {
-		throw new Error(`Could not find credentials for type "${type}" with name "${name}".`);
-	}
-
-	const credentialsDb = foundCredentials[0];
-
-	// Encrypt the data
-	const credentials = new Credentials(credentialsDb.name, credentialsDb.type, credentialsDb.nodesAccess);
-	credentials.setData(data, encryptionKey);
-	const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
-
-	// Add special database related data
-	newCredentialsData.updatedAt = this.getCurrentDate();
-
-	// TODO: also add user automatically depending on who is logged in, if anybody is logged in
-
-	// Save the credentials in DB
-	await Db.collections.Credentials!.save(newCredentialsData);
-}
-
-
-/**
  * Returns the base additional data without webhooks
  *
  * @export
@@ -428,11 +392,11 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 
 	return {
 		credentials,
+		credentialsHelper: new CredentialsHelper(credentials, encryptionKey),
 		encryptionKey,
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.get('endpoints.rest') as string,
 		timezone,
-		updateCredentials,
 		webhookBaseUrl,
 		webhookTestBaseUrl,
 		currentNodeParameters,

@@ -18,6 +18,7 @@ import * as csrf from 'csrf';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
+	CredentialsOverwrites,
 	CredentialTypes,
 	Db,
 	IActivationError,
@@ -648,6 +649,10 @@ class App {
 		this.app.post('/rest/credentials', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ICredentialsResponse> => {
 			const incomingData = req.body;
 
+			if (!incomingData.name || incomingData.name.length < 3) {
+				throw new ResponseHelper.ResponseError(`Credentials name must be at least 3 characters long.`, undefined, 400);
+			}
+
 			// Add the added date for node access permissions
 			for (const nodeAccess of incomingData.nodesAccess) {
 				nodeAccess.date = this.getCurrentDate();
@@ -684,6 +689,7 @@ class App {
 
 			// Save the credentials in DB
 			const result = await Db.collections.Credentials!.save(newCredentialsData);
+			result.data = incomingData.data;
 
 			// Convert to response format in which the id is a string
 			(result as unknown as ICredentialsResponse).id = result.id.toString();
@@ -805,14 +811,6 @@ class App {
 
 			const results = await Db.collections.Credentials!.find(findQuery) as unknown as ICredentialsResponse[];
 
-			let encryptionKey = undefined;
-			if (req.query.includeData === true) {
-				encryptionKey = await UserSettings.getEncryptionKey();
-				if (encryptionKey === undefined) {
-					throw new Error('No encryption key got found to decrypt the credentials!');
-				}
-			}
-
 			let result;
 			for (result of results) {
 				(result as ICredentialsDecryptedResponse).id = result.id.toString();
@@ -866,19 +864,17 @@ class App {
 			}
 
 			const credentials = new Credentials(result.name, result.type, result.nodesAccess, result.data);
-			(result as ICredentialsDecryptedDb).data = credentials.getData(encryptionKey!);
-			(result as ICredentialsDecryptedResponse).id = result.id.toString();
+			const savedCredentialsData = credentials.getData(encryptionKey);
 
-			const oauthCredentials = (result as ICredentialsDecryptedDb).data;
-			if (oauthCredentials === undefined) {
-				throw new Error('Unable to read OAuth credentials');
-			}
+			// Load the credentials overwrites if any exist
+			const credentialsOverwrites = CredentialsOverwrites();
+			const oauthCredentials = credentialsOverwrites.applyOverwrite(credentials.type, savedCredentialsData);
 
 			const token = new csrf();
 			// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
-			oauthCredentials.csrfSecret = token.secretSync();
+			const csrfSecret = token.secretSync();
 			const state = {
-				token: token.create(oauthCredentials.csrfSecret),
+				token: token.create(csrfSecret),
 				cid: req.query.id
 			};
 			const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
@@ -893,7 +889,8 @@ class App {
 				state: stateEncodedStr,
 			});
 
-			credentials.setData(oauthCredentials, encryptionKey);
+			savedCredentialsData.csrfSecret = csrfSecret;
+			credentials.setData(savedCredentialsData, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
 			// Add special database related data
@@ -939,12 +936,11 @@ class App {
 			}
 
 			const credentials = new Credentials(result.name, result.type, result.nodesAccess, result.data);
-			(result as ICredentialsDecryptedDb).data = credentials.getData(encryptionKey!);
-			const oauthCredentials = (result as ICredentialsDecryptedDb).data;
-			if (oauthCredentials === undefined) {
-				const errorResponse = new ResponseHelper.ResponseError('Unable to read OAuth credentials!', undefined, 503);
-				return ResponseHelper.sendErrorResponse(res, errorResponse);
-			}
+			const savedCredentialsData = credentials.getData(encryptionKey!);
+
+			// Load the credentials overwrites if any exist
+			const credentialsOverwrites = CredentialsOverwrites();
+			const oauthCredentials = credentialsOverwrites.applyOverwrite(credentials.type, savedCredentialsData);
 
 			const token = new csrf();
 			if (oauthCredentials.csrfSecret === undefined || !token.verify(oauthCredentials.csrfSecret as string, state.token)) {
@@ -968,9 +964,10 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			oauthCredentials.oauthTokenData = JSON.stringify(oauthToken.data);
-			_.unset(oauthCredentials, 'csrfSecret');
-			credentials.setData(oauthCredentials, encryptionKey);
+			savedCredentialsData.oauthTokenData = JSON.stringify(oauthToken.data);
+			_.unset(savedCredentialsData, 'csrfSecret');
+
+			credentials.setData(savedCredentialsData, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 			// Add special database related data
 			newCredentialsData.updatedAt = this.getCurrentDate();

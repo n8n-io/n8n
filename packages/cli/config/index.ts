@@ -54,6 +54,19 @@ const config = convict({
 		},
 	},
 
+	credentials: {
+		overwrite: {
+			// Allows to set default values for credentials which
+			// get automatically prefilled and the user does not get
+			// displayed and can not change.
+			// Format: { CREDENTIAL_NAME: { PARAMTER: VALUE }}
+			doc: 'Overwrites for credentials',
+			format: '*',
+			default: '{}',
+			env: 'CREDENTIALS_OVERWRITE'
+		}
+	},
+
 	executions: {
 		// If a workflow executes all the data gets saved by default. This
 		// could be a problem when a workflow gets executed a lot and processes
