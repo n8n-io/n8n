@@ -90,7 +90,7 @@ export class FunctionItem implements INodeType {
 		let jsonData: IDataObject;
 		try {
 			// Execute the function code
-			jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, './');
+			jsonData = await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname);
 		} catch (e) {
 			return Promise.reject(e);
 		}

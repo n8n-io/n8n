@@ -30,12 +30,18 @@ export default Vue
 		},
 		computed: {
 			isMultiLineParameter () {
+				if (this.level > 4) {
+					return true;
+				}
 				const rows = this.getArgument('rows');
 				if (rows !== undefined && rows > 1) {
 					return true;
 				}
 
 				return false;
+			},
+			level (): number {
+				return this.path.split('.').length;
 			},
 		},
 		props: [
