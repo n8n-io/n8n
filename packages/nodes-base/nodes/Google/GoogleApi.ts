@@ -18,5 +18,6 @@ export async function getAuthenticationClient(email: string, privateKey: string,
 	// TODO: Check later if this or the above should be cached
 	await client.authorize();
 
+	// @ts-ignore
 	return client;
 }

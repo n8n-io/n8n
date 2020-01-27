@@ -67,6 +67,7 @@ export class GoogleSheet {
 	async clearData(range: string): Promise<object> {
 		const client = await this.getAuthenticationClient();
 
+		// @ts-ignore
 		const response = await Sheets.spreadsheets.values.clear(
 			{
 				auth: client,
@@ -84,6 +85,7 @@ export class GoogleSheet {
 	async getData(range: string, valueRenderMode: ValueRenderOption): Promise<string[][] | undefined> {
 		const client = await this.getAuthenticationClient();
 
+		// @ts-ignore
 		const response = await Sheets.spreadsheets.values.get(
 			{
 				auth: client,
@@ -103,6 +105,7 @@ export class GoogleSheet {
 	async spreadsheetGetSheets() {
 		const client = await this.getAuthenticationClient();
 
+		// @ts-ignore
 		const response = await Sheets.spreadsheets.get(
 			{
 				auth: client,
@@ -121,6 +124,7 @@ export class GoogleSheet {
 	async spreadsheetBatchUpdate(requests: sheets_v4.Schema$Request[]) { // tslint:disable-line:no-any
 		const client = await this.getAuthenticationClient();
 
+		// @ts-ignore
 		const response = await Sheets.spreadsheets.batchUpdate(
 			{
 				auth: client,
