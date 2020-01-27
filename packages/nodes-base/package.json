@@ -236,7 +236,7 @@
         "formidable": "^1.2.1",
         "glob-promise": "^3.4.0",
         "gm": "^1.23.1",
-        "googleapis": "^46.0.0",
+        "googleapis": "~46.0.0",
         "imap-simple": "^4.3.0",
         "lodash.get": "^4.4.2",
         "lodash.set": "^4.3.2",
