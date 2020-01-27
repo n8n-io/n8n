@@ -19,14 +19,14 @@ export const linkOperations = [
 				description: 'Create a link',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a link',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a link',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a link',
 			},
 		],
 		default: 'create',
@@ -54,6 +54,7 @@ export const linkFields = [
 			},
 		},
 		default: '',
+		placeholder: 'https://example.com',
 		required: true,
 	},
 	{
@@ -80,12 +81,6 @@ export const linkFields = [
 				default: 'bit.ly',
 			},
 			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Group',
 				name: 'group',
 				type: 'options',
@@ -105,6 +100,12 @@ export const linkFields = [
 						'group',
 					]
 				},
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
 			},
 		],
 	},
@@ -133,6 +134,12 @@ export const linkFields = [
 				displayName: 'Deep Link',
 				values: [
 					{
+						displayName: 'App ID',
+						name: 'appId',
+						type: 'string',
+						default: '',
+					},
+					{
 						displayName: 'App URI Path',
 						name: 'appUriPath',
 						type: 'string',
@@ -150,12 +157,6 @@ export const linkFields = [
 						type: 'string',
 						default: '',
 					},
-					{
-						displayName: 'App ID',
-						name: 'appId',
-						type: 'string',
-						default: '',
-					},
 				]
 			},
 		],
@@ -168,6 +169,7 @@ export const linkFields = [
 		name: 'id',
 		type: 'string',
 		default: '',
+		placeholder: 'bit.ly/22u3ypK',
 		required: true,
 		displayOptions: {
 			show: {
@@ -198,28 +200,10 @@ export const linkFields = [
 		},
 		options: [
 			{
-				displayName: 'Long URL',
-				name: 'longUrl',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Archived',
 				name: 'archived',
 				type: 'boolean',
 				default: false,
-			},
-			{
-				displayName: 'Domain',
-				name: 'domain',
-				type: 'string',
-				default: 'bit.ly',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
 			},
 			{
 				displayName: 'Group',
@@ -229,6 +213,12 @@ export const linkFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
+			},
+			{
+				displayName: 'Long URL',
+				name: 'longUrl',
+				type: 'string',
+				default: '',
 			},
 			{
 				displayName: 'Tags',
@@ -241,6 +231,12 @@ export const linkFields = [
 						'group',
 					]
 				},
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
 			},
 		],
 	},
@@ -269,6 +265,12 @@ export const linkFields = [
 				displayName: 'Deep Link',
 				values: [
 					{
+						displayName: 'App ID',
+						name: 'appId',
+						type: 'string',
+						default: '',
+					},
+					{
 						displayName: 'App URI Path',
 						name: 'appUriPath',
 						type: 'string',
@@ -286,12 +288,6 @@ export const linkFields = [
 						type: 'string',
 						default: '',
 					},
-					{
-						displayName: 'App ID',
-						name: 'appId',
-						type: 'string',
-						default: '',
-					},
 				]
 			},
 		],
@@ -304,6 +300,7 @@ export const linkFields = [
 		name: 'id',
 		type: 'string',
 		default: '',
+		placeholder: 'bit.ly/22u3ypK',
 		required: true,
 		displayOptions: {
 			show: {

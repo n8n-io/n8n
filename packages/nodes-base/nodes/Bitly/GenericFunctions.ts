@@ -48,7 +48,7 @@ export async function bitlyApiRequestAllItems(this: IHookFunctions | IExecuteFun
 		returnData.push.apply(returnData, responseData[propertyName]);
 		if (responseData.pagination && responseData.pagination.next) {
 			uri = responseData.pagination.next;
-		};
+		}
 	} while (
 		responseData.pagination !== undefined &&
 		responseData.pagination.next !== undefined
