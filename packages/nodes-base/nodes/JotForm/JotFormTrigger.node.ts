@@ -10,7 +10,6 @@ import {
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
-	IBinaryData,
 } from 'n8n-workflow';
 
 import {
@@ -89,12 +88,19 @@ export class JotFormTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const formId = this.getNodeParameter('form') as string;
-				if (webhookData.webhookId === undefined) {
-					return false;
-				}
 				const endpoint = `/form/${formId}/webhooks`;
+
 				try {
-					await jotformApiRequest.call(this, 'GET', endpoint);
+					const responseData = await jotformApiRequest.call(this, 'GET', endpoint);
+
+					const webhookUrls = Object.values(responseData.content);
+					const webhookUrl = this.getNodeWebhookUrl('default');
+					if (!webhookUrls.includes(webhookUrl)) {
+						return false;
+					}
+
+					const webhookIds = Object.keys(responseData.content);
+					webhookData.webhookId = webhookIds[webhookUrls.indexOf(webhookUrl)];
 				} catch (e) {
 					return false;
 				}
@@ -135,7 +141,6 @@ export class JotFormTrigger implements INodeType {
 	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
-		const headers = this.getHeaderData();
 		return {
 			workflowData: [
 				this.helpers.returnJsonArray(req.body)
