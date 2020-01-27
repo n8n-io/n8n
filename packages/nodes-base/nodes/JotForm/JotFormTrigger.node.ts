@@ -1,3 +1,5 @@
+import * as formidable from 'formidable';
+
 import {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -15,6 +17,12 @@ import {
 import {
 	jotformApiRequest,
 } from './GenericFunctions';
+
+
+interface IQuestionData {
+	name: string;
+	text: string;
+}
 
 export class JotFormTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,6 +63,20 @@ export class JotFormTrigger implements INodeType {
 				},
 				default: '',
 				description: '',
+			},
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				default: true,
+				description: 'By default does the webhook-data use internal keys instead of the names.<br />If this option gets activated it will resolve the keys automatically to the actual names.',
+			},
+			{
+				displayName: 'Only Answers',
+				name: 'onlyAnswers',
+				type: 'boolean',
+				default: true,
+				description: 'Returns only the answers of the form and not any of the other data.',
 			},
 		],
 
@@ -141,10 +163,75 @@ export class JotFormTrigger implements INodeType {
 	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
-		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body)
-			],
-		};
+		const formId = this.getNodeParameter('form') as string;
+		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
+		const onlyAnswers = this.getNodeParameter('onlyAnswers', false) as boolean;
+
+		const form = new formidable.IncomingForm();
+
+		return new Promise((resolve, reject) => {
+
+			form.parse(req, async (err, data, files) => {
+
+				const rawRequest = JSON.parse(data.rawRequest as string);
+				data.rawRequest = rawRequest;
+
+				let returnData: IDataObject;
+				if (resolveData === false) {
+					if (onlyAnswers === true) {
+						returnData = data.rawRequest as unknown as IDataObject;
+					} else {
+						returnData = data;
+					}
+
+					resolve({
+						workflowData: [
+							this.helpers.returnJsonArray(returnData),
+						],
+					});
+				}
+
+				// Resolve the data by requesting the information via API
+				const endpoint = `/form/${formId}/questions`;
+				const responseData = await jotformApiRequest.call(this, 'GET', endpoint, {});
+
+				// Create a dictionary to resolve the keys
+				const questionNames: IDataObject = {};
+				for (const question of Object.values(responseData.content) as IQuestionData[]) {
+					questionNames[question.name] = question.text;
+				}
+
+				// Resolve the keys
+				let questionKey: string;
+				const questionsData: IDataObject = {};
+				for (const key of Object.keys(rawRequest)) {
+					if (!key.includes('_')) {
+						continue;
+					}
+
+					questionKey = key.split('_').slice(1).join('_');
+					if (questionNames[questionKey] === undefined) {
+						continue;
+					}
+
+					questionsData[questionNames[questionKey] as string] = rawRequest[key];
+				}
+
+				if (onlyAnswers === true) {
+					returnData = questionsData as unknown as IDataObject;
+				} else {
+					// @ts-ignore
+					data.rawRequest = questionsData;
+					returnData = data;
+				}
+
+				resolve({
+					workflowData: [
+						this.helpers.returnJsonArray(returnData),
+					],
+				});
+			});
+
+		});
 	}
 }
