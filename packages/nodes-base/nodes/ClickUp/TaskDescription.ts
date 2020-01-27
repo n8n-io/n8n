@@ -88,8 +88,8 @@ export const taskFields = [
 		required: true,
 	},
 	{
-		displayName: 'Forderless List',
-		name: 'fonderlessList',
+		displayName: 'Folderless List',
+		name: 'folderless',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
@@ -117,7 +117,7 @@ export const taskFields = [
 				operation: [
 					'create',
 				],
-				fonderlessList: [
+				folderless: [
 					false,
 				],
 			},
@@ -143,7 +143,7 @@ export const taskFields = [
 				operation: [
 					'create',
 				],
-				fonderlessList: [
+				folderless: [
 					true,
 				],
 			},
@@ -169,7 +169,7 @@ export const taskFields = [
 				operation: [
 					'create',
 				],
-				fonderlessList: [
+				folderless: [
 					false,
 				],
 			},
