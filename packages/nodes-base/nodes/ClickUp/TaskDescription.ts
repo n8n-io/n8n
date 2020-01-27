@@ -274,6 +274,7 @@ export const taskFields = [
 				name: 'priority',
 				type: 'number',
 				typeOptions: {
+					minValue: 1,
 					maxValue: 4,
 				},
 				description: 'Integer mapping as 1 : Urgent, 2 : High, 3 : Normal, 4 : Low',
@@ -407,6 +408,7 @@ export const taskFields = [
 				name: 'priority',
 				type: 'number',
 				typeOptions: {
+					minValue: 1,
 					maxValue: 4,
 				},
 				description: 'Integer mapping as 1 : Urgent, 2 : High, 3 : Normal, 4 : Low',
