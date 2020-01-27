@@ -125,6 +125,22 @@ export class ClickUp implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available lists without a folder to display them to user so that he can
+			// select them easily
+			async getFolderlessLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const spaceId = this.getCurrentNodeParameter('space') as string;
+				const returnData: INodePropertyOptions[] = [];
+				const { lists } = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/list`);
+				for (const list of lists) {
+					const listName = list.name;
+					const listId = list.id;
+					returnData.push({
+						name: listName,
+						value: listId,
+					});
+				}
+				return returnData;
+			},
 			// Get all the available assignees to display them to user so that he can
 			// select them easily
 			async getAssignees(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
