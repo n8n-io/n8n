@@ -131,7 +131,7 @@ export class Bitly implements INodeType {
 								install_type: deeplink.installType,
 								install_url: deeplink.installUrl,
 								app_id: deeplink.appId,
-							})
+							});
 						}
 					}
 					responseData = await bitlyApiRequest.call(this, 'POST', '/bitlinks', body);
@@ -149,9 +149,6 @@ export class Bitly implements INodeType {
 					if (updateFields.archived !== undefined) {
 						body.archived = updateFields.archived as boolean;
 					}
-					if (updateFields.domain) {
-						body.domain = updateFields.domain as string;
-					}
 					if (updateFields.group) {
 						body.group = updateFields.group as string;
 					}
@@ -167,7 +164,7 @@ export class Bitly implements INodeType {
 								install_type: deeplink.installType,
 								install_url: deeplink.installUrl,
 								app_id: deeplink.appId,
-							})
+							});
 						}
 					}
 					responseData = await bitlyApiRequest.call(this, 'PATCH', `/bitlinks/${linkId}`, body);
