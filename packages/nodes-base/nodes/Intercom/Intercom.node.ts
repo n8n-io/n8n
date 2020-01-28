@@ -39,7 +39,7 @@ export class Intercom implements INodeType {
 		description: 'Consume intercom API',
 		defaults: {
 			name: 'Intercom',
-			color: '#c02428',
+			color: '#0575f3',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
