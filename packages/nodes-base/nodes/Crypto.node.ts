@@ -14,7 +14,6 @@ import {
 	createSign,
 	getHashes,
  } from 'crypto';
-import { c } from 'rhea/typings/types';
 
 export class Crypto implements INodeType {
 	description: INodeTypeDescription = {
