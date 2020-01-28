@@ -43,6 +43,26 @@ export class Harvest implements INodeType {
 						name: 'Time Entries',
 						value: 'timeEntry',
 					},
+					{
+						name: "Client",
+						value: "client"
+					},
+					{ name: "Project",
+						value: "project"},
+					{ name: "Contact",
+						value: "contact"},
+					{ name: "Company",
+						value: "company"},
+					{ name: "Invoice",
+						value: "invoice"},
+					{ name: "Task",
+						value: "task"},
+					{ name: "User",
+						value: "user"},
+					{ name: "Expense",
+						value: "expense"},
+					{ name: "Estimates",
+						value: "estimate"}
 				],
 				default: 'timeEntry',
 				description: 'The resource to operate on.',
@@ -50,6 +70,7 @@ export class Harvest implements INodeType {
 
 			// operations
 			...timeEntryOperations,
+			...compa
 
 			// fields
 			...timeEntryFields
@@ -237,6 +258,337 @@ export class Harvest implements INodeType {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
 
+			} else if (resource === 'client') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `clients/${id}`;
+
+					try {
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = 'clients';
+
+					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+					const limit = this.getNodeParameter('limit', i) as string;
+					qs.per_page = limit;
+					Object.assign(qs, additionalFields);
+
+					try {
+						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
+			} else if (resource === 'project') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `projects/${id}`;
+
+					try {
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = 'projects';
+
+					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+					const limit = this.getNodeParameter('limit', i) as string;
+					qs.per_page = limit;
+					Object.assign(qs, additionalFields);
+
+					try {
+						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
+			} else if (resource === 'user') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `users/${id}`;
+
+					try {
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = 'users';
+
+					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+					const limit = this.getNodeParameter('limit', i) as string;
+					qs.per_page = limit;
+					Object.assign(qs, additionalFields);
+
+					try {
+						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
+
+				} else if (operation === 'me') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = 'users/me';
+
+					try {
+						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push.apply(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
+			} else if (resource === 'contact') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `contacts/${id}`;
+
+					try {
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = 'contacts';
+
+					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+					const limit = this.getNodeParameter('limit', i) as string;
+					qs.per_page = limit;
+					Object.assign(qs, additionalFields);
+
+					try {
+						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
+			} else if (resource === 'company') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `company`;
+
+					try {
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
+			} else if (resource === 'task') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `tasks/${id}`;
+
+					try {
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = 'tasks';
+
+					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+					const limit = this.getNodeParameter('limit', i) as string;
+					qs.per_page = limit;
+					Object.assign(qs, additionalFields);
+
+					try {
+						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
+			} else if (resource === 'invoice') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `invoices/${id}`;
+
+					try {
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = 'invoices';
+
+					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+					const limit = this.getNodeParameter('limit', i) as string;
+					qs.per_page = limit;
+					Object.assign(qs, additionalFields);
+
+					try {
+						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
+			} else if (resource === 'expense') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `expenses/${id}`;
+
+					try {
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = 'expenses';
+
+					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+					const limit = this.getNodeParameter('limit', i) as string;
+					qs.per_page = limit;
+					Object.assign(qs, additionalFields);
+
+					try {
+						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}

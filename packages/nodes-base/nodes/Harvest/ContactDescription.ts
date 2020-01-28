@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const clientOperations = [
+export const contactOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,7 +8,7 @@ export const clientOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'client',
+					'contact',
 				],
 			},
 		},
@@ -16,12 +16,12 @@ export const clientOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of a client',
+				description: 'Get data of a contact',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get data of all clients',
+				description: 'Get data of all contacts',
 			},
 		],
 		default: 'create',
@@ -30,10 +30,10 @@ export const clientOperations = [
 
 ] as INodeProperties[];
 
-export const clientFields = [
+export const contactFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                client:getAll                            */
+/*                                contact:getAll                            */
 /* -------------------------------------------------------------------------- */
 
 {
@@ -43,7 +43,7 @@ export const clientFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'client',
+				'contact',
 			],
 			operation: [
 				'getAll',
@@ -51,7 +51,7 @@ export const clientFields = [
 		},
 	},
 	default: false,
-	description: 'Returns a list of your clients.',
+	description: 'Returns a list of your user contacts.',
 },
 {
 	displayName: 'Limit',
@@ -60,7 +60,7 @@ export const clientFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'client',
+				'contact',
 			],
 			operation: [
 				'getAll',
@@ -86,7 +86,7 @@ export const clientFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'client',
+				'contact',
 			],
 			operation: [
 				'getAll',
@@ -112,7 +112,7 @@ export const clientFields = [
 },
 
 /* -------------------------------------------------------------------------- */
-/*                                client:get                            */
+/*                                contact:get                            */
 /* -------------------------------------------------------------------------- */
 {
 	displayName: 'Client Id',
@@ -126,11 +126,11 @@ export const clientFields = [
 				'get',
 			],
 			resource: [
-				'client',
+				'contact',
 			],
 		},
 	},
-	description: 'The ID of the client you are retrieving.',
+	description: 'The ID of the contact you are retrieving.',
 }
 
 ] as INodeProperties[];
