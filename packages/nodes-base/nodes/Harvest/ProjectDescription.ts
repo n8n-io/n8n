@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const clientOperations = [
+export const projectOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,7 +8,7 @@ export const clientOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'client',
+					'project',
 				],
 			},
 		},
@@ -16,12 +16,12 @@ export const clientOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of a client',
+				description: 'Get data of a project',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get data of all clients',
+				description: 'Get data of all projects',
 			},
 		],
 		default: 'create',
@@ -30,10 +30,10 @@ export const clientOperations = [
 
 ] as INodeProperties[];
 
-export const clientFields = [
+export const projectFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                client:getAll                            */
+/*                                projects:getAll                            */
 /* -------------------------------------------------------------------------- */
 
 {
@@ -43,7 +43,7 @@ export const clientFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'client',
+				'project',
 			],
 			operation: [
 				'getAll',
@@ -51,7 +51,7 @@ export const clientFields = [
 		},
 	},
 	default: false,
-	description: 'Returns a list of your clients.',
+	description: 'Returns a list of your projects.',
 },
 {
 	displayName: 'Limit',
@@ -60,7 +60,7 @@ export const clientFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'client',
+				'project',
 			],
 			operation: [
 				'getAll',
@@ -86,7 +86,7 @@ export const clientFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'client',
+				'project',
 			],
 			operation: [
 				'getAll',
@@ -97,22 +97,37 @@ export const clientFields = [
 		{
 			displayName: 'Is Active',
 			name: 'is_active',
-			type: 'boolean',
+			type: 'string',
 			default: '',
-			description: 'Pass true to only return active clients and false to return inactive clients.',
+			description: 'Pass true to only return active projects and false to return inactive projects.',
+		},
+		{
+			displayName: 'Client Id',
+			name: 'client_id',
+			type: 'string',
+			default: '',
+			description: 'Only return projects belonging to the client with the given ID.',
 		},
 		{
 			displayName: 'Updated Since',
 			name: 'updated_since',
-			type: 'dateTime',
+			type: 'string',
 			default: '',
-			description: 'Only return clients that have been updated since the given date and time.',
-		}
+			description: 'Only return projects by updated_since.',
+		},
+		{
+			displayName: 'Page',
+			name: 'page',
+			type: 'string',
+			default: '',
+			description: 'The page number to use in pagination.',
+		},
+
 	]
 },
 
 /* -------------------------------------------------------------------------- */
-/*                                client:get                            */
+/*                                project:get                            */
 /* -------------------------------------------------------------------------- */
 {
 	displayName: 'Client Id',
@@ -126,11 +141,11 @@ export const clientFields = [
 				'get',
 			],
 			resource: [
-				'client',
+				'project',
 			],
 		},
 	},
-	description: 'The ID of the client you are retrieving.',
+	description: 'The ID of the project you are retrieving.',
 }
 
 ] as INodeProperties[];
