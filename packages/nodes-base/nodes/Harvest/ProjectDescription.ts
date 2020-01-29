@@ -24,7 +24,7 @@ export const projectOperations = [
 				description: 'Get data of all projects',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 
@@ -130,7 +130,7 @@ export const projectFields = [
 /*                                project:get                            */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'Client Id',
+	displayName: 'Project Id',
 	name: 'id',
 	type: 'string',
 	default: '',

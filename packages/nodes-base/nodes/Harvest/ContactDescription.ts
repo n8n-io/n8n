@@ -24,7 +24,7 @@ export const contactOperations = [
 				description: 'Get data of all contacts',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 
@@ -115,7 +115,7 @@ export const contactFields = [
 /*                                contact:get                            */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'Client Id',
+	displayName: 'Contact Id',
 	name: 'id',
 	type: 'string',
 	default: '',

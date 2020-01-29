@@ -24,7 +24,7 @@ export const taskOperations = [
 				description: 'Get data of all tasks',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 
@@ -122,7 +122,7 @@ export const taskFields = [
 /*                                task:get                            */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'Client Id',
+	displayName: 'Task Id',
 	name: 'id',
 	type: 'string',
 	default: '',

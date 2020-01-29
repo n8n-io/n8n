@@ -59,7 +59,7 @@ export const timeEntryOperations = [
 				description: 'Update a time entry',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];

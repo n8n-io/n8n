@@ -10,6 +10,15 @@ import {
 
 import { harvestApiRequest } from './GenericFunctions';
 import { timeEntryOperations, timeEntryFields } from './TimeEntryDescription';
+import { clientOperations, clientFields } from './ClientDescription';
+import { companyOperations } from './CompanyDescription';
+import { contactOperations, contactFields } from './ContactDescription';
+import { expenseOperations, expenseFields } from './ExpenseDescription';
+import { invoiceOperations, invoiceFields } from './InvoiceDescription';
+import { projectOperations, projectFields } from './ProjectDescription';
+import { taskOperations, taskFields } from './TaskDescription';
+import { userOperations, userFields } from './UserDescription';
+import { estimateOperations, estimateFields } from './EstimateDescription';
 
 
 export class Harvest implements INodeType {
@@ -47,33 +56,65 @@ export class Harvest implements INodeType {
 						name: "Client",
 						value: "client"
 					},
-					{ name: "Project",
-						value: "project"},
-					{ name: "Contact",
-						value: "contact"},
-					{ name: "Company",
-						value: "company"},
-					{ name: "Invoice",
-						value: "invoice"},
-					{ name: "Task",
-						value: "task"},
-					{ name: "User",
-						value: "user"},
-					{ name: "Expense",
-						value: "expense"},
-					{ name: "Estimates",
-						value: "estimate"}
+					{
+						name: "Project",
+						value: "project"
+					},
+					{
+						name: "Contact",
+						value: "contact"
+					},
+					{
+						name: "Company",
+						value: "company"
+					},
+					{
+						name: "Invoice",
+						value: "invoice"
+					},
+					{
+						name: "Task",
+						value: "task"
+					},
+					{
+						name: "User",
+						value: "user"
+					},
+					{
+						name: "Expense",
+						value: "expense"
+					},
+					{
+						name: "Estimates",
+						value: "estimate"
+					}
 				],
-				default: 'timeEntry',
+				default: 'user',
 				description: 'The resource to operate on.',
 			},
 
 			// operations
+			...clientOperations,
+			...companyOperations,
+			...contactOperations,
+			...estimateOperations,
+			...expenseOperations,
+			...invoiceOperations,
+			...projectOperations,
+			...taskOperations,
 			...timeEntryOperations,
-			...compa
+			...userOperations,
 
 			// fields
-			...timeEntryFields
+			...clientFields,
+			...contactFields,
+			...estimateFields,
+			...expenseFields,
+			...invoiceFields,
+			...projectFields,
+			...taskFields,
+			...timeEntryFields,
+			...userFields
 		]
 	};
 
@@ -292,7 +333,7 @@ export class Harvest implements INodeType {
 
 					try {
 						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+						returnData.push.apply(returnData, responseData.clients as IDataObject[]);
 					} catch (error) {
 						throw error;
 					}
@@ -334,7 +375,7 @@ export class Harvest implements INodeType {
 
 					try {
 						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+						returnData.push.apply(returnData, responseData.projects as IDataObject[]);
 					} catch (error) {
 						throw error;
 					}
@@ -376,14 +417,14 @@ export class Harvest implements INodeType {
 
 					try {
 						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+						returnData.push.apply(returnData, responseData.users as IDataObject[]);
 					} catch (error) {
 						throw error;
 					}
 
 				} else if (operation === 'me') {
 					// ----------------------------------
-					//         getAll
+					//         me
 					// ----------------------------------
 
 					requestMethod = 'GET';
@@ -392,7 +433,7 @@ export class Harvest implements INodeType {
 
 					try {
 						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(responseData);
+						returnData.push(responseData);
 					} catch (error) {
 						throw error;
 					}
@@ -434,7 +475,7 @@ export class Harvest implements INodeType {
 
 					try {
 						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+						returnData.push.apply(returnData, responseData.contacts as IDataObject[]);
 					} catch (error) {
 						throw error;
 					}
@@ -449,8 +490,6 @@ export class Harvest implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'GET';
-					const id = this.getNodeParameter('id', i) as string;
-
 					endpoint = `company`;
 
 					try {
@@ -497,7 +536,7 @@ export class Harvest implements INodeType {
 
 					try {
 						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+						returnData.push.apply(returnData, responseData.companies as IDataObject[]);
 					} catch (error) {
 						throw error;
 					}
@@ -539,7 +578,7 @@ export class Harvest implements INodeType {
 
 					try {
 						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+						returnData.push.apply(returnData, responseData.invoices as IDataObject[]);
 					} catch (error) {
 						throw error;
 					}
@@ -581,7 +620,49 @@ export class Harvest implements INodeType {
 
 					try {
 						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
+						returnData.push.apply(returnData, responseData.expenses as IDataObject[]);
+					} catch (error) {
+						throw error;
+					}
+
+				} else {
+					throw new Error(`The resource "${resource}" is not known!`);
+				}
+			} else if (resource === 'estimate') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `estimates/${id}`;
+
+					try {
+						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push(responseData);
+					} catch (error) {
+						throw error;
+					}
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					endpoint = 'estimates';
+
+					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+					const limit = this.getNodeParameter('limit', i) as string;
+					qs.per_page = limit;
+					Object.assign(qs, additionalFields);
+
+					try {
+						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+						returnData.push.apply(returnData, responseData.estimates as IDataObject[]);
 					} catch (error) {
 						throw error;
 					}

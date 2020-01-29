@@ -24,7 +24,7 @@ export const clientOperations = [
 				description: 'Get data of all clients',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 

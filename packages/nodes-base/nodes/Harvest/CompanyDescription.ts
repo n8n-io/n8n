@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const clientOperations = [
+export const companyOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',

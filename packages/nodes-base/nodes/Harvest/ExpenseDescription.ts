@@ -16,7 +16,7 @@ export const expenseOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of a expense',
+				description: 'Get data of an expense',
 			},
 			{
 				name: 'Get All',
@@ -24,7 +24,7 @@ export const expenseOperations = [
 				description: 'Get data of all expenses',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 
@@ -157,7 +157,7 @@ export const expenseFields = [
 /*                                expense:get                            */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'Client Id',
+	displayName: 'Expense Id',
 	name: 'id',
 	type: 'string',
 	default: '',
