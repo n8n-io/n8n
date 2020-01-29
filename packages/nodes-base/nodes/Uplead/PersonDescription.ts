@@ -43,7 +43,7 @@ export const personFields = [
 				],
 			},
 		},
-		description: 'email address (e.g – mbenioff@salesforce.com)',
+		description: 'Email address (e.g – mbenioff@salesforce.com)',
 	},
 	{
 		displayName: 'Fist Name',
@@ -60,7 +60,7 @@ export const personFields = [
 				],
 			},
 		},
-		description: 'first name of the person (e.g – Marc)',
+		description: 'First name of the person (e.g – Marc)',
 	},
 	{
 		displayName: 'Last Name',

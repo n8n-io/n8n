@@ -110,10 +110,10 @@ export class Uplead implements INodeType {
 					responseData = await upleadApiRequest.call(this, 'GET', '/company-search', {}, qs);
 				}
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+			if (Array.isArray(responseData.data)) {
+				returnData.push.apply(returnData, responseData.data as IDataObject[]);
 			} else {
-				returnData.push(responseData as IDataObject);
+				returnData.push(responseData.data as IDataObject);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
