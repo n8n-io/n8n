@@ -24,7 +24,7 @@ export const invoiceOperations = [
 				description: 'Get data of all invoices',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 
@@ -168,7 +168,7 @@ export const invoiceFields = [
 /*                                invoice:get                            */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'Client Id',
+	displayName: 'Invoice Id',
 	name: 'id',
 	type: 'string',
 	default: '',
