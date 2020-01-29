@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const userOperations = [
+export const estimateOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,37 +8,32 @@ export const userOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'user',
+					'estimate',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Me',
-				value: 'me',
-				description: 'Get data of authenticated user',
-			},
-			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of a user',
+				description: 'Get data of an estimate',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get data of all users',
+				description: 'Get data of all estimates',
 			},
 		],
-		default: 'me',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 
 ] as INodeProperties[];
 
-export const userFields = [
+export const estimateFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                user:getAll                            */
+/*                                estimate:getAll                            */
 /* -------------------------------------------------------------------------- */
 
 {
@@ -48,7 +43,7 @@ export const userFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'user',
+				'estimate',
 			],
 			operation: [
 				'getAll',
@@ -56,7 +51,7 @@ export const userFields = [
 		},
 	},
 	default: false,
-	description: 'Returns a list of your users.',
+	description: 'Returns a list of your estimates.',
 },
 {
 	displayName: 'Limit',
@@ -65,7 +60,7 @@ export const userFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'user',
+				'estimate',
 			],
 			operation: [
 				'getAll',
@@ -91,7 +86,7 @@ export const userFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'user',
+				'estimate',
 			],
 			operation: [
 				'getAll',
@@ -100,34 +95,55 @@ export const userFields = [
 	},
 	options: [
 		{
-			displayName: 'Is Active',
-			name: 'is_active',
+			displayName: 'Client ID',
+			name: 'client_id',
 			type: 'string',
 			default: '',
-			description: 'Only return users belonging to the user with the given ID.',
+			description: 'Only return time entries belonging to the client with the given ID.',
 		},
 		{
 			displayName: 'Updated Since',
 			name: 'updated_since',
 			type: 'string',
 			default: '',
-			description: 'Only return users belonging to the user with the given ID.',
+			description: 'Only return time entries that have been updated since the given date and time.',
+		},
+		{
+			displayName: 'From',
+			name: 'from',
+			type: 'dateTime',
+			default: '',
+			description: 'Only return time entries with a spent_date on or after the given date.',
+		},
+		{
+			displayName: 'To',
+			name: 'to',
+			type: 'dateTime',
+			default: '',
+			description: 'Only return time entries with a spent_date on or before the given date.',
+		},
+		{
+			displayName: 'State',
+			name: 'state',
+			type: 'string',
+			default: '',
+			description: 'Only return estimates with a state matching the value provided. Options: draft, sent, accepted, or declined.',
 		},
 		{
 			displayName: 'Page',
 			name: 'page',
 			type: 'string',
 			default: '',
-			description: 'The page number to use in pagination..',
+			description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
 		}
 	]
 },
 
 /* -------------------------------------------------------------------------- */
-/*                                user:get                            */
+/*                                estimate:get                            */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'User Id',
+	displayName: 'Estimate Id',
 	name: 'id',
 	type: 'string',
 	default: '',
@@ -138,11 +154,11 @@ export const userFields = [
 				'get',
 			],
 			resource: [
-				'user',
+				'estimate',
 			],
 		},
 	},
-	description: 'The ID of the user you are retrieving.',
+	description: 'The ID of the estimate you are retrieving.',
 }
 
 ] as INodeProperties[];
