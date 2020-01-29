@@ -11,7 +11,7 @@ export async function harvestApiRequest(
 		this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 		method: string,
 		qs: IDataObject = {},
-		uri?: string,
+		uri: string,
 		body: IDataObject = {},
 		option: IDataObject = {},
 	): Promise<any> { // tslint:disable-line:no-any
@@ -45,7 +45,6 @@ export async function harvestApiRequest(
 			"User-Agent": "Harvest API"
 		}
 	};
-	console.log({options})
 
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
@@ -53,7 +52,7 @@ export async function harvestApiRequest(
 	}
 	try {
 		const result = await this.helpers.request!(options);
-		console.log(result);
+
 		return result;
 	} catch (error) {
 		if (error.statusCode === 401) {
@@ -79,7 +78,8 @@ export async function harvestApiRequestAllItems(
 		this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 		method: string,
 		qs: IDataObject = {},
-		uri?: string,
+		uri: string,
+		resource: string,
 		body: IDataObject = {},
 		option: IDataObject = {},
 	): Promise<any> { // tslint:disable-line:no-any
@@ -91,12 +91,9 @@ export async function harvestApiRequestAllItems(
 	try {
 		do {
 			responseData = await harvestApiRequest.call(this, method, qs, uri, body, option);
-			qs.cursor = responseData.cursor.id;
-			returnData.push.apply(returnData, responseData.response);
-		} while (
-			responseData.cursor.more === true &&
-			responseData.cursor.hasNext === true
-		);
+			qs.page = responseData.next_page;
+			returnData.push.apply(returnData, responseData[resource]);
+		} while (responseData.next_page);
 		return returnData;
 		} catch(error) {
 		throw error;
