@@ -8,7 +8,7 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 
-import { harvestApiRequest } from './GenericFunctions';
+import { harvestApiRequest, harvestApiRequestAllItems } from './GenericFunctions';
 import { timeEntryOperations, timeEntryFields } from './TimeEntryDescription';
 import { clientOperations, clientFields } from './ClientDescription';
 import { companyOperations } from './CompanyDescription';
@@ -20,6 +20,34 @@ import { taskOperations, taskFields } from './TaskDescription';
 import { userOperations, userFields } from './UserDescription';
 import { estimateOperations, estimateFields } from './EstimateDescription';
 
+/**
+ * fetch All resource using paginated calls
+ */
+async function getAllResource(this: IExecuteFunctions, resource: string, i: number) {
+	const endpoint = resource;
+	let qs: IDataObject = {};
+	const requestMethod: string = "GET";
+
+	qs.per_page = 100;
+
+	const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	Object.assign(qs, additionalFields);
+
+	try {
+		let responseData: IDataObject = {};
+		if(returnAll) {
+			responseData[resource] = await harvestApiRequestAllItems.call(this, requestMethod, qs, endpoint, resource);
+		} else {
+			const limit = this.getNodeParameter('limit', i) as string;
+			qs.per_page = limit;
+			responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+		}
+		return responseData[resource] as IDataObject[];
+	} catch (error) {
+		throw error;
+	}
+}
 
 export class Harvest implements INodeType {
 	description: INodeTypeDescription = {
@@ -158,22 +186,8 @@ export class Harvest implements INodeType {
 					// ----------------------------------
 					//         getAll
 					// ----------------------------------
-
-					requestMethod = 'GET';
-
-					endpoint = 'time_entries';
-
-					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-					const limit = this.getNodeParameter('limit', i) as string;
-					qs.per_page = limit;
-					Object.assign(qs, additionalFields);
-
-					try {
-						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.time_entries as IDataObject[]);
-					} catch (error) {
-						throw error;
-					}
+					const responseData: IDataObject[] = await getAllResource.call(this, 'time_entries', i);
+					returnData.push.apply(returnData, responseData);
 
 				} else if (operation === 'createByStartEnd') {
 					// ----------------------------------
@@ -322,21 +336,8 @@ export class Harvest implements INodeType {
 					//         getAll
 					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = 'clients';
-
-					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-					const limit = this.getNodeParameter('limit', i) as string;
-					qs.per_page = limit;
-					Object.assign(qs, additionalFields);
-
-					try {
-						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.clients as IDataObject[]);
-					} catch (error) {
-						throw error;
-					}
+					const responseData: IDataObject[] = await getAllResource.call(this, 'clients', i);
+					returnData.push.apply(returnData, responseData);
 
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
@@ -364,21 +365,8 @@ export class Harvest implements INodeType {
 					//         getAll
 					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = 'projects';
-
-					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-					const limit = this.getNodeParameter('limit', i) as string;
-					qs.per_page = limit;
-					Object.assign(qs, additionalFields);
-
-					try {
-						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.projects as IDataObject[]);
-					} catch (error) {
-						throw error;
-					}
+					const responseData: IDataObject[] = await getAllResource.call(this, 'projects', i);
+					returnData.push.apply(returnData, responseData);
 
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
@@ -406,21 +394,8 @@ export class Harvest implements INodeType {
 					//         getAll
 					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = 'users';
-
-					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-					const limit = this.getNodeParameter('limit', i) as string;
-					qs.per_page = limit;
-					Object.assign(qs, additionalFields);
-
-					try {
-						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.users as IDataObject[]);
-					} catch (error) {
-						throw error;
-					}
+					const responseData: IDataObject[] = await getAllResource.call(this, 'users', i);
+					returnData.push.apply(returnData, responseData);
 
 				} else if (operation === 'me') {
 					// ----------------------------------
@@ -464,21 +439,8 @@ export class Harvest implements INodeType {
 					//         getAll
 					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = 'contacts';
-
-					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-					const limit = this.getNodeParameter('limit', i) as string;
-					qs.per_page = limit;
-					Object.assign(qs, additionalFields);
-
-					try {
-						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.contacts as IDataObject[]);
-					} catch (error) {
-						throw error;
-					}
+					const responseData: IDataObject[] = await getAllResource.call(this, 'contacts', i);
+					returnData.push.apply(returnData, responseData);
 
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
@@ -525,21 +487,8 @@ export class Harvest implements INodeType {
 					//         getAll
 					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = 'tasks';
-
-					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-					const limit = this.getNodeParameter('limit', i) as string;
-					qs.per_page = limit;
-					Object.assign(qs, additionalFields);
-
-					try {
-						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.companies as IDataObject[]);
-					} catch (error) {
-						throw error;
-					}
+					const responseData: IDataObject[] = await getAllResource.call(this, 'tasks', i);
+					returnData.push.apply(returnData, responseData);
 
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
@@ -567,21 +516,8 @@ export class Harvest implements INodeType {
 					//         getAll
 					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = 'invoices';
-
-					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-					const limit = this.getNodeParameter('limit', i) as string;
-					qs.per_page = limit;
-					Object.assign(qs, additionalFields);
-
-					try {
-						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.invoices as IDataObject[]);
-					} catch (error) {
-						throw error;
-					}
+					const responseData: IDataObject[] = await getAllResource.call(this, 'invoices', i);
+					returnData.push.apply(returnData, responseData);
 
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
@@ -609,21 +545,8 @@ export class Harvest implements INodeType {
 					//         getAll
 					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = 'expenses';
-
-					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-					const limit = this.getNodeParameter('limit', i) as string;
-					qs.per_page = limit;
-					Object.assign(qs, additionalFields);
-
-					try {
-						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.expenses as IDataObject[]);
-					} catch (error) {
-						throw error;
-					}
+					const responseData: IDataObject[] = await getAllResource.call(this, 'expenses', i);
+					returnData.push.apply(returnData, responseData);
 
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
@@ -651,21 +574,8 @@ export class Harvest implements INodeType {
 					//         getAll
 					// ----------------------------------
 
-					requestMethod = 'GET';
-
-					endpoint = 'estimates';
-
-					const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-					const limit = this.getNodeParameter('limit', i) as string;
-					qs.per_page = limit;
-					Object.assign(qs, additionalFields);
-
-					try {
-						let responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-						returnData.push.apply(returnData, responseData.estimates as IDataObject[]);
-					} catch (error) {
-						throw error;
-					}
+					const responseData: IDataObject[] = await getAllResource.call(this, 'estimates', i);
+					returnData.push.apply(returnData, responseData);
 
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
