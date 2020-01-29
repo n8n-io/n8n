@@ -97,22 +97,25 @@ export const taskFields = [
 		{
 			displayName: 'Is Active',
 			name: 'is_active',
-			type: 'string',
-			default: '',
+			type: 'boolean',
+			default: true,
 			description: 'Pass true to only return active tasks and false to return inactive tasks.',
 		},
 		{
 			displayName: 'Updated Since',
 			name: 'updated_since',
-			type: 'string',
+			type: 'dateTime',
 			default: '',
 			description: 'Only return tasks belonging to the task with the given ID.',
 		},
 		{
 			displayName: 'Page',
 			name: 'page',
-			type: 'string',
-			default: '',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 1,
 			description: 'The page number to use in pagination.',
 		}
 	]

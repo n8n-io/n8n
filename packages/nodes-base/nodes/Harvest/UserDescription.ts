@@ -102,22 +102,25 @@ export const userFields = [
 		{
 			displayName: 'Is Active',
 			name: 'is_active',
-			type: 'string',
-			default: '',
-			description: 'Only return users belonging to the user with the given ID.',
+			type: 'boolean',
+			default: true,
+			description: 'Pass true to only return active users and false to return inactive users.',
 		},
 		{
 			displayName: 'Updated Since',
 			name: 'updated_since',
-			type: 'string',
+			type: 'dateTime',
 			default: '',
 			description: 'Only return users belonging to the user with the given ID.',
 		},
 		{
 			displayName: 'Page',
 			name: 'page',
-			type: 'string',
-			default: '',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 1,
 			description: 'The page number to use in pagination..',
 		}
 	]
