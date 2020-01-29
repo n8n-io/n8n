@@ -111,7 +111,7 @@ export const invoiceFields = [
 		{
 			displayName: 'Updated Since',
 			name: 'updated_since',
-			type: 'string',
+			type: 'dateTime',
 			default: '',
 			description: 'Only return time entries that have been updated since the given date and time.',
 		},
@@ -157,8 +157,11 @@ export const invoiceFields = [
 		{
 			displayName: 'Page',
 			name: 'page',
-			type: 'string',
-			default: '',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 1,
 			description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
 		}
 	]
