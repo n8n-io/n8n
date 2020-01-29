@@ -98,7 +98,7 @@ export const clientFields = [
 			displayName: 'Is Active',
 			name: 'is_active',
 			type: 'boolean',
-			default: '',
+			default: true,
 			description: 'Pass true to only return active clients and false to return inactive clients.',
 		},
 		{

@@ -60,13 +60,13 @@ export async function harvestApiRequest(
 			throw new Error('The Harvest credentials are not valid!');
 		}
 
-		if (error.error && error.error.error_summary) {
+		if (error.error && error.error.message) {
 			// Try to return the error prettier
-			throw new Error(`Harvest error response [${error.statusCode}]: ${error.error.error_summary}`);
+			throw new Error(`Harvest error response [${error.statusCode}]: ${error.error.message}`);
 		}
 
 		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new Error(`Harvest error response: ${error.message}`);
 	}
 }
 

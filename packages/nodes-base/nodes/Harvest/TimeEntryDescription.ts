@@ -145,20 +145,20 @@ export const timeEntryFields = [
 			displayName: 'Is Billed',
 			name: 'is_billed',
 			type: 'boolean',
-			default: '',
+			default: true,
 			description: 'Pass true to only return time entries that have been invoiced and false to return time entries that have not been invoiced.',
 		},
 		{
 			displayName: 'Is Running',
 			name: 'is_running',
-			type: 'string',
-			default: '',
+			type: 'boolean',
+			default: true,
 			description: 'Pass true to only return running time entries and false to return non-running time entries.',
 		},
 		{
 			displayName: 'Updated Since',
 			name: 'updated_since',
-			type: 'string',
+			type: 'dateTime',
 			default: '',
 			description: 'Only return time entries that have been updated since the given date and time.',
 		},
@@ -179,8 +179,11 @@ export const timeEntryFields = [
 		{
 			displayName: 'Page',
 			name: 'page',
-			type: 'string',
-			default: '',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 1,
 			description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
 		}
 	]
@@ -335,45 +338,21 @@ export const timeEntryFields = [
 	default: {},
 	options: [
 		{
-			displayName: 'Project Id',
-			name: 'projectId',
-			type: 'string',
-			default: '',
-			description: 'The ID of the project to associate with the time entry.',
-		},
-		{
-			displayName: 'Task Id',
-			name: 'taskId',
-			type: 'string',
-			default: '',
-			description: 'The ID of the task to associate with the time entry.',
-		},
-		{
-			displayName: 'Spent Date',
-			name: 'spentDate',
-			type: 'dateTime',
-			default: '',
-			description: 'The ISO 8601 formatted date the time entry was spent.',
-		},
-		{
-			displayName: 'Started Time',
-			name: 'startedTime',
-			type: 'string',
-			default: '',
-			description: 'The time the entry started. Defaults to the current time. Example: “8:00am”.',
-		},
-		{
 			displayName: 'Ended Time',
-			name: 'endedTime',
+			name: 'ended_time',
 			type: 'string',
 			default: '',
+			placeholder: '3:00pm',
 			description: 'The time the entry ended.',
 		},
 		{
 			displayName: 'Hours',
 			name: 'hours',
-			type: 'string',
-			default: '',
+			type: 'number',
+			typeOptions: {
+				minValue: 0,
+			},
+			default: 0,
 			description: 'The current amount of time tracked.',
 		},
 		{
@@ -382,7 +361,15 @@ export const timeEntryFields = [
 			type: 'string',
 			default: '',
 			description: 'These are notes about the time entry..',
-		}
+		},
+		{
+			displayName: 'Started Time',
+			name: 'started_time',
+			type: 'string',
+			default: '',
+			placeholder: '3:00pm',
+			description: 'The time the entry started. Defaults to the current time. Example: “8:00am”.',
+		},
 	],
 },
 
@@ -390,8 +377,62 @@ export const timeEntryFields = [
 /*                                timeEntry:createByDuration                           */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'Create Fields',
-	name: 'createFields',
+	displayName: 'Project Id',
+	name: 'projectId',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'createByDuration',
+			],
+			resource: [
+				'timeEntry',
+			],
+		},
+	},
+	default: '',
+	required: true,
+	description: 'The ID of the project to associate with the time entry.',
+},
+{
+	displayName: 'Task Id',
+	name: 'taskId',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'createByDuration',
+			],
+			resource: [
+				'timeEntry',
+			],
+		},
+	},
+	default: '',
+	required: true,
+	description: 'The ID of the task to associate with the time entry.',
+},
+{
+	displayName: 'Spent Date',
+	name: 'spentDate',
+	type: 'dateTime',
+	displayOptions: {
+		show: {
+			operation: [
+				'createByDuration',
+			],
+			resource: [
+				'timeEntry',
+			],
+		},
+	},
+	default: '',
+	required: true,
+	description: 'The ISO 8601 formatted date the time entry was spent.',
+},
+{
+	displayName: 'Additional Fields',
+	name: 'additionalFields',
 	type: 'collection',
 	placeholder: 'Add Field',
 	displayOptions: {
@@ -407,38 +448,13 @@ export const timeEntryFields = [
 	default: {},
 	options: [
 		{
-			displayName: 'Project Id',
-			name: 'projectId',
-			type: 'string',
-			default: '',
-			description: 'The ID of the project to associate with the time entry.',
-		},
-		{
-			displayName: 'Task Id',
-			name: 'taskId',
-			type: 'string',
-			default: '',
-			description: 'The ID of the task to associate with the time entry.',
-		},
-		{
-			displayName: 'Spent Date',
-			name: 'spentDate',
-			type: 'dateTime',
-			default: '',
-			description: 'The ISO 8601 formatted date the time entry was spent.',
-		},
-		{
-			displayName: 'User ID',
-			name: 'userId',
-			type: 'string',
-			default: '',
-			description: 'The ID of the user to associate with the time entry. Defaults to the currently authenticated user’s ID.',
-		},
-		{
 			displayName: 'Hours',
 			name: 'hours',
-			type: 'string',
-			default: '',
+			type: 'number',
+			typeOptions: {
+				minValue: 0,
+			},
+			default: 0,
 			description: 'The current amount of time tracked.',
 		},
 		{
@@ -447,7 +463,14 @@ export const timeEntryFields = [
 			type: 'string',
 			default: '',
 			description: 'These are notes about the time entry..',
-		}
+		},
+		{
+			displayName: 'User ID',
+			name: 'user_id',
+			type: 'string',
+			default: '',
+			description: 'The ID of the user to associate with the time entry. Defaults to the currently authenticated user’s ID.',
+		},
 	],
 },
 
@@ -455,8 +478,62 @@ export const timeEntryFields = [
 /*                                timeEntry:createByStartEnd                           */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'Create Fields',
-	name: 'createFields',
+	displayName: 'Project Id',
+	name: 'projectId',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'createByStartEnd',
+			],
+			resource: [
+				'timeEntry',
+			],
+		},
+	},
+	default: '',
+	required: true,
+	description: 'The ID of the project to associate with the time entry.',
+},
+{
+	displayName: 'Task Id',
+	name: 'taskId',
+	type: 'string',
+	displayOptions: {
+		show: {
+			operation: [
+				'createByStartEnd',
+			],
+			resource: [
+				'timeEntry',
+			],
+		},
+	},
+	default: '',
+	required: true,
+	description: 'The ID of the task to associate with the time entry.',
+},
+{
+	displayName: 'Spent Date',
+	name: 'spentDate',
+	type: 'dateTime',
+	displayOptions: {
+		show: {
+			operation: [
+				'createByStartEnd',
+			],
+			resource: [
+				'timeEntry',
+			],
+		},
+	},
+	default: '',
+	required: true,
+	description: 'The ISO 8601 formatted date the time entry was spent.',
+},
+{
+	displayName: 'Additional Fields',
+	name: 'additionalFields',
 	type: 'collection',
 	placeholder: 'Add Field',
 	displayOptions: {
@@ -472,45 +549,11 @@ export const timeEntryFields = [
 	default: {},
 	options: [
 		{
-			displayName: 'Project Id',
-			name: 'projectId',
-			type: 'string',
-			default: '',
-			description: 'The ID of the project to associate with the time entry.',
-		},
-		{
-			displayName: 'Task Id',
-			name: 'taskId',
-			type: 'string',
-			default: '',
-			description: 'The ID of the task to associate with the time entry.',
-		},
-		{
-			displayName: 'Spent Date',
-			name: 'spentDate',
-			type: 'dateTime',
-			default: '',
-			description: 'The ISO 8601 formatted date the time entry was spent.',
-		},
-		{
-			displayName: 'User ID',
-			name: 'userId',
-			type: 'string',
-			default: '',
-			description: 'The ID of the user to associate with the time entry. Defaults to the currently authenticated user’s ID.',
-		},
-		{
-			displayName: 'Started Time',
-			name: 'startedTime',
-			type: 'string',
-			default: '',
-			description: 'The time the entry started. Defaults to the current time. Example: “8:00am”.',
-		},
-		{
 			displayName: 'Ended Time',
-			name: 'endedTime',
+			name: 'ended_time',
 			type: 'string',
 			default: '',
+			placeholder: '3:00pm',
 			description: 'The time the entry ended.',
 		},
 		{
@@ -519,7 +562,22 @@ export const timeEntryFields = [
 			type: 'string',
 			default: '',
 			description: 'These are notes about the time entry..',
-		}
+		},
+		{
+			displayName: 'Started Time',
+			name: 'started_time',
+			type: 'string',
+			default: '',
+			placeholder: '8:00am',
+			description: 'The time the entry started. Defaults to the current time. Example: “8:00am”.',
+		},
+		{
+			displayName: 'User ID',
+			name: 'user_id',
+			type: 'string',
+			default: '',
+			description: 'The ID of the user to associate with the time entry. Defaults to the currently authenticated user’s ID.',
+		},
 	],
 },
 

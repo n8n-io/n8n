@@ -97,8 +97,8 @@ export const projectFields = [
 		{
 			displayName: 'Is Active',
 			name: 'is_active',
-			type: 'string',
-			default: '',
+			type: 'boolean',
+			default: true,
 			description: 'Pass true to only return active projects and false to return inactive projects.',
 		},
 		{
@@ -111,15 +111,18 @@ export const projectFields = [
 		{
 			displayName: 'Updated Since',
 			name: 'updated_since',
-			type: 'string',
+			type: 'dateTime',
 			default: '',
 			description: 'Only return projects by updated_since.',
 		},
 		{
 			displayName: 'Page',
 			name: 'page',
-			type: 'string',
-			default: '',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 1,
 			description: 'The page number to use in pagination.',
 		},
 
