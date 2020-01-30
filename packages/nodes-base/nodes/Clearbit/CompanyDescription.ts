@@ -21,7 +21,7 @@ export const companyOperations = [
 			{
 				name: 'Autocomplete',
 				value: 'autocomplete',
-				description: 'lets you auto-complete company names and retreive logo and domain',
+				description: 'Lets you auto-complete company names and retreive logo and domain',
 			},
 		],
 		default: 'enrich',
@@ -70,18 +70,18 @@ export const companyFields = [
 		},
 		options: [
 			{
-				displayName: 'Webhook URL',
-				name: 'webhookUrl',
-				type: 'string',
-				default: '',
-				description: 'A webhook URL that results will be sent to.',
-			},
-			{
 				displayName: 'Company Name',
 				name: 'companyName',
 				type: 'string',
 				default: '',
 				description: 'The name of the company.',
+			},
+			{
+				displayName: 'Facebook',
+				name: 'facebook',
+				type: 'string',
+				default: '',
+				description: 'The Facebook URL for the company.',
 			},
 			{
 				displayName: 'Linkedin',
@@ -96,13 +96,6 @@ export const companyFields = [
 				type: 'string',
 				default: '',
 				description: 'The Twitter handle for the company.',
-			},
-			{
-				displayName: 'Facebook',
-				name: 'facebook',
-				type: 'string',
-				default: '',
-				description: 'The Facebook URL for the company.',
 			},
 		],
 	},
