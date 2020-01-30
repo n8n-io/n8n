@@ -29,6 +29,11 @@ export const taskOperations = [
 				description: 'Get a task',
 			},
 			{
+				name: 'Get all',
+				value: 'getAll',
+				description: 'Get all tasks',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
@@ -452,7 +457,332 @@ export const taskFields = [
 		description: 'Task ID',
 	},
 /* -------------------------------------------------------------------------- */
-/*                                task:delete                               */
+/*                                 task:getAll                                */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Team',
+		name: 'team',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getTeams',
+		},
+		required: true,
+	},
+	{
+		displayName: 'Space',
+		name: 'space',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getSpaces',
+			loadOptionsDependsOn: [
+				'team',
+			]
+		},
+		required: true,
+	},
+	{
+		displayName: 'Folderless List',
+		name: 'folderless',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		required: true,
+	},
+	{
+		displayName: 'Folder',
+		name: 'folder',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+				folderless: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getFolders',
+			loadOptionsDependsOn: [
+				'space',
+			],
+		},
+		required: true,
+	},
+	{
+		displayName: 'List',
+		name: 'list',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+				folderless: [
+					true,
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getFolderlessLists',
+			loadOptionsDependsOn: [
+				'space',
+			],
+		},
+		required: true,
+	},
+	{
+		displayName: 'List',
+		name: 'list',
+		type: 'options',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+				folderless: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'folder',
+			]
+		},
+		required: true,
+	},
+	// {
+	// 	displayName: 'Return All',
+	// 	name: 'returnAll',
+	// 	type: 'boolean',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'task',
+	// 			],
+	// 			operation: [
+	// 				'getAll',
+	// 			],
+	// 		},
+	// 	},
+	// 	default: true,
+	// 	description: 'If all results should be returned or only up to a given limit.',
+	// },
+	// {
+	// 	displayName: 'Limit',
+	// 	name: 'limit',
+	// 	type: 'number',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'task',
+	// 			],
+	// 			operation: [
+	// 				'getAll',
+	// 			],
+	// 			returnAll: [
+	// 				false,
+	// 			],
+	// 		},
+	// 	},
+	// 	typeOptions: {
+	// 		minValue: 1,
+	// 		maxValue: 100,
+	// 	},
+	// 	default: 50,
+	// 	description: 'How many results to return.',
+	// },
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Assignees',
+				name: 'assignees',
+				type: 'multiOptions',
+				loadOptionsDependsOn: [
+					'list',
+				],
+				typeOptions: {
+					loadOptionsMethod: 'getAssignees',
+				},
+
+				default: [],
+			},
+			{
+				displayName: 'Archived',
+				name: 'archived',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Subtasks',
+				name: 'subtasks',
+				type: 'boolean',
+				default: false,
+				description: 'Include subtasks, default false',
+			},
+			{
+				displayName: 'Include Closed',
+				name: 'includeClosed',
+				type: 'boolean',
+				default: false,
+				description: 'the api does not include closed tasks. Set this to true and dont send a status filter to include closed tasks',
+			},
+			{
+				displayName: 'Order By',
+				name: 'orderBy',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'ID',
+						value: 'id',
+					},
+					{
+						name: 'Created',
+						value: 'created',
+					},
+					{
+						name: 'Updated',
+						value: 'updated',
+					},
+					{
+						name: 'Due Date',
+						value: 'dueDate',
+					},
+				],
+			},
+			{
+				displayName: 'Statuses',
+				name: 'statuses',
+				type: 'multiOptions',
+				loadOptionsDependsOn: [
+					'list',
+				],
+				typeOptions: {
+					loadOptionsMethod: 'getStatuses',
+				},
+				default: [],
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'multiOptions',
+				loadOptionsDependsOn: [
+					'space',
+				],
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				default: [],
+				description: 'The array of tags applied to this task',
+			},
+			{
+				displayName: 'Due Date Greater Than',
+				name: 'dueDateGt',
+				type: 'dateTime',
+				default: '',
+				description: 'Filter due date greater than',
+			},
+			{
+				displayName: 'Due Date Less Than',
+				name: 'dueDateLt',
+				type: 'dateTime',
+				default: '',
+				description: 'Filter due date less than',
+			},
+			{
+				displayName: 'Date Created Greater Than',
+				name: 'dateCreatedGt',
+				type: 'dateTime',
+				default: '',
+				description: 'Filter date created greater',
+			},
+			{
+				displayName: 'Date Created Less Than',
+				name: 'dateCreatedLt',
+				type: 'dateTime',
+				default: '',
+				description: 'Filter date created less than posix time',
+			},
+			{
+				displayName: 'Date Updated Greater Than',
+				name: 'dateUpdatedGt',
+				type: 'dateTime',
+				default: '',
+				description: 'Filter date updated greater than',
+			},
+			{
+				displayName: 'Date Update Less Than',
+				name: 'dateUpdatedLt',
+				type: 'dateTime',
+				default: '',
+				description: 'Filter date updated less than',
+			},
+		],
+	},
+/* -------------------------------------------------------------------------- */
+/*                                task:delete                                 */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',

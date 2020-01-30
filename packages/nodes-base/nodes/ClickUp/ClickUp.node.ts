@@ -11,6 +11,7 @@ import {
 } from 'n8n-workflow';
 import {
 	clickupApiRequest,
+	clickupApiRequestAllItems,
 } from './GenericFunctions';
 import {
 	taskFields,
@@ -297,6 +298,58 @@ export class ClickUp implements INodeType {
 				if (operation === 'get') {
 					const taskId = this.getNodeParameter('id', i) as string;
 					responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`);
+				}
+				if (operation === 'getAll') {
+					const returnAll = true;
+					//const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					if (filters.archived) {
+						qs.archived = filters.archived as boolean;
+					}
+					if (filters.subtasks) {
+						qs.subtasks = filters.subtasks as boolean;
+					}
+					if (filters.includeClosed) {
+						qs.include_closed = filters.includeClosed as boolean;
+					}
+					if (filters.orderBy) {
+						qs.order_by = filters.orderBy as string;
+					}
+					if (filters.statuses) {
+						qs.statuses = filters.statuses as string[];
+					}
+					if (filters.assignees) {
+						qs.assignees = filters.assignees as string[];
+					}
+					if (filters.tags) {
+						qs.tags = filters.tags as string[];
+					}
+					if (filters.dueDateGt) {
+						qs.due_date_gt = new Date(filters.dueDateGt as string).getTime();
+					}
+					if (filters.dueDateLt) {
+						qs.due_date_lt = new Date(filters.dueDateLt as string).getTime();
+					}
+					if (filters.dateCreatedGt) {
+						qs.date_created_gt = new Date(filters.dateCreatedGt as string).getTime();
+					}
+					if (filters.dateCreatedLt) {
+						qs.date_created_lt = new Date(filters.dateCreatedLt as string).getTime();
+					}
+					if (filters.dateUpdatedGt) {
+						qs.date_updated_gt = new Date(filters.dateUpdatedGt as string).getTime();
+					}
+					if (filters.dateUpdatedLt) {
+						qs.date_updated_lt = new Date(filters.dateUpdatedLt as string).getTime();
+					}
+					const listId = this.getNodeParameter('list', i) as string;
+					if (returnAll === true) {
+						responseData = await clickupApiRequestAllItems.call(this, 'tasks', 'GET', `/list/${listId}/task`, {}, qs);
+					} else {
+						// qs.limit = this.getNodeParameter('limit', i) as number;
+						// responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}/task`, {}, qs);
+						// responseData = responseData.tasks;
+					}
 				}
 				if (operation === 'delete') {
 					const taskId = this.getNodeParameter('id', i) as string;
