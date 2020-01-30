@@ -15,7 +15,7 @@ import {
 } from './GenericFunctions';
 import {
 	taskFields,
-	taskOperations
+	taskOperations,
 } from './TaskDescription';
 import {
 	ITask,
