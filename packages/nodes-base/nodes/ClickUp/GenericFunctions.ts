@@ -7,6 +7,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
+import { response } from 'express';
 
 export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('clickUpApi');
@@ -34,4 +35,23 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 		}
 		throw new Error('ClickUp Error: ' + errorMessage);
 	}
+}
+
+export async function clickupApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string ,method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.page = 0;
+	query.limit = 100;
+
+	do {
+		responseData = await clickupApiRequest.call(this, method, resource, body, query);
+		returnData.push.apply(returnData, responseData[propertyName]);
+		query.page++;
+	} while (
+		responseData[propertyName] &&
+		responseData[propertyName].length !== 0
+	);
+	return returnData;
 }
