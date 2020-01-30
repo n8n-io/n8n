@@ -14,10 +14,10 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const base64credentials = Buffer.from(`${credentials.consumerKey}:${credentials.consumerSecret}`).toString('base64');
 	let options: OptionsWithUri = {
-		headers: {
-			Authorization: `Basic ${base64credentials}`,
+		auth: {
+			user: credentials.consumerKey as string,
+			password: credentials.consumerSecret as string,
 		},
 		method,
 		qs,
@@ -32,7 +32,18 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error('WooCommerce Error: ' + error);
+		if (error.statusCode === 401) {
+			// Return a clear error
+			throw new Error('The WooCommerce credentials are not valid!');
+		}
+
+		if (error.response.body && error.response.body.message) {
+			// Try to return the error prettier
+			throw new Error(`WooCommerce Error [${error.statusCode}]: ${error.response.body.message}`);
+		}
+
+		// If that data does not exist for some reason return the actual error
+		throw new Error('WooCommerce Error: ' + error.message);
 	}
 }
 
@@ -45,5 +56,5 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
  */
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
 	const data = `${credentials.consumerKey},${credentials.consumerSecret}`;
-	return createHash('md5').update(data).digest("hex");
+	return createHash('md5').update(data).digest('hex');
 }
