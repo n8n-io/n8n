@@ -17,7 +17,7 @@ export async function clearbitApiRequest(this: IHookFunctions | IExecuteFunction
 		method,
 		qs,
 		body,
-		uri: uri ||`https://${api}.clearbit.com${resource}`,
+		uri: uri ||`https://${api}-stream.clearbit.com${resource}`,
 		json: true
 	};
 	options = Object.assign({}, options, option);
@@ -26,7 +26,18 @@ export async function clearbitApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 	try {
 		return await this.helpers.request!(options);
-	} catch (err) {
-		throw new Error(err);
+	} catch (error) {
+		if (error.statusCode === 401) {
+			// Return a clear error
+			throw new Error('The Clearbit credentials are not valid!');
+		}
+
+		if (error.response.body && error.response.body.error && error.response.body.error.message) {
+			// Try to return the error prettier
+			throw new Error(`Clearbit Error [${error.statusCode}]: ${error.response.body.error.message}`);
+		}
+
+		// If that data does not exist for some reason return the actual error
+		throw new Error('Clearbit Error: ' + error.message);
 	}
 }

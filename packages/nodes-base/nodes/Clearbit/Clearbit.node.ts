@@ -16,7 +16,7 @@ import {
 } from './CompanyDescription';
 import {
 	personOperations,
-	 personFields,
+	personFields,
 } from './PersonDescription';
 
 export class Clearbit implements INodeType {
@@ -82,9 +82,6 @@ export class Clearbit implements INodeType {
 					const email = this.getNodeParameter('email', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					qs.email = email;
-					if (additionalFields.webhookUrl) {
-						qs.webhook_url = additionalFields.webhookUrl as string;
-					}
 					if (additionalFields.givenName) {
 						qs.given_name = additionalFields.givenName as string;
 					}
@@ -103,8 +100,8 @@ export class Clearbit implements INodeType {
 					if (additionalFields.companyDomain) {
 						qs.company_domain = additionalFields.companyDomain as string;
 					}
-					if (additionalFields.linkedin) {
-						qs.linkedin = additionalFields.linkedin as string;
+					if (additionalFields.linkedIn) {
+						qs.linkedin = additionalFields.linkedIn as string;
 					}
 					if (additionalFields.twitter) {
 						qs.twitter = additionalFields.twitter as string;
@@ -120,9 +117,6 @@ export class Clearbit implements INodeType {
 					const domain = this.getNodeParameter('domain', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					qs.domain = domain;
-					if (additionalFields.webhookUrl) {
-						qs.webhook_url = additionalFields.webhookUrl as string;
-					}
 					if (additionalFields.companyName) {
 						qs.company_name = additionalFields.companyName as string;
 					}
