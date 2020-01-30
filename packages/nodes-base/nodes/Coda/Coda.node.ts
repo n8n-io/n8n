@@ -105,6 +105,30 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available columns to display them to user so that he can
+			// select them easily
+			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				let columns;
+
+				const docId = this.getCurrentNodeParameter('docId');
+				const tableId = this.getCurrentNodeParameter('tableId');
+
+				try {
+					columns = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/tables/${tableId}/columns`, {});
+				} catch (err) {
+					throw new Error(`Coda Error: ${err}`);
+				}
+				for (const column of columns) {
+					const columnName = column.name;
+					const columnId = column.id;
+					returnData.push({
+						name: columnName,
+						value: columnId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -217,6 +241,9 @@ export class Coda implements INodeType {
 				if (options.visibleOnly) {
 					qs.visibleOnly = options.visibleOnly as boolean;
 				}
+				if (options.query) {
+					qs.query = options.query as string;
+				}
 				try {
 					if (returnAll === true) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {}, qs);
@@ -266,8 +293,21 @@ export class Coda implements INodeType {
 				// Return the incoming data
 				return [items];
 			}
-		}
+			// https://coda.io/developers/apis/v1beta1#operation/pushButton
+			if (operation === 'pushButton') {
+				for (let i = 0; i < items.length; i++) {
+					const docId = this.getNodeParameter('docId', i) as string;
+					const tableId = this.getNodeParameter('tableId', i) as string;
+					const rowId = this.getNodeParameter('rowId', i) as string;
+					const columnId = this.getNodeParameter('columnId', i) as string;
+					const endpoint = `/docs/${docId}/tables/${tableId}/rows/${rowId}/buttons/${columnId}`;
+					responseData = await codaApiRequest.call(this, 'POST', endpoint, {});
+					returnData.push(responseData)
+				}
+				return [this.helpers.returnJsonArray(returnData)];
+			}
 
+		}
 		return [];
 	}
 }
