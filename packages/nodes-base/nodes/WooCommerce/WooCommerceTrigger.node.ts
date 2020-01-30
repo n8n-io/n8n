@@ -176,6 +176,6 @@ export class WooCommerceTrigger implements INodeType {
 			workflowData: [
 				this.helpers.returnJsonArray(req.body),
 			],
-		}
+		};
 	}
 }
