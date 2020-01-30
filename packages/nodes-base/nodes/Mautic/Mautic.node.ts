@@ -106,16 +106,12 @@ export class Mautic implements INodeType {
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					let body: IDataObject = {};
 					if (!jsonActive) {
-						const firstName = this.getNodeParameter('firstName', i) as string;
-						const lastName = this.getNodeParameter('lastName', i) as string;
-						const company = this.getNodeParameter('company', i) as string;
-						const position = this.getNodeParameter('position', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
-						body.firstname = firstName;
-						body.lastname = lastName;
-						body.company = company;
-						body.position = position;
-						body.title = title;
+						body.email = this.getNodeParameter('email', i) as string;
+						body.firstname = this.getNodeParameter('firstName', i) as string;
+						body.lastname = this.getNodeParameter('lastName', i) as string;
+						body.company = this.getNodeParameter('company', i) as string;
+						body.position = this.getNodeParameter('position', i) as string;
+						body.title = this.getNodeParameter('title', i) as string;
 					} else {
 						const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
 						if (json !== undefined) {
@@ -145,6 +141,9 @@ export class Mautic implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					let body: IDataObject = {};
+					if (updateFields.email) {
+						body.email = updateFields.email as string;
+					}
 					if (updateFields.firstName) {
 						body.firstname = updateFields.firstName as string;
 					}
