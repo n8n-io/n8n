@@ -1,14 +1,16 @@
+import * as moment from 'moment-timezone';
+import { get, set } from 'lodash';
+
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	INodePropertyOptions,
-	ILoadOptionsFunctions,
-	IDataObject,
 } from 'n8n-workflow';
 
-import * as moment from 'moment-timezone';
 
 export class DateTime implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,15 +34,15 @@ export class DateTime implements INodeType {
 				options: [
 					{
 						name: 'Format a Date',
-						description: 'Apply to a date a diferent format',
+						description: 'Convert a date to a different format',
 						value: 'format'
 					},
 				],
 				default: 'format',
 			},
 			{
-				displayName: 'Field Name',
-				name: 'fieldName',
+				displayName: 'Key Name',
+				name: 'keyName',
 				displayOptions: {
 					show: {
 						action:[
@@ -50,6 +52,7 @@ export class DateTime implements INodeType {
 				},
 				type: 'string',
 				default: '',
+				description: 'The name of the key of which the value should be converted.',
 				required: true,
 			},
 			{
@@ -64,6 +67,7 @@ export class DateTime implements INodeType {
 				},
 				type: 'boolean',
 				default: false,
+				description: 'If a predefined format should be selected or custom format entered.',
 			},
 			{
 				displayName: 'To Format',
@@ -80,6 +84,8 @@ export class DateTime implements INodeType {
 				},
 				type: 'string',
 				default: '',
+				placeholder: 'YYYY-MM-DD',
+				description: 'The format to convert the date to.',
 			},
 			{
 				displayName: 'To Format',
@@ -133,22 +139,7 @@ export class DateTime implements INodeType {
 					},
 				],
 				default: 'MM/DD/YYYY',
-			},
-			{
-				displayName: 'To Timezone',
-				name: 'toTimezone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				displayOptions: {
-					show: {
-						action:[
-							'format'
-						],
-					},
-				},
-				default: 'UTC',
+				description: 'The format to convert the date to.',
 			},
 			{
 				displayName: 'Options',
@@ -172,6 +163,7 @@ export class DateTime implements INodeType {
 							loadOptionsMethod: 'getTimezones',
 						},
 						default: 'UTC',
+						description: 'The timezone to convert from.',
 					},
 					{
 						displayName: 'From Format',
@@ -181,10 +173,21 @@ export class DateTime implements INodeType {
 						description: 'In case the input format is not recognized you can provide the format ',
 					},
 					{
-						displayName: 'Keep Old Date',
-						name: 'keepOldDate',
-						type: 'boolean',
-						default: false,
+						displayName: 'New Key Name',
+						name: 'newKeyName',
+						type: 'string',
+						default: 'newDate',
+						description: 'If set will the new date be added under the new key name and the existing one will not be touched.',
+					},
+					{
+						displayName: 'To Timezone',
+						name: 'toTimezone',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getTimezones',
+						},
+						default: 'UTC',
+						description: 'The timezone to convert to.',
 					},
 				],
 			},
@@ -212,48 +215,84 @@ export class DateTime implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
-		let responseData;
+		const returnData: INodeExecutionData[] = [];
+
+		const workflowTimezone = this.getTimezone();
+		let item: INodeExecutionData;
+
 		for (let i = 0; i < length; i++) {
 			const action = this.getNodeParameter('action', 0) as string;
+			item = items[i];
+
 			if (action === 'format') {
-				const fieldName = this.getNodeParameter('fieldName', i) as string;
-				const toTimezone = this.getNodeParameter('toTimezone', i) as string;
+				const keyName = this.getNodeParameter('keyName', i) as string;
 				const toFormat = this.getNodeParameter('toFormat', i) as string;
 				const options = this.getNodeParameter('options', i) as IDataObject;
 				let newDate;
-				let clone = { ...items[i].json };
-				if (clone[fieldName] === undefined) {
-					throw new Error(`The field ${fieldName} does not exist on the input data`);
+				const currentDate = get(item.json, keyName);
+
+				if (currentDate === undefined) {
+					throw new Error(`The key ${keyName} does not exist on the input data`);
 				}
-				if (!moment(clone[fieldName] as string | number).isValid()) {
-					throw new Error('The date input format is not recognized, please set the "From Format" field');
+				if (!moment(currentDate as string | number).isValid()) {
+					throw new Error('The date input format could not be recognized. Please set the "From Format" field');
 				}
-				if (Number.isInteger(clone[fieldName] as number)) {
-					newDate  = moment.unix(clone[fieldName] as number).tz(toTimezone).format(toFormat);
+				if (Number.isInteger(currentDate as number)) {
+					newDate = moment.unix(currentDate as number);
 				} else {
-					newDate  = moment(clone[fieldName] as string).tz(toTimezone).format(toFormat);
-					if (options.fromTimezone) {
-						newDate = moment.tz(clone[fieldName] as string, options.fromTimezone as string).tz(toTimezone).format(toFormat);
-					}
-					if (options.fromFormat) {
-						newDate = moment(clone[fieldName] as string, options.fromFormat as string).tz(toTimezone).format(toFormat);
+					if (options.fromTimezone || options.toTimezone) {
+						const fromTimezone = options.fromTimezone || workflowTimezone;
+						if (options.fromFormat) {
+							newDate = moment.tz(currentDate as string, options.fromFormat as string, fromTimezone as string);
+						} else {
+							newDate = moment.tz(currentDate as string, fromTimezone as string);
+						}
+					} else {
+						if (options.fromFormat) {
+							newDate = moment(currentDate as string, options.fromFormat as string);
+						} else {
+							newDate = moment(currentDate as string);
+						}
 					}
 				}
-				if (!options.keepOldDate) {
-					clone[fieldName] = newDate;
+
+				if (options.toTimezone || options.fromTimezone) {
+					// If either a source or a target timezone got defined the
+					// timezone of the date has to be changed. If a target-timezone
+					// is set use it else fall back to workflow timezone.
+					newDate = newDate.tz(options.toTimezone as string || workflowTimezone);
+				}
+
+				newDate = newDate.format(toFormat);
+
+				let newItem: INodeExecutionData;
+				if (keyName.includes('.')) {
+					// Uses dot notation so copy all data
+					newItem = {
+						json: JSON.parse(JSON.stringify(items[i].json)),
+					};
 				} else {
-					clone['newDate'] = newDate;
+					// Does not use dot notation so shallow copy is enough
+					newItem = {
+						json: { ...items[i].json },
+					};
 				}
-				responseData = clone;
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+
+				if (item.binary !== undefined) {
+					newItem.binary = item.binary;
+				}
+
+				if (options.newKeyName) {
+					set(newItem, `json.${options.newKeyName}`, newDate);
+				} else {
+					set(newItem, `json.${keyName}`, newDate);
+				}
+
+				returnData.push(newItem);
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return this.prepareOutputData(returnData);
 	}
 }
