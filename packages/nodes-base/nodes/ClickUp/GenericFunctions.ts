@@ -7,7 +7,6 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
-import { response } from 'express';
 
 export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('clickUpApi');
