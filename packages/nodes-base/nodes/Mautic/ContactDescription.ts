@@ -67,6 +67,26 @@ export const contactFields = [
 		},
 	},
 	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'create',
+				],
+				jsonParameters: [
+					false,
+				]
+			},
+		},
+		default: '',
+		description: 'Email address of the contact.',
+	},
+	{
 		displayName: 'First Name',
 		name: 'firstName',
 		type: 'string',
@@ -297,6 +317,20 @@ export const contactFields = [
 				},
 				default: '',
 				description: 'Contact parameters',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							false,
+						],
+					},
+				},
+				default: '',
+				description: 'Email address of the contact.',
 			},
 			{
 				displayName: 'First Name',
