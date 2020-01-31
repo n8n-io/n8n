@@ -365,9 +365,7 @@ export const userFields = [
 			operation: [
 				'update',
 			],
-			resource: [
-				'timeEntry',
-			],
+			resource
 		},
 	},
 	default: {},
