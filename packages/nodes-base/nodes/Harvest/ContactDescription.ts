@@ -23,6 +23,11 @@ export const contactOperations = [
 				value: 'getAll',
 				description: 'Get data of all contacts',
 			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a contact`,
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -131,6 +136,28 @@ export const contactFields = [
 		},
 	},
 	description: 'The ID of the contact you are retrieving.',
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                contact:delete                            */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Contact Id',
+	name: 'id',
+	type: 'string',
+	default: '',
+	required: true,
+	displayOptions: {
+		show: {
+			operation: [
+				'delete',
+			],
+			resource: [
+				'contact',
+			],
+		},
+	},
+	description: 'The ID of the contact you want to delete.',
 }
 
 ] as INodeProperties[];

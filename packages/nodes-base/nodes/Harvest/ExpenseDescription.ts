@@ -23,6 +23,11 @@ export const expenseOperations = [
 				value: 'getAll',
 				description: 'Get data of all expenses',
 			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete an expense`,
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -176,6 +181,28 @@ export const expenseFields = [
 		},
 	},
 	description: 'The ID of the expense you are retrieving.',
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                expense:delete                            */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Expense Id',
+	name: 'id',
+	type: 'string',
+	default: '',
+	required: true,
+	displayOptions: {
+		show: {
+			operation: [
+				'delete',
+			],
+			resource: [
+				'expense',
+			],
+		},
+	},
+	description: 'The ID of the expense you want to delete.',
 }
 
 ] as INodeProperties[];

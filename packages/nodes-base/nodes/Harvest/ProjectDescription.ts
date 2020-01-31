@@ -23,6 +23,11 @@ export const projectOperations = [
 				value: 'getAll',
 				description: 'Get data of all projects',
 			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a project`,
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -149,6 +154,28 @@ export const projectFields = [
 		},
 	},
 	description: 'The ID of the project you are retrieving.',
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                project:delete                            */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Project Id',
+	name: 'id',
+	type: 'string',
+	default: '',
+	required: true,
+	displayOptions: {
+		show: {
+			operation: [
+				'delete',
+			],
+			resource: [
+				'project',
+			],
+		},
+	},
+	description: 'The ID of the project want to delete.',
 }
 
 ] as INodeProperties[];

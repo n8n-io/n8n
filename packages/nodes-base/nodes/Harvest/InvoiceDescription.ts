@@ -23,6 +23,11 @@ export const invoiceOperations = [
 				value: 'getAll',
 				description: 'Get data of all invoices',
 			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a invoice`,
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -187,6 +192,28 @@ export const invoiceFields = [
 		},
 	},
 	description: 'The ID of the invoice you are retrieving.',
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                invoice:delete                            */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Invoice Id',
+	name: 'id',
+	type: 'string',
+	default: '',
+	required: true,
+	displayOptions: {
+		show: {
+			operation: [
+				'delete',
+			],
+			resource: [
+				'invoice',
+			],
+		},
+	},
+	description: 'The ID of the invoice want to delete.',
 }
 
 ] as INodeProperties[];
