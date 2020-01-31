@@ -1,5 +1,7 @@
 import { INodeProperties } from "n8n-workflow";
 
+const resource = [ 'clients' ];
+
 export const clientOperations = [
 	{
 		displayName: 'Operation',
@@ -7,9 +9,7 @@ export const clientOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
+				resource
 			},
 		},
 		options: [
@@ -47,9 +47,7 @@ export const clientFields = [
 	type: 'boolean',
 	displayOptions: {
 		show: {
-			resource: [
-				'client',
-			],
+			resource
 			operation: [
 				'getAll',
 			],
@@ -64,9 +62,7 @@ export const clientFields = [
 	type: 'number',
 	displayOptions: {
 		show: {
-			resource: [
-				'client',
-			],
+			resource
 			operation: [
 				'getAll',
 			],
@@ -90,9 +86,7 @@ export const clientFields = [
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'client',
-			],
+			resource
 			operation: [
 				'getAll',
 			],
@@ -130,9 +124,7 @@ export const clientFields = [
 			operation: [
 				'get',
 			],
-			resource: [
-				'client',
-			],
+			resource
 		},
 	},
 	description: 'The ID of the client you are retrieving.',
@@ -152,9 +144,7 @@ export const clientFields = [
 			operation: [
 				'delete',
 			],
-			resource: [
-				'client',
-			],
+			resource
 		},
 	},
 	description: 'The ID of the client you want to delete.',
