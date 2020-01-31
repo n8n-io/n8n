@@ -546,7 +546,37 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, resource, i);
 					returnData.push.apply(returnData, responseData);
 
-				} else if (operation === 'delete') {
+				}  else if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					endpoint = resource;
+
+					body.name = this.getNodeParameter('name', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
+				}  else if (operation === 'update') {
+					// ----------------------------------
+					//         createByDuration
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					endpoint = resource;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					Object.assign(qs, updateFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
+				}  else if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
 					// ----------------------------------
