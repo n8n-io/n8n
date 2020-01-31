@@ -28,6 +28,11 @@ export const userOperations = [
 				value: 'getAll',
 				description: 'Get data of all users',
 			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a user`,
+			},
 		],
 		default: 'me',
 		description: 'The operation to perform.',
@@ -146,6 +151,28 @@ export const userFields = [
 		},
 	},
 	description: 'The ID of the user you are retrieving.',
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                user:delete                            */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'User Id',
+	name: 'id',
+	type: 'string',
+	default: '',
+	required: true,
+	displayOptions: {
+		show: {
+			operation: [
+				'delete',
+			],
+			resource: [
+				'user',
+			],
+		},
+	},
+	description: 'The ID of the user you want to delete.',
 }
 
 ] as INodeProperties[];

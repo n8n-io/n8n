@@ -23,6 +23,11 @@ export const estimateOperations = [
 				value: 'getAll',
 				description: 'Get data of all estimates',
 			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete an estimate`,
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -162,6 +167,28 @@ export const estimateFields = [
 		},
 	},
 	description: 'The ID of the estimate you are retrieving.',
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                estimate:delete                            */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Estimate Id',
+	name: 'id',
+	type: 'string',
+	default: '',
+	required: true,
+	displayOptions: {
+		show: {
+			operation: [
+				'delete',
+			],
+			resource: [
+				'estimate',
+			],
+		},
+	},
+	description: 'The ID of the estimate want to delete.',
 }
 
 ] as INodeProperties[];

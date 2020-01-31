@@ -23,6 +23,11 @@ export const taskOperations = [
 				value: 'getAll',
 				description: 'Get data of all tasks',
 			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a task`,
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -141,6 +146,29 @@ export const taskFields = [
 		},
 	},
 	description: 'The ID of the task you are retrieving.',
-}
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                task:delete                            */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Task Id',
+	name: 'id',
+	type: 'string',
+	default: '',
+	required: true,
+	displayOptions: {
+		show: {
+			operation: [
+				'delete',
+			],
+			resource: [
+				'task',
+			],
+		},
+	},
+	description: 'The ID of the task you wan to delete.',
+},
+
 
 ] as INodeProperties[];

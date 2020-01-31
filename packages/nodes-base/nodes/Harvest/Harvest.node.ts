@@ -306,6 +306,17 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, 'clients', i);
 					returnData.push.apply(returnData, responseData);
 
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `clients/${id}`;
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+					returnData.push(responseData);
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
@@ -331,6 +342,17 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, 'projects', i);
 					returnData.push.apply(returnData, responseData);
 
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `projects/${id}`;
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+					returnData.push(responseData);
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
@@ -368,7 +390,18 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 
-				} else {
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `users/${id}`;
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+					returnData.push(responseData);
+				}  else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'contact') {
@@ -393,7 +426,18 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, 'contacts', i);
 					returnData.push.apply(returnData, responseData);
 
-				} else {
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `contacts/${id}`;
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+					returnData.push(responseData);
+				}  else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'company') {
@@ -433,6 +477,17 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, 'tasks', i);
 					returnData.push.apply(returnData, responseData);
 
+				}  else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `tasks/${id}`;
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+					returnData.push(responseData);
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
@@ -458,7 +513,18 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, 'invoices', i);
 					returnData.push.apply(returnData, responseData);
 
-				} else {
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `invoices/${id}`;
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+					returnData.push(responseData);
+				}  else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'expense') {
@@ -483,7 +549,18 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, 'expenses', i);
 					returnData.push.apply(returnData, responseData);
 
-				} else {
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `expenses/${id}`;
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+					returnData.push(responseData);
+				}  else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
 			} else if (resource === 'estimate') {
@@ -508,7 +585,18 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, 'estimates', i);
 					returnData.push.apply(returnData, responseData);
 
-				} else {
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `estimates/${id}`;
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
+					returnData.push(responseData);
+				}  else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
 			} else {
