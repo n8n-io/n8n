@@ -1,5 +1,5 @@
 import { INodeProperties } from "n8n-workflow";
-
+const resource = [ 'tasks' ];
 export const taskOperations = [
 	{
 		displayName: 'Operation',
@@ -7,9 +7,7 @@ export const taskOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'task',
-				],
+				resource,
 			},
 		},
 		options: [
@@ -47,9 +45,7 @@ export const taskFields = [
 	type: 'boolean',
 	displayOptions: {
 		show: {
-			resource: [
-				'task',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -64,9 +60,7 @@ export const taskFields = [
 	type: 'number',
 	displayOptions: {
 		show: {
-			resource: [
-				'task',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -90,9 +84,7 @@ export const taskFields = [
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'task',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -140,9 +132,7 @@ export const taskFields = [
 			operation: [
 				'get',
 			],
-			resource: [
-				'task',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the task you are retrieving.',
@@ -162,9 +152,7 @@ export const taskFields = [
 			operation: [
 				'delete',
 			],
-			resource: [
-				'task',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the task you wan to delete.',

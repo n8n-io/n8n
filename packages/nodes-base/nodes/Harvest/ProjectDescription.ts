@@ -1,5 +1,7 @@
 import { INodeProperties } from "n8n-workflow";
 
+const resource = [ 'projects' ];
+
 export const projectOperations = [
 	{
 		displayName: 'Operation',
@@ -7,9 +9,7 @@ export const projectOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
+				resource,
 			},
 		},
 		options: [
@@ -47,9 +47,7 @@ export const projectFields = [
 	type: 'boolean',
 	displayOptions: {
 		show: {
-			resource: [
-				'project',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -64,9 +62,7 @@ export const projectFields = [
 	type: 'number',
 	displayOptions: {
 		show: {
-			resource: [
-				'project',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -90,9 +86,7 @@ export const projectFields = [
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'project',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -148,9 +142,7 @@ export const projectFields = [
 			operation: [
 				'get',
 			],
-			resource: [
-				'project',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the project you are retrieving.',
@@ -170,9 +162,7 @@ export const projectFields = [
 			operation: [
 				'delete',
 			],
-			resource: [
-				'project',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the project want to delete.',
