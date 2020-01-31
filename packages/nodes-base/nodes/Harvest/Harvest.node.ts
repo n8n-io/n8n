@@ -111,7 +111,7 @@ export class Harvest implements INodeType {
 					},
 					{
 						name: 'User',
-						value: 'user',
+						value: 'users',
 					},
 				],
 				default: 'task',
@@ -356,7 +356,7 @@ export class Harvest implements INodeType {
 				} else {
 					throw new Error(`The resource "${resource}" is not known!`);
 				}
-			} else if (resource === 'user') {
+			} else if (resource === 'users') {
 				if (operation === 'get') {
 					// ----------------------------------
 					//         get
@@ -365,7 +365,7 @@ export class Harvest implements INodeType {
 					requestMethod = 'GET';
 					const id = this.getNodeParameter('id', i) as string;
 
-					endpoint = `users/${id}`;
+					endpoint = `${resource}/${id}`;
 
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
@@ -375,7 +375,7 @@ export class Harvest implements INodeType {
 					//         getAll
 					// ----------------------------------
 
-					const responseData: IDataObject[] = await getAllResource.call(this, 'users', i);
+					const responseData: IDataObject[] = await getAllResource.call(this, resource, i);
 					returnData.push.apply(returnData, responseData);
 
 				} else if (operation === 'me') {
@@ -385,12 +385,30 @@ export class Harvest implements INodeType {
 
 					requestMethod = 'GET';
 
-					endpoint = 'users/me';
+					endpoint = `${resource}/me`;
 
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 					returnData.push(responseData);
 
-				} else if (operation === 'delete') {
+				} else if (operation === 'create') {
+					// ----------------------------------
+					//         createByDuration
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					endpoint = resource;
+					['first_name', 'last_name', 'email'].forEach(val => {
+						body[val] = this.getNodeParameter(val, i) as string;
+					})
+
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
+				}  else if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
 					// ----------------------------------
