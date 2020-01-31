@@ -1,5 +1,7 @@
 import { INodeProperties } from "n8n-workflow";
 
+const resource = [ 'estimates' ];
+
 export const estimateOperations = [
 	{
 		displayName: 'Operation',
@@ -7,9 +9,7 @@ export const estimateOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'estimate',
-				],
+				resource,
 			},
 		},
 		options: [
@@ -47,9 +47,7 @@ export const estimateFields = [
 	type: 'boolean',
 	displayOptions: {
 		show: {
-			resource: [
-				'estimate',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -64,9 +62,7 @@ export const estimateFields = [
 	type: 'number',
 	displayOptions: {
 		show: {
-			resource: [
-				'estimate',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -90,9 +86,7 @@ export const estimateFields = [
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'estimate',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -161,9 +155,7 @@ export const estimateFields = [
 			operation: [
 				'get',
 			],
-			resource: [
-				'estimate',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the estimate you are retrieving.',
@@ -183,9 +175,7 @@ export const estimateFields = [
 			operation: [
 				'delete',
 			],
-			resource: [
-				'estimate',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the estimate want to delete.',

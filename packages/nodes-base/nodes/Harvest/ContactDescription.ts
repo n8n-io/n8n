@@ -1,5 +1,7 @@
 import { INodeProperties } from "n8n-workflow";
 
+const resource = [ 'contacts' ];
+
 export const contactOperations = [
 	{
 		displayName: 'Operation',
@@ -7,9 +9,7 @@ export const contactOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource,
 			},
 		},
 		options: [
@@ -47,9 +47,7 @@ export const contactFields = [
 	type: 'boolean',
 	displayOptions: {
 		show: {
-			resource: [
-				'contact',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -64,9 +62,7 @@ export const contactFields = [
 	type: 'number',
 	displayOptions: {
 		show: {
-			resource: [
-				'contact',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -90,9 +86,7 @@ export const contactFields = [
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'contact',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -130,9 +124,7 @@ export const contactFields = [
 			operation: [
 				'get',
 			],
-			resource: [
-				'contact',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the contact you are retrieving.',
@@ -152,9 +144,7 @@ export const contactFields = [
 			operation: [
 				'delete',
 			],
-			resource: [
-				'contact',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the contact you want to delete.',

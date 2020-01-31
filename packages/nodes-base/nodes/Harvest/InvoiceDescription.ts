@@ -1,5 +1,7 @@
 import { INodeProperties } from "n8n-workflow";
 
+const resource = [ 'invoices' ];
+
 export const invoiceOperations = [
 	{
 		displayName: 'Operation',
@@ -7,9 +9,7 @@ export const invoiceOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
+				resource,
 			},
 		},
 		options: [
@@ -47,9 +47,7 @@ export const invoiceFields = [
 	type: 'boolean',
 	displayOptions: {
 		show: {
-			resource: [
-				'invoice',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -64,9 +62,7 @@ export const invoiceFields = [
 	type: 'number',
 	displayOptions: {
 		show: {
-			resource: [
-				'invoice',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -90,9 +86,7 @@ export const invoiceFields = [
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'invoice',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -186,9 +180,7 @@ export const invoiceFields = [
 			operation: [
 				'get',
 			],
-			resource: [
-				'invoice',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the invoice you are retrieving.',
@@ -208,9 +200,7 @@ export const invoiceFields = [
 			operation: [
 				'delete',
 			],
-			resource: [
-				'invoice',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the invoice want to delete.',
