@@ -9,7 +9,7 @@ export const clientOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource
+				resource,
 			},
 		},
 		options: [
@@ -47,7 +47,7 @@ export const clientFields = [
 	type: 'boolean',
 	displayOptions: {
 		show: {
-			resource
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -62,7 +62,7 @@ export const clientFields = [
 	type: 'number',
 	displayOptions: {
 		show: {
-			resource
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -86,7 +86,7 @@ export const clientFields = [
 	default: {},
 	displayOptions: {
 		show: {
-			resource
+			resource,
 			operation: [
 				'getAll',
 			],
