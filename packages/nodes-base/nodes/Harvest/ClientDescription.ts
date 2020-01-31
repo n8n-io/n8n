@@ -23,6 +23,11 @@ export const clientOperations = [
 				value: 'getAll',
 				description: 'Get data of all clients',
 			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a client`,
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
@@ -131,6 +136,28 @@ export const clientFields = [
 		},
 	},
 	description: 'The ID of the client you are retrieving.',
+},
+
+/* -------------------------------------------------------------------------- */
+/*                                client:delete                            */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Client Id',
+	name: 'id',
+	type: 'string',
+	default: '',
+	required: true,
+	displayOptions: {
+		show: {
+			operation: [
+				'delete',
+			],
+			resource: [
+				'client',
+			],
+		},
+	},
+	description: 'The ID of the client you want to delete.',
 }
 
 ] as INodeProperties[];
