@@ -15,7 +15,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 import {
-	issueOpeations,
+	issueOperations,
 	issueFields,
 } from './IssueDescription';
 import {
@@ -28,15 +28,15 @@ import {
 
 export class JiraSoftwareCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Jira Software Cloud',
+		displayName: 'Jira Software',
 		name: 'Jira Software Cloud',
 		icon: 'file:jira.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Jira Software Cloud API',
+		description: 'Consume Jira Software API',
 		defaults: {
-			name: 'Jira Software Cloud',
+			name: 'Jira Software',
 			color: '#c02428',
 		},
 		inputs: ['main'],
@@ -45,7 +45,7 @@ export class JiraSoftwareCloud implements INodeType {
 			{
 				name: 'jiraSoftwareCloudApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -62,7 +62,7 @@ export class JiraSoftwareCloud implements INodeType {
 				default: 'issue',
 				description: 'Resource to consume.',
 			},
-			...issueOpeations,
+			...issueOperations,
 			...issueFields,
 		],
 	};
@@ -73,16 +73,23 @@ export class JiraSoftwareCloud implements INodeType {
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				const credentials = this.getCredentials('jiraSoftwareCloudApi');
 				let projects;
+				let endpoint = '/project/search';
+				if (credentials!.jiraVersion === 'server') {
+					endpoint = '/project';
+				}
 				try {
-					projects = await jiraSoftwareCloudApiRequest.call(this, '/project/search', 'GET');
+					projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
 				} catch (err) {
 					throw new Error(`Jira Error: ${err}`);
 				}
-				for (const project of projects.values) {
+				if (projects.values && Array.isArray(projects.values)) {
+					projects = projects.values;
+				}
+				for (const project of projects) {
 					const projectName = project.name;
 					const projectId = project.id;
-
 					returnData.push({
 						name: projectName,
 						value: projectId,
