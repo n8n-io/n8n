@@ -17,7 +17,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const data = Buffer.from(`${credentials!.email}:${(credentials.jiraVersion === 'server') ? credentials.password : credentials.apiKey }`).toString(BINARY_ENCODING);
+	const data = Buffer.from(`${credentials!.email}:${(credentials.jiraVersion === 'server') ? credentials.password : credentials.apiToken }`).toString(BINARY_ENCODING);
 	const headerWithAuthentication = Object.assign({},
 		{ Authorization: `Basic ${data}`, Accept: 'application/json', 'Content-Type': 'application/json' });
 	const options: OptionsWithUri = {
