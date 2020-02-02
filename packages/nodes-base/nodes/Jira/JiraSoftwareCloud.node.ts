@@ -45,9 +45,43 @@ export class JiraSoftwareCloud implements INodeType {
 			{
 				name: 'jiraSoftwareCloudApi',
 				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: [
+							'cloud',
+						],
+					},
+				},
+			},
+			{
+				name: 'jiraSoftwareServerApi',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: [
+							'server',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Jira Version',
+				name: 'jiraVersion',
+				type: 'options',
+				options: [
+					{
+						name: 'Cloud',
+						value: 'cloud',
+					},
+					{
+						name: 'Server (Self Hosted)',
+						value: 'server',
+					},
+				],
+				default: 'cloud',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -73,10 +107,10 @@ export class JiraSoftwareCloud implements INodeType {
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const credentials = this.getCredentials('jiraSoftwareCloudApi');
+				const jiraCloudCredentials = this.getCredentials('jiraSoftwareCloudApi');
 				let projects;
 				let endpoint = '/project/search';
-				if (credentials!.jiraVersion === 'server') {
+				if (jiraCloudCredentials === undefined) {
 					endpoint = '/project';
 				}
 				try {
@@ -358,6 +392,29 @@ export class JiraSoftwareCloud implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}`, 'GET', {}, qs);
 					} catch (err) {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
+					}
+				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-search-post
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: IDataObject = {};
+					if (options.fields) {
+						body.fields = (options.fields as string).split(',') as string[];
+					}
+					if (options.jql) {
+						body.jql = options.jql as string;
+					}
+					if (options.expand) {
+						body.expand = options.expand as string;
+					}
+					if (returnAll) {
+						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'issues', `/search`, 'POST', body);
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						body.maxResults = limit;
+						responseData = await jiraSoftwareCloudApiRequest.call(this, `/search`, 'POST', body);
+						responseData = responseData.issues;
 					}
 				}
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-changelog-get
