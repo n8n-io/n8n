@@ -29,6 +29,11 @@ export const issueOperations = [
 				description: 'Get an issue',
 			},
 			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all issues',
+			},
+			{
 				name: 'Changelog',
 				value: 'changelog',
 				description: 'Get issue changelog',
@@ -451,6 +456,148 @@ export const issueFields = [
 		]
 	},
 
+/* -------------------------------------------------------------------------- */
+/*                                  issue:getAll                              */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'issue',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'issue',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'issue',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: ' JQL',
+				name: 'jql',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				description: 'A JQL expression.',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '*navigable',
+				description: `A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include:<br/>
+				*all Returns all fields.<br/>
+				*navigable Returns navigable fields.<br/>
+				Any issue field, prefixed with a minus to exclude.<br/>`,
+			},
+			{
+				displayName: 'Expand',
+				name: 'expand',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'Rendered Fields',
+						valie: 'renderedFields',
+						description: ' Returns field values rendered in HTML format.',
+					},
+					{
+						name: 'Names',
+						valie: 'names',
+						description: 'Returns the display name of each field',
+					},
+					{
+						name: 'Schema',
+						valie: 'schema',
+						description: 'Returns the schema describing a field type.',
+					},
+					{
+						name: 'Transitions',
+						valie: 'transitions',
+						description: ' Returns all possible transitions for the issue.',
+					},
+					{
+						name: 'Operations',
+						valie: 'operations',
+						description: 'Returns all possible operations for the issue.',
+					},
+					{
+						name: 'Editmeta',
+						valie: 'editmeta',
+						description: 'Returns information about how each field can be edited',
+					},
+					{
+						name: 'Changelog',
+						valie: 'changelog',
+						description: 'Returns a list of recent updates to an issue, sorted by date, starting from the most recent.',
+					},
+					{
+						name: 'Versioned Representations',
+						valie: 'versionedRepresentations',
+						description: `JSON array containing each version of a field's value`,
+					},
+				],
+				description: `Use expand to include additional information about issues in the response`,
+			},
+			{
+				displayName: 'Fields By Key',
+				name: 'fieldsByKey',
+				type: 'boolean',
+				required: false,
+				default: false,
+				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
+				This parameter is useful where fields have been added by a connect app and a field's key<br/>
+				may differ from its ID.`,
+			},
+		],
+	},
 /* -------------------------------------------------------------------------- */
 /*                               issue:changelog                              */
 /* -------------------------------------------------------------------------- */
