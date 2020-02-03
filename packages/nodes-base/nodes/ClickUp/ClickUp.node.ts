@@ -12,11 +12,16 @@ import {
 import {
 	clickupApiRequest,
 	clickupApiRequestAllItems,
+	validateJSON,
 } from './GenericFunctions';
 import {
 	taskFields,
 	taskOperations,
 } from './TaskDescription';
+import {
+	listFields,
+	listOperations,
+} from './ListDescription';
 import {
 	ITask,
  } from './TaskInterface';
@@ -52,12 +57,18 @@ export class ClickUp implements INodeType {
 						name: 'Task',
 						value: 'task',
 					},
+					{
+						name: 'List',
+						value: 'list',
+					},
 				],
 				default: 'task',
 				description: 'Resource to consume.',
 			},
 			...taskOperations,
 			...taskFields,
+			...listOperations,
+			...listFields,
 		],
 	};
 
@@ -208,6 +219,7 @@ export class ClickUp implements INodeType {
 				if (operation === 'create') {
 					const listId = this.getNodeParameter('list', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
+					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: ITask = {
 							name,
@@ -252,7 +264,13 @@ export class ClickUp implements INodeType {
 						delete body.content;
 						body.markdown_content = additionalFields.content as string;
 					}
-
+					if (jsonActive) {
+						const customFields = validateJSON(this.getNodeParameter('customFieldsJson', i) as string);
+						if (customFields === undefined) {
+							throw new Error('Custom Fields: Invalid JSON');
+						}
+						body.custom_fields = customFields;
+					}
 					responseData = await clickupApiRequest.call(this, 'POST', `/list/${listId}/task`, body);
 				}
 				if (operation === 'update') {
@@ -351,9 +369,28 @@ export class ClickUp implements INodeType {
 						// responseData = responseData.tasks;
 					}
 				}
+				if (operation === 'setCustomField') {
+					const taskId = this.getNodeParameter('task', i) as string;
+					const fieldId = this.getNodeParameter('field', i) as string;
+					const value = this.getNodeParameter('value', i) as string;
+					const body: IDataObject = {};
+					body.value = value;
+					//@ts-ignore
+					if (!isNaN(value)) {
+						body.value = parseInt(value, 10);
+					}
+					responseData = await clickupApiRequest.call(this, 'POST', `/task/${taskId}/field/${fieldId}`, body);
+				}
 				if (operation === 'delete') {
 					const taskId = this.getNodeParameter('id', i) as string;
 					responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}`, {});
+				}
+			}
+			if (resource === 'list') {
+				if (operation === 'customFields') {
+					const listId = this.getNodeParameter('list', i) as string;
+					responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}/field`);
+					responseData = responseData.fields;
 				}
 			}
 			if (Array.isArray(responseData)) {
