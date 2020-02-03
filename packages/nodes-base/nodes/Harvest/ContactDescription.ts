@@ -180,7 +180,7 @@ export const contactFields = [
 		description: 'The first name of the contact.',
 	},
 	{
-		displayName: 'client_id',
+		displayName: 'Client Id',
 		name: 'client_id',
 		type: 'string',
 		displayOptions: {
@@ -211,42 +211,42 @@ export const contactFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'last_name',
+				displayName: 'Last Name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 				description: 'The last name of the contact.'
 			},
 			{
-				displayName: 'title',
+				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
 				description: 'The title of the contact.'
 			},
 			{
-				displayName: 'email',
+				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
 				description: 'The contact’s email address.'
 			},
 			{
-				displayName: 'phone_office',
+				displayName: 'Phone Office',
 				name: 'phone_office',
 				type: 'string',
 				default: '',
 				description: 'The contact’s office phone number.'
 			},
 			{
-				displayName: 'phone_mobile',
+				displayName: 'Phone Mobile',
 				name: 'phone_mobile',
 				type: 'string',
 				default: '',
 				description: 'The contact’s mobile phone number.'
 			},
 			{
-				displayName: 'fax',
+				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
 				default: '',
@@ -259,7 +259,7 @@ export const contactFields = [
 	/*                                contact:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'contact Id',
+		displayName: 'Contact Id',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -290,7 +290,7 @@ export const contactFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'client_id',
+				displayName: 'Client Id',
 				name: 'client_id',
 				type: 'string',
 				default: '',
@@ -304,42 +304,42 @@ export const contactFields = [
 				description: 'The first name of the contact.',
 			},
 			{
-				displayName: 'last_name',
+				displayName: 'Last Name',
 				name: 'last_name',
 				type: 'string',
 				default: '',
 				description: 'The last name of the contact.'
 			},
 			{
-				displayName: 'title',
+				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
 				description: 'The title of the contact.'
 			},
 			{
-				displayName: 'email',
+				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
 				description: 'The contact’s email address.'
 			},
 			{
-				displayName: 'phone_office',
+				displayName: 'Phone Office',
 				name: 'phone_office',
 				type: 'string',
 				default: '',
 				description: 'The contact’s office phone number.'
 			},
 			{
-				displayName: 'phone_mobile',
+				displayName: 'Phone Mobile',
 				name: 'phone_mobile',
 				type: 'string',
 				default: '',
 				description: 'The contact’s mobile phone number.'
 			},
 			{
-				displayName: 'fax',
+				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
 				default: '',

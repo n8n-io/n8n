@@ -220,7 +220,7 @@ export const invoiceFields = [
 	/*                                invoice:create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'client_id',
+		displayName: 'Client Id',
 		name: 'client_id',
 		type: 'string',
 		displayOptions: {
@@ -380,7 +380,7 @@ export const invoiceFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'client_id',
+				displayName: 'Client Id',
 				name: 'client_id',
 				type: 'string',
 				default: '',
