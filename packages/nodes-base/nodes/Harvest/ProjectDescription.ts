@@ -381,7 +381,22 @@ export const projectFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                project:update                           */
 	/* -------------------------------------------------------------------------- */
-
+	{
+		displayName: 'Project Id',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		description: 'The ID of the project want to update.',
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -390,7 +405,7 @@ export const projectFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create',
+					'update',
 				],
 				resource,
 			},
