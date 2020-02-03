@@ -339,6 +339,22 @@ export const invoiceFields = [
 	/*                                invoice:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Invoice Id',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		description: 'The ID of the invoice want to update.',
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -346,7 +362,7 @@ export const invoiceFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create',
+					'update',
 				],
 				resource,
 			},
