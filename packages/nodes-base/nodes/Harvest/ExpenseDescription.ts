@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-const resource = [ 'invoices' ];
+const resource = [ 'expenses' ];
 
 export const expenseOperations = [
 	{
@@ -22,6 +22,16 @@ export const expenseOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all expenses',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a expense`,
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: `Update a expense`,
 			},
 			{
 				name: 'Delete',
@@ -193,6 +203,205 @@ export const expenseFields = [
 		},
 	},
 	description: 'The ID of the expense you want to delete.',
-}
+},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                expense:create                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Project Id',
+		name: 'project_id',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: '',
+		required: true,
+		description: 'The ID of the project associated with this expense.',
+	},
+	{
+		displayName: 'Expense Category Id',
+		name: 'expense_category_id',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: '',
+		required: true,
+		description: 'The ID of the expense category this expense is being tracked against.',
+	},
+	{
+		displayName: 'Spent Date',
+		name: 'spent_date',
+		type: 'dateTime',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Date the expense occurred.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'User Id',
+				name: 'user_id',
+				type: 'boolean',
+				default: true,
+				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.'
+			},
+			{
+				displayName: 'Units',
+				name: 'units',
+				type: 'string',
+				default: '',
+				description: 'The quantity of units to use in calculating the total_cost of the expense.'
+			},
+			{
+				displayName: 'Total Cost',
+				name: 'total_cost',
+				type: 'string',
+				default: '',
+				description: 'The total amount of the expense.'
+			},
+			{
+				displayName: 'Billable',
+				name: 'billable',
+				type: 'string',
+				default: '',
+				description: 'Whether this expense is billable or not. Defaults to true.'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Notes about the expense.'
+			},
+
+		],
+	},
+
+		/* -------------------------------------------------------------------------- */
+	/*                                invoice:update                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invoice Id',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		description: 'The ID of the invoice want to update.',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Project Id',
+				name: 'project_id',
+				type: 'string',
+				default: '',
+				description: 'The ID of the project associated with this expense.',
+			},
+			{
+				displayName: 'Expense Category Id',
+				name: 'expense_category_id',
+				type: 'string',
+				default: '',
+				description: 'The ID of the expense category this expense is being tracked against.',
+			},
+			{
+				displayName: 'Spent Date',
+				name: 'spent_date',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the expense occurred.',
+			},
+			{
+				displayName: 'User Id',
+				name: 'user_id',
+				type: 'boolean',
+				default: true,
+				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.'
+			},
+			{
+				displayName: 'Units',
+				name: 'units',
+				type: 'string',
+				default: '',
+				description: 'The quantity of units to use in calculating the total_cost of the expense.'
+			},
+			{
+				displayName: 'Total Cost',
+				name: 'total_cost',
+				type: 'string',
+				default: '',
+				description: 'The total amount of the expense.'
+			},
+			{
+				displayName: 'Billable',
+				name: 'billable',
+				type: 'string',
+				default: '',
+				description: 'Whether this expense is billable or not. Defaults to true.'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Notes about the expense.'
+			},
+
+		],
+	},
 
 ] as INodeProperties[];

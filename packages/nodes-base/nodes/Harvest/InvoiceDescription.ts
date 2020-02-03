@@ -24,6 +24,16 @@ export const invoiceOperations = [
 				description: 'Get data of all invoices',
 			},
 			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a invoice`,
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: `Update a invoice`,
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: `Delete a invoice`,

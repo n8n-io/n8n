@@ -24,6 +24,16 @@ export const contactOperations = [
 				description: 'Get data of all contacts',
 			},
 			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a contact`,
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: `Update a contact`,
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: `Delete a contact`,
