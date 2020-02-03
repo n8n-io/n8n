@@ -158,6 +158,129 @@ export const clientFields = [
 		},
 	},
 	description: 'The ID of the client you want to delete.',
-}
+},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                client:create                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'name',
+		name: 'name',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: '',
+		required: true,
+		description: 'The name of the client.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'is_active',
+				name: 'is_active',
+				type: 'string',
+				default: '',
+				description: 'Whether the client is active, or archived. Defaults to true.'
+			},
+			{
+				displayName: 'address',
+				name: 'address',
+				type: 'string',
+				default: '',
+				description: ' A textual representation of the client’s physical address. May include new line characters.'
+			},
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+		],
+	},
+
+		/* -------------------------------------------------------------------------- */
+	/*                                client:update                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'client Id',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		description: 'The ID of the client want to update.',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'Whether the client is active, or archived. Defaults to true.'
+			},
+			{
+				displayName: 'is_active',
+				name: 'is_active',
+				type: 'string',
+				default: '',
+				description: 'Whether the client is active, or archived. Defaults to true.'
+			},
+			{
+				displayName: 'address',
+				name: 'address',
+				type: 'string',
+				default: '',
+				description: ' A textual representation of the client’s physical address. May include new line characters.'
+			},
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+		],
+	},
 
 ] as INodeProperties[];
