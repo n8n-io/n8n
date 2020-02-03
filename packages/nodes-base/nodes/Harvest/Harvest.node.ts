@@ -649,7 +649,41 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, resource, i);
 					returnData.push.apply(returnData, responseData);
 
-				} else if (operation === 'delete') {
+				}   else if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					endpoint = resource;
+
+					body.project_id = this.getNodeParameter('project_id', i) as string;
+					body.expense_category_id = this.getNodeParameter('expense_category_id', i) as string;
+					body.spent_date = this.getNodeParameter('spent_date', i) as string;
+
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
+				}  else if (operation === 'update') {
+					// ----------------------------------
+					//         createByDuration
+					// ----------------------------------
+
+					requestMethod = 'PATCH';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `${resource}/${id}`;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					Object.assign(qs, updateFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
+				}  else if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
 					// ----------------------------------
@@ -685,7 +719,38 @@ export class Harvest implements INodeType {
 					const responseData: IDataObject[] = await getAllResource.call(this, resource, i);
 					returnData.push.apply(returnData, responseData);
 
-				} else if (operation === 'delete') {
+				}  else if (operation === 'create') {
+					// ----------------------------------
+					//         create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					endpoint = resource;
+
+					body.client_id = this.getNodeParameter('client_id', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
+				}  else if (operation === 'update') {
+					// ----------------------------------
+					//         createByDuration
+					// ----------------------------------
+
+					requestMethod = 'PATCH';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `${resource}/${id}`;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					Object.assign(qs, updateFields);
+
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
+				}   else if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
 					// ----------------------------------

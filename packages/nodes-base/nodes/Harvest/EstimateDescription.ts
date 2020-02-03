@@ -24,6 +24,16 @@ export const estimateOperations = [
 				description: 'Get data of all estimates',
 			},
 			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a estimate`,
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: `Update a estimate`,
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: `Delete an estimate`,
@@ -179,6 +189,215 @@ export const estimateFields = [
 		},
 	},
 	description: 'The ID of the estimate want to delete.',
-}
+},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                invoice:create                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'client_id',
+		name: 'client_id',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: '',
+		required: true,
+		description: 'The ID of the client this estimate belongs to.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+				description: 'If no value is set, the number will be automatically generated.'
+			},
+			{
+				displayName: 'Purchase Order',
+				name: 'purchase_order',
+				type: 'string',
+				default: '',
+				description: 'The purchase order number.'
+			},
+			{
+				displayName: 'Tax',
+				name: 'tax',
+				type: 'string',
+				default: '',
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Tax2',
+				name: 'tax2',
+				type: 'string',
+				default: '',
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Discount',
+				name: 'over_budget_notification_percentage',
+				type: 'string',
+				default: '',
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The estimate subject.'
+			},
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Any additional notes to include on the estimate.'
+			},
+			{
+				displayName: 'Issue Date',
+				name: 'issue_date',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice was issued. Defaults to today’s date.'
+			},
+
+		],
+	},
+
+		/* -------------------------------------------------------------------------- */
+	/*                                invoice:update                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invoice Id',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		description: 'The ID of the invoice want to update.',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'client_id',
+				name: 'client_id',
+				type: 'string',
+				default: '',
+				description: 'The ID of the retainer associated with this invoice..',
+			},
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+				description: 'If no value is set, the number will be automatically generated.'
+			},
+			{
+				displayName: 'Purchase Order',
+				name: 'purchase_order',
+				type: 'string',
+				default: '',
+				description: 'The purchase order number.'
+			},
+			{
+				displayName: 'Tax',
+				name: 'tax',
+				type: 'string',
+				default: '',
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Tax2',
+				name: 'tax2',
+				type: 'string',
+				default: '',
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Discount',
+				name: 'over_budget_notification_percentage',
+				type: 'string',
+				default: '',
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The estimate subject.'
+			},
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Any additional notes to include on the estimate.'
+			},
+			{
+				displayName: 'Issue Date',
+				name: 'issue_date',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice was issued. Defaults to today’s date.'
+			},
+
+		],
+	},
 
 ] as INodeProperties[];
