@@ -449,8 +449,9 @@ export class Harvest implements INodeType {
 					//         createByDuration
 					// ----------------------------------
 
-					requestMethod = 'POST';
-					endpoint = resource;
+					requestMethod = 'PATCH';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `${resource}/${id}`;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					Object.assign(qs, updateFields);
@@ -602,8 +603,9 @@ export class Harvest implements INodeType {
 					//         createByDuration
 					// ----------------------------------
 
-					requestMethod = 'POST';
-					endpoint = resource;
+					requestMethod = 'PATCH';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `${resource}/${id}`;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					Object.assign(qs, updateFields);
