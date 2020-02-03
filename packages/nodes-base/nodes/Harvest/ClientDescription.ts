@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-const resource = [ 'clients' ];
+const resource = ['clients'];
 
 export const clientOperations = [
 	{
@@ -47,124 +47,124 @@ export const clientOperations = [
 
 export const clientFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                client:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                client:getAll                            */
+	/* -------------------------------------------------------------------------- */
 
-{
-	displayName: 'Return All',
-	name: 'returnAll',
-	type: 'boolean',
-	displayOptions: {
-		show: {
-			resource,
-			operation: [
-				'getAll',
-			],
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource,
+				operation: [
+					'getAll',
+				],
+			},
 		},
+		default: false,
+		description: 'Returns a list of your clients.',
 	},
-	default: false,
-	description: 'Returns a list of your clients.',
-},
-{
-	displayName: 'Limit',
-	name: 'limit',
-	type: 'number',
-	displayOptions: {
-		show: {
-			resource,
-			operation: [
-				'getAll',
-			],
-			returnAll: [
-				false,
-			],
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource,
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
 		},
-	},
-	typeOptions: {
-		minValue: 1,
-		maxValue: 100,
-	},
-	default: 100,
-	description: 'How many results to return.',
-},
-{
-	displayName: 'Filters',
-	name: 'filters',
-	type: 'collection',
-	placeholder: 'Add Filter',
-	default: {},
-	displayOptions: {
-		show: {
-			resource,
-			operation: [
-				'getAll',
-			],
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
 		},
+		default: 100,
+		description: 'How many results to return.',
 	},
-	options: [
-		{
-			displayName: 'Is Active',
-			name: 'is_active',
-			type: 'boolean',
-			default: true,
-			description: 'Pass true to only return active clients and false to return inactive clients.',
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource,
+				operation: [
+					'getAll',
+				],
+			},
 		},
-		{
-			displayName: 'Updated Since',
-			name: 'updated_since',
-			type: 'dateTime',
-			default: '',
-			description: 'Only return clients that have been updated since the given date and time.',
-		}
-	]
-},
+		options: [
+			{
+				displayName: 'Is Active',
+				name: 'is_active',
+				type: 'boolean',
+				default: true,
+				description: 'Pass true to only return active clients and false to return inactive clients.',
+			},
+			{
+				displayName: 'Updated Since',
+				name: 'updated_since',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return clients that have been updated since the given date and time.',
+			}
+		]
+	},
 
-/* -------------------------------------------------------------------------- */
-/*                                client:get                            */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Client Id',
-	name: 'id',
-	type: 'string',
-	default: '',
-	required: true,
-	displayOptions: {
-		show: {
-			operation: [
-				'get',
-			],
-			resource
+	/* -------------------------------------------------------------------------- */
+	/*                                client:get                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client Id',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource
+			},
 		},
+		description: 'The ID of the client you are retrieving.',
 	},
-	description: 'The ID of the client you are retrieving.',
-},
 
-/* -------------------------------------------------------------------------- */
-/*                                client:delete                            */
-/* -------------------------------------------------------------------------- */
-{
-	displayName: 'Client Id',
-	name: 'id',
-	type: 'string',
-	default: '',
-	required: true,
-	displayOptions: {
-		show: {
-			operation: [
-				'delete',
-			],
-			resource
+	/* -------------------------------------------------------------------------- */
+	/*                                client:delete                            */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client Id',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+				resource
+			},
 		},
+		description: 'The ID of the client you want to delete.',
 	},
-	description: 'The ID of the client you want to delete.',
-},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                client:create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'name',
+		displayName: 'Name',
 		name: 'name',
 		type: 'string',
 		displayOptions: {
@@ -195,14 +195,14 @@ export const clientFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'is_active',
+				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'string',
 				default: '',
 				description: 'Whether the client is active, or archived. Defaults to true.'
 			},
 			{
-				displayName: 'address',
+				displayName: 'Address',
 				name: 'address',
 				type: 'string',
 				default: '',
@@ -218,11 +218,11 @@ export const clientFields = [
 		],
 	},
 
-		/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
 	/*                                client:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'client Id',
+		displayName: 'Client Id',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -253,21 +253,21 @@ export const clientFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'name',
+				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
 				description: 'Whether the client is active, or archived. Defaults to true.'
 			},
 			{
-				displayName: 'is_active',
+				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'string',
 				default: '',
 				description: 'Whether the client is active, or archived. Defaults to true.'
 			},
 			{
-				displayName: 'address',
+				displayName: 'Address',
 				name: 'address',
 				type: 'string',
 				default: '',
