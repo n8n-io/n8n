@@ -362,6 +362,21 @@ export class Harvest implements INodeType {
 					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
 					returnData.push(responseData);
 
+				}  else if (operation === 'update') {
+					// ----------------------------------
+					//         update
+					// ----------------------------------
+
+					requestMethod = 'PATCH';
+					const id = this.getNodeParameter('id', i) as string;
+					endpoint = `${resource}/${id}`;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					Object.assign(body, updateFields);
+					const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint, body);
+					returnData.push(responseData);
+
 				}  else if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
@@ -574,7 +589,7 @@ export class Harvest implements INodeType {
 					requestMethod = 'POST';
 					endpoint = resource;
 
-					body.name = this.getNodeParameter('name', i) as string;
+					body.client_id = this.getNodeParameter('client_id', i) as string;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(body, additionalFields);

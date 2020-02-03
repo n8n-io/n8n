@@ -383,8 +383,8 @@ export const projectFields = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
@@ -535,3 +535,4 @@ export const projectFields = [
 	},
 
 ] as INodeProperties[];
+
