@@ -192,10 +192,10 @@ export const estimateFields = [
 },
 
 	/* -------------------------------------------------------------------------- */
-	/*                                invoice:create                           */
+	/*                                estimate:create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'client_id',
+		displayName: 'Client Id',
 		name: 'client_id',
 		type: 'string',
 		displayOptions: {
@@ -293,7 +293,7 @@ export const estimateFields = [
 	},
 
 		/* -------------------------------------------------------------------------- */
-	/*                                invoice:update                           */
+	/*                                estimate:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice Id',
@@ -327,7 +327,7 @@ export const estimateFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'client_id',
+				displayName: 'Client Id',
 				name: 'client_id',
 				type: 'string',
 				default: '',
