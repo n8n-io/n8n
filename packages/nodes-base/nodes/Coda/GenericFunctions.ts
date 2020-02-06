@@ -32,7 +32,7 @@ export async function codaApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 			errorMessage = error.response.body.message || error.response.body.Message || error.message;
 		}
 
-		throw new Error(errorMessage);
+		throw new Error('Coda Error: ' + errorMessage);
 	}
 }
 
