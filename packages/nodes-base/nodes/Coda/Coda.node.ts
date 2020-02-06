@@ -37,7 +37,7 @@ export class Coda implements INodeType {
 		icon: 'file:coda.png',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Coda Beta API',
 		defaults: {
 			name: 'Coda',
@@ -58,9 +58,9 @@ export class Coda implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Table',
-						value: 'table',
-						description: `Access data of tables in documents.`,
+						name: 'Control',
+						value: 'control',
+						description: 'Controls provide a user-friendly way to input a value that can affect other parts of the doc.',
 					},
 					{
 						name: 'Formula',
@@ -68,9 +68,9 @@ export class Coda implements INodeType {
 						description: 'Formulas can be great for performing one-off computations',
 					},
 					{
-						name: 'Control',
-						value: 'control',
-						description: 'Controls provide a user-friendly way to input a value that can affect other parts of the doc.',
+						name: 'Table',
+						value: 'table',
+						description: `Access data of tables in documents.`,
 					},
 					{
 						name: 'View',
@@ -99,12 +99,7 @@ export class Coda implements INodeType {
 			async getDocs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const qs = {};
-				let docs;
-				try {
-					docs = await codaApiRequestAllItems.call(this,'items', 'GET', `/docs`, {}, qs);
-				} catch (err) {
-					throw new Error(`Coda Error: ${err}`);
-				}
+				const docs = await codaApiRequestAllItems.call(this,'items', 'GET', `/docs`, {}, qs);
 				for (const doc of docs) {
 					const docName = doc.name;
 					const docId = doc.id;
@@ -119,15 +114,10 @@ export class Coda implements INodeType {
 			// select them easily
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let tables;
 
 				const docId = this.getCurrentNodeParameter('docId');
 
-				try {
-					tables = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/tables`, {});
-				} catch (err) {
-					throw new Error(`Coda Error: ${err}`);
-				}
+				const tables = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/tables`, {});
 				for (const table of tables) {
 					const tableName = table.name;
 					const tableId = table.id;
@@ -142,16 +132,11 @@ export class Coda implements INodeType {
 			// select them easily
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let columns;
 
 				const docId = this.getCurrentNodeParameter('docId');
 				const tableId = this.getCurrentNodeParameter('tableId');
 
-				try {
-					columns = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/tables/${tableId}/columns`, {});
-				} catch (err) {
-					throw new Error(`Coda Error: ${err}`);
-				}
+				const columns = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/tables/${tableId}/columns`, {});
 				for (const column of columns) {
 					const columnName = column.name;
 					const columnId = column.id;
@@ -166,13 +151,8 @@ export class Coda implements INodeType {
 			// select them easily
 			async getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let views;
 				const docId = this.getCurrentNodeParameter('docId');
-				try {
-					views = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/views`, {});
-				} catch (err) {
-					throw new Error(`Coda Error: ${err}`);
-				}
+				const views = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/views`, {});
 				for (const view of views) {
 					const viewName = view.name;
 					const viewId = view.id;
@@ -187,13 +167,8 @@ export class Coda implements INodeType {
 			// select them easily
 			async getFormulas(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let formulas;
 				const docId = this.getCurrentNodeParameter('docId');
-				try {
-					formulas = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/formulas`, {});
-				} catch (err) {
-					throw new Error(`Coda Error: ${err}`);
-				}
+				const formulas = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/formulas`, {});
 				for (const formula of formulas) {
 					const formulaName = formula.name;
 					const formulaId = formula.id;
@@ -208,14 +183,9 @@ export class Coda implements INodeType {
 			// select them easily
 			async getViewRows(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let viewRows;
 				const docId = this.getCurrentNodeParameter('docId');
 				const viewId = this.getCurrentNodeParameter('viewId');
-				try {
-					viewRows = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/views/${viewId}/rows`, {});
-				} catch (err) {
-					throw new Error(`Coda Error: ${err}`);
-				}
+				const viewRows = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/views/${viewId}/rows`, {});
 				for (const viewRow of viewRows) {
 					const viewRowName = viewRow.name;
 					const viewRowId = viewRow.id;
@@ -230,16 +200,11 @@ export class Coda implements INodeType {
 			// select them easily
 			async getViewColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let viewColumns;
 
 				const docId = this.getCurrentNodeParameter('docId');
 				const viewId = this.getCurrentNodeParameter('viewId');
 
-				try {
-					viewColumns = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/views/${viewId}/columns`, {});
-				} catch (err) {
-					throw new Error(`Coda Error: ${err}`);
-				}
+				const viewColumns = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/views/${viewId}/columns`, {});
 				for (const viewColumn of viewColumns) {
 					const viewColumnName = viewColumn.name;
 					const viewColumnId = viewColumn.id;
@@ -422,7 +387,7 @@ export class Coda implements INodeType {
 					const columnId = this.getNodeParameter('columnId', i) as string;
 					const endpoint = `/docs/${docId}/tables/${tableId}/rows/${rowId}/buttons/${columnId}`;
 					responseData = await codaApiRequest.call(this, 'POST', endpoint, {});
-					returnData.push(responseData)
+					returnData.push(responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -434,7 +399,7 @@ export class Coda implements INodeType {
 					const columnId = this.getNodeParameter('columnId', i) as string;
 					const endpoint = `/docs/${docId}/tables/${tableId}/columns/${columnId}`;
 					responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
-					returnData.push(responseData)
+					returnData.push(responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -452,7 +417,7 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
-					returnData.push.apply(returnData,responseData)
+					returnData.push.apply(returnData,responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -465,7 +430,7 @@ export class Coda implements INodeType {
 					const formulaId = this.getNodeParameter('formulaId', i) as string;
 					const endpoint = `/docs/${docId}/formulas/${formulaId}`;
 					responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
-					returnData.push(responseData)
+					returnData.push(responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -482,7 +447,7 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
-					returnData.push.apply(returnData,responseData)
+					returnData.push.apply(returnData,responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -495,7 +460,7 @@ export class Coda implements INodeType {
 					const controlId = this.getNodeParameter('controlId', i) as string;
 					const endpoint = `/docs/${docId}/controls/${controlId}`;
 					responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
-					returnData.push(responseData)
+					returnData.push(responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -512,7 +477,7 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
-					returnData.push.apply(returnData,responseData)
+					returnData.push.apply(returnData,responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -525,7 +490,7 @@ export class Coda implements INodeType {
 					const viewId = this.getNodeParameter('viewId', i) as string;
 					const endpoint = `/docs/${docId}/views/${viewId}`;
 					responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
-					returnData.push(responseData)
+					returnData.push(responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -542,7 +507,7 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
-					returnData.push.apply(returnData,responseData)
+					returnData.push.apply(returnData,responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -584,7 +549,7 @@ export class Coda implements INodeType {
 					for (const item of responseData) {
 						returnData.push({
 							id: item.id,
-							...item.values
+							...item.values,
 						});
 					}
 					return [this.helpers.returnJsonArray(returnData)];
@@ -598,7 +563,7 @@ export class Coda implements INodeType {
 					const rowId = this.getNodeParameter('rowId', i) as string;
 					const endpoint = `/docs/${docId}/views/${viewId}/rows/${rowId}`;
 					responseData = await codaApiRequest.call(this, 'DELETE', endpoint);
-					returnData.push.apply(returnData,responseData)
+					returnData.push.apply(returnData,responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -611,7 +576,7 @@ export class Coda implements INodeType {
 					const columnId = this.getNodeParameter('columnId', i) as string;
 					const endpoint = `/docs/${docId}/views/${viewId}/rows/${rowId}/buttons/${columnId}`;
 					responseData = await codaApiRequest.call(this, 'POST', endpoint);
-					returnData.push.apply(returnData,responseData)
+					returnData.push.apply(returnData,responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}
@@ -628,7 +593,7 @@ export class Coda implements INodeType {
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
-					returnData.push.apply(returnData,responseData)
+					returnData.push.apply(returnData,responseData);
 				}
 				return [this.helpers.returnJsonArray(returnData)];
 			}

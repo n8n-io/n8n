@@ -19,9 +19,14 @@ export const tableOperations = [
 				description: 'Create/Upsert a row',
 			},
 			{
-				name: 'Get Row',
-				value: 'getRow',
-				description: 'Get row',
+				name: 'Delete Row',
+				value: 'deleteRow',
+				description: 'Delete one or multiple rows',
+			},
+			{
+				name: 'Get All Columns',
+				value: 'getAllColumns',
+				description: 'Get all columns',
 			},
 			{
 				name: 'Get All Rows',
@@ -29,24 +34,19 @@ export const tableOperations = [
 				description: 'Get all the rows',
 			},
 			{
-				name: 'Delete Row',
-				value: 'deleteRow',
-				description: 'Delete one or multiple rows',
-			},
-			{
-				name: 'Push Button',
-				value: 'pushButton',
-				description: 'Pushes a button',
-			},
-			{
 				name: 'Get Column',
 				value: 'getColumn',
 				description: 'Get a column',
 			},
 			{
-				name: 'Get All Columns',
-				value: 'getAllColumns',
-				description: 'Get all columns',
+				name: 'Get Row',
+				value: 'getRow',
+				description: 'Get row',
+			},
+			{
+				name: 'Push Button',
+				value: 'pushButton',
+				description: 'Pushes a button',
 			},
 		],
 		default: 'createRow',
@@ -122,19 +122,19 @@ export const tableFields = [
 		},
 		options: [
 			{
-				displayName: 'Key Columns',
-				name: 'keyColumns',
-				type: 'string',
-				default: '',
-				description: `Optional column IDs, URLs, or names (fragile and discouraged),
-				specifying columns to be used as upsert keys. If more than one separate by ,`,
-			},
-			{
 				displayName: 'Disable Parsing',
 				name: 'disableParsing',
 				type: 'boolean',
 				default: false,
 				description: `If true, the API will not attempt to parse the data in any way.`,
+			},
+			{
+				displayName: 'Key Columns',
+				name: 'keyColumns',
+				type: 'string',
+				default: '',
+				description: `Optional column IDs, URLs, or names (fragile and discouraged)<br />,
+				specifying columns to be used as upsert keys. If more than one separate by ,`,
 			},
 		]
 	},
@@ -202,9 +202,11 @@ export const tableFields = [
 				]
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because they're easily prone to being changed by users.
-		If you're using a name, be sure to URI-encode it.
-		If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected`,
+		description: `ID or name of the row. Names are discouraged because<br />
+		they're easily prone to being changed by users. If you're<br />
+		using a name, be sure to URI-encode it. If there are<br />
+		multiple rows with the same value in the identifying column,<br />
+		an arbitrary one will be selected`,
 	},
 	{
 		displayName: 'Options',
@@ -224,6 +226,13 @@ export const tableFields = [
 		},
 		options: [
 			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: `Returns the data exactly in the way it got received from the API.`,
+			},
+			{
 				displayName: 'Use Column Names',
 				name: 'useColumnNames',
 				type: 'boolean',
@@ -231,13 +240,6 @@ export const tableFields = [
 				description: `Use column names instead of column IDs in the returned output.</br>
 				This is generally discouraged as it is fragile. If columns are renamed,</br>
 				code using original names may throw errors.`,
-			},
-			{
-				displayName: 'RAW Data',
-				name: 'rawData',
-				type: 'boolean',
-				default: false,
-				description: `Returns the data exactly in the way it got received from the API.`,
 			},
 			{
 				displayName: 'ValueFormat',
@@ -381,36 +383,6 @@ export const tableFields = [
 				Also note that value is a JSON value; if you'd like to use a string, you must surround it in quotes (e.g., "groceries").`,
 			},
 			{
-				displayName: 'Use Column Names',
-				name: 'useColumnNames',
-				type: 'boolean',
-				default: false,
-				description: `Use column names instead of column IDs in the returned output.</br>
-				This is generally discouraged as it is fragile. If columns are renamed,</br>
-				code using original names may throw errors.`,
-			},
-			{
-				displayName: 'ValueFormat',
-				name: 'valueFormat',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name: 'Simple',
-						value: 'simple',
-					},
-					{
-						name: 'Simple With Arrays',
-						value: 'simpleWithArrays',
-					},
-					{
-						name: 'Rich',
-						value: 'rich',
-					},
-				],
-				description: `The format that cell values are returned as.`,
-			},
-			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
@@ -432,8 +404,38 @@ export const tableFields = [
 						value: 'natural',
 					},
 				],
-				description: `Specifies the sort order of the rows returned.
+				description: `Specifies the sort order of the rows returned.<br />
 				If left unspecified, rows are returned by creation time ascending.`,
+			},
+			{
+				displayName: 'Use Column Names',
+				name: 'useColumnNames',
+				type: 'boolean',
+				default: false,
+				description: `Use column names instead of column IDs in the returned output.</br>
+				This is generally discouraged as it is fragile. If columns<br />
+				are renamed, code using original names may throw errors.`,
+			},
+			{
+				displayName: 'ValueFormat',
+				name: 'valueFormat',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'Simple',
+						value: 'simple',
+					},
+					{
+						name: 'Simple With Arrays',
+						value: 'simpleWithArrays',
+					},
+					{
+						name: 'Rich',
+						value: 'rich',
+					},
+				],
+				description: `The format that cell values are returned as.`,
 			},
 			{
 				displayName: 'Visible Only',
@@ -574,9 +576,11 @@ export const tableFields = [
 				]
 			},
 		},
-		description: `ID or name of the row. Names are discouraged because they're easily prone to being changed by users.
-		If you're using a name, be sure to URI-encode it.
-		If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected`,
+		description: `ID or name of the row. Names are discouraged because<br />
+		they're easily prone to being changed by users. If you're<br />
+		using a name, be sure to URI-encode it. If there are multiple<br />
+		rows with the same value in the identifying column, an arbitrary<br />
+		one will be selected`,
 	},
 	{
 		displayName: 'Column',
