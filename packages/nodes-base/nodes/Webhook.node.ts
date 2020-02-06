@@ -19,8 +19,6 @@ import { set } from 'lodash';
 import * as fs from 'fs';
 
 import * as formidable from 'formidable';
-import { kgsearch } from 'googleapis/build/src/apis/kgsearch';
-import { runInThisContext } from 'vm';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
