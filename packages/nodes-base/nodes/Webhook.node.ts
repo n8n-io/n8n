@@ -8,7 +8,6 @@ import {
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
-	IRunExecutionData,
 } from 'n8n-workflow';
 
 import * as basicAuth from 'basic-auth';
