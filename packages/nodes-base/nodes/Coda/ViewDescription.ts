@@ -14,6 +14,11 @@ export const viewOperations = [
 		},
 		options: [
 			{
+				name: 'Delete Row',
+				value: 'deleteViewRow',
+				description: 'Delete view row',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a view',
@@ -24,24 +29,19 @@ export const viewOperations = [
 				description: 'Get all views',
 			},
 			{
-				name: 'Get Rows',
-				value: 'getAllViewRows',
-				description: 'Get all views rows',
-			},
-			{
 				name: 'Get Columns',
 				value: 'getAllViewColumns',
 				description: 'Get all views columns',
 			},
 			{
+				name: 'Get Rows',
+				value: 'getAllViewRows',
+				description: 'Get all views rows',
+			},
+			{
 				name: 'Update Row',
 				value: 'updateViewRow',
 				description: 'Update row',
-			},
-			{
-				name: 'Delete Row',
-				value: 'deleteViewRow',
-				description: 'Delete view row',
 			},
 			{
 				name: 'Push Button',
@@ -333,7 +333,7 @@ export const viewFields = [
 						value: 'natural',
 					},
 				],
-				description: `Specifies the sort order of the rows returned.
+				description: `Specifies the sort order of the rows returned.<br />
 				If left unspecified, rows are returned by creation time ascending.`,
 			},
 		]
