@@ -8,11 +8,20 @@ import {
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
+	IRunExecutionData,
 } from 'n8n-workflow';
 
 import * as basicAuth from 'basic-auth';
 
 import { Response } from 'express';
+
+import { set } from 'lodash';
+
+import * as fs from 'fs';
+
+import * as formidable from 'formidable';
+import { kgsearch } from 'googleapis/build/src/apis/kgsearch';
+import { runInThisContext } from 'vm';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -307,6 +316,37 @@ export class Webhook implements INodeType {
 
 		// @ts-ignore
 		const mimeType = headers['content-type'] || 'application/json';
+		if (mimeType.includes('multipart/form-data')) {
+			const form = new formidable.IncomingForm();
+
+			return new Promise((resolve, reject) => {
+
+				form.parse(req, async (err, data, files) => {
+					const returnData: INodeExecutionData[] = this.helpers.returnJsonArray({
+						body: data,
+						headers,
+						query: this.getQueryData(),
+					});
+					for (let file of Object.keys(files)) {
+						const fileJson = files[file].toJSON() as IDataObject;
+						const [fileName, fileExtension] = (fileJson.name as string).split('.');
+						const fileContent = await fs.promises.readFile(files[file].path);
+						set(returnData[0], `binary[${fileName}]`, {
+							data: fileContent,
+							mimeType: fileJson.type,
+							fileName: fileJson.name,
+							fileExtension,
+						})
+					}
+					resolve({
+						workflowData: [
+							returnData,
+						],
+					});
+				});
+
+			});
+		}
 
 		const response: INodeExecutionData = {
 			json: {
