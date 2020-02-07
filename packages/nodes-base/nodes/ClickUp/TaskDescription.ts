@@ -34,6 +34,11 @@ export const taskOperations = [
 				description: 'Get all tasks',
 			},
 			{
+				name: 'Set custom field',
+				value: 'setCustomField',
+				description: 'Set a custom field',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
@@ -234,6 +239,16 @@ export const taskFields = [
 				},
 
 				default: [],
+			},
+			{
+				displayName: 'Custom Fields JSON',
+				name: 'customFieldsJson',
+				type: 'json',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Custom fields to set as JSON in the format:<br />[{"id": "", "value": ""}]',
 			},
 			{
 				displayName: 'Content',
@@ -721,7 +736,7 @@ export const taskFields = [
 				name: 'includeClosed',
 				type: 'boolean',
 				default: false,
-				description: 'the api does not include closed tasks. Set this to true and dont send a status filter to include closed tasks',
+				description: 'The response does by default not include closed tasks. Set this to true and dont send a status filter to include closed tasks.',
 			},
 			{
 				displayName: 'Order By',
@@ -801,5 +816,81 @@ export const taskFields = [
 			},
 		},
 		description: 'task ID',
+	},
+/* -------------------------------------------------------------------------- */
+/*                                task:setCustomField                         */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task ID',
+		name: 'task',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'setCustomField',
+				],
+			},
+		},
+		description: 'The ID of the task to add custom field to.',
+	},
+	{
+		displayName: 'Field ID',
+		name: 'field',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'setCustomField',
+				],
+			},
+		},
+		description: 'The ID of the field to add custom field to.',
+	},
+	{
+		displayName: 'Value is JSON',
+		name: 'jsonParse',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'setCustomField',
+				]
+			},
+		},
+		default: false,
+		description: `The value is JSON and will be parsed as such. Is needed<br />
+		if for example needed for labels which expects the value<br />
+		to be an array.`,
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'setCustomField',
+				],
+			},
+		},
+		description: 'The value to set on custom field.',
 	},
 ] as INodeProperties[];
