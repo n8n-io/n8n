@@ -324,7 +324,7 @@ export class Webhook implements INodeType {
 						headers,
 						query: this.getQueryData(),
 					});
-					for (let file of Object.keys(files)) {
+					for (const file of Object.keys(files)) {
 						const fileJson = files[file].toJSON() as IDataObject;
 						const [fileName, fileExtension] = (fileJson.name as string).split('.');
 						const fileContent = await fs.promises.readFile(files[file].path);
@@ -333,7 +333,7 @@ export class Webhook implements INodeType {
 							mimeType: fileJson.type,
 							fileName: fileJson.name,
 							fileExtension,
-						})
+						});
 					}
 					resolve({
 						workflowData: [
