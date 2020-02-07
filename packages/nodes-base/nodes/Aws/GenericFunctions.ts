@@ -31,7 +31,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.error(error);
+		//console.error(error);
 
 		const errorMessage = error.response.body.message || error.response.body.Message;
 		if (error.statusCode === 403) {
