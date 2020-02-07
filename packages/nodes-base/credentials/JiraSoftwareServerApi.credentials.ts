@@ -3,9 +3,9 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class JiraSoftwareCloudApi implements ICredentialType {
-	name = 'jiraSoftwareCloudApi';
-	displayName = 'Jira SW Cloud API';
+export class JiraSoftwareServerApi implements ICredentialType {
+	name = 'jiraSoftwareServerApi';
+	displayName = 'Jira SW Server API';
 	properties = [
 		{
 			displayName: 'Email',
@@ -14,8 +14,11 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'API Token',
-			name: 'apiToken',
+			displayName: 'Password',
+			name: 'password',
+			typeOptions: {
+				password: true,
+			},
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
@@ -24,7 +27,7 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			name: 'domain',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			placeholder: 'https://example.atlassian.net',
+			placeholder: 'https://example.com',
 		},
 	];
 }
