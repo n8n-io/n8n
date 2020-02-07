@@ -12,11 +12,16 @@ import {
 import {
 	clickupApiRequest,
 	clickupApiRequestAllItems,
+	validateJSON,
 } from './GenericFunctions';
 import {
 	taskFields,
 	taskOperations,
 } from './TaskDescription';
+import {
+	listFields,
+	listOperations,
+} from './ListDescription';
 import {
 	ITask,
  } from './TaskInterface';
@@ -49,6 +54,10 @@ export class ClickUp implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'List',
+						value: 'list',
+					},
+					{
 						name: 'Task',
 						value: 'task',
 					},
@@ -58,6 +67,8 @@ export class ClickUp implements INodeType {
 			},
 			...taskOperations,
 			...taskFields,
+			...listOperations,
+			...listFields,
 		],
 	};
 
@@ -212,6 +223,13 @@ export class ClickUp implements INodeType {
 					const body: ITask = {
 							name,
 					};
+					if (additionalFields.customFieldsJson) {
+						const customFields = validateJSON(additionalFields.customFieldsJson as string);
+						if (customFields === undefined) {
+							throw new Error('Custom Fields: Invalid JSON');
+						}
+						body.custom_fields = customFields;
+					}
 					if (additionalFields.content) {
 						body.content = additionalFields.content as string;
 					}
@@ -252,7 +270,6 @@ export class ClickUp implements INodeType {
 						delete body.content;
 						body.markdown_content = additionalFields.content as string;
 					}
-
 					responseData = await clickupApiRequest.call(this, 'POST', `/list/${listId}/task`, body);
 				}
 				if (operation === 'update') {
@@ -351,9 +368,37 @@ export class ClickUp implements INodeType {
 						// responseData = responseData.tasks;
 					}
 				}
+				if (operation === 'setCustomField') {
+					const taskId = this.getNodeParameter('task', i) as string;
+					const fieldId = this.getNodeParameter('field', i) as string;
+					const value = this.getNodeParameter('value', i) as string;
+					const jsonParse = this.getNodeParameter('jsonParse', i) as boolean;
+
+					const body: IDataObject = {};
+					body.value = value;
+					if (jsonParse === true) {
+						body.value = validateJSON(body.value);
+						if (body.value === undefined) {
+							throw new Error('Value is invalid JSON!');
+						}
+					} else {
+						//@ts-ignore
+						if (!isNaN(body.value)) {
+							body.value = parseInt(body.value, 10);
+						}
+					}
+					responseData = await clickupApiRequest.call(this, 'POST', `/task/${taskId}/field/${fieldId}`, body);
+				}
 				if (operation === 'delete') {
 					const taskId = this.getNodeParameter('id', i) as string;
 					responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}`, {});
+				}
+			}
+			if (resource === 'list') {
+				if (operation === 'customFields') {
+					const listId = this.getNodeParameter('list', i) as string;
+					responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}/field`);
+					responseData = responseData.fields;
 				}
 			}
 			if (Array.isArray(responseData)) {
