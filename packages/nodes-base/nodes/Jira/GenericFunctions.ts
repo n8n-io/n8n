@@ -2,10 +2,9 @@ import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {
@@ -16,21 +15,22 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	let data; let domain;
 	const jiraCloudCredentials = this.getCredentials('jiraSoftwareCloudApi');
 	const jiraServerCredentials = this.getCredentials('jiraSoftwareServerApi');
-	if (jiraCloudCredentials === undefined
-	&& jiraServerCredentials === undefined) {
+	if (jiraCloudCredentials === undefined && jiraServerCredentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
 	if (jiraCloudCredentials !== undefined) {
 		domain = jiraCloudCredentials!.domain;
-		data = Buffer.from(`${jiraCloudCredentials!.email}:${jiraCloudCredentials!.apiToken}`).toString(BINARY_ENCODING);
+		data = Buffer.from(`${jiraCloudCredentials!.email}:${jiraCloudCredentials!.apiToken}`).toString('base64');
 	} else {
 		domain = jiraServerCredentials!.domain;
-		data = Buffer.from(`${jiraServerCredentials!.email}:${jiraServerCredentials!.password}`).toString(BINARY_ENCODING);
+		data = Buffer.from(`${jiraServerCredentials!.email}:${jiraServerCredentials!.password}`).toString('base64');
 	}
-	const headerWithAuthentication = Object.assign({},
-		{ Authorization: `Basic ${data}`, Accept: 'application/json', 'Content-Type': 'application/json' });
 	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+		headers: {
+			Authorization: `Basic ${data}`,
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+		},
 		method,
 		qs: query,
 		uri: uri || `${domain}/rest/api/2${endpoint}`,
