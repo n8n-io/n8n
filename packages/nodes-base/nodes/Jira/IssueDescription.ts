@@ -518,14 +518,53 @@ export const issueFields = [
 		default: {},
 		options: [
 			{
-				displayName: ' JQL',
-				name: 'jql',
-				type: 'string',
+				displayName: 'Expand',
+				name: 'expand',
+				type: 'options',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				description: 'A JQL expression.',
+				options: [
+					{
+						name: 'Changelog',
+						value: 'changelog',
+						description: 'Returns a list of recent updates to an issue, sorted by date, starting from the most recent.',
+					},
+					{
+						name: 'Editmeta',
+						value: 'editmeta',
+						description: 'Returns information about how each field can be edited',
+					},
+					{
+						name: 'Names',
+						value: 'names',
+						description: 'Returns the display name of each field',
+					},
+					{
+						name: 'Operations',
+						value: 'operations',
+						description: 'Returns all possible operations for the issue.',
+					},
+					{
+						name: 'Rendered Fields',
+						value: 'renderedFields',
+						description: ' Returns field values rendered in HTML format.',
+					},
+					{
+						name: 'Schema',
+						value: 'schema',
+						description: 'Returns the schema describing a field type.',
+					},
+					{
+						name: 'Transitions',
+						value: 'transitions',
+						description: ' Returns all possible transitions for the issue.',
+					},
+					{
+						name: 'Versioned Representations',
+						value: 'versionedRepresentations',
+						description: `JSON array containing each version of a field's value`,
+					},
+				],
+				description: `Use expand to include additional information about issues in the response`,
 			},
 			{
 				displayName: 'Fields',
@@ -538,55 +577,6 @@ export const issueFields = [
 				Any issue field, prefixed with a minus to exclude.<br/>`,
 			},
 			{
-				displayName: 'Expand',
-				name: 'expand',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name: 'Rendered Fields',
-						valie: 'renderedFields',
-						description: ' Returns field values rendered in HTML format.',
-					},
-					{
-						name: 'Names',
-						valie: 'names',
-						description: 'Returns the display name of each field',
-					},
-					{
-						name: 'Schema',
-						valie: 'schema',
-						description: 'Returns the schema describing a field type.',
-					},
-					{
-						name: 'Transitions',
-						valie: 'transitions',
-						description: ' Returns all possible transitions for the issue.',
-					},
-					{
-						name: 'Operations',
-						valie: 'operations',
-						description: 'Returns all possible operations for the issue.',
-					},
-					{
-						name: 'Editmeta',
-						valie: 'editmeta',
-						description: 'Returns information about how each field can be edited',
-					},
-					{
-						name: 'Changelog',
-						valie: 'changelog',
-						description: 'Returns a list of recent updates to an issue, sorted by date, starting from the most recent.',
-					},
-					{
-						name: 'Versioned Representations',
-						valie: 'versionedRepresentations',
-						description: `JSON array containing each version of a field's value`,
-					},
-				],
-				description: `Use expand to include additional information about issues in the response`,
-			},
-			{
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
@@ -595,6 +585,16 @@ export const issueFields = [
 				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
 				This parameter is useful where fields have been added by a connect app and a field's key<br/>
 				may differ from its ID.`,
+			},
+			{
+				displayName: ' JQL',
+				name: 'jql',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				description: 'A JQL expression.',
 			},
 		],
 	},

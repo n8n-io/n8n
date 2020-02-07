@@ -27,6 +27,7 @@ export class JiraSoftwareServerApi implements ICredentialType {
 			name: 'domain',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			placeholder: 'https://example.com',
 		},
 	];
 }
