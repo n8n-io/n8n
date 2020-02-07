@@ -106,6 +106,7 @@
             "dist/nodes/Asana/AsanaTrigger.node.js",
             "dist/nodes/Aws/AwsLambda.node.js",
             "dist/nodes/Aws/AwsSns.node.js",
+            "dist/nodes/Aws/AwsSes.node.js",
             "dist/nodes/Bitbucket/BitbucketTrigger.node.js",
             "dist/nodes/Bitly/Bitly.node.js",
             "dist/nodes/Chargebee/Chargebee.node.js",
