@@ -54,12 +54,12 @@ export class ClickUp implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Task',
-						value: 'task',
-					},
-					{
 						name: 'List',
 						value: 'list',
+					},
+					{
+						name: 'Task',
+						value: 'task',
 					},
 				],
 				default: 'task',
@@ -219,11 +219,17 @@ export class ClickUp implements INodeType {
 				if (operation === 'create') {
 					const listId = this.getNodeParameter('list', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: ITask = {
 							name,
 					};
+					if (additionalFields.customFieldsJson) {
+						const customFields = validateJSON(additionalFields.customFieldsJson as string);
+						if (customFields === undefined) {
+							throw new Error('Custom Fields: Invalid JSON');
+						}
+						body.custom_fields = customFields;
+					}
 					if (additionalFields.content) {
 						body.content = additionalFields.content as string;
 					}
@@ -263,13 +269,6 @@ export class ClickUp implements INodeType {
 					if (additionalFields.markdownContent) {
 						delete body.content;
 						body.markdown_content = additionalFields.content as string;
-					}
-					if (jsonActive) {
-						const customFields = validateJSON(this.getNodeParameter('customFieldsJson', i) as string);
-						if (customFields === undefined) {
-							throw new Error('Custom Fields: Invalid JSON');
-						}
-						body.custom_fields = customFields;
 					}
 					responseData = await clickupApiRequest.call(this, 'POST', `/list/${listId}/task`, body);
 				}
@@ -373,11 +372,20 @@ export class ClickUp implements INodeType {
 					const taskId = this.getNodeParameter('task', i) as string;
 					const fieldId = this.getNodeParameter('field', i) as string;
 					const value = this.getNodeParameter('value', i) as string;
+					const jsonParse = this.getNodeParameter('jsonParse', i) as boolean;
+
 					const body: IDataObject = {};
 					body.value = value;
-					//@ts-ignore
-					if (!isNaN(value)) {
-						body.value = parseInt(value, 10);
+					if (jsonParse === true) {
+						body.value = validateJSON(body.value);
+						if (body.value === undefined) {
+							throw new Error('Value is invalid JSON!');
+						}
+					} else {
+						//@ts-ignore
+						if (!isNaN(body.value)) {
+							body.value = parseInt(body.value, 10);
+						}
 					}
 					responseData = await clickupApiRequest.call(this, 'POST', `/task/${taskId}/field/${fieldId}`, body);
 				}
