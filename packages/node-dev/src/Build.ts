@@ -64,7 +64,7 @@ export async function buildFiles (options?: IBuildOptions): Promise<string> {
 	options = options || {};
 
 	// Get the path of the TypeScript cli of this project
-	const tscPath = join(__dirname, '../../node_modules/typescript/bin/tsc');
+	const tscPath = join(__dirname, '../../node_modules/.bin/tsc');
 
 	const tsconfigData = await createCustomTsconfig();
 
