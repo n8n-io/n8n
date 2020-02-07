@@ -1,4 +1,4 @@
-import { IExecuteFunctions, LoadNodeParameterOptions } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeTypeDescription,
 	INodeExecutionData,
@@ -10,7 +10,7 @@ import {  awsApiRequestSOAP } from './GenericFunctions';
 
 function setParameter(params: string[], base: string, values: string[]) {
 	for (let i = 0; i < values.length; i++) {
-		params.push(`${base}.${i+1}=${values[i]}`)
+		params.push(`${base}.${i+1}=${values[i]}`);
 	}
 }
 
@@ -61,26 +61,7 @@ export class AwsSes implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Weather the body is html or not',
-			},
-			{
-				displayName: 'Body',
-				name: 'body',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				displayOptions: {
-					show: {
-						operation: [
-							'sendEmail',
-						],
-					},
-				},
-				options: [],
-				default: '',
-				description: 'The message to be sent.',
-				required: true,
+				description: 'If body is HTML or simple text.',
 			},
 			{
 				displayName: 'Subject',
@@ -97,8 +78,26 @@ export class AwsSes implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Source',
-				name: 'source',
+				displayName: 'Body',
+				name: 'body',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'sendEmail',
+						],
+					},
+				},
+				default: '',
+				description: 'The message to be sent.',
+				required: true,
+			},
+			{
+				displayName: 'From Email',
+				name: 'fromEmail',
 				type: 'string',
 				displayOptions: {
 					show: {
@@ -108,8 +107,28 @@ export class AwsSes implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The email address that is sending the email.',
+				description: 'Email address of the sender.',
+				placeholder: 'admin@example.com',
 				default: '',
+			},
+			{
+				displayName: 'To Addresses',
+				name: 'toAddresses',
+				type: 'string',
+				description: 'Email addresses of the recipients.',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add To Email',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'sendEmail',
+						],
+					},
+				},
+				placeholder: 'info@example.com',
+				default: [],
 			},
 			{
 				displayName: 'Additional Fields',
@@ -126,17 +145,51 @@ export class AwsSes implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'Bcc Addresses',
+						name: 'bccAddresses',
+						type: 'string',
+						typeOptions: {
+							multipleValues: true,
+							multipleValueButtonText: 'Add Bcc Email',
+						},
+						description: 'Bcc Recipients of the email.',
+						default: [],
+					},
+					{
+						displayName: 'Cc Addresses',
+						name: 'ccAddresses',
+						type: 'string',
+						typeOptions: {
+							multipleValues: true,
+							multipleValueButtonText: 'Add Cc Email',
+						},
+						description: 'Cc recipients of the email.',
+						default: [],
+					},
+					{
 						displayName: 'Configuration Set Name',
 						name: 'configurationSetName',
 						type: 'string',
-						description: 'The name of the configuration set to use when you send an email using SendEmail.',
+						description: 'Name of the configuration set to use when you send an email using SendEmail.',
 						default: '',
+					},
+					{
+						displayName: 'Reply To Addresses',
+						name: 'replyToAddresses',
+						type: 'string',
+						typeOptions: {
+							multipleValues: true,
+							multipleValueButtonText: 'Add Reply To Email',
+						},
+						placeholder: 'Add Reply Address',
+						description: 'Reply-to email address(es) for the message.',
+						default: [],
 					},
 					{
 						displayName: 'Return Path',
 						name: 'returnPath',
 						type: 'string',
-						description: 'The email address that bounces and complaints will be forwarded to when feedback forwarding is enabled',
+						description: 'Email address that bounces and complaints will be forwarded to when feedback forwarding is enabled',
 						default: '',
 					},
 					{
@@ -153,113 +206,6 @@ export class AwsSes implements INodeType {
 						description: 'This parameter is used only for sending authorization.',
 						default: '',
 					},
-					{
-						displayName: 'Reply To Addresses',
-						name: 'replyToAddressesUI',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add Reply Address',
-						description: 'The reply-to email address(es) for the message.',
-						default: {},
-						options: [
-							{
-								displayName: 'Reply Address',
-								name: 'replyToAddressesValues',
-								values: [
-									{
-										displayName: 'Address',
-										name: 'address',
-										type: 'string',
-										default: '',
-									},
-								],
-							},
-						],
-					},
-					{
-						displayName: 'Cc Addresses',
-						name: 'ccAddressesUi',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add Cc Address',
-						description: 'The recipients to place on the CC: line of the message.',
-						default: {},
-						options: [
-							{
-								displayName: 'Cc Address',
-								name: 'ccAddressesValues',
-								values: [
-									{
-										displayName: 'Address',
-										name: 'address',
-										type: 'string',
-										default: '',
-									},
-								],
-							},
-						],
-					},
-					{
-						displayName: 'Bcc Addresses',
-						name: 'bccAddressesUi',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						placeholder: 'Add CC Address',
-						description: 'The recipients to place on the BCC: line of the message.',
-						default: {},
-						options: [
-							{
-								displayName: 'Bcc Address',
-								name: 'bccAddressesValues',
-								values: [
-									{
-										displayName: 'Address',
-										name: 'address',
-										type: 'string',
-										default: '',
-									},
-								],
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'To Addresses',
-				name: 'toAddressesUi',
-				type: 'fixedCollection',
-				description: 'The recipients to place on the To: line of the message.',
-				typeOptions: {
-					multipleValues: true,
-				},
-				displayOptions: {
-					show: {
-						operation: [
-							'sendEmail',
-						],
-					},
-				},
-				placeholder: 'Add Address',
-				default: {},
-				options: [
-					{
-						displayName: 'Address',
-						name: 'toAddressesValues',
-						values: [
-							{
-								displayName: 'Address',
-								name: 'address',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
 				],
 			},
 		],
@@ -268,30 +214,29 @@ export class AwsSes implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		for (let i = 0; i < length; i++) {
+		for (let i = 0; i < items.length; i++) {
 			if (operation === 'sendEmail') {
-				let toAddresses = (this.getNodeParameter('toAddressesUi', i) as IDataObject).toAddressesValues as string[];
+				const toAddresses = this.getNodeParameter('toAddresses', i) as string[];
 				const message = this.getNodeParameter('body', i) as string;
 				const subject = this.getNodeParameter('subject', i) as string;
-				const source = this.getNodeParameter('source', i) as string;
+				const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 				const isBodyHtml = this.getNodeParameter('isBodyHtml', i) as boolean;
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 				const params = [
 					`Message.Subject.Data=${subject}`,
-					`Source=${source}`,
+					`Source=${fromEmail}`,
 				];
 				if (isBodyHtml) {
 					params.push(`Message.Body.Html.Data=${message}`);
 				} else {
 					params.push(`Message.Body.Text.Data=${message}`);
 				}
-				if (toAddresses) {
-					//@ts-ignore
-					toAddresses = toAddresses.map(o => o.address);
+				if (toAddresses.length) {
 					setParameter(params, 'Destination.ToAddresses.member', toAddresses);
+				} else {
+					throw new Error('At least one "To Address" has to be added!');
 				}
 				if (additionalFields.configurationSetName) {
 					params.push(`ConfigurationSetName=${additionalFields.configurationSetName}`);
@@ -305,21 +250,11 @@ export class AwsSes implements INodeType {
 				if (additionalFields.sourceArn) {
 					params.push(`SourceArn=${additionalFields.sourceArn}`);
 				}
-				if (additionalFields.replyToAddressesUI) {
-					let replyToAddresses = (additionalFields.replyToAddressesUI as IDataObject).replyToAddressesValues as string[];
-					//@ts-ignore
-					replyToAddresses = replyToAddresses.map(o => o.address);
-					if (replyToAddresses) {
-						setParameter(params, 'ReplyToAddresses.member', replyToAddresses);
-					}
+				if (additionalFields.replyToAddresses) {
+					setParameter(params, 'ReplyToAddresses.member', additionalFields.replyToAddresses as string[]);
 				}
-				if (additionalFields.bccAddressesUi) {
-					let bccAddresses = (additionalFields.bccAddressesUi as IDataObject).bccAddressesValues as string[];
-					//@ts-ignore
-					bccAddresses = bccAddresses.map(o => o.address);
-					if (bccAddresses) {
-						setParameter(params, 'Destination.BccAddresses.member', bccAddresses);
-					}
+				if (additionalFields.bccAddresses) {
+					setParameter(params, 'Destination.BccAddresses.member', additionalFields.bccAddresses as string[]);
 				}
 				if (additionalFields.ccAddressesUi) {
 					let ccAddresses = (additionalFields.ccAddressesUi as IDataObject).ccAddressesValues as string[];
@@ -329,6 +264,7 @@ export class AwsSes implements INodeType {
 						setParameter(params, 'Destination.CcAddresses.member', ccAddresses);
 					}
 				}
+
 				try {
 					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=SendEmail&' + params.join('&'));
 				} catch(err) {
