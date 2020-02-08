@@ -276,7 +276,7 @@ export default mixins(
 					returnValue = this.expressionValueComputed;
 				}
 
-				if (returnValue !== undefined && this.parameter.type === 'string') {
+				if (returnValue !== undefined && returnValue !== null && this.parameter.type === 'string') {
 					const rows = this.getArgument('rows');
 					if (rows === undefined || rows === 1) {
 						returnValue = returnValue.toString().replace(/\n/, '|');
