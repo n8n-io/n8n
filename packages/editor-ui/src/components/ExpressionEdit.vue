@@ -102,7 +102,7 @@ export default Vue.extend({
 	margin-top: 1em;
 }
 
-/deep/ .expression-dialog {
+::v-deep .expression-dialog {
 	.el-dialog__header {
 		padding: 0;
 	}
