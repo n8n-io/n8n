@@ -1,5 +1,5 @@
-import { INodeProperties } from "n8n-workflow";
-const resource = ['tasks'];
+import { INodeProperties } from 'n8n-workflow';
+const resource = ['task'];
 export const taskOperations = [
 	{
 		displayName: 'Operation',
@@ -12,6 +12,16 @@ export const taskOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a task`,
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a task`,
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a task',
@@ -22,19 +32,9 @@ export const taskOperations = [
 				description: 'Get data of all tasks',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: `Create a task`,
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: `Update a task`,
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: `Delete a task`,
 			},
 		],
 		default: 'getAll',
@@ -109,13 +109,6 @@ export const taskFields = [
 				description: 'Pass true to only return active tasks and false to return inactive tasks.',
 			},
 			{
-				displayName: 'Updated Since',
-				name: 'updated_since',
-				type: 'dateTime',
-				default: '',
-				description: 'Only return tasks belonging to the task with the given ID.',
-			},
-			{
 				displayName: 'Page',
 				name: 'page',
 				type: 'number',
@@ -124,7 +117,14 @@ export const taskFields = [
 				},
 				default: 1,
 				description: 'The page number to use in pagination.',
-			}
+			},
+			{
+				displayName: 'Updated Since',
+				name: 'updated_since',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return tasks belonging to the task with the given ID.',
+			},
 		]
 	},
 
@@ -250,13 +250,7 @@ export const taskFields = [
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Name of the task.'
-			},
+
 			{
 				displayName: 'Billable By Default',
 				name: 'billable_by_default',
@@ -272,6 +266,13 @@ export const taskFields = [
 				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.'
 			},
 			{
+				displayName: 'Is Active',
+				name: 'is_active',
+				type: 'boolean',
+				default: true,
+				description: 'Whether this task is active or archived. Defaults to true'
+			},
+			{
 				displayName: 'Is Default',
 				name: 'is_default',
 				type: 'boolean',
@@ -279,12 +280,12 @@ export const taskFields = [
 				description: 'Whether this task should be automatically added to future projects. Defaults to false.'
 			},
 			{
-				displayName: 'Is Active',
-				name: 'is_active',
-				type: 'boolean',
-				default: true,
-				description: 'Whether this task is active or archived. Defaults to true'
-			}
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'Name of the task.'
+			},
 		],
 	},
 

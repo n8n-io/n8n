@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = ['contacts'];
+const resource = ['contact'];
 
 export const contactOperations = [
 	{
@@ -14,6 +14,16 @@ export const contactOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a contact`,
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a contact`,
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a contact',
@@ -24,19 +34,9 @@ export const contactOperations = [
 				description: 'Get data of all contacts',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: `Create a contact`,
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: `Update a contact`,
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: `Delete a contact`,
 			},
 		],
 		default: 'getAll',
@@ -107,7 +107,7 @@ export const contactFields = [
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
-				default: '',
+				default: true,
 				description: 'Pass true to only return active clients and false to return inactive clients.',
 			},
 			{
@@ -164,8 +164,8 @@ export const contactFields = [
 	/*                                contact:create                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'First name',
-		name: 'first_name',
+		displayName: 'First Name',
+		name: 'firstName',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -181,7 +181,7 @@ export const contactFields = [
 	},
 	{
 		displayName: 'Client Id',
-		name: 'client_id',
+		name: 'clientId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -297,7 +297,7 @@ export const contactFields = [
 				description: 'The ID of the client associated with this contact.',
 			},
 			{
-				displayName: 'First name',
+				displayName: 'First Name',
 				name: 'first_name',
 				type: 'string',
 				default: '',
