@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = ['projects'];
+const resource = ['project'];
 
 export const projectOperations = [
 	{
@@ -14,6 +14,16 @@ export const projectOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a project`,
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a project`,
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a project',
@@ -24,19 +34,9 @@ export const projectOperations = [
 				description: 'Get data of all projects',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: `Create a project`,
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: `Update a project`,
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: `Delete a project`,
 			},
 		],
 		default: 'getAll',
@@ -104,13 +104,6 @@ export const projectFields = [
 		},
 		options: [
 			{
-				displayName: 'Is Active',
-				name: 'is_active',
-				type: 'boolean',
-				default: true,
-				description: 'Pass true to only return active projects and false to return inactive projects.',
-			},
-			{
 				displayName: 'Client Id',
 				name: 'client_id',
 				type: 'string',
@@ -118,11 +111,11 @@ export const projectFields = [
 				description: 'Only return projects belonging to the client with the given ID.',
 			},
 			{
-				displayName: 'Updated Since',
-				name: 'updated_since',
-				type: 'dateTime',
-				default: '',
-				description: 'Only return projects by updated_since.',
+				displayName: 'Is Active',
+				name: 'is_active',
+				type: 'boolean',
+				default: true,
+				description: 'Pass true to only return active projects and false to return inactive projects.',
 			},
 			{
 				displayName: 'Page',
@@ -134,7 +127,13 @@ export const projectFields = [
 				default: 1,
 				description: 'The page number to use in pagination.',
 			},
-
+			{
+				displayName: 'Updated Since',
+				name: 'updated_since',
+				type: 'dateTime',
+				default: '',
+				description: 'Only return projects by updated_since.',
+			},
 		]
 	},
 
@@ -199,7 +198,7 @@ export const projectFields = [
 	},
 	{
 		displayName: 'Client Id',
-		name: 'client_id',
+		name: 'clientId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -215,8 +214,8 @@ export const projectFields = [
 	},
 	{
 		displayName: 'Is Billable',
-		name: 'is_billable',
-		type: 'string',
+		name: 'isBillable',
+		type: 'boolean',
 		displayOptions: {
 			show: {
 				operation: [
@@ -225,14 +224,14 @@ export const projectFields = [
 				resource,
 			},
 		},
-		default: '',
+		default: true,
 		required: true,
 		description: 'Whether the project is billable or not.',
 	},
 	{
 		displayName: 'Bill By',
-		name: 'bill_by',
-		type: 'string',
+		name: 'billBy',
+		type: 'options',
 		displayOptions: {
 			show: {
 				operation: [
@@ -241,13 +240,31 @@ export const projectFields = [
 				resource,
 			},
 		},
-		default: '',
+		options: [
+			{
+				name: 'none',
+				value: 'none',
+			},
+			{
+				name: 'People',
+				value: 'People',
+			},
+			{
+				name: 'Project',
+				value: 'Project',
+			},
+			{
+				name: 'Tasks',
+				value: 'Tasks',
+			},
+		],
+		default: 'none',
 		required: true,
-		description: 'The method by which the project is invoiced. Options: Project, Tasks, People, or none.',
+		description: 'The method by which the project is invoiced.',
 	},
 	{
 		displayName: 'Budget By',
-		name: 'budget_by',
+		name: 'budgetBy',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -257,9 +274,10 @@ export const projectFields = [
 				resource,
 			},
 		},
-		default: '',
+		default: 'none',
+		placeholder: '',
 		required: true,
-		description: 'The email of the user.',
+		description: 'The email of the user or "none".',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -277,18 +295,49 @@ export const projectFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Is Active',
-				name: 'is_active',
-				type: 'boolean',
-				default: true,
-				description: 'Whether the project is active or archived. Defaults to true'
+				displayName: 'Budget',
+				name: 'budget',
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				default: 0,
+				description: 'The budget in hours for the project when budgeting by time.'
 			},
 			{
-				displayName: 'Is Fixed Fee',
-				name: 'is_fixed_fee',
+				displayName: 'Budget Is Monthly',
+				name: 'budget_is_monthly',
+				type: 'boolean',
+				default: false,
+				description: 'Option to have the budget reset every month. Defaults to false.'
+			},
+			{
+				displayName: 'Cost Budget',
+				name: 'cost_budget',
 				type: 'string',
 				default: '',
-				description: 'Whether the project is a fixed-fee project or not.'
+				description: 'The monetary budget for the project when budgeting by money.'
+			},
+			{
+				displayName: 'Cost Budget Include Expenses',
+				name: 'cost_budget_include_expenses',
+				type: 'boolean',
+				default: false,
+				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.'
+			},
+			{
+				displayName: 'Ends On',
+				name: 'ends_on',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the project will end.'
+			},
+			{
+				displayName: 'Fee',
+				name: 'fee',
+				type: 'string',
+				default: '',
+				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.'
 			},
 			{
 				displayName: 'Hourly Rate',
@@ -298,24 +347,31 @@ export const projectFields = [
 				description: 'Rate for projects billed by Project Hourly Rate.'
 			},
 			{
-				displayName: 'Budget',
-				name: 'budget',
-				type: 'string',
-				default: '',
-				description: 'The budget in hours for the project when budgeting by time.'
+				displayName: 'Is Active',
+				name: 'is_active',
+				type: 'boolean',
+				default: true,
+				description: 'Whether the project is active or archived. Defaults to true'
 			},
 			{
-				displayName: 'Budget Is Monthly',
-				name: 'budget_is_monthly',
+				displayName: 'Is Fixed Fee',
+				name: 'is_fixed_fee',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the project is a fixed-fee project or not.'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Option to have the budget reset every month. Defaults to false.'
+				description: 'Notes about the project.'
 			},
 			{
 				displayName: 'Notify When Over Budget',
 				name: 'notify_when_over_budget',
-				type: 'string',
-				default: '',
+				type: 'boolean',
+				default: false,
 				description: 'Whether project managers should be notified when the project goes over budget. Defaults to false.'
 			},
 			{
@@ -328,37 +384,9 @@ export const projectFields = [
 			{
 				displayName: 'Show Budget To All',
 				name: 'show_budget_to_all',
-				type: 'string',
-				default: '',
+				type: 'boolean',
+				default: false,
 				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.'
-			},
-			{
-				displayName: 'Cost Budget',
-				name: 'cost_budget',
-				type: 'string',
-				default: '',
-				description: 'The monetary budget for the project when budgeting by money.'
-			},
-			{
-				displayName: 'Cost Budget Include Expenses',
-				name: 'cost_budget_include_expenses',
-				type: 'string',
-				default: '',
-				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.'
-			},
-			{
-				displayName: 'Fee',
-				name: 'fee',
-				type: 'string',
-				default: '',
-				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.'
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
-				default: '',
-				description: 'Notes about the project.'
 			},
 			{
 				displayName: 'Starts On',
@@ -367,14 +395,6 @@ export const projectFields = [
 				default: '',
 				description: 'Date the project was started.'
 			},
-			{
-				displayName: 'Ends On',
-				name: 'ends_on',
-				type: 'dateTime',
-				default: '',
-				description: 'Date the project will end.'
-			},
-
 		],
 	},
 
@@ -413,60 +433,29 @@ export const projectFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'The name of the project.',
-			},
-			{
-				displayName: 'Client Id',
-				name: 'client_id',
-				type: 'string',
-				default: '',
-				description: 'The ID of the client to associate this project with.',
-			},
-			{
-				displayName: 'Is Billable',
-				name: 'is_billable',
-				type: 'string',
-				default: '',
-				description: 'Whether the project is billable or not.',
-			},
-			{
 				displayName: 'Bill By',
 				name: 'bill_by',
-				type: 'string',
-				default: '',
-				description: 'The method by which the project is invoiced. Options: Project, Tasks, People, or none.',
-			},
-			{
-				displayName: 'Budget By',
-				name: 'budget_by',
-				type: 'string',
-				default: '',
-				description: 'The email of the user.',
-			},
-			{
-				displayName: 'Is Active',
-				name: 'is_active',
-				type: 'boolean',
-				default: true,
-				description: 'Whether the project is active or archived. Defaults to true'
-			},
-			{
-				displayName: 'Is Fixed Fee',
-				name: 'is_fixed_fee',
-				type: 'string',
-				default: '',
-				description: 'Whether the project is a fixed-fee project or not.'
-			},
-			{
-				displayName: 'Hourly Rate',
-				name: 'hourly_rate',
-				type: 'string',
-				default: '',
-				description: 'Rate for projects billed by Project Hourly Rate.'
+				type: 'options',
+				options: [
+					{
+						name: 'none',
+						value: 'none',
+					},
+					{
+						name: 'People',
+						value: 'People',
+					},
+					{
+						name: 'Project',
+						value: 'Project',
+					},
+					{
+						name: 'Tasks',
+						value: 'Tasks',
+					},
+				],
+				default: 'none',
+				description: 'The method by which the project is invoiced.',
 			},
 			{
 				displayName: 'Budget',
@@ -476,17 +465,101 @@ export const projectFields = [
 				description: 'The budget in hours for the project when budgeting by time.'
 			},
 			{
-				displayName: 'Budget Is Monthly',
-				name: 'budget_is_monthly',
+				displayName: 'Budget By',
+				name: 'budget_by',
 				type: 'string',
 				default: '',
+				description: 'The email of the user or "none".',
+			},
+			{
+				displayName: 'Budget Is Monthly',
+				name: 'budget_is_monthly',
+				type: 'boolean',
+				default: false,
 				description: 'Option to have the budget reset every month. Defaults to false.'
+			},
+			{
+				displayName: 'Client Id',
+				name: 'client_id',
+				type: 'string',
+				default: '',
+				description: 'The ID of the client to associate this project with.',
+			},
+			{
+				displayName: 'Cost Budget',
+				name: 'cost_budget',
+				type: 'string',
+				default: '',
+				description: 'The monetary budget for the project when budgeting by money.'
+			},
+			{
+				displayName: 'Cost Budget Include Expenses',
+				name: 'cost_budget_include_expenses',
+				type: 'boolean',
+				default: false,
+				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.'
+			},
+			{
+				displayName: 'Ends On',
+				name: 'ends_on',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the project will end.'
+			},
+			{
+				displayName: 'Fee',
+				name: 'fee',
+				type: 'string',
+				default: '',
+				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.'
+			},
+			{
+				displayName: 'Hourly Rate',
+				name: 'hourly_rate',
+				type: 'string',
+				default: '',
+				description: 'Rate for projects billed by Project Hourly Rate.'
+			},
+			{
+				displayName: 'Is Active',
+				name: 'is_active',
+				type: 'boolean',
+				default: true,
+				description: 'Whether the project is active or archived. Defaults to true'
+			},
+			{
+				displayName: 'Is Billable',
+				name: 'is_billable',
+				type: 'boolean',
+				default: true,
+				description: 'Whether the project is billable or not.',
+			},
+			{
+				displayName: 'Is Fixed Fee',
+				name: 'is_fixed_fee',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the project is a fixed-fee project or not.'
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'The name of the project.',
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Notes about the project.'
 			},
 			{
 				displayName: 'Notify When Over Budget',
 				name: 'notify_when_over_budget',
-				type: 'string',
-				default: '',
+				type: 'boolean',
+				default: false,
 				description: 'Whether project managers should be notified when the project goes over budget. Defaults to false.'
 			},
 			{
@@ -499,38 +572,11 @@ export const projectFields = [
 			{
 				displayName: 'Show Budget To All',
 				name: 'show_budget_to_all',
-				type: 'string',
-				default: '',
+				type: 'boolean',
+				default: false,
 				description: 'Option to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.'
 			},
-			{
-				displayName: 'Cost Budget',
-				name: 'cost_budget',
-				type: 'string',
-				default: '',
-				description: 'The monetary budget for the project when budgeting by money.'
-			},
-			{
-				displayName: 'Cost Budget Include Expenses',
-				name: 'cost_budget_include_expenses',
-				type: 'string',
-				default: '',
-				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.'
-			},
-			{
-				displayName: 'Fee',
-				name: 'fee',
-				type: 'string',
-				default: '',
-				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.'
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
-				default: '',
-				description: 'Notes about the project.'
-			},
+
 			{
 				displayName: 'Starts On',
 				name: 'starts_on',
@@ -538,16 +584,7 @@ export const projectFields = [
 				default: '',
 				description: 'Date the project was started.'
 			},
-			{
-				displayName: 'Ends On',
-				name: 'ends_on',
-				type: 'dateTime',
-				default: '',
-				description: 'Date the project will end.'
-			},
-
 		],
 	},
 
 ] as INodeProperties[];
-

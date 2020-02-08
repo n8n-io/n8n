@@ -1,5 +1,5 @@
-import { INodeProperties } from "n8n-workflow";
-export const resource =  [ 'time_entries' ]
+import { INodeProperties } from 'n8n-workflow';
+export const resource = [ 'timeEntry' ];
 export const timeEntryOperations = [
 	{
 		displayName: 'Operation',
@@ -120,18 +120,18 @@ export const timeEntryFields = [
 	},
 	options: [
 		{
-			displayName: 'User ID',
-			name: 'user_id',
-			type: 'string',
-			default: '',
-			description: 'Only return time entries belonging to the user with the given ID.',
-		},
-		{
 			displayName: 'Client ID',
 			name: 'client_id',
 			type: 'string',
 			default: '',
 			description: 'Only return time entries belonging to the client with the given ID.',
+		},
+		{
+			displayName: 'From',
+			name: 'from',
+			type: 'dateTime',
+			default: '',
+			description: 'Only return time entries with a spent_date on or after the given date.',
 		},
 		{
 			displayName: 'Is Billed',
@@ -148,25 +148,18 @@ export const timeEntryFields = [
 			description: 'Pass true to only return running time entries and false to return non-running time entries.',
 		},
 		{
-			displayName: 'Updated Since',
-			name: 'updated_since',
-			type: 'dateTime',
-			default: '',
-			description: 'Only return time entries that have been updated since the given date and time.',
-		},
-		{
-			displayName: 'From',
-			name: 'from',
-			type: 'dateTime',
-			default: '',
-			description: 'Only return time entries with a spent_date on or after the given date.',
-		},
-		{
 			displayName: 'To',
 			name: 'to',
 			type: 'dateTime',
 			default: '',
 			description: 'Only return time entries with a spent_date on or before the given date.',
+		},
+		{
+			displayName: 'Updated Since',
+			name: 'updated_since',
+			type: 'dateTime',
+			default: '',
+			description: 'Only return time entries that have been updated since the given date and time.',
 		},
 		{
 			displayName: 'Page',
@@ -177,8 +170,15 @@ export const timeEntryFields = [
 			},
 			default: 1,
 			description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
-		}
-	]
+		},
+		{
+			displayName: 'User ID',
+			name: 'user_id',
+			type: 'string',
+			default: '',
+			description: 'Only return time entries belonging to the user with the given ID.',
+		},
+	],
 },
 
 /* -------------------------------------------------------------------------- */

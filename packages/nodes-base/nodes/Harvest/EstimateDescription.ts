@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = [ 'estimates' ];
+const resource = [ 'estimate' ];
 
 export const estimateOperations = [
 	{
@@ -14,6 +14,16 @@ export const estimateOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a estimate`,
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete an estimate`,
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an estimate',
@@ -24,19 +34,9 @@ export const estimateOperations = [
 				description: 'Get data of all estimates',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: `Create a estimate`,
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: `Update a estimate`,
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: `Delete an estimate`,
 			},
 		],
 		default: 'getAll',
@@ -111,18 +111,18 @@ export const estimateFields = [
 			description: 'Only return time entries belonging to the client with the given ID.',
 		},
 		{
-			displayName: 'Updated Since',
-			name: 'updated_since',
-			type: 'dateTime',
-			default: '',
-			description: 'Only return time entries that have been updated since the given date and time.',
-		},
-		{
 			displayName: 'From',
 			name: 'from',
 			type: 'dateTime',
 			default: '',
 			description: 'Only return time entries with a spent_date on or after the given date.',
+		},
+		{
+			displayName: 'State',
+			name: 'state',
+			type: 'string',
+			default: '',
+			description: 'Only return estimates with a state matching the value provided. Options: draft, sent, accepted, or declined.',
 		},
 		{
 			displayName: 'To',
@@ -132,11 +132,11 @@ export const estimateFields = [
 			description: 'Only return time entries with a spent_date on or before the given date.',
 		},
 		{
-			displayName: 'State',
-			name: 'state',
-			type: 'string',
+			displayName: 'Updated Since',
+			name: 'updated_since',
+			type: 'dateTime',
 			default: '',
-			description: 'Only return estimates with a state matching the value provided. Options: draft, sent, accepted, or declined.',
+			description: 'Only return time entries that have been updated since the given date and time.',
 		},
 		{
 			displayName: 'Page',
@@ -196,7 +196,7 @@ export const estimateFields = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
-		name: 'client_id',
+		name: 'clientId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -226,6 +226,34 @@ export const estimateFields = [
 		default: {},
 		options: [
 			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+			{
+				displayName: 'Discount',
+				name: 'over_budget_notification_percentage',
+				type: 'string',
+				default: '',
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Issue Date',
+				name: 'issue_date',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice was issued. Defaults to today’s date.'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Any additional notes to include on the estimate.'
+			},
+			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
@@ -238,6 +266,13 @@ export const estimateFields = [
 				type: 'string',
 				default: '',
 				description: 'The purchase order number.'
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The estimate subject.'
 			},
 			{
 				displayName: 'Tax',
@@ -253,42 +288,6 @@ export const estimateFields = [
 				default: '',
 				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
 			},
-			{
-				displayName: 'Discount',
-				name: 'over_budget_notification_percentage',
-				type: 'string',
-				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-				description: 'The estimate subject.'
-			},
-			{
-				displayName: 'Currency',
-				name: 'currency',
-				type: 'string',
-				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
-				default: '',
-				description: 'Any additional notes to include on the estimate.'
-			},
-			{
-				displayName: 'Issue Date',
-				name: 'issue_date',
-				type: 'dateTime',
-				default: '',
-				description: 'Date the invoice was issued. Defaults to today’s date.'
-			},
-
 		],
 	},
 
@@ -334,6 +333,27 @@ export const estimateFields = [
 				description: 'The ID of the retainer associated with this invoice..',
 			},
 			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+			{
+				displayName: 'Discount',
+				name: 'over_budget_notification_percentage',
+				type: 'string',
+				default: '',
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Issue Date',
+				name: 'issue_date',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice was issued. Defaults to today’s date.'
+			},
+			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
@@ -341,11 +361,25 @@ export const estimateFields = [
 				description: 'If no value is set, the number will be automatically generated.'
 			},
 			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Any additional notes to include on the estimate.'
+			},
+			{
 				displayName: 'Purchase Order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
 				description: 'The purchase order number.'
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The estimate subject.'
 			},
 			{
 				displayName: 'Tax',
@@ -361,42 +395,6 @@ export const estimateFields = [
 				default: '',
 				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
 			},
-			{
-				displayName: 'Discount',
-				name: 'over_budget_notification_percentage',
-				type: 'string',
-				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-				description: 'The estimate subject.'
-			},
-			{
-				displayName: 'Currency',
-				name: 'currency',
-				type: 'string',
-				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
-				default: '',
-				description: 'Any additional notes to include on the estimate.'
-			},
-			{
-				displayName: 'Issue Date',
-				name: 'issue_date',
-				type: 'dateTime',
-				default: '',
-				description: 'Date the invoice was issued. Defaults to today’s date.'
-			},
-
 		],
 	},
 
