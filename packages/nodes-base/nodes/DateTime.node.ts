@@ -1,5 +1,5 @@
 import * as moment from 'moment-timezone';
-import { get, set } from 'lodash';
+import { set } from 'lodash';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -41,19 +41,34 @@ export class DateTime implements INodeType {
 				default: 'format',
 			},
 			{
-				displayName: 'Key Name',
-				name: 'keyName',
+				displayName: 'Value',
+				name: 'value',
 				displayOptions: {
 					show: {
-						action:[
+						action: [
 							'format',
 						],
 					},
 				},
 				type: 'string',
 				default: '',
-				description: 'The name of the key of which the value should be converted.',
+				description: 'The value that should be converted.',
 				required: true,
+			},
+			{
+				displayName: 'Property Name',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						action: [
+							'format',
+						],
+					},
+				},
+				description: 'Name of the property to which to write the converted date.',
 			},
 			{
 				displayName: 'Custom Format',
@@ -156,6 +171,13 @@ export class DateTime implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'From Format',
+						name: 'fromFormat',
+						type: 'string',
+						default: '',
+						description: 'In case the input format is not recognized you can provide the format ',
+					},
+					{
 						displayName: 'From Timezone',
 						name: 'fromTimezone',
 						type: 'options',
@@ -164,20 +186,6 @@ export class DateTime implements INodeType {
 						},
 						default: 'UTC',
 						description: 'The timezone to convert from.',
-					},
-					{
-						displayName: 'From Format',
-						name: 'fromFormat',
-						type: 'string',
-						default: '',
-						description: 'In case the input format is not recognized you can provide the format ',
-					},
-					{
-						displayName: 'New Key Name',
-						name: 'newKeyName',
-						type: 'string',
-						default: 'newDate',
-						description: 'If set will the new date be added under the new key name and the existing one will not be touched.',
 					},
 					{
 						displayName: 'To Timezone',
@@ -226,20 +234,20 @@ export class DateTime implements INodeType {
 			item = items[i];
 
 			if (action === 'format') {
-				const keyName = this.getNodeParameter('keyName', i) as string;
+				const currentDate = this.getNodeParameter('value', i) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
 				const toFormat = this.getNodeParameter('toFormat', i) as string;
 				const options = this.getNodeParameter('options', i) as IDataObject;
 				let newDate;
-				const currentDate = get(item.json, keyName);
 
 				if (currentDate === undefined) {
-					throw new Error(`The key ${keyName} does not exist on the input data`);
+					continue;
 				}
 				if (!moment(currentDate as string | number).isValid()) {
 					throw new Error('The date input format could not be recognized. Please set the "From Format" field');
 				}
-				if (Number.isInteger(currentDate as number)) {
-					newDate = moment.unix(currentDate as number);
+				if (Number.isInteger(currentDate as unknown as number)) {
+					newDate = moment.unix(currentDate as unknown as number);
 				} else {
 					if (options.fromTimezone || options.toTimezone) {
 						const fromTimezone = options.fromTimezone || workflowTimezone;
@@ -267,15 +275,15 @@ export class DateTime implements INodeType {
 				newDate = newDate.format(toFormat);
 
 				let newItem: INodeExecutionData;
-				if (keyName.includes('.')) {
+				if (dataPropertyName.includes('.')) {
 					// Uses dot notation so copy all data
 					newItem = {
-						json: JSON.parse(JSON.stringify(items[i].json)),
+						json: JSON.parse(JSON.stringify(item.json)),
 					};
 				} else {
 					// Does not use dot notation so shallow copy is enough
 					newItem = {
-						json: { ...items[i].json },
+						json: { ...item.json },
 					};
 				}
 
@@ -283,11 +291,7 @@ export class DateTime implements INodeType {
 					newItem.binary = item.binary;
 				}
 
-				if (options.newKeyName) {
-					set(newItem, `json.${options.newKeyName}`, newDate);
-				} else {
-					set(newItem, `json.${keyName}`, newDate);
-				}
+				set(newItem, `json.${dataPropertyName}`, newDate);
 
 				returnData.push(newItem);
 			}
