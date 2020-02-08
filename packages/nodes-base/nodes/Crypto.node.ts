@@ -1,3 +1,4 @@
+import { set } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,
@@ -349,48 +350,60 @@ export class Crypto implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length as unknown as number;
-		let responseData;
 		const action = this.getNodeParameter('action', 0) as string;
 
+		let item: INodeExecutionData;
 		for (let i = 0; i < length; i++) {
+			item = items[i];
 			const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
 			const value = this.getNodeParameter('value', i) as string;
+			let newValue;
 
 			if (action === 'hash') {
 				const type = this.getNodeParameter('type', i) as string;
 				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
-				const clone = { ...items[i].json };
-				clone[dataPropertyName] = createHash(type).update(value).digest(encoding);
-				responseData = clone;
+				newValue = createHash(type).update(value).digest(encoding);
 			}
 			if (action === 'hmac') {
 				const type = this.getNodeParameter('type', i) as string;
 				const secret = this.getNodeParameter('secret', i) as string;
 				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
-				const clone = { ...items[i].json };
-				clone[dataPropertyName] = createHmac(type, secret).update(value).digest(encoding);
-				responseData = clone;
+				newValue = createHmac(type, secret).update(value).digest(encoding);
 			}
 			if (action === 'sign') {
 				const algorithm = this.getNodeParameter('algorithm', i) as string;
 				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
 				const privateKey = this.getNodeParameter('privateKey', i) as string;
-				const clone = { ...items[i].json };
 				const sign = createSign(algorithm);
 				sign.write(value as string);
 				sign.end();
-				const signature = sign.sign(privateKey, encoding);
-				clone[dataPropertyName] = signature;
-				responseData = clone;
+				newValue = sign.sign(privateKey, encoding);
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+
+			let newItem: INodeExecutionData;
+			if (dataPropertyName.includes('.')) {
+				// Uses dot notation so copy all data
+				newItem = {
+					json: JSON.parse(JSON.stringify(item.json)),
+				};
 			} else {
-				returnData.push(responseData as IDataObject);
+				// Does not use dot notation so shallow copy is enough
+				newItem = {
+					json: { ...item.json },
+				};
 			}
+
+			if (item.binary !== undefined) {
+				newItem.binary = item.binary;
+			}
+
+			set(newItem, `json.${dataPropertyName}`, newValue);
+
+			returnData.push(newItem);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
