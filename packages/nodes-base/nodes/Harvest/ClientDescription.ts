@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = ['clients'];
+const resource = ['client'];
 
 export const clientOperations = [
 	{
@@ -14,6 +14,16 @@ export const clientOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a client`,
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a client`,
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a client',
@@ -23,20 +33,11 @@ export const clientOperations = [
 				value: 'getAll',
 				description: 'Get data of all clients',
 			},
-			{
-				name: 'Create',
-				value: 'create',
-				description: `Create a client`,
-			},
+
 			{
 				name: 'Update',
 				value: 'update',
 				description: `Update a client`,
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: `Delete a client`,
 			},
 		],
 		default: 'getAll',
@@ -253,20 +254,6 @@ export const clientFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Whether the client is active, or archived. Defaults to true.'
-			},
-			{
-				displayName: 'Is Active',
-				name: 'is_active',
-				type: 'string',
-				default: '',
-				description: 'Whether the client is active, or archived. Defaults to true.'
-			},
-			{
 				displayName: 'Address',
 				name: 'address',
 				type: 'string',
@@ -279,6 +266,20 @@ export const clientFields = [
 				type: 'string',
 				default: '',
 				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+			{
+				displayName: 'Is Active',
+				name: 'is_active',
+				type: 'boolean',
+				default: true,
+				description: 'Whether the client is active, or archived. Defaults to true.'
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'Whether the client is active, or archived. Defaults to true.'
 			},
 		],
 	},

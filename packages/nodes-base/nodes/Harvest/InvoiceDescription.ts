@@ -1,6 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = [ 'invoices' ];
+const resource = [ 'invoice' ];
 
 export const invoiceOperations = [
 	{
@@ -221,7 +221,7 @@ export const invoiceFields = [
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Client Id',
-		name: 'client_id',
+		name: 'clientId',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -251,11 +251,25 @@ export const invoiceFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Retainer Id',
-				name: 'retainer_id',
-				type: 'boolean',
-				default: true,
-				description: 'The ID of the retainer associated with this invoice.'
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+			{
+				displayName: 'Discount',
+				name: 'over_budget_notification_percentage',
+				type: 'string',
+				default: '',
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Due Date',
+				name: 'ends_on',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.'
 			},
 			{
 				displayName: 'Estimate Id',
@@ -265,6 +279,20 @@ export const invoiceFields = [
 				description: 'The ID of the estimate associated with this invoice.'
 			},
 			{
+				displayName: 'Issue Date',
+				name: 'issue_date',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice was issued. Defaults to today’s date.'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Notes about the project.'
+			},
+			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
@@ -272,11 +300,32 @@ export const invoiceFields = [
 				description: 'If no value is set, the number will be automatically generated.'
 			},
 			{
+				displayName: 'Payment Term',
+				name: 'payment_term',
+				type: 'string',
+				default: '',
+				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.'
+			},
+			{
 				displayName: 'Purchase Order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
 				description: 'The purchase order number.'
+			},
+			{
+				displayName: 'Retainer Id',
+				name: 'retainer_id',
+				type: 'boolean',
+				default: true,
+				description: 'The ID of the retainer associated with this invoice.'
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The invoice subject.'
 			},
 			{
 				displayName: 'Tax',
@@ -292,56 +341,6 @@ export const invoiceFields = [
 				default: '',
 				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
 			},
-			{
-				displayName: 'Discount',
-				name: 'over_budget_notification_percentage',
-				type: 'string',
-				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-				description: 'The invoice subject.'
-			},
-			{
-				displayName: 'Currency',
-				name: 'currency',
-				type: 'string',
-				default: '',
-				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies'
-			},
-			{
-				displayName: 'Payment Term',
-				name: 'payment_term',
-				type: 'string',
-				default: '',
-				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.'
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
-				default: '',
-				description: 'Notes about the project.'
-			},
-			{
-				displayName: 'Issue Date',
-				name: 'issue_date',
-				type: 'dateTime',
-				default: '',
-				description: 'Date the invoice was issued. Defaults to today’s date.'
-			},
-			{
-				displayName: 'Due Date',
-				name: 'ends_on',
-				type: 'dateTime',
-				default: '',
-				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.'
-			},
-
 		],
 	},
 
@@ -387,11 +386,25 @@ export const invoiceFields = [
 				description: 'The ID of the retainer associated with this invoice..',
 			},
 			{
-				displayName: 'Retainer Id',
-				name: 'retainer_id',
-				type: 'boolean',
-				default: true,
-				description: 'The ID of the retainer associated with this invoice.'
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+			{
+				displayName: 'Discount',
+				name: 'over_budget_notification_percentage',
+				type: 'string',
+				default: '',
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Due Date',
+				name: 'ends_on',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.'
 			},
 			{
 				displayName: 'Estimate Id',
@@ -401,6 +414,20 @@ export const invoiceFields = [
 				description: 'The ID of the estimate associated with this invoice.'
 			},
 			{
+				displayName: 'Issue Date',
+				name: 'issue_date',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice was issued. Defaults to today’s date.'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Notes about the project.'
+			},
+			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
@@ -408,11 +435,32 @@ export const invoiceFields = [
 				description: 'If no value is set, the number will be automatically generated.'
 			},
 			{
+				displayName: 'Payment Term',
+				name: 'payment_term',
+				type: 'string',
+				default: '',
+				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.'
+			},
+			{
 				displayName: 'Purchase Order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
 				description: 'The purchase order number.'
+			},
+			{
+				displayName: 'Retainer Id',
+				name: 'retainer_id',
+				type: 'boolean',
+				default: true,
+				description: 'The ID of the retainer associated with this invoice.'
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The invoice subject.'
 			},
 			{
 				displayName: 'Tax',
@@ -428,56 +476,6 @@ export const invoiceFields = [
 				default: '',
 				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
 			},
-			{
-				displayName: 'Discount',
-				name: 'over_budget_notification_percentage',
-				type: 'string',
-				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-				description: 'The invoice subject.'
-			},
-			{
-				displayName: 'Currency',
-				name: 'currency',
-				type: 'string',
-				default: '',
-				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies'
-			},
-			{
-				displayName: 'Payment Term',
-				name: 'payment_term',
-				type: 'string',
-				default: '',
-				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.'
-			},
-			{
-				displayName: 'Notes',
-				name: 'notes',
-				type: 'string',
-				default: '',
-				description: 'Notes about the project.'
-			},
-			{
-				displayName: 'Issue Date',
-				name: 'issue_date',
-				type: 'dateTime',
-				default: '',
-				description: 'Date the invoice was issued. Defaults to today’s date.'
-			},
-			{
-				displayName: 'Due Date',
-				name: 'ends_on',
-				type: 'dateTime',
-				default: '',
-				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.'
-			},
-
 		],
 	},
 ] as INodeProperties[];
