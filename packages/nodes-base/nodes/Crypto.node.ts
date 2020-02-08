@@ -13,6 +13,7 @@ import {
 	createHmac,
 	createSign,
 	getHashes,
+	HexBase64Latin1Encoding,
  } from 'crypto';
 
 export class Crypto implements INodeType {
@@ -22,6 +23,7 @@ export class Crypto implements INodeType {
 		icon: 'fa:key',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["action"]}}',
 		description: 'Provide cryptographic utilities',
 		defaults: {
 			name: 'Crypto',
@@ -83,8 +85,8 @@ export class Crypto implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Field Name',
-				name: 'fieldName',
+				displayName: 'Value',
+				name: 'value',
 				displayOptions: {
 					show: {
 						action:[
@@ -94,7 +96,23 @@ export class Crypto implements INodeType {
 				},
 				type: 'string',
 				default: '',
+				description: 'The value that should be hashed.',
 				required: true,
+			},
+			{
+				displayName: 'Property Name',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						action: [
+							'hash'
+						],
+					},
+				},
+				description: 'Name of the property to which to write the hash.',
 			},
 			{
 				displayName: 'Encoding',
@@ -109,12 +127,12 @@ export class Crypto implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'HEX',
-						value: 'hex',
-					},
-					{
 						name: 'BASE64',
 						value: 'base64',
+					},
+					{
+						name: 'HEX',
+						value: 'hex',
 					},
 				],
 				default: 'hex',
@@ -150,8 +168,8 @@ export class Crypto implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Field Name',
-				name: 'fieldName',
+				displayName: 'Value',
+				name: 'value',
 				displayOptions: {
 					show: {
 						action:[
@@ -161,7 +179,23 @@ export class Crypto implements INodeType {
 				},
 				type: 'string',
 				default: '',
+				description: 'The value of which the hmac should be created.',
 				required: true,
+			},
+			{
+				displayName: 'Property Name',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						action: [
+							'hmac'
+						],
+					},
+				},
+				description: 'Name of the property to which to write the hmac.',
 			},
 			{
 				displayName: 'Secret',
@@ -190,20 +224,20 @@ export class Crypto implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'HEX',
-						value: 'hex',
-					},
-					{
 						name: 'BASE64',
 						value: 'base64',
+					},
+					{
+						name: 'HEX',
+						value: 'hex',
 					},
 				],
 				default: 'hex',
 				required: true,
 			},
 			{
-				displayName: 'Field Name',
-				name: 'fieldName',
+				displayName: 'Value',
+				name: 'value',
 				displayOptions: {
 					show: {
 						action:[
@@ -213,7 +247,23 @@ export class Crypto implements INodeType {
 				},
 				type: 'string',
 				default: '',
+				description: 'The value that should be signed.',
 				required: true,
+			},
+			{
+				displayName: 'Property Name',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						action: [
+							'sign'
+						],
+					},
+				},
+				description: 'Name of the property to which to write the signed value.',
 			},
 			{
 				displayName: 'Algorithm',
@@ -245,12 +295,12 @@ export class Crypto implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'HEX',
-						value: 'hex',
-					},
-					{
 						name: 'BASE64',
 						value: 'base64',
+					},
+					{
+						name: 'HEX',
+						value: 'hex',
 					},
 				],
 				default: 'hex',
@@ -302,48 +352,37 @@ export class Crypto implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
 		let responseData;
+		const action = this.getNodeParameter('action', 0) as string;
+
 		for (let i = 0; i < length; i++) {
-			const action = this.getNodeParameter('action', 0) as string;
+			const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+			const value = this.getNodeParameter('value', i) as string;
+
 			if (action === 'hash') {
 				const type = this.getNodeParameter('type', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as string;
-				const fieldName = this.getNodeParameter('fieldName', i) as string;
+				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
 				const clone = { ...items[i].json };
-				if (clone[fieldName] === undefined) {
-					throw new Error(`The field ${fieldName} does not exist on the input data`);
-				}
-				//@ts-ignore
-				clone[fieldName] = createHash(type).update(clone[fieldName] as string).digest(encoding);
+				clone[dataPropertyName] = createHash(type).update(value).digest(encoding);
 				responseData = clone;
 			}
 			if (action === 'hmac') {
 				const type = this.getNodeParameter('type', i) as string;
 				const secret = this.getNodeParameter('secret', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as string;
-				const fieldName = this.getNodeParameter('fieldName', i) as string;
+				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
 				const clone = { ...items[i].json };
-				if (clone[fieldName] === undefined) {
-					throw new Error(`The field ${fieldName} does not exist on the input data`);
-				}
-				//@ts-ignore
-				clone[fieldName] = createHmac(type, secret).update(clone[fieldName] as string).digest(encoding);
+				clone[dataPropertyName] = createHmac(type, secret).update(value).digest(encoding);
 				responseData = clone;
 			}
 			if (action === 'sign') {
 				const algorithm = this.getNodeParameter('algorithm', i) as string;
-				const fieldName = this.getNodeParameter('fieldName', i) as string;
-				const encoding = this.getNodeParameter('encoding', i) as string;
-				const privateKey = this.getNodeParameter('privateKey', i) as IDataObject;
+				const encoding = this.getNodeParameter('encoding', i) as HexBase64Latin1Encoding;
+				const privateKey = this.getNodeParameter('privateKey', i) as string;
 				const clone = { ...items[i].json };
-				if (clone[fieldName] === undefined) {
-					throw new Error(`The field ${fieldName} does not exist on the input data`);
-				}
-				const sign = createSign(algorithm)
-				sign.write(clone[fieldName] as string);
+				const sign = createSign(algorithm);
+				sign.write(value as string);
 				sign.end();
-				//@ts-ignore
 				const signature = sign.sign(privateKey, encoding);
-				clone[fieldName] = signature;
+				clone[dataPropertyName] = signature;
 				responseData = clone;
 			}
 			if (Array.isArray(responseData)) {
