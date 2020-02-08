@@ -6,4 +6,5 @@ if [ -d /root/.n8n ] ; then
   ln -s /root/.n8n /home/node/
 fi
 
-exec gosu node n8n
+if [ "$#" -gt 0 ]; then shift; fi
+exec gosu node n8n $@
