@@ -1,4 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
+
+const resource = [ 'invoice' ];
 
 export const invoiceOperations = [
 	{
@@ -7,9 +9,7 @@ export const invoiceOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
+				resource,
 			},
 		},
 		options: [
@@ -22,6 +22,21 @@ export const invoiceOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all invoices',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: `Create a invoice`,
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: `Update a invoice`,
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: `Delete a invoice`,
 			},
 		],
 		default: 'getAll',
@@ -42,9 +57,7 @@ export const invoiceFields = [
 	type: 'boolean',
 	displayOptions: {
 		show: {
-			resource: [
-				'invoice',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -59,9 +72,7 @@ export const invoiceFields = [
 	type: 'number',
 	displayOptions: {
 		show: {
-			resource: [
-				'invoice',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -85,9 +96,7 @@ export const invoiceFields = [
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'invoice',
-			],
+			resource,
 			operation: [
 				'getAll',
 			],
@@ -181,12 +190,292 @@ export const invoiceFields = [
 			operation: [
 				'get',
 			],
-			resource: [
-				'invoice',
-			],
+			resource,
 		},
 	},
 	description: 'The ID of the invoice you are retrieving.',
-}
+},
 
+/* -------------------------------------------------------------------------- */
+/*                                invoice:delete                            */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Invoice Id',
+	name: 'id',
+	type: 'string',
+	default: '',
+	required: true,
+	displayOptions: {
+		show: {
+			operation: [
+				'delete',
+			],
+			resource,
+		},
+	},
+	description: 'The ID of the invoice want to delete.',
+},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                invoice:create                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client Id',
+		name: 'clientId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: '',
+		required: true,
+		description: 'The ID of the retainer associated with this invoice..',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource,
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+			{
+				displayName: 'Discount',
+				name: 'over_budget_notification_percentage',
+				type: 'string',
+				default: '',
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Due Date',
+				name: 'ends_on',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.'
+			},
+			{
+				displayName: 'Estimate Id',
+				name: 'estimate_id',
+				type: 'string',
+				default: '',
+				description: 'The ID of the estimate associated with this invoice.'
+			},
+			{
+				displayName: 'Issue Date',
+				name: 'issue_date',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice was issued. Defaults to today’s date.'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Notes about the project.'
+			},
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+				description: 'If no value is set, the number will be automatically generated.'
+			},
+			{
+				displayName: 'Payment Term',
+				name: 'payment_term',
+				type: 'string',
+				default: '',
+				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.'
+			},
+			{
+				displayName: 'Purchase Order',
+				name: 'purchase_order',
+				type: 'string',
+				default: '',
+				description: 'The purchase order number.'
+			},
+			{
+				displayName: 'Retainer Id',
+				name: 'retainer_id',
+				type: 'boolean',
+				default: true,
+				description: 'The ID of the retainer associated with this invoice.'
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The invoice subject.'
+			},
+			{
+				displayName: 'Tax',
+				name: 'tax',
+				type: 'string',
+				default: '',
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Tax2',
+				name: 'tax2',
+				type: 'string',
+				default: '',
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+			},
+		],
+	},
+
+		/* -------------------------------------------------------------------------- */
+	/*                                invoice:update                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invoice Id',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		description: 'The ID of the invoice want to update.',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource,
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Client Id',
+				name: 'client_id',
+				type: 'string',
+				default: '',
+				description: 'The ID of the retainer associated with this invoice..',
+			},
+			{
+				displayName: 'Currency',
+				name: 'currency',
+				type: 'string',
+				default: '',
+				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies'
+			},
+			{
+				displayName: 'Discount',
+				name: 'over_budget_notification_percentage',
+				type: 'string',
+				default: '',
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Due Date',
+				name: 'ends_on',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.'
+			},
+			{
+				displayName: 'Estimate Id',
+				name: 'estimate_id',
+				type: 'string',
+				default: '',
+				description: 'The ID of the estimate associated with this invoice.'
+			},
+			{
+				displayName: 'Issue Date',
+				name: 'issue_date',
+				type: 'dateTime',
+				default: '',
+				description: 'Date the invoice was issued. Defaults to today’s date.'
+			},
+			{
+				displayName: 'Notes',
+				name: 'notes',
+				type: 'string',
+				default: '',
+				description: 'Notes about the project.'
+			},
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+				description: 'If no value is set, the number will be automatically generated.'
+			},
+			{
+				displayName: 'Payment Term',
+				name: 'payment_term',
+				type: 'string',
+				default: '',
+				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.'
+			},
+			{
+				displayName: 'Purchase Order',
+				name: 'purchase_order',
+				type: 'string',
+				default: '',
+				description: 'The purchase order number.'
+			},
+			{
+				displayName: 'Retainer Id',
+				name: 'retainer_id',
+				type: 'boolean',
+				default: true,
+				description: 'The ID of the retainer associated with this invoice.'
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The invoice subject.'
+			},
+			{
+				displayName: 'Tax',
+				name: 'tax',
+				type: 'string',
+				default: '',
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+			},
+			{
+				displayName: 'Tax2',
+				name: 'tax2',
+				type: 'string',
+				default: '',
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+			},
+		],
+	},
 ] as INodeProperties[];
