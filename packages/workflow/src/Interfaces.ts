@@ -364,7 +364,7 @@ export interface INodeParameters {
 }
 
 
-export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'json' | 'multiOptions' | 'number' | 'options' | 'string';
+export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'hidden' | 'json' | 'multiOptions' | 'number' | 'options' | 'string';
 
 export type EditorTypes = 'code';
 

@@ -34,6 +34,7 @@ import CredentialsInput from '@/components/CredentialsInput.vue';
 import {
 	ICredentialsCreatedEvent,
 	ICredentialsDecryptedResponse,
+	INodeProperties,
 } from '@/Interface';
 
 import {
@@ -181,9 +182,21 @@ export default mixins(
 			// Credentials extends another one. So get the properties of the one it
 			// extends and add them.
 			credentialData = JSON.parse(JSON.stringify(credentialData));
+			let existingIndex: number;
 			for (const credentialTypeName of credentialData.extends) {
 				const data = this.$store.getters.credentialType(credentialTypeName);
-				credentialData.properties.push.apply(credentialData.properties, data.properties);
+
+				for (const property of data.properties) {
+					existingIndex = credentialData.properties.findIndex(element => element.name === property.name);
+
+					if (existingIndex === -1) {
+						// Property does not exist yet, so add
+						credentialData.properties.push(property);
+					} else {
+						// Property exists already, so overwrite
+						credentialData.properties[existingIndex] = property;
+					}
+				}
 			}
 
 			return credentialData;
