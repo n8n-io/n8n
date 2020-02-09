@@ -258,16 +258,19 @@ export default mixins(
 
 					} else if (value.charAt(0) === '^') {
 						// Is variable
-						let displayValue = `{{${value.slice(1)}}}` as string | number | boolean;
+						let displayValue = `{{${value.slice(1)}}}` as string | number | boolean | null;
 						if (this.resolvedValue) {
-							displayValue = this.resolveParameterString(displayValue.toString()) as NodeParameterValue;
+							displayValue = [null, undefined].includes(displayValue as null | undefined) ? '' : displayValue;
+							displayValue = this.resolveParameterString((displayValue as string).toString()) as NodeParameterValue;
 						}
+
+						displayValue = [null, undefined].includes(displayValue as null | undefined) ? '' : displayValue;
 
 						editorOperations.push({
 							attributes: {
 								variable: `{{${value.slice(1)}}}`,
 							},
-							insert: displayValue.toString(),
+							insert: (displayValue as string).toString(),
 						});
 					} else {
 						// Is text
