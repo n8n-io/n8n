@@ -979,7 +979,7 @@ class App {
 			// Save the credentials in DB
 			await Db.collections.Credentials!.update(state.cid, newCredentialsData);
 
-			res.sendFile(pathResolve('templates/oauth-callback.html'));
+			res.sendFile(pathResolve('../templates/oauth-callback.html'));
 		});
 
 
