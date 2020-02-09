@@ -969,7 +969,7 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			savedCredentialsData.oauthTokenData = JSON.stringify(oauthToken.data);
+			savedCredentialsData.oauthTokenData = oauthToken.data;
 			_.unset(savedCredentialsData, 'csrfSecret');
 
 			credentials.setData(savedCredentialsData, encryptionKey);
