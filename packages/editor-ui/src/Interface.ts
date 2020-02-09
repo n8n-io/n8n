@@ -157,6 +157,13 @@ export interface IBinaryDisplayData {
 	runIndex: number;
 }
 
+export interface ICredentialsCreatedEvent {
+	data: ICredentialsDecryptedResponse;
+	options: {
+		closeDialog: boolean,
+	};
+}
+
 export interface IStartRunData {
 	workflowData: IWorkflowData;
 	startNodes?: string[];

@@ -731,8 +731,6 @@ class App {
 
 			// Encrypt the data
 			const credentials = new Credentials(incomingData.name, incomingData.type, incomingData.nodesAccess);
-			_.unset(incomingData.data, 'csrfSecret');
-			_.unset(incomingData.data, 'oauthTokenData');
 			credentials.setData(incomingData.data, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
@@ -899,7 +897,14 @@ class App {
 			// Update the credentials in DB
 			await Db.collections.Credentials!.update(req.query.id, newCredentialsData);
 
-			return oAuthObj.code.getUri();
+			const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
+			let returnUri = oAuthObj.code.getUri();
+
+			if (authQueryParameters) {
+				returnUri += '&' + authQueryParameters;
+			}
+
+			return returnUri;
 		}));
 
 		// ----------------------------------------
