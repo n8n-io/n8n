@@ -45,5 +45,13 @@ export class OAuth2Api implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			description: 'For some services additional query parameters have to be set which can be defined here.',
+			placeholder: 'access_type=offline',
+		},
 	];
 }

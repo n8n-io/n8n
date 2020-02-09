@@ -31,7 +31,10 @@ import Vue from 'vue';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
 import CredentialsInput from '@/components/CredentialsInput.vue';
-import { ICredentialsDecryptedResponse } from '@/Interface';
+import {
+	ICredentialsCreatedEvent,
+	ICredentialsDecryptedResponse,
+} from '@/Interface';
 
 import {
 	ICredentialType,
@@ -185,27 +188,31 @@ export default mixins(
 
 			return credentialData;
 		},
-		credentialsCreated (data: ICredentialsDecryptedResponse): void {
-			this.$emit('credentialsCreated', data);
+		credentialsCreated (eventData: ICredentialsCreatedEvent): void {
+			this.$emit('credentialsCreated', eventData);
 
 			this.$showMessage({
 				title: 'Credentials created',
-				message: `The credential "${data.name}" got created!`,
+				message: `The credential "${eventData.data.name}" got created!`,
 				type: 'success',
 			});
 
-			this.closeDialog();
+			if (eventData.options.closeDialog === true) {
+				this.closeDialog();
+			}
 		},
-		credentialsUpdated (data: ICredentialsDecryptedResponse): void {
-			this.$emit('credentialsUpdated', data);
+		credentialsUpdated (eventData: ICredentialsCreatedEvent): void {
+			this.$emit('credentialsUpdated', eventData);
 
 			this.$showMessage({
 				title: 'Credentials updated',
-				message: `The credential "${data.name}" got updated!`,
+				message: `The credential "${eventData.data.name}" got updated!`,
 				type: 'success',
 			});
 
-			this.closeDialog();
+			if (eventData.options.closeDialog === true) {
+				this.closeDialog();
+			}
 		},
 		closeDialog (): void {
 			// Handle the close externally as the visible parameter is an external prop

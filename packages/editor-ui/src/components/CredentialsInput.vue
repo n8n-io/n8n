@@ -79,10 +79,10 @@
 		</el-row>
 
 		<div class="action-buttons">
-			<el-button type="success" @click="updateCredentials" v-if="credentialData">
+			<el-button type="success" @click="updateCredentials(true)" v-if="credentialDataDynamic">
 				Save
 			</el-button>
-			<el-button type="success" @click="createCredentials" v-else>
+			<el-button type="success" @click="createCredentials(true)" v-else>
 				Create
 			</el-button>
 		</div>
@@ -141,6 +141,7 @@ export default mixins(
 				credentialsName: 'The name the credentials should be saved as. Use a name<br />which makes it clear to what exactly they give access to.<br />For credentials of an Email account that could be the Email address itself.',
 				nodesWithAccess: 'The nodes which allowed to use this credentials.',
 			},
+			credentialDataTemp: null as ICredentialsDecryptedResponse | null,
 			nodesAccess: [] as string[],
 			name: '',
 			propertyValue: {} as ICredentialDataDecryptedObject,
@@ -182,6 +183,13 @@ export default mixins(
 				return !this.credentialTypeData.__overwrittenProperties || !this.credentialTypeData.__overwrittenProperties.includes(propertyData.name);
 			});
 		},
+		credentialDataDynamic (): ICredentialsDecryptedResponse | null {
+			if (this.credentialData) {
+				return this.credentialData;
+			}
+
+			return this.credentialDataTemp;
+		},
 		isOAuthType (): boolean {
 			return this.credentialTypeData.name === 'oAuth2Api' || (this.credentialTypeData.extends !== undefined && this.credentialTypeData.extends.includes('oAuth2Api'));
 		},
@@ -190,7 +198,7 @@ export default mixins(
 				return false;
 			}
 
-			return this.credentialData !== null && !!this.credentialData.data.oauthTokenData;
+			return this.credentialDataDynamic !== null && !!this.credentialDataDynamic.data!.oauthTokenData;
 		},
 	},
 	methods: {
@@ -202,7 +210,7 @@ export default mixins(
 			tempValue[name] = parameterData.value;
 			Vue.set(this, 'propertyValue', tempValue);
 		},
-		async createCredentials (doNotEmitData?: boolean): Promise<ICredentialsResponse | null> {
+		async createCredentials (closeDialog: boolean): Promise<ICredentialsResponse | null> {
 			const nodesAccess = this.nodesAccess.map((nodeType) => {
 				return {
 					nodeType,
@@ -227,29 +235,30 @@ export default mixins(
 			// Add also to local store
 			this.$store.commit('addCredentials', result);
 
-			if (doNotEmitData !== true) {
-				this.$emit('credentialsCreated', result);
-			}
+			this.$emit('credentialsCreated', {data: result, options: { closeDialog }});
 
 			return result;
 		},
 		async oAuth2CredentialAuthorize () {
 			let url;
 
-			let credentialData = this.credentialData;
+			let credentialData = this.credentialDataDynamic;
 			let newCredentials = false;
 			if (!credentialData) {
 				// Credentials did not get created yet. So create first before
 				// doing oauth authorize
-				credentialData = await this.createCredentials(true);
+				credentialData = await this.createCredentials(false) as ICredentialsDecryptedResponse;
 				newCredentials = true;
 				if (credentialData === null) {
 					return;
 				}
+			} else {
+				// Exists already but got maybe changed. So save first
+				credentialData = await this.updateCredentials(false) as ICredentialsDecryptedResponse;
 			}
 
 			try {
-				url = await this.restApi().oAuth2CredentialAuthorize(credentialData) as string;
+				url = await this.restApi().oAuth2CredentialAuthorize(credentialData as ICredentialsResponse) as string;
 			} catch (error) {
 				this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
 				return;
@@ -268,7 +277,17 @@ export default mixins(
 
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
-					credentialData.data.oauthTokenData = {};
+					if (this.credentialData === null) {
+						// Are new credentials so did not get send via "credentialData"
+						this.credentialDataTemp = credentialData as ICredentialsDecryptedResponse;
+						Vue.set(this.credentialDataTemp.data, 'oauthTokenData', {});
+					} else {
+						// Credentials did already exist so can be set directly
+						Vue.set(this.credentialData.data, 'oauthTokenData', {});
+					}
+
+					// Save that OAuth got authorized locally
+					this.$store.commit('updateCredentials', this.credentialDataDynamic);
 
 					// Close the window
 					if (oauthPopup) {
@@ -276,7 +295,7 @@ export default mixins(
 					}
 
 					if (newCredentials === true) {
-						this.$emit('credentialsCreated', credentialData);
+						this.$emit('credentialsCreated', {data: credentialData, options: { closeDialog: false }});
 					}
 
 					this.$showMessage({
@@ -292,13 +311,13 @@ export default mixins(
 
 			window.addEventListener('message', receiveMessage, false);
 		},
-		async updateCredentials () {
+		async updateCredentials (closeDialog: boolean): Promise<ICredentialsResponse> {
 			const nodesAccess: ICredentialNodeAccess[] = [];
 			const addedNodeTypes: string[] = [];
 
 			// Add Node-type which already had access to keep the original added date
 			let nodeAccessData: ICredentialNodeAccess;
-			for (nodeAccessData of (this.credentialData as ICredentialsDecryptedResponse).nodesAccess) {
+			for (nodeAccessData of (this.credentialDataDynamic as ICredentialsDecryptedResponse).nodesAccess) {
 				if (this.nodesAccess.includes((nodeAccessData.nodeType))) {
 					nodesAccess.push(nodeAccessData);
 					addedNodeTypes.push(nodeAccessData.nodeType);
@@ -323,7 +342,7 @@ export default mixins(
 
 			let result;
 			try {
-				result = await this.restApi().updateCredentials((this.credentialData as ICredentialsDecryptedResponse).id as string, newCredentials);
+				result = await this.restApi().updateCredentials((this.credentialDataDynamic as ICredentialsDecryptedResponse).id as string, newCredentials);
 			} catch (error) {
 				this.$showError(error, 'Problem Updating Credentials', 'There was a problem updating the credentials:');
 				return;
@@ -336,7 +355,9 @@ export default mixins(
 			// which have now a different name
 			this.updateNodesCredentialsIssues();
 
-			this.$emit('credentialsUpdated', result);
+			this.$emit('credentialsUpdated', {data: result, options: { closeDialog }});
+
+			return result;
 		},
 		init () {
 			if (this.credentialData) {
