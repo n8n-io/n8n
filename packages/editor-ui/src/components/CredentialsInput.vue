@@ -41,18 +41,21 @@
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
 		</div>
-		<el-row v-for="parameter in credentialProperties" :key="parameter.name" class="parameter-wrapper">
-			<el-col :span="6" class="parameter-name">
-				{{parameter.displayName}}:
-				<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-					<div slot="content" v-html="parameter.description"></div>
-					<font-awesome-icon icon="question-circle"/>
-				</el-tooltip>
-			</el-col>
-			<el-col :span="18">
-				<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" @valueChanged="valueChanged" />
-			</el-col>
-		</el-row>
+		<div v-for="parameter in credentialProperties" :key="parameter.name">
+			<el-row v-if="displayNodeParameter(parameter)" class="parameter-wrapper">
+				<el-col :span="6" class="parameter-name">
+					{{parameter.displayName}}:
+					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
+						<div slot="content" v-html="parameter.description"></div>
+						<font-awesome-icon icon="question-circle"/>
+					</el-tooltip>
+				</el-col>
+				<el-col :span="18">
+					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" @valueChanged="valueChanged" />
+				</el-col>
+			</el-row>
+		</div>
+
 
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
@@ -238,6 +241,13 @@ export default mixins(
 			this.$emit('credentialsCreated', {data: result, options: { closeDialog }});
 
 			return result;
+		},
+		displayNodeParameter (parameter: INodeProperties): boolean {
+			if (parameter.type === 'hidden') {
+				return false;
+			}
+
+			return true;
 		},
 		async oAuth2CredentialAuthorize () {
 			let url;
