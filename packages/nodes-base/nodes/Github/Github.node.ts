@@ -42,7 +42,7 @@ export class Github implements INodeType {
 				},
 			},
 			{
-				name: 'oAuth2Api',
+				name: 'githubOAuth2Api',
 				required: true,
 				displayOptions: {
 					show: {
