@@ -168,6 +168,13 @@ export default mixins(
 
 				const returnData: IVariableSelectorOption[] = [];
 				if (inputData === null) {
+					returnData.push(
+						{
+							name: propertyName,
+							key: fullpath,
+							value: '[null]',
+						} as IVariableSelectorOption,
+					);
 					return returnData;
 				} else if (Array.isArray(inputData)) {
 					let newPropertyName = propertyName;
