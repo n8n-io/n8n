@@ -255,6 +255,9 @@ export default mixins(
 			} else {
 				// Exists already but got maybe changed. So save first
 				credentialData = await this.updateCredentials(false) as ICredentialsDecryptedResponse;
+				if (credentialData === null) {
+					return;
+				}
 			}
 
 			try {
@@ -279,8 +282,8 @@ export default mixins(
 					// As data does not get displayed directly it does not matter what data.
 					if (this.credentialData === null) {
 						// Are new credentials so did not get send via "credentialData"
-						this.credentialDataTemp = credentialData as ICredentialsDecryptedResponse;
-						Vue.set(this.credentialDataTemp.data, 'oauthTokenData', {});
+						Vue.set(this, 'credentialDataTemp', credentialData);
+						Vue.set(this.credentialDataTemp!.data!, 'oauthTokenData', {});
 					} else {
 						// Credentials did already exist so can be set directly
 						Vue.set(this.credentialData.data, 'oauthTokenData', {});
@@ -311,7 +314,7 @@ export default mixins(
 
 			window.addEventListener('message', receiveMessage, false);
 		},
-		async updateCredentials (closeDialog: boolean): Promise<ICredentialsResponse> {
+		async updateCredentials (closeDialog: boolean): Promise<ICredentialsResponse | null> {
 			const nodesAccess: ICredentialNodeAccess[] = [];
 			const addedNodeTypes: string[] = [];
 
@@ -345,7 +348,7 @@ export default mixins(
 				result = await this.restApi().updateCredentials((this.credentialDataDynamic as ICredentialsDecryptedResponse).id as string, newCredentials);
 			} catch (error) {
 				this.$showError(error, 'Problem Updating Credentials', 'There was a problem updating the credentials:');
-				return;
+				return null;
 			}
 
 			// Update also in local store

@@ -136,7 +136,7 @@ export default mixins(
 			this.credentialNewDialogVisible = false;
 		},
 		async credentialsCreated (eventData: ICredentialsCreatedEvent) {
-			await this.credentialsUpdated(eventData.data as ICredentialsResponse);
+			await this.credentialsUpdated(eventData);
 		},
 		credentialsUpdated (eventData: ICredentialsCreatedEvent) {
 			if (!this.credentialTypesNode.includes(eventData.data.type)) {
