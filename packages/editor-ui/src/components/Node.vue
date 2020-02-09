@@ -28,6 +28,9 @@
 			</div>
 
 			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle"/>
+			<div @click.stop.left="setNodeActive" class="touch-option" title="Edit Node" v-if="isTouchDevice">
+				<font-awesome-icon icon="cog" />
+			</div>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
@@ -163,6 +166,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 	},
 	data () {
 		return {
+			isTouchDevice: 'ontouchstart' in window || navigator.msMaxTouchPoints,
 		};
 	},
 	methods: {
@@ -272,6 +276,10 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			.node-options {
 				display: initial;
 			}
+
+			.touch-option {
+				display: initial;
+			}
 		}
 
 		.node-executing-info {
@@ -347,6 +355,21 @@ export default mixins(nodeBase, workflowHelpers).extend({
 		&.has-issues .node-options {
 			top: -35px;
 		}
+
+		.touch-option {
+			bottom: 0.3em;
+			color: #aaa;
+			display: none;
+			font-size: 1.5em;
+			position: absolute;
+			right: 0.3em;
+			z-index: 10;
+
+			&:hover {
+				color: $--color-primary;
+			}
+		}
+
 	}
 }
 
