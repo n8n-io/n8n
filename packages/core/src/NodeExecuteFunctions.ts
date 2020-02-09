@@ -36,8 +36,8 @@ import {
 } from 'n8n-workflow';
 
 import * as clientOAuth2 from 'client-oauth2';
-import { get, unset } from 'lodash';
-import * as express from "express";
+import { get } from 'lodash';
+import * as express from 'express';
 import * as path from 'path';
 import { OptionsWithUri } from 'request';
 import * as requestPromise from 'request-promise-native';
@@ -126,8 +126,13 @@ export function requestOAuth(this: IAllExecuteFunctions, credentialsType: string
 		throw new Error('OAuth credentials not connected!');
 	}
 
-	const oAuthClient = new clientOAuth2({});
-	const oauthTokenData = JSON.parse(credentials.oauthTokenData as string);
+	const oAuthClient = new clientOAuth2({
+		clientId: credentials.clientId as string,
+		clientSecret: credentials.clientSecret as string,
+		accessTokenUri: credentials.accessTokenUrl as string,
+	});
+
+	const oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
 	const token = oAuthClient.createToken(oauthTokenData);
 
 	// Signs the request by adding authorization headers or query parameters depending
@@ -142,9 +147,7 @@ export function requestOAuth(this: IAllExecuteFunctions, credentialsType: string
 				// Token is probably not valid anymore. So try refresh it.
 				const newToken = await token.refresh();
 
-				const newCredentialsData = newToken.data;
-				unset(newCredentialsData, 'csrfSecret');
-				unset(newCredentialsData, 'oauthTokenData');
+				credentials.oauthTokenData = newToken.data;
 
 				// Find the name of the credentials
 				if (!node.credentials || !node.credentials[credentialsType]) {
@@ -153,7 +156,7 @@ export function requestOAuth(this: IAllExecuteFunctions, credentialsType: string
 				const name = node.credentials[credentialsType];
 
 				// Save the refreshed token
-				await additionalData.credentialsHelper.updateCredentials(name, credentialsType, newCredentialsData);
+				await additionalData.credentialsHelper.updateCredentials(name, credentialsType, credentials);
 
 				// Make the request again with the new token
 				const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);

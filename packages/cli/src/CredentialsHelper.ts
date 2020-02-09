@@ -66,6 +66,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 	async updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void> {
 		const credentials = await this.getCredentials(name, type);
 
+		if (Db.collections!.Credentials === null) {
+			// The first time executeWorkflow gets called the Database has
+			// to get initialized first
+			await Db.init();
+		}
+
 		credentials.setData(data, this.encryptionKey);
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -75,7 +81,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// TODO: also add user automatically depending on who is logged in, if anybody is logged in
 
 		// Save the credentials in DB
-		await Db.collections.Credentials!.save(newCredentialsData);
+		const findQuery = {
+			name,
+			type,
+		};
+
+		await Db.collections.Credentials!.update(findQuery, newCredentialsData);
 	}
 
 }
