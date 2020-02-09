@@ -449,7 +449,7 @@ export class Redis implements INodeType {
 							const keyGet = this.getNodeParameter('key', itemIndex) as string;
 							const keyType = this.getNodeParameter('keyType', itemIndex) as string;
 
-							const value = await getValue(client, keyGet, keyType);
+							const value = await getValue(client, keyGet, keyType) || null;
 							set(item.json, propertyName, value);
 							returnItems.push(item);
 						} else if (operation === 'keys') {
