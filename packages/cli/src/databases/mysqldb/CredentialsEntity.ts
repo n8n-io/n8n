@@ -36,9 +36,9 @@ export class CredentialsEntity implements ICredentialsDb {
 	@Column('json')
 	nodesAccess: ICredentialNodeAccess[];
 
-	@Column('timestamp')
+	@Column('datetime')
 	createdAt: Date;
 
-	@Column('timestamp')
+	@Column('datetime')
 	updatedAt: Date;
 }

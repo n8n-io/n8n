@@ -35,10 +35,10 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column('json')
 	connections: IConnections;
 
-	@Column('timestamp')
+	@Column('datetime')
 	createdAt: Date;
 
-	@Column('timestamp')
+	@Column('datetime')
 	updatedAt: Date;
 
 	@Column({

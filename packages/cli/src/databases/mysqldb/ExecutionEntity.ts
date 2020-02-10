@@ -36,10 +36,10 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column({ nullable: true })
 	retrySuccessId: string;
 
-	@Column('timestamp')
+	@Column('datetime')
 	startedAt: Date;
 
-	@Column('timestamp')
+	@Column('datetime')
 	stoppedAt: Date;
 
 	@Column('json')
