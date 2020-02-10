@@ -379,20 +379,7 @@ export default mixins(
 					};
 					this.$store.commit('setNodeParameters', updateInformation);
 
-					// All data got updated everywhere so update now the issues
-					const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
-
-					let newIssues: INodeIssueObjectProperty | null = null;
-					if (fullNodeIssues !== null) {
-						newIssues = fullNodeIssues.parameters!;
-					}
-
-					this.$store.commit('setNodeIssue', {
-						node: node.name,
-						type: 'parameters',
-						value: newIssues,
-					} as INodeIssueData);
-
+					this.updateNodeParameterIssues(node, nodeType);
 					this.updateNodeCredentialIssues(node);
 				} else {
 					// A property on the node itself changed
