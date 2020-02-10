@@ -288,20 +288,6 @@ export default mixins(
 					}
 				}
 			},
-			updateNodeCredentialIssues (node: INodeUi): void {
-				const fullNodeIssues: INodeIssues | null = this.getNodeCredentialIssues(node);
-
-				let newIssues: INodeIssueObjectProperty | null = null;
-				if (fullNodeIssues !== null) {
-					newIssues = fullNodeIssues.credentials!;
-				}
-
-				this.$store.commit('setNodeIssue', {
-					node: node.name,
-					type: 'credentials',
-					value: newIssues,
-				} as INodeIssueData);
-			},
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
 				// Update the values on the node
 				this.$store.commit('updateNodeProperties', updateInformation);
