@@ -208,25 +208,31 @@ export class TestWebhooks {
 		}
 		const nodeTypes = NodeTypes();
 
-		const findQuery = {
-			where: {
-				id: findIn(this.activeWebhooks.getWorkflowIds())
-			},
-		} as FindManyOptions;
+		/*
+		 * Here I check first if WorkflowIds is empty. This is done because when entering an empty array for TypeORM's In option, a syntax error is generated in MySQL.
+		 * Because the SQL is: ... FROM `workflow_entity`` WorkflowEntity` WHERE `WorkflowEntity`.`id` IN ()
+		 *
+		 * The empty IN function is not accepted in MySQL.
+		 */
+		const WorkflowIds = this.activeWebhooks.getWorkflowIds();
+		if (WorkflowIds.length > 0) {
+			const findQuery = {
+				where: {
+					id: findIn(WorkflowIds)
+				},
+			} as FindManyOptions;
 
-		const workflowsDb = await Db.collections.Workflow!.find(findQuery);
-		const workflows: Workflow[] = [];
-		for (const workflowData of workflowsDb) {
-			const workflow = new Workflow(workflowData.id.toString(), workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
-			workflows.push(workflow);
+			const workflowsDb = await Db.collections.Workflow!.find(findQuery);
+			const workflows: Workflow[] = [];
+			for (const workflowData of workflowsDb) {
+				const workflow = new Workflow(workflowData.id.toString(), workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+				workflows.push(workflow);
+			}
+
+			return this.activeWebhooks.removeAll(workflows);
 		}
-
-		return this.activeWebhooks.removeAll(workflows);
 	}
-
 }
-
-
 
 let testWebhooksInstance: TestWebhooks | undefined;
 
