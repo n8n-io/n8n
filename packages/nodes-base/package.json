@@ -40,6 +40,7 @@
             "dist/credentials/FileMaker.credentials.js",
             "dist/credentials/FlowApi.credentials.js",
             "dist/credentials/GithubApi.credentials.js",
+            "dist/credentials/GithubOAuth2Api.credentials.js",
             "dist/credentials/GitlabApi.credentials.js",
             "dist/credentials/GoogleApi.credentials.js",
             "dist/credentials/HttpBasicAuth.credentials.js",

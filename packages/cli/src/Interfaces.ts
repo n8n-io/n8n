@@ -1,4 +1,5 @@
 import {
+	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
 	IDataObject,
@@ -34,6 +35,9 @@ export interface ICustomRequest extends Request {
 	parsedUrl: Url | undefined;
 }
 
+export interface ICredentialsOverwrite {
+	[key: string]: ICredentialDataDecryptedObject;
+}
 
 export interface IDatabaseCollections {
 	Credentials: Repository<ICredentialsDb> | null;
@@ -70,7 +74,7 @@ export interface ICredentialsBase {
 	updatedAt: Date;
 }
 
-export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted{
+export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: number | string | ObjectID;
 }
 

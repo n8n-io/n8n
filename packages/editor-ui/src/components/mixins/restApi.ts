@@ -253,12 +253,12 @@ export const restApi = Vue.extend({
 				},
 
 				// Get OAuth2 Authorization URL using the stored credentials
-				OAuth2CredentialAuthorize: (sendData: ICredentialsResponse): Promise<string> => {
+				oAuth2CredentialAuthorize: (sendData: ICredentialsResponse): Promise<string> => {
 					return self.restApi().makeRestApiRequest('GET', `/oauth2-credential/auth`, sendData);
 				},
 
 				// Verify OAuth2 provider callback and kick off token generation
-				OAuth2Callback: (code: string, state: string): Promise<string> => {
+				oAuth2Callback: (code: string, state: string): Promise<string> => {
 					const sendData = {
 						'code': code,
 						'state': state,

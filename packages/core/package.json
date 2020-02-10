@@ -39,6 +39,7 @@
         "typescript": "~3.7.4"
     },
     "dependencies": {
+        "client-oauth2": "^4.2.5",
         "cron": "^1.7.2",
         "crypto-js": "^3.1.9-1",
         "lodash.get": "^4.4.2",
