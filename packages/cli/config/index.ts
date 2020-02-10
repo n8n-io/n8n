@@ -74,7 +74,7 @@ const config = convict({
 			port: {
 				doc: 'MySQL Port',
 				format: Number,
-				default: 5432,
+				default: 3306,
 				env: 'DB_MYSQLDB_PORT'
 			},
 			user: {
