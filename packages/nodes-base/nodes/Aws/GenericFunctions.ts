@@ -42,10 +42,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 			}
 		}
 
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
-		throw error.response.body;
+		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
 	}
 }
 
