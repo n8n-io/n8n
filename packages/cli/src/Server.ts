@@ -231,18 +231,27 @@ class App {
 		});
 
 		// Support application/json type post data
-		this.app.use(bodyParser.json({ limit: "16mb", verify: (req, res, buf) => {
-			// @ts-ignore
-			req.rawBody = buf;
-		}}));
+		this.app.use(bodyParser.json({
+			limit: '16mb', verify: (req, res, buf) => {
+				// @ts-ignore
+				req.rawBody = buf;
+			}
+		}));
 
 		// Support application/xml type post data
 		// @ts-ignore
-		this.app.use(bodyParser.xml({ limit: "16mb", xmlParseOptions: {
+		this.app.use(bodyParser.xml({ limit: '16mb', xmlParseOptions: {
 			normalize: true,     // Trim whitespace inside text nodes
 			normalizeTags: true, // Transform tags to lowercase
-			explicitArray: false // Only put properties in array if length > 1
+			explicitArray: false, // Only put properties in array if length > 1
 		  } }));
+
+		this.app.use(bodyParser.text({
+			limit: '16mb', verify: (req, res, buf) => {
+				// @ts-ignore
+				req.rawBody = buf;
+			}
+		}));
 
 		// Make sure that Vue history mode works properly
 		this.app.use(history({

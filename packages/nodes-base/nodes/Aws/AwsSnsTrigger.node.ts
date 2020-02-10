@@ -21,13 +21,13 @@ export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SNS Trigger',
 		subtitle: `={{$parameter["topic"].split(':')[5]}}`,
-		name: 'AwsSnsTrigger',
+		name: 'awsSnsTrigger',
 		icon: 'file:sns.png',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle AWS SNS events via webhooks',
 		defaults: {
-			name: 'AWS SNS Trigger',
+			name: 'AWS-SNS-Trigger',
 			color: '#FF9900',
 		},
 		inputs: [],
@@ -108,7 +108,7 @@ export class AwsSnsTrigger implements INodeType {
 					'Version=2010-03-31',
 				];
 				const data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListSubscriptionsByTopic&' + params.join('&'));
-				const subscriptions = get(data, 'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions.member')
+				const subscriptions = get(data, 'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions.member');
 				for (const subscription of subscriptions) {
 					if (webhookData.webhookId === subscription.SubscriptionArn) {
 						return true;
@@ -118,8 +118,13 @@ export class AwsSnsTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const topic = this.getNodeParameter('topic') as string;
+
+				if (webhookUrl.includes('%20')) {
+					throw new Error('The name of the SNS Trigger Node is not allowed to contain any spaces!');
+				}
+
 				const params = [
 					`TopicArn=${topic}`,
 					`Endpoint=${webhookUrl}`,
@@ -127,12 +132,10 @@ export class AwsSnsTrigger implements INodeType {
 					'ReturnSubscriptionArn=true',
 					'Version=2010-03-31',
 				];
-				try {
-					const { SubscribeResponse } = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Subscribe&' + params.join('&'));
-					webhookData.webhookId = SubscribeResponse.SubscribeResult.SubscriptionArn;
-				} catch (err) {
-					throw new Error(err);
-				}
+
+				const { SubscribeResponse } = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=Subscribe&' + params.join('&'));
+				webhookData.webhookId = SubscribeResponse.SubscribeResult.SubscriptionArn;
+
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -155,24 +158,33 @@ export class AwsSnsTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const topic = this.getNodeParameter('topic') as string;
-		if (req.body.Type === 'SubscriptionConfirmation' &&
-			req.body.TopicArn === topic) {
-			const { Token } = req.body;
+
+		// @ts-ignore
+		const body = JSON.parse((req.rawBody).toString());
+
+		if (body.Type === 'SubscriptionConfirmation' &&
+			body.TopicArn === topic) {
+			const { Token } = body;
 			const params = [
 				`TopicArn=${topic}`,
 				`Token=${Token}`,
 				'Version=2010-03-31',
 			];
 			await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ConfirmSubscription&' + params.join('&'));
+
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
+		if (body.Type === 'UnsubscribeConfirmation') {
 			return {};
 		}
-		if (req.body.Type === 'UnsubscribeConfirmation') {
-			return {};
-		}
+
 		//TODO verify message signature
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body),
+				this.helpers.returnJsonArray(body),
 			],
 		};
 	}
