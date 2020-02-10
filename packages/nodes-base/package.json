@@ -69,7 +69,7 @@
             "dist/credentials/SlackApi.credentials.js",
             "dist/credentials/Smtp.credentials.js",
             "dist/credentials/StripeApi.credentials.js",
-            "dist/credentials/SalesforceApi.credentials.js",
+            "dist/credentials/SalesforceOAuth2Api.credentials.js",
             "dist/credentials/TelegramApi.credentials.js",
             "dist/credentials/TodoistApi.credentials.js",
             "dist/credentials/TrelloApi.credentials.js",

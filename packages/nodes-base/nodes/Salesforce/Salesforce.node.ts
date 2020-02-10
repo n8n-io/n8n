@@ -70,7 +70,6 @@ import {
 	IAttachment,
 } from './AttachmentInterface';
 
-
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesforce',
@@ -88,9 +87,9 @@ export class Salesforce implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'salesforceApi',
+				name: 'salesforceOAuth2Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

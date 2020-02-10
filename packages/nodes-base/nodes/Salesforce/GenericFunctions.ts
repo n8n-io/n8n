@@ -4,55 +4,29 @@ import {
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+import {
+	IDataObject
+} from 'n8n-workflow';
 
 export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('salesforceApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	let options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'password',
-			client_id: credentials.clientId,
-			client_secret: credentials.clientSecret,
-			username: credentials.username,
-			password: credentials.password,
-			format: 'json',
-		},
-		uri: 'https://login.salesforce.com/services/oauth2/token',
-		json: true
-	};
-	let authentication;
-	try {
-		authentication = await this.helpers.request!(options);
-	} catch (error) {
-		throw new Error(error);
-	}
-
-	options = {
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${authentication.access_token}`,
-		},
+	const credentials = this.getCredentials('salesforceOAuth2Api');
+	const subdomain = (credentials!.accessTokenUrl as string).split('.')[0].split('/')[2];
+	const options: OptionsWithUri = {
 		method,
-		qs,
 		body,
-		uri: uri ||`${authentication.instance_url}/services/data/v39.0${resource}`,
+		qs,
+		uri: uri || `https://${subdomain}.salesforce.com/services/data/v39.0${resource}`,
 		json: true
 	};
-	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
-		delete options.body;
-	}
 	try {
-		return await this.helpers.request!(options);
+		//@ts-ignore
+		return await this.helpers.requestOAuth.call(this, 'salesforceOAuth2Api', options);
 	} catch (error) {
-		throw new Error(error);
+		if (error.response && error.response.body && error.response.body[0].message) {
+			// Try to return the error prettier
+			throw new Error(`Salesforce error response [${error.statusCode}]: ${error.response.body[0].message}`);
+		}
+		throw error;
 	}
 }
 
