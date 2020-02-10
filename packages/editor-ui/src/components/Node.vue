@@ -171,15 +171,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 	},
 	methods: {
 		disableNode () {
-			// Toggle disabled flag
-			const updateInformation = {
-				name: this.data.name,
-				properties: {
-					disabled: !this.data.disabled,
-				},
-			};
-
-			this.$store.commit('updateNodeProperties', updateInformation);
+			this.disableNodes([this.data]);
 		},
 		executeNode () {
 			this.$emit('runWorkflow', this.data.name);
