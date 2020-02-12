@@ -205,8 +205,6 @@ export class TestWebhooks {
 		let workflow: Workflow;
 		const workflows: Workflow[] = [];
 		for (const webhookKey of Object.keys(this.testWebhookData)) {
-			console.log('webhookKey: ' + webhookKey);
-
 			workflowData = this.testWebhookData[webhookKey].workflowData;
 			workflow = new Workflow(workflowData.id.toString(), workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
 			workflows.push();
@@ -214,10 +212,7 @@ export class TestWebhooks {
 
 		return this.activeWebhooks.removeAll(workflows);
 	}
-
 }
-
-
 
 let testWebhooksInstance: TestWebhooks | undefined;
 

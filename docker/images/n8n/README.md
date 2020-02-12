@@ -175,6 +175,31 @@ docker run -it --rm \
 A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withPostgres/README.md)
 
 
+#### Use with MySQL
+
+Replace the following placeholders with the actual data:
+ - MYSQLDB_DATABASE
+ - MYSQLDB_HOST
+ - MYSQLDB_PASSWORD
+ - MYSQLDB_PORT
+ - MYSQLDB_USER
+
+```
+docker run -it --rm \
+  --name n8n \
+  -p 5678:5678 \
+	-e DB_TYPE=mysqldb \
+	-e DB_MYSQLDB_DATABASE=<MYSQLDB_DATABASE> \
+	-e DB_MYSQLDB_HOST=<MYSQLDB_HOST> \
+	-e DB_MYSQLDB_PORT=<MYSQLDB_PORT> \
+	-e DB_MYSQLDB_USER=<MYSQLDB_USER> \
+	-e DB_MYSQLDB_PASSWORD=<MYSQLDB_PASSWORD> \
+  -v ~/.n8n:/root/.n8n \
+  n8nio/n8n \
+  n8n start
+```
+
+
 ## Passing Sensitive Data via File
 
 To avoid passing sensitive information via environment variables "_FILE" may be

@@ -93,6 +93,7 @@
         "localtunnel": "^2.0.0",
         "lodash.get": "^4.4.2",
         "mongodb": "^3.2.3",
+        "mysql2": "^2.0.1",
         "n8n-core": "~0.24.0",
         "n8n-editor-ui": "~0.35.0",
         "n8n-nodes-base": "~0.47.0",

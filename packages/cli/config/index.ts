@@ -8,7 +8,7 @@ const config = convict({
 	database: {
 		type: {
 			doc: 'Type of database to use',
-			format: ['sqlite', 'mongodb', 'postgresdb'],
+			format: ['sqlite', 'mongodb', 'mysqldb', 'postgresdb'],
 			default: 'sqlite',
 			env: 'DB_TYPE'
 		},
@@ -50,6 +50,38 @@ const config = convict({
 				format: String,
 				default: 'root',
 				env: 'DB_POSTGRESDB_USER'
+			},
+		},
+		mysqldb: {
+			database: {
+				doc: 'MySQL Database',
+				format: String,
+				default: 'n8n',
+				env: 'DB_MYSQLDB_DATABASE'
+			},
+			host: {
+				doc: 'MySQL Host',
+				format: String,
+				default: 'localhost',
+				env: 'DB_MYSQLDB_HOST'
+			},
+			password: {
+				doc: 'MySQL Password',
+				format: String,
+				default: '',
+				env: 'DB_MYSQLDB_PASSWORD'
+			},
+			port: {
+				doc: 'MySQL Port',
+				format: Number,
+				default: 3306,
+				env: 'DB_MYSQLDB_PORT'
+			},
+			user: {
+				doc: 'MySQL User',
+				format: String,
+				default: 'root',
+				env: 'DB_MYSQLDB_USER'
 			},
 		},
 	},
