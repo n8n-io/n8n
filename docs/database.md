@@ -65,7 +65,7 @@ To use MySQL as database you can provide the following environment variables:
 
 
 ```bash
-export DB_TYPE=postgresdb
+export DB_TYPE=mysqldb
 export DB_MYSQLDB_DATABASE=n8n
 export DB_MYSQLDB_HOST=mysqldb
 export DB_MYSQLDB_PORT=3306
