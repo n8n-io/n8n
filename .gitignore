@@ -11,3 +11,4 @@ google-generated-credentials.json
 _START_PACKAGE
 .env
 .vscode
+.idea
