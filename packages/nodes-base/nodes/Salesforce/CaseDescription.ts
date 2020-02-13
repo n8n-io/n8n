@@ -14,14 +14,14 @@ export const caseOperations = [
 		},
 		options: [
 			{
+				name: 'Add Comment',
+				value: 'addComment',
+				description: 'Add a comment to a case',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a case',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a case',
 			},
 			{
 				name: 'Get',
@@ -29,14 +29,14 @@ export const caseOperations = [
 				description: 'Get a case',
 			},
 			{
-				name: 'Get Summary',
-				value: 'getSummary',
-				description: `Returns an overview of case's metadata.`,
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all cases',
+			},
+			{
+				name: 'Get Summary',
+				value: 'getSummary',
+				description: `Returns an overview of case's metadata.`,
 			},
 			{
 				name: 'Delete',
@@ -44,9 +44,9 @@ export const caseOperations = [
 				description: 'Delete a case',
 			},
 			{
-				name: 'Add Comment',
-				value: 'addComment',
-				description: 'Add a comment to a case',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a case',
 			},
 		],
 		default: 'create',
@@ -98,70 +98,6 @@ export const caseFields = [
 		},
 		options: [
 			{
-				displayName: 'Origin',
-				name: 'origin',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod:  'getCaseOrigins',
-				},
-				default: '',
-				description: 'The source of the case, such as Email, Phone, or Web. Label is Case Origin.',
-			},
-			{
-				displayName: 'Reason',
-				name: 'reason',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod:  'getCaseReasons',
-				},
-				default: '',
-				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod:  'getCaseStatuses',
-				},
-				default: '',
-				description: 'The status of the case, such as “New,” “Closed,” or “Escalated.” This field directly controls the IsClosed flag',
-			},
-			{
-				displayName: 'Owner',
-				name: 'owner',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
-				description: 'The owner of the case.',
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-				description: 'The subject of the case. Limit: 255 characters.',
-			},
-			{
-				displayName: 'Parent Id',
-				name: 'ParentId',
-				type: 'string',
-				default: '',
-				description: 'The ID of the parent case in the hierarchy. The label is Parent Case.',
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getCasePriorities',
-				},
-				default: '',
-				description: 'The importance or urgency of the case, such as High, Medium, or Low.',
-			},
-			{
 				displayName: 'Account Id',
 				name: 'accountId',
 				type: 'string',
@@ -190,11 +126,75 @@ export const caseFields = [
 				description: 'Indicates whether the case has been escalated (true) or not.',
 			},
 			{
-				displayName: 'Supplied Name',
-				name: 'suppliedName',
+				displayName: 'Origin',
+				name: 'origin',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod:  'getCaseOrigins',
+				},
+				default: '',
+				description: 'The source of the case, such as Email, Phone, or Web. Label is Case Origin.',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'The owner of the case.',
+			},
+			{
+				displayName: 'Parent Id',
+				name: 'ParentId',
 				type: 'string',
 				default: '',
-				description: `The name that was entered when the case was created. This field can't be updated after the case has been created`,
+				description: 'The ID of the parent case in the hierarchy. The label is Parent Case.',
+			},
+			{
+				displayName: 'Priority',
+				name: 'priority',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCasePriorities',
+				},
+				default: '',
+				description: 'The importance or urgency of the case, such as High, Medium, or Low.',
+			},
+			{
+				displayName: 'Reason',
+				name: 'reason',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod:  'getCaseReasons',
+				},
+				default: '',
+				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod:  'getCaseStatuses',
+				},
+				default: '',
+				description: 'The status of the case, such as “New,” “Closed,” or “Escalated.” This field directly controls the IsClosed flag',
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The subject of the case. Limit: 255 characters.',
+			},
+			{
+				displayName: 'Supplied Company',
+				name: 'suppliedCompany',
+				type: 'string',
+				default: '',
+				description: `The company name that was entered when the case was created. This field can't be updated after the case has been created..`,
 			},
 			{
 				displayName: 'Supplied Email',
@@ -204,18 +204,18 @@ export const caseFields = [
 				description: `The email address that was entered when the case was created. This field can't be updated after the case has been created.`,
 			},
 			{
+				displayName: 'Supplied Name',
+				name: 'suppliedName',
+				type: 'string',
+				default: '',
+				description: `The name that was entered when the case was created. This field can't be updated after the case has been created`,
+			},
+			{
 				displayName: 'Supplied Phone',
 				name: 'suppliedPhone',
 				type: 'string',
 				default: '',
 				description: `The phone number that was entered when the case was created. This field can't be updated after the case has been created.`,
-			},
-			{
-				displayName: 'Supplied Company',
-				name: 'suppliedCompany',
-				type: 'string',
-				default: '',
-				description: `The company name that was entered when the case was created. This field can't be updated after the case has been created..`,
 			},
 		],
 	},
