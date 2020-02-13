@@ -1,14 +1,48 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+
+import {
+	accountFields,
+	accountOperations,
+} from './AccountDescription';
+import {
+	IAccount,
+} from './AccountInterface';
+import {
+	attachmentFields,
+	attachmentOperations,
+} from './AttachmentDescription';
+import {
+	IAttachment,
+} from './AttachmentInterface';
+import {
+	ICampaignMember,
+} from './CampaignMemberInterface';
+import {
+	caseFields,
+	caseOperations,
+} from './CaseDescription';
+import {
+	ICase,
+	ICaseComment,
+} from './CaseInterface';
+import {
+	contactFields,
+	contactOperations,
+} from './ContactDescription';
+import {
+	IContact,
+} from './ContactInterface';
 import {
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
@@ -18,57 +52,26 @@ import {
 	leadOperations,
 } from './LeadDescription';
 import {
-	contactFields,
-	contactOperations,
-} from './ContactDescription';
-import {
-	opportunityOperations,
-	opportunityFields,
- } from './OpportunityDescription';
- import {
-	accountOperations,
-	accountFields,
- } from './AccountDescription';
- import {
-	caseOperations,
-	caseFields,
- } from './CaseDescription';
- import {
-	taskOperations,
-	taskFields,
- } from './TaskDescription';
- import {
-	attachmentOperations,
-	attachmentFields,
- } from './AttachmentDescription';
- import {
-	IOpportunity,
-} from './OpportunityInterface';
-import {
-	ICampaignMember,
-} from './CampaignMemberInterface';
-import {
 	ILead,
 } from './LeadInterface';
 import {
-	IContact,
- } from './ContactInterface';
- import {
-	IAccount,
- } from './AccountInterface';
- import {
 	INote,
 } from './NoteInterface';
 import {
-	ICase,
-	ICaseComment,
-} from './CaseInterface';
+	opportunityFields,
+	opportunityOperations,
+} from './OpportunityDescription';
+import {
+	IOpportunity,
+} from './OpportunityInterface';
+import {
+	taskFields,
+	taskOperations,
+} from './TaskDescription';
 import {
 	ITask,
 } from './TaskInterface';
-import {
-	IAttachment,
-} from './AttachmentInterface';
+
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -98,24 +101,14 @@ export class Salesforce implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Lead',
-						value: 'lead',
-						description: 'Represents a prospect or potential .',
-					},
-					{
-						name: 'Contact',
-						value: 'contact',
-						description: 'Represents a contact, which is an individual associated with an account.',
-					},
-					{
-						name: 'Opportunity',
-						value: 'opportunity',
-						description: 'Represents an opportunity, which is a sale or pending deal.',
-					},
-					{
 						name: 'Account',
 						value: 'account',
 						description: 'Represents an individual account, which is an organization or person involved with your business (such as customers, competitors, and partners).',
+					},
+					{
+						name: 'Attachment',
+						value: 'attachment',
+						description: 'Represents a file that a has uploaded and attached to a parent object.',
 					},
 					{
 						name: 'Case',
@@ -123,15 +116,26 @@ export class Salesforce implements INodeType {
 						description: 'Represents a case, which is a customer issue or problem.',
 					},
 					{
+						name: 'Contact',
+						value: 'contact',
+						description: 'Represents a contact, which is an individual associated with an account.',
+					},
+					{
+						name: 'Lead',
+						value: 'lead',
+						description: 'Represents a prospect or potential .',
+					},
+					{
+						name: 'Opportunity',
+						value: 'opportunity',
+						description: 'Represents an opportunity, which is a sale or pending deal.',
+					},
+					{
 						name: 'Task',
 						value: 'task',
 						description: 'Represents a business activity such as making a phone call or other to-do items. In the user interface, and records are collectively referred to as activities.',
 					},
-					{
-						name: 'Attachment',
-						value: 'attachment',
-						description: 'Represents a file that a has uploaded and attached to a parent object.',
-					},
+
 				],
 				default: 'lead',
 				description: 'Resource to consume.',
@@ -195,7 +199,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getLeadSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/lead/describe');
 				for (const field of fields) {
 					if (field.name === 'LeadSource') {
@@ -251,7 +255,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/opportunity/describe');
 				for (const field of fields) {
 					if (field.name === 'StageName') {
@@ -271,7 +275,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getAccountTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/account/describe');
 				for (const field of fields) {
 					if (field.name === 'Type') {
@@ -291,7 +295,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getAccountSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/account/describe');
 				for (const field of fields) {
 					if (field.name === 'AccountSource') {
@@ -311,7 +315,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getCaseTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
 				for (const field of fields) {
 					if (field.name === 'Type') {
@@ -331,7 +335,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getCaseStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
 				for (const field of fields) {
 					if (field.name === 'Status') {
@@ -351,7 +355,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getCaseReasons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
 				for (const field of fields) {
 					if (field.name === 'Reason') {
@@ -371,7 +375,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getCaseOrigins(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
 				for (const field of fields) {
 					if (field.name === 'Origin') {
@@ -391,7 +395,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getCasePriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
 				for (const field of fields) {
 					if (field.name === 'Priority') {
@@ -411,7 +415,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getTaskStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
 					if (field.name === 'Status') {
@@ -431,7 +435,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getTaskSubjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
 					if (field.name === 'Subject') {
@@ -451,7 +455,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getTaskCallTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
 					if (field.name === 'CallType') {
@@ -471,7 +475,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getTaskPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
 					if (field.name === 'Priority') {
@@ -491,7 +495,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getTaskRecurrenceTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
 					if (field.name === 'RecurrenceType') {
@@ -511,7 +515,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getTaskRecurrenceInstances(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				//find a way to filter this object to get just the lead sources instead of the whole object
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
 					if (field.name === 'RecurrenceInstance') {
@@ -533,13 +537,12 @@ export class Salesforce implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		for (let i = 0; i < length; i++) {
+		for (let i = 0; i < items.length; i++) {
 			if (resource === 'lead') {
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/post-lead
 				if (operation === 'create') {
@@ -703,10 +706,10 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id'];
+					const fields = ['id,company,firstname,lastname,street,postalCode,city,email,status'];
 					if (options.fields) {
 						// @ts-ignore
-						fields.push(...options.fields.split(','))
+						fields.push(...options.fields.split(','));
 					}
 					try {
 						if (returnAll) {
@@ -978,10 +981,10 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id'];
+					const fields = ['id,firstname,lastname,email'];
 					if (options.fields) {
 						// @ts-ignore
-						fields.push(...options.fields.split(','))
+						fields.push(...options.fields.split(','));
 					}
 					try {
 						if (returnAll) {
@@ -1149,10 +1152,10 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id'];
+					const fields = ['id,accountId,amount,probability,type'];
 					if (options.fields) {
 						// @ts-ignore
-						fields.push(...options.fields.split(','))
+						fields.push(...options.fields.split(','));
 					}
 					try {
 						if (returnAll) {
@@ -1374,10 +1377,10 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id'];
+					const fields = ['id,name,type'];
 					if (options.fields) {
 						// @ts-ignore
-						fields.push(...options.fields.split(','))
+						fields.push(...options.fields.split(','));
 					}
 					try {
 						if (returnAll) {
@@ -1539,10 +1542,10 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id'];
+					const fields = ['id,accountId,contactId,priority,status,subject,type'];
 					if (options.fields) {
 						// @ts-ignore
-						fields.push(...options.fields.split(','))
+						fields.push(...options.fields.split(','));
 					}
 					try {
 						if (returnAll) {
@@ -1753,10 +1756,10 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id'];
+					const fields = ['id,subject,status,priority'];
 					if (options.fields) {
 						// @ts-ignore
-						fields.push(...options.fields.split(','))
+						fields.push(...options.fields.split(','));
 					}
 					try {
 						if (returnAll) {
@@ -1850,10 +1853,10 @@ export class Salesforce implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const fields = ['id'];
+					const fields = ['id,name'];
 					if (options.fields) {
 						// @ts-ignore
-						fields.push(...options.fields.split(','))
+						fields.push(...options.fields.split(','));
 					}
 					try {
 						if (returnAll) {
@@ -1885,6 +1888,14 @@ export class Salesforce implements INodeType {
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
+				if (responseData === undefined) {
+					// Make sure that always valid JSON gets returned which also matches the
+					// Salesforce default response
+					responseData = {
+						errors: [],
+						success: true,
+					};
+				}
 				returnData.push(responseData as IDataObject);
 			}
 		}

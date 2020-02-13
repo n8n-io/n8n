@@ -19,9 +19,9 @@ export const taskOperations = [
 				description: 'Create a task',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a task',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a task',
 			},
 			{
 				name: 'Get',
@@ -29,19 +29,19 @@ export const taskOperations = [
 				description: 'Get a task',
 			},
 			{
-				name: 'Get Summary',
-				value: 'getSummary',
-				description: `Returns an overview of task's metadata.`,
-			},
-			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all tasks',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a task',
+				name: 'Get Summary',
+				value: 'getSummary',
+				description: `Returns an overview of task's metadata.`,
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a task',
 			},
 		],
 		default: 'create',
@@ -93,85 +93,6 @@ export const taskFields = [
 		},
 		options: [
 			{
-				displayName: 'Who Id',
-				name: 'whoId',
-				type: 'string',
-				default: '',
-				description: `The WhoId represents a human such as a lead or a contact.<br/>
-				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
-			},
-			{
-				displayName: 'What Id',
-				name: 'whatId',
-				type: 'string',
-				default: '',
-				description: `The WhatId represents nonhuman objects such as accounts, opportunities,<br/>
-				campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a<br/>
-				WhatId is equivalent to the ID of a related object.`,
-			},
-			{
-				displayName: 'Owner',
-				name: 'owner',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
-				description: 'ID of the User who owns the record.',
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskSubjects',
-				},
-				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters.',
-			},
-			{
-				displayName: 'Call Type',
-				name: 'callType',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskCallTypes',
-				},
-				description: 'The type of call being answered: Inbound, Internal, or Outbound.',
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskPriorities',
-				},
-				description: `Indicates the importance or urgency of a task, such as high or low.`,
-			},
-			{
-				displayName: 'Call Object',
-				name: 'callObject',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: `Name of a call center. Limit is 255 characters. <br/>
-				Not subject to field-level security, available for any user in an <br/>
-				organization with Salesforce CRM Call Center.`,
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				description: 'Contains a text description of the task.',
-			},
-			{
 				displayName: 'Activity Date',
 				name: 'activityDate',
 				type: 'dateTime',
@@ -179,23 +100,6 @@ export const taskFields = [
 				description: `Represents the due date of the task.<br/>
 				This field has a timestamp that is always set to midnight <br/>
 				in the Coordinated Universal Time (UTC) time zone.`,
-			},
-			{
-				displayName: 'Is ReminderSet',
-				name: 'isReminderSet',
-				type: 'boolean',
-				default: false,
-				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false).',
-			},
-			{
-				displayName: 'Recurrence Type',
-				name: 'recurrenceType',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskRecurrenceTypes'
-				},
-				description: 'Website for the task.',
 			},
 			{
 				displayName: 'Call Disposition',
@@ -210,14 +114,81 @@ export const taskFields = [
 				  in an organization with Salesforce CRM Call Center.`,
 			},
 			{
-				displayName: 'Reminder Date Time',
-				name: 'reminderDateTime',
-				type: 'dateTime',
+				displayName: 'Call Duration In Seconds',
+				name: 'callDurationInSeconds',
+				type: 'number',
 				default: '',
-				description: `Represents the time when the reminder is scheduled to fire,<br/>
-				if IsReminderSet is set to true. If IsReminderSet is set to false, then the<br/>
-				 user may have deselected the reminder checkbox in the Salesforce user interface,<br/>
-				 or the reminder has already fired at the time indicated by the value.`,
+				description: `Duration of the call in seconds. Not subject to field-level security,<br/>
+				 available for any user in an organization with Salesforce CRM Call Cente`,
+			},
+			{
+				displayName: 'Call Object',
+				name: 'callObject',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: `Name of a call center. Limit is 255 characters. <br/>
+				Not subject to field-level security, available for any user in an <br/>
+				organization with Salesforce CRM Call Center.`,
+			},
+			{
+				displayName: 'Call Type',
+				name: 'callType',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskCallTypes',
+				},
+				description: 'The type of call being answered: Inbound, Internal, or Outbound.',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				description: 'Contains a text description of the task.',
+			},
+			{
+				displayName: 'Is ReminderSet',
+				name: 'isReminderSet',
+				type: 'boolean',
+				default: false,
+				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false).',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'ID of the User who owns the record.',
+			},
+			{
+				displayName: 'Priority',
+				name: 'priority',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskPriorities',
+				},
+				description: `Indicates the importance or urgency of a task, such as high or low.`,
+			},
+			{
+				displayName: 'Recurrence Type',
+				name: 'recurrenceType',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskRecurrenceTypes'
+				},
+				description: 'Recurrence Type of the task.',
 			},
 			{
 				displayName: 'Recurrence Instance',
@@ -244,12 +215,15 @@ export const taskFields = [
 				description: 'The day of the month in which the task repeats.',
 			},
 			{
-				displayName: 'Call Duration In Seconds',
-				name: 'callDurationInSeconds',
+				displayName: 'Recurrence Day Of Week Mask',
+				name: 'recurrenceDayOfWeekMask',
 				type: 'number',
 				default: '',
-				description: `Duration of the call in seconds. Not subject to field-level security,<br/>
-				 available for any user in an organization with Salesforce CRM Call Cente`,
+				description: `The day or days of the week on which the task repeats.<br/>
+				This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2<br/>
+				Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64<br/>
+				Multiple days are represented as the sum of their numerical values.<br/>
+				For example, Tuesday and Thursday = 4 + 16 = 20.`,
 			},
 			{
 				displayName: 'Recurrence End Date Only',
@@ -317,33 +291,6 @@ export const taskFields = [
 				description: 'The month of the year in which the task repeats.',
 			},
 			{
-				displayName: 'Recurrence Day Of Week Mask',
-				name: 'recurrenceDayOfWeekMask',
-				type: 'number',
-				default: '',
-				description: `The day or days of the week on which the task repeats.<br/>
-				This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2<br/>
-				Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64<br/>
-				Multiple days are represented as the sum of their numerical values.<br/>
-				For example, Tuesday and Thursday = 4 + 16 = 20.`,
-			},
-			{
-				displayName: 'recurrence Start Date Only',
-				name: 'recurrenceEndDateOnly',
-				type: 'dateTime',
-				default: '',
-				description: `The date when the recurring task begins.<br/>
-				Must be a date and time before RecurrenceEndDateOnly.`,
-			},
-			{
-				displayName: 'Recurrence TimeZone SidKey',
-				name: 'recurrenceTimeZoneSidKey',
-				type: 'string',
-				default: '',
-				description: `The time zone associated with the recurring task.<br/>
-				 For example, “UTC-8:00” for Pacific Standard Time.`,
-			},
-			{
 				displayName: 'Recurrence Regenerated Type',
 				name: 'recurrenceRegeneratedType',
 				type: 'options',
@@ -366,6 +313,59 @@ export const taskFields = [
 				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
 				  which determines the number of days between the triggering date (due date or close date)<br/>
 				  and the due date of the next repeating task in the series.Label is Repeat This Task.`,
+			},
+			{
+				displayName: 'Recurrence Start Date Only',
+				name: 'recurrenceEndDateOnly',
+				type: 'dateTime',
+				default: '',
+				description: `The date when the recurring task begins.<br/>
+				Must be a date and time before RecurrenceEndDateOnly.`,
+			},
+			{
+				displayName: 'Recurrence TimeZone SidKey',
+				name: 'recurrenceTimeZoneSidKey',
+				type: 'string',
+				default: '',
+				description: `The time zone associated with the recurring task.<br/>
+				 For example, “UTC-8:00” for Pacific Standard Time.`,
+			},
+			{
+				displayName: 'Reminder Date Time',
+				name: 'reminderDateTime',
+				type: 'dateTime',
+				default: '',
+				description: `Represents the time when the reminder is scheduled to fire,<br/>
+				if IsReminderSet is set to true. If IsReminderSet is set to false, then the<br/>
+				 user may have deselected the reminder checkbox in the Salesforce user interface,<br/>
+				 or the reminder has already fired at the time indicated by the value.`,
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskSubjects',
+				},
+				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters.',
+			},
+			{
+				displayName: 'What Id',
+				name: 'whatId',
+				type: 'string',
+				default: '',
+				description: `The WhatId represents nonhuman objects such as accounts, opportunities,<br/>
+				campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a<br/>
+				WhatId is equivalent to the ID of a related object.`,
+			},
+			{
+				displayName: 'Who Id',
+				name: 'whoId',
+				type: 'string',
+				default: '',
+				description: `The WhoId represents a human such as a lead or a contact.<br/>
+				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
 		]
 	},
@@ -408,95 +408,6 @@ export const taskFields = [
 		},
 		options: [
 			{
-				displayName: 'Who Id',
-				name: 'whoId',
-				type: 'string',
-				default: '',
-				description: `The WhoId represents a human such as a lead or a contact.<br/>
-				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskStatuses',
-				},
-				description: 'The current status of the task, such as In Progress or Completed.',
-			},
-			{
-				displayName: 'What Id',
-				name: 'whatId',
-				type: 'string',
-				default: '',
-				description: `The WhatId represents nonhuman objects such as accounts, opportunities,<br/>
-				campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a<br/>
-				WhatId is equivalent to the ID of a related object.`,
-			},
-			{
-				displayName: 'Owner',
-				name: 'owner',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
-				description: 'ID of the User who owns the record.',
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskSubjects',
-				},
-				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters.',
-			},
-			{
-				displayName: 'Call Type',
-				name: 'callType',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskCallTypes',
-				},
-				description: 'The type of call being answered: Inbound, Internal, or Outbound.',
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskPriorities',
-				},
-				description: `Indicates the importance or urgency of a task, such as high or low.`,
-			},
-			{
-				displayName: 'Call Object',
-				name: 'callObject',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: `Name of a call center. Limit is 255 characters. <br/>
-				Not subject to field-level security, available for any user in an <br/>
-				organization with Salesforce CRM Call Center.`,
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				description: 'Contains a text description of the task.',
-			},
-			{
 				displayName: 'Activity Date',
 				name: 'activityDate',
 				type: 'dateTime',
@@ -504,23 +415,6 @@ export const taskFields = [
 				description: `Represents the due date of the task.<br/>
 				This field has a timestamp that is always set to midnight <br/>
 				in the Coordinated Universal Time (UTC) time zone.`,
-			},
-			{
-				displayName: 'Is ReminderSet',
-				name: 'isReminderSet',
-				type: 'boolean',
-				default: false,
-				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false).',
-			},
-			{
-				displayName: 'Recurrence Type',
-				name: 'recurrenceType',
-				type: 'options',
-				default: '',
-				typeOptions: {
-					loadOptionsMethod: 'getTaskRecurrenceTypes'
-				},
-				description: 'Website for the task.',
 			},
 			{
 				displayName: 'Call Disposition',
@@ -535,14 +429,117 @@ export const taskFields = [
 				  in an organization with Salesforce CRM Call Center.`,
 			},
 			{
-				displayName: 'Reminder Date Time',
-				name: 'reminderDateTime',
+				displayName: 'Call Duration In Seconds',
+				name: 'callDurationInSeconds',
+				type: 'number',
+				default: '',
+				description: `Duration of the call in seconds. Not subject to field-level security,<br/>
+				 available for any user in an organization with Salesforce CRM Call Cente`,
+			},
+			{
+				displayName: 'Call Object',
+				name: 'callObject',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: `Name of a call center. Limit is 255 characters. <br/>
+				Not subject to field-level security, available for any user in an <br/>
+				organization with Salesforce CRM Call Center.`,
+			},
+			{
+				displayName: 'Call Type',
+				name: 'callType',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskCallTypes',
+				},
+				description: 'The type of call being answered: Inbound, Internal, or Outbound.',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				description: 'Contains a text description of the task.',
+			},
+			{
+				displayName: 'Is ReminderSet',
+				name: 'isReminderSet',
+				type: 'boolean',
+				default: false,
+				description: 'Indicates whether a popup reminder has been set for the task (true) or not (false).',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUsers',
+				},
+				default: '',
+				description: 'ID of the User who owns the record.',
+			},
+			{
+				displayName: 'Priority',
+				name: 'priority',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskPriorities',
+				},
+				description: `Indicates the importance or urgency of a task, such as high or low.`,
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskStatuses',
+				},
+				description: 'The current status of the task, such as In Progress or Completed.',
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskSubjects',
+				},
+				description: 'The subject line of the task, such as “Call” or “Send Quote.” Limit: 255 characters.',
+			},
+			{
+				displayName: 'Recurrence Day Of Month',
+				name: 'recurrenceDayOfMonth',
+				type: 'number',
+				default: '',
+				description: 'The day of the month in which the task repeats.',
+			},
+			{
+				displayName: 'Recurrence Day Of Week Mask',
+				name: 'recurrenceDayOfWeekMask',
+				type: 'number',
+				default: '',
+				description: `The day or days of the week on which the task repeats.<br/>
+				This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2<br/>
+				Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64<br/>
+				Multiple days are represented as the sum of their numerical values.<br/>
+				For example, Tuesday and Thursday = 4 + 16 = 20.`,
+			},
+			{
+				displayName: 'Recurrence End Date Only',
+				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
-				description: `Represents the time when the reminder is scheduled to fire,<br/>
-				if IsReminderSet is set to true. If IsReminderSet is set to false, then the<br/>
-				 user may have deselected the reminder checkbox in the Salesforce user interface,<br/>
-				 or the reminder has already fired at the time indicated by the value.`,
+				description: `The last date on which the task repeats. This field has a timestamp that<br/>
+				is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
 			},
 			{
 				displayName: 'Recurrence Instance',
@@ -560,29 +557,6 @@ export const taskFields = [
 				type: 'number',
 				default: '',
 				description: 'The interval between recurring tasks.',
-			},
-			{
-				displayName: 'Recurrence Day Of Month',
-				name: 'recurrenceDayOfMonth',
-				type: 'number',
-				default: '',
-				description: 'The day of the month in which the task repeats.',
-			},
-			{
-				displayName: 'Call Duration In Seconds',
-				name: 'callDurationInSeconds',
-				type: 'number',
-				default: '',
-				description: `Duration of the call in seconds. Not subject to field-level security,<br/>
-				 available for any user in an organization with Salesforce CRM Call Cente`,
-			},
-			{
-				displayName: 'Recurrence End Date Only',
-				name: 'recurrenceEndDateOnly',
-				type: 'dateTime',
-				default: '',
-				description: `The last date on which the task repeats. This field has a timestamp that<br/>
-				is always set to midnight in the Coordinated Universal Time (UTC) time zone.`,
 			},
 			{
 				displayName: 'Recurrence Month Of Year',
@@ -642,31 +616,12 @@ export const taskFields = [
 				description: 'The month of the year in which the task repeats.',
 			},
 			{
-				displayName: 'Recurrence Day Of Week Mask',
-				name: 'recurrenceDayOfWeekMask',
-				type: 'number',
-				default: '',
-				description: `The day or days of the week on which the task repeats.<br/>
-				This field contains a bitmask. The values are as follows: Sunday = 1 Monday = 2<br/>
-				Tuesday = 4 Wednesday = 8 Thursday = 16 Friday = 32 Saturday = 64<br/>
-				Multiple days are represented as the sum of their numerical values.<br/>
-				For example, Tuesday and Thursday = 4 + 16 = 20.`,
-			},
-			{
-				displayName: 'recurrence Start Date Only',
+				displayName: 'Recurrence Start Date Only',
 				name: 'recurrenceEndDateOnly',
 				type: 'dateTime',
 				default: '',
 				description: `The date when the recurring task begins.<br/>
 				Must be a date and time before RecurrenceEndDateOnly.`,
-			},
-			{
-				displayName: 'Recurrence TimeZone SidKey',
-				name: 'recurrenceTimeZoneSidKey',
-				type: 'string',
-				default: '',
-				description: `The time zone associated with the recurring task.<br/>
-				 For example, “UTC-8:00” for Pacific Standard Time.`,
 			},
 			{
 				displayName: 'Recurrence Regenerated Type',
@@ -691,6 +646,51 @@ export const taskFields = [
 				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
 				  which determines the number of days between the triggering date (due date or close date)<br/>
 				  and the due date of the next repeating task in the series.Label is Repeat This Task.`,
+			},
+			{
+				displayName: 'Recurrence Type',
+				name: 'recurrenceType',
+				type: 'options',
+				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getTaskRecurrenceTypes'
+				},
+				description: 'Website for the task.',
+			},
+			{
+				displayName: 'Recurrence TimeZone SidKey',
+				name: 'recurrenceTimeZoneSidKey',
+				type: 'string',
+				default: '',
+				description: `The time zone associated with the recurring task.<br/>
+				 For example, “UTC-8:00” for Pacific Standard Time.`,
+			},
+			{
+				displayName: 'Reminder Date Time',
+				name: 'reminderDateTime',
+				type: 'dateTime',
+				default: '',
+				description: `Represents the time when the reminder is scheduled to fire,<br/>
+				if IsReminderSet is set to true. If IsReminderSet is set to false, then the<br/>
+				 user may have deselected the reminder checkbox in the Salesforce user interface,<br/>
+				 or the reminder has already fired at the time indicated by the value.`,
+			},
+			{
+				displayName: 'What Id',
+				name: 'whatId',
+				type: 'string',
+				default: '',
+				description: `The WhatId represents nonhuman objects such as accounts, opportunities,<br/>
+				campaigns, cases, or custom objects. WhatIds are polymorphic. Polymorphic means a<br/>
+				WhatId is equivalent to the ID of a related object.`,
+			},
+			{
+				displayName: 'Who Id',
+				name: 'whoId',
+				type: 'string',
+				default: '',
+				description: `The WhoId represents a human such as a lead or a contact.<br/>
+				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
 		]
 	},
