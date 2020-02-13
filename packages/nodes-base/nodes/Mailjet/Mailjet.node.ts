@@ -114,7 +114,7 @@ export class Mailjet implements INodeType {
 								Variables: {},
 							},
 						],
-						SandboxMode: true,
+						//SandboxMode: true,
 					};
 					for (const toEmail of toEmails) {
 						//@ts-ignore
@@ -202,7 +202,7 @@ export class Mailjet implements INodeType {
 								TemplateID: templateId,
 							},
 						],
-						SandboxMode: true,
+						//SandboxMode: true,
 					};
 					for (const toEmail of toEmails) {
 						//@ts-ignore
