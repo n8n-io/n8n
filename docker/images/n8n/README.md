@@ -21,6 +21,7 @@ self-hosted, easily extended, and so also used with internal tools.
 - [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
 - [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
 - [Support](#support)
+- [Jobs](#jobs)
 - [Upgrading](#upgrading)
 - [License](#license)
 
@@ -275,6 +276,17 @@ did not hear anybody complain there. So I guess it should be ok.
 If you have problems or questions go to our forum, we will then try to help you asap:
 
 [https://community.n8n.io](https://community.n8n.io)
+
+
+
+
+## Jobs
+
+If you are interested in working for n8n and so shape the future of the project
+check out our job posts:
+
+[https://jobs.n8n.io](https://jobs.n8n.io)
+
 
 
 

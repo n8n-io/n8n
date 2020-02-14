@@ -55,6 +55,15 @@ If you have problems or questions go to our forum, we will then try to help you 
 
 
 
+## Jobs
+
+If you are interested in working for n8n and so shape the future of the project
+check out our job posts:
+
+[https://jobs.n8n.io](https://jobs.n8n.io)
+
+
+
 ## What does n8n mean and how do you pronounce it
 
 **Short answer:** It means "nodemation"
