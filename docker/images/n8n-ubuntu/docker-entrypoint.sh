@@ -6,5 +6,10 @@ if [ -d /root/.n8n ] ; then
   ln -s /root/.n8n /home/node/
 fi
 
-if [ "$#" -gt 0 ]; then shift; fi
-exec gosu node n8n $@
+if [ "$#" -gt 0 ]; then
+  # Got started with arguments
+  exec gosu node "$@"
+else
+  # Got started without arguments
+  exec gosu node n8n
+fi
