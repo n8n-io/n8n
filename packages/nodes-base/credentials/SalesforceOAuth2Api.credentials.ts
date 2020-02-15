@@ -28,7 +28,7 @@ export class SalesforceOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'full',
+			default: 'full refresh_token',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
