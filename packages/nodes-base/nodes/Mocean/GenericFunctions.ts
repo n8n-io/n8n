@@ -24,24 +24,24 @@ export async function moceanApiRequest(this: IHookFunctions | IExecuteFunctions,
 
 	if (query === undefined) {
 		query = {};
-    }
-    
-    if (method === 'POST') {
-        body['mocean-api-key'] = credentials['mocean-api-key'];
+	}
+
+	if (method === 'POST') {
+		body['mocean-api-key'] = credentials['mocean-api-key'];
 		body['mocean-api-secret'] = credentials['mocean-api-secret'];
 		body['mocean-resp-format'] = 'JSON';
-    } else if(method === 'GET') {
-        query['mocean-api-key'] = credentials['mocean-api-key'];
+	} else if (method === 'GET') {
+		query['mocean-api-key'] = credentials['mocean-api-key'];
 		query['mocean-api-secret'] = credentials['mocean-api-secret'];
 		query['mocean-resp-format'] = 'JSON';
-    }
-	console.log(body);
+	}
+
 	const options = {
 		method,
 		form: body,
 		qs: query,
 		uri: `https://rest.moceanapi.com${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -49,17 +49,17 @@ export async function moceanApiRequest(this: IHookFunctions | IExecuteFunctions,
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
-			throw new Error('Authentication fail.');
+			throw new Error('Authentication failed.');
 		}
 
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
-			let errorMessage = `Twilio error response [${error.statusCode}]: ${error.response.body.message}`;
+			let errorMessage = error.response.body.message;
 			if (error.response.body.more_info) {
-				errorMessage = `errorMessage (${error.response.body.more_info})`;
+				errorMessage += `errorMessage (${error.response.body.more_info})`;
 			}
 
-			throw new Error(errorMessage);
+			throw new Error(`Mocean error response [${error.statusCode}]: ${errorMessage}`);
 		}
 
 		// If that data does not exist for some reason return the actual error
