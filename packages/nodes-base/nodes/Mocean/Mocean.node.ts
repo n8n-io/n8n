@@ -13,10 +13,10 @@ export class Mocean implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mocean',
 		name: 'mocean',
-		icon: 'file:logo.png',
+		icon: 'file:mocean.png',
 		group: ['transform'],
 		version: 1,
-		description: 'This is the official node created from Mocean<https://moceanapi.com>',
+		description: 'Send SMS & voice messages via Mocean (https://moceanapi.com)',
 		defaults: {
 			name: 'Mocean',
 			color: '#772244',
@@ -25,8 +25,8 @@ export class Mocean implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: "moceanApi",
-				required: true
+				name: 'moceanApi',
+				required: true,
 			}
 		],
 		properties: [
@@ -38,12 +38,12 @@ export class Mocean implements INodeType {
 				type: 'options',
 				options:[
 					{
-						name: "SMS",
-						value: "sms"
+						name: 'SMS',
+						value: 'sms',
 					},
 					{
-						name: "Voice",
-						value: "voice"
+						name: 'Voice',
+						value: 'voice',
 					}
 				],
 				default: 'sms',
@@ -56,7 +56,7 @@ export class Mocean implements INodeType {
 					show: {
 						resource: [
 							'sms',
-							'voice'
+							'voice',
 						],
 					},
 				},
@@ -118,25 +118,25 @@ export class Mocean implements INodeType {
 				type: 'options',
 				options:[
 					{
-						name: "English (United States)",
-						value: "en-US"
+						name: 'Chinese Mandarin (China)',
+						value: 'cmn-CN'
 					},
 					{
-						name: "English (United Kingdom)",
-						value: "en-GB"
+						name: 'English (United Kingdom)',
+						value: 'en-GB'
 					},
 					{
-						name: "Chinese Mandarin (China",
-						value: "cmn-CN"
+						name: 'English (United States)',
+						value: 'en-US'
 					},
 					{
-						name: "Japanese (Japan)",
-						value: "ja-JP"
+						name: 'Japanese (Japan)',
+						value: 'ja-JP'
 					},
 					{
-						name: "Korean (Korea)",
-						value: "ko-KR"
-					}
+						name: 'Korean (Korea)',
+						value: 'ko-KR'
+					},
 				],
 				displayOptions: {
 					show: {
@@ -172,27 +172,25 @@ export class Mocean implements INodeType {
 				description: 'The message to send',
 			},
 		],
-		
+
 	};
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
-		let item: INodeExecutionData;	
-		let returnData: IDataObject[] = [];
-			
+		const returnData: IDataObject[] = [];
+
 		let endpoint: string;
 		let operation: string;
 		let requesetMethod: string;
 		let resource: string;
 		let text: string;
+		let dataKey: string;
 		// For Post
 		let body: IDataObject;
 		// For Query string
 		let qs: IDataObject;
 
-		
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			body = {};
 			qs = {};
@@ -203,29 +201,39 @@ export class Mocean implements INodeType {
 			requesetMethod = 'POST';
 			body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
 			body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
-			
-			
+
 			if (resource === 'voice') {
-				let language: string = this.getNodeParameter("language",itemIndex) as string;
-				let command:any = [{"action": "say", "language": `${language}`, "text": `${text}`}];
-			
+				const language: string = this.getNodeParameter('language', itemIndex) as string;
+				const command = [
+					{
+						action: 'say',
+						language,
+						text,
+					}
+				];
+
+				dataKey = 'voice';
 				body['mocean-command'] = JSON.stringify(command);
 				endpoint = '/rest/2/voice/dial';
 			} else if(resource === 'sms') {
+				dataKey = 'messages';
 				body['mocean-text'] = text;
 				endpoint = '/rest/2/sms';
 			} else {
 				throw new Error(`Unknown resource ${resource}`);
 			}
 
-			if (operation === "send") {
+			if (operation === 'send') {
 				const responseData = await moceanApiRequest.call(this,requesetMethod,endpoint,body,qs);
-				returnData.push(responseData as IDataObject);
+
+				for (const item of responseData[dataKey] as IDataObject[]) {
+					item.type = resource;
+					returnData.push(item);
+				}
+
 			} else {
 				throw new Error(`Unknown operation ${operation}`);
 			}
-			
-			
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
