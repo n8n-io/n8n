@@ -9,12 +9,9 @@ import {
 } from 'n8n-workflow';
 
 export async function zohoApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('zohoOAuth2Api');
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			//@ts-ignore
-			Authorization: `Zoho-oauthtoken ${credentials!.oauthTokenData.access_token}`
 		},
 		method,
 		body: {

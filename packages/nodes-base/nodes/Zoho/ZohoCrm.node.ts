@@ -80,12 +80,16 @@ export class ZohoCrm implements INodeType {
 					// }
 					responseData = await zohoApiRequest.call(this, 'POST', '/leads', body);
 					responseData = responseData.data;
-
+				} else {
+					throw new Error(`The operation "${operation}" is not known!`);
 				}
+			} else {
+				throw new Error(`The resource "${resource}" is not known!`);
 			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
+			} else if (responseData !== undefined) {
 				returnData.push(responseData as IDataObject);
 			}
 		}

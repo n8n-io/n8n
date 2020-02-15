@@ -955,17 +955,14 @@ class App {
 
 			let options = {};
 
-			// Here we need a variable that can be set on the credentials
-			// so that base on that include the credentails on the body or
-			// leave it as default with woukd include the credentails on the header.
-			// if (thatvariableistrue) {
-			// 	options = {
-			// 		body: {
-			// 			client_id: _.get(oauthCredentials, 'clientId') as string,
-			// 			client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
-			// 		},
-			// 	}
-			// }
+			if (_.get(oauthCredentials, 'authentication', 'header') as string === 'body') {
+				options = {
+					body: {
+						client_id: _.get(oauthCredentials, 'clientId') as string,
+						client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
+					},
+				};
+			}
 
 			const oAuthObj = new clientOAuth2({
 				clientId: _.get(oauthCredentials, 'clientId') as string,
