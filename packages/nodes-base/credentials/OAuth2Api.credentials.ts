@@ -53,5 +53,24 @@ export class OAuth2Api implements ICredentialType {
 			description: 'For some services additional query parameters have to be set which can be defined here.',
 			placeholder: 'access_type=offline',
 		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options' as NodePropertyTypes,
+			options: [
+				{
+					name: 'Body',
+					value: 'body',
+					description: 'Send credentials in body',
+				},
+				{
+					name: 'Header',
+					value: 'header',
+					description: 'Send credentials as Basic Auth header',
+				},
+			],
+			default: 'header',
+			description: 'Resource to consume.',
+		},
 	];
 }

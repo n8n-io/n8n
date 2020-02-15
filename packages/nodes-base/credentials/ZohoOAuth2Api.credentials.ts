@@ -68,7 +68,13 @@ export class ZohoOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'access_type=online',
+			default: 'access_type=offline',
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'body',
 		},
 	];
 }
