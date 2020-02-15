@@ -96,10 +96,10 @@ export class Mailjet implements INodeType {
 				//https://dev.mailjet.com/email/guides/send-api-v31/#send-a-basic-email
 				if (operation === 'send') {
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
-					const isBodyHtml = this.getNodeParameter('isBodyHtml', i) as boolean;
-					const message = this.getNodeParameter('body', i) as string;
+					const htmlBody = this.getNodeParameter('html', i) as string;
+					const textBody = this.getNodeParameter('text', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const toEmails = (this.getNodeParameter('toEmails', i) as string).split(',') as string[];
+					const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
 					const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
 
 					const body: IDataObject = {
@@ -116,11 +116,11 @@ export class Mailjet implements INodeType {
 						],
 						//SandboxMode: true,
 					};
-					for (const toEmail of toEmails) {
+					for (const email of toEmail) {
 						//@ts-ignore
 						body.Messages[0].to.push({
-							email: toEmail,
-						})
+							email,
+						});
 					}
 					if (variables) {
 						for (const variable of variables) {
@@ -128,28 +128,29 @@ export class Mailjet implements INodeType {
 							body.Messages[0].Variables[variable.name] = variable.value;
 						}
 					}
-					if (isBodyHtml) {
+					if (htmlBody) {
 						//@ts-ignore
-						body.Messages[0].HTMLPart = message;
-					} else {
-						//@ts-ignore
-						body.Messages[0].TextPart = message;
+						body.Messages[0].HTMLPart = htmlBody;
 					}
-					if (additionalFields.bccAddresses) {
-						const bccAddresses = (additionalFields.bccAddresses as string).split(',') as string[];
-						for (const bccAddress of bccAddresses) {
+					if (textBody) {
+						//@ts-ignore
+						body.Messages[0].TextPart = textBody;
+					}
+					if (additionalFields.bccEmail) {
+						const bccEmail = (additionalFields.bccEmail as string).split(',') as string[];
+						for (const email of bccEmail) {
 							//@ts-ignore
 							body.Messages[0].Bcc.push({
-								email: bccAddress,
+								email,
 							});
 						}
 					}
-					if (additionalFields.ccAddresses) {
-						const ccAddresses = (additionalFields.ccAddresses as string).split(',') as string[];
-						for (const ccAddress of ccAddresses) {
+					if (additionalFields.ccEmail) {
+						const ccEmail = (additionalFields.ccEmail as string).split(',') as string[];
+						for (const email of ccEmail) {
 							//@ts-ignore
 							body.Messages[0].Cc.push({
-								email: ccAddress,
+								email,
 							});
 						}
 					}
@@ -185,9 +186,10 @@ export class Mailjet implements INodeType {
 				if (operation === 'sendTemplate') {
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 					const templateId = this.getNodeParameter('templateId', i) as string;
+					const subject = this.getNodeParameter('subject', i) as string;
 					const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const toEmails = (this.getNodeParameter('toEmails', i) as string).split(',') as string[];
+					const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
 
 					const body: IDataObject = {
 						Messages: [
@@ -195,6 +197,7 @@ export class Mailjet implements INodeType {
 								From: {
 									email: fromEmail,
 								},
+								Subject: subject,
 								to: [],
 								Cc: [],
 								Bcc: [],
@@ -204,10 +207,10 @@ export class Mailjet implements INodeType {
 						],
 						//SandboxMode: true,
 					};
-					for (const toEmail of toEmails) {
+					for (const email of toEmail) {
 						//@ts-ignore
 						body.Messages[0].to.push({
-							email: toEmail,
+							email,
 						});
 					}
 					if (variables) {
@@ -216,27 +219,23 @@ export class Mailjet implements INodeType {
 							body.Messages[0].Variables[variable.name] = variable.value;
 						}
 					}
-					if (additionalFields.bccAddresses) {
-						const bccAddresses = (additionalFields.bccAddresses as string).split(',') as string[];
-						for (const bccAddress of bccAddresses) {
+					if (additionalFields.bccEmail) {
+						const bccEmail = (additionalFields.bccEmail as string).split(',') as string[];
+						for (const email of bccEmail) {
 							//@ts-ignore
 							body.Messages[0].Bcc.push({
-								email: bccAddress,
+								email,
 							});
 						}
 					}
-					if (additionalFields.ccAddresses) {
-						const ccAddresses = (additionalFields.ccAddresses as string).split(',') as string[];
-						for (const ccAddress of ccAddresses) {
+					if (additionalFields.ccEmail) {
+						const ccEmail = (additionalFields.ccEmail as string).split(',') as string[];
+						for (const email of ccEmail) {
 							//@ts-ignore
 							body.Messages[0].Cc.push({
-								email: ccAddress,
+								email,
 							});
 						}
-					}
-					if (additionalFields.subject) {
-						//@ts-ignore
-						body.Messages[0].Subject = additionalFields.subject as string;
 					}
 					if (additionalFields.trackOpens) {
 						//@ts-ignore
