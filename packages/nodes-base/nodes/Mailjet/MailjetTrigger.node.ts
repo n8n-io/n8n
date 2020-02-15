@@ -63,12 +63,12 @@ export class MailjetTrigger implements INodeType {
 						value: 'open',
 					},
 					{
-						name: 'email.spam',
-						value: 'spam',
-					},
-					{
 						name: 'email.sent',
 						value: 'sent',
+					},
+					{
+						name: 'email.spam',
+						value: 'spam',
 					},
 					{
 						name: 'email.unsub',
@@ -85,17 +85,22 @@ export class MailjetTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId === undefined) {
-					return false;
+				const endpoint = `/v3/rest/eventcallbackurl`;
+				const responseData = await mailjetApiRequest.call(this, 'GET', endpoint);
+
+				const event = this.getNodeParameter('event') as string;
+				const webhookUrl = this.getNodeWebhookUrl('default');
+
+				for (const webhook of responseData.Data) {
+					if (webhook.EventType === event && webhook.Url === webhookUrl) {
+						// Set webhook-id to be sure that it can be deleted
+						const webhookData = this.getWorkflowStaticData('node');
+						webhookData.webhookId = webhook.ID as string;
+						return true;
+					}
 				}
-				const endpoint = `/v3/rest/eventcallbackurl/${webhookData.webhookId}`;
-				try {
-					await mailjetApiRequest.call(this, 'GET', endpoint);
-				} catch (e) {
-					return false;
-				}
-				return true;
+
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');

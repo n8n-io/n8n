@@ -52,7 +52,6 @@ export async function mailjetApiRequestAllItems(this: IExecuteFunctions | IHookF
 	query.Offset = 0;
 
 	do {
-		query.Offset;
 		responseData = await mailjetApiRequest.call(this, method, endpoint, body, query, undefined, { resolveWithFullResponse: true });
 		returnData.push.apply(returnData, responseData.body);
 		query.Offset = query.Offset + query.Limit;
