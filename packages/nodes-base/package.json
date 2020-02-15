@@ -80,7 +80,8 @@
             "dist/credentials/TypeformApi.credentials.js",
             "dist/credentials/TogglApi.credentials.js",
             "dist/credentials/VeroApi.credentials.js",
-            "dist/credentials/WordpressApi.credentials.js"
+			"dist/credentials/WordpressApi.credentials.js",
+			"dist/credentials/ZohoOAuth2Api.credentials.js"
         ],
         "nodes": [
             "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
@@ -174,7 +175,8 @@
             "dist/nodes/WriteBinaryFile.node.js",
             "dist/nodes/Webhook.node.js",
             "dist/nodes/Wordpress/Wordpress.node.js",
-            "dist/nodes/Xml.node.js"
+			"dist/nodes/Xml.node.js",
+			"dist/nodes/Zoho/ZohoCrm.node.js"
         ]
     },
     "devDependencies": {
