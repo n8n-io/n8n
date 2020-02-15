@@ -913,7 +913,7 @@ class App {
 
 		// Verify and store app code. Generate access tokens and store for respective credential.
 		this.app.get('/rest/oauth2-credential/callback', async (req: express.Request, res: express.Response) => {
-			const {code, state: stateEncoded} = req.query;
+			const {code, state: stateEncoded } = req.query;
 
 			if (code === undefined || stateEncoded === undefined) {
 				throw new Error('Insufficient parameters for OAuth2 callback');
@@ -953,6 +953,17 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
+			let options = {};
+
+			if (_.get(oauthCredentials, 'authentication', 'header') as string === 'body') {
+				options = {
+					body: {
+						client_id: _.get(oauthCredentials, 'clientId') as string,
+						client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
+					},
+				};
+			}
+
 			const oAuthObj = new clientOAuth2({
 				clientId: _.get(oauthCredentials, 'clientId') as string,
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
@@ -962,7 +973,7 @@ class App {
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
 			});
 
-			const oauthToken = await oAuthObj.code.getToken(req.originalUrl);
+			const oauthToken = await oAuthObj.code.getToken(req.originalUrl, options);
 
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
