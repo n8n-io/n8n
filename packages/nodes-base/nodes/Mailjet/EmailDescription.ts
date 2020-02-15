@@ -50,50 +50,15 @@ export const emailFields = [
 				]
 			},
 		},
+		placeholder: 'admin@example.com',
 		description: 'The title for the email',
 	},
 	{
-		displayName: 'Is Body HTML?',
-		name: 'isBodyHtml',
-		type: 'boolean',
-		required: true,
-		default: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				]
-			},
-		},
-	},
-	{
-		displayName: 'Body',
-		name: 'body',
-		type: 'string',
-		required: true,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'email',
-				],
-				operation: [
-					'send',
-				]
-			},
-		},
-	},
-	{
 		displayName: 'To Email',
-		name: 'toEmails',
+		name: 'toEmail',
 		type: 'string',
 		required: true,
+		placeholder: 'info@example.com',
 		description: 'Email address of the recipient. Multiple ones can be separated by comma.',
 		displayOptions: {
 			show: {
@@ -105,6 +70,54 @@ export const emailFields = [
 				]
 			},
 		},
+	},
+	{
+		displayName: 'Subject',
+		name: 'subject',
+		type: 'string',
+		default: '',
+		placeholder: 'My subject line',
+		description: 'Subject line of the email.',
+	},
+	{
+		displayName: 'Text',
+		name: 'text',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				]
+			},
+		},
+		default: '',
+		description: 'Plain text message of email.',
+	},
+	{
+		displayName: 'HTML',
+		name: 'html',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'email',
+				],
+				operation: [
+					'send',
+				]
+			},
+		},
+		default: '',
+		description: 'HTML text message of email.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -124,8 +137,8 @@ export const emailFields = [
 		},
 		options: [
 			{
-				displayName: 'Bcc Addresses',
-				name: 'bccAddresses',
+				displayName: 'Bcc Email',
+				name: 'bccEmail',
 				type: 'string',
 				description: 'Bcc Email address of the recipient. Multiple ones can be separated by comma.',
 				default: '',
@@ -150,30 +163,58 @@ export const emailFields = [
 				default: 2,
 			},
 			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Track Opens',
-				name: 'trackOpens',
-				type: 'string',
-				description: 'Enable or disable open tracking on this message.',
-				default: '',
-			},
-			{
-				displayName: 'Track Clicks',
-				name: 'trackClicks',
-				type: 'string',
-				description: 'Enable or disable open tracking on this message.',
-				default: '',
-			},
-			{
 				displayName: 'Template Language',
 				name: 'templateLanguage',
 				type: 'boolean',
 				default: true,
+			},
+			{
+				displayName: 'Track Clicks',
+				name: 'trackClicks',
+				type: 'options',
+				options: [
+					{
+						name: 'Account Default',
+						value: 'account_default',
+						description: 'Use the values specified in the Mailjet account',
+					},
+					{
+						name: 'Disabled',
+						value: 'disabled',
+						description: 'Disable tracking for this message',
+					},
+					{
+						name: 'Enabled',
+						value: 'enabled',
+						description: 'Enable tracking for this message',
+					},
+				],
+				description: 'Enable or disable open tracking on this message.',
+				default: 'account_default',
+			},
+			{
+				displayName: 'Track Opens',
+				name: 'trackOpens',
+				type: 'options',
+				options: [
+					{
+						name: 'Account Default',
+						value: 'account_default',
+						description: 'Use the values specified in the Mailjet account',
+					},
+					{
+						name: 'Disabled',
+						value: 'disabled',
+						description: 'Disable tracking for this message',
+					},
+					{
+						name: 'Enabled',
+						value: 'enabled',
+						description: 'Enable tracking for this message',
+					},
+				],
+				description: 'Enable or disable open tracking on this message.',
+				default: 'account_default',
 			},
 		]
 	},
@@ -236,14 +277,16 @@ export const emailFields = [
 				]
 			},
 		},
+		placeholder: 'admin@example.com',
 		description: 'The title for the email',
 	},
 	{
-		displayName: 'Template',
-		name: 'templateId',
+		displayName: 'To Email',
+		name: 'toEmail',
 		type: 'string',
 		required: true,
-		default: '',
+		placeholder: 'info@example.com',
+		description: 'Email address of the recipient. Multiple ones can be separated by comma.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -256,11 +299,11 @@ export const emailFields = [
 		},
 	},
 	{
-		displayName: 'To Email',
-		name: 'toEmails',
+		displayName: 'Template',
+		name: 'templateId',
 		type: 'string',
 		required: true,
-		description: 'Email address of the recipient. Multiple ones can be separated by comma.',
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -290,15 +333,15 @@ export const emailFields = [
 		},
 		options: [
 			{
-				displayName: 'Bcc Addresses',
-				name: 'bccAddresses',
+				displayName: 'Bcc Email',
+				name: 'bccEmail',
 				type: 'string',
 				description: 'Bcc Recipients of the email separated by ,.',
 				default: '',
 			},
 			{
-				displayName: 'Cc Addresses',
-				name: 'ccAddresses',
+				displayName: 'Cc Email',
+				name: 'ccEmail',
 				type: 'string',
 				description: 'Cc recipients of the email separated by ,.',
 				default: '',
