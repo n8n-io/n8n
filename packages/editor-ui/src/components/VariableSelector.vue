@@ -293,7 +293,7 @@ export default mixins(
 				if (outputData.hasOwnProperty('json')) {
 					const jsonDataOptions: IVariableSelectorOption[] = [];
 					for (const propertyName of Object.keys(outputData.json)) {
-						jsonDataOptions.push.apply(jsonDataOptions, this.jsonDataToFilterOption(outputData.json[propertyName], `$node["${nodeName}"].data`, propertyName, filterText));
+						jsonDataOptions.push.apply(jsonDataOptions, this.jsonDataToFilterOption(outputData.json[propertyName], `$node["${nodeName}"].json`, propertyName, filterText));
 					}
 
 					if (jsonDataOptions.length) {
