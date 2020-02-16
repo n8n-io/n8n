@@ -123,7 +123,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		const nodeTypes = NodeTypes();
-		const workflow = new Workflow(webhookData.workflowId, workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+		const workflow = new Workflow({ id: webhookData.workflowId, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings});
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -225,7 +225,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		const nodeTypes = NodeTypes();
-		const workflow = new Workflow(workflowId, workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+		const workflow = new Workflow({ id: workflowId, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 
 		await this.activeWebhooks!.removeWorkflow(workflow);
 
@@ -345,7 +345,7 @@ export class ActiveWorkflowRunner {
 				throw new Error(`Could not find workflow with id "${workflowId}".`);
 			}
 			const nodeTypes = NodeTypes();
-			workflowInstance = new Workflow(workflowId, workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+			workflowInstance = new Workflow({ id: workflowId, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 
 			const canBeActivated = workflowInstance.checkIfWorkflowCanBeActivated(['n8n-nodes-base.start']);
 			if (canBeActivated === false) {

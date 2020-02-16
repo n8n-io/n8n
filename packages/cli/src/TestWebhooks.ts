@@ -67,7 +67,7 @@ export class TestWebhooks {
 		const workflowData = this.testWebhookData[webhookKey].workflowData;
 
 		const nodeTypes = NodeTypes();
-		const workflow = new Workflow(webhookData.workflowId, workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+		const workflow = new Workflow({ id: webhookData.workflowId, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings});
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -206,7 +206,7 @@ export class TestWebhooks {
 		const workflows: Workflow[] = [];
 		for (const webhookKey of Object.keys(this.testWebhookData)) {
 			workflowData = this.testWebhookData[webhookKey].workflowData;
-			workflow = new Workflow(workflowData.id.toString(), workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+			workflow = new Workflow({ id: workflowData.id.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 			workflows.push();
 		}
 
