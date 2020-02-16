@@ -75,9 +75,9 @@ Example:
 
 ```typescript
 // Returns the value of the JSON data property "myNumber" of Node "Set" (first item)
-const myNumber = $item(0).$node["Set"].data["myNumber"];
+const myNumber = $item(0).$node["Set"].json["myNumber"];
 // Like above but data of the 6th item
-const myNumber = $item(5).$node["Set"].data["myNumber"];
+const myNumber = $item(5).$node["Set"].json["myNumber"];
 
 // Returns the value of the parameter "channel" of Node "Slack".
 // If it contains an expression the value will be resolved with the
@@ -93,7 +93,7 @@ const channel = $item(9).$node["Slack"].parameter["channel"];
 Works exactly like `$item` with the difference that it will always return the data of the first item.
 
 ```typescript
-const myNumber = $node["Set"].data['myNumber'];
+const myNumber = $node["Set"].json['myNumber'];
 
 const channel = $node["Slack"].parameter["channel"];
 ```
