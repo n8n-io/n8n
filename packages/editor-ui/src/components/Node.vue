@@ -22,15 +22,15 @@
 				<div @click.stop.left="duplicateNode" class="option" title="Duplicate Node" >
 					<font-awesome-icon icon="clone" />
 				</div>
+				<div @click.stop.left="setNodeActive" class="option touch" title="Edit Node" v-if="!isReadOnly">
+					<font-awesome-icon class="execute-icon" icon="cog" />
+				</div>
 				<div @click.stop.left="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
 
 			<NodeIcon class="node-icon" :nodeType="nodeType" size="60" :style="nodeIconStyle"/>
-			<div @click.stop.left="setNodeActive" class="touch-option" title="Edit Node" v-if="isTouchDevice">
-				<font-awesome-icon icon="cog" />
-			</div>
 		</div>
 		<div class="node-description">
 			<div class="node-name" :title="data.name">
@@ -104,6 +104,10 @@ export default mixins(nodeBase, workflowHelpers).extend({
 
 			if (this.hasIssues) {
 				classes.push('has-issues');
+			}
+
+			if (this.isTouchDevice) {
+				classes.push('is-touch-device');
 			}
 
 			return classes;
@@ -268,10 +272,6 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			.node-options {
 				display: initial;
 			}
-
-			.touch-option {
-				display: initial;
-			}
 		}
 
 		.node-executing-info {
@@ -331,6 +331,10 @@ export default mixins(nodeBase, workflowHelpers).extend({
 				display: inline-block;
 				padding: 0 0.3em;
 
+				&.touch {
+					display: none;
+				}
+
 				&:hover {
 					color: $--color-primary;
 				}
@@ -343,25 +347,19 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			}
 		}
 
+		&.is-touch-device .node-options {
+			left: -25px;
+			width: 150px;
+
+			.option.touch {
+				display: initial;
+			}
+		}
+
 		&.has-data .node-options,
 		&.has-issues .node-options {
 			top: -35px;
 		}
-
-		.touch-option {
-			bottom: 0.3em;
-			color: #aaa;
-			display: none;
-			font-size: 1.5em;
-			position: absolute;
-			right: 0.3em;
-			z-index: 10;
-
-			&:hover {
-				color: $--color-primary;
-			}
-		}
-
 	}
 }
 
