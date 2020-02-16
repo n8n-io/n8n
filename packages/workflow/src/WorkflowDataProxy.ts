@@ -127,7 +127,7 @@ export class WorkflowDataProxy {
 			get(target, name, receiver) {
 				name = name.toString();
 
-				if (['binary', 'data'].includes(name)) {
+				if (['binary', 'data', 'json'].includes(name)) {
 					let executionData: INodeExecutionData[];
 					if (shortSyntax === false) {
 						// Long syntax got used to return data from node in path
@@ -180,7 +180,7 @@ export class WorkflowDataProxy {
 						throw new Error(`No data found for item-index: "${that.itemIndex}"`);
 					}
 
-					if (name === 'data') {
+					if (['data', 'json'].includes(name as string)) {
 						// JSON-Data
 						return executionData[that.itemIndex].json;
 					} else if (name === 'binary') {
@@ -275,15 +275,17 @@ export class WorkflowDataProxy {
 				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData);
 				return dataProxy.getDataProxy();
 			},
+			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
+			$workflow: this.workflowGetter(),
 		};
 
 		return new Proxy(base, {
 			get(target, name, receiver) {
-				if (name === '$data') {
+				if (['$data', '$json'].includes(name as string)) {
 					// @ts-ignore
-					return that.nodeDataGetter(that.activeNodeName, true).data;
+					return that.nodeDataGetter(that.activeNodeName, true).json;
 				} else if (name === '$binary') {
 					// @ts-ignore
 					return that.nodeDataGetter(that.activeNodeName, true).binary;
