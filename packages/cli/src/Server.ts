@@ -508,7 +508,7 @@ class App {
 				const credentials = await WorkflowCredentials(workflowData.nodes);
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
-				const workflowInstance = new Workflow(workflowData.id, workflowData.nodes, workflowData.connections, false, nodeTypes, undefined, workflowData.settings);
+				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
 				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, sessionId, destinationNode);
 				if (needsWebhook === true) {
 					return {
@@ -1088,7 +1088,7 @@ class App {
 			}
 
 			const nodeTypes = NodeTypes();
-			const workflow = new Workflow(workflowId.toString(), workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
+			const workflow = new Workflow({ id: workflowId.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 
 			return this.testWebhooks.cancelTestWebhook(workflowId, workflow);
 		}));

@@ -297,7 +297,8 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 	const nodeTypes = NodeTypes();
 
-	const workflow = new Workflow(workflowInfo.id, workflowData!.nodes, workflowData!.connections, workflowData!.active, nodeTypes, workflowData!.staticData);
+	const workflowName = workflowData ? workflowData.name : undefined;
+	const workflow = new Workflow({ id: workflowInfo.id, name: workflowName, nodes: workflowData!.nodes, connections: workflowData!.connections, active: workflowData!.active, nodeTypes, staticData: workflowData!.staticData });
 
 	// Does not get used so set it simply to empty string
 	const executionId = '';

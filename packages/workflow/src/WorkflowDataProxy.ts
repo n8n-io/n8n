@@ -241,6 +241,35 @@ export class WorkflowDataProxy {
 
 
 	/**
+	 * Returns a proxt to query data from the workflow
+	 *
+	 * @private
+	 * @returns
+	 * @memberof WorkflowDataProxy
+	 */
+	private workflowGetter() {
+		const allowedValues = [
+			'active',
+			'id',
+			'name',
+		];
+		const that = this;
+
+		return new Proxy({}, {
+			get(target, name, receiver) {
+				if (!allowedValues.includes(name.toString())) {
+					throw new Error(`The key "${name.toString()}" is not supported!`);
+				}
+
+				// @ts-ignore
+				return that.workflow[name.toString()];
+			}
+		});
+	}
+
+
+
+	/**
 	 * Returns a proxy to query data of all nodes
 	 *
 	 * @private
