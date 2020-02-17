@@ -138,7 +138,7 @@ describe('Workflow', () => {
 		];
 
 		const nodeTypes = Helpers.NodeTypes();
-		const workflow = new Workflow(undefined, [], {}, false, nodeTypes);
+		const workflow = new Workflow({ nodes: [], connections: {}, active: false, nodeTypes });
 
 		for (const testData of tests) {
 			test(testData.description, () => {
@@ -565,7 +565,7 @@ describe('Workflow', () => {
 					executeNodes.push(createNodeData(node));
 				}
 
-				workflow = new Workflow(undefined, executeNodes, testData.input.connections as IConnections, false, nodeTypes);
+				workflow = new Workflow({ nodes: executeNodes, connections: testData.input.connections as IConnections, active: false, nodeTypes });
 				workflow.renameNode(testData.input.currentName, testData.input.newName);
 
 				resultNodes = {};
@@ -1039,7 +1039,7 @@ describe('Workflow', () => {
 					}
 				};
 
-				const workflow = new Workflow(undefined, nodes, connections, false, nodeTypes);
+				const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 				const activeNodeName = testData.input.hasOwnProperty('Node3') ? 'Node3' : 'Node2';
 
 				const runExecutionData: IRunExecutionData = {
@@ -1126,7 +1126,7 @@ describe('Workflow', () => {
 		//     };
 
 		//     const nodeTypes = Helpers.NodeTypes();
-		//     const workflow = new Workflow(nodes, connections, false, nodeTypes);
+		//     const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 		//     const activeNodeName = 'Node2';
 
 		//     // @ts-ignore
@@ -1193,7 +1193,7 @@ describe('Workflow', () => {
 			];
 			const connections: IConnections = {};
 
-			const workflow = new Workflow(undefined, nodes, connections, false, nodeTypes);
+			const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 			const activeNodeName = 'Node1';
 
 			const runExecutionData: IRunExecutionData = {
