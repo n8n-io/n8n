@@ -51,10 +51,17 @@ import * as config from '../config';
  */
 function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mode: WorkflowExecuteMode, executionId?: string, retryOf?: string): void {
 	// Check if there was an error and if so if an errorWorkflow is set
+
+	let pastExecutionUrl: string | undefined = undefined;
+	if (executionId !== undefined) {
+		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}execution/${executionId}`;
+	}
+
 	if (fullRunData.data.resultData.error !== undefined && workflowData.settings !== undefined && workflowData.settings.errorWorkflow) {
 		const workflowErrorData = {
 			execution: {
 				id: executionId,
+				url: pastExecutionUrl,
 				error: fullRunData.data.resultData.error,
 				lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
 				mode,
