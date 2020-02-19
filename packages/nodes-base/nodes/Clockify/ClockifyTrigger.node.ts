@@ -104,7 +104,7 @@ export class ClockifyTrigger implements INodeType {
 				qs['in-progress'] = false;
 			break;
 		}
-		console.error(qs);
+
 		try {
 			result = await clockifyApiRequest.call(this, 'GET', resource, {}, qs );
 			webhookData.lastTimeChecked = qs.end_date;
