@@ -1079,14 +1079,14 @@ export class GoogleDrive implements INodeType {
 
 					const fileMetadata = {
 						name,
-						mimeType: 'application/vnd.google-apps.folder'
+						mimeType: 'application/vnd.google-apps.folder',
+						parents: options.parents || [],
 					};
 
 					const response = await drive.files.create({
 						// @ts-ignore
 						resource: fileMetadata,
 						fields: queryFields,
-						parents: options.parents || [],
 					});
 
 					returnData.push(response.data as IDataObject);
