@@ -58,7 +58,7 @@ export class WorkflowRunnerProcess {
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(nodeTypesData);
 
-		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData});
+		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials);
 		additionalData.hooks = this.getProcessForwardHooks();
 
