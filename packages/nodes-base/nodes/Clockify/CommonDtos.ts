@@ -4,10 +4,10 @@ export interface IHourlyRateDto {
 }
 
 enum MembershipStatusEnum {
-	PENDING = "PENDING",
-	ACTIVE = "ACTIVE",
-	DECLINED = "DECLINED",
-	INACTIVE = "INACTIVE"
+	PENDING = 'PENDING',
+	ACTIVE = 'ACTIVE',
+	DECLINED = 'DECLINED',
+	INACTIVE = 'INACTIVE'
 }
 
 export interface IMembershipDto {

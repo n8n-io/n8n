@@ -1,31 +1,31 @@
-import {IHourlyRateDto, IMembershipDto} from "./CommonDtos";
+import { IHourlyRateDto, IMembershipDto } from './CommonDtos';
 
 enum AdminOnlyPagesEnum {
-	PROJECT ="PROJECT",
-	TEAM = "TEAM",
-	REPORTS = "REPORTS"
+	PROJECT ='PROJECT',
+	TEAM = 'TEAM',
+	REPORTS = 'REPORTS',
 }
 
 enum DaysOfWeekEnum {
-	MONDAY = "MONDAY",
-	TUESDAY = "TUESDAY",
-	WEDNESDAY = "WEDNESDAY",
-	THURSDAY = "THURSDAY",
-	FRIDAY = "FRIDAY",
-	SATURDAY = "SATURDAY",
-	SUNDAY = "SUNDAY"
+	MONDAY = 'MONDAY',
+	TUESDAY = 'TUESDAY',
+	WEDNESDAY = 'WEDNESDAY',
+	THURSDAY = 'THURSDAY',
+	FRIDAY = 'FRIDAY',
+	SATURDAY = 'SATURDAY',
+	SUNDAY = 'SUNDAY',
 }
 
 enum DatePeriodEnum {
-	DAYS="DAYS",
-	WEEKS = "WEEKS",
-	MONTHS = "MONTHS"
+	DAYS = 'DAYS',
+	WEEKS = 'WEEKS',
+	MONTHS = 'MONTHS',
 }
 
 enum AutomaticLockTypeEnum {
-	WEEKLY = "WEEKLY",
-	MONTHLY = "MONTHLY",
-	OLDER_THAN = "OLDER_THAN"
+	WEEKLY = 'WEEKLY',
+	MONTHLY = 'MONTHLY',
+	OLDER_THAN = 'OLDER_THAN',
 }
 
 interface IAutomaticLockDto {
@@ -74,4 +74,3 @@ export interface IWorkspaceDto {
 	name: string;
 	workspaceSettings: IWorkspaceSettingsDto;
 }
-
