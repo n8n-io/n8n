@@ -47,6 +47,25 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 	}
 }
 
+export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	let uri: string | undefined;
+	query.per_page = 100;
+	do {
+		responseData = await woocommerceApiRequest.call(this, method, endpoint, body, query, uri, { resolveWithFullResponse: true });
+		uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>','');
+		returnData.push.apply(returnData, responseData.body);
+	} while (
+		responseData.headers['link'] !== undefined &&
+		responseData.headers['link'].includes('rel="next"')
+	);
+
+	return returnData;
+}
+
 /**
  * Creates a secret from the credentials
  *
