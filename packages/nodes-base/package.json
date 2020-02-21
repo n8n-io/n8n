@@ -37,6 +37,7 @@
             "dist/credentials/ChargebeeApi.credentials.js",
             "dist/credentials/ClearbitApi.credentials.js",
             "dist/credentials/ClickUpApi.credentials.js",
+		  	"dist/credentials/ClockifyApi.credentials.js",
             "dist/credentials/CodaApi.credentials.js",
             "dist/credentials/CopperApi.credentials.js",
             "dist/credentials/DisqusApi.credentials.js",
@@ -118,6 +119,7 @@
             "dist/nodes/Clearbit/Clearbit.node.js",
             "dist/nodes/ClickUp/ClickUp.node.js",
             "dist/nodes/ClickUp/ClickUpTrigger.node.js",
+		  	"dist/nodes/Clockify/ClockifyTrigger.node.js",
             "dist/nodes/Coda/Coda.node.js",
             "dist/nodes/Copper/CopperTrigger.node.js",
             "dist/nodes/Cron.node.js",
@@ -293,3 +295,4 @@
         ]
     }
 }
+
