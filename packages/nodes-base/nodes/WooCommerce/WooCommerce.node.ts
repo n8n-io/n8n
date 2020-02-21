@@ -124,7 +124,7 @@ export class WooCommerce implements INodeType {
 						body.catalog_visibility = additionalFields.catalogVisibility as string;
 					}
 					if (additionalFields.categories) {
-						body.categories = (additionalFields.categories as string[]).map(category => { id: parseInt(category, 10); }) as unknown as IDataObject[];
+						body.categories = (additionalFields.categories as string[]).map(category => ({ id: parseInt(category, 10) })) as unknown as IDataObject[];
 					}
 					if (additionalFields.crossSellIds) {
 						body.cross_sell_ids = (additionalFields.crossSellIds as string).split(',') as string[];
@@ -152,9 +152,6 @@ export class WooCommerce implements INodeType {
 					}
 					if (additionalFields.parentId) {
 						body.parent_id = additionalFields.parentId as string;
-					}
-					if (additionalFields.price) {
-						body.price = additionalFields.price as string;
 					}
 					if (additionalFields.purchaseNote) {
 						body.purchase_note = additionalFields.purchaseNote as string;
@@ -193,7 +190,7 @@ export class WooCommerce implements INodeType {
 						body.stock_status = additionalFields.stockStatus as string;
 					}
 					if (additionalFields.tags) {
-						body.tags = (additionalFields.tags as string[]).map(tag => { id: parseInt(tag, 10); }) as unknown as IDataObject[];
+						body.tags = (additionalFields.tags as string[]).map(tag => ({ 'id': parseInt(tag, 10) })) as unknown as IDataObject[];
 					}
 					if (additionalFields.taxClass) {
 						body.tax_class = additionalFields.taxClass as string;
@@ -245,7 +242,7 @@ export class WooCommerce implements INodeType {
 						body.catalog_visibility = updateFields.catalogVisibility as string;
 					}
 					if (updateFields.categories) {
-						body.categories = (updateFields.categories as string[]).map(category => { id: parseInt(category, 10); }) as unknown as IDataObject[];
+						body.categories = (updateFields.categories as string[]).map(category => ({ id: parseInt(category, 10) })) as unknown as IDataObject[];
 					}
 					if (updateFields.crossSellIds) {
 						body.cross_sell_ids = (updateFields.crossSellIds as string).split(',') as string[];
@@ -273,9 +270,6 @@ export class WooCommerce implements INodeType {
 					}
 					if (updateFields.parentId) {
 						body.parent_id = updateFields.parentId as string;
-					}
-					if (updateFields.price) {
-						body.price = updateFields.price as string;
 					}
 					if (updateFields.purchaseNote) {
 						body.purchase_note = updateFields.purchaseNote as string;
@@ -314,7 +308,7 @@ export class WooCommerce implements INodeType {
 						body.stock_status = updateFields.stockStatus as string;
 					}
 					if (updateFields.tags) {
-						body.tags = (updateFields.tags as string[]).map(tag => { id: parseInt(tag, 10); }) as unknown as IDataObject[];
+						body.tags = (updateFields.tags as string[]).map(tag => ({ id: parseInt(tag, 10) })) as unknown as IDataObject[];
 					}
 					if (updateFields.taxClass) {
 						body.tax_class = updateFields.taxClass as string;
@@ -377,9 +371,6 @@ export class WooCommerce implements INodeType {
 					}
 					if (options.minPrice) {
 						qs.max_price = options.minPrice as string;
-					}
-					if (options.onSale) {
-						qs.on_sale = options.onSale as string;
 					}
 					if (options.order) {
 						qs.order = options.order as string;
