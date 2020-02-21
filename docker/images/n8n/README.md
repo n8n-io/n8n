@@ -129,11 +129,11 @@ it can not be used anymore as encrypting it is not possible anymore.
 > may be dropped in the future.
 
 Replace the following placeholders with the actual data:
- - MONGO_DATABASE
- - MONGO_HOST
- - MONGO_PORT
- - MONGO_USER
- - MONGO_PASSWORD
+ - <MONGO_DATABASE>
+ - <MONGO_HOST>
+ - <MONGO_PORT>
+ - <MONGO_USER>
+ - <MONGO_PASSWORD>
 
 ```
 docker run -it --rm \
@@ -152,11 +152,11 @@ A full working setup with docker-compose can be found [here](https://github.com/
 #### Use with PostgresDB
 
 Replace the following placeholders with the actual data:
- - POSTGRES_DATABASE
- - POSTGRES_HOST
- - POSTGRES_PASSWORD
- - POSTGRES_PORT
- - POSTGRES_USER
+ - <POSTGRES_DATABASE>
+ - <POSTGRES_HOST>
+ - <POSTGRES_PASSWORD>
+ - <POSTGRES_PORT>
+ - <POSTGRES_USER>
 
 ```
 docker run -it --rm \
@@ -179,11 +179,11 @@ A full working setup with docker-compose can be found [here](https://github.com/
 #### Use with MySQL
 
 Replace the following placeholders with the actual data:
- - MYSQLDB_DATABASE
- - MYSQLDB_HOST
- - MYSQLDB_PASSWORD
- - MYSQLDB_PORT
- - MYSQLDB_USER
+ - <MYSQLDB_DATABASE>
+ - <MYSQLDB_HOST>
+ - <MYSQLDB_PASSWORD>
+ - <MYSQLDB_PORT>
+ - <MYSQLDB_USER>
 
 ```
 docker run -it --rm \
