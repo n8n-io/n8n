@@ -12,7 +12,7 @@ import {
 import {
 	freshdeskApiRequest,
 	freshdeskApiRequestAllItems,
-	validateJSON,
+	// validateJSON,
 	capitalize
 } from './GenericFunctions';
 
@@ -121,9 +121,9 @@ export class Freshdesk implements INodeType {
 						description: 'Create a new ticket',
 					},
 					{
-						name: 'Update',
-						value: 'update',
-						description: 'Update a ticket',
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a ticket',
 					},
 					{
 						name: 'Get',
@@ -136,9 +136,9 @@ export class Freshdesk implements INodeType {
 						description: 'Get all tickets',
 					},
 					{
-						name: 'Delete',
-						value: 'delete',
-						description: 'Delete a ticket',
+						name: 'Update',
+						value: 'update',
+						description: 'Update a ticket',
 					},
 				],
 				default: 'create',
@@ -155,16 +155,11 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'create'
+							'create',
 						]
 					},
 				},
 				options: [
-					{
-						name: 'Requester Id',
-						value: 'requesterId',
-						description: `User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester's email.`,
-					},
 					{
 						name: 'Email',
 						value: 'email',
@@ -179,6 +174,11 @@ export class Freshdesk implements INodeType {
 						name: 'Phone',
 						value: 'phone',
 						description: `Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.`,
+					},
+					{
+						name: 'Requester Id',
+						value: 'requesterId',
+						description: `User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester's email.`,
 					},
 					{
 						name: 'Twitter Id',
@@ -205,7 +205,7 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'create'
+							'create',
 						]
 					},
 				},
@@ -223,11 +223,15 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'create'
+							'create',
 						]
 					},
 				},
 				options: [
+					{
+						name: 'Closed',
+						value: 'closed',
+					},
 					{
 						name: 'Open',
 						value: 'open',
@@ -240,10 +244,6 @@ export class Freshdesk implements INodeType {
 						name: 'Resolved',
 						value: 'resolved',
 					},
-					{
-						name: 'Closed',
-						value: 'closed',
-					}
 				],
 				default: 'pending',
 				description: 'Status',
@@ -301,33 +301,34 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
-						name: 'Email',
-						value: 'email',
-					},
-					{
-						name: 'Portal',
-						value: 'portal',
-					},
-					{
-						name: 'Phone',
-						value: 'phone',
-					},
-					{
 						name: 'Chat',
 						value: 'chat',
 					},
 					{
-						name: 'Mobihelp',
-						value: 'mobileHelp',
+						name: 'Email',
+						value: 'email',
 					},
 					{
 						name: 'Feedback Widget',
 						value: 'feedbackWidget',
 					},
 					{
+						name: 'Phone',
+						value: 'phone',
+					},
+					{
+						name: 'Portal',
+						value: 'portal',
+					},
+					{
+						name: 'Mobihelp',
+						value: 'mobileHelp',
+					},
+
+					{
 						name: 'Outbound Email',
 						value: 'OutboundEmail',
-					}
+					},
 				],
 				default: 'portal',
 				description: 'The channel through which the ticket was created.',
@@ -358,10 +359,10 @@ export class Freshdesk implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'ticket'
+							'ticket',
 						],
 						operation: [
-							'create'
+							'create',
 						],
 					},
 				},
@@ -370,29 +371,26 @@ export class Freshdesk implements INodeType {
 						displayName: 'Agent',
 						name: 'agent',
 						type: 'options',
-						required: false,
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getAgents'
+							loadOptionsMethod: 'getAgents',
 						},
 						description: 'ID of the agent to whom the ticket has been assigned',
 					},
 					{
 						displayName: 'CC Emails',
 						name: 'ccEmails',
-						required: false,
 						type: 'string',
 						default: '',
-						description: `separated by , email addresses added in the 'cc' field of the incoming ticket email`,
+						description: `Separated by , email addresses added in the 'cc' field of the incoming ticket email`,
 					},
 					{
 						displayName: 'Company',
 						name: 'company',
-						required: false,
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getCompanies'
+							loadOptionsMethod: 'getCompanies',
 						},
 						description: `Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above)`,
 					},
@@ -400,7 +398,6 @@ export class Freshdesk implements INodeType {
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
-						required: false,
 						default: '',
 						typeOptions: {
 							rows: 5,
@@ -411,7 +408,6 @@ export class Freshdesk implements INodeType {
 					{
 						displayName: 'Due By',
 						name: 'dueBy',
-						required: false,
 						type: 'dateTime',
 						default: '',
 						description: `Timestamp that denotes when the ticket is due to be resolved`,
@@ -420,7 +416,6 @@ export class Freshdesk implements INodeType {
 						displayName: 'Email config Id',
 						name: 'emailConfigId',
 						type: 'number',
-						required: false,
 						default: '',
 						description: `ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com)
 						If product_id is given and email_config_id is not given, product's primary email_config_id will be set`,
@@ -429,14 +424,12 @@ export class Freshdesk implements INodeType {
 						displayName: 'FR Due By',
 						name: 'frDueBy',
 						type: 'dateTime',
-						required: false,
 						default: '',
 						description: `Timestamp that denotes when the first response is due`,
 					},
 					{
 						displayName: 'Group',
 						name: 'group',
-						required: false,
 						type: 'options',
 						default: '',
 						typeOptions: {
@@ -455,7 +448,6 @@ export class Freshdesk implements INodeType {
 					{
 						displayName: 'Product',
 						name: 'product',
-						required: false,
 						type: 'options',
 						default: '',
 						typeOptions: {
@@ -475,7 +467,6 @@ export class Freshdesk implements INodeType {
 					{
 						displayName: 'Tags',
 						name: 'tags',
-						required: false,
 						type: 'string',
 						default: '',
 						description: `separated by , tags that have been associated with the ticket`,
@@ -488,24 +479,24 @@ export class Freshdesk implements INodeType {
 						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with.',
 						options: [
 							{
-								name: 'Question',
-								value: 'Question'
+								name: 'Feature Request',
+								value: 'Feature Request',
 							},
 							{
 								name: 'Incident',
-								value: 'Incident'
+								value: 'Incident',
 							},
 							{
 								name: 'Problem',
-								value: 'Problem'
+								value: 'Problem',
 							},
 							{
-								name: 'Feature Request',
-								value: 'Feature Request'
+								name: 'Question',
+								value: 'Question',
 							},
 							{
 								name: 'Refund',
-								value: 'Refund'
+								value: 'Refund',
 							},
 						]
 					},
@@ -568,10 +559,10 @@ export class Freshdesk implements INodeType {
 			// 	displayOptions: {
 			// 		show: {
 			// 			resource: [
-			// 				'ticket'
+			// 				'ticket',
 			// 			],
 			// 			operation: [
-			// 				'create'
+			// 				'create',
 			// 			],
 			// 			jsonParameters: [
 			// 				true,
@@ -581,7 +572,7 @@ export class Freshdesk implements INodeType {
 			// 	default: '',
 			// 	required: false,
 			// 	placeholder: `{
-			// 		"gadget":"Cold Welder"
+			// 		'gadget': 'Cold Welder',
 			// 	}`,
 			// 	description: 'Key value pairs containing the names and values of custom fields.',
 			// },
@@ -596,7 +587,7 @@ export class Freshdesk implements INodeType {
 							'ticket',
 						],
 						operation: [
-							'update'
+							'update',
 						]
 					},
 				},
@@ -612,10 +603,10 @@ export class Freshdesk implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'ticket'
+							'ticket',
 						],
 						operation: [
-							'update'
+							'update',
 						],
 					},
 				},
@@ -624,36 +615,32 @@ export class Freshdesk implements INodeType {
 						displayName: 'Agent',
 						name: 'agent',
 						type: 'options',
-						required: false,
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getAgents'
+							loadOptionsMethod: 'getAgents',
 						},
 						description: 'ID of the agent to whom the ticket has been assigned',
 					},
 					{
 						displayName: 'CC Emails',
 						name: 'ccEmails',
-						required: false,
 						type: 'string',
 						default: '',
-						description: `separated by , email addresses added in the 'cc' field of the incoming ticket email`,
+						description: `Separated by , email addresses added in the 'cc' field of the incoming ticket email`,
 					},
 					{
 						displayName: 'Company',
 						name: 'company',
-						required: false,
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getCompanies'
+							loadOptionsMethod: 'getCompanies',
 						},
 						description: `Company ID of the requester. This attribute can only be set if the Multiple Companies feature is enabled (Estate plan and above)`,
 					},
 					{
 						displayName: 'Due By',
 						name: 'dueBy',
-						required: false,
 						type: 'dateTime',
 						default: '',
 						description: `Timestamp that denotes when the ticket is due to be resolved`,
@@ -662,7 +649,6 @@ export class Freshdesk implements INodeType {
 						displayName: 'Email config Id',
 						name: 'emailConfigId',
 						type: 'number',
-						required: false,
 						default: '',
 						description: `ID of email config which is used for this ticket. (i.e., support@yourcompany.com/sales@yourcompany.com)
 						If product_id is given and email_config_id is not given, product's primary email_config_id will be set`,
@@ -671,18 +657,16 @@ export class Freshdesk implements INodeType {
 						displayName: 'FR Due By',
 						name: 'frDueBy',
 						type: 'dateTime',
-						required: false,
 						default: '',
 						description: `Timestamp that denotes when the first response is due`,
 					},
 					{
 						displayName: 'Group',
 						name: 'group',
-						required: false,
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getGroups'
+							loadOptionsMethod: 'getGroups',
 						},
 						description: `ID of the group to which the ticket has been assigned. The default value is the ID of the group that is associated with the given email_config_id`,
 					},
@@ -697,11 +681,10 @@ export class Freshdesk implements INodeType {
 					{
 						displayName: 'Product',
 						name: 'product',
-						required: false,
 						type: 'options',
 						default: '',
 						typeOptions: {
-							loadOptionsMethod: 'getProducts'
+							loadOptionsMethod: 'getProducts',
 						},
 						description: `ID of the product to which the ticket is associated.
 						It will be ignored if the email_config_id attribute is set in the request.`,
@@ -738,11 +721,6 @@ export class Freshdesk implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Requester Id',
-								value: 'requesterId',
-								description: `User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester's email.`,
-							},
-							{
 								name: 'Email',
 								value: 'email',
 								description: `Email address of the requester. If no contact exists with this email address in Freshdesk, it will be added as a new contact.`,
@@ -756,6 +734,11 @@ export class Freshdesk implements INodeType {
 								name: 'Phone',
 								value: 'phone',
 								description: `Phone number of the requester. If no contact exists with this phone number in Freshdesk, it will be added as a new contact. If the phone number is set and the email address is not, then the name attribute is mandatory.`,
+							},
+							{
+								name: 'Requester Id',
+								value: 'requesterId',
+								description: `User ID of the requester. For existing contacts, the requester_id can be passed instead of the requester's email.`,
 							},
 							{
 								name: 'Twitter Id',
@@ -811,33 +794,34 @@ export class Freshdesk implements INodeType {
 						required: true,
 						options: [
 							{
-								name: 'Email',
-								value: 'email',
-							},
-							{
-								name: 'Portal',
-								value: 'portal',
-							},
-							{
-								name: 'Phone',
-								value: 'phone',
-							},
-							{
 								name: 'Chat',
 								value: 'chat',
 							},
 							{
-								name: 'Mobihelp',
-								value: 'mobileHelp',
+								name: 'Email',
+								value: 'email',
 							},
 							{
 								name: 'Feedback Widget',
 								value: 'feedbackWidget',
 							},
 							{
+								name: 'Mobihelp',
+								value: 'mobileHelp',
+							},
+
+							{
 								name: 'Outbound Email',
 								value: 'OutboundEmail',
-							}
+							},
+							{
+								name: 'Phone',
+								value: 'phone',
+							},
+							{
+								name: 'Portal',
+								value: 'portal',
+							},
 						],
 						default: 'portal',
 						description: 'The channel through which the ticket was created.',
@@ -845,7 +829,6 @@ export class Freshdesk implements INodeType {
 					{
 						displayName: 'Tags',
 						name: 'tags',
-						required: false,
 						type: 'string',
 						default: '',
 						description: `separated by , tags that have been associated with the ticket`,
@@ -858,8 +841,8 @@ export class Freshdesk implements INodeType {
 						description: 'Helps categorize the ticket according to the different kinds of issues your support team deals with.',
 						options: [
 							{
-								name: 'Question',
-								value: 'Question'
+								name: 'Feature Request',
+								value: 'Feature Request'
 							},
 							{
 								name: 'Incident',
@@ -870,8 +853,8 @@ export class Freshdesk implements INodeType {
 								value: 'Problem'
 							},
 							{
-								name: 'Feature Request',
-								value: 'Feature Request'
+								name: 'Question',
+								value: 'Question'
 							},
 							{
 								name: 'Refund',
@@ -958,6 +941,53 @@ export class Freshdesk implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'Company ID',
+						name: 'companyId',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Include',
+						name: 'include',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'Company',
+								value: 'company',
+							},
+							{
+								name: 'Description',
+								value: 'description',
+							},
+							{
+								name: 'Requester',
+								value: 'requester',
+							},
+							{
+								name: 'Stats',
+								value: 'stats',
+							},
+						],
+						default: [],
+					},
+					{
+						displayName: 'Order',
+						name: 'order',
+						type: 'options',
+						options: [
+							{
+								name: 'ASC',
+								value: 'asc',
+							},
+							{
+								name: 'DESC',
+								value: 'desc',
+							},
+						],
+						default: 'desc',
+						description: 'Order sort attribute ascending or descending.',
+					},
+					{
 						displayName: 'Order By',
 						name: 'orderBy',
 						type: 'options',
@@ -979,63 +1009,16 @@ export class Freshdesk implements INodeType {
 						description: 'Sort collection by object attribute.',
 					},
 					{
-						displayName: 'Order',
-						name: 'order',
-						type: 'options',
-						options: [
-							{
-								name: 'ASC',
-								value: 'asc',
-							},
-							{
-								name: 'DESC',
-								value: 'desc',
-							},
-						],
-						default: 'desc',
-						description: 'Order sort attribute ascending or descending.',
-					},
-					{
-						displayName: 'Requester ID',
-						name: 'requesterId',
-						type: 'string',
-						default: '',
-					},
-					{
 						displayName: 'Requester Email',
 						name: 'requesterEmail',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Company ID',
-						name: 'companyId',
+						displayName: 'Requester ID',
+						name: 'requesterId',
 						type: 'string',
 						default: '',
-					},
-					{
-						displayName: 'Include',
-						name: 'include',
-						type: 'multiOptions',
-						options: [
-							{
-								name: 'Stats',
-								value: 'stats',
-							},
-							{
-								name: 'Requester',
-								value: 'requester',
-							},
-							{
-								name: 'Description',
-								value: 'description',
-							},
-							{
-								name: 'Company',
-								value: 'company',
-							},
-						],
-						default: [],
 					},
 					{
 						displayName: 'Updated Since',
@@ -1072,12 +1055,7 @@ export class Freshdesk implements INodeType {
 			// select them easily
 			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let agents;
-				try {
-					agents = await freshdeskApiRequest.call(this, 'GET', '/agents');
-				} catch (err) {
-					throw new Error(`Freshdesk Error: ${err}`);
-				}
+				const agents = await freshdeskApiRequest.call(this, 'GET', '/agents');
 				for (const agent of agents) {
 					const agentName = agent.contact.name;
 					const agentId = agent.id;
@@ -1094,12 +1072,7 @@ export class Freshdesk implements INodeType {
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let groups;
-				try {
-					groups = await freshdeskApiRequest.call(this, 'GET', '/groups');
-				} catch (err) {
-					throw new Error(`Freshdesk Error: ${err}`);
-				}
+				const groups = await freshdeskApiRequest.call(this, 'GET', '/groups');
 				for (const group of groups) {
 					const groupName = group.name;
 					const groupId = group.id;
@@ -1116,12 +1089,7 @@ export class Freshdesk implements INodeType {
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let products;
-				try {
-					products = await freshdeskApiRequest.call(this, 'GET', '/products');
-				} catch (err) {
-					throw new Error(`Freshdesk Error: ${err}`);
-				}
+				const products = await freshdeskApiRequest.call(this, 'GET', '/products');
 				for (const product of products) {
 					const productName = product.name;
 					const productId = product.id;
@@ -1138,12 +1106,7 @@ export class Freshdesk implements INodeType {
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let companies;
-				try {
-					companies = await freshdeskApiRequest.call(this, 'GET', '/companies');
-				} catch (err) {
-					throw new Error(`Freshdesk Error: ${err}`);
-				}
+				const companies = await freshdeskApiRequest.call(this, 'GET', '/companies');
 				for (const company of companies) {
 					const companyName = company.name;
 					const companyId = company.id;
@@ -1161,13 +1124,11 @@ export class Freshdesk implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
 		let responseData;
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let response;
-		for (let i = 0; i < length; i++) {
+		for (let i = 0; i < items.length; i++) {
 			if (resource === 'ticket') {
 				//https://developers.freshdesk.com/api/#create_ticket
 				if (operation === 'create') {
@@ -1292,15 +1253,15 @@ export class Freshdesk implements INodeType {
 					}
 					if (updateFields.status) {
 						//@ts-ignore
-						body.status = Status[capitalize(updateFields.status)]
+						body.status = Status[capitalize(updateFields.status)];
 					}
 					if (updateFields.priority) {
 						//@ts-ignore
-						body.priority = Priority[capitalize(updateFields.priority)]
+						body.priority = Priority[capitalize(updateFields.priority)];
 					}
 					if (updateFields.source) {
 						//@ts-ignore
-						body.source = Source[capitalize(updateFields.source)]
+						body.source = Source[capitalize(updateFields.source)];
 					}
 					if (updateFields.name) {
 						body.name = updateFields.name as string;
@@ -1385,6 +1346,12 @@ export class Freshdesk implements INodeType {
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
+				if (responseData === undefined) {
+					responseData = { json: {
+						success: true,
+					} };
+				}
+
 				returnData.push(responseData as IDataObject);
 			}
 		}

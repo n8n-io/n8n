@@ -41,12 +41,15 @@ export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.log(error.response.body)
-		const errorMessage = error.response.body.message || error.response.body.Message || error.response.body.description;
-		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
-		};
-		return new Error(error)
+		if (error.response) {
+			let errorMessage = error.response.body.message || error.response.body.description || error.message;
+			if (error.response.body && error.response.body.errors) {
+				errorMessage = error.response.body.errors.map((err: IDataObject) => `"${err.field}" => ${err.message}`).join(', ');
+			}
+			throw new Error(`Freshdesk error response [${error.statusCode}]: ${errorMessage}`);
+		}
+
+		throw error;
 	}
 }
 
