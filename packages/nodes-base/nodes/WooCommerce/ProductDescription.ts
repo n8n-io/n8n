@@ -19,9 +19,9 @@ export const productOperations = [
 				description: 'Create a product',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a product',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a product',
 			},
 			{
 				name: 'Get',
@@ -34,9 +34,9 @@ export const productOperations = [
 				description: 'Get all products',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a product',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a product',
 			},
 		],
 		default: 'create',
@@ -118,20 +118,20 @@ export const productFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Visible',
-						value: 'visible',
-					},
-					{
 						name: 'Catalog',
 						value: 'catalog',
+					},
+					{
+						name: 'Hidden',
+						value: 'hidden',
 					},
 					{
 						name: 'Search',
 						value: 'search',
 					},
 					{
-						name: 'Hidden',
-						value: 'hidden',
+						name: 'Visible',
+						value: 'visible',
 					},
 				],
 				default: 'visible',
@@ -219,13 +219,6 @@ export const productFields = [
 				type: 'string',
 				default: '',
 				description: 'Product parent ID.',
-			},
-			{
-				displayName: 'Price',
-				name: 'price',
-				type: 'string',
-				default: '',
-				description: 'Current product price.',
 			},
 			{
 				displayName: 'Purchase Note',
@@ -753,13 +746,6 @@ export const productFields = [
 				description: 'Product parent ID.',
 			},
 			{
-				displayName: 'Price',
-				name: 'price',
-				type: 'string',
-				default: '',
-				description: 'Current product price.',
-			},
-			{
 				displayName: 'Purchase Note',
 				name: 'purchaseNote',
 				type: 'string',
@@ -1250,13 +1236,6 @@ export const productFields = [
 				type: 'string',
 				default: '',
 				description: 'Limit result set to products based on a minimum price.',
-			},
-			{
-				displayName: 'On Sale',
-				name: 'onSale',
-				type: 'boolean',
-				default: false,
-				description: 'Limit result set to products on sale.',
 			},
 			{
 				displayName: 'Order',
