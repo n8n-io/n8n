@@ -1,3 +1,5 @@
+import * as moment from 'moment-timezone';
+
 import {IPollFunctions} from 'n8n-core';
 import {
 	IDataObject,
@@ -12,22 +14,21 @@ import {
 	clockifyApiRequest,
 } from './GenericFunctions';
 
-import {IWorkspaceDto} from "./WorkpaceInterfaces";
-import {EntryTypeEnum} from "./EntryTypeEnum";
-import {ICurrentUserDto} from "./UserDtos";
-import * as moment from "moment";
+import { EntryTypeEnum } from './EntryTypeEnum';
+import { ICurrentUserDto } from './UserDtos';
+import { IWorkspaceDto } from './WorkpaceInterfaces';
 
 
 export class ClockifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Clockify Event',
-		icon: 'file:images/clockify-mark-blue.png',
+		displayName: 'Clockify Trigger',
+		icon: 'file:clockify.png',
 		name: 'clockifyTrigger',
 		group: ['trigger'],
 		version: 1,
 		description: 'Watches Clockify For Events',
 		defaults: {
-			name: 'Clockify Event',
+			name: 'Clockify Trigger',
 			color: '#00FF00',
 		},
 		inputs: [],
@@ -38,6 +39,7 @@ export class ClockifyTrigger implements INodeType {
 				required: true,
 			}
 		],
+		polling: true,
 		properties: [
 			{
 				displayName: 'Workspace',
@@ -60,7 +62,7 @@ export class ClockifyTrigger implements INodeType {
 					}
 				],
 				required: true,
-				default: '',
+				default: EntryTypeEnum.NEW_TIME_ENTRY,
 			},
 		]
 	};
@@ -89,7 +91,12 @@ export class ClockifyTrigger implements INodeType {
 		const triggerField = this.getNodeParameter('watchField') as EntryTypeEnum;
 		const workspaceId  = this.getNodeParameter('workspaceId');
 
-		const userInfo : ICurrentUserDto = await clockifyApiRequest.call(this,'GET', 'user');
+		if (!webhookData.userId) {
+			// Cache the user-id that we do not have to request it every time
+			const userInfo: ICurrentUserDto = await clockifyApiRequest.call(this, 'GET', 'user');
+			webhookData.userId = userInfo.id;
+		}
+
 		const qs : IDataObject = {};
 		let resource: string;
 		let result = null;
@@ -97,21 +104,18 @@ export class ClockifyTrigger implements INodeType {
 		switch (triggerField) {
 			case EntryTypeEnum.NEW_TIME_ENTRY :
 			default:
-				resource = `workspaces/${workspaceId}/user/${userInfo.id}/time-entries`;
+				const workflowTimezone = this.getTimezone();
+				resource = `workspaces/${workspaceId}/user/${webhookData.userId}/time-entries`;
 				qs.start = webhookData.lastTimeChecked;
-				qs.end = moment().toISOString();
+				qs.end = moment().tz(workflowTimezone).format('YYYY-MM-DDTHH:mm:SS') + 'Z';
 				qs.hydrated = true;
 				qs['in-progress'] = false;
 			break;
 		}
 
-		try {
-			result = await clockifyApiRequest.call(this, 'GET', resource, {}, qs );
-			webhookData.lastTimeChecked = qs.end_date;
-		}
-		catch( e ) {
-			throw new Error(`Clockify Exception: ${e}`);
-		}
+		result = await clockifyApiRequest.call(this, 'GET', resource, {}, qs );
+		webhookData.lastTimeChecked = qs.end;
+
 		if (Array.isArray(result) && result.length !== 0) {
 			result = [this.helpers.returnJsonArray(result)];
 		}

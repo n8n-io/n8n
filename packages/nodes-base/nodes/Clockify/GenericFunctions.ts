@@ -2,16 +2,16 @@ import { OptionsWithUri } from 'request';
 import {
 	ILoadOptionsFunctions,
 	IPollFunctions
-} from "n8n-core";
+} from 'n8n-core';
 
-import {IDataObject} from "n8n-workflow";
+import { IDataObject } from 'n8n-workflow';
 
 export async function clockifyApiRequest(this: ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('clockifyApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const BASE_URL = `https://api.clockify.me/api/v1`;
+	const BASE_URL = 'https://api.clockify.me/api/v1';
 
 	const options: OptionsWithUri = {
 		headers: {
