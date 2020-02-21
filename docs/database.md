@@ -92,7 +92,6 @@ should not be too much work:
  - CockroachDB
  - MariaDB
  - Microsoft SQL
- - MySQL
  - Oracle
 
 If you can not use any of the currently supported databases for some reason and
