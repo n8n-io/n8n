@@ -33,7 +33,7 @@ export class EmailSend implements INodeType {
 			}
 		],
 		properties: [
-			// TODO: Add cc, bcc and choice for text as text or html  (maybe also from name)
+			// TODO: Add choice for text as text or html  (maybe also from name)
 			{
 				displayName: 'From Email',
 				name: 'fromEmail',
@@ -60,6 +60,15 @@ export class EmailSend implements INodeType {
 				required: false,
 				placeholder: 'cc@example.com',
 				description: 'Email address of CC recipient.',
+			},
+			{
+				displayName: 'BCC Email',
+				name: 'bccEmail',
+				type: 'string',
+				default: '',
+				required: false,
+				placeholder: 'bcc@example.com',
+				description: 'Email address of BCC recipient.',
 			},
 			{
 				displayName: 'Subject',
@@ -123,6 +132,7 @@ export class EmailSend implements INodeType {
 		const fromEmail = this.getNodeParameter('fromEmail') as string;
 		const toEmail = this.getNodeParameter('toEmail') as string;
 		const ccEmail = this.getNodeParameter('ccEmail') as string;
+		const bccEmail = this.getNodeParameter('bccEmail') as string;
 		const subject = this.getNodeParameter('subject') as string;
 		const text = this.getNodeParameter('text') as string;
 		const html = this.getNodeParameter('html') as string;
@@ -162,6 +172,7 @@ export class EmailSend implements INodeType {
 			from: fromEmail,
 			to: toEmail,
 			cc: ccEmail,
+			bcc: bccEmail,
 			subject,
 			text,
 			html,
