@@ -12,14 +12,30 @@ import {
 import {
 	woocommerceApiRequest,
 	woocommerceApiRequestAllItems,
+	toSnakeCase,
+	setMetadata,
 } from './GenericFunctions';
 import {
 	productFields,
 	productOperations,
 } from './ProductDescription';
 import {
-	IProduct, IImage, IDimension,
+	orderFields,
+	orderOperations,
+} from './Orderdescription';
+import {
+	IProduct,
+	IImage,
+	IDimension,
 } from './ProductInterface';
+import {
+	IOrder,
+	IAddress,
+	ICouponLine,
+	IFeeLine,
+	ILineItem,
+	IShoppingLine,
+} from './OrderInterface';
 
 export class WooCommerce implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,12 +68,18 @@ export class WooCommerce implements INodeType {
 						name: 'Product',
 						value: 'product',
 					},
+					{
+						name: 'Order',
+						value: 'order',
+					},
 				],
 				default: 'product',
 				description: 'Resource to consume.',
 			},
 			...productOperations,
 			...productFields,
+			...orderOperations,
+			...orderFields,
 		],
 	};
 
@@ -413,6 +435,201 @@ export class WooCommerce implements INodeType {
 				if (operation === 'delete') {
 					const productId = this.getNodeParameter('productId', i) as string;
 					responseData = await woocommerceApiRequest.call(this,'DELETE', `/products/${productId}`, {}, { force: true });
+				}
+			}
+			if (resource === 'order') {
+				//https://woocommerce.github.io/woocommerce-rest-api-docs/#create-an-order
+				if (operation === 'create') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IOrder = {};
+					if (additionalFields.currency) {
+						body.currency = additionalFields.currency as string;
+					}
+					if (additionalFields.customerId) {
+						body.customer_id = parseInt(additionalFields.customerId as string, 10);
+					}
+					if (additionalFields.customerNote) {
+						body.customer_note = additionalFields.customerNote as string;
+					}
+					if (additionalFields.parentId) {
+						body.parent_id = parseInt(additionalFields.parentId as string, 10);
+					}
+					if (additionalFields.paymentMethodId) {
+						body.payment_method = additionalFields.paymentMethodId as string
+					}
+					if (additionalFields.paymentMethodTitle) {
+						body.payment_method_title = additionalFields.paymentMethodTitle as string
+					}
+					if (additionalFields.setPaid) {
+						body.set_paid = additionalFields.setPaid as boolean;
+					}
+					if (additionalFields.status) {
+						body.status = additionalFields.status as string;
+					}
+					if (additionalFields.transactionID) {
+						body.transaction_id = additionalFields.transactionID as string;
+					}
+					const billing = (this.getNodeParameter('billingUi', i) as IDataObject).billingValues as IAddress;
+					if (billing !== undefined) {
+						body.billing = billing;
+						toSnakeCase(billing as IDataObject);
+					}
+					const shipping = (this.getNodeParameter('shippingUi', i) as IDataObject).shippingValues as IAddress;
+					if (shipping !== undefined) {
+						body.shipping = shipping;
+						toSnakeCase(shipping as IDataObject);
+					}
+					const couponLines = (this.getNodeParameter('couponLinesUi', i) as IDataObject).couponLinesValues as ICouponLine[];
+					if (couponLines) {
+						body.coupon_lines = couponLines;
+						setMetadata(couponLines);
+						toSnakeCase(couponLines);
+					}
+					const feeLines = (this.getNodeParameter('feeLinesUi', i) as IDataObject).feeLinesValues as IFeeLine[];
+					if (feeLines) {
+						body.fee_lines = feeLines;
+						setMetadata(feeLines);
+						toSnakeCase(feeLines);
+					}
+					const lineItems = (this.getNodeParameter('lineItemsUi', i) as IDataObject).lineItemsValues as ILineItem[];
+					if (lineItems) {
+						body.line_items = lineItems;
+						setMetadata(lineItems);
+						toSnakeCase(lineItems);
+						//@ts-ignore
+					}
+					const metadata = (this.getNodeParameter('metadataUi', i) as IDataObject).metadataValues as IDataObject[];
+					if (metadata) {
+						body.meta_data = metadata;
+					}
+					const shippingLines = (this.getNodeParameter('shippingLinesUi', i) as IDataObject).shippingLinesValues as IShoppingLine[];
+					if (shippingLines) {
+						body.shipping_lines = shippingLines;
+						setMetadata(shippingLines);
+						toSnakeCase(shippingLines);
+					}
+					responseData = await woocommerceApiRequest.call(this, 'POST', '/orders', body);
+				}
+				//https://woocommerce.github.io/woocommerce-rest-api-docs/#update-an-order
+				if (operation === 'update') {
+					const orderId = this.getNodeParameter('orderId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IOrder = {};
+					if (updateFields.currency) {
+						body.currency = updateFields.currency as string;
+					}
+					if (updateFields.customerId) {
+						body.customer_id = parseInt(updateFields.customerId as string, 10);
+					}
+					if (updateFields.customerNote) {
+						body.customer_note = updateFields.customerNote as string;
+					}
+					if (updateFields.parentId) {
+						body.parent_id = parseInt(updateFields.parentId as string, 10);
+					}
+					if (updateFields.paymentMethodId) {
+						body.payment_method = updateFields.paymentMethodId as string
+					}
+					if (updateFields.paymentMethodTitle) {
+						body.payment_method_title = updateFields.paymentMethodTitle as string
+					}
+
+					if (updateFields.status) {
+						body.status = updateFields.status as string;
+					}
+					if (updateFields.transactionID) {
+						body.transaction_id = updateFields.transactionID as string;
+					}
+					const billing = (this.getNodeParameter('billingUi', i) as IDataObject).billingValues as IAddress;
+					if (billing !== undefined) {
+						body.billing = billing;
+						toSnakeCase(billing as IDataObject);
+					}
+					const shipping = (this.getNodeParameter('shippingUi', i) as IDataObject).shippingValues as IAddress;
+					if (shipping !== undefined) {
+						body.shipping = shipping;
+						toSnakeCase(shipping as IDataObject);
+					}
+					const couponLines = (this.getNodeParameter('couponLinesUi', i) as IDataObject).couponLinesValues as ICouponLine[];
+					if (couponLines) {
+						body.coupon_lines = couponLines;
+						setMetadata(couponLines);
+						toSnakeCase(couponLines);
+					}
+					const feeLines = (this.getNodeParameter('feeLinesUi', i) as IDataObject).feeLinesValues as IFeeLine[];
+					if (feeLines) {
+						body.fee_lines = feeLines;
+						setMetadata(feeLines);
+						toSnakeCase(feeLines);
+					}
+					const lineItems = (this.getNodeParameter('lineItemsUi', i) as IDataObject).lineItemsValues as ILineItem[];
+					if (lineItems) {
+						body.line_items = lineItems;
+						setMetadata(lineItems);
+						toSnakeCase(lineItems);
+					}
+					const metadata = (this.getNodeParameter('metadataUi', i) as IDataObject).metadataValues as IDataObject[];
+					if (metadata) {
+						body.meta_data = metadata;
+					}
+					const shippingLines = (this.getNodeParameter('shippingLinesUi', i) as IDataObject).shippingLinesValues as IShoppingLine[];
+					if (shippingLines) {
+						body.shipping_lines = shippingLines;
+						setMetadata(shippingLines);
+						toSnakeCase(shippingLines);
+					}
+					responseData = await woocommerceApiRequest.call(this, 'PUT', `/orders/${orderId}`, body);
+				}
+				//https://woocommerce.github.io/woocommerce-rest-api-docs/#retrieve-an-order
+				if (operation === 'get') {
+					const orderId = this.getNodeParameter('orderId', i) as string;
+					responseData = await woocommerceApiRequest.call(this,'GET', `/orders/${orderId}`, {}, qs);
+				}
+				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-orders
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					if (options.after) {
+						qs.after = options.after as string;
+					}
+					if (options.before) {
+						qs.before = options.before as string;
+					}
+					if (options.category) {
+						qs.category = options.category as string;
+					}
+					if (options.customer) {
+						qs.customer = parseInt(options.customer as string, 10);
+					}
+					if (options.decimalPoints) {
+						qs.dp = options.decimalPoints as number;
+					}
+					if (options.product) {
+						qs.product = parseInt(options.product as string, 10);
+					}
+					if (options.order) {
+						qs.order = options.order as string;
+					}
+					if (options.orderBy) {
+						qs.orderby = options.orderBy as string;
+					}
+					if (options.search) {
+						qs.search = options.search as string;
+					}
+					if (options.status) {
+						qs.status = options.status as string;
+					}
+					if (returnAll === true) {
+						responseData = await woocommerceApiRequestAllItems.call(this, 'GET', '/orders', {}, qs);
+					} else {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+						responseData = await woocommerceApiRequest.call(this, 'GET', '/orders', {}, qs);
+					}
+				}
+				//https://woocommerce.github.io/woocommerce-rest-api-docs/#delete-an-order
+				if (operation === 'delete') {
+					const orderId = this.getNodeParameter('orderId', i) as string;
+					responseData = await woocommerceApiRequest.call(this,'DELETE', `/orders/${orderId}`, {}, { force: true });
 				}
 			}
 			if (Array.isArray(responseData)) {
