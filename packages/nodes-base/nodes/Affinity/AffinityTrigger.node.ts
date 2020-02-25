@@ -240,6 +240,11 @@ export class AffinityTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
+
+		if (bodyData.type === 'sample.webhook') {
+			return {}
+		}
+
 		if (resolveData === false) {
 			// Return the data as it got received
 			return {
