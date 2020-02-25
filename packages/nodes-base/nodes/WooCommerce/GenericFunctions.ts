@@ -1,5 +1,7 @@
 import { OptionsWithUri } from 'request';
 import { createHash } from 'crypto';
+import { snakeCase } from 'change-case';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -7,7 +9,16 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import {
+	IDataObject,
+	ICredentialDataDecryptedObject
+} from 'n8n-workflow';
+import {
+	 IShoppingLine,
+	 IFeeLine,
+	 ILineItem,
+	 ICouponLine
+} from './OrderInterface';
 
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('wooCommerceApi');
@@ -77,3 +88,53 @@ export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) 
 	const data = `${credentials.consumerKey},${credentials.consumerSecret}`;
 	return createHash('md5').update(data).digest('hex');
 }
+
+export function setMetadata(data:
+	IShoppingLine[] |
+	IShoppingLine[] |
+	IFeeLine[] |
+	ILineItem[] |
+	ICouponLine[]) {
+	for (let i = 0; i < data.length; i++) {
+		//@ts-ignore\
+		if (data[i].metadataUi && data[i].metadataUi.metadataValues) {
+			//@ts-ignore
+			data[i].meta_data = data[i].metadataUi.metadataValues;
+			//@ts-ignore
+			delete data[i].metadataUi
+			console.log(data[i]);
+		} else {
+			//@ts-ignore
+			delete data[i].metadataUi;
+		}
+	}
+}
+
+export function toSnakeCase(data:
+	IShoppingLine[] |
+	IShoppingLine[] |
+	IFeeLine[] |
+	ILineItem[] |
+	ICouponLine[] |
+	IDataObject) {
+	if (!Array.isArray(data)) {
+		data = [data];
+	}
+	let remove = false;
+	for (let i = 0; i < data.length; i++) {
+		for (const key of Object.keys(data[i])) {
+			//@ts-ignore
+			if (data[i][snakeCase(key)] === undefined) {
+				remove = true;
+			}
+			//@ts-ignore
+			data[i][snakeCase(key)] = data[i][key]
+			if (remove) {
+				//@ts-ignore
+				delete data[i][key];
+				remove = false;
+			}
+		}
+	}
+}
+
