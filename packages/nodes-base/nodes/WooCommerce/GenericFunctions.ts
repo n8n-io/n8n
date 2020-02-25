@@ -101,8 +101,7 @@ export function setMetadata(data:
 			//@ts-ignore
 			data[i].meta_data = data[i].metadataUi.metadataValues;
 			//@ts-ignore
-			delete data[i].metadataUi
-			console.log(data[i]);
+			delete data[i].metadataUi;
 		} else {
 			//@ts-ignore
 			delete data[i].metadataUi;
@@ -128,7 +127,7 @@ export function toSnakeCase(data:
 				remove = true;
 			}
 			//@ts-ignore
-			data[i][snakeCase(key)] = data[i][key]
+			data[i][snakeCase(key)] = data[i][key];
 			if (remove) {
 				//@ts-ignore
 				delete data[i][key];
@@ -137,4 +136,3 @@ export function toSnakeCase(data:
 		}
 	}
 }
-
