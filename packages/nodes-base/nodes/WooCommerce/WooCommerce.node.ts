@@ -10,10 +10,10 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import {
+	setMetadata,
+	toSnakeCase,
 	woocommerceApiRequest,
 	woocommerceApiRequestAllItems,
-	toSnakeCase,
-	setMetadata,
 } from './GenericFunctions';
 import {
 	productFields,
@@ -22,18 +22,18 @@ import {
 import {
 	orderFields,
 	orderOperations,
-} from './Orderdescription';
+} from './OrderDescription';
 import {
-	IProduct,
-	IImage,
 	IDimension,
+	IImage,
+	IProduct,
 } from './ProductInterface';
 import {
-	IOrder,
 	IAddress,
 	ICouponLine,
 	IFeeLine,
 	ILineItem,
+	IOrder,
 	IShoppingLine,
 } from './OrderInterface';
 
@@ -41,7 +41,7 @@ export class WooCommerce implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'WooCommerce',
 		name: 'wooCommerce',
-		icon: 'file:woocommerce.png',
+		icon: 'file:wooCommerce.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -65,12 +65,12 @@ export class WooCommerce implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Product',
-						value: 'product',
-					},
-					{
 						name: 'Order',
 						value: 'order',
+					},
+					{
+						name: 'Product',
+						value: 'product',
 					},
 				],
 				default: 'product',
@@ -455,10 +455,10 @@ export class WooCommerce implements INodeType {
 						body.parent_id = parseInt(additionalFields.parentId as string, 10);
 					}
 					if (additionalFields.paymentMethodId) {
-						body.payment_method = additionalFields.paymentMethodId as string
+						body.payment_method = additionalFields.paymentMethodId as string;
 					}
 					if (additionalFields.paymentMethodTitle) {
-						body.payment_method_title = additionalFields.paymentMethodTitle as string
+						body.payment_method_title = additionalFields.paymentMethodTitle as string;
 					}
 					if (additionalFields.setPaid) {
 						body.set_paid = additionalFields.setPaid as boolean;
@@ -528,10 +528,10 @@ export class WooCommerce implements INodeType {
 						body.parent_id = parseInt(updateFields.parentId as string, 10);
 					}
 					if (updateFields.paymentMethodId) {
-						body.payment_method = updateFields.paymentMethodId as string
+						body.payment_method = updateFields.paymentMethodId as string;
 					}
 					if (updateFields.paymentMethodTitle) {
-						body.payment_method_title = updateFields.paymentMethodTitle as string
+						body.payment_method_title = updateFields.paymentMethodTitle as string;
 					}
 
 					if (updateFields.status) {

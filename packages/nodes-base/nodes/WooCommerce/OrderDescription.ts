@@ -112,13 +112,6 @@ export const orderFields = [
 				description: 'Payment method title.',
 			},
 			{
-				displayName: 'Payment Method Title',
-				name: 'paymentMethodTitle',
-				type: 'string',
-				default: '',
-				description: 'Payment method title.',
-			},
-			{
 				displayName: 'Set Paid',
 				name: 'setPaid',
 				type: 'boolean',
@@ -131,12 +124,12 @@ export const orderFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'completed',
-						value: 'completed',
-					},
-					{
 						name: 'cancelled',
 						value: 'cancelled',
+					},
+					{
+						name: 'completed',
+						value: 'completed',
 					},
 					{
 						name: 'failed',
@@ -832,24 +825,17 @@ export const orderFields = [
 				description: 'Payment method title.',
 			},
 			{
-				displayName: 'Payment Method Title',
-				name: 'paymentMethodTitle',
-				type: 'string',
-				default: '',
-				description: 'Payment method title.',
-			},
-			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
 				options: [
 					{
-						name: 'completed',
-						value: 'completed',
-					},
-					{
 						name: 'cancelled',
 						value: 'cancelled',
+					},
+					{
+						name: 'completed',
+						value: 'completed',
 					},
 					{
 						name: 'failed',
@@ -1568,6 +1554,10 @@ export const orderFields = [
 				displayName: 'Decimal Points',
 				name: 'decimalPoints',
 				type: 'number',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 10,
+				},
 				default: 2,
 				description: 'Number of decimal points to use in each resource.',
 			},
