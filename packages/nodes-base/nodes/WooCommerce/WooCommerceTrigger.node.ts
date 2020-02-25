@@ -21,7 +21,7 @@ export class WooCommerceTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'WooCommerce Trigger',
 		name: 'wooCommerceTrigger',
-		icon: 'file:woocommerce.png',
+		icon: 'file:wooCommerce.png',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle WooCommerce events via webhooks',
