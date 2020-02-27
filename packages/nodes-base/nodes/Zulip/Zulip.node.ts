@@ -195,7 +195,7 @@ export class Zulip implements INodeType {
 								contentType: items[i].binary[binaryProperty].mimeType,
 							}
 						}
-					}
+					};
 					responseData = await zulipApiRequest.call(this, 'POST', '/user_uploads', {}, {}, undefined, { formData } );
 					responseData.uri = `${credentials!.url}${responseData.uri}`;
 				}
