@@ -3,7 +3,6 @@ import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {
@@ -20,14 +19,15 @@ export async function zulipApiRequest(this: IExecuteFunctions | IWebhookFunction
 		throw new Error('No credentials got returned!');
 	}
 
-	const base64Credentials = `${Buffer.from(`${credentials.email}:${credentials.apiKey}`).toString(BINARY_ENCODING)}`;
-
 	const endpoint = `${credentials.url}/api/v1`;
 
 	let options: OptionsWithUri = {
+		auth: {
+			user: credentials.email as string,
+			password: credentials.apiKey as string,
+		},
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
-			Authorization: `Basic ${base64Credentials}`,
 		},
 		method,
 		form: body,
@@ -46,7 +46,7 @@ export async function zulipApiRequest(this: IExecuteFunctions | IWebhookFunction
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.response) {
-			let errorMessage = error.response.body.message || error.response.body.description || error.message;
+			const errorMessage = error.response.body.message || error.response.body.description || error.message;
 			throw new Error(`Zulip error response [${error.statusCode}]: ${errorMessage}`);
 		}
 		throw error;
