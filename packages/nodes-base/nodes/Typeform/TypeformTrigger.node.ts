@@ -17,8 +17,6 @@ import {
 	ITypeformAnswerField,
 	ITypeformDefinition,
 } from './GenericFunctions';
-import { Webhook } from '../Webhook.node';
-
 
 export class TypeformTrigger implements INodeType {
 	description: INodeTypeDescription = {
