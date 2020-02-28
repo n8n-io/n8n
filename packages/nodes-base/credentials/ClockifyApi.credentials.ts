@@ -17,5 +17,11 @@ export class ClockifyApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'Workspace ID',
+			name: 'workspaceId',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
 	];
 }
