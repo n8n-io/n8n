@@ -42,7 +42,7 @@ export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunction
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.response) {
-			const errorMessage = error.message || (error.response.body && error.response.body.message )
+			const errorMessage = error.message || (error.response.body && error.response.body.message );
 			throw new Error(`Drift error response [${error.statusCode}]: ${errorMessage}`);
 		}
 		throw error;
