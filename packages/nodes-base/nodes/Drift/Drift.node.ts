@@ -82,7 +82,7 @@ export class Drift implements INodeType {
 						body.phone = additionalFields.phone as string;
 					}
 					responseData = await driftApiRequest.call(this, 'POST', '/contacts', { attributes: body });
-					responseData = responseData.data
+					responseData = responseData.data;
 				}
 				//https://devdocs.drift.com/docs/updating-a-contact
 				if (operation === 'update') {
@@ -99,13 +99,13 @@ export class Drift implements INodeType {
 						body.email = updateFields.email as string;
 					}
 					responseData = await driftApiRequest.call(this, 'PATCH', `/contacts/${contactId}`, { attributes: body });
-					responseData = responseData.data
+					responseData = responseData.data;
 				}
 				//https://devdocs.drift.com/docs/retrieving-contact
 				if (operation === 'get') {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					responseData = await driftApiRequest.call(this, 'GET', `/contacts/${contactId}`);
-					responseData = responseData.data
+					responseData = responseData.data;
 				}
 				//https://devdocs.drift.com/docs/listing-custom-attributes
 				if (operation === 'getCustomAttributes') {
