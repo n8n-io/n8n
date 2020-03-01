@@ -198,7 +198,7 @@ class App {
 					});
 				}
 
-				jwt.verify(token, getKey, {}, (err: Error, decoded: string) => {
+				jwt.verify(token, getKey, {}, (err: Error, decoded: object) => {
 					if (err) return ResponseHelper.jwtAuthAuthorizationError(res, "Invalid token");
 
 					next();
