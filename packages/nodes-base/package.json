@@ -206,6 +206,7 @@
             "dist/nodes/Segment/Segment.node.js",
             "dist/nodes/Telegram/Telegram.node.js",
             "dist/nodes/Telegram/TelegramTrigger.node.js",
+            "dist/nodes/Text/Text.node.js",
             "dist/nodes/Todoist/Todoist.node.js",
             "dist/nodes/Toggl/TogglTrigger.node.js",
             "dist/nodes/Trello/Trello.node.js",
