@@ -68,6 +68,7 @@
             "dist/credentials/ShopifyApi.credentials.js",
             "dist/credentials/SalesforceOAuth2Api.credentials.js",
             "dist/credentials/SlackApi.credentials.js",
+            "dist/credentials/SlackOAuth2Api.credentials.js",
             "dist/credentials/Smtp.credentials.js",
             "dist/credentials/StripeApi.credentials.js",
             "dist/credentials/TelegramApi.credentials.js",
