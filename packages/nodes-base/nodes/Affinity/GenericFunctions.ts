@@ -42,8 +42,8 @@ export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunct
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.response) {
-			let errorMessage = error.response.body.message || error.response.body.description || error.message;
-			throw new Error(`Affinity error response [${error.statusCode}]: ${errorMessage}`);
+			const errorMessage = error.response.body.message || error.response.body.description || error.message;
+			throw new Error(`Affinity error response: ${errorMessage}`);
 		}
 		throw error;
 	}
@@ -57,10 +57,8 @@ export async function affinityApiRequestAllItems(this: IHookFunctions | ILoadOpt
 
 	query.page_size = 500;
 
-	let uri: string | undefined;
-
 	do {
-		responseData = await affinityApiRequest.call(this, method, resource, body, query, uri);
+		responseData = await affinityApiRequest.call(this, method, resource, body, query);
 		// @ts-ignore
 		query.page_token = responseData.page_token;
 		returnData.push.apply(returnData, responseData[propertyName]);
@@ -75,7 +73,7 @@ export async function affinityApiRequestAllItems(this: IHookFunctions | ILoadOpt
 export function eventsExist(subscriptions: string[], currentSubsriptions: string[]) {
 	for (const subscription of currentSubsriptions) {
 		if (!subscriptions.includes(subscription)) {
-			return false
+			return false;
 		}
 	}
 	return true;
@@ -91,5 +89,5 @@ export function mapResource(key: string) {
 		list_entry: 'list-entries',
 		field: 'fields',
 		file: 'files',
-	}[key]
+	}[key];
 }
