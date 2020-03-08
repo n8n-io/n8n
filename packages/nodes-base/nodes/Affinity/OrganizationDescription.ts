@@ -16,17 +16,17 @@ export const organizationOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a organization',
+				description: 'Create an organization',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a organization',
+				description: 'Delete an organization',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a organization',
+				description: 'Get an organization',
 			},
 			{
 				name: 'Get All',
@@ -36,7 +36,7 @@ export const organizationOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a organization',
+				description: 'Update an organization',
 			},
 		],
 		default: 'create',

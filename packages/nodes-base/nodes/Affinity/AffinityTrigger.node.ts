@@ -99,10 +99,6 @@ export class AffinityTrigger implements INodeType {
 						value: 'list_entry.created',
 					},
 					{
-						name: 'list_entry.updated',
-						value: 'list_entry.updated',
-					},
-					{
 						name: 'list_entry.deleted',
 						value: 'list_entry.deleted',
 					},
@@ -158,13 +154,6 @@ export class AffinityTrigger implements INodeType {
 				default: [],
 				required: true,
 				description: 'Webhook events that will be enabled for that endpoint.',
-			},
-			{
-				displayName: 'Resolve Data',
-				name: 'resolveData',
-				type: 'boolean',
-				default: true,
-				description: 'By default does the webhook-data only contain the ID of the object.<br />If this option gets activated it will resolve the data automatically.',
 			},
 		],
 
@@ -239,25 +228,15 @@ export class AffinityTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
-		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 
 		if (bodyData.type === 'sample.webhook') {
-			return {}
-		}
-
-		if (resolveData === false) {
-			// Return the data as it got received
-			return {
-				workflowData: [
-					this.helpers.returnJsonArray(bodyData),
-				],
-			};
+			return {};
 		}
 
 		let responseData: IDataObject = {};
 
 		if (bodyData.type && bodyData.body) {
-			const resource = (bodyData.type as string).split('.')[0]
+			const resource = (bodyData.type as string).split('.')[0];
 			//@ts-ignore
 			const id = bodyData.body.id;
 			responseData = await affinityApiRequest.call(this, 'GET', `/${mapResource(resource)}/${id}`);
