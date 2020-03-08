@@ -101,7 +101,7 @@ export class Affinity implements INodeType {
 				for (const person of persons) {
 					let personName = `${person.first_name} ${person.last_name}`;
 					if (person.primary_email !== null) {
-						personName+= ` (${person.primary_email})`
+						personName+= ` (${person.primary_email})`;
 					}
 					const personId = person.id;
 					returnData.push({
