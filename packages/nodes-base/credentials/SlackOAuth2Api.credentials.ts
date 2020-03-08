@@ -4,6 +4,16 @@ import {
 } from 'n8n-workflow';
 
 //https://api.slack.com/authentication/oauth-v2
+const userScopes = [
+	'chat:write',
+	'conversations:history',
+	'conversations:read',
+	'files:read',
+	'files:write',
+	'stars:read',
+	'stars:write',
+]
+
 
 export class SlackOAuth2Api implements ICredentialType {
 	name = 'slackOAuth2Api';
@@ -35,7 +45,7 @@ export class SlackOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'user_scope=chat:write',
+			default: `user_scope=${userScopes.join(' ')}`,
 		},
 		{
 			displayName: 'Authentication',

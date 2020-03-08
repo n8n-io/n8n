@@ -12,11 +12,11 @@ import {
  } from 'n8n-workflow';
  import * as _ from 'lodash';
 
-export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}): Promise<any> { // tslint:disable-line:no-any
+export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	const options: OptionsWithUri = {
+	let options: OptionsWithUri = {
 		method,
-		headers: {
+		headers: headers || {
 			'Content-Type': 'application/json; charset=utf-8'
 		},
 		body,
@@ -24,6 +24,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		uri: `https://slack.com/api${resource}`,
 		json: true
 	};
+	options = Object.assign({}, options, option);
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
@@ -62,15 +63,23 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 export async function salckApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
 	let responseData;
+	query.page = 1;
+	query.count = 100;
 	do {
 		responseData = await slackApiRequest.call(this, method, endpoint, body, query);
 		query.cursor = encodeURIComponent(_.get(responseData, 'response_metadata.next_cursor'));
+		query.page++;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		responseData.response_metadata !== undefined &&
+		(responseData.response_metadata !== undefined &&
 		responseData.response_metadata.mext_cursor !== undefined &&
 		responseData.response_metadata.next_cursor !== "" &&
-		responseData.response_metadata.next_cursor !== null
+		responseData.response_metadata.next_cursor !== null) ||
+		(responseData.paging !== undefined &&
+		responseData.paging.pages !== undefined &&
+		responseData.paging.page !== undefined &&
+		responseData.paging.page < responseData.paging.pages
+		)
 	);
 
 	return returnData;
