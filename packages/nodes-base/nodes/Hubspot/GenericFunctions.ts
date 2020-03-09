@@ -12,11 +12,13 @@ import {
 } from 'n8n-workflow';
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('hubspotApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+	let credentials;
+	try {
+		credentials = this.getCredentials('hubspotApi');
+	} catch (exception) {
+		credentials = this.getCredentials('hubspotDeveloperApi');
 	}
-	query!.hapikey = credentials.apiKey as string;
+	query!.hapikey = credentials!.apiKey as string;
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
@@ -29,6 +31,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+		console.log(error)
 		const errorMessage = error.response.body.message || error.response.body.Message;
 
 		if (errorMessage !== undefined) {
