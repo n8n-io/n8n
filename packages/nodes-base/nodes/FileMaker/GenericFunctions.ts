@@ -287,14 +287,14 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 	}
 }
 
-export function parseSort(this: IExecuteFunctions): object | null {
+export function parseSort(this: IExecuteFunctions, i: number): object | null {
 	let sort;
-	const setSort = this.getNodeParameter('setSort', 0, false);
+	const setSort = this.getNodeParameter('setSort', i, false);
 	if (!setSort) {
 		sort = null;
 	} else {
 		sort = [];
-		const sortParametersUi = this.getNodeParameter('sortParametersUi', 0, {}) as IDataObject;
+		const sortParametersUi = this.getNodeParameter('sortParametersUi', i, {}) as IDataObject;
 		if (sortParametersUi.rules !== undefined) {
 			// @ts-ignore
 			for (const parameterData of sortParametersUi!.rules as IDataObject[]) {
@@ -310,47 +310,47 @@ export function parseSort(this: IExecuteFunctions): object | null {
 }
 
 
-export function parseScripts(this: IExecuteFunctions): object | null {
-	const setScriptAfter = this.getNodeParameter('setScriptAfter', 0, false);
-	const setScriptBefore = this.getNodeParameter('setScriptBefore', 0, false);
-	const setScriptSort = this.getNodeParameter('setScriptSort', 0, false);
+export function parseScripts(this: IExecuteFunctions, i: number): object | null {
+	const setScriptAfter = this.getNodeParameter('setScriptAfter', i, false);
+	const setScriptBefore = this.getNodeParameter('setScriptBefore', i, false);
+	const setScriptSort = this.getNodeParameter('setScriptSort', i, false);
 
 	if (!setScriptAfter && setScriptBefore && setScriptSort) {
 		return {};
 	} else {
 		const scripts = {} as ScriptsOptions;
 		if (setScriptAfter) {
-			scripts.script = this.getNodeParameter('scriptAfter', 0);
-			scripts!['script.param'] = this.getNodeParameter('scriptAfter', 0);
+			scripts.script = this.getNodeParameter('scriptAfter', i);
+			scripts!['script.param'] = this.getNodeParameter('scriptAfter', i);
 		}
 		if (setScriptBefore) {
-			scripts['script.prerequest'] = this.getNodeParameter('scriptBefore', 0);
-			scripts['script.prerequest.param'] = this.getNodeParameter('scriptBeforeParam', 0);
+			scripts['script.prerequest'] = this.getNodeParameter('scriptBefore', i);
+			scripts['script.prerequest.param'] = this.getNodeParameter('scriptBeforeParam', i);
 		}
 		if (setScriptSort) {
-			scripts['script.presort'] = this.getNodeParameter('scriptSort', 0);
-			scripts['script.presort.param'] = this.getNodeParameter('scriptSortParam', 0);
+			scripts['script.presort'] = this.getNodeParameter('scriptSort', i);
+			scripts['script.presort.param'] = this.getNodeParameter('scriptSortParam', i);
 		}
 		return scripts;
 	}
 }
 
-export function parsePortals(this: IExecuteFunctions): object | null {
+export function parsePortals(this: IExecuteFunctions, i: number): object | null {
 	let portals;
-	const getPortals = this.getNodeParameter('getPortals', 0);
+	const getPortals = this.getNodeParameter('getPortals', i);
 	if (!getPortals) {
 		portals = [];
 	} else {
-		portals = this.getNodeParameter('portals', 0);
+		portals = this.getNodeParameter('portals', i);
 	}
 	// @ts-ignore
 	return portals;
 }
 
 
-export function parseQuery(this: IExecuteFunctions): object | null {
+export function parseQuery(this: IExecuteFunctions, i: number): object | null {
 	let queries;
-	const queriesParamUi = this.getNodeParameter('queries', 0, {}) as IDataObject;
+	const queriesParamUi = this.getNodeParameter('queries', i, {}) as IDataObject;
 	if (queriesParamUi.query !== undefined) {
 		// @ts-ignore
 		queries = [];
@@ -372,9 +372,9 @@ export function parseQuery(this: IExecuteFunctions): object | null {
 	return queries;
 }
 
-export function parseFields(this: IExecuteFunctions): object | null {
+export function parseFields(this: IExecuteFunctions, i: number): object | null {
 	let fieldData;
-	const fieldsParametersUi = this.getNodeParameter('fieldsParametersUi', 0, {}) as IDataObject;
+	const fieldsParametersUi = this.getNodeParameter('fieldsParametersUi', i, {}) as IDataObject;
 	if (fieldsParametersUi.fields !== undefined) {
 		// @ts-ignore
 		fieldData = {};
