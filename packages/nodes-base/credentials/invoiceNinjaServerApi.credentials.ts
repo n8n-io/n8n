@@ -8,6 +8,12 @@ export class InvoiceNinjaServerApi implements ICredentialType {
 	displayName = 'Invoice Ninja API';
 	properties = [
 		{
+			displayName: 'Domain',
+			name: 'domain',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
+		{
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string' as NodePropertyTypes,
