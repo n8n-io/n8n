@@ -116,7 +116,6 @@ export class CalendlyTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				console.log(webhookData)
 				if (webhookData.webhookId !== undefined) {
 
 					const endpoint = `/hooks/${webhookData.webhookId}`;
