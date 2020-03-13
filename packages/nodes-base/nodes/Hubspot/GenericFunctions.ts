@@ -12,12 +12,11 @@ import {
 } from 'n8n-workflow';
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	let credentials;
-	try {
-		credentials = this.getCredentials('hubspotApi');
-	} catch (exception) {
-		credentials = this.getCredentials('hubspotDeveloperApi');
-	}
+
+	const node = this.getNode();
+	const credentialName = Object.keys(node.credentials!)[0];
+	const credentials = this.getCredentials(credentialName);
+
 	query!.hapikey = credentials!.apiKey as string;
 	const options: OptionsWithUri = {
 		method,
@@ -31,13 +30,8 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.log(error)
-		const errorMessage = error.response.body.message || error.response.body.Message;
-
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
-		throw error.response.body;
+		const errorMessage = error.response.body.message || error.response.body.Message || error.message;
+		throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessage}`);
 	}
 }
 

@@ -191,7 +191,7 @@ export class HubspotTrigger implements INodeType {
 					'deal.propertyChange',
 				];
 				let endpoint = `/webhooks/v1/${app}/settings`;
-				let body = {
+				let body: IDataObject = {
 					webhookUrl,
 					maxConcurrentRequests: additionalFields.maxConcurrentRequests || 5,
 				};
@@ -199,7 +199,6 @@ export class HubspotTrigger implements INodeType {
 
 				endpoint = `/webhooks/v1/${app}/subscriptions`;
 				body = {
-					//@ts-ignore
 					subscriptionDetails: {
 						subscriptionType: event,
 					},
@@ -246,11 +245,11 @@ export class HubspotTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const credentials = this.getCredentials('hubspotDeveloperApi');
-		const req = this.getRequestObject()
+		const req = this.getRequestObject();
 		const bodyData = req.body;
 		const headerData = this.getHeaderData();
 		//@ts-ignore
-		if (headerData['x-hubspot-signature'] == undefined) {
+		if (headerData['x-hubspot-signature'] === undefined) {
 			return {};
 		}
 		const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
