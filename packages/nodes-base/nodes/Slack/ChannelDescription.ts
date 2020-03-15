@@ -234,7 +234,10 @@ export const channelFields = [
 	{
 		displayName: 'User ID',
 		name: 'userId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getUsers',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -321,9 +324,12 @@ export const channelFields = [
 		description: 'The name of the channel to create.',
 	},
 	{
-		displayName: 'User ID',
+		displayName: 'User',
 		name: 'userId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getUsers',
+		},
 		displayOptions: {
 			show: {
 				operation: [

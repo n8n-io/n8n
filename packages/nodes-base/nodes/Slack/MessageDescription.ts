@@ -43,7 +43,7 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -64,7 +64,7 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -80,6 +80,9 @@ export const messageFields = [
 		default: false,
 		displayOptions: {
 			show: {
+				authentication: [
+					'accessToken',
+				],
 				operation: [
 					'post'
 				],
@@ -98,10 +101,10 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				as_user: [
-					false
+					false,
 				],
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -121,7 +124,7 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -411,9 +414,12 @@ export const messageFields = [
 /*                                 message:update                          */
 /* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Channel ID',
+		displayName: 'Channel',
 		name: 'channelId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
 		required: true,
 		default: '',
 		displayOptions: {
@@ -471,6 +477,9 @@ export const messageFields = [
 		default: false,
 		displayOptions: {
 			show: {
+				authentication: [
+					'accessToken',
+				],
 				operation: [
 					'update'
 				],

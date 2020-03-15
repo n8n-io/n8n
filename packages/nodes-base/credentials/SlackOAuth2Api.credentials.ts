@@ -12,7 +12,7 @@ const userScopes = [
 	'files:write',
 	'stars:read',
 	'stars:write',
-]
+];
 
 
 export class SlackOAuth2Api implements ICredentialType {

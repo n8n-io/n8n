@@ -60,7 +60,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 	}
 }
 
-export async function salckApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function slackApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
 	let responseData;
 	query.page = 1;
@@ -73,7 +73,7 @@ export async function salckApiRequestAllItems(this: IExecuteFunctions | ILoadOpt
 	} while (
 		(responseData.response_metadata !== undefined &&
 		responseData.response_metadata.mext_cursor !== undefined &&
-		responseData.response_metadata.next_cursor !== "" &&
+		responseData.response_metadata.next_cursor !== '' &&
 		responseData.response_metadata.next_cursor !== null) ||
 		(responseData.paging !== undefined &&
 		responseData.paging.pages !== undefined &&
