@@ -11,24 +11,24 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import {
-	channelOperations,
 	channelFields,
+	channelOperations,
 } from './ChannelDescription';
 import {
-	messageOperations,
 	messageFields,
+	messageOperations,
 } from './MessageDescription';
 import {
-	starOperations,
 	starFields,
+	starOperations,
 } from './StarDescription';
 import {
-	fileOperations,
 	fileFields,
+	fileOperations,
 } from './FileDescription';
 import {
 	slackApiRequest,
-	salckApiRequestAllItems,
+	slackApiRequestAllItems,
 } from './GenericFunctions';
 import {
 	IAttachment,
@@ -133,7 +133,7 @@ export class Slack implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await salckApiRequestAllItems.call(this, 'members', 'GET', '/users.list');
+				const users = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list');
 				for (const user of users) {
 					const userName = user.name;
 					const userId = user.id;
@@ -142,13 +142,20 @@ export class Slack implements INodeType {
 						value: userId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 			// Get all the users to display them to user so that he can
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const channels = await salckApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list');
+				const channels = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list');
 				for (const channel of channels) {
 					const channelName = channel.name;
 					const channelId = channel.id;
@@ -157,6 +164,13 @@ export class Slack implements INodeType {
 						value: channelId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 		}
@@ -168,10 +182,12 @@ export class Slack implements INodeType {
 		const length = items.length as unknown as number;
 		let qs: IDataObject;
 		let responseData;
+		const authentication = this.getNodeParameter('authentication', 0) as string;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
 			qs = {};
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
 			if (resource === 'channel') {
 				//https://api.slack.com/methods/conversations.archive
 				if (operation === 'archive') {
@@ -203,6 +219,7 @@ export class Slack implements INodeType {
 						body.user_ids = (additionalFields.users as string[]).join(',');
 					}
 					responseData = await slackApiRequest.call(this, 'POST', '/conversations.create', body, qs);
+					responseData = responseData.channel;
 				}
 				//https://api.slack.com/methods/conversations.kick
 				if (operation === 'kick') {
@@ -241,7 +258,7 @@ export class Slack implements INodeType {
 						qs.exclude_archived = filters.excludeArchived as boolean;
 					}
 					if (returnAll === true) {
-						responseData = await salckApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list', {}, qs);
+						responseData = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await slackApiRequest.call(this, 'GET', '/conversations.list', {}, qs);
@@ -264,7 +281,7 @@ export class Slack implements INodeType {
 						qs.oldest = filters.oldest as string;
 					}
 					if (returnAll === true) {
-						responseData = await salckApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.history', {}, qs);
+						responseData = await slackApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.history', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await slackApiRequest.call(this, 'GET', '/conversations.history', {}, qs);
@@ -335,7 +352,7 @@ export class Slack implements INodeType {
 						qs.oldest = filters.oldest as string;
 					}
 					if (returnAll === true) {
-						responseData = await salckApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.replies', {}, qs);
+						responseData = await slackApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.replies', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await slackApiRequest.call(this, 'GET', '/conversations.replies', {}, qs);
@@ -379,15 +396,18 @@ export class Slack implements INodeType {
 					const channel = this.getNodeParameter('channel', i) as string;
 					const text = this.getNodeParameter('text', i) as string;
 					const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
-					const as_user = this.getNodeParameter('as_user', i) as boolean;
 					const body: IDataObject = {
-						channel: channel,
+						channel,
 						text,
-						as_user,
 					};
-					if (as_user === false) {
+
+					if (authentication === 'accessToken') {
+						body.as_user = this.getNodeParameter('as_user', i) as boolean;
+					}
+					if (body.as_user === false) {
 						body.username = this.getNodeParameter('username', i) as string;
 					}
+
 					// The node does save the fields data differently than the API
 					// expects so fix the data befre we send the request
 					for (const attachment of attachments) {
@@ -411,17 +431,20 @@ export class Slack implements INodeType {
 				}
 				//https://api.slack.com/methods/chat.update
 				if (operation === 'update') {
-					const channel = this.getNodeParameter('channel', i) as string;
+					const channel = this.getNodeParameter('channelId', i) as string;
 					const text = this.getNodeParameter('text', i) as string;
 					const ts = this.getNodeParameter('ts', i) as string;
-					const as_user = this.getNodeParameter('as_user', i) as boolean;
 					const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
 					const body: IDataObject = {
 						channel,
 						text,
 						ts,
-						as_user,
 					};
+
+					if (authentication === 'accessToken') {
+						body.as_user = this.getNodeParameter('as_user', i) as boolean;
+					}
+
 					// The node does save the fields data differently than the API
 					// expects so fix the data befre we send the request
 					for (const attachment of attachments) {
@@ -485,7 +508,7 @@ export class Slack implements INodeType {
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === true) {
-						responseData = await salckApiRequestAllItems.call(this, 'items', 'GET', '/stars.list', {}, qs);
+						responseData = await slackApiRequestAllItems.call(this, 'items', 'GET', '/stars.list', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await slackApiRequest.call(this, 'GET', '/stars.list', {}, qs);
@@ -522,15 +545,15 @@ export class Slack implements INodeType {
 							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
 						}
 						body.file = {
+							//@ts-ignore
+							value: Buffer.from(items[i].binary[binaryPropertyName].data, BINARY_ENCODING),
+							options: {
 								//@ts-ignore
-								value: Buffer.from(items[i].binary[binaryPropertyName].data, BINARY_ENCODING),
-								options: {
-									//@ts-ignore
-									filename: items[i].binary[binaryPropertyName].fileName,
-									//@ts-ignore
-									contentType: items[i].binary[binaryPropertyName].mimeType,
-								}
+								filename: items[i].binary[binaryPropertyName].fileName,
+								//@ts-ignore
+								contentType: items[i].binary[binaryPropertyName].mimeType,
 							}
+						};
 						responseData = await slackApiRequest.call(this, 'POST', '/files.upload', {}, qs, { 'Content-Type': 'multipart/form-data' }, {  formData: body });
 						responseData = responseData.file;
 					} else {
@@ -563,7 +586,7 @@ export class Slack implements INodeType {
 						qs.user = filters.userId as string;
 					}
 					if (returnAll === true) {
-						responseData = await salckApiRequestAllItems.call(this, 'files', 'GET', '/files.list', {}, qs);
+						responseData = await slackApiRequestAllItems.call(this, 'files', 'GET', '/files.list', {}, qs);
 					} else {
 						qs.count = this.getNodeParameter('limit', i) as number;
 						responseData = await slackApiRequest.call(this, 'GET', '/files.list', {}, qs);

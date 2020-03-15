@@ -2,6 +2,34 @@
 
 This list shows all the versions which include breaking changes and how to upgrade
 
+## ???
+
+### What changed?
+
+To make it easier to use the data which the Slack-Node outputs we no longer return the whole
+object the Slack-API returns if the only other property is `"ok": true`. In this case it returns
+now directly the data under "channel".
+
+### When is action necessary?
+
+When you currently use the Slack-Node with Operations Channel -> Create and you use
+any of the data the node outputs.
+
+### How to upgrade:
+
+All values that get referenced which were before under the property "channel" are now on the main level.
+This means that these expressions have to get adjusted.
+
+Meaning if the expression used before was:
+```
+{{ $node["Slack"].data["channel"]["id"] }}
+```
+it has to get changed to:
+```
+{{ $node["Slack"].data["id"] }}
+```
+
+
 ## 0.37.0
 
 ### What changed?
