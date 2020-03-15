@@ -5,8 +5,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { Parser } from 'xml2js';
-import { RundeckApi, RundeckCredentials } from "./RundeckApi";
+import { RundeckApi } from './RundeckApi';
 
 export class Rundeck implements INodeType {
 	description: INodeTypeDescription = {
@@ -15,6 +14,7 @@ export class Rundeck implements INodeType {
 		icon: 'file:rundeck.png',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Manage Rundeck API',
 		defaults: {
 			name: 'Rundeck',
@@ -24,28 +24,46 @@ export class Rundeck implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'rundeck',
+				name: 'rundeckApi',
 				required: true,
 			}
 		],
 		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Job',
+						value: 'job',
+					},
+				],
+				default: 'job',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				options: [
 					{
-						name: 'Execute Job',
-						value: 'executeJob',
-						description: 'Executes Job.',
+						name: 'Execute',
+						value: 'execute',
+						description: 'Executes job',
+					},
+					{
+						name: 'Get Metadata',
+						value: 'getMetadata',
+						description: 'Get metadata of a job',
 					},
 				],
-				default: 'executeJob',
+				default: 'execute',
 				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
-			//         JobId
+			//         job:execute
 			// ----------------------------------
 			{
 				displayName: 'Job Id',
@@ -54,7 +72,10 @@ export class Rundeck implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'executeJob'
+							'execute',
+						],
+						resource: [
+							'job',
 						],
 					},
 				},
@@ -63,14 +84,10 @@ export class Rundeck implements INodeType {
 				required: true,
 				description: 'The job Id to execute.',
 			},
-
-			// ----------------------------------
-			//         Arguments
-			// ----------------------------------
 			{
 				displayName: 'Arguments',
 				name: 'arguments',
-				placeholder: 'Arguments',
+				placeholder: 'Add Argument',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -78,7 +95,10 @@ export class Rundeck implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'executeJob'
+							'execute',
+						],
+						resource: [
+							'job',
 						],
 					},
 				},
@@ -86,7 +106,7 @@ export class Rundeck implements INodeType {
 				options: [
 					{
 						name: 'arguments',
-						displayName: 'Add argument',
+						displayName: 'Arguments',
 						values: [
 							{
 								displayName: 'Name',
@@ -104,7 +124,32 @@ export class Rundeck implements INodeType {
 					},
 				],
 			},
-		]
+
+
+			// ----------------------------------
+			//         job:getMetadata
+			// ----------------------------------
+			{
+				displayName: 'Job Id',
+				name: 'jobid',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'getMetadata',
+						],
+						resource: [
+							'job',
+						],
+					},
+				},
+				default: '',
+				placeholder: 'Rundeck Job Id',
+				required: true,
+				description: 'The job Id to get metadata off.',
+			},
+		],
+
 	};
 
 
@@ -114,58 +159,40 @@ export class Rundeck implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
-		
-		const credentials = this.getCredentials('rundeck');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
-
-		const rundeckCredentials: RundeckCredentials = {
-			url: credentials.url as string,
-			apiVersion: credentials.apiVersion as number,
-			token: credentials.token as string
-		};
 
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			if (operation === 'executeJob') {
-				// ----------------------------------
-				//         executeJob
-				// ----------------------------------
-				const rundeckApi = new RundeckApi(rundeckCredentials);
-				const jobid = this.getNodeParameter('jobid', i) as string;
-				const rundeckArguments = (this.getNodeParameter('arguments', i) as IDataObject).arguments as IDataObject[];
-				let response;
-	
-				try {
-	
-					response = await rundeckApi.executeJob(jobid, rundeckArguments);
-	
-					const parser = new Parser({
-						mergeAttrs: true,
-						explicitArray: false,
-					});
-	
-					// @ts-ignore
-					const json = await parser.parseStringPromise(response);
-					returnData.push({ json });
-	
-				} catch(error) {
-					if(error.response && error.response.data && error.response.status) {
-						throw Error(`status: ${error.response.status}, response: ${(error.response.data).replace('\n', '')}`);
-					} else {
-						throw error;
-					}
+			const rundeckApi = new RundeckApi(this);
+
+			if (resource === 'job') {
+				if (operation === 'execute') {
+					// ----------------------------------
+					//         job: execute
+					// ----------------------------------
+					const jobid = this.getNodeParameter('jobid', i) as string;
+					const rundeckArguments = (this.getNodeParameter('arguments', i) as IDataObject).arguments as IDataObject[];
+					const response = await rundeckApi.executeJob(jobid, rundeckArguments);
+
+					returnData.push(response);
+				} else if (operation === 'getMetadata') {
+					// ----------------------------------
+					//         job: getMetadata
+					// ----------------------------------
+					const jobid = this.getNodeParameter('jobid', i) as string;
+					const response = await rundeckApi.getJobMetadata(jobid);
+
+					returnData.push(response);
+				} else {
+					throw new Error(`The operation "${operation}" is not supported!`);
 				}
-	
 			} else {
-				throw new Error(`The operation "${operation}" is not supported!`);
+				throw new Error(`The resource "${resource}" is not supported!`);
 			}
 		}
-		
+
 		return [this.helpers.returnJsonArray(returnData)];
-	
+
 	}
 }
