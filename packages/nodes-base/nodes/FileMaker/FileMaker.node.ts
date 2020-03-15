@@ -794,114 +794,117 @@ export class FileMaker implements INodeType {
 
 		const action = this.getNodeParameter('action', 0) as string;
 
-		for (let i = 0; i < items.length; i++) {
-			// Reset all values
-			requestOptions = {
-				uri: '',
-				headers: {
-					'Authorization': `Bearer ${token}`,
-				},
-				method: 'GET',
-				json: true
-			};
-
-			const layout = this.getNodeParameter('layout', 0) as string;
-
-			if (action === 'record') {
-				const recid = this.getNodeParameter('recid', 0) as string;
-				requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
-				requestOptions.qs = {
-					'portal': JSON.stringify(parsePortals.call(this)),
-					...parseScripts.call(this)
+		try {
+			for (let i = 0; i < items.length; i++) {
+				// Reset all values
+				requestOptions = {
+					uri: '',
+					headers: {
+						'Authorization': `Bearer ${token}`,
+					},
+					method: 'GET',
+					json: true
 				};
-			} else if (action === 'records') {
-				requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
-				requestOptions.qs = {
-					'_offset': this.getNodeParameter('offset', 0),
-					'_limit': this.getNodeParameter('limit', 0),
-					'portal': JSON.stringify(parsePortals.call(this)),
-					...parseScripts.call(this)
-				};
-				const sort = parseSort.call(this);
-				if (sort) {
-					requestOptions.body.sort = sort;
+
+				const layout = this.getNodeParameter('layout', i) as string;
+
+				if (action === 'record') {
+					const recid = this.getNodeParameter('recid', i) as string;
+					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+					requestOptions.qs = {
+						'portal': JSON.stringify(parsePortals.call(this, i)),
+						...parseScripts.call(this, i)
+					};
+				} else if (action === 'records') {
+					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
+					requestOptions.qs = {
+						'_offset': this.getNodeParameter('offset', i),
+						'_limit': this.getNodeParameter('limit', i),
+						'portal': JSON.stringify(parsePortals.call(this, i)),
+						...parseScripts.call(this, i)
+					};
+					const sort = parseSort.call(this, i);
+					if (sort) {
+						requestOptions.body.sort = sort;
+					}
+				} else if (action === 'find') {
+					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/_find`;
+					requestOptions.method = 'POST';
+					requestOptions.body = {
+						'query': parseQuery.call(this, i),
+						'offset': this.getNodeParameter('offset', i),
+						'limit': this.getNodeParameter('limit', i),
+						'layout.response': this.getNodeParameter('responseLayout', i),
+						...parseScripts.call(this, i)
+					};
+					const sort = parseSort.call(this, i);
+					if (sort) {
+						requestOptions.body.sort = sort;
+					}
+				} else if (action === 'create') {
+					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
+					requestOptions.method = 'POST';
+					requestOptions.headers!['Content-Type'] = 'application/json';
+
+					//TODO: handle portalData
+					requestOptions.body = {
+						fieldData: {...parseFields.call(this, i)},
+						portalData: {},
+						...parseScripts.call(this, i)
+					};
+				} else if (action === 'edit') {
+					const recid = this.getNodeParameter('recid', i) as string;
+					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+					requestOptions.method = 'PATCH';
+					requestOptions.headers!['Content-Type'] = 'application/json';
+
+					//TODO: handle portalData
+					requestOptions.body = {
+						fieldData: {...parseFields.call(this, i)},
+						portalData: {},
+						...parseScripts.call(this, i)
+					};
+				} else if (action === 'performscript') {
+					const scriptName = this.getNodeParameter('script', i) as string;
+					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/script/${scriptName}`;
+					requestOptions.qs = {
+						'script.param': this.getNodeParameter('scriptParam', i),
+					};
+				} else if (action === 'duplicate') {
+					const recid = this.getNodeParameter('recid', i) as string;
+					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+					requestOptions.method = 'POST';
+					requestOptions.headers!['Content-Type'] = 'application/json';
+					requestOptions.qs = {
+						...parseScripts.call(this, i)
+					};
+				} else if (action === 'delete') {
+					const recid = this.getNodeParameter('recid', i) as string;
+					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+					requestOptions.method = 'DELETE';
+					requestOptions.qs = {
+						...parseScripts.call(this, i)
+					};
+				} else {
+					throw new Error(`The action "${action}" is not implemented yet!`);
 				}
-			} else if (action === 'find') {
-				requestOptions.uri = url + `/databases/${database}/layouts/${layout}/_find`;
-				requestOptions.method = 'POST';
-				requestOptions.body = {
-					'query': parseQuery.call(this),
-					'offset': this.getNodeParameter('offset', 0),
-					'limit': this.getNodeParameter('limit', 0),
-					'layout.response': this.getNodeParameter('responseLayout', 0),
-					...parseScripts.call(this)
-				};
-				const sort = parseSort.call(this);
-				if (sort) {
-					requestOptions.body.sort = sort;
+
+				// Now that the options are all set make the actual http request
+				let response;
+				try {
+					response = await this.helpers.request(requestOptions);
+				} catch (error) {
+					response = error.response.body;
 				}
-			} else if (action === 'create') {
-				requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
-				requestOptions.method = 'POST';
-				requestOptions.headers!['Content-Type'] = 'application/json';
 
-				//TODO: handle portalData
-				requestOptions.body = {
-					fieldData: {...parseFields.call(this)},
-					portalData: {},
-					...parseScripts.call(this)
-				};
-			} else if (action === 'edit') {
-				const recid = this.getNodeParameter('recid', 0) as string;
-				requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
-				requestOptions.method = 'PATCH';
-				requestOptions.headers!['Content-Type'] = 'application/json';
-
-				//TODO: handle portalData
-				requestOptions.body = {
-					fieldData: {...parseFields.call(this)},
-					portalData: {},
-					...parseScripts.call(this)
-				};
-			} else if (action === 'performscript') {
-				const scriptName = this.getNodeParameter('script', 0) as string;
-				requestOptions.uri = url + `/databases/${database}/layouts/${layout}/script/${scriptName}`;
-				requestOptions.qs = {
-					'script.param': this.getNodeParameter('scriptParam', 0),
-				};
-			} else if (action === 'duplicate') {
-				const recid = this.getNodeParameter('recid', 0) as string;
-				requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
-				requestOptions.method = 'POST';
-				requestOptions.headers!['Content-Type'] = 'application/json';
-				requestOptions.qs = {
-					...parseScripts.call(this)
-				};
-			} else if (action === 'delete') {
-				const recid = this.getNodeParameter('recid', 0) as string;
-				requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
-				requestOptions.method = 'DELETE';
-				requestOptions.qs = {
-					...parseScripts.call(this)
-				};
-			} else {
-				throw new Error(`The action "${action}" is not implemented yet!`);
+				if (typeof response === 'string') {
+					throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+				}
+				returnData.push({json: response});
 			}
-
-			// Now that the options are all set make the actual http request
-			let response;
-			try {
-				response = await this.helpers.request(requestOptions);
-			} catch (error) {
-				response = error.response.body;
-			}
-
-			if (typeof response === 'string') {
-				throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
-			}
+		} catch (error) {
 			await logout.call(this, token);
-
-			returnData.push({json: response});
+			throw new Error(`The action "${error.message}" is not implemented yet!`);
 		}
 
 		return this.prepareOutputData(returnData);
