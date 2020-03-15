@@ -4,21 +4,16 @@ import {
 } from 'n8n-workflow';
 
 
-export class Rundeck implements ICredentialType {
-	name = 'rundeck';
-	displayName = 'Rundeck';
+export class RundeckApi implements ICredentialType {
+	name = 'rundeckApi';
+	displayName = 'Rundeck API';
 	properties = [
 		{
 			displayName: 'Url',
 			name: 'url',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-		},
-		{
-			displayName: 'Api Version',
-			name: 'apiVersion',
-			type: 'number' as NodePropertyTypes,
-			default: '',
+			placeholder: 'http://127.0.0.1:4440',
 		},
 		{
 			displayName: 'Token',

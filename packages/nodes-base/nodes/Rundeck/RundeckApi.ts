@@ -1,46 +1,59 @@
-import { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
-import { Api } from "./Api";
-import * as https from 'https';
-import { Xml } from "../Xml.node";
-import { IDataObject } from "n8n-workflow";
+import { OptionsWithUri } from 'request';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject } from 'n8n-workflow';
 
 export interface RundeckCredentials {
 	url: string;
-	apiVersion: number;
 	token: string;
 }
 
-function acceptVersion(credentialsApiVersion: number, apiVersion: number) {
-	if(apiVersion > credentialsApiVersion) {
-		throw Error('This endpoint is not supported for this version!');
-	}
-}
-
-export class RundeckApi extends Api {
-	
+export class RundeckApi {
 	private credentials: RundeckCredentials;
+	private executeFunctions: IExecuteFunctions;
 
-	constructor (credentials: RundeckCredentials) {
 
-		const config: AxiosRequestConfig = {
-			httpsAgent: new https.Agent({
-				rejectUnauthorized: false
-			}),
+	constructor(executeFunctions: IExecuteFunctions) {
+
+		const credentials = executeFunctions.getCredentials('rundeckApi');
+
+		if (credentials === undefined) {
+			throw new Error('No credentials got returned!');
+		}
+
+		this.credentials = credentials as unknown as RundeckCredentials;
+		this.executeFunctions = executeFunctions;
+	}
+
+
+	protected async request(method: string, endpoint: string, body: IDataObject, query: object) {
+
+		const options: OptionsWithUri = {
 			headers: {
-				'Accept': 'application/xml',
 				'user-agent': 'n8n',
-				'X-Rundeck-Auth-Token': credentials.token,
-			}
+				'X-Rundeck-Auth-Token': this.credentials.token,
+			},
+			rejectUnauthorized: false,
+			method,
+			qs: query,
+			uri: this.credentials.url + endpoint,
+			body,
+			json: true
 		};
 
-		super(config);
-		this.credentials = credentials;
+		try {
+			return await this.executeFunctions.helpers.request!(options);
+		} catch (error) {
+			let errorMessage = error.message;
+			if (error.response && error.response.body && error.response.body.message) {
+				errorMessage = error.response.body.message.replace('\n', '');
+			}
 
+			throw Error(`Rundeck Error [${error.statusCode}]: ${errorMessage}`);
+		}
 	}
 
-	executeJob(jobId: string, args: IDataObject[]): Promise<Xml> {
 
-		acceptVersion(this.credentials.apiVersion, 12);
+	executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
 
 		let params = '';
 
@@ -49,15 +62,16 @@ export class RundeckApi extends Api {
 				params += "-" + arg.name + " " + arg.value + " ";
 			}
 		}
-		
-		return this.post<Xml>(this.credentials.url + '/api/12/job/' + jobId + '/run?argString=' + params)
-			.then((response: AxiosResponse<Xml>) => {
-				const { data } = response;
-				return data;
-			})
-			.catch((error: AxiosError) => {
-				throw error;
-			});
+
+		const body = {
+			argString: params
+		};
+
+		return this.request('POST', `/api/14/job/${jobId}/run`, body, {});
+	}
+
+	getJobMetadata(jobId: string): Promise<IDataObject> {
+		return this.request('GET', `/api/18/job/${jobId}/info`, {}, {});
 	}
 
 }
