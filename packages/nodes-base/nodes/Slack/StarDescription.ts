@@ -26,7 +26,7 @@ export const starOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all stars for a user.',
+				description: 'Get all stars of autenticated user.',
 			},
 		],
 		default: 'add',
@@ -60,7 +60,10 @@ export const starFields = [
 			{
 				displayName: 'Channel ID',
 				name: 'channelId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannels',
+				},
 				default: '',
 				description: 'Channel to add star to, or channel where the message to add star to was posted (used with timestamp).',
 			},
@@ -111,7 +114,10 @@ export const starFields = [
 			{
 				displayName: 'Channel ID',
 				name: 'channelId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannels',
+				},
 				default: '',
 				description: 'Channel to add star to, or channel where the message to add star to was posted (used with timestamp).',
 			},
