@@ -19,6 +19,11 @@ export const invoiceOperations = [
 				description: 'Create a new invoice',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a invoice',
+			},
+			{
 				name: 'Email',
 				value: 'email',
 				description: 'Email an invoice',
@@ -33,11 +38,6 @@ export const invoiceOperations = [
 				value: 'getAll',
 				description: 'Get data of all invoices',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a invoice',
-			}
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -175,7 +175,7 @@ export const invoiceFields = [
 				default: '',
 			},
 			{
-				displayName: 'Po Number',
+				displayName: 'PO Number',
 				name: 'poNumber',
 				type: 'string',
 				default: '',

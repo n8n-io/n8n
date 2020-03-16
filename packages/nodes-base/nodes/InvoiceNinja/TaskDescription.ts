@@ -19,6 +19,11 @@ export const taskOperations = [
 				description: 'Create a new task',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a task',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a task',
@@ -28,11 +33,6 @@ export const taskOperations = [
 				value: 'getAll',
 				description: 'Get data of all tasks',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a task',
-			}
 		],
 		default: 'create',
 		description: 'The operation to perform.',

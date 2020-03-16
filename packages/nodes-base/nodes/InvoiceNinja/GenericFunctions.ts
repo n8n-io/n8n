@@ -13,29 +13,21 @@ import {
 
 import { get } from 'lodash';
 
-export async function invoiceninjaApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	let token;
-	let endpoint;
-	const cloudCredentials = this.getCredentials('invoiceNinjaCloudApi');
-	const serverCredentials = this.getCredentials('invoiceNinjaServerApi');
-	if (cloudCredentials === undefined && serverCredentials === undefined) {
+export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+	const credentials = this.getCredentials('invoiceNinjaApi');
+	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	if (cloudCredentials !== undefined) {
-		endpoint = 'https://app.invoiceninja.com';
-		token = cloudCredentials!.apiToken;
-	} else {
-		endpoint = serverCredentials!.domain;
-		token = serverCredentials!.apiToken;
-	}
+
+	const baseUrl = credentials!.url || 'https://app.invoiceninja.com';
 	const options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
-			'X-Ninja-Token': token,
+			'X-Ninja-Token': credentials.apiToken,
 		},
 		method,
 		qs: query,
-		uri: uri || `${endpoint}/api/v1${resource}`,
+		uri: uri || `${baseUrl}/api/v1${endpoint}`,
 		body,
 		json: true
 	};
@@ -54,7 +46,7 @@ export async function invoiceninjaApiRequest(this: IHookFunctions | IExecuteFunc
 	}
 }
 
-export async function invoiceninjaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function invoiceNinjaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -63,8 +55,8 @@ export async function invoiceninjaApiRequestAllItems(this: IExecuteFunctions | I
 	query.per_page = 100;
 
 	do {
-		responseData = await invoiceninjaApiRequest.call(this, method, endpoint, body, query, uri);
-		let next = get(responseData, 'meta.pagination.links.next') as string | undefined;
+		responseData = await invoiceNinjaApiRequest.call(this, method, endpoint, body, query, uri);
+		const next = get(responseData, 'meta.pagination.links.next') as string | undefined;
 		if (next) {
 			uri = next;
 		}
