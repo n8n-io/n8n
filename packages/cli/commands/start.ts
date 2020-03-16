@@ -2,7 +2,7 @@ import * as localtunnel from 'localtunnel';
 import {
 	TUNNEL_SUBDOMAIN_ENV,
 	UserSettings,
-} from "n8n-core";
+} from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 const open = require('open');
 // import { dirname } from 'path';
