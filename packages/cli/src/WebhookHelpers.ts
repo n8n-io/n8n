@@ -294,6 +294,12 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 
 				if (responseData === 'firstEntryJson') {
 					// Return the JSON data of the first entry
+
+					if (returnData.data!.main[0]![0] === undefined) {
+						responseCallback(new Error('No item to return got found.'), {});
+						didSendResponse = true;
+					}
+
 					data = returnData.data!.main[0]![0].json;
 
 					const responsePropertyName = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responsePropertyName'], undefined);
@@ -324,6 +330,12 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				} else if (responseData === 'firstEntryBinary') {
 					// Return the binary data of the first entry
 					data = returnData.data!.main[0]![0];
+
+					if (data === undefined) {
+						responseCallback(new Error('No item to return got found.'), {});
+						didSendResponse = true;
+					}
+
 					if (data.binary === undefined) {
 						responseCallback(new Error('No binary data to return got found.'), {});
 						didSendResponse = true;
