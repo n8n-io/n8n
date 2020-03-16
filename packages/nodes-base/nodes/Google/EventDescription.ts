@@ -316,7 +316,7 @@ export const eventFields = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on n8n timezone '
+				description: 'The timezone the event will have set. By default events are schedule on timezone set in n8n.'
 			},
 			{
 				displayName: 'Visibility',
@@ -334,14 +334,14 @@ export const eventFields = [
 						description: ' Uses the default visibility for events on the calendar.',
 					},
 					{
-						name: 'Public',
-						value: 'public',
-						description: 'The event is public and event details are visible to all readers of the calendar.',
-					},
-					{
 						name: 'Private',
 						value: 'private',
 						description: 'The event is private and only event attendees may view event details.',
+					},
+					{
+						name: 'Public',
+						value: 'public',
+						description: 'The event is public and event details are visible to all readers of the calendar.',
 					},
 				],
 				default: 'default',
