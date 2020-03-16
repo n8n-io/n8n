@@ -1,0 +1,402 @@
+import { INodeProperties } from "n8n-workflow";
+
+export const expenseOperations = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'expense',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new expense',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an expense',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of an expense',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get data of all expenses',
+			},
+		],
+		default: 'create',
+		description: 'The operation to perform.',
+	},
+] as INodeProperties[];
+
+export const expenseFields = [
+/* -------------------------------------------------------------------------- */
+/*                                 expense:create                             */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'expense',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Billable',
+				name: 'billable',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Client',
+				name: 'client',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getClients',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getExpenseCategories',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Expense Date',
+				name: 'expenseDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Payment Date',
+				name: 'paymentDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Payment Type',
+				name: 'paymentType',
+				type: 'options',
+				options: [
+					{
+						name: 'Apply Credit',
+						value: 1,
+					},
+					{
+						name: 'Bank Transfer',
+						value: 2,
+					},
+					{
+						name: 'Cash',
+						value: 3,
+					},
+					{
+						name: 'Debit',
+						value: 4,
+					},
+					{
+						name: 'ACH',
+						value: 5,
+					},
+					{
+						name: 'Visa Card',
+						value: 6,
+					},
+					{
+						name: 'MasterCard',
+						value: 7,
+					},
+					{
+						name: 'American Express',
+						value: 8,
+					},
+					{
+						name: 'Discover Card',
+						value: 9,
+					},
+					{
+						name: 'Diners Card',
+						value: 10,
+					},
+					{
+						name: 'EuroCard',
+						value: 11,
+					},
+					{
+						name: 'Nova',
+						value: 12,
+					},
+					{
+						name: 'Credit Card Other',
+						value: 13,
+					},
+					{
+						name: 'Paypal',
+						value: 14,
+					},
+					{
+						name: 'Google Wallet',
+						value: 15,
+					},
+					{
+						name: 'Check',
+						value: 16,
+					},
+					{
+						name: 'Carte Blanche',
+						value: 17,
+					},
+					{
+						name: 'UnionPay',
+						value: 18,
+					},
+					{
+						name: 'JCB',
+						value: 19,
+					},
+					{
+						name: 'Laser',
+						value: 20,
+					},
+					{
+						name: 'Maestro',
+						value: 21,
+					},
+					{
+						name: 'Solo',
+						value: 22,
+					},
+					{
+						name: 'Solo',
+						value: 22,
+					},
+					{
+						name: 'Swich',
+						value: 23,
+					},
+					{
+						name: 'Swich',
+						value: 23,
+					},
+					{
+						name: 'iZettle',
+						value: 24,
+					},
+					{
+						name: 'Swish',
+						value: 25,
+					},
+					{
+						name: 'Venmo',
+						value: 26,
+					},
+					{
+						name: 'Money Order',
+						value: 27,
+					},
+					{
+						name: 'Alipay',
+						value: 28,
+					},
+					{
+						name: 'Sofort',
+						value: 29,
+					},
+					{
+						name: 'SEPA',
+						value: 30,
+					},
+					{
+						name: 'GoCardless',
+						value: 31,
+					},
+					{
+						name: 'Bitcoin',
+						value: 32,
+					},
+				],
+				default: 1,
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Tax Name 1',
+				name: 'taxName1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax Name 2',
+				name: 'taxName2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Tax Rate 1',
+				name: 'taxRate1',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Tax Rate 2',
+				name: 'taxRate2',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Transaction Reference',
+				name: 'transactionReference',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Vendor',
+				name: 'vendor',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getVendors',
+				},
+				default: '',
+			},
+		]
+	},
+/* -------------------------------------------------------------------------- */
+/*                                 expense:delete                             */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Expense ID',
+		name: 'expenseId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'expense',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+/* -------------------------------------------------------------------------- */
+/*                                  expense:get                               */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Expense ID',
+		name: 'expenseId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'expense',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+/* -------------------------------------------------------------------------- */
+/*                                  expense:getAll                             */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'expense',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'expense',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+] as INodeProperties[];
