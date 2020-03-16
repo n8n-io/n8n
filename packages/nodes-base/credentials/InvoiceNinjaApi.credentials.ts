@@ -3,15 +3,15 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class InvoiceNinjaServerApi implements ICredentialType {
-	name = 'invoiceNinjaServerApi';
+export class InvoiceNinjaApi implements ICredentialType {
+	name = 'invoiceNinjaApi';
 	displayName = 'Invoice Ninja API';
 	properties = [
 		{
-			displayName: 'Domain',
-			name: 'domain',
+			displayName: 'URL',
+			name: 'url',
 			type: 'string' as NodePropertyTypes,
-			default: '',
+			default: 'https://app.invoiceninja.com',
 		},
 		{
 			displayName: 'API Token',

@@ -19,6 +19,11 @@ export const quoteOperations = [
 				description: 'Create a new quote',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a quote',
+			},
+			{
 				name: 'Email',
 				value: 'email',
 				description: 'Email an quote',
@@ -33,11 +38,6 @@ export const quoteOperations = [
 				value: 'getAll',
 				description: 'Get data of all quotes',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a quote',
-			}
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -117,8 +117,8 @@ export const quoteFields = [
 				default: '',
 			},
 			{
-				displayName: 'Email Qoute',
-				name: 'emailQoute',
+				displayName: 'Email Quote',
+				name: 'emailQuote',
 				type: 'boolean',
 				default: false,
 			},
@@ -135,7 +135,7 @@ export const quoteFields = [
 				default: '',
 			},
 			{
-				displayName: 'Qoute Status',
+				displayName: 'Quote Status',
 				name: 'quoteStatus',
 				type: 'options',
 				options: [
@@ -351,7 +351,7 @@ export const quoteFields = [
 /*                                  quote:get                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Qoute ID',
+		displayName: 'Quote ID',
 		name: 'quoteId',
 		type: 'string',
 		required: true,
@@ -459,7 +459,7 @@ export const quoteFields = [
 		},
 		options: [
 			{
-				displayName: 'Qoute Number',
+				displayName: 'Quote Number',
 				name: 'quoteNumber',
 				type: 'string',
 				default: '',

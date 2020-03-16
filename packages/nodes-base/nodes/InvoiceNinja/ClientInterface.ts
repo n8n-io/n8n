@@ -8,7 +8,7 @@ export interface IContact {
 }
 
 export interface IClient {
-	contacts?: IContact[],
+	contacts?: IContact[];
 	name?: string;
 	address1?: string;
 	address2?: string;

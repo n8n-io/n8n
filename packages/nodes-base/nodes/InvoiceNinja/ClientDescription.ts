@@ -19,6 +19,11 @@ export const clientOperations = [
 				description: 'Create a new client',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a client',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a client',
@@ -28,11 +33,6 @@ export const clientOperations = [
 				value: 'getAll',
 				description: 'Get data of all clients',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a client',
-			}
 		],
 		default: 'create',
 		description: 'The operation to perform.',

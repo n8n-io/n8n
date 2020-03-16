@@ -19,20 +19,20 @@ export const expenseOperations = [
 				description: 'Create a new expense',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an expense',
+			},
+			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get data of a expense',
+				description: 'Get data of an expense',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all expenses',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a expense',
-			}
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -60,6 +60,12 @@ export const expenseFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				default: 0,
+			},
 			{
 				displayName: 'Billable',
 				name: 'billable',
