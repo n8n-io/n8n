@@ -1,0 +1,408 @@
+import { INodeProperties } from "n8n-workflow";
+
+export const paymentOperations = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'payment',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new payment',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a payment',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a payment',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get data of all payments',
+			},
+		],
+		default: 'create',
+		description: 'The operation to perform.',
+	},
+] as INodeProperties[];
+
+export const paymentFields = [
+/* -------------------------------------------------------------------------- */
+/*                                 payment:create                             */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Invoice',
+		name: 'invoice',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getInvoices',
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'payment',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Amount',
+		name: 'amount',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'payment',
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 0,
+		},
+		default: 0,
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'payment',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Payment Type',
+				name: 'paymentType',
+				type: 'options',
+				options: [
+					{
+						name: 'Apply Credit',
+						value: 1,
+					},
+					{
+						name: 'Bank Transfer',
+						value: 2,
+					},
+					{
+						name: 'Cash',
+						value: 3,
+					},
+					{
+						name: 'Debit',
+						value: 4,
+					},
+					{
+						name: 'ACH',
+						value: 5,
+					},
+					{
+						name: 'Visa Card',
+						value: 6,
+					},
+					{
+						name: 'MasterCard',
+						value: 7,
+					},
+					{
+						name: 'American Express',
+						value: 8,
+					},
+					{
+						name: 'Discover Card',
+						value: 9,
+					},
+					{
+						name: 'Diners Card',
+						value: 10,
+					},
+					{
+						name: 'EuroCard',
+						value: 11,
+					},
+					{
+						name: 'Nova',
+						value: 12,
+					},
+					{
+						name: 'Credit Card Other',
+						value: 13,
+					},
+					{
+						name: 'Paypal',
+						value: 14,
+					},
+					{
+						name: 'Google Wallet',
+						value: 15,
+					},
+					{
+						name: 'Check',
+						value: 16,
+					},
+					{
+						name: 'Carte Blanche',
+						value: 17,
+					},
+					{
+						name: 'UnionPay',
+						value: 18,
+					},
+					{
+						name: 'JCB',
+						value: 19,
+					},
+					{
+						name: 'Laser',
+						value: 20,
+					},
+					{
+						name: 'Maestro',
+						value: 21,
+					},
+					{
+						name: 'Solo',
+						value: 22,
+					},
+					{
+						name: 'Solo',
+						value: 22,
+					},
+					{
+						name: 'Swich',
+						value: 23,
+					},
+					{
+						name: 'Swich',
+						value: 23,
+					},
+					{
+						name: 'iZettle',
+						value: 24,
+					},
+					{
+						name: 'Swish',
+						value: 25,
+					},
+					{
+						name: 'Venmo',
+						value: 26,
+					},
+					{
+						name: 'Money Order',
+						value: 27,
+					},
+					{
+						name: 'Alipay',
+						value: 28,
+					},
+					{
+						name: 'Sofort',
+						value: 29,
+					},
+					{
+						name: 'SEPA',
+						value: 30,
+					},
+					{
+						name: 'GoCardless',
+						value: 31,
+					},
+					{
+						name: 'Bitcoin',
+						value: 32,
+					},
+				],
+				default: 1,
+			},
+			{
+				displayName: 'Transfer Reference',
+				name: 'transferReference',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+
+/* -------------------------------------------------------------------------- */
+/*                                 payment:delete                             */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Payment ID',
+		name: 'paymentId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'payment',
+				],
+				operation: [
+					'delete',
+				],
+			},
+		},
+	},
+/* -------------------------------------------------------------------------- */
+/*                                  payment:get                                  */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Payment ID',
+		name: 'paymentId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'payment',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'payment',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
+				],
+				default: 'client',
+			},
+		],
+	},
+/* -------------------------------------------------------------------------- */
+/*                                  payment:getAll                              */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'payment',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'payment',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'payment',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
+				],
+				default: 'client',
+			},
+		],
+	},
+
+] as INodeProperties[];
