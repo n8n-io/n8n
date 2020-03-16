@@ -203,9 +203,7 @@ class App {
 					});
 				}
 
-				jwt.verify(token, getKey, {}, (err: Error,
-					//decoded: string
-					) => {
+				jwt.verify(token, getKey, {}, (err: Error, decoded: object) => {
 					if (err) return ResponseHelper.jwtAuthAuthorizationError(res, "Invalid token");
 
 					next();
@@ -552,7 +550,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, credentials);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
