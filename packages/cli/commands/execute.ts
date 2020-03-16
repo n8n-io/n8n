@@ -2,7 +2,10 @@ import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
 import {
 	UserSettings,
-} from "n8n-core";
+} from 'n8n-core';
+import {
+	INode,
+} from 'n8n-workflow';
 
 import {
 	ActiveExecutions,
@@ -111,14 +114,15 @@ export class Execute extends Command {
 		// Check if the workflow contains the required "Start" node
 		// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
 		const requiredNodeTypes = ['n8n-nodes-base.start'];
-		let startNodeFound = false;
+		let startNode: INode | undefined= undefined;
 		for (const node of workflowData!.nodes) {
 			if (requiredNodeTypes.includes(node.type)) {
-				startNodeFound = true;
+				startNode = node;
+				break;
 			}
 		}
 
-		if (startNodeFound === false) {
+		if (startNode === undefined) {
 			// If the workflow does not contain a start-node we can not know what
 			// should be executed and with which data to start.
 			GenericHelpers.logOutput(`The workflow does not contain a "Start" node. So it can not be executed.`);
@@ -131,6 +135,7 @@ export class Execute extends Command {
 			const runData: IWorkflowExecutionDataProcess = {
 				credentials,
 				executionMode: 'cli',
+				startNodes: [startNode.name],
 				workflowData: workflowData!,
 			};
 
