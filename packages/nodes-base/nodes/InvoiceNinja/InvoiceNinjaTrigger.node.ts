@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import {
-	invoiceninjaApiRequest,
+	invoiceNinjaApiRequest,
 } from './GenericFunctions';
 
 export class InvoiceNinjaTrigger implements INodeType {
@@ -29,26 +29,8 @@ export class InvoiceNinjaTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'invoiceNinjaCloudApi',
+				name: 'invoiceNinjaApi',
 				required: true,
-				displayOptions: {
-					show: {
-						invoiceNinjaVersion: [
-							'cloud',
-						],
-					},
-				},
-			},
-			{
-				name: 'invoiceNinjaServerApi',
-				required: true,
-				displayOptions: {
-					show: {
-						invoiceNinjaVersion: [
-							'server',
-						],
-					},
-				},
 			},
 		],
 		webhooks: [
@@ -61,44 +43,28 @@ export class InvoiceNinjaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Version',
-				name: 'invoiceNinjaVersion',
-				type: 'options',
-				options: [
-					{
-						name: 'Cloud',
-						value: 'cloud',
-					},
-					{
-						name: 'Server (Self Hosted)',
-						value: 'server',
-					},
-				],
-				default: 'cloud',
-			},
-			{
 				displayName: 'Event',
 				name: 'event',
 				type: 'options',
 				options: [
 					{
-						name: 'client.created',
+						name: 'Client Created',
 						value: 'create_client',
 					},
 					{
-						name: 'invoce.created',
+						name: 'Invoice Created',
 						value: 'create_invoice',
 					},
 					{
-						name: 'payment.created',
+						name: 'Payment Created',
 						value: 'create_payment',
 					},
 					{
-						name: 'quote.created',
+						name: 'Quote Created',
 						value: 'create_quote',
 					},
 					{
-						name: 'vendor.created',
+						name: 'Vendor Created',
 						value: 'create_vendor',
 					},
 				],
@@ -126,7 +92,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 					event,
 				};
 
-				const responseData = await invoiceninjaApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await invoiceNinjaApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
@@ -145,7 +111,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 					const endpoint = `/hooks/${webhookData.webhookId}`;
 
 					try {
-						await invoiceninjaApiRequest.call(this, 'DELETE', endpoint);
+						await invoiceNinjaApiRequest.call(this, 'DELETE', endpoint);
 					} catch (e) {
 						return false;
 					}

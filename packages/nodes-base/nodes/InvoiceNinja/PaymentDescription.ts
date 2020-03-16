@@ -19,6 +19,11 @@ export const paymentOperations = [
 				description: 'Create a new payment',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a payment',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a payment',
@@ -28,11 +33,6 @@ export const paymentOperations = [
 				value: 'getAll',
 				description: 'Get data of all payments',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a payment',
-			}
 		],
 		default: 'create',
 		description: 'The operation to perform.',
