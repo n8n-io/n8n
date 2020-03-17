@@ -250,6 +250,19 @@ export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecu
 
 
 /**
+ * Returns if execution should be continued even if there was an error.
+ *
+ * @export
+ * @param {INode} node
+ * @returns {boolean}
+ */
+export function continueOnFail(node: INode): boolean {
+	return get(node, 'continueOnFail', false);
+}
+
+
+
+/**
  * Returns the webhook URL of the webhook with the given name
  *
  * @export
@@ -474,6 +487,9 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node) => {
 		return {
+			continueOnFail: () => {
+				return continueOnFail(node);
+			},
 			async executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
 				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
 			},
@@ -559,6 +575,9 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: IRunExecutionData, runIndex: number, connectionInputData: INodeExecutionData[], inputData: ITaskDataConnections, node: INode, itemIndex: number, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IExecuteSingleFunctions {
 	return ((workflow, runExecutionData, connectionInputData, inputData, node, itemIndex) => {
 		return {
+			continueOnFail: () => {
+				return continueOnFail(node);
+			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
 			},
