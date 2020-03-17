@@ -206,6 +206,9 @@ export class MicrosoftExcel implements INodeType {
 					if (!rawData) {
 						//@ts-ignore
 						responseData = responseData.map(column => ({ name: column.name }));
+					} else {
+						const dataProperty = this.getNodeParameter('dataProperty', i) as string;
+						responseData = { [dataProperty] : responseData };
 					}
 				}
 			}
@@ -242,6 +245,9 @@ export class MicrosoftExcel implements INodeType {
 							result.push({ ...object });
 						}
 						responseData = result;
+					} else {
+						const dataProperty = this.getNodeParameter('dataProperty', i) as string;
+						responseData = { [dataProperty] : responseData };
 					}
 				}
 			}
@@ -321,6 +327,9 @@ export class MicrosoftExcel implements INodeType {
 							result.push({ ...object });
 						}
 						responseData = result;
+					} else {
+						const dataProperty = this.getNodeParameter('dataProperty', i) as string;
+						responseData = { [dataProperty] : responseData };
 					}
 				}
 			}

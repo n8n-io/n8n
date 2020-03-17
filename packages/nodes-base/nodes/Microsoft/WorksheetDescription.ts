@@ -202,6 +202,26 @@ export const worksheetFields = [
 		description: 'If the data should be returned RAW instead of parsed into keys according to their header.',
 	},
 	{
+		displayName: 'Data Property',
+		name: 'dataProperty',
+		type: 'string',
+		default: 'data',
+		displayOptions: {
+			show: {
+				operation: [
+					'getContent'
+				],
+				resource: [
+					'worksheet',
+				],
+				rawData: [
+					true,
+				],
+			},
+		},
+		description: 'The name of the property into which to write the RAW data.',
+	},
+	{
 		displayName: 'Data Start Row',
 		name: 'dataStartRow',
 		type: 'number',
