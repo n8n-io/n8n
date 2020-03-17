@@ -261,6 +261,26 @@ export const tableFields = [
 		description: 'If the data should be returned RAW instead of parsed into keys according to their header.',
 	},
 	{
+		displayName: 'Data Property',
+		name: 'dataProperty',
+		type: 'string',
+		default: 'data',
+		displayOptions: {
+			show: {
+				operation: [
+					'getRows'
+				],
+				resource: [
+					'table',
+				],
+				rawData: [
+					true,
+				],
+			},
+		},
+		description: 'The name of the property into which to write the RAW data.',
+	},
+	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
@@ -414,6 +434,26 @@ export const tableFields = [
 		},
 		default: false,
 		description: 'If the data should be returned RAW instead of parsed into keys according to their header.',
+	},
+	{
+		displayName: 'Data Property',
+		name: 'dataProperty',
+		type: 'string',
+		default: 'data',
+		displayOptions: {
+			show: {
+				operation: [
+					'getColumns'
+				],
+				resource: [
+					'table',
+				],
+				rawData: [
+					true,
+				],
+			},
+		},
+		description: 'The name of the property into which to write the RAW data.',
 	},
 	{
 		displayName: 'Filters',
