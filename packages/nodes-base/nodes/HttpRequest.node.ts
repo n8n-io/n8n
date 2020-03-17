@@ -586,9 +586,10 @@ export class HttpRequest implements INodeType {
 			},
 		};
 
+		let response: any; // tslint:disable-line:no-any
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
 			const fullResponse = !!options.fullResponse as boolean;
@@ -741,8 +742,17 @@ export class HttpRequest implements INodeType {
 				requestOptions.json = true;
 			}
 
-			// Now that the options are all set make the actual http request
-			const response = await this.helpers.request(requestOptions);
+			try {
+				// Now that the options are all set make the actual http request
+				response = await this.helpers.request(requestOptions);
+			} catch (error) {
+				if (this.continueOnFail() === true) {
+					returnItems.push({ json: { error } });
+					continue;
+				}
+
+				throw error;
+			}
 
 			if (responseFormat === 'file') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;

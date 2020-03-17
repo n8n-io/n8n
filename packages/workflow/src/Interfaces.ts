@@ -154,6 +154,7 @@ export interface IExecuteContextData {
 
 
 export interface IExecuteFunctions {
+	continueOnFail(): boolean;
 	executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any>; // tslint:disable-line:no-any
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
@@ -174,6 +175,7 @@ export interface IExecuteFunctions {
 
 
 export interface IExecuteSingleFunctions {
+	continueOnFail(): boolean;
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
