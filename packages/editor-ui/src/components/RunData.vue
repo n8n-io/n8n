@@ -489,8 +489,7 @@ export default mixins(
 	position: relative;
 	bottom: 0;
 	left: 0;
-	margin-left: 350px;
-	width: calc(100% - 350px);
+	width: 100%;
 	height: 100%;
 	z-index: 100;
 	color: #555;
@@ -498,7 +497,6 @@ export default mixins(
 	background-color: #f9f9f9;
 
 	.data-display-content {
-		position: absolute;
 		bottom: 0;
 		top: 50px;
 		left: 0;

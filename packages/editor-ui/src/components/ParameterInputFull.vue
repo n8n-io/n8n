@@ -65,6 +65,9 @@ export default Vue
 			valueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
 			},
+			deleteOption (optionName: string) {
+				this.$emit('deleteOption', optionName);
+			},
 		},
 	});
 </script>

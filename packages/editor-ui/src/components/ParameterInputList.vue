@@ -1,77 +1,135 @@
 <template>
-	<div class="paramter-input-list-wrapper">
-		<div v-for="parameter in filteredParameters" :key="parameter.name">
-			<div
-				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
-				class="parameter-item"
-			>
-				<multiple-parameter
-					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
-					:path="getPath(parameter.name)"
-					@valueChanged="valueChanged"
-				/>
-			</div>
-
-			<div
-				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
-				class="multi-parameter"
-			>
-				<div class="parameter-name" :title="parameter.displayName">
-					<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
-						<font-awesome-icon
-							icon="trash"
-							class="reset-icon clickable"
-							title="Parameter Options"
-							@click="deleteOption(parameter.name)"
+	<div class="parameter-input-list-wrapper el-row">
+		<el-col :span="24" :sm="size('sm')" :xs="size('xs')" :md="size('md')" :lg="size('lg')" :xl="size('xl')">
+			<el-col v-for="(parameter, index) in filteredParameters" :key="parameter.name">
+				<div v-if="index <= filteredParameters.length/2">
+					<div
+							v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
+							class="parameter-item"
+					>
+						<multiple-parameter
+								:parameter="parameter"
+								:values="getParameterValue(nodeValues, parameter.name, path)"
+								:nodeValues="nodeValues"
+								:path="getPath(parameter.name)"
+								@valueChanged="valueChanged"
 						/>
 					</div>
-					{{parameter.displayName}}:
-					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
-						<font-awesome-icon icon="question-circle"/>
-					</el-tooltip>
-				</div>
-				<div>
-					<collection-parameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-					<fixed-collection-parameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-				</div>
-			</div>
 
-			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
-				<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
-					<font-awesome-icon
-						icon="trash"
-						class="reset-icon clickable"
-						title="Delete Parameter"
-						@click="deleteOption(parameter.name)"
-					/>
-				</div>
+					<div
+							v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
+							class="multi-parameter"
+					>
+						<div>
+							<collection-parameter
+									v-if="parameter.type === 'collection'"
+									:hideDelete="hideDelete"
+									:parameter="parameter"
+									:values="getParameterValue(nodeValues, parameter.name, path)"
+									:nodeValues="nodeValues"
+									:path="getPath(parameter.name)"
+									@valueChanged="valueChanged"
+									@deleteOption="deleteOption"
+							/>
+							<fixed-collection-parameter
+									v-else-if="parameter.type === 'fixedCollection'"
+									:hideDelete="hideDelete"
+									:parameter="parameter"
+									:values="getParameterValue(nodeValues, parameter.name, path)"
+									:nodeValues="nodeValues"
+									:path="getPath(parameter.name)"
+									@valueChanged="valueChanged"
+									@deleteOption="deleteOption"
+							/>
+						</div>
+					</div>
 
-				<parameter-input-full
-					:parameter="parameter"
-					:value="getParameterValue(nodeValues, parameter.name, path)"
-					:displayOptions="true"
-					:path="getPath(parameter.name)"
-					@valueChanged="valueChanged"
-				/>
-			</div>
-		</div>
+					<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
+						<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
+							<font-awesome-icon
+									icon="trash"
+									class="reset-icon clickable"
+									title="Delete Parameter"
+									@click="deleteOption(parameter.name)"
+							/>
+						</div>
+
+						<parameter-input-full
+								:parameter="parameter"
+								:value="getParameterValue(nodeValues, parameter.name, path)"
+								:displayOptions="true"
+								:path="getPath(parameter.name)"
+								@valueChanged="valueChanged"
+						/>
+					</div>
+				</div>
+			</el-col>
+		</el-col>
+		<el-col :span="24" :sm="size('sm')" :xs="size('xs')" :md="size('md')" :lg="size('lg')" :xl="size('xl')">
+			<el-col v-for="(parameter, index) in filteredParameters" :key="parameter.name">
+				<div v-if="index > filteredParameters.length/2">
+					<div
+							v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
+							class="parameter-item"
+					>
+						<multiple-parameter
+								:parameter="parameter"
+								:values="getParameterValue(nodeValues, parameter.name, path)"
+								:nodeValues="nodeValues"
+								:path="getPath(parameter.name)"
+								@valueChanged="valueChanged"
+						/>
+					</div>
+
+					<div
+							v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
+							class="multi-parameter"
+					>
+						<div>
+							<collection-parameter
+									v-if="parameter.type === 'collection'"
+									:hideDelete="hideDelete"
+									:parameter="parameter"
+									:values="getParameterValue(nodeValues, parameter.name, path)"
+									:nodeValues="nodeValues"
+									:path="getPath(parameter.name)"
+									@valueChanged="valueChanged"
+									@deleteOption="deleteOption"
+							/>
+							<fixed-collection-parameter
+									v-else-if="parameter.type === 'fixedCollection'"
+									:hideDelete="hideDelete"
+									:parameter="parameter"
+									:values="getParameterValue(nodeValues, parameter.name, path)"
+									:nodeValues="nodeValues"
+									:path="getPath(parameter.name)"
+									@valueChanged="valueChanged"
+									@deleteOption="deleteOption"
+							/>
+						</div>
+					</div>
+
+					<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
+						<div class="delete-option clickable" title="Delete" v-if="hideDelete !== true && !isReadOnly">
+							<font-awesome-icon
+									icon="trash"
+									class="reset-icon clickable"
+									title="Delete Parameter"
+									@click="deleteOption(parameter.name)"
+							/>
+						</div>
+
+						<parameter-input-full
+								:parameter="parameter"
+								:value="getParameterValue(nodeValues, parameter.name, path)"
+								:displayOptions="true"
+								:path="getPath(parameter.name)"
+								@valueChanged="valueChanged"
+						/>
+					</div>
+				</div>
+			</el-col>
+		</el-col>
 	</div>
 </template>
 
@@ -108,6 +166,7 @@ export default mixins(
 			'parameters', // INodeProperties
 			'path', // string
 			'hideDelete', // boolean
+			'showDelete', // boolean
 		],
 		computed: {
 			filteredParameters (): INodeProperties {
@@ -115,6 +174,17 @@ export default mixins(
 			},
 		},
 		methods: {
+			size (type: string): number {
+				const sizes: {[index: string]:number[]} = {
+					"xs": [24, 24],
+					"sm": [24, 24],
+					"md": [12, 24],
+					"lg": [12, 24],
+					"xl": [12, 24],
+				};
+				const isSub = this!.$parent!.multipleValues! === true;
+				return sizes[type][isSub ? 1 : 0];
+			},
 			multipleValues (parameter: INodeProperties): boolean {
 				if (this.getArgument('multipleValues', parameter) === true) {
 					return true;
@@ -147,6 +217,9 @@ export default mixins(
 				// TODO: If there is only one option it should delete the whole one
 
 				this.$emit('valueChanged', parameterData);
+			},
+			deleteInputList (optionName: string) {
+				this.$emit('deleteOption', optionName);
 			},
 			displayNodeParameter (parameter: INodeProperties): boolean {
 				if (parameter.displayOptions === undefined) {

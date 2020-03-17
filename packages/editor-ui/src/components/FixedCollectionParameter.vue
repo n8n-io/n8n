@@ -1,23 +1,59 @@
 <template>
 	<div @keydown.stop class="fixed-collection-parameter">
+		<div class="parameter-name" :title="parameter.displayName">
+			{{parameter.displayName}}:
+			<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
+				<div slot="content" v-html="parameter.description"></div>
+				<font-awesome-icon icon="question-circle"/>
+			</el-tooltip>
+			<div style="float:right" v-if="parameterOptions.length > 0 && !isReadOnly">
+				<el-link v-if="parameter.options.length === 1" type="primary" @click="optionSelected(parameter.options[0].name)">+ {{ getPlaceholderText }}</el-link>
+				<el-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="mini" class="add-option" @change="optionSelected" filterable>
+					<el-option
+							v-for="item in parameterOptions"
+							:key="item.name"
+							:label="item.displayName"
+							:value="item.name">
+					</el-option>
+				</el-select>
+			</div>
+		</div>
+
 		<div v-if="getProperties.length === 0" class="no-items-exist">
 			Currently no items exist
 		</div>
-
-		<div v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
-			<div class="parameter-name" :title="property.displayName">{{property.displayName}}:</div>
-
+		<div v-else v-for="property in getProperties" :key="property.name" class="fixed-collection-parameter-property">
+			<div v-if="values[property.name].length === 0" class="no-items-exist">
+				Currently no {{property.displayName}} exist
+			</div>
 			<div v-if="multipleValues === true">
 				<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
+					<div class="parameter-name" :title="property.displayName">
+						<span class="delete-option clickable" title="Delete" v-if="!isReadOnly">
+							<font-awesome-icon
+									icon="trash"
+									class="reset-icon clickable"
+									title="Parameter Options"
+									@click="deleteOption(property.name, index)"
+							/>
+						</span>
+						{{property.displayName}} {{index+1}}:
+					</div>
 					<div class="parameter-item-wrapper">
-						<div class="delete-option" title="Delete" v-if="!isReadOnly">
-							<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name, index)" />
-						</div>
-						<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name, index)" :hideDelete="true" @valueChanged="valueChanged" />
+						<parameter-input-list
+								:showDelete="!isReadOnly"
+								:parameters="property.values"
+								:nodeValues="nodeValues"
+								:path="getPropertyPath(property.name, index)"
+								:hideDelete="true"
+								@valueChanged="valueChanged"
+								@deleteOption="deleteOption"
+						/>
 					</div>
 				</div>
 			</div>
 			<div v-else class="parameter-item">
+				<div class="parameter-name" :title="property.displayName"> {{property.displayName}}:</div>
 				<div class="parameter-item-wrapper">
 					<div class="delete-option" title="Delete" v-if="!isReadOnly">
 						<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name)" />
@@ -26,19 +62,6 @@
 				</div>
 			</div>
 		</div>
-
-		<div v-if="parameterOptions.length > 0 && !isReadOnly">
-			<el-button v-if="parameter.options.length === 1" size="small" class="add-option" @click="optionSelected(parameter.options[0].name)">{{ getPlaceholderText }}</el-button>
-			<el-select v-else v-model="selectedOption" :placeholder="getPlaceholderText" size="small" class="add-option" @change="optionSelected" filterable>
-				<el-option
-					v-for="item in parameterOptions"
-					:key="item.name"
-					:label="item.displayName"
-					:value="item.name">
-				</el-option>
-			</el-select>
-		</div>
-
 	</div>
 </template>
 
@@ -66,6 +89,7 @@ export default mixins(genericHelpers)
 		props: [
 			'nodeValues', // INodeParameters
 			'parameter', // INodeProperties
+			'hideDelete', // boolean
 			'path', // string
 			'values', // INodeParameters
 		],
@@ -113,6 +137,9 @@ export default mixins(genericHelpers)
 			},
 		},
 		methods: {
+			deleteCollection (optionName: string) {
+				this.$emit('deleteOption', optionName);
+			},
 			deleteOption (optionName: string, index?: number) {
 				const parameterData = {
 					name: this.getPropertyPath(optionName, index),
@@ -188,17 +215,33 @@ export default mixins(genericHelpers)
 
 <style scoped lang="scss">
 
-.add-option {
-	width: 100%;
-}
+.parameter-name {
+	font-weight: 600;
+	border-bottom: 1px solid #999;
 
+	&:hover {
+		.parameter-info {
+			display: inline;
+		}
+	}
+
+	.delete-option {
+		top: 0;
+		left: -0.9em;
+	}
+
+	.parameter-info {
+		display: none;
+	}
+
+}
 .fixed-collection-parameter {
 	padding: 0 0 0 1em;
 }
 
 .fixed-collection-parameter-property {
-	margin: 0.5em 0;
-	padding: 0.5em 0;
+	margin:0 0 0 1em;
+	padding: 0;
 
 	.parameter-name {
 		border-bottom: 1px solid #999;
@@ -206,18 +249,13 @@ export default mixins(genericHelpers)
 }
 
 .delete-option {
-	display: none;
-	position: absolute;
+	display: inline;
 	z-index: 999;
 	color: #f56c6c;
 	left: 0;
 	top: 0;
 	width: 15px;
 	height: 100%;
-}
-
-.parameter-item-wrapper:hover > .delete-option {
-	display: block;
 }
 
 .parameter-item {

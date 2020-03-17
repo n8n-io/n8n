@@ -18,7 +18,9 @@
 		<div class="node-parameters-wrapper" v-if="node && nodeValid">
 			<el-tabs stretch>
 				<el-tab-pane label="Parameters">
-					<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
+					<el-row>
+						<node-credentials :node="node" @credentialSelected="credentialSelected"></node-credentials>
+					</el-row>
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 					<div v-if="parametersNoneSetting.length === 0">
@@ -28,6 +30,9 @@
 				<el-tab-pane label="Node">
 					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
+				</el-tab-pane>
+				<el-tab-pane label="Result">
+					<RunData />
 				</el-tab-pane>
 			</el-tabs>
 		</div>
@@ -40,12 +45,14 @@ import {
 	INodeIssues,
 	INodeIssueData,
 	INodeIssueObjectProperty,
+	IRunData,
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
 	NodeHelpers,
 	NodeParameterValue,
 } from 'n8n-workflow';
+
 import {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -57,6 +64,8 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
+import RunData from '@/components/RunData.vue';
+
 import { get, set, unset } from 'lodash';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -77,6 +86,7 @@ export default mixins(
 			ParameterInputFull,
 			ParameterInputList,
 			NodeWebhooks,
+			RunData,
 		},
 		computed: {
 			nodeType (): INodeTypeDescription | null {
@@ -468,7 +478,7 @@ export default mixins(
 .node-settings {
 	position: absolute;
 	left: 0;
-	width: 350px;
+	width: 100%;
 	height: 100%;
 	border: none;
 	z-index: 200;

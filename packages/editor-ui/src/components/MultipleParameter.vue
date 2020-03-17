@@ -7,6 +7,9 @@
 				<div slot="content" v-html="parameter.description"></div>
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
+			<div style="float:right" v-if="!isReadOnly">
+				<el-link type="primary" @click="addItem()">+ {{ addButtonText }}</el-link>
+			</div>
 		</div>
 
 		<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
@@ -25,7 +28,6 @@
 			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
 				Currently no items exist
 			</div>
-			<el-button v-if="!isReadOnly" size="small" class="add-item" @click="addItem()">{{ addButtonText }}</el-button>
 		</div>
 
 	</div>

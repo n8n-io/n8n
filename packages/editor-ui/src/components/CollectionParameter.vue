@@ -4,7 +4,14 @@
 			<div v-if="getProperties.length === 0" class="no-items-exist">
 				Currently no properties exist
 			</div>
-
+			<div class="delete-option clickable" title="Delete" v-if="!hideDelete && !isReadOnly">
+				<font-awesome-icon
+						icon="trash"
+						class="reset-icon clickable"
+						title="Parameter Options"
+						@click="deleteCollection(parameter.name)"
+				/>
+			</div>
 			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" @valueChanged="valueChanged" />
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly">
@@ -93,6 +100,9 @@ export default mixins(
 			},
 		},
 		methods: {
+			deleteCollection (optionName: string) {
+				this.$emit('deleteOption', optionName);
+			},
 			getArgument (argumentName: string): string | number | boolean | undefined {
 				if (this.parameter.typeOptions === undefined) {
 					return undefined;

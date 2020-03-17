@@ -3,7 +3,6 @@
 		<div class="data-display-wrapper close-on-click" v-show="node" @click="close">
 			<div class="data-display" >
 				<NodeSettings @valueChanged="valueChanged" />
-				<RunData />
 				<div class="close-button clickable close-on-click" title="Close">
 					<i class="el-icon-close close-on-click"></i>
 				</div>
@@ -17,21 +16,16 @@
 import Vue from 'vue';
 
 import {
-	IRunData,
-} from 'n8n-workflow';
-import {
 	INodeUi,
 	IUpdateInformation,
 } from '../Interface';
 
 import NodeSettings from '@/components/NodeSettings.vue';
-import RunData from '@/components/RunData.vue';
 
 export default Vue.extend({
 	name: 'DataDisplay',
 	components: {
 		NodeSettings,
-		RunData,
 	},
 	computed: {
 		node (): INodeUi {

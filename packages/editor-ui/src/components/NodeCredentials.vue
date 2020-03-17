@@ -1,5 +1,5 @@
 <template>
-	<div v-if="credentialTypesNodeDescriptionDisplayed.length" class="node-credentials">
+	<el-col :span="12" v-if="credentialTypesNodeDescriptionDisplayed.length" class="node-credentials">
 		<credentials-edit :dialogVisible="credentialNewDialogVisible" :editCredentials="editCredentials" :setCredentialType="addType" :nodesInit="nodesInit" @closeDialog="closeCredentialNewDialog" @credentialsCreated="credentialsCreated" @credentialsUpdated="credentialsUpdated"></credentials-edit>
 
 		<div class="headline">
@@ -37,7 +37,7 @@
 			</el-row>
 		</div>
 
-	</div>
+	</el-col>
 </template>
 
 <script lang="ts">
@@ -268,7 +268,6 @@ export default mixins(
 
 .node-credentials {
 	padding-bottom: 1em;
-	margin: 0.5em;
 	border-bottom: 1px solid #ccc;
 
 	.credential-issues {
