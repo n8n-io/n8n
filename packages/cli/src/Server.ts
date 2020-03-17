@@ -973,6 +973,12 @@ class App {
 				workflowData: fullExecutionData.workflowData,
 			};
 
+			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string;
+
+			// Remove the old error and the data of the last run of the node that it can be replaced
+			delete data!.executionData!.resultData.error;
+			data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+
 			if (req.body.loadWorkflow === true) {
 				// Loads the currently saved workflow to execute instead of the
 				// one saved at the time of the execution.
@@ -981,6 +987,18 @@ class App {
 
 				if (data.workflowData === undefined) {
 					throw new Error(`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`);
+				}
+
+				// Replace all of the nodes in the execution stack with the ones of the new workflow
+				for (const stack of data!.executionData!.executionData!.nodeExecutionStack) {
+					// Find the data of the last executed node in the new workflow
+					const node = data.workflowData.nodes.find(node => node.name === stack.node.name);
+					if (node === undefined) {
+						throw new Error(`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`);
+					}
+
+					// Replace the node data in the stack that it really uses the current data
+					stack.node = node;
 				}
 			}
 
