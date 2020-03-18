@@ -269,7 +269,7 @@ export class Postgres implements INodeType {
 
 			const table = this.getNodeParameter('table', 0) as string;
 			const schema = this.getNodeParameter('schema', 0) as string;
-			const returnFields = (this.getNodeParameter('returnFields', 0) as string).split(',') as string[];
+			let returnFields = (this.getNodeParameter('returnFields', 0) as string).split(',') as string[];
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map(column => column.trim());
 
@@ -281,7 +281,8 @@ export class Postgres implements INodeType {
 			const insertItems = getItemCopy(items, columns);
 
 			// Generate the multi-row insert query and return the id of new row
-			const query = pgp.helpers.insert(insertItems, cs, te) + ((returnFields[0] !== '') ?  ` RETURNING ${returnFields.join(',')}` : '');
+			returnFields = returnFields.map(value => value.trim()).filter(value => !!value);
+			const query = pgp.helpers.insert(insertItems, cs, te) + (returnFields.length ?  ` RETURNING ${returnFields.join(',')}` : '');
 
 			// Executing the query to insert the data
 			const insertData = await db.manyOrNone(query);
