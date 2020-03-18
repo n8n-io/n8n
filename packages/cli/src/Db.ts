@@ -57,6 +57,7 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 				password: await GenericHelpers.getConfigValue('database.postgresdb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
+				schema: await GenericHelpers.getConfigValue('database.postgresdb.schema') as string,
 			};
 			break;
 

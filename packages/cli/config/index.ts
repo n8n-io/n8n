@@ -51,6 +51,12 @@ const config = convict({
 				default: 'root',
 				env: 'DB_POSTGRESDB_USER'
 			},
+			schema: {
+				doc: 'PostgresDB Schema',
+				format: String,
+				default: 'public',
+				env: 'DB_POSTGRESDB_SCHEMA'
+			},
 		},
 		mysqldb: {
 			database: {
