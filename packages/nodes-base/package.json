@@ -283,7 +283,7 @@
         "mongodb": "^3.3.2",
         "mysql2": "^2.0.1",
         "n8n-core": "~0.27.0",
-        "nodemailer": "^5.1.1",
+        "nodemailer": "^6.4.5",
         "pdf-parse": "^1.1.1",
         "pg-promise": "^9.0.3",
         "redis": "^2.8.0",
