@@ -96,7 +96,7 @@
         "mysql2": "^2.0.1",
         "n8n-core": "~0.27.0",
         "n8n-editor-ui": "~0.38.0",
-        "n8n-nodes-base": "~0.51.0",
+        "n8n-nodes-base": "~0.52.0",
         "n8n-workflow": "~0.24.0",
         "open": "^7.0.0",
         "pg": "^7.11.0",
