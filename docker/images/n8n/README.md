@@ -156,6 +156,7 @@ Replace the following placeholders with the actual data:
  - <POSTGRES_PASSWORD>
  - <POSTGRES_PORT>
  - <POSTGRES_USER>
+ - <POSTGRES_SCHEMA>
 
 ```
 docker run -it --rm \
