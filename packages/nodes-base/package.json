@@ -253,7 +253,7 @@
         "@types/moment-timezone": "^0.5.12",
         "@types/mongodb": "^3.3.6",
         "@types/node": "^10.10.1",
-        "@types/nodemailer": "^4.6.5",
+        "@types/nodemailer": "^6.4.0",
         "@types/redis": "^2.8.11",
         "@types/request-promise-native": "~1.0.15",
         "@types/uuid": "^3.4.6",
