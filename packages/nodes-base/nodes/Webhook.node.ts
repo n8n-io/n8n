@@ -275,14 +275,21 @@ export class Webhook implements INodeType {
 						default: 'data',
 						description: 'Name of the property to return the data of instead of the whole JSON.',
 					},
+					{
+						displayName: 'Raw Body',
+						name: 'rawBody',
+						type: 'boolean',
+						default: false,
+						description: 'Raw body (binary)',
+					},
 				],
 			},
 		],
 	};
 
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const authentication = this.getNodeParameter('authentication', 0) as string;
+		const options = this.getNodeParameter('options', 0) as IDataObject;
 		const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
 		const req = this.getRequestObject();
 		const resp = this.getResponseObject();
@@ -395,6 +402,16 @@ export class Webhook implements INodeType {
 				query: this.getQueryData(),
 			},
 		};
+
+		if (options.rawBody) {
+			response.binary = {
+				data: {
+					// @ts-ignore
+					data: req.rawBody.toString('base64'),
+					mimeType,
+				}
+			};
+		}
 
 		return {
 			workflowData: [
