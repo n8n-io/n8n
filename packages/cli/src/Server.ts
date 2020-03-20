@@ -1099,16 +1099,7 @@ class App {
 		// Removes a test webhook
 		this.app.delete('/rest/test-webhook/:id', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			const workflowId = req.params.id;
-
-			const workflowData = await Db.collections.Workflow!.findOne(workflowId);
-			if (workflowData === undefined) {
-				throw new ResponseHelper.ResponseError(`Could not find workflow with id "${workflowId}" so webhook could not be deleted!`);
-			}
-
-			const nodeTypes = NodeTypes();
-			const workflow = new Workflow({ id: workflowId.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
-
-			return this.testWebhooks.cancelTestWebhook(workflowId, workflow);
+			return this.testWebhooks.cancelTestWebhook(workflowId);
 		}));
 
 
