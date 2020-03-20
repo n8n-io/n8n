@@ -328,8 +328,9 @@ export class Webhook implements INodeType {
 						const fileJson = files[file].toJSON() as IDataObject;
 						const [fileName, fileExtension] = (fileJson.name as string).split('.');
 						const fileContent = await fs.promises.readFile(files[file].path);
+						const buffer = Buffer.from(fileContent);
 						set(returnData[0], `binary[${fileName}]`, {
-							data: fileContent,
+							data: buffer.toString('base64'),
 							mimeType: fileJson.type,
 							fileName: fileJson.name,
 							fileExtension,
