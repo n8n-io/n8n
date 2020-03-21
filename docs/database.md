@@ -4,6 +4,13 @@ By default, n8n uses SQLite to save credentials, past executions, and workflows.
 n8n however also supports MongoDB and PostgresDB.
 
 
+## Shared Settings
+
+The following environment variables get used by all databases:
+
+ - `DB_TABLE_PREFIX` (default: '') - Prefix for table names
+
+
 ## MongoDB
 
 !> **WARNING**: Use Postgres if possible! Mongo has problems with saving large

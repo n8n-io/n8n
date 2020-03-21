@@ -20,6 +20,12 @@ const config = convict({
 				env: 'DB_MONGODB_CONNECTION_URL'
 			}
 		},
+		tablePrefix: {
+			doc: 'Prefix for table names',
+			format: '*',
+			default: '',
+			env: 'DB_TABLE_PREFIX'
+		},
 		postgresdb: {
 			database: {
 				doc: 'PostgresDB Database',
