@@ -490,6 +490,9 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			continueOnFail: () => {
 				return continueOnFail(node);
 			},
+			evaluateExpression: (expression: string, itemIndex: number) => {
+				return workflow.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+			},
 			async executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
 				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
 			},
@@ -577,6 +580,10 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 		return {
 			continueOnFail: () => {
 				return continueOnFail(node);
+			},
+			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
+				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
+				return workflow.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);

@@ -300,6 +300,7 @@ export class WorkflowDataProxy {
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
 			$env: this.envGetter(),
+			$evaluateExpression: (expression: string) => { },  // Placeholder
 			$item: (itemIndex: number) => {
 				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData);
 				return dataProxy.getDataProxy();
