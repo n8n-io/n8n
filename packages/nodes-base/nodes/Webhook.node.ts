@@ -213,6 +213,28 @@ export class Webhook implements INodeType {
 				description: 'Name of the binary property to return',
 			},
 			{
+				displayName: 'Binary Data',
+				name: 'binaryData',
+				type: 'boolean',
+				default: false,
+				description: 'If the data to upload should be taken from binary field.',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						binaryData: [
+							true,
+						],
+					},
+				},
+				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -266,10 +288,10 @@ export class Webhook implements INodeType {
 		],
 	};
 
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 		const options = this.getNodeParameter('options', 0) as IDataObject;
+		const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
 		const req = this.getRequestObject();
 		const resp = this.getResponseObject();
 		const headers = this.getHeaderData();
@@ -347,6 +369,34 @@ export class Webhook implements INodeType {
 			});
 		}
 
+		if (binaryData) {
+			return new Promise((resolve, reject) => {
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+				const data: Buffer[] = [];
+
+				req.on('data', (chunk) => {
+					data.push(chunk);
+				});
+
+				req.on('end', () => {
+					const returnData: IDataObject[] = [{}];
+					set(returnData[0], `binary[${binaryPropertyName}]`, {
+						data: Buffer.concat(data).toString('base64'),
+						mimeType: req.headers['content-type'],
+					});
+					return resolve({
+						workflowData: [
+							returnData as INodeExecutionData[],
+						],
+					});
+				});
+
+				req.on('error', (err) => {
+					throw new Error(err.message);
+				});
+			});
+		}
+
 		const response: INodeExecutionData = {
 			json: {
 				body: this.getBodyData(),
@@ -354,6 +404,7 @@ export class Webhook implements INodeType {
 				query: this.getQueryData(),
 			},
 		};
+
 		if (options.rawBody) {
 			response.binary = {
 				data: {
