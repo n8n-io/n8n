@@ -49,7 +49,7 @@ export class MicrosoftExcel implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'microsoftOAuth2Api',
+				name: 'microsoftExcelOAuth2Api',
 				required: true,
 			},
 		],

@@ -3,8 +3,8 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class MicrosoftOAuth2Api implements ICredentialType {
-	name = 'microsoftOAuth2Api';
+export class MicrosoftExcelOAuth2Api implements ICredentialType {
+	name = 'microsoftExcelOAuth2Api';
 	extends = [
 		'oAuth2Api',
 	];
