@@ -24,7 +24,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 			options.headers = Object.assign({}, options.headers, headers);
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'microsoftOAuth2Api', options);
+		return await this.helpers.requestOAuth.call(this, 'microsoftExcelOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error && error.response.body.error.message) {
 			// Try to return the error prettier
