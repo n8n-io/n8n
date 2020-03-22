@@ -194,7 +194,8 @@ export default mixins(
 			return this.credentialDataTemp;
 		},
 		isOAuthType (): boolean {
-			return this.credentialTypeData.name === 'oAuth2Api' || (this.credentialTypeData.extends !== undefined && this.credentialTypeData.extends.includes('oAuth2Api'));
+			const types = this.parentTypes(this.credentialTypeData.name);
+			return types.includes('oAuth2Api');
 		},
 		isOAuthConnected (): boolean {
 			if (this.isOAuthType === false) {
@@ -205,6 +206,21 @@ export default mixins(
 		},
 	},
 	methods: {
+		parentTypes (name: string): string[] {
+			const credentialType = this.$store.getters.credentialType(name);
+
+			if (credentialType === undefined || credentialType.extends === undefined) {
+				return [];
+			}
+
+			const types: string[] = [];
+			for (const typeName of credentialType.extends) {
+				types.push(typeName);
+				types.push.apply(types, this.parentTypes(typeName));
+			}
+
+			return types;
+		},
 		valueChanged (parameterData: IUpdateInformation) {
 			const name = parameterData.name.split('.').pop() as string;
 			// For a currently for me unknown reason can In not simply just
