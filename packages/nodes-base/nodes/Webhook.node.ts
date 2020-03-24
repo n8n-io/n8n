@@ -394,7 +394,11 @@ export class Webhook implements INodeType {
 				req.on('end', async () => {
 					const returnItem: INodeExecutionData = {
 						binary: {},
-						json: {},
+						json: {
+							body: this.getBodyData(),
+							headers,
+							query: this.getQueryData(),
+						},
 					};
 
 					const returnData: IDataObject[] = [{ json: {} }];
