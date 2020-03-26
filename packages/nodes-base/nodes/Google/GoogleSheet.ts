@@ -444,7 +444,7 @@ export class GoogleSheet {
 
 			// Loop over all the items and find the one with the matching value
 			for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
-				if (inputData[rowIndex][returnColumnIndex].toString() === lookupValue.lookupValue.toString()) {
+				if (inputData[rowIndex][returnColumnIndex]?.toString() === lookupValue.lookupValue.toString()) {
 					returnData.push(inputData[rowIndex]);
 
 					if (returnAllMatches !== true) {
