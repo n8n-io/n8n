@@ -185,7 +185,7 @@ export class Mailjet implements INodeType {
 				//https://dev.mailjet.com/email/guides/send-api-v31/#use-a-template
 				if (operation === 'sendTemplate') {
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
-					const templateId = this.getNodeParameter('templateId', i) as string;
+					const templateId = parseInt(this.getNodeParameter('templateId', i) as string, 10);
 					const subject = this.getNodeParameter('subject', i) as string;
 					const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
