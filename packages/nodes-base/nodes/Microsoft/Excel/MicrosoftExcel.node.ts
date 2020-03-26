@@ -173,10 +173,35 @@ export class MicrosoftExcel implements INodeType {
 				if (additionalFields.index) {
 					body.index = additionalFields.index as number;
 				}
-				const values: any[][] = [];
+
+				// Get table columns to eliminate any columns not needed on the input
+				responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
+				const columns = responseData.value.map((column: IDataObject) => (column.name));
+
+				const cleanedItems: IDataObject[] = [];
+
+				// Delete columns the excel table does not have
 				for (const item of items) {
-					values.push(Object.values(item.json));
+					for (const key of Object.keys(item.json)) {
+						if (!columns.includes(key)) {
+							const property = { ...item.json };
+							delete property[key];
+							cleanedItems.push(property);
+						}
+					}
 				}
+
+				// Map the keys to the column index
+				const values: any[][] = [];
+				let value = [];
+				for (const item of cleanedItems) {
+					for (const column of columns) {
+						value.push(item[column]);
+					}
+					values.push(value);
+					value = [];
+				}
+
 				body.values = values;
 				const { id } = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/createSession`, { persistChanges: true });
 				responseData = await microsoftApiRequest.call(this, 'POST', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows/add`, body, {}, '', { 'workbook-session-id': id });
@@ -204,8 +229,7 @@ export class MicrosoftExcel implements INodeType {
 						responseData = responseData.value;
 					}
 					if (!rawData) {
-						//@ts-ignore
-						responseData = responseData.map(column => ({ name: column.name }));
+						responseData = responseData.map((column: IDataObject) => ({ name: column.name }));
 					} else {
 						const dataProperty = this.getNodeParameter('dataProperty', i) as string;
 						responseData = { [dataProperty] : responseData };
@@ -248,6 +272,46 @@ export class MicrosoftExcel implements INodeType {
 					} else {
 						const dataProperty = this.getNodeParameter('dataProperty', i) as string;
 						responseData = { [dataProperty] : responseData };
+					}
+				}
+			}
+			if (operation === 'lookup') {
+				for (let i = 0; i < length; i++) {
+					const workbookId = this.getNodeParameter('workbook', 0) as string;
+					const worksheetId = this.getNodeParameter('worksheet', 0) as string;
+					const tableId = this.getNodeParameter('table', 0) as string;
+					const lookupColumn = this.getNodeParameter('lookupColumn', 0) as string;
+					const lookupValue = this.getNodeParameter('lookupValue', 0) as string;
+					const options = this.getNodeParameter('options', 0) as IDataObject;
+
+					responseData = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`, {}, qs);
+
+					qs['$select'] = 'name';
+					let columns = await microsoftApiRequestAllItemsSkip.call(this, 'value', 'GET', `/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`, {}, qs);
+					columns = columns.map((column: IDataObject) => column.name);
+					for (let i = 0; i < responseData.length; i++) {
+						for (let y = 0; y < columns.length; y++) {
+							object[columns[y]] = responseData[i].values[0][y];
+						}
+						result.push({ ...object });
+					}
+					responseData = result;
+
+					if (!columns.includes(lookupColumn)) {
+						throw new Error(`Column ${lookupColumn} does not exist on the table selected`);
+					}
+
+					if (options.returnAllMatches) {
+
+						responseData = responseData.filter((data: IDataObject) => {
+							return (data[lookupColumn]?.toString() === lookupValue );
+						});
+
+					} else {
+
+						responseData = responseData.find((data: IDataObject) => {
+							return (data[lookupColumn]?.toString() === lookupValue );
+						});
 					}
 				}
 			}

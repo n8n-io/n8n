@@ -28,6 +28,11 @@ export const tableOperations = [
 				value: 'getRows',
 				description: 'Retrieve a list of tablerows',
 			},
+			{
+				name: 'Lookup',
+				value: 'lookup',
+				description: 'Looks for a specific column value and then returns the matching row'
+			},
 		],
 		default: 'addRow',
 		description: 'The operation to perform.',
@@ -484,4 +489,137 @@ export const tableFields = [
 			},
 		]
 	},
+/* -------------------------------------------------------------------------- */
+/*                                 table:lookup                               */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Workbook',
+		name: 'workbook',
+		type: 'options',
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getWorkbooks',
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'lookup',
+				],
+				resource: [
+					'table',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Worksheet',
+		name: 'worksheet',
+		type: 'options',
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getworksheets',
+			loadOptionsDependsOn: [
+				'workbook',
+			],
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'lookup',
+				],
+				resource: [
+					'table',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Table',
+		name: 'table',
+		type: 'options',
+		required: true,
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+			loadOptionsDependsOn: [
+				'worksheet',
+			],
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'lookup',
+				],
+				resource: [
+					'table',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Lookup Column',
+		name: 'lookupColumn',
+		type: 'string',
+		default: '',
+		placeholder: 'Email',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'table',
+				],
+				operation: [
+					'lookup'
+				],
+			},
+		},
+		description: 'The name of the column in which to look for value.',
+	},
+	{
+		displayName: 'Lookup Value',
+		name: 'lookupValue',
+		type: 'string',
+		default: '',
+		placeholder: 'frank@example.com',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'table',
+				],
+				operation: [
+					'lookup'
+				],
+			},
+		},
+		description: 'The value to look for in column.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'table',
+				],
+				operation: [
+					'lookup',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Return All Matches',
+				name: 'returnAllMatches',
+				type: 'boolean',
+				default: false,
+				description: 'By default only the first result gets returned. If options gets set all found matches get returned.',
+			},
+		],
+	}
 ] as INodeProperties[];
