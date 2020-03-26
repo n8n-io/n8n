@@ -406,7 +406,7 @@ export class GoogleSheets implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'Continue If Response Is Empty',
+						displayName: 'Continue If Empty',
 						name: 'continue',
 						type: 'boolean',
 						default: false,
@@ -418,7 +418,7 @@ export class GoogleSheets implements INodeType {
 								],
 							},
 						},
-						description: 'By default, the workflow stops executing if the lookup/read does not return values',
+						description: 'By default, the workflow stops executing if the lookup/read does not return values.',
 					},
 					{
 						displayName: 'Return All Matches',
@@ -696,7 +696,6 @@ export class GoogleSheets implements INodeType {
 
 			if (returnData.length === 0 && options.continue && options.returnAllMatches) {
 				returnData = [{}];
-
 			} else if (returnData.length === 1 && Object.keys(returnData[0]).length === 0 && !options.continue && !options.returnAllMatches) {
 				returnData = [];
 			}
