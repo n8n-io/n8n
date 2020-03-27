@@ -26,16 +26,19 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 		json: true,
 		useQuerystring: true,
 	};
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message || error.message;
-		throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessage}`);
+
+		if (error.response && error.response.body && error.response.body.errors) {
+			// Try to return the error prettier
+			const errorMessages = error.response.body.errors.map((e: IDataObject) => e.message);
+			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
+		}
+
+		throw error;
 	}
 }
-
-
 
 /**
  * Make an API request to paginated hubspot endpoint
