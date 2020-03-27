@@ -127,6 +127,10 @@ export class MondayCom implements INodeType {
 					},
 				};
 				const boards = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
+				if (boards === undefined) {
+					return returnData;
+				}
+
 				for (const board of boards) {
 					const boardName = board.name;
 					const boardId = board.id;
@@ -160,6 +164,10 @@ export class MondayCom implements INodeType {
 					},
 				};
 				const { data } = await mondayComApiRequest.call(this, body);
+				if (data === undefined) {
+					return returnData;
+				}
+
 				const columns = data.boards[0].columns;
 				for (const column of columns) {
 					const columnName = column.title;
@@ -191,6 +199,10 @@ export class MondayCom implements INodeType {
 					},
 				};
 				const { data } = await mondayComApiRequest.call(this, body);
+				if (data === undefined) {
+					return returnData;
+				}
+
 				const groups = data.boards[0].groups;
 				for (const group of groups) {
 					const groupName = group.title;
