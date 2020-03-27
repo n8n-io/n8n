@@ -17,9 +17,9 @@ import {
 	get,
 } from 'lodash';
 
-export async function mondayApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function mondayComApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('mondayApi');
+	const credentials = this.getCredentials('mondayComApi');
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -49,7 +49,7 @@ export async function mondayApiRequest(this: IExecuteFunctions | IWebhookFunctio
 	}
 }
 
-export async function mondayApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, body: any = {}): Promise<any> { // tslint:disable-line:no-any
+export async function mondayComApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, body: any = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -58,7 +58,7 @@ export async function mondayApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	body.variables.page = 1;
 
 	do {
-		responseData = await mondayApiRequest.call(this, body);
+		responseData = await mondayComApiRequest.call(this, body);
 		returnData.push.apply(returnData, get(responseData, propertyName));
 		body.variables.page++;
 	} while (

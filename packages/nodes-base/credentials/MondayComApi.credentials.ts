@@ -3,8 +3,8 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class MondayApi implements ICredentialType {
-	name = 'mondayApi';
+export class MondayComApi implements ICredentialType {
+	name = 'mondayComApi';
 	displayName = 'Monday.com API';
 	properties = [
 		{
