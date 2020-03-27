@@ -5,15 +5,15 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeTypeDescription,
 	INodeExecutionData,
-	INodeType,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-	mondayApiRequest,
-	mondayApiRequestAllItems,
+	mondayComApiRequest,
+	mondayComApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -45,24 +45,24 @@ interface IGraphqlBody {
 	variables: IDataObject;
 }
 
-export class Monday implements INodeType {
+export class MondayCom implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Monday.com',
-		name: 'monday.com',
-		icon: 'file:monday.png',
+		name: 'mondayCom',
+		icon: 'file:mondayCom.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Monday.com API',
 		defaults: {
 			name: 'Monday.com',
-			color: '#000000',
+			color: '#4353ff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'mondayApi',
+				name: 'mondayComApi',
 				required: true,
 			},
 		],
@@ -126,7 +126,7 @@ export class Monday implements INodeType {
 						page: 1,
 					},
 				};
-				const boards = await mondayApiRequestAllItems.call(this, 'data.boards', body);
+				const boards = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
 				for (const board of boards) {
 					const boardName = board.name;
 					const boardId = board.id;
@@ -159,7 +159,7 @@ export class Monday implements INodeType {
 						boardId,
 					},
 				};
-				const { data } = await mondayApiRequest.call(this, body);
+				const { data } = await mondayComApiRequest.call(this, body);
 				const columns = data.boards[0].columns;
 				for (const column of columns) {
 					const columnName = column.title;
@@ -190,7 +190,7 @@ export class Monday implements INodeType {
 						boardId,
 					},
 				};
-				const { data } = await mondayApiRequest.call(this, body);
+				const { data } = await mondayComApiRequest.call(this, body);
 				const groups = data.boards[0].groups;
 				for (const group of groups) {
 					const groupName = group.title;
@@ -230,7 +230,7 @@ export class Monday implements INodeType {
 						},
 					};
 
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.archive_board;
 				}
 				if (operation === 'create') {
@@ -255,7 +255,7 @@ export class Monday implements INodeType {
 						body.variables.templateId = additionalFields.templateId as number;
 					}
 
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.create_board;
 				}
 				if (operation === 'get') {
@@ -281,7 +281,7 @@ export class Monday implements INodeType {
 						},
 					};
 
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.boards;
 				}
 				if (operation === 'getAll') {
@@ -308,10 +308,10 @@ export class Monday implements INodeType {
 					};
 
 					if (returnAll === true) {
-						responseData = await mondayApiRequestAllItems.call(this, 'data.boards', body);
+						responseData = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
 					} else {
 						body.variables.limit =  this.getNodeParameter('limit', i) as number,
-						responseData = await mondayApiRequest.call(this, body);
+						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.boards;
 					}
 				}
@@ -346,7 +346,7 @@ export class Monday implements INodeType {
 						body.variables.defaults = JSON.stringify(JSON.parse(additionalFields.defaults as string));
 					}
 
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.create_column;
 				}
 				if (operation === 'getAll') {
@@ -371,7 +371,7 @@ export class Monday implements INodeType {
 						},
 					};
 
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.boards[0].columns;
 				}
 			}
@@ -393,7 +393,7 @@ export class Monday implements INodeType {
 						},
 					};
 
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.create_group;
 				}
 				if (operation === 'delete') {
@@ -413,7 +413,7 @@ export class Monday implements INodeType {
 						},
 					};
 
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.delete_group;
 				}
 				if (operation === 'getAll') {
@@ -438,7 +438,7 @@ export class Monday implements INodeType {
 						},
 					};
 
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.boards[0].groups;
 				}
 			}
@@ -472,7 +472,7 @@ export class Monday implements INodeType {
 						body.variables.columnValues = JSON.stringify(JSON.parse(additionalFields.columnValues as string));
 					}
 
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.create_item;
 				}
 				if (operation === 'delete') {
@@ -489,7 +489,7 @@ export class Monday implements INodeType {
 							itemId,
 						},
 					};
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.delete_item;
 				}
 				if (operation === 'get') {
@@ -517,7 +517,7 @@ export class Monday implements INodeType {
 							itemId: itemIds,
 						},
 					};
-					responseData = await mondayApiRequest.call(this, body);
+					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.items;
 				}
 				if (operation === 'getAll') {
@@ -555,10 +555,10 @@ export class Monday implements INodeType {
 					};
 
 					if (returnAll) {
-						responseData = await mondayApiRequestAllItems.call(this, 'data.boards[0].groups[0].items', body);
+						responseData = await mondayComApiRequestAllItems.call(this, 'data.boards[0].groups[0].items', body);
 					} else {
 						body.variables.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await mondayApiRequest.call(this, body);
+						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.boards[0].groups[0].items;
 					}
 
@@ -598,10 +598,10 @@ export class Monday implements INodeType {
 					};
 
 					if (returnAll) {
-						responseData = await mondayApiRequestAllItems.call(this, 'data.items_by_column_values', body);
+						responseData = await mondayComApiRequestAllItems.call(this, 'data.items_by_column_values', body);
 					} else {
 						body.variables.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await mondayApiRequest.call(this, body);
+						responseData = await mondayComApiRequest.call(this, body);
 						responseData = responseData.data.items_by_column_values;
 					}
 				}
