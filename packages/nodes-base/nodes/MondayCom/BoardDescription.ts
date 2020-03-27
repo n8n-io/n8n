@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from "n8n-workflow";
+} from 'n8n-workflow';
 
 export const boardOperations = [
 	{
@@ -155,8 +155,11 @@ export const boardFields = [
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
-		type: 'string',
+		type: 'options',
 		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getBoards',
+		},
 		required: true,
 		displayOptions: {
 			show: {
