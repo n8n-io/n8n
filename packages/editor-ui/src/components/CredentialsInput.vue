@@ -194,6 +194,9 @@ export default mixins(
 			return this.credentialDataTemp;
 		},
 		isOAuthType (): boolean {
+			if (this.credentialTypeData.name === 'oAuth2Api') {
+				return true;
+			}
 			const types = this.parentTypes(this.credentialTypeData.name);
 			return types.includes('oAuth2Api');
 		},
