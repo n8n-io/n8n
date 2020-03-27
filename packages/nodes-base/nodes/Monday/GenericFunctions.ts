@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,6 +12,10 @@ import {
 	IHookFunctions,
 	IWebhookFunctions
 } from 'n8n-workflow';
+
+import {
+	get,
+} from 'lodash';
 
 export async function mondayApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
@@ -53,10 +59,10 @@ export async function mondayApiRequestAllItems(this: IHookFunctions | IExecuteFu
 
 	do {
 		responseData = await mondayApiRequest.call(this, body);
-		returnData.push.apply(returnData, responseData['data'][propertyName]);
+		returnData.push.apply(returnData, get(responseData, propertyName));
 		body.variables.page++;
 	} while (
-		responseData['data'][propertyName].length > 0
+		get(responseData, propertyName).length > 0
 	);
 	return returnData;
 }
