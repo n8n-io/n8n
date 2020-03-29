@@ -137,6 +137,19 @@ export NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash
 ```
 
 
+## SSL
+
+It is possible to start n8n with SSL enabled by supplying a certificate to use:
+
+
+```bash
+export N8N_PROTOCOL=https
+export N8N_SSL_KEY=/data/certs/server.key
+export N8N_SSL_CERT=/data/certs/server.pem
+```
+
+
+
 ## Timezone
 
 The timezone is set by default to "America/New_York". It gets for example used by the
