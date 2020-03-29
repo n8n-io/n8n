@@ -1,16 +1,14 @@
 import {
-	IExecuteFunctions,
 	BINARY_ENCODING,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
 	INodeType,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	IBinaryKeyData,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -19,14 +17,14 @@ import {
 } from './GenericFunctions';
 
 import {
-	fileOperations,
 	fileFields,
+	fileOperations,
 } from './FileDescription';
 
 import {
+	folderFields,
 	folderOperations,
-	folderFields
-} from './FolderDescriptiont';
+} from './FolderDescription';
 
 export class MicrosoftOneDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -113,8 +111,15 @@ export class MicrosoftOneDrive implements INodeType {
 					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
 					responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${fileId}`);
 
+					const fileName = responseData.name;
+
 					if (responseData.file === undefined) {
 						throw new Error('The ID you provided does not belong to a file.');
+					}
+
+					let mimeType: string | undefined;
+					if (responseData.file.mimeType) {
+						mimeType = responseData.file.mimeType;
 					}
 
 					responseData = await microsoftApiRequest.call(this, 'GET', `/drive/items/${fileId}/content`, {}, {}, undefined, {}, { encoding: null, resolveWithFullResponse: true });
@@ -124,8 +129,7 @@ export class MicrosoftOneDrive implements INodeType {
 						binary: {},
 					};
 
-					let mimeType: string | undefined;
-					if (responseData.headers['content-type']) {
+					if (mimeType === undefined && responseData.headers['content-type']) {
 						mimeType = responseData.headers['content-type'];
 					}
 
@@ -140,7 +144,7 @@ export class MicrosoftOneDrive implements INodeType {
 
 					const data = Buffer.from(responseData.body);
 
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, undefined, mimeType);
+					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
 				}
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_get?view=odsp-graph-online
 				if (operation === 'get') {
@@ -151,17 +155,17 @@ export class MicrosoftOneDrive implements INodeType {
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 				if (operation === 'search') {
 					const query = this.getNodeParameter('query', i) as string;
-					responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='{${query}}')`);
+					responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='${query}')`);
 					responseData = responseData.filter((item: IDataObject) => item.file);
-					returnData.push(responseData as IDataObject);
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_put_content?view=odsp-graph-online#example-upload-a-new-file
 				if (operation === 'upload') {
 					const parentId = this.getNodeParameter('parentId', i) as string;
-					const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
-					let fileName = this.getNodeParameter('fileName', 0) as string;
+					const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+					const fileName = this.getNodeParameter('fileName', i) as string;
 
-					if (binaryData) {
+					if (isBinaryData) {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 						if (items[i].binary === undefined) {
@@ -174,20 +178,16 @@ export class MicrosoftOneDrive implements INodeType {
 
 						const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
 
-						if (fileName !== '') {
-							fileName = `${fileName}.${binaryData.fileExtension}`;
-						}
-
 						const body = Buffer.from(binaryData.data, BINARY_ENCODING);
-						responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${fileName || binaryData.fileName}:/content`,  body , {}, undefined, { 'Content-Type': binaryData.mimeType, 'Content-length': body.length } );
-						returnData.push(responseData as IDataObject);
+						responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${fileName || binaryData.fileName}:/content`, body, {}, undefined, { 'Content-Type': binaryData.mimeType, 'Content-length': body.length }, {} );
 
+						returnData.push(JSON.parse(responseData) as IDataObject);
 					} else {
-						const body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
+						const body = this.getNodeParameter('fileContent', i) as string;
 						if (fileName === '') {
-							throw new Error('File name must be defined');
+							throw new Error('File name must be set!');
 						}
-						responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${fileName}.txt:/content`,  body , {}, undefined, { 'Content-Type': 'text/plain' } );
+						responseData = await microsoftApiRequest.call(this, 'PUT', `/drive/items/${parentId}:/${fileName}:/content`,  body , {}, undefined, { 'Content-Type': 'text/plain' } );
 						returnData.push(responseData as IDataObject);
 					}
 				}
@@ -197,14 +197,14 @@ export class MicrosoftOneDrive implements INodeType {
 				if (operation === 'getChildren') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
 					responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/items/${folderId}/children`);
-					returnData.push(responseData as IDataObject);
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 				if (operation === 'search') {
 					const query = this.getNodeParameter('query', i) as string;
-					responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='{${query}}')`);
+					responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/drive/root/search(q='${query}')`);
 					responseData = responseData.filter((item: IDataObject) => item.folder);
-					returnData.push(responseData as IDataObject);
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 			}
 		}
@@ -212,11 +212,6 @@ export class MicrosoftOneDrive implements INodeType {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
 		} else {
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
-			}
 			return [this.helpers.returnJsonArray(returnData)];
 		}
 	}
