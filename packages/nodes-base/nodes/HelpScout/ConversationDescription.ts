@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const conversationOperations = [
 	{
@@ -310,7 +310,7 @@ export const conversationFields = [
 							alwaysOpenEditWindow: true
 						},
 						default: '',
-						description: 'The message text,						'
+						description: 'The message text.'
 					},
 					{
 						displayName: 'Bcc',
@@ -429,6 +429,13 @@ export const conversationFields = [
 		},
 		options: [
 			{
+				displayName: 'Assign To',
+				name: 'assignTo',
+				type: 'number',
+				default: 0,
+				description: 'Filters conversations by assignee id',
+			},
+			{
 				displayName: 'Embed',
 				name: 'embed',
 				type: 'options',
@@ -442,13 +449,6 @@ export const conversationFields = [
 				description: 'Allows embedding/loading of sub-entities',
 			},
 			{
-				displayName: 'Mailbox ID',
-				name: 'mailbox',
-				type: 'string',
-				default: '',
-				description: 'Filters conversations from a specific mailbox',
-			},
-			{
 				displayName: 'Folder ID',
 				name: 'folder',
 				type: 'string',
@@ -456,54 +456,11 @@ export const conversationFields = [
 				description: 'Filters conversations from a specific folder id',
 			},
 			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Active',
-						value: 'active',
-					},
-					{
-						name: 'All',
-						value: 'all',
-					},
-					{
-						name: 'Closed',
-						value: 'closed',
-					},
-					{
-						name: 'Open',
-						value: 'open',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Spam',
-						value: 'spam',
-					},
-				],
-				default: 'active',
-				description: 'Filter conversation by status',
-			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				default: [],
-				description: 'Filter conversation by tags',
-			},
-			{
-				displayName: 'Assign To',
-				name: 'assignTo',
-				type: 'number',
-				default: 0,
-				description: 'Filters conversations by assignee id',
+				displayName: 'Mailbox ID',
+				name: 'mailbox',
+				type: 'string',
+				default: '',
+				description: 'Filters conversations from a specific mailbox',
 			},
 			{
 				displayName: 'Modified Since',
@@ -521,6 +478,16 @@ export const conversationFields = [
 					minValue: 0,
 				},
 				description: 'Looks up conversation by conversation number',
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>'
 			},
 			{
 				displayName: 'Sort Field',
@@ -584,14 +551,47 @@ export const conversationFields = [
 				default: 'desc',
 			},
 			{
-				displayName: 'Query',
-				name: 'query',
-				type: 'string',
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Active',
+						value: 'active',
+					},
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Closed',
+						value: 'closed',
+					},
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Spam',
+						value: 'spam',
+					},
+				],
+				default: 'active',
+				description: 'Filter conversation by status',
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'multiOptions',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					loadOptionsMethod: 'getTags',
 				},
-				default: '',
-				description: 'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>'
+				default: [],
+				description: 'Filter conversation by tags',
 			},
 		],
 	},

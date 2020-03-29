@@ -3,39 +3,28 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeType,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	IBinaryKeyData,
 } from 'n8n-workflow';
 
 import {
-	helpscoutApiRequest,
-	helpscoutApiRequestAllItems,
-} from './GenericFunctions';
+	countriesCodes
+} from './CountriesCodes';
 
 import {
-	conversationOperations,
 	conversationFields,
+	conversationOperations,
 } from './ConversationDescription';
 
 import {
-	customerOperations,
 	customerFields,
+	customerOperations,
 } from './CustomerDescription';
-
-import {
-	mailboxOperations,
-	mailboxFields,
-} from './MailboxDescription';
-
-import {
-	threadOperations,
-	threadFields,
-} from './ThreadDescription';
 
 import {
 	ICustomer,
@@ -43,16 +32,28 @@ import {
 
 import {
 	IConversation,
- } from './ConversationInterface';
+} from './ConversationInterface';
 
- import {
-	IThread,
+import {
+	helpscoutApiRequest,
+	helpscoutApiRequestAllItems,
+} from './GenericFunctions';
+
+import {
+	mailboxFields,
+	mailboxOperations,
+} from './MailboxDescription';
+
+import {
+	threadFields,
+	threadOperations,
+} from './ThreadDescription';
+
+import {
 	IAttachment,
- } from './ThreadInterface';
+	IThread,
+} from './ThreadInterface';
 
- import {
-	countriesCodes
-} from './CountriesCodes';
 
 export class HelpScout implements INodeType {
 	description: INodeTypeDescription = {

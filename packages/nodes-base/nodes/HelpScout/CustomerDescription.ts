@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const customerOperations = [
 	{
@@ -19,11 +19,6 @@ export const customerOperations = [
 				description: 'Create a new customer',
 			},
 			{
-				name: 'Properties',
-				value: 'properties',
-				description: 'Get customer property definitions',
-			},
-			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a customer',
@@ -32,6 +27,11 @@ export const customerOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all customers',
+			},
+			{
+				name: 'Properties',
+				value: 'properties',
+				description: 'Get customer property definitions',
 			},
 			{
 				name: 'Update',
@@ -93,16 +93,6 @@ export const customerFields = [
 				description: `Customer’s age`,
 			},
 			{
-				displayName: 'Notes',
-				name: 'background',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: `Notes`,
-			},
-			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
@@ -150,6 +140,16 @@ export const customerFields = [
 				type: 'string',
 				default: '',
 				description: 'Location of the customer.',
+			},
+			{
+				displayName: 'Notes',
+				name: 'background',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: `Notes`,
 			},
 			{
 				displayName: 'Organization',
@@ -267,39 +267,39 @@ export const customerFields = [
 						type: 'options',
 						options: [
 							{
-								name: 'aim',
+								name: 'AIM',
 								value: 'aim',
 							},
 							{
-								name: 'gtalk',
+								name: 'Google Talk',
 								value: 'gtalk',
 							},
 							{
-								name: 'icq',
+								name: 'ICQ',
 								value: 'icq',
 							},
 							{
-								name: 'msn',
+								name: 'MSN',
 								value: 'msn',
 							},
 							{
-								name: 'other',
+								name: 'Other',
 								value: 'other',
 							},
 							{
-								name: 'qq',
+								name: 'QQ',
 								value: 'qq',
 							},
 							{
-								name: 'skype',
+								name: 'Skype',
 								value: 'skype',
 							},
 							{
-								name: 'xmpp',
+								name: 'XMPP',
 								value: 'xmpp',
 							},
 							{
-								name: 'yahoo',
+								name: 'Yahoo',
 								value: 'yahoo',
 							},
 						],
@@ -585,13 +585,6 @@ export const customerFields = [
 		},
 		options: [
 			{
-				displayName: 'Mailbox ID',
-				name: 'mailbox',
-				type: 'string',
-				default: '',
-				description: 'Filters customers from a specific mailbox',
-			},
-			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
@@ -604,6 +597,13 @@ export const customerFields = [
 				type: 'string',
 				default: '',
 				description: 'Filters customers by last name',
+			},
+			{
+				displayName: 'Mailbox ID',
+				name: 'mailbox',
+				type: 'string',
+				default: '',
+				description: 'Filters customers from a specific mailbox',
 			},
 			{
 				displayName: 'Modified Since',
@@ -734,16 +734,6 @@ export const customerFields = [
 				description: `Customer’s age`,
 			},
 			{
-				displayName: 'Notes',
-				name: 'background',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: `Notes`,
-			},
-			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
@@ -793,6 +783,16 @@ export const customerFields = [
 				description: 'Location of the customer.',
 			},
 			{
+				displayName: 'Notes',
+				name: 'background',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: `Notes`,
+			},
+			{
 				displayName: 'Organization',
 				name: 'organization',
 				type: 'string',
@@ -806,6 +806,6 @@ export const customerFields = [
 				default: '',
 				description: 'URL of the customer’s photo',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

@@ -4,10 +4,10 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -51,52 +51,53 @@ export class HelpScoutTrigger implements INodeType {
 				name: 'events',
 				type: 'multiOptions',
 				options: [
+
 					{
-						name: 'convo.agent.reply.created',
-						value: 'convo.agent.reply.created',
-					},
-					{
-						name: 'convo.assigned',
+						name: 'Conversation - Assigned',
 						value: 'convo.assigned',
 					},
 					{
-						name: 'convo.created',
+						name: 'Conversation - Created',
 						value: 'convo.created',
 					},
 					{
-						name: 'convo.customer.reply.created',
-						value: 'convo.customer.reply.created',
-					},
-					{
-						name: 'convo.deleted',
+						name: 'Conversation - Deleted',
 						value: 'convo.deleted',
 					},
 					{
-						name: 'convo.merged',
+						name: 'Conversation - Merged',
 						value: 'convo.merged',
 					},
 					{
-						name: 'convo.moved',
+						name: 'Conversation - Moved',
 						value: 'convo.moved',
 					},
 					{
-						name: 'convo.note.created',
-						value: 'convo.note.created',
-					},
-					{
-						name: 'convo.status',
+						name: 'Conversation - Status',
 						value: 'convo.status',
 					},
 					{
-						name: 'convo.tags',
+						name: 'Conversation - Tags',
 						value: 'convo.tags',
 					},
 					{
-						name: 'customer.created',
+						name: 'Conversation Agent Reply - Created',
+						value: 'convo.agent.reply.created',
+					},
+					{
+						name: 'Conversation Customer Reply - Created',
+						value: 'convo.customer.reply.created',
+					},
+					{
+						name: 'Conversation Note - Created',
+						value: 'convo.note.created',
+					},
+					{
+						name: 'Customer - Created',
 						value: 'customer.created',
 					},
 					{
-						name: 'satisfaction.ratings',
+						name: 'Rating - Received',
 						value: 'satisfaction.ratings',
 					},
 				],
