@@ -258,12 +258,8 @@ export class Hubspot implements INodeType {
 						});
 					}
 					body.associations = association;
-					try {
-						const endpoint = '/deals/v1/deal';
-						responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
-					} catch (err) {
-						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
-					}
+					const endpoint = '/deals/v1/deal';
+					responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 				}
 				if (operation === 'update') {
 					const body: IDeal = {};
@@ -311,12 +307,8 @@ export class Hubspot implements INodeType {
 							value: updateFields.pipeline as string
 						});
 					}
-					try {
-						const endpoint = `/deals/v1/deal/${dealId}`;
-						responseData = await hubspotApiRequest.call(this, 'PUT', endpoint, body);
-					} catch (err) {
-						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
-					}
+					const endpoint = `/deals/v1/deal/${dealId}`;
+					responseData = await hubspotApiRequest.call(this, 'PUT', endpoint, body);
 				}
 				if (operation === 'get') {
 					const dealId = this.getNodeParameter('dealId', i) as string;
@@ -324,12 +316,8 @@ export class Hubspot implements INodeType {
 					if (additionalFields.includePropertyVersions) {
 						qs.includePropertyVersions = additionalFields.includePropertyVersions as boolean;
 					}
-					try {
-						const endpoint = `/deals/v1/deal/${dealId}`;
-						responseData = await hubspotApiRequest.call(this, 'GET', endpoint);
-					} catch (err) {
-						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
-					}
+					const endpoint = `/deals/v1/deal/${dealId}`;
+					responseData = await hubspotApiRequest.call(this, 'GET', endpoint);
 				}
 				if (operation === 'getAll') {
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -345,17 +333,13 @@ export class Hubspot implements INodeType {
 						// @ts-ignore
 						qs.propertiesWithHistory = filters.propertiesWithHistory.split(',');
 					}
-					try {
-						const endpoint = `/deals/v1/deal/paged`;
-						if (returnAll) {
-							responseData = await hubspotApiRequestAllItems.call(this, 'deals', 'GET', endpoint, {}, qs);
-						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
-							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
-							responseData = responseData.deals;
-						}
-					} catch (err) {
-						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
+					const endpoint = `/deals/v1/deal/paged`;
+					if (returnAll) {
+						responseData = await hubspotApiRequestAllItems.call(this, 'deals', 'GET', endpoint, {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+						responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.deals;
 					}
 				}
 				if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
@@ -368,31 +352,23 @@ export class Hubspot implements INodeType {
 					if (filters.includePropertyVersions) {
 						qs.includePropertyVersions = filters.includePropertyVersions as boolean;
 					}
-					try {
-						if (operation === 'getRecentlyCreated') {
-							endpoint = `/deals/v1/deal/recent/created`;
-						} else {
-							endpoint = `/deals/v1/deal/recent/modified`;
-						}
-						if (returnAll) {
-							responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
-						} else {
-							qs.count = this.getNodeParameter('limit', 0) as number;
-							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
-							responseData = responseData.results;
-						}
-					} catch (err) {
-						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
+					if (operation === 'getRecentlyCreated') {
+						endpoint = `/deals/v1/deal/recent/created`;
+					} else {
+						endpoint = `/deals/v1/deal/recent/modified`;
+					}
+					if (returnAll) {
+						responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
+					} else {
+						qs.count = this.getNodeParameter('limit', 0) as number;
+						responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.results;
 					}
 				}
 				if (operation === 'delete') {
 					const dealId = this.getNodeParameter('dealId', i) as string;
-					try {
-						const endpoint = `/deals/v1/deal/${dealId}`;
-						responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
-					} catch (err) {
-						throw new Error(`Hubspot Error: ${JSON.stringify(err)}`);
-					}
+					const endpoint = `/deals/v1/deal/${dealId}`;
+					responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
 				}
 			}
 			//https://developers.hubspot.com/docs/methods/forms/forms_overview
