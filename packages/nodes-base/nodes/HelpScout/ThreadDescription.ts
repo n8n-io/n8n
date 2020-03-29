@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const threadOperations = [
 	{
@@ -129,6 +129,12 @@ export const threadFields = [
 		},
 		options: [
 			{
+				displayName: 'Created At',
+				name: 'createdAt',
+				type: 'dateTime',
+				default: '',
+			},
+			{
 				displayName: 'Customer Email',
 				name: 'customerEmail',
 				type: 'string',
@@ -160,12 +166,6 @@ export const threadFields = [
 				type: 'boolean',
 				default: false,
 				description: 'When imported is set to true, no outgoing emails or notifications will be generated.',
-			},
-			{
-				displayName: 'Created At',
-				name: 'createdAt',
-				type: 'dateTime',
-				default: '',
 			},
 		]
 	},

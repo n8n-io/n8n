@@ -1,9 +1,9 @@
 import { OptionsWithUri } from 'request';
 import {
+	IHookFunctions,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
-	IHookFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
@@ -43,7 +43,8 @@ export async function helpscoutApiRequest(this: IExecuteFunctions | IExecuteSing
 				return `${error.path} ${error.message}`;
 			}).join('-')}`);
 		}
-		throw error;
+
+		throw new Error(`HelpScout error response [${error.statusCode}]: ${error.message}`);
 	}
 }
 
