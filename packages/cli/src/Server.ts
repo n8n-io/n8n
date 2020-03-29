@@ -1,5 +1,8 @@
 import * as express from 'express';
 import {
+	readFileSync,
+} from 'fs';
+import {
 	dirname as pathDirname,
 	join as pathJoin,
 } from 'path';
@@ -98,8 +101,8 @@ class App {
 	versions: IPackageVersions | undefined;
 
 	protocol: string;
-	ssl_key:  string;
-	ssl_cert: string;
+	sslKey:  string;
+	sslCert: string;
 
 	constructor() {
 		this.app = express();
@@ -118,8 +121,8 @@ class App {
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 
 		this.protocol = config.get('protocol');
-		this.ssl_key  = config.get('ssl_key');
-		this.ssl_cert = config.get('ssl_cert');
+		this.sslKey  = config.get('ssl_key');
+		this.sslCert = config.get('ssl_cert');
 	}
 
 
@@ -1262,19 +1265,17 @@ export async function start(): Promise<void> {
 	const app = new App();
 
 	await app.config();
-	
-	// Differntiate HTTP and HTTPS server
-	const http  = require('http');
-	const https = require('https');
-	const fs    = require('fs');
-	var server;
+
+	let server;
 
 	if(app.protocol === 'https'){
-		const privateKey = fs.readFileSync(app.ssl_key,'utf8');
-		const cert = fs.readFileSync(app.ssl_cert,'utf8');
-		const credentials = {key: privateKey,cert: cert};
+		const https = require('https');
+		const privateKey = readFileSync(app.sslKey,'utf8');
+		const cert = readFileSync(app.sslCert,'utf8');
+		const credentials = { key: privateKey,cert };
 		server = https.createServer(credentials,app.app);
 	}else{
+		const http = require('http');
 		server = http.createServer(app.app);
 	}
 
