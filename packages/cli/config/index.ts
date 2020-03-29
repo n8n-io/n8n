@@ -288,10 +288,10 @@ const config = convict({
 // Overwrite default configuration with settings which got defined in
 // optional configuration files
 if (process.env.N8N_CONFIG_FILES !== undefined) {
-       const configFiles = process.env.N8N_CONFIG_FILES.split(',');
-       console.log(`\nLoading configuration overwrites from:\n - ${configFiles.join('\n - ')}\n`);
+	const configFiles = process.env.N8N_CONFIG_FILES.split(',');
+	console.log(`\nLoading configuration overwrites from:\n - ${configFiles.join('\n - ')}\n`);
 
-       config.loadFile(configFiles);
+	config.loadFile(configFiles);
 }
 
 config.validate({
