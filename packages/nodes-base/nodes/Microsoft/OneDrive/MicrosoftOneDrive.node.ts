@@ -193,6 +193,16 @@ export class MicrosoftOneDrive implements INodeType {
 				}
 			}
 			if (resource === 'folder') {
+				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_post_children?view=odsp-graph-online
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const body: IDataObject = {
+						name,
+						folder: {},
+					};
+					responseData = await microsoftApiRequest.call(this, 'POST', '/drive/root/children', body);
+					returnData.push(responseData);
+				}
 				//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_list_children?view=odsp-graph-online
 				if (operation === 'getChildren') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
