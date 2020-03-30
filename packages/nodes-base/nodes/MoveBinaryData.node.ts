@@ -6,6 +6,7 @@ import {
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -164,6 +165,28 @@ export class MoveBinaryData implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Data Is Base64',
+						name: 'dataIsBase64',
+						type: 'boolean',
+						displayOptions: {
+							hide: {
+								'useRawData': [
+									true,
+								],
+							},
+							show: {
+								'/mode': [
+									'jsonToBinary',
+								],
+								'/convertAllData': [
+									false,
+								],
+							},
+						},
+						default: false,
+						description: 'Keeps the binary data as base64 string.',
+					},
+					{
 						displayName: 'Encoding',
 						name: 'encoding',
 						type: 'string',
@@ -178,10 +201,30 @@ export class MoveBinaryData implements INodeType {
 						description: 'Set the encoding of the data stream',
 					},
 					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/mode': [
+									'jsonToBinary',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'example.json',
+						description: 'The file name to set.',
+					},
+					{
 						displayName: 'JSON Parse',
 						name: 'jsonParse',
 						type: 'boolean',
 						displayOptions: {
+							hide: {
+								'keepAsBase64': [
+									true,
+								],
+							},
 							show: {
 								'/mode': [
 									'binaryToJson',
@@ -192,7 +235,7 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: false,
-						description: 'Run JSON parse on the data to get propery object data.',
+						description: 'Run JSON parse on the data to get proper object data.',
 					},
 					{
 						displayName: 'Keep Source',
@@ -200,6 +243,28 @@ export class MoveBinaryData implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'If the source key should be kept. By default does it get deleted.',
+					},
+					{
+						displayName: 'Keep As Base64',
+						name: 'keepAsBase64',
+						type: 'boolean',
+						displayOptions: {
+							hide: {
+								'jsonParse': [
+									true,
+								],
+							},
+							show: {
+								'/mode': [
+									'binaryToJson',
+								],
+								'/setAllData': [
+									false,
+								],
+							},
+						},
+						default: false,
+						description: 'Keeps the binary data as base64 string.',
 					},
 					{
 						displayName: 'Mime Type',
@@ -221,6 +286,11 @@ export class MoveBinaryData implements INodeType {
 						name: 'useRawData',
 						type: 'boolean',
 						displayOptions: {
+							hide: {
+								'dataIsBase64': [
+									true,
+								],
+							},
 							show: {
 								'/mode': [
 									'jsonToBinary',
@@ -267,14 +337,19 @@ export class MoveBinaryData implements INodeType {
 				}
 
 				const encoding = (options.encoding as string) || 'utf8';
-				let convertedValue = Buffer.from(value.data, 'base64').toString(encoding);
+				let convertedValue = value.data;
 
 				if (setAllData === true) {
 					// Set the full data
+					convertedValue = Buffer.from(convertedValue, 'base64').toString(encoding);
 					newItem.json = JSON.parse(convertedValue);
 				} else {
 					// Does get added to existing data so copy it first
 					newItem.json = JSON.parse(JSON.stringify(item.json));
+
+					if (options.keepAsBase64 !== true) {
+						convertedValue = Buffer.from(convertedValue, 'base64').toString(encoding);
+					}
 
 					if (options.jsonParse) {
 						convertedValue = JSON.parse(convertedValue);
@@ -316,14 +391,23 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = {};
 				}
 
-				if (options.useRawData !== true) {
-					value = JSON.stringify(value);
+				if (options.dataIsBase64 !== true) {
+					if (options.useRawData !== true) {
+						value = JSON.stringify(value);
+					}
+
+					value = Buffer.from(value as string).toString('base64');
 				}
 
-				const convertedValue = {
-					data: Buffer.from(value as string).toString('base64'),
-					mimeType: options.mimeType || 'application/json',
+				const convertedValue: IBinaryData = {
+					data: value as string,
+					mimeType: (options.mimeType as string) || 'application/json',
 				};
+
+				if (options.fileName) {
+					convertedValue.fileName = options.fileName as string;
+				}
+
 				set(newItem.binary!, destinationKey, convertedValue);
 
 				if (options.keepSource === true) {
