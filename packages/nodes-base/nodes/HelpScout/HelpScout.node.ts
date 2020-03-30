@@ -241,9 +241,16 @@ export class HelpScout implements INodeType {
 				}
 				//https://developer.helpscout.com/mailbox-api/endpoints/conversations/list
 				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					Object.assign(qs, options);
-					responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.conversations', 'GET', '/v2/conversations', {}, qs);
+					if (returnAll) {
+						responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.conversations', 'GET', '/v2/conversations', {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.conversations', 'GET', '/v2/conversations', {}, qs);
+						responseData = responseData.splice(0, qs.limit);
+					}
 				}
 			}
 			if (resource === 'customer') {
@@ -307,9 +314,16 @@ export class HelpScout implements INodeType {
 				}
 				//https://developer.helpscout.com/mailbox-api/endpoints/customers/list
 				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					Object.assign(qs, options);
-					responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.customers', 'GET', '/v2/customers', {}, qs);
+					if (returnAll) {
+						responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.customers', 'GET', '/v2/customers', {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.customers', 'GET', '/v2/customers', {}, qs);
+						responseData = responseData.splice(0, qs.limit);
+					}
 				}
 				//https://developer.helpscout.com/mailbox-api/endpoints/customers/overwrite/
 				if (operation === 'update') {
@@ -335,7 +349,14 @@ export class HelpScout implements INodeType {
 				}
 				//https://developer.helpscout.com/mailbox-api/endpoints/mailboxes/list
 				if (operation === 'getAll') {
-					responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.mailboxes', 'GET', '/v2/mailboxes', {}, qs);
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll) {
+						responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.mailboxes', 'GET', '/v2/mailboxes', {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.mailboxes', 'GET', '/v2/mailboxes', {}, qs);
+						responseData = responseData.splice(0, qs.limit);
+					}
 				}
 			}
 			if (resource === 'thread') {
@@ -396,8 +417,15 @@ export class HelpScout implements INodeType {
 				}
 				//https://developer.helpscout.com/mailbox-api/endpoints/conversations/threads/list
 				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const conversationId = this.getNodeParameter('conversationId', i) as string;
-					responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.threads', 'GET', `/v2/conversations/${conversationId}/threads`);
+					if (returnAll) {
+						responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.threads', 'GET', `/v2/conversations/${conversationId}/threads`);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await helpscoutApiRequestAllItems.call(this, '_embedded.threads', 'GET', `/v2/conversations/${conversationId}/threads`, {}, qs);
+						responseData = responseData.splice(0, qs.limit);
+					}
 				}
 			}
 			if (Array.isArray(responseData)) {
