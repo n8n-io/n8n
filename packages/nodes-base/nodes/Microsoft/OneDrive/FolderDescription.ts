@@ -14,6 +14,11 @@ export const folderOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a folder',
+			},
+			{
 				name: 'Get Children',
 				value: 'getChildren',
 				description: 'Get items inside a folder',
@@ -31,6 +36,27 @@ export const folderOperations = [
 
 export const folderFields = [
 
+/* -------------------------------------------------------------------------- */
+/*                                 folder:create                              */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Name',
+		name: 'name',
+		required: true,
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'folder',
+				],
+			},
+		},
+		default: '',
+		description: `Folder's name`,
+	},
 /* -------------------------------------------------------------------------- */
 /*                                 folder:getChildren                         */
 /* -------------------------------------------------------------------------- */
