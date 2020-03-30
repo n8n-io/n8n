@@ -12,7 +12,6 @@ import {
 import {
 	get,
 } from 'lodash';
-import { queryResult } from 'pg-promise';
 
 export async function helpscoutApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	let options: OptionsWithUri = {

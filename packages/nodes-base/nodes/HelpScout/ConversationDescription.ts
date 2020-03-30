@@ -584,7 +584,7 @@ export const conversationFields = [
 						value: 'asc',
 					},
 					{
-						name: 'Desc',
+						name: 'DESC',
 						value: 'desc',
 					},
 				],
