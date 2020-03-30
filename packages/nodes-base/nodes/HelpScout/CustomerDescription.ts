@@ -568,6 +568,46 @@ export const customerFields = [
 /*                                customer:getAll                             */
 /* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'customer',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'customer',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -647,7 +687,7 @@ export const customerFields = [
 						value: 'asc',
 					},
 					{
-						name: 'Desc',
+						name: 'DESC',
 						value: 'desc',
 					},
 				],
