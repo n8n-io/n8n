@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -103,6 +104,26 @@ export class Set implements INodeType {
 					},
 				],
 			},
+
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Dot Notation',
+						name: 'dotNotation',
+						type: 'boolean',
+						default: true,
+						description: `By default does dot-notation get used in property names..<br />
+						This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }.<br />
+						If that is not intended this can be deactivated, it will then set { "a.b": value } instead.
+						`,
+					},
+				],
+			},
 		]
 	};
 
@@ -122,6 +143,7 @@ export class Set implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, []) as boolean;
 			item = items[itemIndex];
+			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
 			const newItem: INodeExecutionData = {
 				json: {},
@@ -141,17 +163,29 @@ export class Set implements INodeType {
 
 			// Add boolean values
 			(this.getNodeParameter('values.boolean', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-				set(newItem.json, setItem.name as string, !!setItem.value);
+				if (options.dotNotation === false) {
+					newItem.json[setItem.name as string] = !!setItem.value;
+				} else {
+					set(newItem.json, setItem.name as string, !!setItem.value);
+				}
 			});
 
 			// Add number values
 			(this.getNodeParameter('values.number', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-				set(newItem.json, setItem.name as string, setItem.value);
+				if (options.dotNotation === false) {
+					newItem.json[setItem.name as string] = setItem.value;
+				} else {
+					set(newItem.json, setItem.name as string, setItem.value);
+				}
 			});
 
 			// Add string values
 			(this.getNodeParameter('values.string', itemIndex, []) as INodeParameters[]).forEach((setItem) => {
-				set(newItem.json, setItem.name as string, setItem.value);
+				if (options.dotNotation === false) {
+					newItem.json[setItem.name as string] = setItem.value;
+				} else {
+					set(newItem.json, setItem.name as string, setItem.value);
+				}
 			});
 
 			returnData.push(newItem);
