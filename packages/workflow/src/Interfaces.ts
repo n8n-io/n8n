@@ -155,6 +155,7 @@ export interface IExecuteContextData {
 
 export interface IExecuteFunctions {
 	continueOnFail(): boolean;
+	evaluateExpression(expression: string, itemIndex: number): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 	executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any>; // tslint:disable-line:no-any
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
@@ -176,6 +177,7 @@ export interface IExecuteFunctions {
 
 export interface IExecuteSingleFunctions {
 	continueOnFail(): boolean;
+	evaluateExpression(expression: string, itemIndex: number | undefined): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[];
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
@@ -530,8 +532,12 @@ export interface IWorkflowDataProxyData {
 	$binary: any; // tslint:disable-line:no-any
 	$data: any; // tslint:disable-line:no-any
 	$env: any; // tslint:disable-line:no-any
+	$evaluateExpression: any; // tslint:disable-line:no-any
+	$item: any; // tslint:disable-line:no-any
+	$json: any; // tslint:disable-line:no-any
 	$node: any; // tslint:disable-line:no-any
 	$parameter: any; // tslint:disable-line:no-any
+	$workflow: any; // tslint:disable-line:no-any
 }
 
 export interface IWorkflowMetadata {

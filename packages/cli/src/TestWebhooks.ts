@@ -131,7 +131,7 @@ export class TestWebhooks {
 
 		// Remove test-webhooks automatically if they do not get called (after 120 seconds)
 		const timeout = setTimeout(() => {
-			this.cancelTestWebhook(workflowData.id.toString(), workflow);
+			this.cancelTestWebhook(workflowData.id.toString());
 		}, 120000);
 
 		let key: string;
@@ -143,10 +143,10 @@ export class TestWebhooks {
 				workflowData,
 			};
 			await this.activeWebhooks!.add(workflow, webhookData, mode);
-		}
 
-		// Save static data!
-		await WorkflowHelpers.saveStaticData(workflow);
+			// Save static data!
+			this.testWebhookData[key].workflowData.staticData = workflow.staticData;
+		}
 
 		return true;
  	}
@@ -159,7 +159,9 @@ export class TestWebhooks {
 	 * @returns {boolean}
 	 * @memberof TestWebhooks
 	 */
-	cancelTestWebhook(workflowId: string, workflow: Workflow): boolean {
+	cancelTestWebhook(workflowId: string): boolean {
+		const nodeTypes = NodeTypes();
+
 		let foundWebhook = false;
 		for (const webhookKey of Object.keys(this.testWebhookData)) {
 			const webhookData = this.testWebhookData[webhookKey];
@@ -181,6 +183,9 @@ export class TestWebhooks {
 					// Could not inform editor, probably is not connected anymore. So sipmly go on.
 				}
 			}
+
+			const workflowData = webhookData.workflowData;
+			const workflow = new Workflow({ id: workflowData.id.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
 
 			// Remove the webhook
 			delete this.testWebhookData[webhookKey];
@@ -207,7 +212,7 @@ export class TestWebhooks {
 		for (const webhookKey of Object.keys(this.testWebhookData)) {
 			workflowData = this.testWebhookData[webhookKey].workflowData;
 			workflow = new Workflow({ id: workflowData.id.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
-			workflows.push();
+			workflows.push(workflow);
 		}
 
 		return this.activeWebhooks.removeAll(workflows);

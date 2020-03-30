@@ -3,6 +3,10 @@ import { google, sheets_v4 } from 'googleapis';
 import { JWT } from 'google-auth-library';
 import { getAuthenticationClient } from './GoogleApi';
 
+import {
+	utils as xlsxUtils,
+} from 'xlsx';
+
 const Sheets = google.sheets('v4'); // tslint:disable-line:variable-name
 
 export interface ISheetOptions {
@@ -271,6 +275,12 @@ export class GoogleSheet {
 	}
 
 
+	getColumnWithOffset (startColumn: string, offset: number): string {
+		const columnIndex = xlsxUtils.decode_col(startColumn) + offset;
+		return xlsxUtils.encode_col(columnIndex);
+	}
+
+
 	/**
 	 * Updates data in a sheet
 	 *
@@ -291,7 +301,14 @@ export class GoogleSheet {
 		}
 		[rangeStart, rangeEnd] = range.split(':');
 
-		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStart}${dataStartRowIndex}:${rangeEnd}${dataStartRowIndex}`;
+		const rangeStartSplit = rangeStart.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
+		const rangeEndSplit = rangeEnd.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
+
+		if (rangeStartSplit === null || rangeStartSplit.length !== 3 || rangeEndSplit === null || rangeEndSplit.length !== 3) {
+			throw new Error(`The range "${range}" is not valid.`);
+		}
+
+		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${dataStartRowIndex}:${rangeEndSplit[1]}${dataStartRowIndex}`;
 
 		const sheetDatakeyRow = await this.getData(keyRowRange, valueRenderMode);
 
@@ -307,9 +324,11 @@ export class GoogleSheet {
 			throw new Error(`Could not find column for key "${indexKey}"!`);
 		}
 
-		const characterCode = rangeStart.toUpperCase().charCodeAt(0) + keyIndex;
-		let keyColumnRange = String.fromCharCode(characterCode);
-		keyColumnRange = `${sheet ? sheet + '!' : ''}${keyColumnRange}:${keyColumnRange}`;
+		const startRowIndex = rangeStartSplit[2] || '';
+		const endRowIndex = rangeEndSplit[2] || '';
+
+		const keyColumn = this.getColumnWithOffset(rangeStartSplit[1], keyIndex);
+		const keyColumnRange = `${sheet ? sheet + '!' : ''}${keyColumn}${startRowIndex}:${keyColumn}${endRowIndex}`;
 
 		const sheetDataKeyColumn = await this.getData(keyColumnRange, valueRenderMode);
 
@@ -348,7 +367,6 @@ export class GoogleSheet {
 			}
 
 			// Get the row index in which the data should be updated
-			// TODO: Should probably change the indexes to be 1 based because Google Sheet is
 			updateRowIndex = keyColumnIndexLookup.indexOf(itemKey) + dataStartRowIndex + 1;
 
 			// Check all the properties in the sheet and check which ones exist on the
@@ -367,7 +385,7 @@ export class GoogleSheet {
 				// Property exists so add it to the data to update
 
 				// Get the column name in which the property data can be found
-				updateColumnName = String.fromCharCode(rangeStart.toUpperCase().charCodeAt(0) + keyColumnOrder.indexOf(propertyName));
+				updateColumnName = this.getColumnWithOffset(rangeStartSplit[1], keyColumnOrder.indexOf(propertyName));
 
 				updateData.push({
 					range: `${sheet ? sheet + '!' : ''}${updateColumnName}${updateRowIndex}`,
@@ -426,7 +444,7 @@ export class GoogleSheet {
 
 			// Loop over all the items and find the one with the matching value
 			for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
-				if (inputData[rowIndex][returnColumnIndex].toString() === lookupValue.lookupValue.toString()) {
+				if (inputData[rowIndex][returnColumnIndex]?.toString() === lookupValue.lookupValue.toString()) {
 					returnData.push(inputData[rowIndex]);
 
 					if (returnAllMatches !== true) {
