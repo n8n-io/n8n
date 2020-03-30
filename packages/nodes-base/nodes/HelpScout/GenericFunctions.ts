@@ -53,13 +53,15 @@ export async function helpscoutApiRequestAllItems(this: IExecuteFunctions | ILoa
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query.size = 50;
 	let uri;
 
 	do {
 		responseData = await helpscoutApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = get(responseData, '_links.next.href');
 		returnData.push.apply(returnData, get(responseData, propertyName));
+		if (query.limit && query.limit <= returnData.length) {
+			return returnData;
+		}
 	} while (
 		responseData['_links'] !== undefined &&
 		responseData['_links'].next !== undefined &&
