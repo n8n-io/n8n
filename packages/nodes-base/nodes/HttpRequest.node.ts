@@ -7,6 +7,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IBinaryData,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -636,10 +637,15 @@ export class HttpRequest implements INodeType {
 						const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 						if (sendBinaryData === true) {
 
-							if (options.bodyContentType !== 'raw') {
+							const contentTypesAllowed = [
+								'raw',
+								'multipart-form-data',
+							];
+
+							if (!contentTypesAllowed.includes(options.bodyContentType as string)) {
 								// As n8n-workflow.NodeHelpers.getParamterResolveOrder can not be changed
 								// easily to handle parameters in dot.notation simply error for now.
-								throw new Error('Sending binary data is only supported when option "Body Content Type" is set to "RAW/CUSTOM"!');
+								throw new Error('Sending binary data is only supported when option "Body Content Type" is set to "RAW/CUSTOM" and "FORM-DATA/MULTIPART"!');
 							}
 
 							const item = items[itemIndex];
@@ -653,7 +659,22 @@ export class HttpRequest implements INodeType {
 								throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
 							}
 
-							requestOptions.body = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+							const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
+
+							if (options.bodyContentType === 'raw') {
+								requestOptions.body = Buffer.from(binaryProperty.data, BINARY_ENCODING);
+							}
+							if (options.bodyContentType === 'multipart-form-data') {
+								requestOptions.body =  {
+								file: {
+									value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+									options: {
+									  filename: binaryProperty.fileName,
+									  contentType: binaryProperty.mimeType,
+									},
+								  }
+								};
+							}
 							continue;
 						}
 					}
