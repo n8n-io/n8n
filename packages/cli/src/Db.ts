@@ -42,6 +42,7 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 			entities = MongoDb;
 			connectionOptions = {
 				type: 'mongodb',
+				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
 				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
 				useNewUrlParser: true,
 			};
@@ -52,11 +53,13 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 			entities = PostgresDb;
 			connectionOptions = {
 				type: 'postgres',
+				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
 				database: await GenericHelpers.getConfigValue('database.postgresdb.database') as string,
 				host: await GenericHelpers.getConfigValue('database.postgresdb.host') as string,
 				password: await GenericHelpers.getConfigValue('database.postgresdb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
+				schema: await GenericHelpers.getConfigValue('database.postgresdb.schema') as string,
 			};
 			break;
 
@@ -66,10 +69,11 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 			connectionOptions = {
 				type: 'mysql',
 				database: await GenericHelpers.getConfigValue('database.mysqldb.database') as string,
+				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
 				host: await GenericHelpers.getConfigValue('database.mysqldb.host') as string,
 				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
-				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string
+				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
 			};
 			break;
 
@@ -79,6 +83,7 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 			connectionOptions = {
 				type: 'sqlite',
 				database: path.join(n8nFolder, 'database.sqlite'),
+				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
 			};
 			break;
 

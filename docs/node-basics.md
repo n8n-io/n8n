@@ -49,6 +49,7 @@ The following special variables are available:
 
  - **$binary**: Incoming binary data of a node
  - **$data**: Incoming JSON data of a node
+ - **$evaluateExpression**: Evaluates a string as expression
  - **$env**: Environment variables
  - **$node**: Data of other nodes (output-data, parameters)
  - **$parameters**: Parameters of the current node

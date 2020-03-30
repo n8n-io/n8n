@@ -1,5 +1,8 @@
 import * as express from 'express';
 import {
+	readFileSync,
+} from 'fs';
+import {
 	dirname as pathDirname,
 	join as pathJoin,
 } from 'path';
@@ -97,6 +100,10 @@ class App {
 	push: Push.Push;
 	versions: IPackageVersions | undefined;
 
+	protocol: string;
+	sslKey:  string;
+	sslCert: string;
+
 	constructor() {
 		this.app = express();
 
@@ -112,6 +119,10 @@ class App {
 		this.push = Push.getInstance();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
+
+		this.protocol = config.get('protocol');
+		this.sslKey  = config.get('ssl_key');
+		this.sslCert = config.get('ssl_cert');
 	}
 
 
@@ -1099,16 +1110,7 @@ class App {
 		// Removes a test webhook
 		this.app.delete('/rest/test-webhook/:id', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			const workflowId = req.params.id;
-
-			const workflowData = await Db.collections.Workflow!.findOne(workflowId);
-			if (workflowData === undefined) {
-				throw new ResponseHelper.ResponseError(`Could not find workflow with id "${workflowId}" so webhook could not be deleted!`);
-			}
-
-			const nodeTypes = NodeTypes();
-			const workflow = new Workflow({ id: workflowId.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
-
-			return this.testWebhooks.cancelTestWebhook(workflowId, workflow);
+			return this.testWebhooks.cancelTestWebhook(workflowId);
 		}));
 
 
@@ -1264,7 +1266,20 @@ export async function start(): Promise<void> {
 
 	await app.config();
 
-	app.app.listen(PORT, async () => {
+	let server;
+
+	if(app.protocol === 'https'){
+		const https = require('https');
+		const privateKey = readFileSync(app.sslKey,'utf8');
+		const cert = readFileSync(app.sslCert,'utf8');
+		const credentials = { key: privateKey,cert };
+		server = https.createServer(credentials,app.app);
+	}else{
+		const http = require('http');
+		server = http.createServer(app.app);
+	}
+
+	server.listen(PORT, async () => {
 		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);

@@ -4,6 +4,13 @@ By default, n8n uses SQLite to save credentials, past executions, and workflows.
 n8n however also supports MongoDB and PostgresDB.
 
 
+## Shared Settings
+
+The following environment variables get used by all databases:
+
+ - `DB_TABLE_PREFIX` (default: '') - Prefix for table names
+
+
 ## MongoDB
 
 !> **WARNING**: Use Postgres if possible! Mongo has problems with saving large
@@ -38,6 +45,7 @@ To use PostgresDB as database you can provide the following environment variable
  - `DB_POSTGRESDB_PORT` (default: 5432)
  - `DB_POSTGRESDB_USER` (default: 'root')
  - `DB_POSTGRESDB_PASSWORD` (default: empty)
+ - `DB_POSTGRESDB_SCHEMA` (default: 'public')
 
 
 ```bash
@@ -47,6 +55,7 @@ export DB_POSTGRESDB_HOST=postgresdb
 export DB_POSTGRESDB_PORT=5432
 export DB_POSTGRESDB_USER=n8n
 export DB_POSTGRESDB_PASSWORD=n8n
+export DB_POSTGRESDB_SCHEMA=n8n
 
 n8n start
 ```

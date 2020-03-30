@@ -137,6 +137,19 @@ export NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash
 ```
 
 
+## SSL
+
+It is possible to start n8n with SSL enabled by supplying a certificate to use:
+
+
+```bash
+export N8N_PROTOCOL=https
+export N8N_SSL_KEY=/data/certs/server.key
+export N8N_SSL_CERT=/data/certs/server.pem
+```
+
+
+
 ## Timezone
 
 The timezone is set by default to "America/New_York". It gets for example used by the
@@ -177,3 +190,52 @@ webhook URLs get registred with external services.
 ```bash
 export WEBHOOK_TUNNEL_URL="https://n8n.example.com/"
 ```
+
+
+## Configuration via file
+
+It is also possible to configure n8n via a configuration file.
+
+It is not necessary to define all values. Only the ones which should be
+different from the defaults.
+
+If needed also multiple files can be supplied to for example have generic
+base settings and some specific ones depending on the environment.
+
+The path to the JSON configuration file to use can be set via the environment
+variable `N8N_CONFIG_FILES`.
+
+```bash
+# Single file
+export N8N_CONFIG_FILES=/folder/my-config.json
+
+# Multiple files can be comma-separated
+export N8N_CONFIG_FILES=/folder/my-config.json,/folder/production.json
+```
+
+A possible configuration file could look like this:
+```json
+{
+	"executions": {
+		"process": "main",
+		"saveDataOnSuccess": "none"
+	},
+	"generic": {
+		"timezone": "Europe/Berlin"
+	},
+	"security": {
+		"basicAuth": {
+			"active": true,
+			"user": "frank",
+			"password": "some-secure-password"
+		}
+	},
+	"nodes": {
+		"exclude": "[\"n8n-nodes-base.executeCommand\",\"n8n-nodes-base.writeBinaryFile\"]"
+	}
+}
+```
+
+All possible values which can be set and their defaults can be found here:
+
+[https://github.com/n8n-io/n8n/blob/master/packages/cli/config/index.ts](https://github.com/n8n-io/n8n/blob/master/packages/cli/config/index.ts)

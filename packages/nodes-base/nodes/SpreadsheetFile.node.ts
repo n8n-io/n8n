@@ -197,6 +197,20 @@ export class SpreadsheetFile implements INodeType {
 						description: 'If the data should be returned RAW instead of parsed.',
 					},
 					{
+						displayName: 'Read As String',
+						name: 'readAsString',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile'
+								],
+							},
+						},
+						default: false,
+						description: 'In some cases and file formats, it is necessary to read<br />specifically as string else some special character get interpreted wrong.',
+					},
+					{
 						displayName: 'Sheet Name',
 						name: 'sheetName',
 						type: 'string',
@@ -259,7 +273,12 @@ export class SpreadsheetFile implements INodeType {
 
 				// Read the binary spreadsheet data
 				const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
-				const workbook = xlsxRead(binaryData, { raw: options.rawData as boolean });
+				let workbook;
+				if (options.readAsString === true) {
+					workbook = xlsxRead(binaryData.toString(), { type: 'string', raw: options.rawData as boolean });
+				} else {
+					workbook = xlsxRead(binaryData, { raw: options.rawData as boolean });
+				}
 
 				if (workbook.SheetNames.length === 0) {
 					throw new Error('Spreadsheet does not have any sheets!');

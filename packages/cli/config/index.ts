@@ -20,6 +20,12 @@ const config = convict({
 				env: 'DB_MONGODB_CONNECTION_URL'
 			}
 		},
+		tablePrefix: {
+			doc: 'Prefix for table names',
+			format: '*',
+			default: '',
+			env: 'DB_TABLE_PREFIX'
+		},
 		postgresdb: {
 			database: {
 				doc: 'PostgresDB Database',
@@ -50,6 +56,12 @@ const config = convict({
 				format: String,
 				default: 'root',
 				env: 'DB_POSTGRESDB_USER'
+			},
+			schema: {
+				doc: 'PostgresDB Schema',
+				format: String,
+				default: 'public',
+				env: 'DB_POSTGRESDB_SCHEMA'
 			},
 		},
 		mysqldb: {
@@ -163,6 +175,18 @@ const config = convict({
 		env: 'N8N_PROTOCOL',
 		doc: 'HTTP Protocol via which n8n can be reached'
 	},
+	ssl_key: {
+		format: String,
+		default: 'server.key',
+		env: 'N8N_SSL_KEY',
+		doc: 'SSL Key for HTTPS Protocol'
+	},
+	ssl_cert: {
+		format: String,
+		default: 'server.pem',
+		env: 'N8N_SSL_CERT',
+		doc: 'SSL Cert for HTTPS Protocol'
+	},
 
 	security: {
 		basicAuth: {
@@ -260,6 +284,15 @@ const config = convict({
 	},
 
 });
+
+// Overwrite default configuration with settings which got defined in
+// optional configuration files
+if (process.env.N8N_CONFIG_FILES !== undefined) {
+	const configFiles = process.env.N8N_CONFIG_FILES.split(',');
+	console.log(`\nLoading configuration overwrites from:\n - ${configFiles.join('\n - ')}\n`);
+
+	config.loadFile(configFiles);
+}
 
 config.validate({
 	allowed: 'strict',

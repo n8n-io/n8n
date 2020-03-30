@@ -21,7 +21,7 @@ export async function jotformApiRequest(this: IHookFunctions | IExecuteFunctions
 		method,
 		qs,
 		form: body,
-		uri: uri ||`http://api.jotform.com${resource}`,
+		uri: uri || `https://${credentials.apiDomain || 'api.jotform.com'}${resource}`,
 		json: true
 	};
 	if (!Object.keys(body).length) {
