@@ -1268,10 +1268,10 @@ export async function start(): Promise<void> {
 
 	let server;
 
-	if(app.protocol === 'https'){
+	if (app.protocol === 'https' && app.sslKey && app.sslCert){
 		const https = require('https');
-		const privateKey = readFileSync(app.sslKey,'utf8');
-		const cert = readFileSync(app.sslCert,'utf8');
+		const privateKey = readFileSync(app.sslKey, 'utf8');
+		const cert = readFileSync(app.sslCert, 'utf8');
 		const credentials = { key: privateKey,cert };
 		server = https.createServer(credentials,app.app);
 	}else{
