@@ -687,7 +687,7 @@ export const customerFields = [
 						value: 'asc',
 					},
 					{
-						name: 'Desc',
+						name: 'DESC',
 						value: 'desc',
 					},
 				],
