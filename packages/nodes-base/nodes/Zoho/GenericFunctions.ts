@@ -41,14 +41,17 @@ export async function zohoApiRequestAllItems(this: IExecuteFunctions | ILoadOpti
 
 	let responseData;
 	let uri: string | undefined;
+	query.per_page = 200;
+	query.page = 0;
 
 	do {
 		responseData = await zohoApiRequest.call(this, method, endpoint, body, query, uri);
-		uri = responseData.nextRecordsUrl;
+		uri = responseData.info.more_records;
 		returnData.push.apply(returnData, responseData[propertyName]);
+		query.page++;
 	} while (
-		responseData.nextRecordsUrl !== undefined &&
-		responseData.nextRecordsUrl !== null
+		responseData.info.more_records !== undefined &&
+		responseData.info.more_records === true
 	);
 
 	return returnData;
