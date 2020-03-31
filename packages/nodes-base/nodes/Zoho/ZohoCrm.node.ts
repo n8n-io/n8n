@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -17,13 +17,13 @@ import {
 } from './GenericFunctions';
 
 import {
-	leadOperations,
 	leadFields,
+	leadOperations,
 } from './LeadDescription';
 
 import {
-	ILead,
 	IAddress,
+	ILead,
 } from './LeadInterface';
 
 export class ZohoCrm implements INodeType {
@@ -92,7 +92,7 @@ export class ZohoCrm implements INodeType {
 				qs.sort_order = 'desc';
 				const { data } = await zohoApiRequest.call(this, 'GET', '/accounts', {}, qs);
 				for (const account of data) {
-					const accountName = account.Account_Name
+					const accountName = account.Account_Name;
 					const accountId = account.id;
 					returnData.push({
 						name: accountName,
@@ -111,7 +111,7 @@ export class ZohoCrm implements INodeType {
 				for (const field of fields) {
 					if (field.api_name === 'Lead_Status') {
 						for (const value of field.pick_list_values) {
-							const valueName = value.display_value
+							const valueName = value.display_value;
 							const valueId = value.actual_value;
 							returnData.push({
 								name: valueName,
@@ -133,7 +133,7 @@ export class ZohoCrm implements INodeType {
 				for (const field of fields) {
 					if (field.api_name === 'Lead_Source') {
 						for (const value of field.pick_list_values) {
-							const valueName = value.display_value
+							const valueName = value.display_value;
 							const valueId = value.actual_value;
 							returnData.push({
 								name: valueName,
@@ -155,7 +155,7 @@ export class ZohoCrm implements INodeType {
 				for (const field of fields) {
 					if (field.api_name === 'Industry') {
 						for (const value of field.pick_list_values) {
-							const valueName = value.display_value
+							const valueName = value.display_value;
 							const valueId = value.actual_value;
 							returnData.push({
 								name: valueName,
@@ -285,6 +285,10 @@ export class ZohoCrm implements INodeType {
 					}
 					responseData = await zohoApiRequest.call(this, 'POST', '/leads', body);
 					responseData = responseData.data;
+
+					if (responseData.length) {
+						responseData = responseData[0].details;
+					}
 				}
 				//https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
 				if (operation === 'update') {
@@ -377,12 +381,19 @@ export class ZohoCrm implements INodeType {
 					}
 					responseData = await zohoApiRequest.call(this, 'PUT', `/leads/${leadId}`, body);
 					responseData = responseData.data;
+
+					if (responseData.length) {
+						responseData = responseData[0].details;
+					}
 				}
 				//https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
 				if (operation === 'get') {
 					const leadId = this.getNodeParameter('leadId', i) as string;
 					responseData = await zohoApiRequest.call(this, 'GET', `/leads/${leadId}`);
-					responseData = responseData.data;
+					if (responseData !== undefined) {
+						responseData = responseData.data;
+					}
+
 				}
 				//https://www.zoho.com/crm/developer/docs/api/get-records.html
 				if (operation === 'getAll') {

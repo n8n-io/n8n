@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const leadOperations = [
 	{
@@ -17,6 +17,11 @@ export const leadOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new lead',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a lead',
 			},
 			{
 				name: 'Get',
@@ -38,11 +43,6 @@ export const leadOperations = [
 				value: 'update',
 				description: 'Update a lead',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a lead',
-			}
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -649,6 +649,15 @@ export const leadFields = [
 				description: 'To include records from the child territories. True includes child territory records',
 			},
 			{
+				displayName: 'Sort By',
+				name: 'sortBy',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getLeadFields',
+				},
+				default: [],
+			},
+			{
 				displayName: 'Sort Order',
 				name: 'sortOrder',
 				type: 'options',
@@ -664,15 +673,6 @@ export const leadFields = [
 				],
 				default: 'desc',
 				description: 'Order sort attribute ascending or descending.',
-			},
-			{
-				displayName: 'Sort By',
-				name: 'sortBy',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getLeadFields',
-				},
-				default: [],
 			},
 			{
 				displayName: 'Territory ID',
