@@ -210,6 +210,7 @@
             "dist/nodes/Set.node.js",
             "dist/nodes/Shopify/ShopifyTrigger.node.js",
             "dist/nodes/Slack/Slack.node.js",
+            "dist/nodes/Spintax/Spintax.node.js",
             "dist/nodes/SplitInBatches.node.js",
             "dist/nodes/SpreadsheetFile.node.js",
             "dist/nodes/SseTrigger.node.js",
