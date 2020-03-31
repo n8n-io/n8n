@@ -58,8 +58,8 @@ export class TestWebhooks {
 		const webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
 
 		if (webhookData === undefined) {
-			// The requested webhook is not registred
-			throw new ResponseHelper.ResponseError('The requested webhook is not registred.', 404, 404);
+			// The requested webhook is not registered
+			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 		}
 
 		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
