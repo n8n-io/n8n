@@ -77,6 +77,20 @@ These settings can also be overwritten on a per workflow basis in the workflow
 settings in the Editor UI.
 
 
+## Execute In Same Process
+
+All workflows get executed in their own separate process. This ensures that all CPU cores
+get used and that they do not block each other on CPU intensive tasks. Additionally does
+the crash of one execution not take down the whole application. The disadvantage is, however,
+that it slows down the start-time considerably and uses much more memory. So in case, the
+workflows are not CPU intensive and they have to start very fast it is possible to run them
+all directly in the main-process with this setting.
+
+```bash
+export EXECUTIONS_PROCESS=main
+```
+
+
 ## Exclude Nodes
 
 It is possible to not allow users to use nodes of a specific node type. If you, for example,
@@ -123,6 +137,19 @@ export NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash
 ```
 
 
+## SSL
+
+It is possible to start n8n with SSL enabled by supplying a certificate to use:
+
+
+```bash
+export N8N_PROTOCOL=https
+export N8N_SSL_KEY=/data/certs/server.key
+export N8N_SSL_CERT=/data/certs/server.pem
+```
+
+
+
 ## Timezone
 
 The timezone is set by default to "America/New_York". It gets for example used by the
@@ -163,3 +190,52 @@ webhook URLs get registred with external services.
 ```bash
 export WEBHOOK_TUNNEL_URL="https://n8n.example.com/"
 ```
+
+
+## Configuration via file
+
+It is also possible to configure n8n via a configuration file.
+
+It is not necessary to define all values. Only the ones which should be
+different from the defaults.
+
+If needed also multiple files can be supplied to for example have generic
+base settings and some specific ones depending on the environment.
+
+The path to the JSON configuration file to use can be set via the environment
+variable `N8N_CONFIG_FILES`.
+
+```bash
+# Single file
+export N8N_CONFIG_FILES=/folder/my-config.json
+
+# Multiple files can be comma-separated
+export N8N_CONFIG_FILES=/folder/my-config.json,/folder/production.json
+```
+
+A possible configuration file could look like this:
+```json
+{
+	"executions": {
+		"process": "main",
+		"saveDataOnSuccess": "none"
+	},
+	"generic": {
+		"timezone": "Europe/Berlin"
+	},
+	"security": {
+		"basicAuth": {
+			"active": true,
+			"user": "frank",
+			"password": "some-secure-password"
+		}
+	},
+	"nodes": {
+		"exclude": "[\"n8n-nodes-base.executeCommand\",\"n8n-nodes-base.writeBinaryFile\"]"
+	}
+}
+```
+
+All possible values which can be set and their defaults can be found here:
+
+[https://github.com/n8n-io/n8n/blob/master/packages/cli/config/index.ts](https://github.com/n8n-io/n8n/blob/master/packages/cli/config/index.ts)

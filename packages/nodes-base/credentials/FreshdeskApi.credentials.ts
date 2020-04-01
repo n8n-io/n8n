@@ -18,7 +18,8 @@ export class FreshdeskApi implements ICredentialType {
 			displayName: 'Domain',
 			name: 'domain',
 			type: 'string' as NodePropertyTypes,
-			placeholder: 'https://domain.freshdesk.com',
+			placeholder: 'company',
+			description: 'If the URL you get displayed on Freshdesk is "https://company.freshdesk.com" enter "company"',
 			default: ''
         }
 	];

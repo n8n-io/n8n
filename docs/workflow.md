@@ -37,6 +37,7 @@ The "Error Trigger" node will trigger in case the execution fails and receives i
 	{
 		"execution": {
 			"id": "231",
+			"url": "https://n8n.example.com/execution/231",
 			"retryOf": "34",
 			"error": {
 				"message": "Example Error Message",
@@ -56,6 +57,7 @@ The "Error Trigger" node will trigger in case the execution fails and receives i
 
 All information is always present except:
 - **execution.id**: Only present when the execution gets saved in the Database
+- **execution.url**: Only present when the execution gets saved in the Database
 - **execution.retryOf**: Only present when the execution is a retry of a previously failed one
 
 

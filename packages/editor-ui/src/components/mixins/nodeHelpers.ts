@@ -6,6 +6,7 @@ import {
 	INodeParameters,
 	INodeExecutionData,
 	INodeIssues,
+	INodeIssueData,
 	INodeIssueObjectProperty,
 	INodeProperties,
 	INodeTypeDescription,
@@ -121,8 +122,55 @@ export const nodeHelpers = mixins(
 				}
 			},
 
+			// Updates the credential-issues of the node
+			updateNodeCredentialIssues(node: INodeUi): void {
+				const fullNodeIssues: INodeIssues | null = this.getNodeCredentialIssues(node);
+
+				let newIssues: INodeIssueObjectProperty | null = null;
+				if (fullNodeIssues !== null) {
+					newIssues = fullNodeIssues.credentials!;
+				}
+
+				this.$store.commit('setNodeIssue', {
+					node: node.name,
+					type: 'credentials',
+					value: newIssues,
+				} as INodeIssueData);
+			},
+
+			// Updates the parameter-issues of the node
+			updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
+				if (nodeType === undefined) {
+					nodeType = this.$store.getters.nodeType(node.type);
+				}
+
+				if (nodeType === null) {
+					// Could not find nodeType so can not update issues
+					return;
+				}
+
+				// All data got updated everywhere so update now the issues
+				const fullNodeIssues: INodeIssues | null = NodeHelpers.getNodeParametersIssues(nodeType!.properties, node);
+
+				let newIssues: INodeIssueObjectProperty | null = null;
+				if (fullNodeIssues !== null) {
+					newIssues = fullNodeIssues.parameters!;
+				}
+
+				this.$store.commit('setNodeIssue', {
+					node: node.name,
+					type: 'parameters',
+					value: newIssues,
+				} as INodeIssueData);
+			},
+
 			// Returns all the credential-issues of the node
 			getNodeCredentialIssues (node: INodeUi, nodeType?: INodeTypeDescription): INodeIssues | null {
+				if (node.disabled === true) {
+					// Node is disabled
+					return null;
+				}
+
 				if (nodeType === undefined) {
 					nodeType = this.$store.getters.nodeType(node.type);
 				}
@@ -256,6 +304,22 @@ export const nodeHelpers = mixins(
 				}
 
 				return returnData;
+			},
+
+			disableNodes(nodes: INodeUi[]) {
+				for (const node of nodes) {
+					// Toggle disabled flag
+					const updateInformation = {
+						name: node.name,
+						properties: {
+							disabled: !node.disabled,
+						},
+					};
+
+					this.$store.commit('updateNodeProperties', updateInformation);
+					this.updateNodeParameterIssues(node);
+					this.updateNodeCredentialIssues(node);
+				}
 			},
 		},
 	});

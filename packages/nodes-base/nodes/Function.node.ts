@@ -47,6 +47,9 @@ export class Function implements INodeType {
 
 		// Define the global objects for the custom function
 		const sandbox = {
+			evaluateExpression: (expression: string, itemIndex = 0) => {
+				return this.evaluateExpression(expression, itemIndex);
+			},
 			getNodeParameter: this.getNodeParameter,
 			getWorkflowStaticData: this.getWorkflowStaticData,
 			helpers: this.helpers,
@@ -84,7 +87,7 @@ export class Function implements INodeType {
 
 		try {
 			// Execute the function code
-			items = (await vm.run(`module.exports = async function() {${functionCode}}()`, './'));
+			items = (await vm.run(`module.exports = async function() {${functionCode}}()`, __dirname));
 		} catch (e) {
 			return Promise.reject(e);
 		}

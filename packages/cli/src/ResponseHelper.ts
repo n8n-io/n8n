@@ -49,29 +49,26 @@ export class ResponseError extends Error {
 export function basicAuthAuthorizationError(resp: Response, realm: string, message?: string) {
 	resp.statusCode = 401;
 	resp.setHeader('WWW-Authenticate', `Basic realm="${realm}"`);
-	resp.end(message);
+	resp.json({code: resp.statusCode, message});
 }
 
 export function jwtAuthAuthorizationError(resp: Response, message?: string) {
 	resp.statusCode = 403;
-	resp.end(message);
+	resp.json({code: resp.statusCode, message});
 }
 
 
 export function sendSuccessResponse(res: Response, data: any, raw?: boolean, responseCode?: number) { // tslint:disable-line:no-any
-	res.setHeader('Content-Type', 'application/json');
-
 	if (responseCode !== undefined) {
 		res.status(responseCode);
 	}
 
 	if (raw === true) {
-		res.send(JSON.stringify(data));
-		return;
+		res.json(data);
 	} else {
-		res.send(JSON.stringify({
+		res.json({
 			data
-		}));
+		});
 	}
 }
 
@@ -103,7 +100,7 @@ export function sendErrorResponse(res: Response, error: ResponseError) {
 		response.stack = error.stack;
 	}
 
-	res.status(httpStatusCode).send(JSON.stringify(response));
+	res.status(httpStatusCode).json(response);
 }
 
 

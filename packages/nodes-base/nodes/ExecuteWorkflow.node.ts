@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	readFile as fsReadFile,
 } from 'fs';
@@ -9,9 +7,7 @@ const fsReadFileAsync = promisify(fsReadFile);
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IExecuteWorkflowInfo,
@@ -69,18 +65,15 @@ export class ExecuteWorkflow implements INodeType {
 			//         source:database
 			// ----------------------------------
 			{
-				displayName: 'Workflow',
+				displayName: 'Workflow ID',
 				name: 'workflowId',
-				type: 'options',
+				type: 'string',
 				displayOptions: {
 					show: {
 						source: [
 							'database',
 						],
 					},
-				},
-				typeOptions: {
-					loadOptionsMethod: 'getWorkflows',
 				},
 				default: '',
 				required: true,
@@ -152,31 +145,6 @@ export class ExecuteWorkflow implements INodeType {
 			},
 		]
 	};
-
-	methods = {
-		loadOptions: {
-			async getWorkflows(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const options: OptionsWithUri = {
-					method: 'GET',
-					uri: this.getRestApiUrl() + '/workflows',
-					json: true
-				};
-
-				const returnData: INodePropertyOptions[] = [];
-
-				const responseData = await this.helpers.request!(options);
-				for (const workflowData of responseData.data) {
-					returnData.push({
-						name: workflowData.name,
-						value: workflowData.id,
-					});
-				}
-
-				return returnData;
-			}
-		},
-	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

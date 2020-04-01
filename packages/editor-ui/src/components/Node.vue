@@ -22,6 +22,9 @@
 				<div @click.stop.left="duplicateNode" class="option" title="Duplicate Node" >
 					<font-awesome-icon icon="clone" />
 				</div>
+				<div @click.stop.left="setNodeActive" class="option touch" title="Edit Node" v-if="!isReadOnly">
+					<font-awesome-icon class="execute-icon" icon="cog" />
+				</div>
 				<div @click.stop.left="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
@@ -103,6 +106,10 @@ export default mixins(nodeBase, workflowHelpers).extend({
 				classes.push('has-issues');
 			}
 
+			if (this.isTouchDevice) {
+				classes.push('is-touch-device');
+			}
+
 			return classes;
 		},
 		nodeIssues (): string {
@@ -163,19 +170,12 @@ export default mixins(nodeBase, workflowHelpers).extend({
 	},
 	data () {
 		return {
+			isTouchDevice: 'ontouchstart' in window || navigator.msMaxTouchPoints,
 		};
 	},
 	methods: {
 		disableNode () {
-			// Toggle disabled flag
-			const updateInformation = {
-				name: this.data.name,
-				properties: {
-					disabled: !this.data.disabled,
-				},
-			};
-
-			this.$store.commit('updateNodeProperties', updateInformation);
+			this.disableNodes([this.data]);
 		},
 		executeNode () {
 			this.$emit('runWorkflow', this.data.name);
@@ -331,6 +331,10 @@ export default mixins(nodeBase, workflowHelpers).extend({
 				display: inline-block;
 				padding: 0 0.3em;
 
+				&.touch {
+					display: none;
+				}
+
 				&:hover {
 					color: $--color-primary;
 				}
@@ -340,6 +344,15 @@ export default mixins(nodeBase, workflowHelpers).extend({
 					top: 2px;
 					font-size: 1.2em;
 				}
+			}
+		}
+
+		&.is-touch-device .node-options {
+			left: -25px;
+			width: 150px;
+
+			.option.touch {
+				display: initial;
 			}
 		}
 

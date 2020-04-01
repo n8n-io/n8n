@@ -9,6 +9,6 @@
 		"index.ts",
 		"src"
 	],
-	"exec": "npm run build && npm start",
+	"exec": "npm start",
 	"ext": "ts"
 }
