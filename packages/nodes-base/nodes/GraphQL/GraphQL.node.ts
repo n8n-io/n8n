@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -155,6 +156,41 @@ export class GraphQL implements INodeType {
 				},
 				description: 'Name of the property to which to write the response data.',
 			},
+
+			// Header Parameters
+			{
+				displayName: 'Headers',
+				name: 'headerParametersUi',
+				placeholder: 'Add Header',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'The headers to send.',
+				default: {},
+				options: [
+					{
+						name: 'parameter',
+						displayName: 'Header',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the header.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set for the header.',
+							},
+						]
+					},
+				],
+			},
 		]
 	};
 
@@ -172,9 +208,17 @@ export class GraphQL implements INodeType {
 			const requestFormat = this.getNodeParameter('requestFormat', itemIndex, 'graphql') as string;
 			const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 
+			const { parameter }: { parameter?: { name: string, value: string }[] } = this
+				.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
+			const headerParameters = (parameter || []).reduce((result, item) => ({
+				...result,
+				[item.name]: item.value
+			}), {});
+
 			requestOptions = {
 				headers: {
 					'content-type': `application/${requestFormat}`,
+					...headerParameters
 				},
 				method: requestMethod,
 				uri: endpoint,
