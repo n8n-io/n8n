@@ -17,7 +17,7 @@ export const contactOperations = [
 		options: [
 			{
 				name: 'Create/Update',
-				value: 'create/update',
+				value: 'upsert',
 				description: 'Create/update a contact',
 			},
 			{
@@ -36,7 +36,7 @@ export const contactOperations = [
 				description: 'Retrieve all contacts',
 			},
 		],
-		default: 'create/update',
+		default: 'upsert',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -44,7 +44,7 @@ export const contactOperations = [
 export const contactFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                 contact:create/update                      */
+/*                                 contact:upsert                             */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Duplicate Option',
@@ -64,7 +64,7 @@ export const contactFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create/update',
+					'upsert',
 				],
 				resource: [
 					'contact',
@@ -84,7 +84,7 @@ export const contactFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create/update',
+					'upsert',
 				],
 				resource: [
 					'contact',
@@ -250,7 +250,7 @@ export const contactFields = [
 					'contact',
 				],
 				operation: [
-					'create/update',
+					'upsert',
 				],
 			},
 		},
@@ -349,7 +349,7 @@ export const contactFields = [
 					'contact',
 				],
 				operation: [
-					'create/update',
+					'upsert',
 				],
 			},
 		},
@@ -403,7 +403,7 @@ export const contactFields = [
 					'contact',
 				],
 				operation: [
-					'create/update',
+					'upsert',
 				],
 			},
 		},
@@ -453,7 +453,7 @@ export const contactFields = [
 					'contact',
 				],
 				operation: [
-					'create/update',
+					'upsert',
 				],
 			},
 		},
@@ -515,7 +515,7 @@ export const contactFields = [
 					'contact',
 				],
 				operation: [
-					'create/update',
+					'upsert',
 				],
 			},
 		},

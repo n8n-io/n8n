@@ -7,12 +7,12 @@ const scopes = [
 	'full',
 ];
 
-export class InfusionsoftOAuth2Api implements ICredentialType {
-	name = 'infusionsoftOAuth2Api';
+export class KeapOAuth2Api implements ICredentialType {
+	name = 'keapOAuth2Api';
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'Infusionsoft OAuth2 API';
+	displayName = 'Keap OAuth2 API';
 	properties = [
 		{
 			displayName: 'Authorization URL',
