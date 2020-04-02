@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+ } from 'n8n-workflow';
 
 export const leadOperations = [
 	{
@@ -71,6 +73,23 @@ export const leadFields = [
 			},
 		},
 		description: `User's last name`,
+	},
+	{
+		displayName: 'Resolve Data',
+		name: 'resolveData',
+		type: 'boolean',
+		default: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'lead',
+				],
+			},
+		},
+		description: 'By default the response only contain the ID to resource<br />. If this option gets activated it<br />will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -310,6 +329,23 @@ export const leadFields = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Resolve Data',
+		name: 'resolveData',
+		type: 'boolean',
+		default: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'lead',
+				],
+			},
+		},
+		description: 'By default the response only contain the ID to resource<br />. If this option gets activated it<br />will resolve the data automatically.',
 	},
 	{
 			displayName: 'Additional Fields',
@@ -621,15 +657,43 @@ export const leadFields = [
 			{
 				displayName: 'Approved',
 				name: 'approved',
-				type: 'boolean',
-				default: true,
+				type: 'options',
+				options: [
+					{
+						name: 'Both',
+						value: 'both',
+					},
+					{
+						name: 'False',
+						value: 'false',
+					},
+					{
+						name: 'True',
+						value: 'true',
+					},
+				],
+				default: '',
 				description: 'To get the list of approved records. Default value is true.',
 			},
 			{
 				displayName: 'Converted',
 				name: 'converted',
-				type: 'boolean',
-				default: false,
+				type: 'options',
+				options: [
+					{
+						name: 'Both',
+						value: 'both',
+					},
+					{
+						name: 'False',
+						value: 'false',
+					},
+					{
+						name: 'True',
+						value: 'true',
+					},
+				],
+				default: '',
 				description: 'To get the list of converted records. Default value is false',
 			},
 			{

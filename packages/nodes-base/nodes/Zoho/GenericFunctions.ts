@@ -1,11 +1,15 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+
 import {
-	IDataObject
+	IDataObject,
 } from 'n8n-workflow';
 
 export async function zohoApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -38,14 +42,15 @@ export async function zohoApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 export async function zohoApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
-
 	let responseData;
 	let uri: string | undefined;
 	query.per_page = 200;
 	query.page = 0;
-
 	do {
 		responseData = await zohoApiRequest.call(this, method, endpoint, body, query, uri);
+		if (responseData === undefined) {
+			return undefined;
+		}
 		uri = responseData.info.more_records;
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query.page++;

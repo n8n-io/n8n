@@ -117,7 +117,6 @@ export class ZohoCrm implements INodeType {
 								name: valueName,
 								value: valueId,
 							});
-							return returnData;
 						}
 					}
 				}
@@ -139,7 +138,6 @@ export class ZohoCrm implements INodeType {
 								name: valueName,
 								value: valueId,
 							});
-							return returnData;
 						}
 					}
 				}
@@ -161,7 +159,6 @@ export class ZohoCrm implements INodeType {
 								name: valueName,
 								value: valueId,
 							});
-							return returnData;
 						}
 					}
 				}
@@ -198,6 +195,7 @@ export class ZohoCrm implements INodeType {
 				//https://www.zoho.com/crm/developer/docs/api/insert-records.html
 				if (operation === 'create') {
 					const lastName = this.getNodeParameter('lastName', i) as string;
+					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: ILead = {
 						Last_Name: lastName,
@@ -283,16 +281,22 @@ export class ZohoCrm implements INodeType {
 							body.Zip_Code = address.zipCode as string;
 						}
 					}
-					responseData = await zohoApiRequest.call(this, 'POST', '/leads', body);
-					responseData = responseData.data;
-
-					if (responseData.length) {
-						responseData = responseData[0].details;
+					const { data } = await zohoApiRequest.call(this, 'POST', '/leads', body);
+					const results = [];
+					for (const lead of data) {
+						if (resolveData) {
+							const { data } = await zohoApiRequest.call(this, 'GET', `/leads/${lead.details.id}`);
+							results.push(data[0]);
+						} else {
+							results.push(lead.details);
+						}
 					}
+					responseData = results;
 				}
 				//https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
 				if (operation === 'update') {
 					const leadId = this.getNodeParameter('leadId', i) as string;
+					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: ILead = {};
 					if (additionalFields.lastName) {
@@ -379,12 +383,18 @@ export class ZohoCrm implements INodeType {
 							body.Zip_Code = address.zipCode as string;
 						}
 					}
-					responseData = await zohoApiRequest.call(this, 'PUT', `/leads/${leadId}`, body);
-					responseData = responseData.data;
 
-					if (responseData.length) {
-						responseData = responseData[0].details;
+					const { data } = await zohoApiRequest.call(this, 'PUT', `/leads/${leadId}`, body);
+					const results = [];
+					for (const lead of data) {
+						if (resolveData) {
+							const { data } = await zohoApiRequest.call(this, 'GET', `/leads/${lead.details.id}`);
+							results.push(data[0]);
+						} else {
+							results.push(lead.details);
+						}
 					}
+					responseData = results;
 				}
 				//https://www.zoho.com/crm/developer/docs/api/update-specific-record.html
 				if (operation === 'get') {
@@ -393,7 +403,6 @@ export class ZohoCrm implements INodeType {
 					if (responseData !== undefined) {
 						responseData = responseData.data;
 					}
-
 				}
 				//https://www.zoho.com/crm/developer/docs/api/get-records.html
 				if (operation === 'getAll') {
@@ -403,10 +412,10 @@ export class ZohoCrm implements INodeType {
 						qs.fields = (options.fields as string[]).join(',');
 					}
 					if (options.approved) {
-						qs.approved = options.approved as boolean;
+						qs.approved = options.approved as string;
 					}
 					if (options.converted) {
-						qs.converted = options.converted as boolean;
+						qs.converted = options.converted as string;
 					}
 					if (options.includeChild) {
 						qs.include_child = options.includeChild as boolean;
@@ -425,7 +434,9 @@ export class ZohoCrm implements INodeType {
 					} else {
 						qs.per_page = this.getNodeParameter('limit', i) as number;
 						responseData = await zohoApiRequest.call(this, 'GET', '/leads', {}, qs);
-						responseData = responseData.data;
+						if (responseData !== undefined) {
+							responseData = responseData.data;
+						}
 					}
 				}
 				//https://www.zoho.com/crm/developer/docs/api/delete-specific-record.html
