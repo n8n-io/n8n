@@ -14,6 +14,9 @@ import * as bodyParser from 'body-parser';
 require('body-parser-xml')(bodyParser);
 import * as history from 'connect-history-api-fallback';
 import * as requestPromise from 'request-promise-native';
+import * as _ from 'lodash';
+import * as clientOAuth2 from 'client-oauth2';
+import * as csrf from 'csrf';
 
 import {
 	ActiveExecutions,
@@ -142,7 +145,7 @@ class App {
 	async config(): Promise<void> {
 
 		this.versions = await GenericHelpers.getVersions();
-		const authIgnoreRegex = new RegExp(`^\/(healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
+		const authIgnoreRegex = new RegExp(`^\/(rest|healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
