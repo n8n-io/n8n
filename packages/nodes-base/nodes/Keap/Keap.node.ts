@@ -13,8 +13,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	infusionsoftApiRequest,
-	infusionsoftApiRequestAllItems,
+	keapApiRequest,
+	keapApiRequestAllItems,
 	keysToSnakeCase,
 } from './GenericFunctions';
 
@@ -101,24 +101,24 @@ import {
 
 import * as moment from 'moment-timezone';
 
-export class Infusionsoft implements INodeType {
+export class Keap implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Infusionsoft',
-		name: ' infusionsoft',
-		icon: 'file:infusionsoft.png',
+		displayName: 'Keap',
+		name: ' keap',
+		icon: 'file:keap.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Infusionsoft API.',
+		description: 'Consume Keap API.',
 		defaults: {
-			name: 'Infusionsoft',
+			name: 'Keap',
 			color: '#79af53',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'infusionsoftOAuth2Api',
+				name: 'keapOAuth2Api',
 				required: true,
 			},
 		],
@@ -197,7 +197,7 @@ export class Infusionsoft implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await infusionsoftApiRequestAllItems.call(this, 'tags', 'GET', '/tags');
+				const tags = await keapApiRequestAllItems.call(this, 'tags', 'GET', '/tags');
 				for (const tag of tags) {
 					const tagName = tag.name;
 					const tagId = tag.id;
@@ -212,7 +212,7 @@ export class Infusionsoft implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await infusionsoftApiRequestAllItems.call(this, 'users', 'GET', '/users');
+				const users = await keapApiRequestAllItems.call(this, 'users', 'GET', '/users');
 				for (const user of users) {
 					const userName = user.given_name;
 					const userId = user.id;
@@ -227,7 +227,7 @@ export class Infusionsoft implements INodeType {
 			// select them easily
 			async getCountries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { countries } = await infusionsoftApiRequest.call(this, 'GET', '/locales/countries');
+				const { countries } = await keapApiRequest.call(this, 'GET', '/locales/countries');
 				for (const key of Object.keys(countries)) {
 					const countryName = countries[key];
 					const countryId = key;
@@ -243,7 +243,7 @@ export class Infusionsoft implements INodeType {
 			async getProvinces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const countryCode = this.getCurrentNodeParameter('countryCode') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { provinces } = await infusionsoftApiRequest.call(this, 'GET', `/locales/countries/${countryCode}/provinces`);
+				const { provinces } = await keapApiRequest.call(this, 'GET', `/locales/countries/${countryCode}/provinces`);
 				for (const key of Object.keys(provinces)) {
 					const provinceName = provinces[key];
 					const provinceId = key;
@@ -258,7 +258,7 @@ export class Infusionsoft implements INodeType {
 			// select them easily
 			async getContactTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const types = await infusionsoftApiRequest.call(this, 'GET', '/setting/contact/optionTypes');
+				const types = await keapApiRequest.call(this, 'GET', '/setting/contact/optionTypes');
 				for (const type of types.value.split(',')) {
 					const typeName = type;
 					const typeId = type;
@@ -296,7 +296,7 @@ export class Infusionsoft implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
 			if (resource === 'company') {
-				//https://developer.infusionsoft.com/docs/rest/#!/Company/createCompanyUsingPOST
+				//https://developer.keap.com/docs/rest/#!/Company/createCompanyUsingPOST
 				if (operation === 'create') {
 					const addresses = (this.getNodeParameter('addressesUi', i) as IDataObject).addressesValues as IDataObject[];
 					const faxes = (this.getNodeParameter('faxesUi', i) as IDataObject).faxesValues as IDataObject[];
@@ -317,7 +317,7 @@ export class Infusionsoft implements INodeType {
 					if (phones) {
 						body.phone_number = phones[0];
 					}
-					responseData = await infusionsoftApiRequest.call(this, 'POST', '/companies', body);
+					responseData = await keapApiRequest.call(this, 'POST', '/companies', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Company/listCompaniesUsingGET
 				if (operation === 'getAll') {
@@ -330,17 +330,17 @@ export class Infusionsoft implements INodeType {
 						delete qs.fields;
 					}
 					if (returnAll) {
-						responseData = await infusionsoftApiRequestAllItems.call(this, 'companies', 'GET', '/companies', {}, qs);
+						responseData = await keapApiRequestAllItems.call(this, 'companies', 'GET', '/companies', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await infusionsoftApiRequest.call(this, 'GET', '/companies', {}, qs);
+						responseData = await keapApiRequest.call(this, 'GET', '/companies', {}, qs);
 						responseData = responseData.companies;
 					}
 				}
 			}
 			if (resource === 'contact') {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/createOrUpdateContactUsingPUT
-				if (operation === 'create/update') {
+				if (operation === 'upsert') {
 					const duplicateOption = this.getNodeParameter('duplicateOption', i) as string;
 					const addresses = (this.getNodeParameter('addressesUi', i) as IDataObject).addressesValues as IDataObject[];
 					const emails = (this.getNodeParameter('emailsUi', i) as IDataObject).emailsValues as IDataObject[];
@@ -421,12 +421,12 @@ export class Infusionsoft implements INodeType {
 					if (phones) {
 						body.phone_numbers = phones as IPhone[];
 					}
-					responseData = await infusionsoftApiRequest.call(this, 'PUT', '/contacts', body);
+					responseData = await keapApiRequest.call(this, 'PUT', '/contacts', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/deleteContactUsingDELETE
 				if (operation === 'delete') {
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
-					responseData = await infusionsoftApiRequest.call(this, 'DELETE', `/contacts/${contactId}`);
+					responseData = await keapApiRequest.call(this, 'DELETE', `/contacts/${contactId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/getContactUsingGET
@@ -436,7 +436,7 @@ export class Infusionsoft implements INodeType {
 					if (options.fields) {
 						qs.optional_properties = options.fields as string;
 					}
-					responseData = await infusionsoftApiRequest.call(this, 'GET', `/contacts/${contactId}`, {}, qs);
+					responseData = await keapApiRequest.call(this, 'GET', `/contacts/${contactId}`, {}, qs);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/listContactsUsingGET
 				if (operation === 'getAll') {
@@ -464,10 +464,10 @@ export class Infusionsoft implements INodeType {
 						qs.until = options.until as string;
 					}
 					if (returnAll) {
-						responseData = await infusionsoftApiRequestAllItems.call(this, 'contacts', 'GET', '/contacts', {}, qs);
+						responseData = await keapApiRequestAllItems.call(this, 'contacts', 'GET', '/contacts', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await infusionsoftApiRequest.call(this, 'GET', '/contacts', {}, qs);
+						responseData = await keapApiRequest.call(this, 'GET', '/contacts', {}, qs);
 						responseData = responseData.contacts;
 					}
 				}
@@ -487,18 +487,18 @@ export class Infusionsoft implements INodeType {
 						additionalFields.type = pascalCase(additionalFields.type as string);
 					}
 					Object.assign(body, additionalFields);
-					responseData = await infusionsoftApiRequest.call(this, 'POST', '/notes', body);
+					responseData = await keapApiRequest.call(this, 'POST', '/notes', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/deleteNoteUsingDELETE
 				if (operation === 'delete') {
 					const noteId = this.getNodeParameter('noteId', i) as string;
-					responseData = await infusionsoftApiRequest.call(this, 'DELETE', `/notes/${noteId}`);
+					responseData = await keapApiRequest.call(this, 'DELETE', `/notes/${noteId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/getNoteUsingGET
 				if (operation === 'get') {
 					const noteId = this.getNodeParameter('noteId', i) as string;
-					responseData = await infusionsoftApiRequest.call(this, 'GET', `/notes/${noteId}`);
+					responseData = await keapApiRequest.call(this, 'GET', `/notes/${noteId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/listNotesUsingGET
 				if (operation === 'getAll') {
@@ -507,10 +507,10 @@ export class Infusionsoft implements INodeType {
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
 					if (returnAll) {
-						responseData = await infusionsoftApiRequestAllItems.call(this, 'notes', 'GET', '/notes', {}, qs);
+						responseData = await keapApiRequestAllItems.call(this, 'notes', 'GET', '/notes', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await infusionsoftApiRequest.call(this, 'GET', '/notes', {}, qs);
+						responseData = await keapApiRequest.call(this, 'GET', '/notes', {}, qs);
 						responseData = responseData.notes;
 					}
 				}
@@ -524,7 +524,7 @@ export class Infusionsoft implements INodeType {
 						additionalFields.type = pascalCase(additionalFields.type as string);
 					}
 					Object.assign(body, additionalFields);
-					responseData = await infusionsoftApiRequest.call(this, 'PATCH', `/notes/${noteId}`, body);
+					responseData = await keapApiRequest.call(this, 'PATCH', `/notes/${noteId}`, body);
 				}
 			}
 			if (resource === 'contactTag') {
@@ -535,14 +535,14 @@ export class Infusionsoft implements INodeType {
 					const body: IDataObject = {
 						tagIds,
 					};
-					responseData = await infusionsoftApiRequest.call(this, 'POST', `/contacts/${contactId}/tags`, body);
+					responseData = await keapApiRequest.call(this, 'POST', `/contacts/${contactId}/tags`, body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/removeTagsFromContactUsingDELETE_1
 				if (operation === 'delete') {
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
 					const tagIds = this.getNodeParameter('tagIds', i) as string;
 					qs.ids = tagIds;
-					responseData = await infusionsoftApiRequest.call(this, 'DELETE', `/contacts/${contactId}/tags`, {}, qs);
+					responseData = await keapApiRequest.call(this, 'DELETE', `/contacts/${contactId}/tags`, {}, qs);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/listAppliedTagsUsingGET
@@ -550,10 +550,10 @@ export class Infusionsoft implements INodeType {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
 					if (returnAll) {
-						responseData = await infusionsoftApiRequestAllItems.call(this, 'tags', 'GET', `/contacts/${contactId}/tags`, {}, qs);
+						responseData = await keapApiRequestAllItems.call(this, 'tags', 'GET', `/contacts/${contactId}/tags`, {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await infusionsoftApiRequest.call(this, 'GET', `/contacts/${contactId}/tags`, {}, qs);
+						responseData = await keapApiRequest.call(this, 'GET', `/contacts/${contactId}/tags`, {}, qs);
 						responseData = responseData.tags;
 					}
 				}
@@ -583,18 +583,18 @@ export class Infusionsoft implements INodeType {
 					if (shippingAddress) {
 						body.shipping_address = keysToSnakeCase(shippingAddress)[0] as IShippingAddress;
 					}
-					responseData = await infusionsoftApiRequest.call(this, 'POST', '/orders', body);
+					responseData = await keapApiRequest.call(this, 'POST', '/orders', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/deleteOrderUsingDELETE
 				if (operation === 'delete') {
 					const orderId = parseInt(this.getNodeParameter('orderId', i) as string, 10);
-					responseData = await infusionsoftApiRequest.call(this, 'DELETE', `/orders/${orderId}`);
+					responseData = await keapApiRequest.call(this, 'DELETE', `/orders/${orderId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/getOrderUsingGET
 				if (operation === 'get') {
 					const orderId = parseInt(this.getNodeParameter('orderId', i) as string, 10);
-					responseData = await infusionsoftApiRequest.call(this, 'get', `/orders/${orderId}`);
+					responseData = await keapApiRequest.call(this, 'get', `/orders/${orderId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/listOrdersUsingGET
 				if (operation === 'getAll') {
@@ -603,10 +603,10 @@ export class Infusionsoft implements INodeType {
 					keysToSnakeCase(options);
 					Object.assign(qs, options);
 					if (returnAll) {
-						responseData = await infusionsoftApiRequestAllItems.call(this, 'orders', 'GET', '/orders', {}, qs);
+						responseData = await keapApiRequestAllItems.call(this, 'orders', 'GET', '/orders', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await infusionsoftApiRequest.call(this, 'GET', '/orders', {}, qs);
+						responseData = await keapApiRequest.call(this, 'GET', '/orders', {}, qs);
 						responseData = responseData.orders;
 					}
 				}
@@ -621,18 +621,18 @@ export class Infusionsoft implements INodeType {
 					};
 					keysToSnakeCase(additionalFields);
 					Object.assign(body, additionalFields);
-					responseData = await infusionsoftApiRequest.call(this, 'POST', '/products', body);
+					responseData = await keapApiRequest.call(this, 'POST', '/products', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/deleteProductUsingDELETE
 				if (operation === 'delete') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					responseData = await infusionsoftApiRequest.call(this, 'DELETE', `/products/${productId}`);
+					responseData = await keapApiRequest.call(this, 'DELETE', `/products/${productId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/retrieveProductUsingGET
 				if (operation === 'get') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					responseData = await infusionsoftApiRequest.call(this, 'get', `/products/${productId}`);
+					responseData = await keapApiRequest.call(this, 'get', `/products/${productId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/listProductsUsingGET
 				if (operation === 'getAll') {
@@ -641,10 +641,10 @@ export class Infusionsoft implements INodeType {
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
 					if (returnAll) {
-						responseData = await infusionsoftApiRequestAllItems.call(this, 'products', 'GET', '/products', {}, qs);
+						responseData = await keapApiRequestAllItems.call(this, 'products', 'GET', '/products', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await infusionsoftApiRequest.call(this, 'GET', '/products', {}, qs);
+						responseData = await keapApiRequest.call(this, 'GET', '/products', {}, qs);
 						responseData = responseData.products;
 					}
 				}
@@ -661,12 +661,12 @@ export class Infusionsoft implements INodeType {
 					};
 					Object.assign(body, additionalFields);
 					keysToSnakeCase(body as IDataObject);
-					responseData = await infusionsoftApiRequest.call(this, 'POST', '/emails', body);
+					responseData = await keapApiRequest.call(this, 'POST', '/emails', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/deleteEmailUsingDELETE
 				if (operation === 'deleteRecord') {
 					const emailRecordId = parseInt(this.getNodeParameter('emailRecordId', i) as string, 10);
-					responseData = await infusionsoftApiRequest.call(this, 'DELETE', `/emails/${emailRecordId}`);
+					responseData = await keapApiRequest.call(this, 'DELETE', `/emails/${emailRecordId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/listEmailsUsingGET
@@ -676,10 +676,10 @@ export class Infusionsoft implements INodeType {
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
 					if (returnAll) {
-						responseData = await infusionsoftApiRequestAllItems.call(this, 'emails', 'GET', '/emails', {}, qs);
+						responseData = await keapApiRequestAllItems.call(this, 'emails', 'GET', '/emails', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await infusionsoftApiRequest.call(this, 'GET', '/emails', {}, qs);
+						responseData = await keapApiRequest.call(this, 'GET', '/emails', {}, qs);
 						responseData = responseData.emails;
 					}
 				}
@@ -728,7 +728,7 @@ export class Infusionsoft implements INodeType {
 						body.attachments = attachments;
 					}
 
-					responseData = await infusionsoftApiRequest.call(this, 'POST', '/emails/queue', body);
+					responseData = await keapApiRequest.call(this, 'POST', '/emails/queue', body);
 					responseData = { success: true };
 				}
 			}
@@ -736,7 +736,7 @@ export class Infusionsoft implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/File/deleteFileUsingDELETE
 				if (operation === 'delete') {
 					const fileId = parseInt(this.getNodeParameter('fileId', i) as string, 10);
-					responseData = await infusionsoftApiRequest.call(this, 'DELETE', `/files/${fileId}`);
+					responseData = await keapApiRequest.call(this, 'DELETE', `/files/${fileId}`);
 					responseData = { success: true };
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/File/listFilesUsingGET
@@ -755,10 +755,10 @@ export class Infusionsoft implements INodeType {
 						qs.viewable = (qs.viewable as string).toUpperCase();
 					}
 					if (returnAll) {
-						responseData = await infusionsoftApiRequestAllItems.call(this, 'files', 'GET', '/files', {}, qs);
+						responseData = await keapApiRequestAllItems.call(this, 'files', 'GET', '/files', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
-						responseData = await infusionsoftApiRequest.call(this, 'GET', '/files', {}, qs);
+						responseData = await keapApiRequest.call(this, 'GET', '/files', {}, qs);
 						responseData = responseData.files;
 					}
 				}
@@ -797,7 +797,7 @@ export class Infusionsoft implements INodeType {
 						body.file_name = fileName;
 						body.file_data = fileData;
 					}
-					responseData = await infusionsoftApiRequest.call(this, 'POST', '/files', body);
+					responseData = await keapApiRequest.call(this, 'POST', '/files', body);
 				}
 			}
 			if (Array.isArray(responseData)) {

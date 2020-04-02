@@ -13,31 +13,31 @@ import {
 } from 'n8n-workflow';
 
 import {
-	infusionsoftApiRequest,
+	keapApiRequest,
 } from './GenericFunctions';
 
 import {
 	titleCase,
  } from 'change-case';
 
-export class InfusionsoftTrigger implements INodeType {
+export class KeapTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Infusionsoft Trigger',
-		name: 'infusionsoftTrigger',
-		icon: 'file:infusionsoft.png',
+		displayName: 'Keap Trigger',
+		name: 'keapTrigger',
+		icon: 'file:keap.png',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["eventId"]}}',
 		description: 'Starts the workflow when Infusionsoft events occure.',
 		defaults: {
-			name: 'Infusionsoft Trigger',
+			name: 'Keap Trigger',
 			color: '#79af53',
 		},
 		inputs: [],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'infusionsoftOAuth2Api',
+				name: 'keapOAuth2Api',
 				required: true,
 			},
 		],
@@ -76,7 +76,7 @@ export class InfusionsoftTrigger implements INodeType {
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const hooks = await infusionsoftApiRequest.call(this, 'GET', '/hooks/event_keys');
+				const hooks = await keapApiRequest.call(this, 'GET', '/hooks/event_keys');
 				for (const hook of hooks) {
 					const hookName = hook;
 					const hookId = hook;
@@ -98,7 +98,7 @@ export class InfusionsoftTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 
-				const responseData = await infusionsoftApiRequest.call(this, 'GET', '/hooks', {});
+				const responseData = await keapApiRequest.call(this, 'GET', '/hooks', {});
 
 				for (const existingData of responseData) {
 					if (existingData.hookUrl === webhookUrl
@@ -122,7 +122,7 @@ export class InfusionsoftTrigger implements INodeType {
 					hookUrl: webhookUrl,
 				};
 
-				const responseData = await infusionsoftApiRequest.call(this, 'POST', '/hooks', body);
+				const responseData = await keapApiRequest.call(this, 'POST', '/hooks', body);
 
 				if (responseData.key === undefined) {
 					// Required data is missing so was not successful
@@ -139,7 +139,7 @@ export class InfusionsoftTrigger implements INodeType {
 				if (webhookData.webhookId !== undefined) {
 
 					try {
-						await infusionsoftApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
+						await keapApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
 					} catch (e) {
 						return false;
 					}

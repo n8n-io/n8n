@@ -17,7 +17,7 @@ import {
 	snakeCase,
  } from 'change-case';
 
-export async function infusionsoftApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function keapApiRequest(this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -37,7 +37,7 @@ export async function infusionsoftApiRequest(this: IWebhookFunctions | IHookFunc
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'infusionsoftOAuth2Api', options);
+		return await this.helpers.requestOAuth.call(this, 'keapOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
@@ -47,7 +47,7 @@ export async function infusionsoftApiRequest(this: IWebhookFunctions | IHookFunc
 	}
 }
 
-export async function infusionsoftApiRequestAllItems(this: IHookFunctions| IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function keapApiRequestAllItems(this: IHookFunctions| IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -56,7 +56,7 @@ export async function infusionsoftApiRequestAllItems(this: IHookFunctions| IExec
 	query.limit = 50;
 
 	do {
-		responseData = await infusionsoftApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await keapApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
