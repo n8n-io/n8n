@@ -156,7 +156,8 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	convertObjectValueToString(value: object): string {
-		return `[Object: ${JSON.stringify(value)}]`;
+		const typeName = Array.isArray(value) ? 'Array' : 'Object';
+		return `[${typeName}: ${JSON.stringify(value)}]`;
 	}
 
 
@@ -906,18 +907,13 @@ export class Workflow {
 		try {
 			const returnValue = tmpl.tmpl(parameterValue, data);
 			if (returnValue !== null && typeof returnValue === 'object') {
-				if (Object.keys(returnValue).length === 0) {
-					// When expression is incomplete it returns a Proxy which causes problems.
-					// Catch it with this code and return a proper error.
-					throw new Error('Expression is not valid.');
-				}
 				if (returnObjectAsString === true)  {
 					return this.convertObjectValueToString(returnValue);
 				}
 			}
 			return returnValue;
 		} catch (e) {
-			throw new Error('Expression is not valid.');
+			throw new Error(`Expression is not valid: ${e.message}`);
 		}
 	}
 
