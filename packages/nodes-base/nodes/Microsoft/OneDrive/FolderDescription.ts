@@ -57,6 +57,32 @@ export const folderFields = [
 		default: '',
 		description: `Folder's name`,
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'folder',
+				],
+			},
+		},
+		default: {},
+		placeholder: 'Add Field',
+		options: [
+			{
+				displayName: 'Parent Folder ID',
+				name: 'parentFolderId',
+				type: 'string',
+				default: '',
+				description: 'ID of the folder you want to crate the new folder in',
+			},
+		],
+	},
 /* -------------------------------------------------------------------------- */
 /*                                 folder:getChildren                         */
 /* -------------------------------------------------------------------------- */
