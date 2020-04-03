@@ -21,7 +21,7 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const baseUrl = credentials!.url || 'https://api.github.com';
+	const baseUrl = credentials!.server || 'https://api.github.com';
 
 	const options = {
 		method,
