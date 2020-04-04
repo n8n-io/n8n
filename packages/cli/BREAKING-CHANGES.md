@@ -30,6 +30,27 @@ it has to get changed to:
 ```
 
 
+## 0.52.0
+
+### What changed?
+
+To make sure that all nodes work similarly, to allow to easily use the value
+from other parts of the workflow and to be able to construct the source-date
+manually in an expression, the node had to be changed. Instead of getting the
+source-date directly from the flow the value has now to be manually set via
+an expression.
+
+### When is action necessary?
+
+If you currently use "Date & Time"-Nodes.
+
+### How to upgrade:
+
+Open the "Date & Time"-Nodes and reference the date that should be converted
+via an expression. Also, set the "Property Name" to the name of the property the
+converted date should be set on.
+
+
 ## 0.37.0
 
 ### What changed?

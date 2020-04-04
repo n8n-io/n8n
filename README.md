@@ -2,8 +2,7 @@
 
 ![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-logo.png)
 
-n8n is a free and open node based Workflow Automation Tool. It can be
-self-hosted, easily extended, and so also used with internal tools.
+n8n is a free and open [fair-code](http://faircode.io) licensed node based Workflow Automation Tool. It can be self-hosted, easily extended, and so also used with internal tools.
 
 <a href="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
@@ -17,7 +16,7 @@ received or lost a star.
 
 ## Available integrations
 
-n8n has 80+ different nodes to automate workflows. The list can be found on: [https://n8n.io/nodes](https://n8n.io/nodes)
+n8n has 100+ different nodes to automate workflows. The list can be found on: [https://n8n.io/nodes](https://n8n.io/nodes)
 
 
 ## Documentation
@@ -55,6 +54,15 @@ If you have problems or questions go to our forum, we will then try to help you 
 
 
 
+## Jobs
+
+If you are interested in working for n8n and so shape the future of the project
+check out our job posts:
+
+[https://jobs.n8n.io](https://jobs.n8n.io)
+
+
+
 ## What does n8n mean and how do you pronounce it
 
 **Short answer:** It means "nodemation"
@@ -80,6 +88,6 @@ Have you found a bug :bug: ? Or maybe you have a nice feature :sparkles: to cont
 
 ## License
 
-[Apache 2.0 with Commons Clause](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
+n8n is [fair-code](http://faircode.io) licensed under [**Apache 2.0 with Commons Clause**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
 
 Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license)

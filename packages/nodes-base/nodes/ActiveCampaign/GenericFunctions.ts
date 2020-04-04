@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -25,7 +25,7 @@ export interface IProduct {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
+export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('activeCampaignApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -50,7 +50,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 	}
 
 	try {
-		const responseData = await this.helpers.request(options);
+		const responseData = await this.helpers.request!(options);
 
 		if (responseData.success === false) {
 			throw new Error(`ActiveCampaign error response: ${responseData.error} (${responseData.error_info})`);
@@ -87,7 +87,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
+export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
 
 	if (query === undefined) {
 		query = {};

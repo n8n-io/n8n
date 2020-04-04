@@ -31,7 +31,7 @@ With the help of expressions, it is possible to set node parameters dynamically 
 
 An expression could look like this:
 
-My name is: `{{$node["Webhook"].data["query"]["name"]}}`
+My name is: `{{$node["Webhook"].json["query"]["name"]}}`
 
 This one would return "My name is: " and then attach the value that the node with the name "Webhook" outputs and there select the property "query" and its key "name". So if the node would output this data:
 
@@ -49,6 +49,7 @@ The following special variables are available:
 
  - **$binary**: Incoming binary data of a node
  - **$data**: Incoming JSON data of a node
+ - **$evaluateExpression**: Evaluates a string as expression
  - **$env**: Environment variables
  - **$node**: Data of other nodes (output-data, parameters)
  - **$parameters**: Parameters of the current node

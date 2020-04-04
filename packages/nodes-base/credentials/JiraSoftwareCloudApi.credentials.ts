@@ -24,6 +24,7 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			name: 'domain',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			placeholder: 'https://example.atlassian.net',
 		},
 	];
 }

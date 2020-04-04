@@ -192,14 +192,16 @@ export const workflowHelpers = mixins(
 				};
 
 				let workflowId = this.$store.getters.workflowId;
-				if (workflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 					workflowId = undefined;
 				}
 
+				const workflowName = this.$store.getters.workflowName;
+
 				if (copyData === true) {
-					return new Workflow(workflowId, JSON.parse(JSON.stringify(nodes)), JSON.parse(JSON.stringify(connections)), false, nodeTypes);
+					return new Workflow({ id: workflowId, name: workflowName, nodes: JSON.parse(JSON.stringify(nodes)), connections: JSON.parse(JSON.stringify(connections)), active: false, nodeTypes});
 				} else {
-					return new Workflow(workflowId, nodes, connections, false, nodeTypes);
+					return new Workflow({ id: workflowId, name: workflowName, nodes, connections, active: false, nodeTypes});
 				}
 			},
 

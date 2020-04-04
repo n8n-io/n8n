@@ -38,4 +38,5 @@
 
 - Links
 
+  - [![Jobs](https://n8n.io/favicon.ico ':size=16')Jobs](https://jobs.n8n.io)
   - [![Website](https://n8n.io/favicon.ico ':size=16')n8n.io](https://n8n.io)

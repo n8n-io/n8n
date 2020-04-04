@@ -52,6 +52,11 @@ export class Merge implements INodeType {
 						description: 'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
 					},
 					{
+						name: 'Multiplex',
+						value: 'multiplex',
+						description: 'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.'
+					},
+					{
 						name: 'Pass-through',
 						value: 'passThrough',
 						description: 'Passes through data of one input. The output will contain only items of the defined input.',
@@ -159,6 +164,37 @@ export class Merge implements INodeType {
 				default: 'input1',
 				description: 'Defines of which input the data should be used as output of node.',
 			},
+			{
+				displayName: 'Overwrite',
+				name: 'overwrite',
+				type: 'options',
+				displayOptions: {
+					show: {
+						mode: [
+							'mergeByKey',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Always',
+						value: 'always',
+						description: 'Always overwrites everything.',
+					},
+					{
+						name: 'If Blank',
+						value: 'blank',
+						description: 'Overwrites only values of "null", "undefined" or empty string.',
+					},
+					{
+						name: 'If Missing',
+						value: 'undefined',
+						description: 'Only adds values which do not exist yet.',
+					},
+				],
+				default: 'always',
+				description: 'Select when to overwrite the values from Input1 with values from Input 2.',
+			}
 		]
 	};
 
@@ -254,6 +290,23 @@ export class Merge implements INodeType {
 
 				returnData.push(newItem);
 			}
+		} else if (mode === 'multiplex') {
+			const dataInput1 = this.getInputData(0);
+			const dataInput2 = this.getInputData(1);
+
+			if (!dataInput1 || !dataInput2) {
+				return [returnData];
+			}
+
+			let entry1: INodeExecutionData;
+			let entry2: INodeExecutionData;
+
+			for (entry1 of dataInput1) {
+				for (entry2 of dataInput2) {
+					returnData.push({json: {...(entry1.json), ...(entry2.json)}});
+				}
+			}
+			return [returnData];
 		} else if (['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'].includes(mode)) {
 			const dataInput1 = this.getInputData(0);
 			if (!dataInput1) {
@@ -263,6 +316,7 @@ export class Merge implements INodeType {
 
 			const propertyName1 = this.getNodeParameter('propertyName1', 0) as string;
 			const propertyName2 = this.getNodeParameter('propertyName2', 0) as string;
+			const overwrite = this.getNodeParameter('overwrite', 0, 'always') as string;
 
 			const dataInput2 = this.getInputData(1);
 			if (!dataInput2 || !propertyName1 || !propertyName2) {
@@ -353,8 +407,19 @@ export class Merge implements INodeType {
 						entry = JSON.parse(JSON.stringify(entry));
 
 						for (key of Object.keys(copyData[referenceValue as string].json)) {
+							if (key === propertyName2) {
+								continue;
+							}
+
 							// TODO: Currently only copies json data and no binary one
-							entry.json[key] = copyData[referenceValue as string].json[key];
+							const value = copyData[referenceValue as string].json[key];
+							if (
+								overwrite === 'always' ||
+								(overwrite === 'undefined' && !entry.json.hasOwnProperty(key)) ||
+								(overwrite === 'blank' && [null, undefined, ''].includes(entry.json[key] as string))
+							) {
+								entry.json[key] = value;
+							}
 						}
 					} else {
 						// For "keepKeyMatches" we add it as it is

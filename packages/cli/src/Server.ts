@@ -1,5 +1,8 @@
 import * as express from 'express';
 import {
+	readFileSync,
+} from 'fs';
+import {
 	dirname as pathDirname,
 	join as pathJoin,
 	resolve as pathResolve,
@@ -102,6 +105,10 @@ class App {
 	push: Push.Push;
 	versions: IPackageVersions | undefined;
 
+	protocol: string;
+	sslKey:  string;
+	sslCert: string;
+
 	constructor() {
 		this.app = express();
 
@@ -117,6 +124,10 @@ class App {
 		this.push = Push.getInstance();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
+
+		this.protocol = config.get('protocol');
+		this.sslKey  = config.get('ssl_key');
+		this.sslCert = config.get('ssl_cert');
 	}
 
 
@@ -134,10 +145,10 @@ class App {
 	async config(): Promise<void> {
 
 		this.versions = await GenericHelpers.getVersions();
-		const authIgnoreRegex = new RegExp(`^\/(rest|healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
+		const authIgnoreRegex = new RegExp(`^\/(healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
 
 		// Check for basic auth credentials if activated
-		const basicAuthActive  = config.get('security.basicAuth.active') as boolean;
+		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
 		if (basicAuthActive === true) {
 			const basicAuthUser = await GenericHelpers.getConfigValue('security.basicAuth.user') as string;
 			if (basicAuthUser === '') {
@@ -236,18 +247,27 @@ class App {
 		});
 
 		// Support application/json type post data
-		this.app.use(bodyParser.json({ limit: "16mb", verify: (req, res, buf) => {
-			// @ts-ignore
-			req.rawBody = buf;
-		}}));
+		this.app.use(bodyParser.json({
+			limit: '16mb', verify: (req, res, buf) => {
+				// @ts-ignore
+				req.rawBody = buf;
+			}
+		}));
 
 		// Support application/xml type post data
 		// @ts-ignore
-		this.app.use(bodyParser.xml({ limit: "16mb", xmlParseOptions: {
+		this.app.use(bodyParser.xml({ limit: '16mb', xmlParseOptions: {
 			normalize: true,     // Trim whitespace inside text nodes
 			normalizeTags: true, // Transform tags to lowercase
-			explicitArray: false // Only put properties in array if length > 1
+			explicitArray: false, // Only put properties in array if length > 1
 		  } }));
+
+		this.app.use(bodyParser.text({
+			limit: '16mb', verify: (req, res, buf) => {
+				// @ts-ignore
+				req.rawBody = buf;
+			}
+		}));
 
 		// Make sure that Vue history mode works properly
 		this.app.use(history({
@@ -504,7 +524,7 @@ class App {
 				const credentials = await WorkflowCredentials(workflowData.nodes);
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
-				const workflowInstance = new Workflow(workflowData.id, workflowData.nodes, workflowData.connections, false, nodeTypes, undefined, workflowData.settings);
+				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
 				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, sessionId, destinationNode);
 				if (needsWebhook === true) {
 					return {
@@ -663,6 +683,10 @@ class App {
 				throw new Error('No encryption key got found to encrypt the credentials!');
 			}
 
+			if (incomingData.name === '') {
+				throw new Error('Credentials have to have a name set!');
+			}
+
 			// Check if credentials with the same name and type exist already
 			const findQuery = {
 				where: {
@@ -702,6 +726,10 @@ class App {
 			const incomingData = req.body;
 
 			const id = req.params.id;
+
+			if (incomingData.name === '') {
+				throw new Error('Credentials have to have a name set!');
+			}
 
 			// Add the date for newly added node access permissions
 			for (const nodeAccess of incomingData.nodesAccess) {
@@ -837,6 +865,7 @@ class App {
 
 			return returnData;
 		}));
+
 
 		// ----------------------------------------
 		// OAuth2-Credential/Auth
@@ -1108,6 +1137,12 @@ class App {
 				workflowData: fullExecutionData.workflowData,
 			};
 
+			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string;
+
+			// Remove the old error and the data of the last run of the node that it can be replaced
+			delete data!.executionData!.resultData.error;
+			data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+
 			if (req.body.loadWorkflow === true) {
 				// Loads the currently saved workflow to execute instead of the
 				// one saved at the time of the execution.
@@ -1116,6 +1151,18 @@ class App {
 
 				if (data.workflowData === undefined) {
 					throw new Error(`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`);
+				}
+
+				// Replace all of the nodes in the execution stack with the ones of the new workflow
+				for (const stack of data!.executionData!.executionData!.nodeExecutionStack) {
+					// Find the data of the last executed node in the new workflow
+					const node = data.workflowData.nodes.find(node => node.name === stack.node.name);
+					if (node === undefined) {
+						throw new Error(`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`);
+					}
+
+					// Replace the node data in the stack that it really uses the current data
+					stack.node = node;
 				}
 			}
 
@@ -1372,7 +1419,20 @@ export async function start(): Promise<void> {
 
 	await app.config();
 
-	app.app.listen(PORT, async () => {
+	let server;
+
+	if (app.protocol === 'https' && app.sslKey && app.sslCert){
+		const https = require('https');
+		const privateKey = readFileSync(app.sslKey, 'utf8');
+		const cert = readFileSync(app.sslCert, 'utf8');
+		const credentials = { key: privateKey,cert };
+		server = https.createServer(credentials,app.app);
+	}else{
+		const http = require('http');
+		server = http.createServer(app.app);
+	}
+
+	server.listen(PORT, async () => {
 		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);

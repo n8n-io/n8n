@@ -75,9 +75,9 @@ Example:
 
 ```typescript
 // Returns the value of the JSON data property "myNumber" of Node "Set" (first item)
-const myNumber = $item(0).$node["Set"].data["myNumber"];
+const myNumber = $item(0).$node["Set"].json["myNumber"];
 // Like above but data of the 6th item
-const myNumber = $item(5).$node["Set"].data["myNumber"];
+const myNumber = $item(5).$node["Set"].json["myNumber"];
 
 // Returns the value of the parameter "channel" of Node "Slack".
 // If it contains an expression the value will be resolved with the
@@ -93,9 +93,25 @@ const channel = $item(9).$node["Slack"].parameter["channel"];
 Works exactly like `$item` with the difference that it will always return the data of the first item.
 
 ```typescript
-const myNumber = $node["Set"].data['myNumber'];
+const myNumber = $node["Set"].json['myNumber'];
 
 const channel = $node["Slack"].parameter["channel"];
+```
+
+
+#### Method: evaluateExpression(expression: string, itemIndex: number)
+
+Evaluates a given string as expression.
+If no `itemIndex` is provided it uses by default in the Function-Node the data of item 0 and
+in the Function Item-Node the data of the current item.
+
+Example:
+
+```javascript
+items[0].json.variable1 = evaluateExpression('{{1+2}}');
+items[0].json.variable2 = evaluateExpression($node["Set"].json["myExpression"], 1);
+
+return items;
 ```
 
 
@@ -114,7 +130,7 @@ same in the whole workflow. And every node in the workflow can access it. The no
 
 Example:
 
-```typescript
+```javascript
 // Get the global workflow static data
 const staticData = getWorkflowStaticData('global');
 // Get the static data of the node

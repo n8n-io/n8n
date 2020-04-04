@@ -75,16 +75,12 @@ export class Airtable implements INodeType {
 			//         All
 			// ----------------------------------
 			{
-				displayName: 'Application',
+				displayName: 'Application ID',
 				name: 'application',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getApplications',
-				},
-				options: [],
+				type: 'string',
 				default: '',
 				required: true,
-				description: 'The application to access',
+				description: 'The ID of the application to access.',
 			},
 			{
 				displayName: 'Table',
@@ -93,7 +89,7 @@ export class Airtable implements INodeType {
 				default: '',
 				placeholder: 'Stories',
 				required: true,
-				description: 'The name of table to access',
+				description: 'The name of table to access.',
 			},
 
 			// ----------------------------------
@@ -362,32 +358,6 @@ export class Airtable implements INodeType {
 			},
 		],
 	};
-
-	methods = {
-		loadOptions: {
-			// Get all the available applications to display them to user so that he can
-			// select them easily
-			async getApplications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = 'meta';
-				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
-
-				if (responseData.applications === undefined) {
-					throw new Error('No data got returned');
-				}
-
-				const returnData: INodePropertyOptions[] = [];
-				for (const baseData of responseData.applications) {
-					returnData.push({
-						name: baseData.name,
-						value: baseData.id,
-					});
-				}
-
-				return returnData;
-			},
-		},
-	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

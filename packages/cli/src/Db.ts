@@ -18,6 +18,7 @@ import {
 	MongoDb,
 	PostgresDb,
 	SQLite,
+	MySQLDb,
 } from './databases';
 
 export let collections: IDatabaseCollections = {
@@ -36,33 +37,58 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 	let connectionOptions: ConnectionOptions;
 
 	let dbNotExistError: string | undefined;
-	if (dbType === 'mongodb') {
-		entities = MongoDb;
-		connectionOptions = {
-			type: 'mongodb',
-			url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
-			useNewUrlParser: true,
-		};
-	} else if (dbType === 'postgresdb') {
-		dbNotExistError = 'does not exist';
-		entities = PostgresDb;
-		connectionOptions = {
-			type: 'postgres',
-			database: await GenericHelpers.getConfigValue('database.postgresdb.database') as string,
-			host: await GenericHelpers.getConfigValue('database.postgresdb.host') as string,
-			password: await GenericHelpers.getConfigValue('database.postgresdb.password') as string,
-			port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
-			username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
-		};
-	} else if (dbType === 'sqlite') {
-		dbNotExistError = 'no such table:';
-		entities = SQLite;
-		connectionOptions = {
-			type: 'sqlite',
-			database: path.join(n8nFolder, 'database.sqlite'),
-		};
-	} else {
-		throw new Error(`The database "${dbType}" is currently not supported!`);
+	switch (dbType) {
+		case 'mongodb':
+			entities = MongoDb;
+			connectionOptions = {
+				type: 'mongodb',
+				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
+				useNewUrlParser: true,
+			};
+			break;
+
+		case 'postgresdb':
+			dbNotExistError = 'does not exist';
+			entities = PostgresDb;
+			connectionOptions = {
+				type: 'postgres',
+				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				database: await GenericHelpers.getConfigValue('database.postgresdb.database') as string,
+				host: await GenericHelpers.getConfigValue('database.postgresdb.host') as string,
+				password: await GenericHelpers.getConfigValue('database.postgresdb.password') as string,
+				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
+				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
+				schema: await GenericHelpers.getConfigValue('database.postgresdb.schema') as string,
+			};
+			break;
+
+		case 'mysqldb':
+			dbNotExistError = 'does not exist';
+			entities = MySQLDb;
+			connectionOptions = {
+				type: 'mysql',
+				database: await GenericHelpers.getConfigValue('database.mysqldb.database') as string,
+				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				host: await GenericHelpers.getConfigValue('database.mysqldb.host') as string,
+				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
+				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
+				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
+			};
+			break;
+
+		case 'sqlite':
+			dbNotExistError = 'no such table:';
+			entities = SQLite;
+			connectionOptions = {
+				type: 'sqlite',
+				database: path.join(n8nFolder, 'database.sqlite'),
+				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+			};
+			break;
+
+		default:
+			throw new Error(`The database "${dbType}" is currently not supported!`);
 	}
 
 	Object.assign(connectionOptions, {

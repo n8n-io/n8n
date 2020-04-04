@@ -41,6 +41,7 @@ tmpl.tmpl.errorHandler = () => { };
 
 export class Workflow {
 	id: string | undefined;
+	name: string | undefined;
 	nodes: INodes = {};
 	connectionsBySourceNode: IConnections;
 	connectionsByDestinationNode: IConnections;
@@ -52,15 +53,17 @@ export class Workflow {
 	// ids of registred webhooks of nodes
 	staticData: IDataObject;
 
-	constructor(id: string | undefined, nodes: INode[], connections: IConnections, active: boolean, nodeTypes: INodeTypes, staticData?: IDataObject, settings?: IWorkflowSettings) {
-		this.id = id;
-		this.nodeTypes = nodeTypes;
+	// constructor(id: string | undefined, nodes: INode[], connections: IConnections, active: boolean, nodeTypes: INodeTypes, staticData?: IDataObject, settings?: IWorkflowSettings) {
+	constructor(parameters: {id?: string, name?: string, nodes: INode[], connections: IConnections, active: boolean, nodeTypes: INodeTypes, staticData?: IDataObject, settings?: IWorkflowSettings}) {
+		this.id = parameters.id;
+		this.name = parameters.name;
+		this.nodeTypes = parameters.nodeTypes;
 
 		// Save nodes in workflow as object to be able to get the
 		// nodes easily by its name.
 		// Also directly add the default values of the node type.
 		let nodeType: INodeType | undefined;
-		for (const node of nodes) {
+		for (const node of parameters.nodes) {
 			this.nodes[node.name] = node;
 			nodeType = this.nodeTypes.getByName(node.type);
 
@@ -77,16 +80,16 @@ export class Workflow {
 			const nodeParameters = NodeHelpers.getNodeParameters(nodeType.description.properties, node.parameters, true, false);
 			node.parameters = nodeParameters !== null ? nodeParameters : {};
 		}
-		this.connectionsBySourceNode = connections;
+		this.connectionsBySourceNode = parameters.connections;
 
 		// Save also the connections by the destionation nodes
-		this.connectionsByDestinationNode = this.__getConnectionsByDestination(connections);
+		this.connectionsByDestinationNode = this.__getConnectionsByDestination(parameters.connections);
 
-		this.active = active || false;
+		this.active = parameters.active || false;
 
-		this.staticData = ObservableObject.create(staticData || {}, undefined, { ignoreEmptyOnFirstChild: true });
+		this.staticData = ObservableObject.create(parameters.staticData || {}, undefined, { ignoreEmptyOnFirstChild: true });
 
-		this.settings = settings || {};
+		this.settings = parameters.settings || {};
 	}
 
 
@@ -153,7 +156,8 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	convertObjectValueToString(value: object): string {
-		return `[Object: ${JSON.stringify(value)}]`;
+		const typeName = Array.isArray(value) ? 'Array' : 'Object';
+		return `[${typeName}: ${JSON.stringify(value)}]`;
 	}
 
 
@@ -733,6 +737,40 @@ export class Workflow {
 
 
 	/**
+	 * Returns from which of the given nodes the workflow should get started from
+	 *
+	 * @param {string[]} nodeNames The potential start nodes
+	 * @returns {(INode | undefined)}
+	 * @memberof Workflow
+	 */
+	__getStartNode(nodeNames: string[]): INode | undefined {
+		// Check if there are any trigger or poll nodes and then return the first one
+		let node: INode;
+		let nodeType: INodeType;
+		for (const nodeName of nodeNames) {
+			node = this.nodes[nodeName];
+			nodeType = this.nodeTypes.getByName(node.type) as INodeType;
+
+			if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
+				return node;
+			}
+		}
+
+		// Check if there is the actual "start" node
+		const startNodeType = 'n8n-nodes-base.start';
+		for (const nodeName of nodeNames) {
+			node = this.nodes[nodeName];
+			if (node.type === startNodeType) {
+				return node;
+			}
+		}
+
+		return undefined;
+	}
+
+
+
+	/**
 	 * Returns the start node to start the worfklow from
 	 *
 	 * @param {string} [destinationNode]
@@ -740,7 +778,6 @@ export class Workflow {
 	 * @memberof Workflow
 	 */
 	getStartNode(destinationNode?: string): INode | undefined {
-		const startNodeType = 'n8n-nodes-base.start';
 
 		if (destinationNode) {
 			// Find the highest parent nodes of the given one
@@ -753,42 +790,17 @@ export class Workflow {
 			}
 
 			// Check which node to return as start node
-
-			// Check if there are any trigger or poll nodes and then return the first one
-			let node: INode;
-			let nodeType: INodeType;
-			for (const nodeName of nodeNames) {
-				node = this.nodes[nodeName];
-				nodeType = this.nodeTypes.getByName(node.type) as INodeType;
-
-				if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
-					return node;
-				}
-			}
-
-			// Check if there is the actual "start" node
-			for (const nodeName of nodeNames) {
-				node = this.nodes[nodeName];
-				if (node.type === startNodeType) {
-					return node;
-				}
+			const node = this.__getStartNode(nodeNames);
+			if (node !== undefined) {
+				return node;
 			}
 
 			// If none of the above did find anything simply return the
 			// first parent node in the list
 			return this.nodes[nodeNames[0]];
-		} else {
-			// No node given so start from "start" node
-			let node: INode;
-			for (const nodeName of Object.keys(this.nodes)) {
-				node = this.nodes[nodeName];
-				if (node.type === startNodeType) {
-					return node;
-				}
-			}
 		}
 
-		return undefined;
+		return this.__getStartNode(Object.keys(this.nodes));
 	}
 
 
@@ -886,61 +898,25 @@ export class Workflow {
 
 		// Generate a data proxy which allows to query workflow data
 		const dataProxy = new WorkflowDataProxy(this, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData);
+		const data = dataProxy.getDataProxy();
+		data.$evaluateExpression = (expression: string) => {
+			return this.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, returnObjectAsString);
+		};
 
 		// Execute the expression
 		try {
-			const returnValue = tmpl.tmpl(parameterValue, dataProxy.getDataProxy());
-			if (typeof returnValue === 'object' && Object.keys(returnValue).length === 0) {
-				// When expression is incomplete it returns a Proxy which causes problems.
-				// Catch it with this code and return a proper error.
-				throw new Error('Expression is not valid.');
+			const returnValue = tmpl.tmpl(parameterValue, data);
+			if (returnValue !== null && typeof returnValue === 'object') {
+				if (returnObjectAsString === true)  {
+					return this.convertObjectValueToString(returnValue);
+				}
 			}
-
-			if (returnObjectAsString === true && typeof returnValue === 'object') {
-				return this.convertObjectValueToString(returnValue);
-			}
-
 			return returnValue;
 		} catch (e) {
-			throw new Error('Expression is not valid.');
+			throw new Error(`Expression is not valid: ${e.message}`);
 		}
 	}
 
-
-	/**
-	 * Executes the hooks of the node
-	 *
-	 * @param {string} hookName The name of the hook to execute
-	 * @param {IWebhookData} webhookData
-	 * @param {INodeExecuteFunctions} nodeExecuteFunctions
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns {Promise<void>}
-	 * @memberof Workflow
-	 */
-	async runNodeHooks(hookName: string, webhookData: IWebhookData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<void> {
-		const node = this.getNode(webhookData.node) as INode;
-		const nodeType = this.nodeTypes.getByName(node.type) as INodeType;
-
-		if (nodeType.description.hooks === undefined) {
-			return;
-		}
-
-
-		if (nodeType.description.hooks[hookName] === undefined) {
-			return;
-		}
-
-
-		if (nodeType.hooks === undefined && nodeType.description.hooks[hookName]!.length !== 0) {
-			// There should be hook functions but they do not exist
-			throw new Error('There are hooks defined to run but are not implemented.');
-		}
-
-		for (const hookDescription of nodeType.description.hooks[hookName]!) {
-			const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(this, node, webhookData.workflowExecuteAdditionalData, mode);
-			await nodeType.hooks![hookDescription.method].call(thisArgs);
-		}
-	}
 
 
 	/**
