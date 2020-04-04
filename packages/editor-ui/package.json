@@ -31,7 +31,7 @@
     "@fortawesome/vue-fontawesome": "^0.1.6",
     "@types/dateformat": "^3.0.0",
     "@types/file-saver": "^2.0.1",
-    "@types/jest": "^24.0.18",
+    "@types/jest": "^25.2.1",
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.set": "^4.3.6",
     "@types/node": "12.12.22",
