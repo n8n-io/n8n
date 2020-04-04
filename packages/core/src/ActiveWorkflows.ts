@@ -69,23 +69,25 @@ export class ActiveWorkflows {
 	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
 		console.log('ADD ID (active): ' + id);
 
-		this.workflowData[id] = {
-			workflow
-		};
+		this.workflowData[id] = {};
 		const triggerNodes = workflow.getTriggerNodes();
 
 		let triggerResponse: ITriggerResponse | undefined;
+		this.workflowData[id].triggerResponses = [];
 		for (const triggerNode of triggerNodes) {
 			triggerResponse = await workflow.runTrigger(triggerNode, getTriggerFunctions, additionalData, 'trigger');
 			if (triggerResponse !== undefined) {
 				// If a response was given save it
-				this.workflowData[id].triggerResponse = triggerResponse;
+				this.workflowData[id].triggerResponses!.push(triggerResponse);
 			}
 		}
 
 		const pollNodes = workflow.getPollNodes();
-		for (const pollNode of pollNodes) {
-			this.workflowData[id].pollResponse = await this.activatePolling(pollNode, workflow, additionalData, getPollFunctions);
+		if (pollNodes.length) {
+			this.workflowData[id].pollResponses = [];
+			for (const pollNode of pollNodes) {
+				this.workflowData[id].pollResponses!.push(await this.activatePolling(pollNode, workflow, additionalData, getPollFunctions));
+			}
 		}
 	}
 
@@ -166,7 +168,6 @@ export class ActiveWorkflows {
 			const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 			if (pollResponse !== null) {
-				// TODO: Run workflow
 				pollFunctions.__emit(pollResponse);
 			}
 		};
@@ -212,12 +213,20 @@ export class ActiveWorkflows {
 
 		const workflowData = this.workflowData[id];
 
-		if (workflowData.triggerResponse && workflowData.triggerResponse.closeFunction) {
-			await workflowData.triggerResponse.closeFunction();
+		if (workflowData.triggerResponses) {
+			for (const triggerResponse of workflowData.triggerResponses) {
+				if (triggerResponse.closeFunction) {
+					await triggerResponse.closeFunction();
+				}
+			}
 		}
 
-		if (workflowData.pollResponse && workflowData.pollResponse.closeFunction) {
-			await workflowData.pollResponse.closeFunction();
+		if (workflowData.pollResponses) {
+			for (const pollResponse of workflowData.pollResponses) {
+				if (pollResponse.closeFunction) {
+					await pollResponse.closeFunction();
+				}
+			}
 		}
 
 		delete this.workflowData[id];

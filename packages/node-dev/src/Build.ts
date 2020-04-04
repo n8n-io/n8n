@@ -43,7 +43,7 @@ export async function createCustomTsconfig () {
 	tsConfig.include = newIncludeFiles;
 
 	// Write new custom tsconfig file
-	const { fd, path, cleanup } = await file();
+	const { fd, path, cleanup } = await file({ dir: process.cwd() });
 	await fsWriteAsync(fd, Buffer.from(JSON.stringify(tsConfig, null, 2), 'utf8'));
 
 	return {
@@ -64,7 +64,7 @@ export async function buildFiles (options?: IBuildOptions): Promise<string> {
 	options = options || {};
 
 	// Get the path of the TypeScript cli of this project
-	const tscPath = join(__dirname, '../../node_modules/typescript/bin/tsc');
+	const tscPath = join(__dirname, '../../node_modules/.bin/tsc');
 
 	const tsconfigData = await createCustomTsconfig();
 

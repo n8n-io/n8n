@@ -4,6 +4,7 @@ import {
 	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
+	NodeTypes,
 	Push,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
@@ -11,15 +12,19 @@ import {
 
 import {
 	IProcessMessage,
+	WorkflowExecute,
 } from 'n8n-core';
 
 import {
 	IExecutionError,
 	IRun,
+	Workflow,
 	WorkflowHooks,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import * as config from '../config';
+import * as PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
@@ -80,7 +85,7 @@ export class WorkflowRunner {
 
 
 	/**
-	 * Run the workflow in subprocess
+	 * Run the workflow
 	 *
 	 * @param {IWorkflowExecutionDataProcess} data
 	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
@@ -89,6 +94,70 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+		const executionsProcess = config.get('executions.process') as string;
+		if (executionsProcess === 'main') {
+			return this.runMainProcess(data, loadStaticData);
+		}
+
+		return this.runSubprocess(data, loadStaticData);
+	}
+
+
+	/**
+	 * Run the workflow in current process
+	 *
+	 * @param {IWorkflowExecutionDataProcess} data
+	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
+	 *                                   the workflow and added to input data
+	 * @returns {Promise<string>}
+	 * @memberof WorkflowRunner
+	 */
+	async runMainProcess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+		if (loadStaticData === true && data.workflowData.id) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(data.workflowData.id as string);
+		}
+
+		const nodeTypes = NodeTypes();
+
+		const workflow = new Workflow({ id: data.workflowData.id as string | undefined, name: data.workflowData.name, nodes: data.workflowData!.nodes, connections: data.workflowData!.connections, active: data.workflowData!.active, nodeTypes, staticData: data.workflowData!.staticData });
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials);
+
+		// Register the active execution
+		const executionId = this.activeExecutions.add(data, undefined);
+
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+
+		let workflowExecution: PCancelable<IRun>;
+		if (data.executionData !== undefined) {
+			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode, data.executionData);
+			workflowExecution = workflowExecute.processRunExecutionData(workflow);
+		} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
+			// Execute all nodes
+
+			// Can execute without webhook so go on
+			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+			workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);
+		} else {
+			// Execute only the nodes between start and destination nodes
+			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+			workflowExecution = workflowExecute.runPartialWorkflow(workflow, data.runData, data.startNodes, data.destinationNode);
+		}
+
+		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+
+		return executionId;
+	}
+
+	/**
+	 * Run the workflow
+	 *
+	 * @param {IWorkflowExecutionDataProcess} data
+	 * @param {boolean} [loadStaticData] If set will the static data be loaded from
+	 *                                   the workflow and added to input data
+	 * @returns {Promise<string>}
+	 * @memberof WorkflowRunner
+	 */
+	async runSubprocess(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
 		const startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
@@ -97,7 +166,7 @@ export class WorkflowRunner {
 		}
 
 		// Register the active execution
-		const executionId = this.activeExecutions.add(subprocess, data);
+		const executionId = this.activeExecutions.add(data, subprocess);
 
 		// Check if workflow contains a "executeWorkflow" Node as in this
 		// case we can not know which nodeTypes will be needed and so have

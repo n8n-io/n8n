@@ -1,6 +1,6 @@
 # n8n Documentation
 
-This is the documentation of n8n a free and open node-based Workflow Automation Tool.
+This is the documentation of n8n a free and open [fair-code](http://faircode.io) licensed node-based Workflow Automation Tool.
 
 It covers everything from setup, usage to development. It is still work in progress and all contributions are welcome.
 

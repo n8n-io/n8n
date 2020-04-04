@@ -4,6 +4,13 @@ By default, n8n uses SQLite to save credentials, past executions, and workflows.
 n8n however also supports MongoDB and PostgresDB.
 
 
+## Shared Settings
+
+The following environment variables get used by all databases:
+
+ - `DB_TABLE_PREFIX` (default: '') - Prefix for table names
+
+
 ## MongoDB
 
 !> **WARNING**: Use Postgres if possible! Mongo has problems with saving large
@@ -38,6 +45,7 @@ To use PostgresDB as database you can provide the following environment variable
  - `DB_POSTGRESDB_PORT` (default: 5432)
  - `DB_POSTGRESDB_USER` (default: 'root')
  - `DB_POSTGRESDB_PASSWORD` (default: empty)
+ - `DB_POSTGRESDB_SCHEMA` (default: 'public')
 
 
 ```bash
@@ -47,6 +55,31 @@ export DB_POSTGRESDB_HOST=postgresdb
 export DB_POSTGRESDB_PORT=5432
 export DB_POSTGRESDB_USER=n8n
 export DB_POSTGRESDB_PASSWORD=n8n
+export DB_POSTGRESDB_SCHEMA=n8n
+
+n8n start
+```
+
+## MySQL
+
+The compatibility with MySQL was tested, even so, it is advisable to observe the operation of the application with this DB, as it is a new option, recently added. If you spot any problems, feel free to submit a PR.
+
+To use MySQL as database you can provide the following environment variables:
+ - `DB_TYPE=mysqldb`
+ - `DB_MYSQLDB_DATABASE` (default: 'n8n')
+ - `DB_MYSQLDB_HOST` (default: 'localhost')
+ - `DB_MYSQLDB_PORT` (default: 3306)
+ - `DB_MYSQLDB_USER` (default: 'root')
+ - `DB_MYSQLDB_PASSWORD` (default: empty)
+
+
+```bash
+export DB_TYPE=mysqldb
+export DB_MYSQLDB_DATABASE=n8n
+export DB_MYSQLDB_HOST=mysqldb
+export DB_MYSQLDB_PORT=3306
+export DB_MYSQLDB_USER=n8n
+export DB_MYSQLDB_PASSWORD=n8n
 
 n8n start
 ```
@@ -68,7 +101,6 @@ should not be too much work:
  - CockroachDB
  - MariaDB
  - Microsoft SQL
- - MySQL
  - Oracle
 
 If you can not use any of the currently supported databases for some reason and

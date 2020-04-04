@@ -138,7 +138,7 @@ export default mixins(genericHelpers)
 	}
 }
 
-/deep/ .duplicate-parameter-item {
+::v-deep .duplicate-parameter-item {
 	position: relative;
 	margin-top: 0.5em;
 	padding-top: 0.5em;
@@ -148,11 +148,11 @@ export default mixins(genericHelpers)
 	}
 }
 
-/deep/ .duplicate-parameter-input-item {
+::v-deep .duplicate-parameter-input-item {
 	margin: 0.5em 0 0.25em 2em;
 }
 
-/deep/ .duplicate-parameter-item + .duplicate-parameter-item {
+::v-deep .duplicate-parameter-item + .duplicate-parameter-item {
 	.collection-parameter-wrapper {
 		border-top: 1px dashed #999;
 		padding-top: 0.5em;

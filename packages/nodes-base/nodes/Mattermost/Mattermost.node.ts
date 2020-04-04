@@ -86,6 +86,16 @@ export class Mattermost implements INodeType {
 						description: 'Create a new channel',
 					},
 					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Soft-deletes a channel',
+					},
+					{
+						name: 'Restore',
+						value: 'restore',
+						description: 'Restores a soft-deleted channel',
+					},
+					{
 						name: 'Statistics',
 						value: 'statistics',
 						description: 'Get statistics for a channel.',
@@ -220,6 +230,56 @@ export class Mattermost implements INodeType {
 
 
 			// ----------------------------------
+			//         channel:delete
+			// ----------------------------------
+			{
+				displayName: 'Channel ID',
+				name: 'channelId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannels',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'delete'
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The ID of the channel to soft-delete.',
+			},
+
+
+			// ----------------------------------
+			//         channel:restore
+			// ----------------------------------
+			{
+				displayName: 'Channel ID',
+				name: 'channelId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'restore'
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The ID of the channel to restore.',
+			},
+
+
+			// ----------------------------------
 			//         channel:addUser
 			// ----------------------------------
 			{
@@ -266,6 +326,8 @@ export class Mattermost implements INodeType {
 				},
 				description: 'The ID of the user to invite into channel.',
 			},
+
+
 			// ----------------------------------
 			//         channel:statistics
 			// ----------------------------------
@@ -594,8 +656,8 @@ export class Mattermost implements INodeType {
 				},
 				options: [
 					{
-						name: 'Desactive',
-						value: 'desactive',
+						name: 'Deactive',
+						value: 'deactive',
 						description: 'Deactivates the user and revokes all its sessions by archiving its user object.',
 					},
 				],
@@ -603,7 +665,7 @@ export class Mattermost implements INodeType {
 				description: 'The operation to perform.',
 			},
 			// ----------------------------------
-			//         user:desactivate
+			//         user:deactivate
 			// ----------------------------------
 			{
 				displayName: 'User ID',
@@ -616,7 +678,7 @@ export class Mattermost implements INodeType {
 							'user',
 						],
 						operation: [
-							'desactive',
+							'deactive',
 						],
 					},
 				},
@@ -629,8 +691,7 @@ export class Mattermost implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available workspaces to display them to user so that he can
-			// select them easily
+			// Get all the available channels
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const endpoint = 'channels';
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
@@ -754,6 +815,24 @@ export class Mattermost implements INodeType {
 					const type = this.getNodeParameter('type', i) as string;
 					body.type = type === 'public' ? 'O' : 'P';
 
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         channel:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					endpoint = `channels/${channelId}`;
+
+				} else if (operation === 'restore') {
+					// ----------------------------------
+					//         channel:restore
+					// ----------------------------------
+
+					requestMethod = 'POST';
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					endpoint = `channels/${channelId}/restore`;
+
 				} else if (operation === 'addUser') {
 					// ----------------------------------
 					//         channel:addUser
@@ -821,9 +900,12 @@ export class Mattermost implements INodeType {
 					Object.assign(body, otherOptions);
 				}
 			} else if (resource === 'user') {
-				if (operation === 'desactive') {
+				// TODO: Remove the "deactive" again in the future. In here temporary
+				//       to not break workflows for people which set the option before
+				//       typo got fixed. JO 2020-01-17
+				if (operation === 'deactive' || operation === 'desactive') {
 					// ----------------------------------
-					//          user:desactive
+					//          user:deactive
 					// ----------------------------------
 					const userId = this.getNodeParameter('userId', i) as string;
 					requestMethod = 'DELETE';

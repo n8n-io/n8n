@@ -75,31 +75,26 @@ export class TrelloTrigger implements INodeType {
 					return true;
 				}
 
-				const webhookData = this.getWorkflowStaticData('node');
-
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
-
 				const credentials = this.getCredentials('trelloApi');
 
 				if (credentials === undefined) {
 					throw new Error('No credentials got returned!');
 				}
 
-				// Webhook got created before so check if it still exists
-				const endpoint = `tokens/${credentials.apiToken}/webhooks/${webhookData.webhookId}`;
+				// Check all the webhooks which exist already if it is identical to the
+				// one that is supposed to get created.
+				const endpoint = `tokens/${credentials.apiToken}/webhooks`;
 
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
-				if (responseData.data === undefined) {
-					return false;
-				}
+				const idModel = this.getNodeParameter('id') as string;
+				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				for (const existingData of responseData.data) {
-					if (existingData.id === webhookData.webhookId) {
-						// The webhook exists already
+				for (const webhook of responseData) {
+					if (webhook.idModel === idModel && webhook.callbackURL === webhookUrl) {
+						// Set webhook-id to be sure that it can be deleted
+						const webhookData = this.getWorkflowStaticData('node');
+						webhookData.webhookId = webhook.id as string;
 						return true;
 					}
 				}

@@ -13,7 +13,7 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 
 	let node, type, name, foundCredentials;
 	for (node of nodes) {
-		if (!node.credentials) {
+		if (node.disabled === true || !node.credentials) {
 			continue;
 		}
 

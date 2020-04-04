@@ -124,7 +124,7 @@ export default mixins(
 			try {
 				this.credentials = JSON.parse(JSON.stringify(this.$store.getters.allCredentials));
 			} catch (error) {
-				this.$showError(error, 'Problem loading credentials', 'There was a problem loading the credentials:');
+				this.$showError(error, 'Proble loading credentials', 'There was a problem loading the credentials:');
 				this.isDataLoading = false;
 				return;
 			}
