@@ -90,8 +90,7 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 		const executionMode = 'error';
 		const nodeTypes = NodeTypes();
 
-		const workflowInstance = new Workflow(workflowId, workflowData.nodes, workflowData.connections, workflowData.active, nodeTypes, workflowData.staticData, workflowData.settings);
-
+		const workflowInstance = new Workflow({ id: workflowId, name: workflowData.name, nodeTypes, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, staticData: workflowData.staticData, settings: workflowData.settings});
 
 		let node: INode;
 		let workflowStartNode: INode | undefined;

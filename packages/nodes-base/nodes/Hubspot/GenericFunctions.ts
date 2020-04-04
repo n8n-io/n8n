@@ -12,11 +12,12 @@ import {
 } from 'n8n-workflow';
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('hubspotApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	query!.hapikey = credentials.apiKey as string;
+
+	const node = this.getNode();
+	const credentialName = Object.keys(node.credentials!)[0];
+	const credentials = this.getCredentials(credentialName);
+
+	query!.hapikey = credentials!.apiKey as string;
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
@@ -25,20 +26,19 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 		json: true,
 		useQuerystring: true,
 	};
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
 
-		if (errorMessage !== undefined) {
-			throw errorMessage;
+		if (error.response && error.response.body && error.response.body.errors) {
+			// Try to return the error prettier
+			const errorMessages = error.response.body.errors.map((e: IDataObject) => e.message);
+			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
 		}
-		throw error.response.body;
+
+		throw error;
 	}
 }
-
-
 
 /**
  * Make an API request to paginated hubspot endpoint

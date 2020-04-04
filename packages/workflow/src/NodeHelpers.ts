@@ -282,10 +282,10 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 		for (const propertyName of Object.keys(parameter.displayOptions.show)) {
 			if (propertyName.charAt(0) === '/') {
 				// Get the value from the root of the node
-				value = nodeValuesRoot[propertyName.slice(1)];
+				value = get(nodeValuesRoot, propertyName.slice(1));
 			} else {
 				// Get the value from current level
-				value = nodeValues[propertyName];
+				value = get(nodeValues, propertyName);
 			}
 
 			if (value === undefined || !parameter.displayOptions.show[propertyName].includes(value as string)) {
@@ -299,10 +299,10 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 		for (const propertyName of Object.keys(parameter.displayOptions.hide)) {
 			if (propertyName.charAt(0) === '/') {
 				// Get the value from the root of the node
-				value = nodeValuesRoot[propertyName.slice(1)];
+				value = get(nodeValuesRoot, propertyName.slice(1));
 			} else {
 				// Get the value from current level
-				value = nodeValues[propertyName];
+				value = get(nodeValues, propertyName);
 			}
 			if (value !== undefined && parameter.displayOptions.hide[propertyName].includes(value as string)) {
 				return false;
@@ -475,7 +475,7 @@ export function getParamterResolveOrder(nodePropertiesArray: INodeProperties[], 
 		}
 
 		if (itterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new Error('Could not resolve parameter depenencies!');
+			throw new Error('Could not resolve parameter depenencies. Max itterations got reached!');
 		}
 		lastIndexLength = indexToResolve.length;
 	}
@@ -771,7 +771,7 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			node: node.name,
 			path,
 			webhookDescription,
-			workflow,
+			workflowId: workflow.id,
 			workflowExecuteAdditionalData: additionalData,
 		});
 	}

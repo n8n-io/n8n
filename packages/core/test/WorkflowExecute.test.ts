@@ -579,7 +579,7 @@ describe('WorkflowExecute', () => {
 		for (const testData of tests) {
 			test(testData.description, async () => {
 
-				const workflowInstance = new Workflow('test', testData.input.workflowData.nodes, testData.input.workflowData.connections, false, nodeTypes);
+				const workflowInstance = new Workflow({ id: 'test', nodes: testData.input.workflowData.nodes, connections: testData.input.workflowData.connections, active: false, nodeTypes });
 
 				const waitPromise = await createDeferredPromise<IRun>();
 				const nodeExecutionOrder: string[] = [];

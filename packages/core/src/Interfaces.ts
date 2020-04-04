@@ -15,7 +15,6 @@ import {
 	ITriggerResponse,
 	IWebhookFunctions as IWebhookFunctionsBase,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	Workflow,
  } from 'n8n-workflow';
 
 
@@ -137,7 +136,6 @@ export interface INodeInputDataConnections {
 
 
 export interface IWorkflowData {
-	pollResponse?: IPollResponse;
-	triggerResponse?: ITriggerResponse;
-	workflow: Workflow;
+	pollResponses?: IPollResponse[];
+	triggerResponses?: ITriggerResponse[];
 }

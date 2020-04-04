@@ -8,7 +8,7 @@ const config = convict({
 	database: {
 		type: {
 			doc: 'Type of database to use',
-			format: ['sqlite', 'mongodb', 'postgresdb'],
+			format: ['sqlite', 'mongodb', 'mysqldb', 'postgresdb'],
 			default: 'sqlite',
 			env: 'DB_TYPE'
 		},
@@ -19,6 +19,12 @@ const config = convict({
 				default: 'mongodb://user:password@localhost:27017/database',
 				env: 'DB_MONGODB_CONNECTION_URL'
 			}
+		},
+		tablePrefix: {
+			doc: 'Prefix for table names',
+			format: '*',
+			default: '',
+			env: 'DB_TABLE_PREFIX'
 		},
 		postgresdb: {
 			database: {
@@ -51,6 +57,44 @@ const config = convict({
 				default: 'root',
 				env: 'DB_POSTGRESDB_USER'
 			},
+			schema: {
+				doc: 'PostgresDB Schema',
+				format: String,
+				default: 'public',
+				env: 'DB_POSTGRESDB_SCHEMA'
+			},
+		},
+		mysqldb: {
+			database: {
+				doc: 'MySQL Database',
+				format: String,
+				default: 'n8n',
+				env: 'DB_MYSQLDB_DATABASE'
+			},
+			host: {
+				doc: 'MySQL Host',
+				format: String,
+				default: 'localhost',
+				env: 'DB_MYSQLDB_HOST'
+			},
+			password: {
+				doc: 'MySQL Password',
+				format: String,
+				default: '',
+				env: 'DB_MYSQLDB_PASSWORD'
+			},
+			port: {
+				doc: 'MySQL Port',
+				format: Number,
+				default: 3306,
+				env: 'DB_MYSQLDB_PORT'
+			},
+			user: {
+				doc: 'MySQL User',
+				format: String,
+				default: 'root',
+				env: 'DB_MYSQLDB_USER'
+			},
 		},
 	},
 
@@ -68,6 +112,17 @@ const config = convict({
 	},
 
 	executions: {
+
+		// By default workflows get always executed in their own process.
+		// If this option gets set to "main" it will run them in the
+		// main-process instead.
+		process: {
+			doc: 'In what process workflows should be executed',
+			format: ['main', 'own'],
+			default: 'own',
+			env: 'EXECUTIONS_PROCESS'
+		},
+
 		// If a workflow executes all the data gets saved by default. This
 		// could be a problem when a workflow gets executed a lot and processes
 		// a lot of data. To not write the database full it is possible to
@@ -132,6 +187,18 @@ const config = convict({
 		default: 'http',
 		env: 'N8N_PROTOCOL',
 		doc: 'HTTP Protocol via which n8n can be reached'
+	},
+	ssl_key: {
+		format: String,
+		default: '',
+		env: 'N8N_SSL_KEY',
+		doc: 'SSL Key for HTTPS Protocol'
+	},
+	ssl_cert: {
+		format: String,
+		default: '',
+		env: 'N8N_SSL_CERT',
+		doc: 'SSL Cert for HTTPS Protocol'
 	},
 
 	security: {
@@ -230,6 +297,15 @@ const config = convict({
 	},
 
 });
+
+// Overwrite default configuration with settings which got defined in
+// optional configuration files
+if (process.env.N8N_CONFIG_FILES !== undefined) {
+	const configFiles = process.env.N8N_CONFIG_FILES.split(',');
+	console.log(`\nLoading configuration overwrites from:\n - ${configFiles.join('\n - ')}\n`);
+
+	config.loadFile(configFiles);
+}
 
 config.validate({
 	allowed: 'strict',

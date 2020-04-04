@@ -91,6 +91,13 @@ export class Xml implements INodeType {
 						description: 'Prefix that is used to access the attributes.',
 					},
 					{
+						displayName: 'cdata',
+						name: 'cdata',
+						type: 'boolean',
+						default: false,
+						description: ' wrap text nodes in <![CDATA[ ... ]]> instead of escaping when necessary. Does not add <![CDATA[ ... ]]> if it is not required.',
+					},
+					{
 						displayName: 'Character Key',
 						name: 'charkey',
 						type: 'string',
@@ -103,6 +110,13 @@ export class Xml implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Omit the XML header.',
+					},
+					{
+						displayName: 'Root Name',
+						name: 'rootName',
+						type: 'string',
+						default: 'root',
+						description: 'Root element name to be used.',
 					},
 				],
 			},

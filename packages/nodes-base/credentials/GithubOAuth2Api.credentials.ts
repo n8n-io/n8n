@@ -12,6 +12,13 @@ export class GithubOAuth2Api implements ICredentialType {
 	displayName = 'Github OAuth2 API';
 	properties = [
 		{
+			displayName: 'Github Server',
+			name: 'server',
+			type: 'string' as NodePropertyTypes,
+			default: 'https://api.github.com',
+			description: 'The server to connect to. Does only have to get changed if Github Enterprise gets used.',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,

@@ -15,7 +15,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 import {
-	issueOpeations,
+	issueOperations,
 	issueFields,
 } from './IssueDescription';
 import {
@@ -28,15 +28,15 @@ import {
 
 export class JiraSoftwareCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Jira Software Cloud',
+		displayName: 'Jira Software',
 		name: 'Jira Software Cloud',
 		icon: 'file:jira.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Jira Software Cloud API',
+		description: 'Consume Jira Software API',
 		defaults: {
-			name: 'Jira Software Cloud',
+			name: 'Jira Software',
 			color: '#c02428',
 		},
 		inputs: ['main'],
@@ -45,9 +45,43 @@ export class JiraSoftwareCloud implements INodeType {
 			{
 				name: 'jiraSoftwareCloudApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						jiraVersion: [
+							'cloud',
+						],
+					},
+				},
+			},
+			{
+				name: 'jiraSoftwareServerApi',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: [
+							'server',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Jira Version',
+				name: 'jiraVersion',
+				type: 'options',
+				options: [
+					{
+						name: 'Cloud',
+						value: 'cloud',
+					},
+					{
+						name: 'Server (Self Hosted)',
+						value: 'server',
+					},
+				],
+				default: 'cloud',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -62,7 +96,7 @@ export class JiraSoftwareCloud implements INodeType {
 				default: 'issue',
 				description: 'Resource to consume.',
 			},
-			...issueOpeations,
+			...issueOperations,
 			...issueFields,
 		],
 	};
@@ -73,16 +107,23 @@ export class JiraSoftwareCloud implements INodeType {
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				const jiraCloudCredentials = this.getCredentials('jiraSoftwareCloudApi');
 				let projects;
+				let endpoint = '/project/search';
+				if (jiraCloudCredentials === undefined) {
+					endpoint = '/project';
+				}
 				try {
-					projects = await jiraSoftwareCloudApiRequest.call(this, '/project/search', 'GET');
+					projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
 				} catch (err) {
 					throw new Error(`Jira Error: ${err}`);
 				}
-				for (const project of projects.values) {
+				if (projects.values && Array.isArray(projects.values)) {
+					projects = projects.values;
+				}
+				for (const project of projects) {
 					const projectName = project.name;
 					const projectId = project.id;
-
 					returnData.push({
 						name: projectName,
 						value: projectId,
@@ -351,6 +392,29 @@ export class JiraSoftwareCloud implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}`, 'GET', {}, qs);
 					} catch (err) {
 						throw new Error(`Jira Error: ${JSON.stringify(err)}`);
+					}
+				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-search-post
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: IDataObject = {};
+					if (options.fields) {
+						body.fields = (options.fields as string).split(',') as string[];
+					}
+					if (options.jql) {
+						body.jql = options.jql as string;
+					}
+					if (options.expand) {
+						body.expand = options.expand as string;
+					}
+					if (returnAll) {
+						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'issues', `/search`, 'POST', body);
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						body.maxResults = limit;
+						responseData = await jiraSoftwareCloudApiRequest.call(this, `/search`, 'POST', body);
+						responseData = responseData.issues;
 					}
 				}
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-changelog-get

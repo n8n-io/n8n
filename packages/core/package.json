@@ -1,6 +1,6 @@
 {
     "name": "n8n-core",
-    "version": "0.20.0",
+    "version": "0.29.0",
     "description": "Core functionality of n8n",
     "license": "SEE LICENSE IN LICENSE.md",
     "homepage": "https://n8n.io",
@@ -25,6 +25,7 @@
         "dist"
     ],
     "devDependencies": {
+        "@types/cron": "^1.7.1",
         "@types/crypto-js": "^3.1.43",
         "@types/express": "^4.16.1",
         "@types/jest": "^24.0.18",
@@ -41,10 +42,11 @@
     "dependencies": {
         "client-oauth2": "^4.2.5",
         "cron": "^1.7.2",
-        "crypto-js": "^3.1.9-1",
+        "crypto-js": "3.1.9-1",
         "lodash.get": "^4.4.2",
         "mmmagic": "^0.5.2",
-        "n8n-workflow": "~0.20.0",
+        "n8n-workflow": "~0.26.0",
+        "p-cancelable": "^2.0.0",
         "request-promise-native": "^1.0.7"
     },
     "jest": {
