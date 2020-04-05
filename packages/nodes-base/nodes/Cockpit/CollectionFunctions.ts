@@ -7,7 +7,7 @@ import { IDataObject } from 'n8n-workflow';
 import { ICollection } from './CollectionInterface';
 import { cockpitApiRequest } from './GenericFunctions';
 
-export async function saveCollectionEntry(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, data: IDataObject, id?: string): Promise<any> { // tslint:disable-line:no-any
+export async function createCollectionEntry(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, data: IDataObject, id?: string): Promise<any> { // tslint:disable-line:no-any
 	const body: ICollection = {
 		data: JSON.parse(data.toString())
 	};
@@ -22,40 +22,52 @@ export async function saveCollectionEntry(this: IExecuteFunctions | IExecuteSing
 	return cockpitApiRequest.call(this, 'post', `/collections/save/${resourceName}`, body);
 }
 
-export async function getCollectionEntries(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, additionalFields: IDataObject): Promise<any> { // tslint:disable-line:no-any
+
+export async function getAllCollectionEntries(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const body: ICollection = {};
 
-	if (additionalFields.fields) {
-		body.fields = JSON.parse(additionalFields.fields.toString());
+	if (options.fields) {
+		body.fields = JSON.parse(options.fields.toString());
 	}
 
-	if (additionalFields.filter) {
-		body.filter = JSON.parse(additionalFields.filter.toString());
+	if (options.filter) {
+		body.filter = JSON.parse(options.filter.toString());
 	}
 
-	if (additionalFields.limit) {
-		body.limit = additionalFields.limit as number;
+	if (options.limit) {
+		body.limit = options.limit as number;
 	}
 
-	if (additionalFields.skip) {
-		body.skip = additionalFields.skip as number;
+	if (options.skip) {
+		body.skip = options.skip as number;
 	}
 
-	if (additionalFields.sort) {
-		body.sort = JSON.parse(additionalFields.sort.toString());
+	if (options.sort) {
+		body.sort = JSON.parse(options.sort.toString());
 	}
 
-	if (additionalFields.populate) {
-		body.populate = additionalFields.populate as boolean;
+	if (options.populate) {
+		body.populate = options.populate as boolean;
 	}
 
-	if (additionalFields.simple) {
-		body.simple = additionalFields.simple as boolean;
+	if (options.simple) {
+		body.simple = options.simple as boolean;
 	}
 
-	if (additionalFields.language) {
-		body.lang = additionalFields.language as string;
+	if (options.language) {
+		body.lang = options.language as string;
 	}
 
-	return cockpitApiRequest.call(this, 'post', `/collections/get/${resourceName}`, body);
+	const resultData = await cockpitApiRequest.call(this, 'post', `/collections/get/${resourceName}`, body);
+
+	if (options.rawData === true) {
+		return resultData;
+	}
+
+	return (resultData as unknown as IDataObject).entries;
+}
+
+
+export async function getAllCollectionNames(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions): Promise<string[]> {
+	return cockpitApiRequest.call(this, 'GET', `/collections/listCollections`, {});
 }

@@ -15,12 +15,12 @@ export const collectionOperations = [
 		options: [
 			{
 				name: 'Create an entry',
-				value: 'save',
+				value: 'create',
 				description: 'Create a collection entry',
 			},
 			{
 				name: 'Get all entries',
-				value: 'get',
+				value: 'getAll',
 				description: 'Get all collection entries',
 			},
 			{
@@ -29,13 +29,32 @@ export const collectionOperations = [
 				description: 'Update a collection entries',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 		description: 'The operation to perform.',
-	}
+	},
 ] as INodeProperties[];
 
 export const collectionFields = [
-	// Collections:entry:save
+	{
+		displayName: 'Collection',
+		name: 'collection',
+		type: 'options',
+		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getCollections',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'collections',
+				],
+			},
+		},
+		required: true,
+		description: 'Name of the collection to operate on.'
+	},
+
+	// Collections:entry:create
 	{
 		displayName: 'Data',
 		name: 'data',
@@ -51,19 +70,19 @@ export const collectionFields = [
 					'collections',
 				],
 				operation: [
-					'save',
+					'create',
 				]
 			},
 		},
-		description: 'The data to save.',
+		description: 'The data to create.',
 	},
 
-	// Collections:entry:get
+	// Collections:entry:getAll
 	{
-		displayName: 'Additional fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -71,7 +90,7 @@ export const collectionFields = [
 					'collections',
 				],
 				operation: [
-					'get',
+					'getAll',
 				]
 			},
 		},
@@ -97,11 +116,41 @@ export const collectionFields = [
 				description: 'Filter result by fields.',
 			},
 			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'string',
+				default: '',
+				description: 'Return normalized language fields.',
+			},
+			{
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
 				default: '',
 				description: 'Limit number of returned entries.',
+			},
+			{
+				displayName: 'Populate',
+				name: 'populate',
+				type: 'boolean',
+				required: true,
+				default: true,
+				description: 'Resolve linked collection items.',
+			},
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: `Returns the data exactly in the way it got received from the API.`,
+			},
+			{
+				displayName: 'Simple',
+				name: 'simple',
+				type: 'boolean',
+				required: true,
+				default: true,
+				description: 'Return only result entries.',
 			},
 			{
 				displayName: 'Skip',
@@ -116,29 +165,6 @@ export const collectionFields = [
 				type: 'json',
 				default: '',
 				description: 'Sort result by fields.',
-			},
-			{
-				displayName: 'Populate',
-				name: 'populate',
-				type: 'boolean',
-				required: true,
-				default: true,
-				description: 'Resolve linked collection items.',
-			},
-			{
-				displayName: 'Simple',
-				name: 'simple',
-				type: 'boolean',
-				required: true,
-				default: true,
-				description: 'Return only result entries.',
-			},
-			{
-				displayName: 'Language',
-				name: 'language',
-				type: 'string',
-				default: '',
-				description: 'Return normalized language fields.',
 			},
 		],
 	},

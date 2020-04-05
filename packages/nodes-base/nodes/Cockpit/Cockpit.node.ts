@@ -1,25 +1,34 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	collectionFields,
-	collectionOperations
+	collectionOperations,
 } from './CollectionDescription';
 import {
-	getCollectionEntries,
-	saveCollectionEntry
+	createCollectionEntry,
+	getAllCollectionEntries,
+	getAllCollectionNames,
 } from './CollectionFunctions';
 import {
 	formFields,
 	formOperations
 } from './FormDescription';
 import { submitForm } from './FormFunctions';
-import { singletonOperations } from "./SingletonDescription";
-import { getSingleton } from "./SingletonFunctions";
+import {
+	singletonFields,
+	singletonOperations,
+} from './SingletonDescription';
+import {
+	getAllSingleton,
+	getAllSingletonNames,
+} from './SingletonFunctions';
 
 export class Cockpit implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +37,7 @@ export class Cockpit implements INodeType {
 		icon: 'file:cockpit.png',
 		group: ['output'],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"] + "/" + $parameter["resourceName"]}}',
+		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description: 'Consume Cockpit API',
 		defaults: {
 			name: 'Cockpit',
@@ -64,20 +73,42 @@ export class Cockpit implements INodeType {
 					},
 				],
 			},
-			{
-				displayName: 'Resource name',
-				name: 'resourceName',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'Name of resource to consume.'
-			},
+
+
 			...collectionOperations,
 			...collectionFields,
 			...formOperations,
 			...formFields,
 			...singletonOperations,
+			...singletonFields,
 		],
+	};
+
+
+	methods = {
+		loadOptions: {
+			async getCollections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const collections = await getAllCollectionNames.call(this);
+
+				return collections.map(itemName => {
+					return {
+						name: itemName,
+						value: itemName,
+					}
+				});
+			},
+
+			async getSingletons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const singletons = await getAllSingletonNames.call(this);
+
+				return singletons.map(itemName => {
+					return {
+						name: itemName,
+						value: itemName,
+					}
+				});
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -85,36 +116,38 @@ export class Cockpit implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
 		const resource = this.getNodeParameter('resource', 0) as string;
-		const resourceName = this.getNodeParameter('resourceName', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'collections') {
-				if (operation === 'save') {
+				const collectionName = this.getNodeParameter('collection', i) as string;
+				if (operation === 'create') {
 					const data = this.getNodeParameter('data', i) as IDataObject;
 
-					responseData = await saveCollectionEntry.call(this, resourceName, data);
-				} else if (operation === 'get') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					responseData = await createCollectionEntry.call(this, collectionName, data);
+				} else if (operation === 'getAll') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-					responseData = await getCollectionEntries.call(this, resourceName, additionalFields);
+					responseData = await getAllCollectionEntries.call(this, collectionName, options);
 				} else if (operation === 'update') {
 					const id = this.getNodeParameter('id', i) as string;
 					const data = this.getNodeParameter('data', i) as IDataObject;
 
-					responseData = await saveCollectionEntry.call(this, resourceName, data, id);
+					responseData = await createCollectionEntry.call(this, collectionName, data, id);
 				}
 			} else if (resource === 'forms') {
+				const formName = this.getNodeParameter('form', i) as string;
 				if (operation === 'submit') {
 					const form = this.getNodeParameter('form', i) as IDataObject;
 
-					responseData = await submitForm.call(this, resourceName, form);
+					responseData = await submitForm.call(this, formName, form);
 				}
 			} else if (resource === 'singletons') {
-				if (operation === 'get') {
-					responseData = await getSingleton.call(this, resourceName);
+				const singletonName = this.getNodeParameter('singleton', i) as string;
+				if (operation === 'getAll') {
+					responseData = await getAllSingleton.call(this, singletonName);
 				}
 			}
 
