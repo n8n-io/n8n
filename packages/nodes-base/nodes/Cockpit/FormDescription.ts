@@ -26,6 +26,22 @@ export const formOperations = [
 ] as INodeProperties[];
 
 export const formFields = [
+	{
+		displayName: 'Form',
+		name: 'form',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'forms',
+				],
+			},
+		},
+		default: '',
+		required: true,
+		description: 'Name of the form to operate on.'
+	},
+
 	// Forms:submit
 	{
 		displayName: 'Form data',

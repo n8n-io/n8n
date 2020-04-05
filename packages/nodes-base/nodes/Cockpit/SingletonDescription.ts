@@ -14,12 +14,33 @@ export const singletonOperations = [
 		},
 		options: [
 			{
-				name: 'Get data',
-				value: 'get',
-				description: 'Get singleton data',
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all singletons',
 			},
 		],
-		default: 'get',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	}
+] as INodeProperties[];
+
+export const singletonFields = [
+	{
+		displayName: 'Singleton',
+		name: 'singleton',
+		type: 'options',
+		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getSingletons',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'singletons',
+				],
+			},
+		},
+		required: true,
+		description: 'Name of the singleton to operate on.'
+	},
 ] as INodeProperties[];
