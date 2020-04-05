@@ -36,8 +36,11 @@ export async function cockpitApiRequest(this: IExecuteFunctions | IExecuteSingle
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.error.message || error.error.error;
+		let errorMessage = error.message;
+		if (error.error) {
+			errorMessage = error.error.message || error.error.error;
+		}
 
-		throw new Error('Cockpit error: ' + errorMessage);
+		throw new Error(`Cockpit error [${error.statusCode}]: ` + errorMessage);
 	}
 }
