@@ -8,18 +8,18 @@ export const singletonOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'singletons',
+					'singleton',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all singletons',
+				name: 'Get',
+				value: 'get',
+				description: 'Gets a singleton',
 			},
 		],
-		default: 'getAll',
+		default: 'get',
 		description: 'The operation to perform.',
 	}
 ] as INodeProperties[];
@@ -36,7 +36,7 @@ export const singletonFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'singletons',
+					'singleton',
 				],
 			},
 		},
