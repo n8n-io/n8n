@@ -1,8 +1,8 @@
 import {
 	IDataObject,
 	INodeExecutionData,
-	ICredentialDataDecryptedObject,
-} from "n8n-workflow";
+	ICredentialDataDecryptedObject
+} from 'n8n-workflow';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -33,7 +33,7 @@ export function getItemCopy(
 ): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
-	return items.map((item) => {
+	return items.map(item => {
 		newItem = {};
 		for (const property of properties) {
 			if (item.json[property] === undefined) {
