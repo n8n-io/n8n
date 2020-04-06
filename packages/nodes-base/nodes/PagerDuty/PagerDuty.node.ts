@@ -5,16 +5,16 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeTypeDescription,
 	INodeExecutionData,
-	INodeType,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
+	keysToSnakeCase,
 	pagerDutyApiRequest,
 	pagerDutyApiRequestAllItems,
-	keysToSnakeCase,
 } from './GenericFunctions';
 
 import {
@@ -30,7 +30,7 @@ import {
 import {
 	logEntryFields,
 	logEntryOperations,
-} from './logEntryDescription';
+} from './LogEntryDescription';
 
 import {
 	IIncident,
@@ -345,7 +345,7 @@ export class PagerDuty implements INodeType {
 						responseData = await pagerDutyApiRequestAllItems.call(this, 'log_entries', 'GET', '/log_entries', {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', 0) as number;
-						responseData = await pagerDutyApiRequest.call(this, 'GET', 'log_entries', {}, qs);
+						responseData = await pagerDutyApiRequest.call(this, 'GET', '/log_entries', {}, qs);
 						responseData = responseData.log_entries;
 					}
 				}
