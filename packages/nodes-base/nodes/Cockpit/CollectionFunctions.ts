@@ -50,21 +50,16 @@ export async function getAllCollectionEntries(this: IExecuteFunctions | IExecute
 		body.populate = options.populate as boolean;
 	}
 
-	if (options.simple) {
-		body.simple = options.simple as boolean;
+	body.simple = true;
+	if (options.rawData) {
+		body.simple = !options.rawData as boolean;
 	}
 
 	if (options.language) {
 		body.lang = options.language as string;
 	}
 
-	const resultData = await cockpitApiRequest.call(this, 'post', `/collections/get/${resourceName}`, body);
-
-	if (options.rawData === true) {
-		return resultData;
-	}
-
-	return (resultData as unknown as IDataObject).entries;
+	return cockpitApiRequest.call(this, 'post', `/collections/get/${resourceName}`, body);
 }
 
 
