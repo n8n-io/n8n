@@ -62,12 +62,11 @@ export async function pagerDutyApiRequestAllItems(this: IExecuteFunctions | ILoa
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	let uri;
 	query.limit = 100;
 	query.offset = 0;
 
 	do {
-		responseData = await pagerDutyApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await pagerDutyApiRequest.call(this, method, endpoint, body, query);
 		query.offset++;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
@@ -91,4 +90,3 @@ export function keysToSnakeCase(elements: IDataObject[] | IDataObject) : IDataOb
 	}
 	return elements;
 }
-
