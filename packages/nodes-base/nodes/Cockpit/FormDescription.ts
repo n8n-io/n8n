@@ -8,7 +8,7 @@ export const formOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'forms',
+					'form',
 				],
 			},
 		},
@@ -33,7 +33,7 @@ export const formFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'forms',
+					'form',
 				],
 			},
 		},
@@ -42,7 +42,7 @@ export const formFields = [
 		description: 'Name of the form to operate on.'
 	},
 
-	// Forms:submit
+	// Form:submit
 	{
 		displayName: 'Form data',
 		name: 'form',
@@ -55,7 +55,7 @@ export const formFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'forms',
+					'form',
 				],
 			},
 		},

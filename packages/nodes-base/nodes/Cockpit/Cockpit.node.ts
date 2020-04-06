@@ -26,7 +26,7 @@ import {
 	singletonOperations,
 } from './SingletonDescription';
 import {
-	getAllSingleton,
+	getSingleton,
 	getAllSingletonNames,
 } from './SingletonFunctions';
 
@@ -61,15 +61,15 @@ export class Cockpit implements INodeType {
 				options: [
 					{
 						name: 'Collection',
-						value: 'collections',
+						value: 'collection',
 					},
 					{
 						name: 'Form',
-						value: 'forms',
+						value: 'form',
 					},
 					{
 						name: 'Singleton',
-						value: 'singletons',
+						value: 'singleton',
 					},
 				],
 			},
@@ -94,7 +94,7 @@ export class Cockpit implements INodeType {
 					return {
 						name: itemName,
 						value: itemName,
-					}
+					};
 				});
 			},
 
@@ -105,7 +105,7 @@ export class Cockpit implements INodeType {
 					return {
 						name: itemName,
 						value: itemName,
-					}
+					};
 				});
 			},
 		},
@@ -121,7 +121,7 @@ export class Cockpit implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-			if (resource === 'collections') {
+			if (resource === 'collection') {
 				const collectionName = this.getNodeParameter('collection', i) as string;
 				if (operation === 'create') {
 					const data = this.getNodeParameter('data', i) as IDataObject;
@@ -129,6 +129,11 @@ export class Cockpit implements INodeType {
 					responseData = await createCollectionEntry.call(this, collectionName, data);
 				} else if (operation === 'getAll') {
 					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					if (returnAll !== true) {
+						options.limit = this.getNodeParameter('limit', i) as number;
+					}
 
 					responseData = await getAllCollectionEntries.call(this, collectionName, options);
 				} else if (operation === 'update') {
@@ -137,17 +142,17 @@ export class Cockpit implements INodeType {
 
 					responseData = await createCollectionEntry.call(this, collectionName, data, id);
 				}
-			} else if (resource === 'forms') {
+			} else if (resource === 'form') {
 				const formName = this.getNodeParameter('form', i) as string;
 				if (operation === 'submit') {
 					const form = this.getNodeParameter('form', i) as IDataObject;
 
 					responseData = await submitForm.call(this, formName, form);
 				}
-			} else if (resource === 'singletons') {
+			} else if (resource === 'singleton') {
 				const singletonName = this.getNodeParameter('singleton', i) as string;
-				if (operation === 'getAll') {
-					responseData = await getAllSingleton.call(this, singletonName);
+				if (operation === 'get') {
+					responseData = await getSingleton.call(this, singletonName);
 				}
 			}
 
