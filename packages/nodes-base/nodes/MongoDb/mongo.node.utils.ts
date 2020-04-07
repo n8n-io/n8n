@@ -3,19 +3,76 @@ import {
 	INodeExecutionData,
 	ICredentialDataDecryptedObject
 } from 'n8n-workflow';
+import {
+	IMongoCredentialsType,
+	IMongoParametricCredentials,
+	IMongoCredentials
+} from './mongo.node.types';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
  *
  * @param {ICredentialDataDecryptedObject} credentials MongoDB credentials to use, unless conn string is overridden
  */
-export function buildParameterizedConnString(
-	credentials: ICredentialDataDecryptedObject
+function buildParameterizedConnString(
+	credentials: IMongoParametricCredentials
 ): string {
 	if (credentials.port) {
 		return `mongodb://${credentials.user}:${credentials.password}@${credentials.host}:${credentials.port}`;
 	} else {
 		return `mongodb+srv://${credentials.user}:${credentials.password}@${credentials.host}`;
+	}
+}
+
+/**
+ * Build mongoDb connection string and resolve database name.
+ * If a connection string override value is provided, that will be used in place of individual args
+ *
+ * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
+ */
+function buildMongoConnectionParams(
+	credentials: IMongoCredentialsType
+): IMongoCredentials {
+	const sanitizedDbName =
+		credentials.database && credentials.database.trim().length > 0
+			? credentials.database.trim()
+			: '';
+	if (credentials.shouldOverrideConnString) {
+		if (
+			credentials.connStringOverrideVal &&
+			credentials.connStringOverrideVal.trim().length > 0
+		) {
+			return {
+				connectionString: credentials.connStringOverrideVal.trim(),
+				database: sanitizedDbName
+			};
+		} else {
+			throw new Error(
+				'Cannot override credentials: valid MongoDB connection string not provided '
+			);
+		}
+	} else {
+		return {
+			connectionString: buildParameterizedConnString(credentials),
+			database: sanitizedDbName
+		};
+	}
+}
+
+/**
+ * Verify credentials. If ok, build mongoDb connection string and resolve database name.
+ *
+ * @param {ICredentialDataDecryptedObject} credentials raw/input MongoDB credentials to use
+ */
+export function validateAndResolveMongoCredentials(
+	credentials?: ICredentialDataDecryptedObject
+): IMongoCredentials {
+	if (credentials == undefined) {
+		throw new Error('No credentials got returned!');
+	} else {
+		return buildMongoConnectionParams(
+			(credentials as any) as IMongoCredentialsType
+		);
 	}
 }
 
