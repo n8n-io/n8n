@@ -7,47 +7,25 @@ import {
 } from 'n8n-workflow';
 import { nodeDescription } from './mongo.node.options';
 import { MongoClient } from 'mongodb';
-import { getItemCopy, buildParameterizedConnString } from './mongo.node.utils';
+import {
+	getItemCopy,
+	validateAndResolveMongoCredentials
+} from './mongo.node.utils';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('mongoDb');
+		const { database, connectionString } = validateAndResolveMongoCredentials(
+			this.getCredentials('mongoDb')
+		);
 
-		// user can optionally override connection string
-		const useOverriddenConnString = this.getNodeParameter(
-			'shouldOverrideConnString',
-			0
-		) as boolean;
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
-
-		let connectionUri = '';
-		if (useOverriddenConnString === true) {
-			const connStringInput = this.getNodeParameter(
-				'connStringOverrideVal',
-				0
-			) as string;
-			if (connStringInput && connStringInput.length > 0) {
-				connectionUri = connStringInput;
-			} else {
-				throw new Error(
-					'Cannot override credentials: valid MongoDB connection string not provided '
-				);
-			}
-		} else {
-			connectionUri = buildParameterizedConnString(credentials);
-		}
-
-		const client: MongoClient = await MongoClient.connect(connectionUri, {
+		const client: MongoClient = await MongoClient.connect(connectionString, {
 			useNewUrlParser: true,
 			useUnifiedTopology: true
 		});
 
-		const mdb = client.db(credentials.database as string);
+		const mdb = client.db(database as string);
 
 		let returnItems = [];
 

@@ -24,31 +24,6 @@ export const nodeDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
-			displayName: 'Override conn string',
-			name: 'shouldOverrideConnString',
-			type: 'boolean',
-			default: false,
-			description:
-				'Whether to override the generated connection string. Credentials will also be ignored in this case.'
-		},
-		{
-			displayName: 'Conn string',
-			name: 'connStringOverrideVal',
-			type: 'string',
-			typeOptions: {
-				rows: 1
-			},
-			displayOptions: {
-				show: {
-					shouldOverrideConnString: [true]
-				}
-			},
-			default: '',
-			placeholder: `mongodb://USERNAMEHERE:PASSWORDHERE@localhost:27017/?authSource=admin&readPreference=primary&appname=n8n&ssl=false`,
-			required: false,
-			description: `If "Override conn string" is checked, the value here will be used as a MongoDB connection string, and the MongoDB credentials will be ignored`
-		},
-		{
 			displayName: 'Operation',
 			name: 'operation',
 			type: 'options',
