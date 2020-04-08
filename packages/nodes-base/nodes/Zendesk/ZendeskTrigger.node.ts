@@ -21,7 +21,7 @@ import {
 	zendeskApiRequestAllItems,
 } from './GenericFunctions';
 import {
-	conditionFields
+	conditionFields,
  } from './ConditionDescription';
 
 export class ZendeskTrigger implements INodeType {
