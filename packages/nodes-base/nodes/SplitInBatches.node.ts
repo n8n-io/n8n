@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -31,6 +32,23 @@ export class SplitInBatches implements INodeType {
 				default: 10,
 				description: 'The number of items to return with each call.',
 			},
+
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Reset',
+						name: 'reset',
+						type: 'boolean',
+						default: false,
+						description: 'If set to true, the node will be reset and so with the current input-data newly initialized.',
+					},
+				],
+			},
 		],
 	};
 
@@ -45,7 +63,9 @@ export class SplitInBatches implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 
-		if (nodeContext.items === undefined) {
+		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+
+		if (nodeContext.items === undefined || options.reset === true) {
 			// Is the first time the node runs
 
 			nodeContext.currentRunIndex = 0;
@@ -56,7 +76,7 @@ export class SplitInBatches implements INodeType {
 
 			// Set the other items to be saved in the context to return at later runs
 			nodeContext.items = items;
-		}  else {
+		} else {
 			// The node has been called before. So return the next batch of items.
 			nodeContext.currentRunIndex += 1;
 			returnItems.push.apply(returnItems, nodeContext.items.splice(0, batchSize));
