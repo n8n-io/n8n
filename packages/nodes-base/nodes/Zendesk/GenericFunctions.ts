@@ -1,11 +1,17 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+
+import {
+	IDataObject,
+ } from 'n8n-workflow';
 
 export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('zendeskApi');
@@ -28,7 +34,15 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (err) {
-		throw new Error(err);
+		let errorMessage = err.message;
+		if (err.response && err.response.body && err.response.body.error) {
+			errorMessage = err.response.body.error;
+			if (typeof err.response.body.error !== 'string') {
+				errorMessage = JSON.stringify(errorMessage);
+			}
+		}
+
+		throw new Error(`Zendesk error response [${err.statusCode}]: ${errorMessage}`);
 	}
 }
 
