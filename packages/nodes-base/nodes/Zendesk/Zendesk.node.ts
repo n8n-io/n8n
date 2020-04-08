@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
@@ -9,14 +10,22 @@ import {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+
 import {
 	zendeskApiRequest,
 	zendeskApiRequestAllItems,
 } from './GenericFunctions';
+
 import {
 	ticketFields,
 	ticketOperations
 } from './TicketDescription';
+
+import {
+	ticketFieldFields,
+	ticketFieldOperations
+} from './TicketFieldDescription';
+
 import {
 	ITicket,
 	IComment,
@@ -54,12 +63,21 @@ export class Zendesk implements INodeType {
 						value: 'ticket',
 						description: 'Tickets are the means through which your end users (customers) communicate with agents in Zendesk Support.',
 					},
+					{
+						name: 'Ticket Field',
+						value: 'ticketField',
+						description: 'Manage system and custom ticket fields',
+					},
 				],
 				default: 'ticket',
 				description: 'Resource to consume.',
 			},
+			// TICKET
 			...ticketOperations,
 			...ticketFields,
+			// TICKET FIELDS
+			...ticketFieldOperations,
+			...ticketFieldFields,
 		],
 	};
 
@@ -112,6 +130,7 @@ export class Zendesk implements INodeType {
 				//https://developer.zendesk.com/rest_api/docs/support/tickets
 				if (operation === 'create') {
 					const description = this.getNodeParameter('description', i) as string;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const comment: IComment = {
 						body: description,
@@ -140,16 +159,22 @@ export class Zendesk implements INodeType {
 					if (additionalFields.tags) {
 						body.tags = additionalFields.tags as string[];
 					}
-					try {
-						responseData = await zendeskApiRequest.call(this, 'POST', '/tickets', { ticket: body });
-						responseData = responseData.ticket;
-					} catch (err) {
-						throw new Error(`Zendesk Error: ${err}`);
+					if (jsonParameters) {
+						const customFieldsJson = this.getNodeParameter('customFieldsJson', i) as string;
+						try {
+							JSON.parse(customFieldsJson);
+						} catch(err) {
+							throw new Error('Custom fields must be a valid JSON');
+						}
+						body.custom_fields = JSON.parse(customFieldsJson);
 					}
+					responseData = await zendeskApiRequest.call(this, 'POST', '/tickets', { ticket: body });
+					responseData = responseData.ticket;
 				}
 				//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
 				if (operation === 'update') {
 					const ticketId = this.getNodeParameter('id', i) as string;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: ITicket = {};
 					if (updateFields.type) {
@@ -173,22 +198,23 @@ export class Zendesk implements INodeType {
 					if (updateFields.tags) {
 						body.tags = updateFields.tags as string[];
 					}
-					try {
-						responseData = await zendeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, { ticket: body });
-						responseData = responseData.ticket;
-					} catch (err) {
-						throw new Error(`Zendesk Error: ${err}`);
+					if (jsonParameters) {
+						const customFieldsJson = this.getNodeParameter('customFieldsJson', i) as string;
+						try {
+							JSON.parse(customFieldsJson);
+						} catch(err) {
+							throw new Error('Custom fields must be a valid JSON');
+						}
+						body.custom_fields = JSON.parse(customFieldsJson);
 					}
+					responseData = await zendeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, { ticket: body });
+					responseData = responseData.ticket;
 				}
 				//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
 				if (operation === 'get') {
 					const ticketId = this.getNodeParameter('id', i) as string;
-					try {
-						responseData = await zendeskApiRequest.call(this, 'GET', `/tickets/${ticketId}`, {});
-						responseData = responseData.ticket;
-					} catch (err) {
-						throw new Error(`Zendesk Error: ${err}`);
-					}
+					responseData = await zendeskApiRequest.call(this, 'GET', `/tickets/${ticketId}`, {});
+					responseData = responseData.ticket;
 				}
 				//https://developer.zendesk.com/rest_api/docs/support/search#list-search-results
 				if (operation === 'getAll') {
@@ -204,17 +230,13 @@ export class Zendesk implements INodeType {
 					if (options.sortOrder) {
 						qs.sort_order = options.sortOrder;
 					}
-					try {
-						if (returnAll) {
-							responseData = await zendeskApiRequestAllItems.call(this, 'results', 'GET', `/search`, {}, qs);
-						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
-							qs.per_page = limit;
-							responseData = await zendeskApiRequest.call(this, 'GET', `/search`, {}, qs);
-							responseData = responseData.results;
-						}
-					} catch (err) {
-						throw new Error(`Zendesk Error: ${err}`);
+					if (returnAll) {
+						responseData = await zendeskApiRequestAllItems.call(this, 'results', 'GET', `/search`, {}, qs);
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.per_page = limit;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/search`, {}, qs);
+						responseData = responseData.results;
 					}
 				}
 				//https://developer.zendesk.com/rest_api/docs/support/tickets#delete-ticket
@@ -225,6 +247,20 @@ export class Zendesk implements INodeType {
 					} catch (err) {
 						throw new Error(`Zendesk Error: ${err}`);
 					}
+				}
+			}
+			//https://developer.zendesk.com/rest_api/docs/support/ticket_fields
+			if (resource === 'ticketField') {
+				//https://developer.zendesk.com/rest_api/docs/support/tickets#show-ticket
+				if (operation === 'get') {
+					const ticketFieldId = this.getNodeParameter('ticketFieldId', i) as string;
+					responseData = await zendeskApiRequest.call(this, 'GET', `/ticket_fields/${ticketFieldId}`, {});
+					responseData = responseData.ticket_field;
+				}
+				//https://developer.zendesk.com/rest_api/docs/support/ticket_fields#list-ticket-fields
+				if (operation === 'getAll') {
+					responseData = await zendeskApiRequest.call(this, 'GET', '/ticket_fields', {}, qs);
+					responseData = responseData.ticket_fields;
 				}
 			}
 			if (Array.isArray(responseData)) {
