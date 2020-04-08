@@ -705,7 +705,7 @@ export class Hubspot implements INodeType {
 					const ticketId = this.getNodeParameter('ticketId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					if (additionalFields.properties) {
-						qs.properties = additionalFields.properties as string[]
+						qs.properties = additionalFields.properties as string[];
 					}
 					if (additionalFields.propertiesWithHistory) {
 						qs.propertiesWithHistory = (additionalFields.propertiesWithHistory as string).split(',');
@@ -739,7 +739,7 @@ export class Hubspot implements INodeType {
 				if (operation === 'delete') {
 					const ticketId = this.getNodeParameter('ticketId', i) as string;
 					const endpoint = `/crm-objects/v1/objects/tickets/${ticketId}`;
-					responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+					await hubspotApiRequest.call(this, 'DELETE', endpoint);
 					responseData = { success: true };
 				}
 				//https://developers.hubspot.com/docs/methods/tickets/update-ticket
