@@ -225,7 +225,7 @@ export const ticketFields = [
 			},
 		},
 		required: true,
-		description: `Array of customs fields <a href='https://developer.zendesk.com/rest_api/docs/support/tickets#setting-custom-field-values'>Details</a>`,
+		description: `Array of customs fields <a href="https://developer.zendesk.com/rest_api/docs/support/tickets#setting-custom-field-values" target="_blank">Details</a>`,
 	},
 /* -------------------------------------------------------------------------- */
 /*                                ticket:update                               */
