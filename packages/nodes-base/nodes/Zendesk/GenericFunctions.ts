@@ -34,7 +34,14 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (err) {
-		const errorMessage = err.response.body.description || err.response.body;
+		let errorMessage = err.message;
+		if (err.response && err.response.body && err.response.body.error) {
+			errorMessage = err.response.body.error;
+			if (typeof err.response.body.error !== 'string') {
+				errorMessage = JSON.stringify(errorMessage);
+			}
+		}
+
 		throw new Error(`Zendesk error response [${err.statusCode}]: ${errorMessage}`);
 	}
 }
