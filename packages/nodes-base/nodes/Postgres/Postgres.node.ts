@@ -325,6 +325,7 @@ export class Postgres implements INodeType {
 			returnItems = this.helpers.returnJsonArray(updateItems	 as IDataObject[]);
 
 		} else {
+			await pgp.end();
 			throw new Error(`The operation "${operation}" is not supported!`);
 		}
 

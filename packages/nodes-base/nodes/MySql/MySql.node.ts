@@ -245,8 +245,11 @@ export class MySql implements INodeType {
 			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 
 		} else {
+			await connection.end();
 			throw new Error(`The operation "${operation}" is not supported!`);
 		}
+
+		await connection.end();
 
 		return this.prepareOutputData(returnItems);
 	}
