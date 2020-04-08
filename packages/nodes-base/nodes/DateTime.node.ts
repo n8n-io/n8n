@@ -1,7 +1,8 @@
-import * as moment from 'moment-timezone';
-import { set } from 'lodash';
 
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+ } from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -11,6 +12,11 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
+import {
+	set,
+ } from 'lodash';
+
+import * as moment from 'moment-timezone';
 
 export class DateTime implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,6 +26,7 @@ export class DateTime implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'Allows you to manipulate date and time values',
+		subtitle: '={{$parameter["action"]}}',
 		defaults: {
 			name: 'Date & Time',
 			color: '#408000',
@@ -32,6 +39,11 @@ export class DateTime implements INodeType {
 				name: 'action',
 				type: 'options',
 				options: [
+					{
+						name: 'Add/Subtract to date',
+						description: 'Add/Subtract time to a date',
+						value: 'addSubtract'
+					},
 					{
 						name: 'Format a Date',
 						description: 'Convert a date to a different format',
@@ -199,6 +211,130 @@ export class DateTime implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				displayOptions: {
+					show: {
+						action: [
+							'addSubtract',
+						],
+					},
+				},
+				type: 'options',
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+					},
+					{
+						name: 'Subtract',
+						value: 'subtract',
+					},
+				],
+				default: '',
+				description: `A date string or timestamp for the date you'd like to add a duration to.`,
+				required: true,
+			},
+			{
+				displayName: 'Value',
+				name: 'value',
+				displayOptions: {
+					show: {
+						action: [
+							'addSubtract',
+						],
+					},
+				},
+				type: 'string',
+				default: '',
+				description: `A date string or timestamp for the date you'd like to add/subtract a duration to.`,
+				required: true,
+			},
+			{
+				displayName: 'Time Unit',
+				name: 'timeUnit',
+				displayOptions: {
+					show: {
+						action: [
+							'addSubtract',
+						],
+					},
+				},
+				type: 'options',
+				options: [
+					{
+						name: 'Quarters',
+						value: 'quarters',
+					},
+					{
+						name: 'Years',
+						value: 'years',
+					},
+					{
+						name: 'Months',
+						value: 'months',
+					},
+					{
+						name: 'Weeks',
+						value: 'weeks',
+					},
+					{
+						name: 'Days',
+						value: 'days',
+					},
+					{
+						name: 'Hours',
+						value: 'hours',
+					},
+					{
+						name: 'Minutes',
+						value: 'minutes',
+					},
+					{
+						name: 'Seconds',
+						value: 'seconds',
+					},
+					{
+						name: 'Milliseconds',
+						value: 'milliseconds',
+					},
+				],
+				default: '',
+				required: true,
+			},
+			{
+				displayName: 'Duration',
+				name: 'duration',
+				displayOptions: {
+					show: {
+						action: [
+							'addSubtract',
+						],
+					},
+				},
+				type: 'number',
+				typeOptions: {
+					minValue: 0,
+				},
+				default: 0,
+				required: true,
+			},
+			{
+				displayName: 'Property Name',
+				name: 'dataPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						action: [
+							'addSubtract',
+						],
+					},
+				},
+				description: 'Name of the property to which to write the converted date.',
+			},
 		],
 	};
 
@@ -273,6 +409,55 @@ export class DateTime implements INodeType {
 				}
 
 				newDate = newDate.format(toFormat);
+
+				let newItem: INodeExecutionData;
+				if (dataPropertyName.includes('.')) {
+					// Uses dot notation so copy all data
+					newItem = {
+						json: JSON.parse(JSON.stringify(item.json)),
+					};
+				} else {
+					// Does not use dot notation so shallow copy is enough
+					newItem = {
+						json: { ...item.json },
+					};
+				}
+
+				if (item.binary !== undefined) {
+					newItem.binary = item.binary;
+				}
+
+				set(newItem, `json.${dataPropertyName}`, newDate);
+
+				returnData.push(newItem);
+			}
+
+			if (action === 'addSubtract') {
+				const currentDate = this.getNodeParameter('value', i) as string;
+				const duration = this.getNodeParameter('duration', i) as number;
+				const operation = this.getNodeParameter('operation', i) as string;
+				const timeUnit = this.getNodeParameter('timeUnit', i) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+				let newDate;
+
+				if (!moment(currentDate as string | number).isValid()) {
+					throw new Error('The date input format could not be recognized. Please set the "From Format" field');
+				}
+				if (Number.isInteger(currentDate as unknown as number)) {
+					newDate = moment.unix(currentDate as unknown as number);
+				} else {
+					newDate = moment(currentDate as string);
+				}
+
+				if (operation === 'add') {
+					//@ts-ignore
+					newDate.add(duration, timeUnit).utc().format();
+				}
+
+				if (operation === 'subtract') {
+					//@ts-ignore
+					newDate.subtract(duration, timeUnit).utc().format();
+				}
 
 				let newItem: INodeExecutionData;
 				if (dataPropertyName.includes('.')) {
