@@ -169,20 +169,6 @@ export class HttpRequest implements INodeType {
 				description: 'The format in which the data gets returned from the URL.',
 			},
 			{
-				displayName: 'Parse to JSON',
-				name: 'parseToJson',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						responseFormat: [
-							'string',
-						],
-					},
-				},
-				description: 'Parse the response to JSON',
-			},
-			{
 				displayName: 'Property Name',
 				name: 'dataPropertyName',
 				type: 'string',
@@ -192,9 +178,6 @@ export class HttpRequest implements INodeType {
 					show: {
 						responseFormat: [
 							'string',
-						],
-						parseToJson: [
-							false,
 						],
 					},
 				},
@@ -715,13 +698,11 @@ export class HttpRequest implements INodeType {
 					}
 
 					try {
-						JSON.parse(tempValue as string);
+						// @ts-ignore
+						requestOptions[optionData.name] = JSON.parse(tempValue as string);
 					} catch (error) {
 						throw new Error(`${optionData.name} must be a valid JSON`);
 					}
-
-					// @ts-ignore
-					requestOptions[optionData.name] = JSON.parse(tempValue);
 
 					// @ts-ignore
 					if (typeof requestOptions[optionData.name] !== 'object' && options.bodyContentType !== 'raw') {
@@ -855,22 +836,13 @@ export class HttpRequest implements INodeType {
 
 				items[itemIndex] = newItem;
 			} else if (responseFormat === 'string') {
-				const parseToJson = this.getNodeParameter('parseToJson', 0) as string;
-
-				let dataPropertyName = '';
-				if (!parseToJson) {
-					dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
-				}
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 
 				if (fullResponse === true) {
-					let returnItem: IDataObject = {};
+					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
-							if (!parseToJson) {
-								returnItem[dataPropertyName] = response[property];
-							} else {
-								returnItem = JSON.parse(response.property);
-							}
+							returnItem[dataPropertyName] = response[property];
 							continue;
 						}
 
@@ -878,14 +850,10 @@ export class HttpRequest implements INodeType {
 					}
 					returnItems.push({ json: returnItem });
 				} else {
-					let output: IDataObject = {};
-					if (!parseToJson) {
-						output = { [dataPropertyName]: response };
-					} else {
-						output = JSON.parse(response);
-					}
 					returnItems.push({
-						json: output,
+						json: {
+							[dataPropertyName]: response,
+						},
 					});
 				}
 			} else {
@@ -896,14 +864,22 @@ export class HttpRequest implements INodeType {
 						returnItem[property] = response[property];
 					}
 
-					if (typeof returnItem.body === 'string') {
-						throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					if (responseFormat === 'json' && typeof returnItem.body === 'string') {
+						try {
+							returnItem.body = JSON.parse(returnItem.body);
+						} catch (e) {
+							throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+						}
 					}
 
 					returnItems.push({ json: returnItem });
 				} else {
-					if (typeof response === 'string') {
-						throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					if (responseFormat === 'json' && typeof response === 'string') {
+						try {
+							response = JSON.parse(response);
+						} catch (e) {
+							throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+						}
 					}
 
 					returnItems.push({ json: response });
