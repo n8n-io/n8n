@@ -168,7 +168,20 @@ export class HttpRequest implements INodeType {
 				default: 'json',
 				description: 'The format in which the data gets returned from the URL.',
 			},
-
+			{
+				displayName: 'Parse to JSON',
+				name: 'parseToJson',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						responseFormat: [
+							'string',
+						],
+					},
+				},
+				description: 'Parse the response to JSON',
+			},
 			{
 				displayName: 'Property Name',
 				name: 'dataPropertyName',
@@ -179,6 +192,9 @@ export class HttpRequest implements INodeType {
 					show: {
 						responseFormat: [
 							'string',
+						],
+						parseToJson: [
+							false,
 						],
 					},
 				},
@@ -634,9 +650,9 @@ export class HttpRequest implements INodeType {
 						// Paramter is empty so skip it
 						continue;
 					}
+					const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 
 					if (optionData.name === 'body' && parametersAreJson === true) {
-						const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 						if (sendBinaryData === true) {
 
 							const contentTypesAllowed = [
@@ -698,8 +714,14 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
+					try {
+						JSON.parse(tempValue as string);
+					} catch (error) {
+						throw new Error(`${optionData.name} must be a valid JSON`);
+					}
+
 					// @ts-ignore
-					requestOptions[optionData.name] = tempValue;
+					requestOptions[optionData.name] = JSON.parse(tempValue);
 
 					// @ts-ignore
 					if (typeof requestOptions[optionData.name] !== 'object' && options.bodyContentType !== 'raw') {
@@ -767,6 +789,7 @@ export class HttpRequest implements INodeType {
 			}
 
 			if (responseFormat === 'json') {
+
 				requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
 			} else if (responseFormat === 'string') {
 				requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
@@ -781,7 +804,6 @@ export class HttpRequest implements INodeType {
 			} else {
 				requestOptions.json = true;
 			}
-
 			try {
 				// Now that the options are all set make the actual http request
 				response = await this.helpers.request(requestOptions);
@@ -833,13 +855,22 @@ export class HttpRequest implements INodeType {
 
 				items[itemIndex] = newItem;
 			} else if (responseFormat === 'string') {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				const parseToJson = this.getNodeParameter('parseToJson', 0) as string;
+
+				let dataPropertyName = '';
+				if (!parseToJson) {
+					dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				}
 
 				if (fullResponse === true) {
-					const returnItem: IDataObject = {};
+					let returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
-							returnItem[dataPropertyName] = response[property];
+							if (!parseToJson) {
+								returnItem[dataPropertyName] = response[property];
+							} else {
+								returnItem = JSON.parse(response.property);
+							}
 							continue;
 						}
 
@@ -847,10 +878,14 @@ export class HttpRequest implements INodeType {
 					}
 					returnItems.push({ json: returnItem });
 				} else {
+					let output: IDataObject = {};
+					if (!parseToJson) {
+						output = { [dataPropertyName]: response };
+					} else {
+						output = JSON.parse(response);
+					}
 					returnItems.push({
-						json: {
-							[dataPropertyName]: response,
-						}
+						json: output,
 					});
 				}
 			} else {
