@@ -67,6 +67,7 @@ import {
 	IDataObject,
 	INodeCredentials,
 	INodeTypeDescription,
+	INodeParameters,
 	INodePropertyOptions,
 	IRunData,
 	Workflow,
@@ -231,7 +232,7 @@ class App {
 					return;
 				}
 
-				this.push.add(req.query.sessionId, req, res);
+				this.push.add(req.query.sessionId as string, req, res);
 				return;
 			}
 			next();
@@ -368,10 +369,10 @@ class App {
 			if (req.query.url === undefined) {
 				throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
 			}
-			if (!req.query.url.match(/^http[s]?:\/\/.*\.json$/i)) {
+			if (!(req.query.url as string).match(/^http[s]?:\/\/.*\.json$/i)) {
 				throw new ResponseHelper.ResponseError(`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`, undefined, 400);
 			}
-			const data = await requestPromise.get(req.query.url);
+			const data = await requestPromise.get(req.query.url as string);
 
 			let workflowData: IWorkflowResponse | undefined;
 			try {
@@ -395,7 +396,7 @@ class App {
 		this.app.get('/rest/workflows', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowShortResponse[]> => {
 			const findQuery = {} as FindManyOptions;
 			if (req.query.filter) {
-				findQuery.where = JSON.parse(req.query.filter);
+				findQuery.where = JSON.parse(req.query.filter as string);
 			}
 
 			// Return only the fields we need
@@ -560,13 +561,13 @@ class App {
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
 		this.app.get('/rest/node-parameter-options', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
-			const nodeType = req.query.nodeType;
+			const nodeType = req.query.nodeType as string;
 			let credentials: INodeCredentials | undefined = undefined;
-			const currentNodeParameters = req.query.currentNodeParameters;
+			const currentNodeParameters = req.query.currentNodeParameters as INodeParameters[];
 			if (req.query.credentials !== undefined) {
-				credentials = JSON.parse(req.query.credentials);
+				credentials = JSON.parse(req.query.credentials as string);
 			}
-			const methodName = req.query.methodName;
+			const methodName = req.query.methodName as string;
 
 			const nodeTypes = NodeTypes();
 
@@ -790,9 +791,9 @@ class App {
 			const findQuery = {} as FindManyOptions;
 
 			// Make sure the variable has an expected value
-			req.query.includeData = (req.query.includeData === 'true' || req.query.includeData === true);
+			const includeData = ['true', true].includes(req.query.includeData as string);
 
-			if (req.query.includeData !== true) {
+			if (includeData !== true) {
 				// Return only the fields we need
 				findQuery.select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 			}
@@ -804,7 +805,7 @@ class App {
 			}
 
 			let encryptionKey = undefined;
-			if (req.query.includeData === true) {
+			if (includeData === true) {
 				encryptionKey = await UserSettings.getEncryptionKey();
 				if (encryptionKey === undefined) {
 					throw new Error('No encryption key got found to decrypt the credentials!');
@@ -824,7 +825,7 @@ class App {
 		this.app.get('/rest/credentials', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<ICredentialsResponse[]> => {
 			const findQuery = {} as FindManyOptions;
 			if (req.query.filter) {
-				findQuery.where = JSON.parse(req.query.filter);
+				findQuery.where = JSON.parse(req.query.filter as string);
 				if ((findQuery.where! as IDataObject).id !== undefined) {
 					// No idea if multiple where parameters make db search
 					// slower but to be sure that that is not the case we
@@ -836,6 +837,16 @@ class App {
 			findQuery.select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
 			const results = await Db.collections.Credentials!.find(findQuery) as unknown as ICredentialsResponse[];
+
+			let encryptionKey = undefined;
+
+			const includeData = ['true', true].includes(req.query.includeData as string);
+			if (includeData === true) {
+				encryptionKey = await UserSettings.getEncryptionKey();
+				if (encryptionKey === undefined) {
+					throw new Error('No encryption key got found to decrypt the credentials!');
+				}
+			}
 
 			let result;
 			for (result of results) {
@@ -878,7 +889,7 @@ class App {
 				throw new Error('Required credential id is missing!');
 			}
 
-			const result = await Db.collections.Credentials!.findOne(req.query.id);
+			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
 			if (result === undefined) {
 				res.status(404).send('The credential is not known.');
 				return '';
@@ -924,7 +935,7 @@ class App {
 			newCredentialsData.updatedAt = this.getCurrentDate();
 
 			// Update the credentials in DB
-			await Db.collections.Credentials!.update(req.query.id, newCredentialsData);
+			await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
 
 			const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
 			let returnUri = oAuthObj.code.getUri();
@@ -950,7 +961,7 @@ class App {
 
 			let state;
 			try {
-				state = JSON.parse(Buffer.from(stateEncoded, 'base64').toString());
+				state = JSON.parse(Buffer.from(stateEncoded as string, 'base64').toString());
 			} catch (error) {
 				const errorResponse = new ResponseHelper.ResponseError('Invalid state format returned', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
@@ -1033,12 +1044,12 @@ class App {
 			let filter: any = {}; // tslint:disable-line:no-any
 
 			if (req.query.filter) {
-				filter = JSON.parse(req.query.filter);
+				filter = JSON.parse(req.query.filter as string);
 			}
 
 			let limit = 20;
 			if (req.query.limit) {
-				limit = parseInt(req.query.limit, 10);
+				limit = parseInt(req.query.limit as string, 10);
 			}
 
 			const countFilter = JSON.parse(JSON.stringify(filter));
@@ -1216,7 +1227,7 @@ class App {
 
 			let filter: any = {}; // tslint:disable-line:no-any
 			if (req.query.filter) {
-				filter = JSON.parse(req.query.filter);
+				filter = JSON.parse(req.query.filter as string);
 			}
 
 			for (const data of executingWorkflows) {
