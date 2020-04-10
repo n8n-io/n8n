@@ -14,7 +14,9 @@ import {
 	hubspotApiRequest,
 } from './GenericFunctions';
 
-import { createHash } from 'crypto';
+import {
+	createHash,
+ } from 'crypto';
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
