@@ -1056,7 +1056,7 @@ export class Mattermost implements INodeType {
 						 }
 					       }
 					    }
-					}
+					};
 					
 					body.props = {
 						attachments,
