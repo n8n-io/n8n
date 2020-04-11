@@ -1012,7 +1012,7 @@ export class Mattermost implements INodeType {
 								// If it does not have any items set remove it
 								delete attachment.fields;
 							}
-						}
+						};
 						if (attachment.actions !== undefined) {
 							if (attachment.actions.item !== undefined) {
 								// Move the field-content up
@@ -1022,7 +1022,7 @@ export class Mattermost implements INodeType {
 								// If it does not have any items set remove it
 								delete attachment.actions;
 							}
-						}
+						};
 					}
                                         const util = require('util');
 					console.log('&&&&');
