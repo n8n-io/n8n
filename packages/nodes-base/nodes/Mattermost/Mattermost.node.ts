@@ -1032,8 +1032,34 @@ export class Mattermost implements INodeType {
 			                console.log(util.inspect(attachments, false, null, true /* enable colors */));
 					console.log('&&&&');
 					
+					var arr = attachments;
+
+					for (const att of arr) {
+					  if (Array.isArray(att.actions)) 
+					    for (const attaction of att.actions) {
+					       //console.log(attaction);
+					       if (attaction.integrations.item !== undefined) {
+						 //console.log('integrations items');
+						 attaction.integrations = attaction.integrations.item;
+						 for (const attactioninteg of attaction.integrations) {
+						    //console.log(attactioninteg);
+						    if (attactioninteg.context.conproperty !== undefined) {
+							//console.log('connnnnn');
+							var tmpcontex = {};
+							   for (const attactionintegprop of attactioninteg.context.conproperty ) {
+									     console.log(attactionintegprop);
+							      tmpcontex[attactionintegprop.name] = attactionintegprop.value;  
+							   }   
+							delete attactioninteg.context ; 
+							attactioninteg.context = tmpcontex ;
+						    }
+						 }
+					       }
+					    }
+					}
+
 					body.props = {
-						attachments,
+						arr,
 					};
 
 					//console.log('####');
