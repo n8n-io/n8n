@@ -571,6 +571,128 @@ export class Mattermost implements INodeType {
 						default: '',
 						description: 'Icon which should appear next to footer.',
 					},
+					
+					
+					{	displayName: 'Actions',
+						name: 'actions',
+						placeholder: 'Add Actions',
+						description: 'Actions to add to message.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								displayName: 'Item',
+								name: 'item',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the Action.',
+									},
+
+
+									{	
+									displayName: 'Integrations',
+									name: 'integrations',
+									placeholder: 'Add Integrations',
+									description: 'Integrations to add to message.',
+									type: 'fixedCollection',
+									typeOptions: {
+										multipleValues: true,
+									},
+									default: {},
+									options: [
+										{
+											displayName: 'Item',
+											name: 'item',
+											default: {},
+											values: [
+												{
+													displayName: 'URL',
+													name: 'url',
+													type: 'string',
+													default: '',
+													description: 'URL of the Integration.',
+												},
+// context
+
+												{
+													displayName: 'Context',
+													name: 'context',
+													placeholder: 'Add Context to Integration',
+													description: 'Adds a Context values set.',
+													type: 'fixedCollection',
+													typeOptions: {
+															multipleValues: true,
+													},
+													default: {},
+													options: [
+															{
+																	name: 'property',
+																	displayName: 'Property',
+																	default: {},
+																	values: [
+																			{
+																					displayName: 'Property Name',
+																					name: 'name',
+																					type: 'string',
+																					default: '',
+																					description: 'Name of the property to set.',
+																			},
+																			{
+																					displayName: 'Property Value',
+																					name: 'value',
+																					type: 'string',
+																					default: '',
+																					description: 'Value of the property to set.',
+																			},
+																	]
+															},
+													],
+												},
+
+
+
+
+
+
+
+
+											
+											]
+										},
+									],
+								},
+
+
+
+								
+								]
+							},
+						],
+					},
+					
+
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					
 					{
 						displayName: 'Fields',
 						name: 'fields',
