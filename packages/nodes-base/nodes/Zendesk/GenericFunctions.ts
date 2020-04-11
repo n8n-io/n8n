@@ -62,10 +62,23 @@ export async function zendeskApiRequestAllItems(this: IHookFunctions | IExecuteF
 		responseData = await zendeskApiRequest.call(this, method, resource, body, query, uri);
 		uri = responseData.next_page;
 		returnData.push.apply(returnData, responseData[propertyName]);
+		if (query.limit && query.limit <= returnData.length) {
+			return returnData;
+		}
 	} while (
 		responseData.next_page !== undefined &&
 		responseData.next_page !== null
 	);
 
 	return returnData;
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }
