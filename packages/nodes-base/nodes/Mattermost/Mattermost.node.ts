@@ -904,6 +904,11 @@ export class Mattermost implements INodeType {
 					console.log('####');
 					console.dir(body);
 					console.log('####');
+					console.log('****');
+					const util = require('util');
+					console.log(util.inspect(body, false, null, true /* enable colors */));
+					//console.dir(body);
+					console.log('****');
 					// Add all the other options to the request
 					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 					Object.assign(body, otherOptions);
