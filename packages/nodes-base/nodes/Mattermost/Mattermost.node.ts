@@ -893,6 +893,10 @@ export class Mattermost implements INodeType {
 						}
 					}
 
+					console.log('&&&&');
+					console.dir(attachments);
+					console.log('&&&&');
+					
 					body.props = {
 						attachments,
 					};
