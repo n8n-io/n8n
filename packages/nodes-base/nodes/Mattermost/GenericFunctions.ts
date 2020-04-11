@@ -7,14 +7,6 @@ import {
 import { OptionsWithUri } from 'request';
 import { IDataObject } from 'n8n-workflow';
 
-
-/**export interface IAttachment {
-	fields: {
-		item?: object[];
-	};
-}
-*/
-
 export interface IAttachment  {
 	fields: {
 		item?: object[];
@@ -23,7 +15,6 @@ export interface IAttachment  {
 		item?: object[];
 	};
 } 
-
 
 /**
  * Make an API request to Telegram
