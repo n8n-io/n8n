@@ -577,7 +577,7 @@ export class Mattermost implements INodeType {
 						name: 'actions',
 						placeholder: 'Add Actions',
 						description: 'Actions to add to message.',
-						type: 'fixedCollection',
+						type: 'Collection',
 						typeOptions: {
 							multipleValues: true,
 						},
