@@ -21,6 +21,7 @@ import {
 	formOperations
 } from './FormDescription';
 import { submitForm } from './FormFunctions';
+import { createDataFromParameters } from './GenericFunctions';
 import {
 	singletonFields,
 	singletonOperations,
@@ -74,7 +75,6 @@ export class Cockpit implements INodeType {
 				],
 			},
 
-
 			...collectionOperations,
 			...collectionFields,
 			...formOperations,
@@ -83,7 +83,6 @@ export class Cockpit implements INodeType {
 			...singletonFields,
 		],
 	};
-
 
 	methods = {
 		loadOptions: {
@@ -123,8 +122,9 @@ export class Cockpit implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'collection') {
 				const collectionName = this.getNodeParameter('collection', i) as string;
+
 				if (operation === 'create') {
-					const data = this.getNodeParameter('data', i) as IDataObject;
+					const data = createDataFromParameters.call(this, i);
 
 					responseData = await createCollectionEntry.call(this, collectionName, data);
 				} else if (operation === 'getAll') {
@@ -138,19 +138,21 @@ export class Cockpit implements INodeType {
 					responseData = await getAllCollectionEntries.call(this, collectionName, options);
 				} else if (operation === 'update') {
 					const id = this.getNodeParameter('id', i) as string;
-					const data = this.getNodeParameter('data', i) as IDataObject;
+					const data = createDataFromParameters.call(this, i);
 
 					responseData = await createCollectionEntry.call(this, collectionName, data, id);
 				}
 			} else if (resource === 'form') {
 				const formName = this.getNodeParameter('form', i) as string;
+
 				if (operation === 'submit') {
-					const form = this.getNodeParameter('form', i) as IDataObject;
+					const form = createDataFromParameters.call(this, i);
 
 					responseData = await submitForm.call(this, formName, form);
 				}
 			} else if (resource === 'singleton') {
 				const singletonName = this.getNodeParameter('singleton', i) as string;
+
 				if (operation === 'get') {
 					responseData = await getSingleton.call(this, singletonName);
 				}
