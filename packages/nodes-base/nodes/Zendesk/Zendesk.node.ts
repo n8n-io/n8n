@@ -167,20 +167,6 @@ export class Zendesk implements INodeType {
 							comment,
 					};
 					if (jsonParameters) {
-
-						const customFieldsJson = this.getNodeParameter('customFieldsJson', i) as string;
-
-						if (customFieldsJson !== '' ) {
-
-							if (validateJSON(customFieldsJson) !== undefined) {
-
-								body.custom_fields = JSON.parse(customFieldsJson);
-
-							} else {
-								throw new Error('Custom fields must be a valid JSON');
-							}
-						}
-
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
 						if (additionalFieldsJson !== '' ) {
@@ -194,12 +180,9 @@ export class Zendesk implements INodeType {
 							}
 						}
 
-
 					} else {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-						const customFields = (this.getNodeParameter('customFieldsUi', i) as IDataObject).customFieldsValues as IDataObject[];
 
 						if (additionalFields.type) {
 							body.type = additionalFields.type as string;
@@ -222,8 +205,8 @@ export class Zendesk implements INodeType {
 						if (additionalFields.tags) {
 							body.tags = additionalFields.tags as string[];
 						}
-						if (customFields) {
-							body.custom_fields = customFields;
+						if (additionalFields.customFieldsUi) {
+							body.custom_fields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 						}
 					}
 					responseData = await zendeskApiRequest.call(this, 'POST', '/tickets', { ticket: body });
@@ -236,20 +219,6 @@ export class Zendesk implements INodeType {
 					const body: ITicket = {};
 
 					if (jsonParameters) {
-
-						const customFieldsJson = this.getNodeParameter('customFieldsJson', i) as string;
-
-						if (customFieldsJson !== '' ) {
-
-							if (validateJSON(customFieldsJson) !== undefined) {
-
-								body.custom_fields = JSON.parse(customFieldsJson);
-
-							} else {
-								throw new Error('Custom fields must be a valid JSON');
-							}
-						}
-
 						const updateFieldsJson = this.getNodeParameter('updateFieldsJson', i) as string;
 
 						if (updateFieldsJson !== '' ) {
@@ -266,8 +235,6 @@ export class Zendesk implements INodeType {
 					} else {
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-
-						const customFields = (this.getNodeParameter('customFieldsUi', i) as IDataObject).customFieldsValues as IDataObject[];
 
 						if (updateFields.type) {
 							body.type = updateFields.type as string;
@@ -290,8 +257,8 @@ export class Zendesk implements INodeType {
 						if (updateFields.tags) {
 							body.tags = updateFields.tags as string[];
 						}
-						if (customFields) {
-							body.custom_fields = customFields;
+						if (updateFields.customFieldsUi) {
+							body.custom_fields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 						}
 					}
 					responseData = await zendeskApiRequest.call(this, 'PUT', `/tickets/${ticketId}`, { ticket: body });
