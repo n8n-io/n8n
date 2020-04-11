@@ -875,7 +875,7 @@ export class Mattermost implements INodeType {
 					body.message = this.getNodeParameter('message', i) as string;
 
 					const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
-                                        console.log(attachments);
+                                        console.dir(attachments);
 					// The node does save the fields data differently than the API
 					// expects so fix the data befre we send the request
 					for (const attachment of attachments) {
