@@ -1031,7 +1031,7 @@ export class Mattermost implements INodeType {
 					//console.dir(attachments);
 			                console.log(util.inspect(attachments, false, null, true /* enable colors */));
 					console.log('&&&&');
-					/*
+					
 					var arr = attachments;
 
 					for (const att of arr) {
@@ -1057,7 +1057,7 @@ export class Mattermost implements INodeType {
 					       }
 					    }
 					}
-					*/
+					
 					body.props = {
 						attachments,
 					};
