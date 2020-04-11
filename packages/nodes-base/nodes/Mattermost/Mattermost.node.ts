@@ -633,7 +633,7 @@ export class Mattermost implements INodeType {
 													default: {},
 													options: [
 															{
-																	name: 'property',
+																	name: 'conproperty',
 																	displayName: 'Property',
 																	default: {},
 																	values: [
