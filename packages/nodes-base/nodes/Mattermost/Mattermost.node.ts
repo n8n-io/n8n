@@ -1047,8 +1047,8 @@ export class Mattermost implements INodeType {
 							//console.log('connnnnn');
 							var tmpcontex = {};
 							   for (const attactionintegprop of attactioninteg.context.conproperty ) {
-									     console.log(attactionintegprop);
-							      tmpcontex[attactionintegprop.name] = attactionintegprop.value;  
+									//     console.log(attactionintegprop);
+                                                              Object.assign(tmpcontex, { [attactionintegprop.name]  : attactionintegprop.value  }  );
 							   }   
 							delete attactioninteg.context ; 
 							attactioninteg.context = tmpcontex ;
