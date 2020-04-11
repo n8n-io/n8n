@@ -110,6 +110,41 @@ export const ticketFields = [
 		},
 		options: [
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Custom Field',
+						name: 'customFieldsValues',
+						values: [
+							{
+								displayName: 'ID',
+								name: 'id',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+								},
+								default: '',
+								description: 'Custom field ID',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom field Value.',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
@@ -207,54 +242,6 @@ export const ticketFields = [
 		],
 	},
 	{
-		displayName: 'Custom Fields',
-		name: 'customFieldsUi',
-		placeholder: 'Add Custom Field',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Custom Field',
-				name: 'customFieldsValues',
-				values: [
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getCustomFields',
-						},
-						default: '',
-						description: 'Custom field ID',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: 'Custom field Value.',
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: ' Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
@@ -275,30 +262,9 @@ export const ticketFields = [
 				],
 			},
 		},
+		description: `Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets" target="_blank">here</a>.`,
 	},
-	{
-		displayName: ' Custom Fields',
-		name: 'customFieldsJson',
-		type: 'json',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
-			},
-		},
-		description: `Array of customs fields <a href="https://developer.zendesk.com/rest_api/docs/support/tickets#setting-custom-field-values" target="_blank">Details</a>`,
-	},
+
 /* -------------------------------------------------------------------------- */
 /*                                ticket:update                               */
 /* -------------------------------------------------------------------------- */
@@ -358,6 +324,41 @@ export const ticketFields = [
 		},
 		options: [
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Custom Field',
+						name: 'customFieldsValues',
+						values: [
+							{
+								displayName: 'ID',
+								name: 'id',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+								},
+								default: '',
+								description: 'Custom field ID',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom field Value.',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
@@ -455,54 +456,6 @@ export const ticketFields = [
 		],
 	},
 	{
-		displayName: 'Custom Fields',
-		name: 'customFieldsUi',
-		placeholder: 'Add Custom Field',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					false,
-				],
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Custom Field',
-				name: 'customFieldsValues',
-				values: [
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getCustomFields',
-						},
-						default: '',
-						description: 'Custom field ID',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: 'Custom field Value.',
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: ' Update Fields',
 		name: 'updateFieldsJson',
 		type: 'json',
@@ -523,31 +476,9 @@ export const ticketFields = [
 				],
 			},
 		},
+		description: `Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets" target="_blank">here</a>.`,
 	},
-	{
-		displayName: ' Custom Fields',
-		name: 'customFieldsJson',
-		type: 'json',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
-			},
-		},
-		required: true,
-		description: `Array of customs fields <a href='https://developer.zendesk.com/rest_api/docs/support/tickets#setting-custom-field-values'>Details</a>`,
-	},
+
 /* -------------------------------------------------------------------------- */
 /*                                 ticket:get                                 */
 /* -------------------------------------------------------------------------- */
