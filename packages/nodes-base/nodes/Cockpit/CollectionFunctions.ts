@@ -9,7 +9,7 @@ import { cockpitApiRequest } from './GenericFunctions';
 
 export async function createCollectionEntry(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, data: IDataObject, id?: string): Promise<any> { // tslint:disable-line:no-any
 	const body: ICollection = {
-		data: JSON.parse(data.toString())
+		data,
 	};
 
 	if (id) {
