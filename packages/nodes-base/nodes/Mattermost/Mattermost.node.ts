@@ -1059,7 +1059,7 @@ export class Mattermost implements INodeType {
 					};
 					
 					body.props = {
-						arr,
+						arr[0],
 					};
 
 					//console.log('####');
