@@ -1020,6 +1020,7 @@ export class Mattermost implements INodeType {
 								// Move the field-content up
 								// @ts-ignore
 								attachment.actions = attachment.actions.item;
+								console.log(attachment.actions.integrations.item[0].url  );
 							} else {
 								// If it does not have any items set remove it
 								delete attachment.actions;
@@ -1059,7 +1060,7 @@ export class Mattermost implements INodeType {
 					};
 					
 					body.props = {
-						arr[0],
+						attachments,
 					};
 
 					//console.log('####');
