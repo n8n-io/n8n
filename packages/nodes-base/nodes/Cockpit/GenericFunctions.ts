@@ -54,10 +54,7 @@ export function createDataFromParameters(this: IExecuteFunctions | IExecuteSingl
 	}
 
 	// Parameters are defined in UI
-	return unpackUiDataFields(this.getNodeParameter('dataFieldsUi', itemIndex, {}) as IDataObject);
-}
-
-function unpackUiDataFields(uiDataFields: IDataObject): IDataObject {
+	const uiDataFields = this.getNodeParameter('dataFieldsUi', itemIndex, {}) as IDataObject;
 	const unpacked: IDataObject = {};
 
 	if (uiDataFields.field === undefined) {
