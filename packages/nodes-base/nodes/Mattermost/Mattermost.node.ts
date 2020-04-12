@@ -597,10 +597,10 @@ export class Mattermost implements INodeType {
 
 
 									{	
-									displayName: 'Integrations',
-									name: 'integrations',
-									placeholder: 'Add Integrations',
-									description: 'Integrations to add to message.',
+									displayName: 'Integration',
+									name: 'integration',
+									placeholder: 'Add Integration',
+									description: 'Integration to add to message.',
 									type: 'fixedCollection',
 									typeOptions: {
 										multipleValues: true,
@@ -1039,10 +1039,10 @@ export class Mattermost implements INodeType {
 					  if (Array.isArray(att.actions)) 
 					    for (const attaction of att.actions) {
 					       //console.log(attaction);
-					       if (attaction.integrations.item !== undefined) {
-						 //console.log('integrations items');
-						 attaction.integrations = attaction.integrations.item;
-						 for (const attactioninteg of attaction.integrations) {
+					       if (attaction.integration.item !== undefined) {
+						 //console.log('integration items');
+						 attaction.integration = attaction.integration.item;
+						 for (const attactioninteg of attaction.integration) {
 						    //console.log(attactioninteg);
 						    if (attactioninteg.context.property !== undefined) {
 							//console.log('connnnnn');
