@@ -1042,6 +1042,7 @@ export class Mattermost implements INodeType {
 					       if (attaction.integration.item !== undefined) {
 						 //console.log('integration items');
 						 attaction.integration = attaction.integration.item;
+						 var tmpintegration = {};
 						 for (const attactioninteg of attaction.integration) {
 						    //console.log(attactioninteg);
 						    if (attactioninteg.context.property !== undefined) {
@@ -1054,7 +1055,10 @@ export class Mattermost implements INodeType {
 							delete attactioninteg.context ; 
 							attactioninteg.context = tmpcontex ;
 						    }
+					         Object.assign(tmpintegration, attactioninteg);  
 						 }
+					       delete attaction.integrations;
+                                               attaction.integrations=tmpintegration;
 					       }
 					    }
 					};
