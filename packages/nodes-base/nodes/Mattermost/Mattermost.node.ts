@@ -1061,9 +1061,9 @@ export class Mattermost implements INodeType {
 					
 					console.log('****111');
 					console.log(JSON.stringify(arr, null, 4));
-					onsole.log('****222');
+					console.log('****222');
 					console.log(JSON.stringify(attachments, null, 4));
-					onsole.log('****222aaa');
+					console.log('****222aaa');
 
 					
 					body.props = {
