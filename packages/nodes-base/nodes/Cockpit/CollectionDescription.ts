@@ -14,17 +14,17 @@ export const collectionOperations = [
 		},
 		options: [
 			{
-				name: 'Create an entry',
+				name: 'Create an Entry',
 				value: 'create',
 				description: 'Create a collection entry',
 			},
 			{
-				name: 'Get all entries',
+				name: 'Get all Entries',
 				value: 'getAll',
 				description: 'Get all collection entries',
 			},
 			{
-				name: 'Update an entry',
+				name: 'Update an Entry',
 				value: 'update',
 				description: 'Update a collection entries',
 			},
@@ -116,22 +116,24 @@ export const collectionFields = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				type: 'json',
+				type: 'string',
 				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Fields to get.',
+				placeholder: '_id,name',
+				description: 'Comma separated list of fields to get.',
 			},
 			{
-				displayName: 'Filter',
+				displayName: 'Filter Query',
 				name: 'filter',
 				type: 'json',
 				default: '',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
-				description: 'Filter result by fields.',
+				placeholder: '{"name": "Jim"}',
+				description: 'Filter query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
 			},
 			{
 				displayName: 'Language',
@@ -163,11 +165,12 @@ export const collectionFields = [
 				description: 'Skip number of entries.',
 			},
 			{
-				displayName: 'Sort',
+				displayName: 'Sort Query',
 				name: 'sort',
 				type: 'json',
 				default: '',
-				description: 'Sort result by fields.',
+				placeholder: '{"price": -1}',
+				description: 'Sort query in <a href="https://jeroen.github.io/mongolite/query-data.html" target="_blank">Mongolite format</a>.',
 			},
 		],
 	},
@@ -213,7 +216,7 @@ export const collectionFields = [
 		description: 'If new entry fields should be set via the value-key pair UI or JSON.',
 	},
 	{
-		displayName: 'Data fields',
+		displayName: 'Entry Data',
 		name: 'dataFieldsJson',
 		type: 'json',
 		default: '',
@@ -234,10 +237,10 @@ export const collectionFields = [
 				]
 			},
 		},
-		description: 'Data to send as JSON.',
+		description: 'Entry data to send as JSON.',
 	},
 	{
-		displayName: 'Data fields',
+		displayName: 'Entry Data',
 		name: 'dataFieldsUi',
 		type: 'fixedCollection',
 		typeOptions: {
@@ -280,6 +283,6 @@ export const collectionFields = [
 				],
 			},
 		],
-		description: 'Data field to send.',
+		description: 'Entry data to send.',
 	},
 ] as INodeProperties[];
