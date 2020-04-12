@@ -292,6 +292,7 @@ export interface INode {
 	retryOnFail?: boolean;
 	maxTries?: number;
 	waitBetweenTries?: number;
+	alwaysOutputData?: boolean;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
