@@ -59,7 +59,7 @@ return newItems;
 ```
 
 
-#### Method: $item(index)
+#### Method: $item(index: number)
 
 With `$item` it is possible to access the data of parent nodes. That can be the item data but also
 the parameters. It expects as input an index of the item the data should be returned for. This is
@@ -85,6 +85,28 @@ const myNumber = $item(5).$node["Set"].json["myNumber"];
 const channel = $item(0).$node["Slack"].parameter["channel"];
 // Like above but resolved with the value of the 10th item.
 const channel = $item(9).$node["Slack"].parameter["channel"];
+```
+
+
+#### Method: $items(nodeName?: string, outputIndex?: number, runIndex?: number)
+
+Gives access to all the items of current or parent nodes. If no parameters get supplied
+it returns all the items of the current node.
+If a node-name is given, it returns the items the give node did output. By default of the
+first output (index: 0, most nodes only have one output, exceptions are IF and Switch-Node)
+and the current run.
+
+Example:
+
+```typescript
+// Returns all the items of the current node and current run
+const allItems = $items();
+
+// Returns all items the node "IF" outputs (index: 0 which is Output "true" of current run)
+const allItems = $items("IF");
+
+// Returns all items the node "IF" outputs (index: 1 which is Output "false" of run 0 which is the first one)
+const allItems = $items("IF", 1, 0);
 ```
 
 
