@@ -27,7 +27,16 @@ export async function getAllCollectionEntries(this: IExecuteFunctions | IExecute
 	const body: ICollection = {};
 
 	if (options.fields) {
-		body.fields = JSON.parse(options.fields.toString());
+		const fields = (options.fields as string).split(',').map(field => field.trim() );
+
+		const bodyFields = {
+			_id: false,
+		} as IDataObject;
+		for (const field of fields) {
+			bodyFields[field] = true;
+		}
+
+		body.fields = bodyFields;
 	}
 
 	if (options.filter) {
