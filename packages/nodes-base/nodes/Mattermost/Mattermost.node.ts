@@ -1057,8 +1057,8 @@ export class Mattermost implements INodeType {
 						    }
 					         Object.assign(tmpintegration, attactioninteg);  
 						 }
-					       delete attaction.integrations;
-                                               attaction.integrations=tmpintegration;
+					       delete attaction.integration;
+                                               attaction.integration=tmpintegration;
 					       }
 					    }
 					};
