@@ -633,7 +633,7 @@ export class Mattermost implements INodeType {
 													default: {},
 													options: [
 															{
-																	name: 'conproperty',
+																	name: 'property',
 																	displayName: 'Property',
 																	default: {},
 																	values: [
@@ -1044,10 +1044,10 @@ export class Mattermost implements INodeType {
 						 attaction.integrations = attaction.integrations.item;
 						 for (const attactioninteg of attaction.integrations) {
 						    //console.log(attactioninteg);
-						    if (attactioninteg.context.conproperty !== undefined) {
+						    if (attactioninteg.context.property !== undefined) {
 							//console.log('connnnnn');
 							var tmpcontex = {};
-							   for (const attactionintegprop of attactioninteg.context.conproperty ) {
+							   for (const attactionintegprop of attactioninteg.context.property ) {
 									//     console.log(attactionintegprop);
                                                               Object.assign(tmpcontex, { [attactionintegprop.name]  : attactionintegprop.value  }  );
 							   }   
