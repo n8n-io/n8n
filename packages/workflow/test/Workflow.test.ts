@@ -1203,11 +1203,12 @@ describe('Workflow', () => {
 							{
 								startTime: 1,
 								executionTime: 1,
-								// @ts-ignore
 								data: {
 									main: [
 										[
-											{}
+											{
+												json: {},
+											}
 										]
 									]
 								}
