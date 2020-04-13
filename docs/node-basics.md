@@ -52,8 +52,9 @@ The following special variables are available:
  - **$env**: Environment variables
  - **$items**: Environment variables
  - **$json**: Incoming JSON data of a node
- - **$node**: Data of other nodes (context, output-data, parameters)
+ - **$node**: Data of other nodes (binary, context, json, parameter, runIndex)
  - **$parameters**: Parameters of the current node
+ - **$runIndex**: The current run index (first time node gets executed it is 0, second time 1, ...)
  - **$workflow**: Returns workflow metadata like: active, id, name
 
 Normally it is not needed to write the JavaScript variables manually as they can be simply selected with the help of the Expression Editor.
