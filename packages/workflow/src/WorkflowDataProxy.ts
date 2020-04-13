@@ -12,6 +12,7 @@ import {
 export class WorkflowDataProxy {
 	private workflow: Workflow;
 	private runExecutionData: IRunExecutionData | null;
+	private defaultReturnRunIndex: number;
 	private runIndex: number;
 	private itemIndex: number;
 	private activeNodeName: string;
@@ -19,9 +20,10 @@ export class WorkflowDataProxy {
 
 
 
-	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[]) {
+	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], defaultReturnRunIndex = -1) {
 		this.workflow = workflow;
 		this.runExecutionData = runExecutionData;
+		this.defaultReturnRunIndex = defaultReturnRunIndex;
 		this.runIndex = runIndex;
 		this.itemIndex = itemIndex;
 		this.activeNodeName = activeNodeName;
@@ -130,7 +132,8 @@ export class WorkflowDataProxy {
 				throw new Error(`No execution data found for node "${nodeName}"`);
 			}
 
-			runIndex = runIndex === undefined ? that.runIndex : runIndex;
+			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
+			runIndex = runIndex === -1 ? (that.runExecutionData.resultData.runData[nodeName].length -1) : runIndex;
 
 			if (that.runExecutionData.resultData.runData[nodeName].length < runIndex) {
 				throw new Error(`No execution data found for run "${runIndex}" of node "${nodeName}"`);
@@ -201,7 +204,7 @@ export class WorkflowDataProxy {
 				name = name.toString();
 
 				if (['binary', 'data', 'json'].includes(name)) {
-					const executionData = that.getNodeExecutionData(nodeName, shortSyntax);
+					const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
 
 					if (executionData.length <= that.itemIndex) {
 						throw new Error(`No data found for item-index: "${that.itemIndex}"`);
@@ -241,6 +244,11 @@ export class WorkflowDataProxy {
 				} else if (name === 'parameter') {
 					// Get node parameter data
 					return that.nodeParameterGetter(nodeName);
+				} else if (name === 'runIndex') {
+					if (that.runExecutionData === null || !that.runExecutionData.resultData.runData[nodeName]) {
+						return -1;
+					}
+					return that.runExecutionData.resultData.runData[nodeName].length - 1;
 				}
 
 				return Reflect.get(target, name, receiver);
@@ -328,8 +336,9 @@ export class WorkflowDataProxy {
 			$data: {}, // Placeholder
 			$env: this.envGetter(),
 			$evaluateExpression: (expression: string) => { },  // Placeholder
-			$item: (itemIndex: number) => {
-				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData);
+			$item: (itemIndex: number, runIndex?: number) => {
+				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
+				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData, defaultReturnRunIndex);
 				return dataProxy.getDataProxy();
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
@@ -339,6 +348,7 @@ export class WorkflowDataProxy {
 					executionData = that.connectionInputData;
 				} else {
 					outputIndex = outputIndex || 0;
+					runIndex = runIndex === undefined ? -1 : runIndex;
 					executionData = that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 				}
 
@@ -347,6 +357,7 @@ export class WorkflowDataProxy {
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
+			$runIndex: this.runIndex,
 			$workflow: this.workflowGetter(),
 		};
 
