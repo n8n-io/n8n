@@ -697,12 +697,8 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
-					try {
-						// @ts-ignore
-						requestOptions[optionData.name] = JSON.parse(tempValue as string);
-					} catch (error) {
-						throw new Error(`${optionData.name} must be a valid JSON`);
-					}
+					// @ts-ignore
+					requestOptions[optionData.name] = tempValue;
 
 					// @ts-ignore
 					if (typeof requestOptions[optionData.name] !== 'object' && options.bodyContentType !== 'raw') {
