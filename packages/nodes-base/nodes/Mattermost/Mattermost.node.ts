@@ -1038,27 +1038,16 @@ export class Mattermost implements INodeType {
 					for (const att of arr) {
 					  if (Array.isArray(att.actions)) 
 					    for (const attaction of att.actions) {
-					       //console.log(attaction);
 					       if (attaction.integration.item !== undefined) {
-						 //console.log('integration items');
 						 attaction.integration = attaction.integration.item;
-						 var tmpintegration = {};
-						 for (const attactioninteg of attaction.integration) {
-						    //console.log(attactioninteg);
-						    if (attactioninteg.context.property !== undefined) {
-							//console.log('connnnnn');
-							var tmpcontex = {};
-							   for (const attactionintegprop of attactioninteg.context.property ) {
-									//     console.log(attactionintegprop);
-                                                              Object.assign(tmpcontex, { [attactionintegprop.name]  : attactionintegprop.value  }  );
-							   }   
-							delete attactioninteg.context ; 
-							attactioninteg.context = tmpcontex ;
-						    }
-					         Object.assign(tmpintegration, attactioninteg);  
+						 if (Array.isArray(attaction.integration.context.property)) {
+						    var tmpcontex = {};
+						    for (const attactionintegprop of attaction.integration.context.property ) {
+						      Object.assign(tmpcontex, { [attactionintegprop.name] : attactionintegprop.value } );
+						    } 
+						    delete attaction.integration.context; 
+						    attaction.integration.context = tmpcontex;  
 						 }
-					       delete attaction.integration;
-                                               attaction.integration=tmpintegration;
 					       }
 					    }
 					};
