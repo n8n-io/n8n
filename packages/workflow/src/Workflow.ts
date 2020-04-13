@@ -899,9 +899,6 @@ export class Workflow {
 		// Generate a data proxy which allows to query workflow data
 		const dataProxy = new WorkflowDataProxy(this, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData);
 		const data = dataProxy.getDataProxy();
-		data.$evaluateExpression = (expression: string) => {
-			return this.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, returnObjectAsString);
-		};
 
 		// Execute the expression
 		try {
