@@ -335,7 +335,10 @@ export class WorkflowDataProxy {
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
 			$env: this.envGetter(),
-			$evaluateExpression: (expression: string) => { },  // Placeholder
+			$evaluateExpression: (expression: string, itemIndex?: number) => {
+				itemIndex = itemIndex || that.itemIndex;
+				return that.workflow.getParameterValue('=' + expression, that.runExecutionData, that.runIndex, itemIndex, that.activeNodeName, that.connectionInputData);
+			},
 			$item: (itemIndex: number, runIndex?: number) => {
 				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
 				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData, defaultReturnRunIndex);

@@ -2,6 +2,23 @@
 
 This list shows all the versions which include breaking changes and how to upgrade
 
+## 0.62.0
+
+### What changed?
+
+The function "evaluateExpression(...)" got renamed to "$evaluateExpression()"
+in Function and FunctionItem Nodes to simplify code and to normalize function
+names.
+
+### When is action necessary?
+
+If "evaluateExpression(...)" gets used in any Function or FunctionItem Node.
+
+### How to upgrade:
+
+Simply replace the "evaluateExpression(...)" with "$evaluateExpression(...)".
+
+
 ## 0.52.0
 
 ### What changed?
