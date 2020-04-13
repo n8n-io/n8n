@@ -571,9 +571,8 @@ export class Mattermost implements INodeType {
 						default: '',
 						description: 'Icon which should appear next to footer.',
 					},
-					
-					
-					{	displayName: 'Actions',
+					{	
+						displayName: 'Actions',
 						name: 'actions',
 						placeholder: 'Add Actions',
 						description: 'Actions to add to message.',
@@ -594,8 +593,6 @@ export class Mattermost implements INodeType {
 										default: '',
 										description: 'Name of the Action.',
 									},
-
-
 									{	
 									displayName: 'Integration',
 									name: 'integration',
@@ -619,8 +616,6 @@ export class Mattermost implements INodeType {
 													default: '',
 													description: 'URL of the Integration.',
 												},
-// context
-
 												{
 													displayName: 'Context',
 													name: 'context',
@@ -655,44 +650,14 @@ export class Mattermost implements INodeType {
 															},
 													],
 												},
-
-
-
-
-
-
-
-
-											
 											]
 										},
 									],
 								},
-
-
-
-								
 								]
 							},
 						],
 					},
-					
-
-					
-					
-					
-					
-					
-					
-					
-					
-					
-					
-					
-					
-					
-					
-					
 					{
 						displayName: 'Fields',
 						name: 'fields',
@@ -997,9 +962,7 @@ export class Mattermost implements INodeType {
 					body.message = this.getNodeParameter('message', i) as string;
 
 					const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
-                                        console.log('----');
-					console.dir(attachments);
-					console.log('----');
+
 					// The node does save the fields data differently than the API
 					// expects so fix the data befre we send the request
 					for (const attachment of attachments) {
@@ -1020,58 +983,35 @@ export class Mattermost implements INodeType {
 								// Move the field-content up
 								// @ts-ignore
 								attachment.actions = attachment.actions.item;
-								console.log(attachment.actions  );
 							} else {
 								// If it does not have any items set remove it
 								delete attachment.actions;
 							}
 						}
-					}					
-                                        const util = require('util');
-					console.log('&&&&');
-					//console.dir(attachments);
-			                console.log(util.inspect(attachments, false, null, true /* enable colors */));
-					console.log('&&&&');
+					}
 					
 					const arr = attachments;
-
 					for (const att of arr) {
 					  if (Array.isArray(att.actions)) 
 					    for (const attaction of att.actions) {
 					       if (attaction.integration.item !== undefined) {
-						 attaction.integration = attaction.integration.item;
-						 if (Array.isArray(attaction.integration.context.property)) {
-						    var tmpcontex = {};
-						    for (const attactionintegprop of attaction.integration.context.property ) {
-						      Object.assign(tmpcontex, { [attactionintegprop.name] : attactionintegprop.value } );
-						    } 
-						    delete attaction.integration.context; 
-						    attaction.integration.context = tmpcontex;  
-						 }
+							attaction.integration = attaction.integration.item;
+							if (Array.isArray(attaction.integration.context.property)) {
+							    var tmpcontex = {};
+							    for (const attactionintegprop of attaction.integration.context.property ) {
+								Object.assign(tmpcontex, { [attactionintegprop.name] : attactionintegprop.value } );
+							    } 
+							    delete attaction.integration.context; 
+							    attaction.integration.context = tmpcontex;  
+							}
 					       }
 					    }
 					};
-					
-					console.log('****111');
-					console.log(JSON.stringify(arr, null, 4));
-					console.log('****222');
-					console.log(JSON.stringify(attachments, null, 4));
-					console.log('****222aaa');
 
-					
 					body.props = {
 						attachments,
 					};
 
-					//console.log('####');
-					//console.dir(body);
-					//console.log('####');
-					console.log('****');
-					console.log(util.inspect(body, false, null, true /* enable colors */));
-					//console.dir(body);
-					//console.log('****111');
-					//console.log(JSON.stringify(body, null, 4));
-					console.log('****');
 					// Add all the other options to the request
 					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 					Object.assign(body, otherOptions);
