@@ -603,7 +603,7 @@ export class Mattermost implements INodeType {
 									description: 'Integration to add to message.',
 									type: 'fixedCollection',
 									typeOptions: {
-										multipleValues: true,
+										multipleValues: false,
 									},
 									default: {},
 									options: [
