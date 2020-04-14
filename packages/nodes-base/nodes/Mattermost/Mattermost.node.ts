@@ -571,6 +571,93 @@ export class Mattermost implements INodeType {
 						default: '',
 						description: 'Icon which should appear next to footer.',
 					},
+					{	
+						displayName: 'Actions',
+						name: 'actions',
+						placeholder: 'Add Actions',
+						description: 'Actions to add to message.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								displayName: 'Item',
+								name: 'item',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the Action.',
+									},
+									{	
+									displayName: 'Integration',
+									name: 'integration',
+									placeholder: 'Add Integration',
+									description: 'Integration to add to message.',
+									type: 'fixedCollection',
+									typeOptions: {
+										multipleValues: false,
+									},
+									default: {},
+									options: [
+										{
+											displayName: 'Item',
+											name: 'item',
+											default: {},
+											values: [
+												{
+													displayName: 'URL',
+													name: 'url',
+													type: 'string',
+													default: '',
+													description: 'URL of the Integration.',
+												},
+												{
+													displayName: 'Context',
+													name: 'context',
+													placeholder: 'Add Context to Integration',
+													description: 'Adds a Context values set.',
+													type: 'fixedCollection',
+													typeOptions: {
+															multipleValues: true,
+													},
+													default: {},
+													options: [
+															{
+																	name: 'property',
+																	displayName: 'Property',
+																	default: {},
+																	values: [
+																			{
+																					displayName: 'Property Name',
+																					name: 'name',
+																					type: 'string',
+																					default: '',
+																					description: 'Name of the property to set.',
+																			},
+																			{
+																					displayName: 'Property Value',
+																					name: 'value',
+																					type: 'string',
+																					default: '',
+																					description: 'Value of the property to set.',
+																			},
+																	]
+															},
+													],
+												},
+											]
+										},
+									],
+								},
+								]
+							},
+						],
+					},
 					{
 						displayName: 'Fields',
 						name: 'fields',
@@ -890,6 +977,36 @@ export class Mattermost implements INodeType {
 							}
 						}
 					}
+					for (const attachment of attachments) {
+						if (attachment.actions !== undefined) {
+							if (attachment.actions.item !== undefined) {
+								// Move the field-content up
+								// @ts-ignore
+								attachment.actions = attachment.actions.item;
+							} else {
+								// If it does not have any items set remove it
+								delete attachment.actions;
+							}
+						}
+					}
+					
+					const arr = attachments;
+					for (const att of arr) {
+					  if (Array.isArray(att.actions)) 
+					    for (const attaction of att.actions) {
+					       if (attaction.integration.item !== undefined) {
+							attaction.integration = attaction.integration.item;
+							if (Array.isArray(attaction.integration.context.property)) {
+							    var tmpcontex = {};
+							    for (const attactionintegprop of attaction.integration.context.property ) {
+								Object.assign(tmpcontex, { [attactionintegprop.name] : attactionintegprop.value } );
+							    } 
+							    delete attaction.integration.context; 
+							    attaction.integration.context = tmpcontex;  
+							}
+					       }
+					    }
+					};
 
 					body.props = {
 						attachments,
