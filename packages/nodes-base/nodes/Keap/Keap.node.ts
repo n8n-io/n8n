@@ -95,8 +95,8 @@ import {
 } from './CompanyInterface';
 
 import {
+	capitalCase,
 	pascalCase,
-	titleCase,
 } from 'change-case';
 
 import * as moment from 'moment-timezone';
@@ -749,7 +749,7 @@ export class Keap implements INodeType {
 						qs.permission = (qs.permission as string).toUpperCase();
 					}
 					if (qs.type) {
-						qs.type = titleCase(qs.type as string);
+						qs.type = capitalCase(qs.type as string);
 					}
 					if (qs.viewable) {
 						qs.viewable = (qs.viewable as string).toUpperCase();
