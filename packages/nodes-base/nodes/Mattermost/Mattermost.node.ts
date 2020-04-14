@@ -451,7 +451,7 @@ export class Mattermost implements INodeType {
 						displayName: 'Actions',
 						name: 'actions',
 						placeholder: 'Add Actions',
-						description: 'Actions to add to message.',
+						description: 'Actions to add to message. More information can be found <a href="https://docs.mattermost.com/developer/interactive-messages.html" target="_blank">here</a>',
 						type: 'fixedCollection',
 						typeOptions: {
 							multipleValues: true,
@@ -462,6 +462,93 @@ export class Mattermost implements INodeType {
 								displayName: 'Item',
 								name: 'item',
 								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: [
+											{
+												name: 'Button',
+												value: 'button',
+											},
+											{
+												name: 'Select',
+												value: 'select',
+											},
+										],
+										default: 'button',
+										description: 'The type of the action.',
+									},
+									{
+										displayName: 'Data Source',
+										name: 'data_source',
+										type: 'options',
+										displayOptions: {
+											show: {
+												type: [
+													'select'
+												],
+											},
+										},
+										options: [
+											{
+												name: 'Channels',
+												value: 'channels',
+											},
+											{
+												name: 'Custom',
+												value: 'custom',
+											},
+											{
+												name: 'Users',
+												value: 'users',
+											},
+
+										],
+										default: 'custom',
+										description: 'The type of the action.',
+									},
+									{
+										displayName: 'Options',
+										name: 'options',
+										placeholder: 'Add Option',
+										description: 'Adds a new option to select field.',
+										type: 'fixedCollection',
+										typeOptions: {
+											multipleValues: true,
+										},
+										displayOptions: {
+											show: {
+												data_source: [
+													'custom'
+												],
+											},
+										},
+										default: {},
+										options: [
+											{
+												name: 'option',
+												displayName: 'Option',
+												default: {},
+												values: [
+													{
+														displayName: 'Option Text',
+														name: 'text',
+														type: 'string',
+														default: '',
+														description: 'Text of the option.',
+													},
+													{
+														displayName: 'Option Value',
+														name: 'value',
+														type: 'string',
+														default: '',
+														description: 'Value of the option.',
+													},
+												]
+											},
+										],
+									},
 									{
 										displayName: 'Name',
 										name: 'name',
@@ -993,6 +1080,17 @@ export class Mattermost implements INodeType {
 					for (const attachment of attachments) {
 						if (Array.isArray(attachment.actions)) {
 							for (const attaction of attachment.actions) {
+
+								if (attaction.type === 'button') {
+									delete attaction.type;
+								}
+								if (attaction.data_source === 'custom') {
+									delete attaction.data_source;
+								}
+								if (attaction.options) {
+									attaction.options = attaction.options.option;
+								}
+
 								if (attaction.integration.item !== undefined) {
 									attaction.integration = attaction.integration.item;
 									if (Array.isArray(attaction.integration.context.property)) {
