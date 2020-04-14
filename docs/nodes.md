@@ -59,7 +59,7 @@ return newItems;
 ```
 
 
-#### Method: $item(index)
+#### Method: $item(index: number, runIndex?: number)
 
 With `$item` it is possible to access the data of parent nodes. That can be the item data but also
 the parameters. It expects as input an index of the item the data should be returned for. This is
@@ -70,6 +70,12 @@ If that would not be the case, for example, the Email Send-Node not would be abl
 emails at once to different people. Instead, the same person would receive multiple emails.
 
 The index is 0 based. So `$item(0)` will return the first item, `$item(1)` the second one, ...
+
+By default will the item of the last run of the node be returned. So if the referenced node did run
+3x (its last runIndex is 2) and the current node runs the first time (its runIndex is 0) will the
+data of runIndex 2 of the referenced node be returned.
+
+For more information about what data can be accessed via $node check [here](#variable-node).
 
 Example:
 
@@ -88,18 +94,76 @@ const channel = $item(9).$node["Slack"].parameter["channel"];
 ```
 
 
-#### Variable: $node
+#### Method: $items(nodeName?: string, outputIndex?: number, runIndex?: number)
 
-Works exactly like `$item` with the difference that it will always return the data of the first item.
+Gives access to all the items of current or parent nodes. If no parameters get supplied
+it returns all the items of the current node.
+If a node-name is given, it returns the items the node did output on it`s first output
+(index: 0, most nodes only have one output, exceptions are IF and Switch-Node) on
+its last run.
+
+Example:
 
 ```typescript
-const myNumber = $node["Set"].json['myNumber'];
+// Returns all the items of the current node and current run
+const allItems = $items();
 
-const channel = $node["Slack"].parameter["channel"];
+// Returns all items the node "IF" outputs (index: 0 which is Output "true" of its most recent run)
+const allItems = $items("IF");
+
+// Returns all items the node "IF" outputs (index: 0 which is Output "true" of the same run as current node)
+const allItems = $items("IF", 0, $runIndex);
+
+// Returns all items the node "IF" outputs (index: 1 which is Output "false" of run 0 which is the first run)
+const allItems = $items("IF", 1, 0);
 ```
 
 
-#### Method: evaluateExpression(expression: string, itemIndex: number)
+#### Variable: $node
+
+Works exactly like `$item` with the difference that it will always return the data of the first item and
+the last run of the node.
+
+```typescript
+// Returns the fileName of binary property "data" of Node "HTTP Request"
+const fileName = $node["HTTP Request"].binary["data"]["fileName"]}}
+
+// Returns the context data "noItemsLeft" of Node "SplitInBatches"
+const noItemsLeft = $node["SplitInBatches"].context["noItemsLeft"];
+
+// Returns the value of the JSON data property "myNumber" of Node "Set"
+const myNumber = $node["Set"].json['myNumber'];
+
+// Returns the value of the parameter "channel" of Node "Slack"
+const channel = $node["Slack"].parameter["channel"];
+
+// Returns the index of the last run of Node "HTTP Request"
+const runIndex = $node["HTTP Request"].runIndex}}
+```
+
+
+#### Variable: $runIndex
+
+Contains the index of the current run of the node.
+
+```typescript
+// Returns all items the node "IF" outputs (index: 0 which is Output "true" of the same run as current node)
+const allItems = $items("IF", 0, $runIndex);
+```
+
+
+#### Variable: $workflow
+
+Gives information about the current workflow.
+
+```typescript
+const isActive = $workflow.active;
+const workflowId = $workflow.id;
+const workflowName = $workflow.name;
+```
+
+
+#### Method: $evaluateExpression(expression: string, itemIndex: number)
 
 Evaluates a given string as expression.
 If no `itemIndex` is provided it uses by default in the Function-Node the data of item 0 and
@@ -108,8 +172,8 @@ in the Function Item-Node the data of the current item.
 Example:
 
 ```javascript
-items[0].json.variable1 = evaluateExpression('{{1+2}}');
-items[0].json.variable2 = evaluateExpression($node["Set"].json["myExpression"], 1);
+items[0].json.variable1 = $evaluateExpression('{{1+2}}');
+items[0].json.variable2 = $evaluateExpression($node["Set"].json["myExpression"], 1);
 
 return items;
 ```

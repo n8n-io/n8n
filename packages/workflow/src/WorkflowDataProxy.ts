@@ -12,6 +12,7 @@ import {
 export class WorkflowDataProxy {
 	private workflow: Workflow;
 	private runExecutionData: IRunExecutionData | null;
+	private defaultReturnRunIndex: number;
 	private runIndex: number;
 	private itemIndex: number;
 	private activeNodeName: string;
@@ -19,9 +20,10 @@ export class WorkflowDataProxy {
 
 
 
-	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[]) {
+	constructor(workflow: Workflow, runExecutionData: IRunExecutionData | null, runIndex: number, itemIndex: number, activeNodeName: string, connectionInputData: INodeExecutionData[], defaultReturnRunIndex = -1) {
 		this.workflow = workflow;
 		this.runExecutionData = runExecutionData;
+		this.defaultReturnRunIndex = defaultReturnRunIndex;
 		this.runIndex = runIndex;
 		this.itemIndex = itemIndex;
 		this.activeNodeName = activeNodeName;
@@ -104,6 +106,80 @@ export class WorkflowDataProxy {
 	}
 
 
+	/**
+	 * Returns the node ExecutionData
+	 *
+	 * @private
+	 * @param {string} nodeName The name of the node query data from
+	 * @param {boolean} [shortSyntax=false] If short syntax got used
+	 * @param {number} [outputIndex] The index of the output, if not given the first one gets used
+	 * @param {number} [runIndex] The index of the run, if not given the current one does get used
+	 * @returns {INodeExecutionData[]}
+	 * @memberof WorkflowDataProxy
+	 */
+	private getNodeExecutionData(nodeName: string, shortSyntax = false, outputIndex?: number, runIndex?: number): INodeExecutionData[] {
+		const that = this;
+
+		let executionData: INodeExecutionData[];
+		if (shortSyntax === false) {
+			// Long syntax got used to return data from node in path
+
+			if (that.runExecutionData === null) {
+				throw new Error(`Workflow did not run so do not have any execution-data.`);
+			}
+
+			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
+				throw new Error(`No execution data found for node "${nodeName}"`);
+			}
+
+			runIndex = runIndex === undefined ? that.defaultReturnRunIndex : runIndex;
+			runIndex = runIndex === -1 ? (that.runExecutionData.resultData.runData[nodeName].length -1) : runIndex;
+
+			if (that.runExecutionData.resultData.runData[nodeName].length < runIndex) {
+				throw new Error(`No execution data found for run "${runIndex}" of node "${nodeName}"`);
+			}
+
+			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
+
+			if (taskData.main === null || !taskData.main.length || taskData.main[0] === null) {
+				// throw new Error(`No data found for item-index: "${itemIndex}"`);
+				throw new Error(`No data found from "main" input.`);
+			}
+
+			// Check from which output to read the data.
+			// Depends on how the nodes are connected.
+			// (example "IF" node. If node is connected to "true" or to "false" output)
+			if (outputIndex === undefined) {
+				const outputIndex = that.workflow.getNodeConnectionOutputIndex(that.activeNodeName, nodeName, 'main');
+
+				if (outputIndex === undefined) {
+					throw new Error(`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`);
+				}
+			}
+
+			if (outputIndex === undefined) {
+				outputIndex = 0;
+			}
+
+			if (taskData.main.length < outputIndex) {
+				throw new Error(`No data found from "main" input with index "${outputIndex}" via which node is connected with.`);
+			}
+
+			executionData = taskData.main[outputIndex] as INodeExecutionData[];
+		} else {
+			// Short syntax got used to return data from active node
+
+			// TODO: Here have to generate connection Input data for the current node by itself
+			// Data needed:
+			// #- the run-index
+			// - node which did send data (has to be the one from last recent execution)
+			// - later also the name of the input and its index (currently not needed as it is always "main" and index "0")
+			executionData = that.connectionInputData;
+		}
+
+		return executionData;
+	}
+
 
 	/**
 	 * Returns a proxy which allows to query data of a given node
@@ -128,53 +204,7 @@ export class WorkflowDataProxy {
 				name = name.toString();
 
 				if (['binary', 'data', 'json'].includes(name)) {
-					let executionData: INodeExecutionData[];
-					if (shortSyntax === false) {
-						// Long syntax got used to return data from node in path
-
-						if (that.runExecutionData === null) {
-							throw new Error(`Workflow did not run so do not have any execution-data.`);
-						}
-
-						if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
-							throw new Error(`No execution data found for node "${nodeName}"`);
-						}
-
-						if (that.runExecutionData.resultData.runData[nodeName].length < that.runIndex) {
-							throw new Error(`No execution data found for run "${that.runIndex}" of node "${nodeName}"`);
-						}
-
-						const taskData = that.runExecutionData.resultData.runData[nodeName][that.runIndex].data!;
-
-						if (taskData.main === null || !taskData.main.length || taskData.main[0] === null) {
-							// throw new Error(`No data found for item-index: "${itemIndex}"`);
-							throw new Error(`No data found from "main" input.`);
-						}
-
-						// Check from which output to read the data.
-						// Depends on how the nodes are connected.
-						// (example "IF" node. If node is connected to "true" or to "false" output)
-						const outputIndex = that.workflow.getNodeConnectionOutputIndex(that.activeNodeName, nodeName, 'main');
-
-						if (outputIndex === undefined) {
-							throw new Error(`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`);
-						}
-
-						if (taskData.main.length < outputIndex) {
-							throw new Error(`No data found from "main" input with index "${outputIndex}" via which node is connected with.`);
-						}
-
-						executionData = taskData.main[outputIndex] as INodeExecutionData[];
-					} else {
-						// Short syntax got used to return data from active node
-
-						// TODO: Here have to generate connection Input data for the current node by itself
-						// Data needed:
-						// #- the run-index
-						// - node which did send data (has to be the one from last recent execution)
-						// - later also the name of the input and its index (currently not needed as it is always "main" and index "0")
-						executionData = that.connectionInputData;
-					}
+					const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
 
 					if (executionData.length <= that.itemIndex) {
 						throw new Error(`No data found for item-index: "${that.itemIndex}"`);
@@ -214,6 +244,11 @@ export class WorkflowDataProxy {
 				} else if (name === 'parameter') {
 					// Get node parameter data
 					return that.nodeParameterGetter(nodeName);
+				} else if (name === 'runIndex') {
+					if (that.runExecutionData === null || !that.runExecutionData.resultData.runData[nodeName]) {
+						return -1;
+					}
+					return that.runExecutionData.resultData.runData[nodeName].length - 1;
 				}
 
 				return Reflect.get(target, name, receiver);
@@ -300,14 +335,32 @@ export class WorkflowDataProxy {
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
 			$env: this.envGetter(),
-			$evaluateExpression: (expression: string) => { },  // Placeholder
-			$item: (itemIndex: number) => {
-				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData);
+			$evaluateExpression: (expression: string, itemIndex?: number) => {
+				itemIndex = itemIndex || that.itemIndex;
+				return that.workflow.getParameterValue('=' + expression, that.runExecutionData, that.runIndex, itemIndex, that.activeNodeName, that.connectionInputData);
+			},
+			$item: (itemIndex: number, runIndex?: number) => {
+				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
+				const dataProxy = new WorkflowDataProxy(this.workflow, this.runExecutionData, this.runIndex, itemIndex, this.activeNodeName, this.connectionInputData, defaultReturnRunIndex);
 				return dataProxy.getDataProxy();
+			},
+			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
+				let executionData: INodeExecutionData[];
+
+				if (nodeName === undefined) {
+					executionData = that.connectionInputData;
+				} else {
+					outputIndex = outputIndex || 0;
+					runIndex = runIndex === undefined ? -1 : runIndex;
+					executionData = that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
+				}
+
+				return executionData;
 			},
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
 			$parameter: this.nodeParameterGetter(this.activeNodeName),
+			$runIndex: this.runIndex,
 			$workflow: this.workflowGetter(),
 		};
 

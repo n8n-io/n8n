@@ -44,3 +44,26 @@ export async function cockpitApiRequest(this: IExecuteFunctions | IExecuteSingle
 		throw new Error(`Cockpit error [${error.statusCode}]: ` + errorMessage);
 	}
 }
+
+export function createDataFromParameters(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, itemIndex: number): IDataObject {
+	const dataFieldsAreJson = this.getNodeParameter('jsonDataFields', itemIndex) as boolean;
+
+	if (dataFieldsAreJson) {
+		// Parameters are defined as JSON
+		return JSON.parse(this.getNodeParameter('dataFieldsJson', itemIndex, {}) as string);
+	}
+
+	// Parameters are defined in UI
+	const uiDataFields = this.getNodeParameter('dataFieldsUi', itemIndex, {}) as IDataObject;
+	const unpacked: IDataObject = {};
+
+	if (uiDataFields.field === undefined) {
+		return unpacked;
+	}
+
+	for (const field of uiDataFields!.field as IDataObject[]) {
+		unpacked[field!.name as string] = field!.value;
+	}
+
+	return unpacked;
+}
