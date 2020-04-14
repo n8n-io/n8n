@@ -17,7 +17,7 @@ import {
 } from './GenericFunctions';
 
 import {
-	titleCase,
+	capitalCase,
  } from 'change-case';
 
 export class KeapTrigger implements INodeType {
@@ -81,7 +81,7 @@ export class KeapTrigger implements INodeType {
 					const hookName = hook;
 					const hookId = hook;
 					returnData.push({
-						name: titleCase((hookName as string).replace('.', ' ')),
+						name: capitalCase((hookName as string).replace('.', ' ')),
 						value: hookId as string,
 					});
 				}
