@@ -522,6 +522,9 @@ export class Mattermost implements INodeType {
 												data_source: [
 													'custom'
 												],
+												type: [
+													'select'
+												],
 											},
 										},
 										default: {},
