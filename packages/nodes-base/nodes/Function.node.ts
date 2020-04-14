@@ -47,9 +47,6 @@ export class Function implements INodeType {
 
 		// Define the global objects for the custom function
 		const sandbox = {
-			evaluateExpression: (expression: string, itemIndex = 0) => {
-				return this.evaluateExpression(expression, itemIndex);
-			},
 			getNodeParameter: this.getNodeParameter,
 			getWorkflowStaticData: this.getWorkflowStaticData,
 			helpers: this.helpers,

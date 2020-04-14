@@ -60,12 +60,12 @@ export DB_POSTGRESDB_SCHEMA=n8n
 n8n start
 ```
 
-## MySQL
+## MySQL / MariaDB
 
-The compatibility with MySQL was tested, even so, it is advisable to observe the operation of the application with this DB, as it is a new option, recently added. If you spot any problems, feel free to submit a PR.
+The compatibility with MySQL/MariaDB was tested, even so, it is advisable to observe the operation of the application with this DB, as it is a new option, recently added. If you spot any problems, feel free to submit a PR.
 
 To use MySQL as database you can provide the following environment variables:
- - `DB_TYPE=mysqldb`
+ - `DB_TYPE=mysqldb` or `DB_TYPE=mariadb`
  - `DB_MYSQLDB_DATABASE` (default: 'n8n')
  - `DB_MYSQLDB_HOST` (default: 'localhost')
  - `DB_MYSQLDB_PORT` (default: 3306)

@@ -899,14 +899,13 @@ export class Workflow {
 		// Generate a data proxy which allows to query workflow data
 		const dataProxy = new WorkflowDataProxy(this, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData);
 		const data = dataProxy.getDataProxy();
-		data.$evaluateExpression = (expression: string) => {
-			return this.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, activeNodeName, connectionInputData, returnObjectAsString);
-		};
 
 		// Execute the expression
 		try {
 			const returnValue = tmpl.tmpl(parameterValue, data);
-			if (returnValue !== null && typeof returnValue === 'object') {
+			if (typeof returnValue === 'function') {
+				throw new Error('Expression resolved to a function. Please add "()"');
+			} else if (returnValue !== null && typeof returnValue === 'object') {
 				if (returnObjectAsString === true)  {
 					return this.convertObjectValueToString(returnValue);
 				}
