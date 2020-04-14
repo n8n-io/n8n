@@ -7,13 +7,14 @@ import {
 import { OptionsWithUri } from 'request';
 import { IDataObject } from 'n8n-workflow';
 
-
-export interface IAttachment {
+export interface IAttachment  {
 	fields: {
 		item?: object[];
 	};
+	actions: {
+		item?: object[];
+	};
 }
-
 
 /**
  * Make an API request to Telegram

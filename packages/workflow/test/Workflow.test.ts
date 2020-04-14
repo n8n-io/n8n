@@ -936,6 +936,29 @@ describe('Workflow', () => {
 					value1: 'default-value1',
 				},
 			},
+			{
+				description: 'return resolved value when referencing another property with expression on another node (long "$node["{NODE}"].parameter" syntax)',
+				input: {
+					Node1: {
+						parameters: {
+							value1: 'valueNode1',
+						}
+					},
+					Node2: {
+						parameters: {
+							value1: '={{$node["Node1"].parameter.value1}}a',
+						},
+					},
+					Node3: {
+						parameters: {
+							value1: '={{$node["Node2"].parameter.value1}}b',
+						},
+					}
+				},
+				output: {
+					value1: 'valueNode1ab',
+				},
+			},
 			// TODO: Make that this test does not fail!
 			// {
 			//     description: 'return resolved value when short "data" syntax got used in expression on paramter of not active node which got referenced by active one',
@@ -1203,11 +1226,12 @@ describe('Workflow', () => {
 							{
 								startTime: 1,
 								executionTime: 1,
-								// @ts-ignore
 								data: {
 									main: [
 										[
-											{}
+											{
+												json: {},
+											}
 										]
 									]
 								}
