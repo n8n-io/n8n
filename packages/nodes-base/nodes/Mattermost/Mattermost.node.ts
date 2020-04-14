@@ -448,130 +448,6 @@ export class Mattermost implements INodeType {
 				placeholder: 'Add attachment item',
 				options: [
 					{
-						displayName: 'Fallback Text',
-						name: 'fallback',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Required plain-text summary of the attachment.',
-					},
-					{
-						displayName: 'Text',
-						name: 'text',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Text to send.',
-					},
-					{
-						displayName: 'Title',
-						name: 'title',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Title of the message.',
-					},
-					{
-						displayName: 'Title Link',
-						name: 'title_link',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Link of the title.',
-					},
-					{
-						displayName: 'Color',
-						name: 'color',
-						type: 'color',
-						default: '#ff0000',
-						description: 'Color of the line left of text.',
-					},
-					{
-						displayName: 'Pretext',
-						name: 'pretext',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Text which appears before the message block.',
-					},
-					{
-						displayName: 'Author Name',
-						name: 'author_name',
-						type: 'string',
-						default: '',
-						description: 'Name that should appear.',
-					},
-					{
-						displayName: 'Author Link',
-						name: 'author_link',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Link for the author.',
-					},
-					{
-						displayName: 'Author Icon',
-						name: 'author_icon',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Icon which should appear for the user.',
-					},
-					{
-						displayName: 'Image URL',
-						name: 'image_url',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'URL of image.',
-					},
-					{
-						displayName: 'Thumbnail URL',
-						name: 'thumb_url',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'URL of thumbnail.',
-					},
-					{
-						displayName: 'Footer',
-						name: 'footer',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Text of footer to add.',
-					},
-					{
-						displayName: 'Footer Icon',
-						name: 'footer_icon',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Icon which should appear next to footer.',
-					},
-					{	
 						displayName: 'Actions',
 						name: 'actions',
 						placeholder: 'Add Actions',
@@ -593,70 +469,114 @@ export class Mattermost implements INodeType {
 										default: '',
 										description: 'Name of the Action.',
 									},
-									{	
-									displayName: 'Integration',
-									name: 'integration',
-									placeholder: 'Add Integration',
-									description: 'Integration to add to message.',
-									type: 'fixedCollection',
-									typeOptions: {
-										multipleValues: false,
-									},
-									default: {},
-									options: [
-										{
-											displayName: 'Item',
-											name: 'item',
-											default: {},
-											values: [
-												{
-													displayName: 'URL',
-													name: 'url',
-													type: 'string',
-													default: '',
-													description: 'URL of the Integration.',
-												},
-												{
-													displayName: 'Context',
-													name: 'context',
-													placeholder: 'Add Context to Integration',
-													description: 'Adds a Context values set.',
-													type: 'fixedCollection',
-													typeOptions: {
-															multipleValues: true,
-													},
-													default: {},
-													options: [
-															{
-																	name: 'property',
-																	displayName: 'Property',
-																	default: {},
-																	values: [
-																			{
-																					displayName: 'Property Name',
-																					name: 'name',
-																					type: 'string',
-																					default: '',
-																					description: 'Name of the property to set.',
-																			},
-																			{
-																					displayName: 'Property Value',
-																					name: 'value',
-																					type: 'string',
-																					default: '',
-																					description: 'Value of the property to set.',
-																			},
-																	]
-															},
-													],
-												},
-											]
+									{
+										displayName: 'Integration',
+										name: 'integration',
+										placeholder: 'Add Integration',
+										description: 'Integration to add to message.',
+										type: 'fixedCollection',
+										typeOptions: {
+											multipleValues: false,
 										},
-									],
-								},
+										default: {},
+										options: [
+											{
+												displayName: 'Item',
+												name: 'item',
+												default: {},
+												values: [
+													{
+														displayName: 'URL',
+														name: 'url',
+														type: 'string',
+														default: '',
+														description: 'URL of the Integration.',
+													},
+													{
+														displayName: 'Context',
+														name: 'context',
+														placeholder: 'Add Context to Integration',
+														description: 'Adds a Context values set.',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: true,
+														},
+														default: {},
+														options: [
+															{
+																name: 'property',
+																displayName: 'Property',
+																default: {},
+																values: [
+																	{
+																		displayName: 'Property Name',
+																		name: 'name',
+																		type: 'string',
+																		default: '',
+																		description: 'Name of the property to set.',
+																	},
+																	{
+																		displayName: 'Property Value',
+																		name: 'value',
+																		type: 'string',
+																		default: '',
+																		description: 'Value of the property to set.',
+																	},
+																]
+															},
+														],
+													},
+												]
+											},
+										],
+									},
 								]
 							},
 						],
+					},
+					{
+						displayName: 'Author Icon',
+						name: 'author_icon',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Icon which should appear for the user.',
+					},
+					{
+						displayName: 'Author Link',
+						name: 'author_link',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Link for the author.',
+					},
+					{
+						displayName: 'Author Name',
+						name: 'author_name',
+						type: 'string',
+						default: '',
+						description: 'Name that should appear.',
+					},
+					{
+						displayName: 'Color',
+						name: 'color',
+						type: 'color',
+						default: '#ff0000',
+						description: 'Color of the line left of text.',
+					},
+					{
+						displayName: 'Fallback Text',
+						name: 'fallback',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Required plain-text summary of the attachment.',
 					},
 					{
 						displayName: 'Fields',
@@ -697,7 +617,87 @@ export class Mattermost implements INodeType {
 								]
 							},
 						],
-					}
+					},
+					{
+						displayName: 'Footer',
+						name: 'footer',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text of footer to add.',
+					},
+					{
+						displayName: 'Footer Icon',
+						name: 'footer_icon',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Icon which should appear next to footer.',
+					},
+					{
+						displayName: 'Image URL',
+						name: 'image_url',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'URL of image.',
+					},
+					{
+						displayName: 'Pretext',
+						name: 'pretext',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text which appears before the message block.',
+					},
+					{
+						displayName: 'Text',
+						name: 'text',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text to send.',
+					},
+					{
+						displayName: 'Thumbnail URL',
+						name: 'thumb_url',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'URL of thumbnail.',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Title of the message.',
+					},
+					{
+						displayName: 'Title Link',
+						name: 'title_link',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Link of the title.',
+					},
 				],
 			},
 			{
@@ -989,24 +989,24 @@ export class Mattermost implements INodeType {
 							}
 						}
 					}
-					
-					const arr = attachments;
-					for (const att of arr) {
-					  if (Array.isArray(att.actions)) 
-					    for (const attaction of att.actions) {
-					       if (attaction.integration.item !== undefined) {
-							attaction.integration = attaction.integration.item;
-							if (Array.isArray(attaction.integration.context.property)) {
-							    var tmpcontex = {};
-							    for (const attactionintegprop of attaction.integration.context.property ) {
-								Object.assign(tmpcontex, { [attactionintegprop.name] : attactionintegprop.value } );
-							    } 
-							    delete attaction.integration.context; 
-							    attaction.integration.context = tmpcontex;  
+
+					for (const attachment of attachments) {
+						if (Array.isArray(attachment.actions)) {
+							for (const attaction of attachment.actions) {
+								if (attaction.integration.item !== undefined) {
+									attaction.integration = attaction.integration.item;
+									if (Array.isArray(attaction.integration.context.property)) {
+										const tmpcontex = {};
+										for (const attactionintegprop of attaction.integration.context.property) {
+											Object.assign(tmpcontex, { [attactionintegprop.name]: attactionintegprop.value });
+										}
+										delete attaction.integration.context;
+										attaction.integration.context = tmpcontex;
+									}
+								}
 							}
-					       }
-					    }
-					};
+						}
+					}
 
 					body.props = {
 						attachments,
