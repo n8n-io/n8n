@@ -22,14 +22,11 @@ n8n start
 
 ## Start with tunnel
 
-!> **WARNING**: This is only meant for local development and testing. Should not be used in production!
+!> **WARNING**: This is only meant for local development and testing. It should not be used in production!
 
-To be able to use webhooks which all triggers of external services like Github
-rely on n8n has to be reachable from the web. To make that easy n8n has a
-special tunnel service (uses this code: [https://github.com/localtunnel/localtunnel](https://github.com/localtunnel/localtunnel)) which redirects requests from our servers to your local
-n8n instance.
+To be able to use webhooks for trigger nodes of external services like GitHub, n8n has to be reachable from the web. To make that easy, n8n has a special tunnel service, which redirects requests from our servers to your local n8n instance (uses this code: [https://github.com/localtunnel/localtunnel](https://github.com/localtunnel/localtunnel)).
 
-To use it simply start n8n with `--tunnel`
+To use it, simply start n8n with `--tunnel`
 
 ```bash
 n8n start --tunnel

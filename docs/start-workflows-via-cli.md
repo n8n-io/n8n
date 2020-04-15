@@ -1,7 +1,7 @@
 # Start Workflows via CLI
 
-Workflows can not just be started by triggers, webhooks or manually via the
-Editor it is also possible to start them directly via the CLI.
+Workflows cannot be only started by triggers, webhooks or manually via the
+Editor. It is also possible to start them directly via the CLI.
 
 Execute a saved workflow by its ID:
 
