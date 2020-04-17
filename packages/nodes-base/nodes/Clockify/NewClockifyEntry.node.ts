@@ -1,5 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {IExecuteFunctions, IExecuteSingleFunctions} from 'n8n-core';
 import {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData, INodePropertyOptions,
 	INodeType,
@@ -7,11 +8,17 @@ import {
 } from 'n8n-workflow';
 
 import {
-	clockifyApiRequest,
+	clockifyApiRequest, createProject, findProjectByName,
 } from './GenericFunctions';
 
-import {IWorkspaceDto} from "./WorkpaceInterfaces";
-
+import {IClientDto, IWorkspaceDto} from "./WorkpaceInterfaces";
+import {IUserDto} from "./UserDtos";
+import {runInThisContext} from "vm";
+import {IProjectDto, ITaskDto} from "./ProjectInterfaces";
+import {ITagDto} from "./CommonDtos";
+import {ITimeEntryDto, ITimeEntryRequest} from "./TimeEntryInterfaces";
+import {stringify} from "querystring";
+import {callbackify} from "util";
 
 export class NewClockifyEntry implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,24 +49,108 @@ export class NewClockifyEntry implements INodeType {
 					loadOptionsMethod: 'listWorkspaces',
 				},
 				required: true,
+				default: [],
+			},
+			{
+				displayName: 'User',
+				name: 'userId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: ['workspaceId'],
+					loadOptionsMethod: 'loadUsersForWorkspace',
+				},
+				required: true,
+				default: [],
+			},
+			{
+				displayName: 'Client',
+				name: 'clientId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: ['workspaceId'],
+					loadOptionsMethod: 'loadClientsForWorkspace',
+				},
+				required: true,
+				default: [],
+			},
+			{
+				displayName: 'Project',
+				name: 'projectName',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: ['workspaceId'],
+					loadOptionsMethod: 'loadProjectsForWorkspace',
+				},
+				required: true,
+				default: [],
+				description: 'Project to associate with, leaving blank will use the project associated with the task',
+			},
+			{
+				displayName: 'Project Color',
+				name: 'color',
+				type: "string",
+				required: false,
+				default: '#0000FF'
+			},
+			{
+				displayName: "Task",
+				name: 'taskId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: ['projectName'],
+					loadOptionsMethod: 'loadTasksForProject',
+				},
+				required: false,
+				default: [],
+			},
+			{
+				displayName: "Tags",
+				name: 'tagIds',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsDependsOn: ['workspaceId'],
+					loadOptionsMethod: 'loadTagsForWorkspace',
+				},
+				required: false,
+				default: [],
+			},
+			{
+				displayName: 'Start',
+				name: 'start',
+				type: 'string',
+				required: true,
 				default: '',
 			},
 			{
-				displayName: 'Create Project if Missing',
-				name: 'createProject',
+				displayName: 'End',
+				name: 'end',
+				type: 'string',
+				required: true,
+				default: '',
+			},
+			{
+				displayName: 'Billable?',
+				name: 'billable',
 				type: 'boolean',
 				required: true,
 				default: false,
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				required: false,
+				default: ''
 			},
 		]
 	};
 
 	methods = {
 		loadOptions: {
-			async listWorkspaces(this: ILoadOptionsFunctions) : Promise<INodePropertyOptions[]> {
-				const rtv : INodePropertyOptions[] = [];
-				const  workspaces: IWorkspaceDto[] = await clockifyApiRequest.call(this,'GET', 'workspaces');
-				if(undefined !== workspaces) {
+			async listWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const rtv: INodePropertyOptions[] = [];
+				const workspaces: IWorkspaceDto[] = await clockifyApiRequest.call(this, 'GET', 'workspaces');
+				if (undefined !== workspaces) {
 					workspaces.forEach(value => {
 						rtv.push(
 							{
@@ -70,27 +161,164 @@ export class NewClockifyEntry implements INodeType {
 				}
 				return rtv;
 			},
+			async loadUsersForWorkspace(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const rtv: INodePropertyOptions[] = [];
+				const workspaceId = this.getCurrentNodeParameter('workspaceId');
+				if (undefined !== workspaceId) {
+					const resource = `workspaces/${workspaceId}/users`;
+					const users: IUserDto[] = await clockifyApiRequest.call(this, 'GET', resource);
+					if (undefined !== users) {
+						users.forEach(value => {
+							rtv.push(
+								{
+									name: value.name,
+									value: value.id,
+								});
+						});
+					}
+				}
+				return rtv;
+			},
+			async loadClientsForWorkspace(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const rtv: INodePropertyOptions[] = [];
+				const workspaceId = this.getCurrentNodeParameter('workspaceId');
+				if (undefined !== workspaceId) {
+					const resource = `workspaces/${workspaceId}/clients`;
+					const clients: IClientDto[] = await clockifyApiRequest.call(this, 'GET', resource);
+					if (undefined !== clients) {
+						clients.forEach(value => {
+							rtv.push(
+								{
+									name: value.name,
+									value: value.id,
+								});
+						});
+					}
+				}
+				return rtv;
+			},
+			async loadProjectsForWorkspace(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const rtv: INodePropertyOptions[] = [];
+				const workspaceId = this.getCurrentNodeParameter('workspaceId');
+				if (undefined !== workspaceId) {
+					const resource = `workspaces/${workspaceId}/projects`;
+					const users: IProjectDto[] = await clockifyApiRequest.call(this, 'GET', resource);
+					if (undefined !== users) {
+						users.forEach(value => {
+							rtv.push(
+								{
+									name: value.name,
+									value: value.name,
+								});
+						});
+					}
+				}
+				return rtv;
+			},
+			async loadTagsForWorkspace(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const rtv: INodePropertyOptions[] = [];
+				const workspaceId = this.getCurrentNodeParameter('workspaceId');
+				if (undefined !== workspaceId) {
+					const resource = `workspaces/${workspaceId}/tags`;
+					const users: ITagDto[] = await clockifyApiRequest.call(this, 'GET', resource);
+					if (undefined !== users) {
+						users.forEach(value => {
+							rtv.push(
+								{
+									name: value.name,
+									value: value.id,
+								});
+						});
+					}
+				}
+				return rtv;
+			},
+			async loadTasksForProject(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const rtv: INodePropertyOptions[] = [];
+				const workspaceId = this.getCurrentNodeParameter('workspaceId') as number;
+				const projectName = this.getCurrentNodeParameter('projectName') as string;
+				const clientId = this.getCurrentNodeParameter('clientId') as string;
+
+				const project = await findProjectByName.call(this, workspaceId, projectName, clientId);
+				if (undefined !== project) {
+					const resource = `workspaces/${workspaceId}/projects/${(project as IProjectDto).id}/tasks`;
+					const tasks: ITaskDto[] = await clockifyApiRequest.call(this, 'GET', resource);
+					if (undefined !== tasks) {
+						tasks.forEach(value => {
+							rtv.push(
+								{
+									name: value.name,
+									value: value.id,
+								});
+						});
+					}
+				}
+				return rtv;
+			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();
-		console.log(items);
-		let item: INodeExecutionData;
-		let myString: string;
-
+		const timeEntries : INodeExecutionData[] = [];
+		let timeEntryRequest: {} ;
 		// Itterates over all input items and add the key "myString" with the
 		// value the parameter "myString" resolves to.
 		// (This could be a different value for each item in case it contains an expression)
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			myString = this.getNodeParameter('myString', itemIndex, '') as string;
-			item = items[itemIndex];
+			const currWorkspaceId = this.getNodeParameter('workspaceId', itemIndex) as number;
+			const isBillable = this.getNodeParameter('billable', itemIndex) as boolean;
+			const projectName = this.getNodeParameter('projectName', itemIndex) as string;
+			const currClientId = this.getNodeParameter('clientId', itemIndex) as string;
+			let project = await findProjectByName.call(this, currWorkspaceId, projectName, currClientId);
+			if ( project === undefined ||  (project as IProjectDto).id === undefined) {
+				project = {
+					clientName: "",
+					color: this.getNodeParameter('color', itemIndex, '#FFFFFF') as string,
+					duration: "",
+					estimate: undefined,
+					hourlyRate: undefined,
+					id: "",
+					memberships: undefined,
+					name: projectName,
+					public: false,
+					archived: false,
+					billable: isBillable,
+					clientId: currClientId,
+					workspaceId: currWorkspaceId.toString(),
+				};
+				project = await createProject.call(this, project);
+				console.log(`Project Created: ${project}`);
+			}
 
-			item.json['myString'] = myString;
+			const currProjectId = (project as IProjectDto).id;
+
+			timeEntryRequest = {
+				id: '',
+				description: this.getNodeParameter('description', itemIndex) as string,
+				billable: isBillable,
+				projectId: currProjectId,
+				isLocked: false,
+				userId: this.getNodeParameter('userId', itemIndex) as string,
+				workspaceId: this.getNodeParameter('workspaceId', itemIndex) as string,
+				start: this.getNodeParameter('start', itemIndex) as string,
+				end: this.getNodeParameter('end', itemIndex) as string,
+				taskId: this.getNodeParameter('taskId', itemIndex) as string,
+				timeInterval: {
+					start: this.getNodeParameter('start', itemIndex) as string,
+					end: this.getNodeParameter('end', itemIndex) as string,
+				},
+			};
+			// const tagIds = this.getNodeParameter('tagIds', itemIndex, []) as string[];
+			// if (tagIds.length !== 0){
+			// 	timeEntryRequest.tagId = tagIds;
+			// }
+			console.log(timeEntryRequest);
+			const timeEntry : INodeExecutionData = await clockifyApiRequest.call(this, 'POST', `workspaces/${currWorkspaceId}/time-entries`, timeEntryRequest);
+			console.log(timeEntry);
+			timeEntries.push(timeEntry);
 		}
-
-		return this.prepareOutputData(items);
-
+		return this.prepareOutputData(timeEntries);
 	}
 }

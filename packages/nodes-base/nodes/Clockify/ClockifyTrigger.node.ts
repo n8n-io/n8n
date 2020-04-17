@@ -15,7 +15,7 @@ import {
 } from './GenericFunctions';
 
 import { EntryTypeEnum } from './EntryTypeEnum';
-import { ICurrentUserDto } from './UserDtos';
+import { IUserDto } from './UserDtos';
 import { IWorkspaceDto } from './WorkpaceInterfaces';
 
 
@@ -93,7 +93,7 @@ export class ClockifyTrigger implements INodeType {
 
 		if (!webhookData.userId) {
 			// Cache the user-id that we do not have to request it every time
-			const userInfo: ICurrentUserDto = await clockifyApiRequest.call(this, 'GET', 'user');
+			const userInfo: IUserDto = await clockifyApiRequest.call(this, 'GET', 'user');
 			webhookData.userId = userInfo.id;
 		}
 
@@ -120,6 +120,5 @@ export class ClockifyTrigger implements INodeType {
 			result = [this.helpers.returnJsonArray(result)];
 		}
 		return result;
-
 	}
 }

@@ -8,6 +8,8 @@ import {
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
+import {IProjectDto} from "../Clockify/ProjectInterfaces";
+import {clockifyApiRequest} from "../Clockify/GenericFunctions";
 
 export interface IProduct {
 	fields: {
@@ -124,3 +126,4 @@ export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IE
 
 	return returnData;
 }
+
