@@ -4,17 +4,27 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
  } from './GenericFunctions';
+
+ import {
+	contactOperations,
+	contactFields,
+} from './ContactDescription';
+
+ import {
+	companyOperations,
+	companyFields,
+} from './CompanyDescription';
 
 import {
 	dealOperations,
@@ -39,6 +49,10 @@ import {
 	IDeal,
 	IAssociation,
 } from './DealInterface';
+
+import {
+	snakeCase,
+ } from 'change-case';
 
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
@@ -68,6 +82,14 @@ export class Hubspot implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Contact',
+						value: 'contact',
+					},
+					{
+						name: 'Company',
+						value: 'company',
+					},
+					{
 						name: 'Deal',
 						value: 'deal',
 					},
@@ -83,6 +105,12 @@ export class Hubspot implements INodeType {
 				default: 'deal',
 				description: 'Resource to consume.',
 			},
+			// CONTACT
+			...contactOperations,
+			...contactFields,
+			// COMPANY
+			...companyOperations,
+			...companyFields,
 			// DEAL
 			...dealOperations,
 			...dealFields,
@@ -97,6 +125,341 @@ export class Hubspot implements INodeType {
 
 	methods = {
 		loadOptions: {
+			/* -------------------------------------------------------------------------- */
+			/*                                 CONTACT                                    */
+			/* -------------------------------------------------------------------------- */
+
+			// Get all the contact lead statuses to display them to user so that he can
+			// select them easily
+			async getContactLeadStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'hs_lead_status') {
+						for (const option of property.options) {
+							const statusName = option.label;
+							const statusId = option.value;
+							returnData.push({
+								name: statusName,
+								value: statusId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the contact legal basics to display them to user so that he can
+			// select them easily
+			async getContactLealBasics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'hs_legal_basis') {
+						for (const option of property.options) {
+							const statusName = option.label;
+							const statusId = option.value;
+							returnData.push({
+								name: statusName,
+								value: statusId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the contact lifecycle stages to display them to user so that he can
+			// select them easily
+			async getContactLifeCycleStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'lifecyclestage') {
+						for (const option of property.options) {
+							const stageName = option.label;
+							const stageId = option.value;
+							returnData.push({
+								name: stageName,
+								value: stageId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the contact lifecycle stages to display them to user so that he can
+			// select them easily
+			async getContactOriginalSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'hs_analytics_source') {
+						for (const option of property.options) {
+							const sourceName = option.label;
+							const sourceId = option.value;
+							returnData.push({
+								name: sourceName,
+								value: sourceId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the contact preffered languages to display them to user so that he can
+			// select them easily
+			async getContactPrefferedLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'hs_language') {
+						for (const option of property.options) {
+							const languageName = option.label;
+							const languageId = option.value;
+							returnData.push({
+								name: languageName,
+								value: languageId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the contact preffered languages to display them to user so that he can
+			// select them easily
+			async getContactStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'hs_content_membership_status') {
+						for (const option of property.options) {
+							const languageName = option.label;
+							const languageId = option.value;
+							returnData.push({
+								name: languageName,
+								value: languageId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the contact properties to display them to user so that he can
+			// select them easily
+			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
+					returnData.push({
+						name: propertyName,
+						value: propertyId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the contact number of employees options to display them to user so that he can
+			// select them easily
+			async getContactNumberOfEmployees(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'numemployees') {
+						for (const option of property.options) {
+							const optionName = option.label;
+							const optionId = option.value;
+							returnData.push({
+								name: optionName,
+								value: optionId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			/* -------------------------------------------------------------------------- */
+			/*                                 COMPANY                                    */
+			/* -------------------------------------------------------------------------- */
+
+			// Get all the company industries to display them to user so that he can
+			// select them easily
+			async getCompanyIndustries(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'industry') {
+						for (const option of property.options) {
+							const industryName = option.label;
+							const industryId = option.value;
+							returnData.push({
+								name: industryName,
+								value: industryId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the company lead statuses to display them to user so that he can
+			// select them easily
+			async getCompanyleadStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'hs_lead_status') {
+						for (const option of property.options) {
+							const statusName = option.label;
+							const statusId = option.value;
+							returnData.push({
+								name: statusName,
+								value: statusId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the company lifecycle stages to display them to user so that he can
+			// select them easily
+			async getCompanylifecycleStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'lifecyclestage') {
+						for (const option of property.options) {
+							const stageName = option.label;
+							const stageId = option.value;
+							returnData.push({
+								name: stageName,
+								value: stageId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the company types stages to display them to user so that he can
+			// select them easily
+			async getCompanyTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'type') {
+						for (const option of property.options) {
+							const typeName = option.label;
+							const typeId = option.value;
+							returnData.push({
+								name: typeName,
+								value: typeId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the company types stages to display them to user so that he can
+			// select them easily
+			async getCompanyTargetAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'hs_target_account') {
+						for (const option of property.options) {
+							const targetName = option.label;
+							const targetId = option.value;
+							returnData.push({
+								name: targetName,
+								value: targetId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the company source types stages to display them to user so that he can
+			// select them easily
+			async getCompanySourceTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'hs_analytics_source') {
+						for (const option of property.options) {
+							const typeName = option.label;
+							const typeId = option.value;
+							returnData.push({
+								name: typeName,
+								value: typeId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the company web technologies stages to display them to user so that he can
+			// select them easily
+			async getCompanyWebTechnologies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.name === 'web_technologies') {
+						for (const option of property.options) {
+							const technologyName = option.label;
+							const technologyId = option.value;
+							returnData.push({
+								name: technologyName,
+								value: technologyId,
+							});
+						}
+					}
+				}
+				return returnData;
+			},
+
+			// Get all the company properties to display them to user so that he can
+			// select them easily
+			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/companies/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
+					returnData.push({
+						name: propertyName,
+						value: propertyId,
+					});
+				}
+				return returnData;
+			},
 			/* -------------------------------------------------------------------------- */
 			/*                                 DEAL                                       */
 			/* -------------------------------------------------------------------------- */
@@ -118,6 +481,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
+
 			// Get all the deal types to display them to user so that he can
 			// select them easily
 			async getDealTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -155,6 +519,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
+
 			// Get all the subscription types to display them to user so that he can
 			// select them easily
 			async getSubscriptionTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -196,6 +561,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
 			},
+
 			// Get all the ticket pipelines to display them to user so that he can
 			// select them easily
 			async getTicketPipelines(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -212,6 +578,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
+
 			// Get all the ticket resolutions to display them to user so that he can
 			// select them easily
 			async getTicketPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -232,6 +599,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
+
 			// Get all the ticket properties to display them to user so that he can
 			// select them easily
 			async getTicketProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -248,6 +616,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
+
 			// Get all the ticket resolutions to display them to user so that he can
 			// select them easily
 			async getTicketResolutions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -268,6 +637,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
 			},
+
 			// Get all the ticket sources to display them to user so that he can
 			// select them easily
 			async getTicketSources(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -288,6 +658,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
 			},
+
 			// Get all the ticket stages to display them to user so that he can
 			// select them easily
 			async getTicketStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -330,6 +701,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
+
 			// Get all the companies to display them to user so that he can
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -340,7 +712,7 @@ export class Hubspot implements INodeType {
 				const endpoint = '/companies/v2/companies/paged';
 				const companies = await hubspotApiRequestAllItems.call(this, 'companies', 'GET', endpoint, {}, qs);
 				for (const company of companies) {
-					const companyName = company.properties.name.value;
+					const companyName = (company.properties.name) ? company.properties.name.value : company.companyId;
 					const companyId = company.companyId;
 					returnData.push({
 						name: companyName,
@@ -349,6 +721,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
 			},
+
 			// Get all the companies to display them to user so that he can
 			// select them easily
 			async getContacts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -365,6 +738,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData.sort((a, b) => a.name < b.name ? 0 : 1);
 			},
+
 		},
 	};
 
@@ -377,6 +751,891 @@ export class Hubspot implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			//https://developers.hubspot.com/docs/methods/contacts/create_or_update
+			if (resource === 'contact') {
+				//https://developers.hubspot.com/docs/methods/companies/create_company
+				if (operation === 'upsert') {
+					const email = this.getNodeParameter('email', i) as string;
+					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject[] = [];
+					if (additionalFields.annualRevenue) {
+						body.push({
+							property: 'annualrevenue',
+							value: (additionalFields.annualRevenue as number).toString(),
+						});
+					}
+					if (additionalFields.city) {
+						body.push({
+							property: 'city',
+							value: additionalFields.city,
+						});
+					}
+					if (additionalFields.clickedFacebookAd) {
+						body.push({
+							property: 'hs_facebook_ad_clicked',
+							value: additionalFields.clickedFacebookAd,
+						});
+					}
+					if (additionalFields.closeDate) {
+						body.push({
+							property: 'closedate',
+							value: new Date(additionalFields.closeDate as string).getTime(),
+						});
+					}
+					if (additionalFields.companyName) {
+						body.push({
+							property: 'company',
+							value: additionalFields.companyName,
+						});
+					}
+					if (additionalFields.companySize) {
+						body.push({
+							property: 'company_size',
+							value: additionalFields.companySize,
+						});
+					}
+					if (additionalFields.description) {
+						body.push({
+							property: 'description',
+							value: additionalFields.description,
+						});
+					}
+					if (additionalFields.contactOwner) {
+						body.push({
+							property: 'hubspot_owner_id',
+							value: additionalFields.contactOwner,
+						});
+					}
+					if (additionalFields.country) {
+						body.push({
+							property: 'country',
+							value: additionalFields.country,
+						});
+					}
+					if (additionalFields.dateOfBirth) {
+						body.push({
+							property: 'date_of_birth',
+							value: additionalFields.dateOfBirth,
+						});
+					}
+					if (additionalFields.degree) {
+						body.push({
+							property: 'degree',
+							value: additionalFields.degree,
+						});
+					}
+					if (additionalFields.facebookClickId) {
+						body.push({
+							property: 'hs_facebook_click_id',
+							value: additionalFields.facebookClickId,
+						});
+					}
+					if (additionalFields.faxNumber) {
+						body.push({
+							property: 'fax',
+							value: additionalFields.faxNumber,
+						});
+					}
+					if (additionalFields.fieldOfStudy) {
+						body.push({
+							property: 'field_of_study',
+							value: additionalFields.fieldOfStudy,
+						});
+					}
+					if (additionalFields.firstName) {
+						body.push({
+							property: 'firstname',
+							value: additionalFields.firstName,
+						});
+					}
+					if (additionalFields.gender) {
+						body.push({
+							property: 'gender',
+							value: additionalFields.gender,
+						});
+					}
+					if (additionalFields.googleAdClickId) {
+						body.push({
+							property: 'hs_google_click_id',
+							value: additionalFields.googleAdClickId,
+						});
+					}
+					if (additionalFields.graduationDate) {
+						body.push({
+							property: 'graduation_date',
+							value: additionalFields.graduationDate,
+						});
+					}
+					if (additionalFields.industry) {
+						body.push({
+							property: 'industry',
+							value: additionalFields.industry,
+						});
+					}
+					if (additionalFields.jobFunction) {
+						body.push({
+							property: 'job_function',
+							value: additionalFields.jobFunction,
+						});
+					}
+					if (additionalFields.jobTitle) {
+						body.push({
+							property: 'jobtitle',
+							value: additionalFields.jobTitle,
+						});
+					}
+					if (additionalFields.lastName) {
+						body.push({
+							property: 'lastname',
+							value: additionalFields.lastName,
+						});
+					}
+					if (additionalFields.leadStatus) {
+						body.push({
+							property: 'hs_lead_status',
+							value: additionalFields.leadStatus,
+						});
+					}
+					if (additionalFields.processingContactData) {
+						body.push({
+							property: 'hs_legal_basis',
+							value: additionalFields.processingContactData,
+						});
+					}
+					if (additionalFields.lifeCycleStage) {
+						body.push({
+							property: 'lifecyclestage',
+							value: additionalFields.lifeCycleStage,
+						});
+					}
+					if (additionalFields.maritalStatus) {
+						body.push({
+							property: 'marital_status',
+							value: additionalFields.maritalStatus,
+						});
+					}
+					if (additionalFields.membershipNote) {
+						body.push({
+							property: 'hs_content_membership_notes',
+							value: additionalFields.membershipNote,
+						});
+					}
+					if (additionalFields.message) {
+						body.push({
+							property: 'message',
+							value: additionalFields.message,
+						});
+					}
+					if (additionalFields.mobilePhoneNumber) {
+						body.push({
+							property: 'mobilephone',
+							value: additionalFields.mobilePhoneNumber,
+						});
+					}
+					if (additionalFields.numberOfEmployees) {
+						body.push({
+							property: 'numemployees',
+							value: additionalFields.numberOfEmployees,
+						});
+					}
+					if (additionalFields.originalSource) {
+						body.push({
+							property: 'hs_analytics_source',
+							value: additionalFields.originalSource,
+						});
+					}
+					if (additionalFields.phoneNumber) {
+						body.push({
+							property: 'phone',
+							value: additionalFields.phoneNumber,
+						});
+					}
+					if (additionalFields.postalCode) {
+						body.push({
+							property: 'zip',
+							value: additionalFields.postalCode,
+						});
+					}
+					if (additionalFields.prefferedLanguage) {
+						body.push({
+							property: 'hs_language',
+							value: additionalFields.prefferedLanguage,
+						});
+					}
+					if (additionalFields.relationshipStatus) {
+						body.push({
+							property: 'relationship_status',
+							value: additionalFields.relationshipStatus,
+						});
+					}
+					if (additionalFields.salutation) {
+						body.push({
+							property: 'salutation',
+							value: additionalFields.salutation,
+						});
+					}
+					if (additionalFields.school) {
+						body.push({
+							property: 'school',
+							value: additionalFields.school,
+						});
+					}
+					if (additionalFields.seniority) {
+						body.push({
+							property: 'seniority',
+							value: additionalFields.seniority,
+						});
+					}
+					if (additionalFields.startDate) {
+						body.push({
+							property: 'start_date',
+							value: additionalFields.startDate,
+						});
+					}
+					if (additionalFields.stateRegion) {
+						body.push({
+							property: 'state',
+							value: additionalFields.stateRegion,
+						});
+					}
+					if (additionalFields.status) {
+						body.push({
+							property: 'hs_content_membership_status',
+							value: additionalFields.status,
+						});
+					}
+					if (additionalFields.streetAddress) {
+						body.push({
+							property: 'address',
+							value: additionalFields.streetAddress,
+						});
+					}
+					if (additionalFields.twitterUsername) {
+						body.push({
+							property: 'twitterhandle',
+							value: additionalFields.twitterUsername,
+						});
+					}
+					if (additionalFields.websiteUrl) {
+						body.push({
+							property: 'website',
+							value: additionalFields.websiteUrl,
+						});
+					}
+					if (additionalFields.workEmail) {
+						body.push({
+							property: 'work_email',
+							value: additionalFields.workEmail,
+						});
+					}
+					const endpoint = `/contacts/v1/contact/createOrUpdate/email/${email}`;
+					responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties: body });
+
+					if (additionalFields.associatedCompanyId) {
+						const companyAssociations: IDataObject[] = [];
+							companyAssociations.push({
+								fromObjectId: responseData.vid,
+								toObjectId: additionalFields.associatedCompanyId,
+								category: 'HUBSPOT_DEFINED',
+								definitionId: 1,
+							});
+						await hubspotApiRequest.call(this, 'PUT', '/crm-associations/v1/associations/create-batch', companyAssociations);
+					}
+
+					if (resolveData) {
+						const isNew = responseData.isNew;
+						const qs: IDataObject = {};
+						if (additionalFields.properties) {
+							qs.property = additionalFields.properties as string[];
+						}
+						responseData = await hubspotApiRequest.call(this, 'GET', `/contacts/v1/contact/vid/${responseData.vid}/profile`, {}, qs);
+						responseData.isNew = isNew;
+					}
+				}
+				//https://developers.hubspot.com/docs/methods/contacts/get_contact
+				if (operation === 'get') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (additionalFields.formSubmissionMode) {
+						qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
+					}
+					if (additionalFields.listMerberships) {
+						qs.showListMemberships = additionalFields.listMerberships as boolean;
+					}
+					if (additionalFields.properties) {
+						qs.property = additionalFields.properties as string[];
+					}
+					if (additionalFields.propertyMode) {
+						qs.propertyMode = snakeCase(additionalFields.propertyMode as string);
+					}
+					const endpoint = `/contacts/v1/contact/vid/${contactId}/profile`;
+					responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+				}
+				//https://developers.hubspot.com/docs/methods/contacts/get_contacts
+				if (operation === 'getAll') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					if (additionalFields.formSubmissionMode) {
+						qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
+					}
+					if (additionalFields.listMerberships) {
+						qs.showListMemberships = additionalFields.listMerberships as boolean;
+					}
+					if (additionalFields.properties) {
+						qs.property = additionalFields.properties as string[];
+					}
+					if (additionalFields.propertyMode) {
+						qs.propertyMode = snakeCase(additionalFields.propertyMode as string);
+					}
+					const endpoint = '/contacts/v1/lists/all/contacts/all';
+					if (returnAll) {
+						responseData = await hubspotApiRequestAllItems.call(this, 'contacts', 'GET', endpoint, {}, qs);
+					} else {
+						qs.count = this.getNodeParameter('limit', 0) as number;
+						responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.contacts;
+					}
+				}
+				//https://developers.hubspot.com/docs/methods/contacts/get_recently_created_contacts
+				if (operation === 'getRecentlyCreatedUpdated') {
+					let endpoint;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					if (filters.formSubmissionMode) {
+						qs.formSubmissionMode = filters.formSubmissionMode as string;
+					}
+					if (filters.listMerberships) {
+						qs.showListMemberships = filters.listMerberships as boolean;
+					}
+					if (filters.properties) {
+						qs.property = filters.properties as string[];
+					}
+					if (filters.propertyMode) {
+						qs.propertyMode = snakeCase(filters.propertyMode as string);
+					}
+
+					endpoint = '/contacts/v1/lists/recently_updated/contacts/recent';
+
+					if (returnAll) {
+						responseData = await hubspotApiRequestAllItems.call(this, 'contacts', 'GET', endpoint, {}, qs);
+					} else {
+						qs.count = this.getNodeParameter('limit', 0) as number;
+						responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.contacts;
+					}
+				}
+				//https://developers.hubspot.com/docs/methods/contacts/delete_contact
+				if (operation === 'delete') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const endpoint = `/contacts/v1/contact/vid/${contactId}`;
+					responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+				}
+			}
+			//https://developers.hubspot.com/docs/methods/companies/companies-overview
+			if (resource === 'company') {
+				//https://developers.hubspot.com/docs/methods/companies/create_company
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject[] = [];
+					body.push({
+						name: 'name',
+						value: name,
+					});
+					if (additionalFields.aboutUs) {
+						body.push({
+							name: 'about_us',
+							value: additionalFields.aboutUs,
+						});
+					}
+					if (additionalFields.annualRevenue) {
+						body.push({
+							name: 'annualrevenue',
+							value: (additionalFields.annualRevenue as number).toString(),
+						});
+					}
+					if (additionalFields.city) {
+						body.push({
+							name: 'city',
+							value: additionalFields.city,
+						});
+					}
+					if (additionalFields.closeDate) {
+						body.push({
+							name: 'closedate',
+							value: new Date(additionalFields.closeDate as string).getTime(),
+						});
+					}
+					if (additionalFields.companyDomainName) {
+						body.push({
+							name: 'domain',
+							value: additionalFields.companyDomainName,
+						});
+					}
+					if (additionalFields.companyOwner) {
+						body.push({
+							name: 'hubspot_owner_id',
+							value: additionalFields.companyOwner,
+						});
+					}
+					if (additionalFields.countryRegion) {
+						body.push({
+							name: 'country',
+							value: additionalFields.countryRegion,
+						});
+					}
+					if (additionalFields.description) {
+						body.push({
+							name: 'description',
+							value: additionalFields.description,
+						});
+					}
+					if (additionalFields.facebookFans) {
+						body.push({
+							name: 'facebookfans',
+							value: additionalFields.facebookFans,
+						});
+					}
+					if (additionalFields.googlePlusPage) {
+						body.push({
+							name: 'googleplus_page',
+							value: additionalFields.googlePlusPage,
+						});
+					}
+					if (additionalFields.industry) {
+						body.push({
+							name: 'industry',
+							value: additionalFields.industry,
+						});
+					}
+					if (additionalFields.isPublic) {
+						body.push({
+							name: 'is_public',
+							value: additionalFields.isPublic,
+						});
+					}
+					if (additionalFields.leadStatus) {
+						body.push({
+							name: 'hs_lead_status',
+							value: additionalFields.leadStatus,
+						});
+					}
+					if (additionalFields.lifecycleStatus) {
+						body.push({
+							name: 'lifecyclestage',
+							value: additionalFields.lifecycleStatus,
+						});
+					}
+					if (additionalFields.linkedinBio) {
+						body.push({
+							name: 'linkedinbio',
+							value: additionalFields.linkedinBio,
+						});
+					}
+					if (additionalFields.linkedInCompanyPage) {
+						body.push({
+							name: 'linkedin_company_page',
+							value: additionalFields.linkedInCompanyPage,
+						});
+					}
+					if (additionalFields.numberOfEmployees) {
+						body.push({
+							name: 'numberofemployees',
+							value: additionalFields.numberOfEmployees,
+						});
+					}
+					if (additionalFields.originalSourceType) {
+						body.push({
+							name: 'hs_analytics_source',
+							value: additionalFields.originalSourceType,
+						});
+					}
+					if (additionalFields.phoneNumber) {
+						body.push({
+							name: 'phone',
+							value: additionalFields.phoneNumber,
+						});
+					}
+					if (additionalFields.postalCode) {
+						body.push({
+							name: 'zip',
+							value: additionalFields.postalCode,
+						});
+					}
+					if (additionalFields.stateRegion) {
+						body.push({
+							name: 'state',
+							value: additionalFields.stateRegion,
+						});
+					}
+					if (additionalFields.streetAddress) {
+						body.push({
+							name: 'address',
+							value: additionalFields.streetAddress,
+						});
+					}
+					if (additionalFields.streetAddress2) {
+						body.push({
+							name: 'address2',
+							value: additionalFields.streetAddress2,
+						});
+					}
+					if (additionalFields.targetAccount) {
+						body.push({
+							name: 'hs_target_account',
+							value: additionalFields.targetAccount,
+						});
+					}
+					if (additionalFields.timezone) {
+						body.push({
+							name: 'timezone',
+							value: additionalFields.timezone,
+						});
+					}
+					if (additionalFields.totalMoneyRaised) {
+						body.push({
+							name: 'total_money_raised',
+							value: additionalFields.totalMoneyRaised,
+						});
+					}
+					if (additionalFields.twitterBio) {
+						body.push({
+							name: 'twitterbio',
+							value: additionalFields.twitterBio,
+						});
+					}
+					if (additionalFields.twitterFollowers) {
+						body.push({
+							name: 'twitterfollowers',
+							value: additionalFields.twitterFollowers,
+						});
+					}
+					if (additionalFields.twitterHandle) {
+						body.push({
+							name: 'twitterhandle',
+							value: additionalFields.twitterHandle,
+						});
+					}
+					if (additionalFields.type) {
+						body.push({
+							name: 'type',
+							value: additionalFields.type,
+						});
+					}
+					if (additionalFields.websiteUrl) {
+						body.push({
+							name: 'website',
+							value: additionalFields.websiteUrl,
+						});
+					}
+					if (additionalFields.webTechnologies) {
+						body.push({
+							name: 'web_technologies',
+							value: additionalFields.webTechnologies,
+						});
+					}
+					if (additionalFields.yearFounded) {
+						body.push({
+							name: 'founded_year',
+							value: additionalFields.yearFounded,
+						});
+					}
+					const endpoint = '/companies/v2/companies';
+					responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties: body });
+				}
+				//https://developers.hubspot.com/docs/methods/companies/update_company
+				if (operation === 'update') {
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IDataObject[] = [];
+					if (updateFields.name) {
+						body.push({
+							name: 'name',
+							value: updateFields.name,
+						});
+					}
+					if (updateFields.aboutUs) {
+						body.push({
+							name: 'about_us',
+							value: updateFields.aboutUs,
+						});
+					}
+					if (updateFields.annualRevenue) {
+						body.push({
+							name: 'annualrevenue',
+							value: (updateFields.annualRevenue as number).toString(),
+						});
+					}
+					if (updateFields.city) {
+						body.push({
+							name: 'city',
+							value: updateFields.city,
+						});
+					}
+					if (updateFields.closeDate) {
+						body.push({
+							name: 'closedate',
+							value: new Date(updateFields.closeDate as string).getTime(),
+						});
+					}
+					if (updateFields.companyDomainName) {
+						body.push({
+							name: 'domain',
+							value: updateFields.companyDomainName,
+						});
+					}
+					if (updateFields.companyOwner) {
+						body.push({
+							name: 'hubspot_owner_id',
+							value: updateFields.companyOwner,
+						});
+					}
+					if (updateFields.countryRegion) {
+						body.push({
+							name: 'country',
+							value: updateFields.countryRegion,
+						});
+					}
+					if (updateFields.description) {
+						body.push({
+							name: 'description',
+							value: updateFields.description,
+						});
+					}
+					if (updateFields.facebookFans) {
+						body.push({
+							name: 'facebookfans',
+							value: updateFields.facebookFans,
+						});
+					}
+					if (updateFields.googlePlusPage) {
+						body.push({
+							name: 'googleplus_page',
+							value: updateFields.googlePlusPage,
+						});
+					}
+					if (updateFields.industry) {
+						body.push({
+							name: 'industry',
+							value: updateFields.industry,
+						});
+					}
+					if (updateFields.isPublic) {
+						body.push({
+							name: 'is_public',
+							value: updateFields.isPublic,
+						});
+					}
+					if (updateFields.leadStatus) {
+						body.push({
+							name: 'hs_lead_status',
+							value: updateFields.leadStatus,
+						});
+					}
+					if (updateFields.lifecycleStatus) {
+						body.push({
+							name: 'lifecyclestage',
+							value: updateFields.lifecycleStatus,
+						});
+					}
+					if (updateFields.linkedinBio) {
+						body.push({
+							name: 'linkedinbio',
+							value: updateFields.linkedinBio,
+						});
+					}
+					if (updateFields.linkedInCompanyPage) {
+						body.push({
+							name: 'linkedin_company_page',
+							value: updateFields.linkedInCompanyPage,
+						});
+					}
+					if (updateFields.numberOfEmployees) {
+						body.push({
+							name: 'numberofemployees',
+							value: updateFields.numberOfEmployees,
+						});
+					}
+					if (updateFields.originalSourceType) {
+						body.push({
+							name: 'hs_analytics_source',
+							value: updateFields.originalSourceType,
+						});
+					}
+					if (updateFields.phoneNumber) {
+						body.push({
+							name: 'phone',
+							value: updateFields.phoneNumber,
+						});
+					}
+					if (updateFields.postalCode) {
+						body.push({
+							name: 'zip',
+							value: updateFields.postalCode,
+						});
+					}
+					if (updateFields.stateRegion) {
+						body.push({
+							name: 'state',
+							value: updateFields.stateRegion,
+						});
+					}
+					if (updateFields.streetAddress) {
+						body.push({
+							name: 'address',
+							value: updateFields.streetAddress,
+						});
+					}
+					if (updateFields.streetAddress2) {
+						body.push({
+							name: 'address2',
+							value: updateFields.streetAddress2,
+						});
+					}
+					if (updateFields.targetAccount) {
+						body.push({
+							name: 'hs_target_account',
+							value: updateFields.targetAccount,
+						});
+					}
+					if (updateFields.timezone) {
+						body.push({
+							name: 'timezone',
+							value: updateFields.timezone,
+						});
+					}
+					if (updateFields.totalMoneyRaised) {
+						body.push({
+							name: 'total_money_raised',
+							value: updateFields.totalMoneyRaised,
+						});
+					}
+					if (updateFields.twitterBio) {
+						body.push({
+							name: 'twitterbio',
+							value: updateFields.twitterBio,
+						});
+					}
+					if (updateFields.twitterFollowers) {
+						body.push({
+							name: 'twitterfollowers',
+							value: updateFields.twitterFollowers,
+						});
+					}
+					if (updateFields.twitterHandle) {
+						body.push({
+							name: 'twitterhandle',
+							value: updateFields.twitterHandle,
+						});
+					}
+					if (updateFields.type) {
+						body.push({
+							name: 'type',
+							value: updateFields.type,
+						});
+					}
+					if (updateFields.websiteUrl) {
+						body.push({
+							name: 'website',
+							value: updateFields.websiteUrl,
+						});
+					}
+					if (updateFields.webTechnologies) {
+						body.push({
+							name: 'web_technologies',
+							value: updateFields.webTechnologies,
+						});
+					}
+					if (updateFields.yearFounded) {
+						body.push({
+							name: 'founded_year',
+							value: updateFields.yearFounded,
+						});
+					}
+					const endpoint = `/companies/v2/companies/${companyId}`;
+					responseData = await hubspotApiRequest.call(this, 'PUT', endpoint, { properties: body });
+				}
+				//https://developers.hubspot.com/docs/methods/companies/get_company
+				if (operation === 'get') {
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (additionalFields.includeMergeAudits) {
+						qs.includeMergeAudits = additionalFields.includeMergeAudits as boolean;
+					}
+					const endpoint = `/companies/v2/companies/${companyId}`;
+					responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+				}
+				//https://developers.hubspot.com/docs/methods/companies/get-all-companies
+				if (operation === 'getAll') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					if (options.includeMergeAudits) {
+						qs.includeMergeAudits = options.includeMergeAudits as boolean;
+					}
+					if (options.properties) {
+						qs.properties = options.properties as string[];
+					}
+					if (options.propertiesWithHistory) {
+						qs.propertiesWithHistory = (options.propertiesWithHistory as string).split(',');
+					}
+					const endpoint = `/companies/v2/companies/paged`;
+					if (returnAll) {
+						responseData = await hubspotApiRequestAllItems.call(this, 'companies', 'GET', endpoint, {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', 0) as number;
+						responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.companies;
+					}
+				}
+				//https://developers.hubspot.com/docs/methods/companies/get_companies_modified
+				if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
+					let endpoint;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					if (operation === 'getRecentlyCreated') {
+						endpoint = `/companies/v2/companies/recent/created`;
+					} else {
+						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						if (filters.since) {
+							qs.since = new Date(filters.since as string).getTime();
+						}
+						endpoint = `/companies/v2/companies/recent/modified`;
+					}
+					if (returnAll) {
+						responseData = await hubspotApiRequestAllItems.call(this, 'results', 'GET', endpoint, {}, qs);
+					} else {
+						qs.count = this.getNodeParameter('limit', 0) as number;
+						responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.results;
+					}
+				}
+				//https://developers.hubspot.com/docs/methods/companies/search_companies_by_domain
+				if (operation === 'searchByDomain') {
+					const domain = this.getNodeParameter('domain', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const body: IDataObject = {
+						requestOptions: {},
+					};
+					if (options.properties) {
+						body.requestOptions  = { properties: options.properties as string[] };
+					}
+					const endpoint = `/companies/v2/domains/${domain}/companies`;
+					if (returnAll) {
+						responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body);
+					} else {
+						body.limit = this.getNodeParameter('limit', 0) as number;
+						responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
+						responseData = responseData.results;
+					}
+				}
+				//https://developers.hubspot.com/docs/methods/companies/delete_company
+				if (operation === 'delete') {
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					const endpoint = `/companies/v2/companies/${companyId}`;
+					responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+				}
+			}
 			//https://developers.hubspot.com/docs/methods/deals/deals_overview
 			if (resource === 'deal') {
 				if (operation === 'create') {
@@ -386,7 +1645,6 @@ export class Hubspot implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const stage = this.getNodeParameter('stage', i) as string;
 					if (stage) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'dealstage',
 							value: stage
@@ -399,35 +1657,30 @@ export class Hubspot implements INodeType {
 						association.associatedVids = additionalFields.associatedVids as number[];
 					}
 					if (additionalFields.dealName) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'dealname',
 							value: additionalFields.dealName as string
 						});
 					}
 					if (additionalFields.closeDate) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'closedate',
 							value: new Date(additionalFields.closeDate as string).getTime()
 						});
 					}
 					if (additionalFields.amount) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'amount',
 							value: additionalFields.amount as string
 						});
 					}
 					if (additionalFields.dealType) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'dealtype',
 							value: additionalFields.dealType as string
 						});
 					}
 					if (additionalFields.pipeline) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'pipeline',
 							value: additionalFields.pipeline as string
@@ -449,35 +1702,30 @@ export class Hubspot implements INodeType {
 						});
 					}
 					if (updateFields.dealName) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'dealname',
 							value: updateFields.dealName as string
 						});
 					}
 					if (updateFields.closeDate) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'closedate',
 							value: new Date(updateFields.closeDate as string).getTime()
 						});
 					}
 					if (updateFields.amount) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'amount',
 							value: updateFields.amount as string
 						});
 					}
 					if (updateFields.dealType) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'dealtype',
 							value: updateFields.dealType as string
 						});
 					}
 					if (updateFields.pipeline) {
-						// @ts-ignore
 						body.properties.push({
 							name: 'pipeline',
 							value: updateFields.pipeline as string
@@ -502,12 +1750,10 @@ export class Hubspot implements INodeType {
 						qs.includeAssociations = filters.includeAssociations as boolean;
 					}
 					if (filters.properties) {
-						// @ts-ignore
-						qs.properties = filters.properties.split(',');
+						qs.properties = (filters.properties as string).split(',');
 					}
 					if (filters.propertiesWithHistory) {
-						// @ts-ignore
-						qs.propertiesWithHistory = filters.propertiesWithHistory.split(',');
+						qs.propertiesWithHistory = (filters.propertiesWithHistory as string).split(',');
 					}
 					const endpoint = `/deals/v1/deal/paged`;
 					if (returnAll) {
