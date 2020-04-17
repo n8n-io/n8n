@@ -7,19 +7,19 @@
 
 You can request new integrations to be added to our forum. There is a special section for that where
 other users can also upvote it so that we know which integrations are important and should be
-created next. [Feature Request](https://community.n8n.io/c/feature-requests/nodes)
+created next. Request a new feature [here](https://community.n8n.io/c/feature-requests/nodes).
 
 
 ### An integration exists already but a feature is missing. Can you add it?
 
 Adding new functionality to an existing integration is normally not that complicated. So the chance is
 high that we can do that quite fast. Post your feature request in the forum and we'll see
-what we can do. [Feature Request](https://community.n8n.io/c/feature-requests/nodes)
+what we can do. Request a new feature [here](https://community.n8n.io/c/feature-requests/nodes).
 
 
 ### How can I create an integration myself?
 
-Information about that can be found in the [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md)
+Information about that can be found in the [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md).
 
 
 ## License
@@ -32,28 +32,16 @@ n8n is [fair-code](http://faircode.io) licensed under [Apache 2.0 with Commons C
 
 ### Is n8n open-source?
 
-No, according to the definition of the [Open Source Initiative (OSI)](https://opensource.org/osd),
-n8n is not open-source. The reason is that the [Commons Clause](https://commonsclause.com) which takes away some rights got attached to the Apache 2.0 license.
-The source code is however open and people and companies can use it for free.
-What is however not allowed is to make money directly with n8n. So you can, for example, not charge
-other people to host or support n8n.
+No. The [Commons Clause](https://commonsclause.com) that is attached to the Apache 2.0 license takes away some rights. Hence, according to the definition of the [Open Source Initiative (OSI)](https://opensource.org/osd), n8n is not open-source. Nonetheless, the source code is open and everyone (individuals and companies) can use it for free. However, it is not allowed to make money directly with n8n. 
 
-The support part is mainly there because it was already in the license and I am not a lawyer. So to make it simpler, I hereby grant anybody the right to do consulting/support without prior permission as long as it is less than 30,000 USD ($30k) per year.
-
-If you have bigger things planned, simply write an email to [license@n8n.io](mailto:license@n8n.io).
+For instance, one cannot charge others to host or support n8n. However, to make things simpler, we grant everyone (individuals and companies) the right to offer consulting or support without prior permission as long as it is less than 30,000 USD ($30k) per annum. 
+If your revenue from services based on n8n is greater than $30k per annum, we'd invite you to become a partner and apply for a license. If you have any questions about this, feel free to reach out to us at [license@n8n.io](mailto:license@n8n.io).
 
 
 ### Why is n8n not open-source but [fair-code](http://faircode.io) licensed instead?
 
-I love open-source and the idea that everybody can use and extend what I wrote, for free. But as much
-as money cannot buy you love, love can sadly literally not buy you anything. Especially it does not pay for rent, food, health insurance, and so on.
-And even though people can theoretically contribute to a project are the main drivers which push a project
-forward the most time very few and normally the creators or the company behind the project. So to make sure that the project improves and stays alive long term did the Commons Clause get attached. That makes sure that no other person/company can make money directly with n8n. Especially not in the way it is planned
-to finance further development. For 99.99% of the people it will not make any difference at all but at
-the same time it protects the project.
+We love open-source and the idea that everybody can freely use and extend what we wrote. Our community is at the heart of everything that we do and we understand that people who contribute to a project are the main drivers that push a project forward. So to make sure that the project continues to evolve and stay alive in the longer run, we decided to attach the Commons Clause. This ensures that no other person or company can make money directly with n8n. Especially if it competes with how we plan to finance our further development. For the greater majority of the people, it will not make any difference at all. At the same time, it protects the project.
 
-As n8n itself depends on and uses a lot of other open-source projects it is only fair and in our interest
-to also help them. So it is planed to contribute a certain percentage of revenue/profit every month to these
-projects. How much exactly is not decided yet.
+As n8n itself depends on and uses a lot of other open-source projects, it is only fair that we support them back. That is why we have planned to contribute a certain percentage of revenue/profit every month to these projects. 
 
-Started already with the first very small monthly contributions via [Open Collective](https://opencollective.com/n8n). It is not much yet as revenue is zero and profit in minus but it is at least a start. I hope to be able to ramp that up substantially over time.
+We have already started with the first monthly contributions via [Open Collective](https://opencollective.com/n8n). It is not much yet, but we hope to be able to ramp that up substantially over time.
