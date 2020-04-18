@@ -1,0 +1,94 @@
+import { IExecuteFunctions } from 'n8n-core';
+import {
+	INodeExecutionData,
+	INodeType,
+    INodeTypeDescription,
+    IDataObject
+} from 'n8n-workflow';
+
+import {
+	contactOperations,
+	contactFields
+} from './ContactDescription';
+import { agileCrmApiRequest } from './GenericFunctions';
+
+
+export class AgileCrm implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'AgileCRM',
+        name: 'agileCrm',
+        icon: 'file:agilecrm.png',
+		group: ['transform'],
+		version: 1,
+		description: 'Consume AgileCRM API',
+		defaults: {
+			name: 'AgileCRM',
+			color: '#772244',
+		},
+		inputs: ['main'],
+        outputs: ['main'],
+        credentials: [
+			{
+				name: 'agileCrmApi',
+				required: true,
+			}
+		],
+		properties: [
+			// Node properties which the user gets displayed and
+			// can change on the node.
+			{
+				displayName: 'Resource',
+				name: 'resource',
+                type: 'options',
+                options: [
+                    {
+                        name: 'Contact',
+                        value: 'contact'
+                    }
+                ],
+				default: 'contact',
+				description: 'Resource to consume.',
+			},
+			// CONTACT
+			...contactOperations,
+			...contactFields,
+		],
+
+	};
+
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+
+		const items = this.getInputData();
+		const returnData: IDataObject[] = [];
+		const length = items.length as unknown as number;
+		let responseData;
+		const qs: IDataObject = {};
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
+		for (let i = 0; i < length; i++) {
+
+			if(resource === 'contact'){
+
+				if(operation === 'get'){
+					const contactId = this.getNodeParameter('contactId', i) as string;
+
+					const endpoint = `api/contacts/${contactId}`;
+					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint);
+		
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				} else {
+					returnData.push(responseData as IDataObject);
+				}
+			}
+				
+		}
+
+		return [this.helpers.returnJsonArray(returnData)];
+	}
+	
+}
