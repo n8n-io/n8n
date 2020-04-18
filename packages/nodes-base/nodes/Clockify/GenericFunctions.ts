@@ -54,7 +54,6 @@ export async function findProjectByName(this: IExecuteFunctions | ILoadOptionsFu
 		{
 			"clientId": clientId
 		});
-	console.log(result);
 	return result;
 }
 

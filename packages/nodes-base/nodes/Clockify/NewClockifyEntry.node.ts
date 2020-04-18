@@ -117,14 +117,14 @@ export class NewClockifyEntry implements INodeType {
 			{
 				displayName: 'Start',
 				name: 'start',
-				type: 'string',
+				type: 'dateTime',
 				required: true,
 				default: '',
 			},
 			{
 				displayName: 'End',
 				name: 'end',
-				type: 'string',
+				type: 'dateTime',
 				required: true,
 				default: '',
 			},
@@ -262,10 +262,10 @@ export class NewClockifyEntry implements INodeType {
 
 		const items = this.getInputData();
 		const timeEntries : INodeExecutionData[] = [];
-		let timeEntryRequest: {} ;
+		let timeEntryRequest : ITimeEntryRequest;
 		// Itterates over all input items and add the key "myString" with the
 		// value the parameter "myString" resolves to.
-		// (This could be a different value for each item in case it contains an expression)
+		//  (This could be a different value for each item in case it contains an expression)
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const currWorkspaceId = this.getNodeParameter('workspaceId', itemIndex) as number;
 			const isBillable = this.getNodeParameter('billable', itemIndex) as boolean;
@@ -304,19 +304,21 @@ export class NewClockifyEntry implements INodeType {
 				workspaceId: this.getNodeParameter('workspaceId', itemIndex) as string,
 				start: this.getNodeParameter('start', itemIndex) as string,
 				end: this.getNodeParameter('end', itemIndex) as string,
-				taskId: this.getNodeParameter('taskId', itemIndex) as string,
 				timeInterval: {
 					start: this.getNodeParameter('start', itemIndex) as string,
 					end: this.getNodeParameter('end', itemIndex) as string,
 				},
 			};
-			// const tagIds = this.getNodeParameter('tagIds', itemIndex, []) as string[];
-			// if (tagIds.length !== 0){
-			// 	timeEntryRequest.tagId = tagIds;
-			// }
-			console.log(timeEntryRequest);
+
+			const currTagIds = this.getNodeParameter('tagIds', itemIndex, []) as string[];
+			const currTaskId = this.getNodeParameter('taskId', itemIndex, undefined) as string;
+			if (currTagIds.length !== 0){
+				timeEntryRequest.tagIds = currTagIds;
+			}
+			if( currTaskId.length !== 0) {
+				timeEntryRequest.taskId = currTaskId as string;
+			}
 			const timeEntry : INodeExecutionData = await clockifyApiRequest.call(this, 'POST', `workspaces/${currWorkspaceId}/time-entries`, timeEntryRequest);
-			console.log(timeEntry);
 			timeEntries.push(timeEntry);
 		}
 		return this.prepareOutputData(timeEntries);
