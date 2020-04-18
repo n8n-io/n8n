@@ -30,12 +30,13 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 			password: credentials!.apiKey as string
 		},
 		uri: uri || `https://n8nio.agilecrm.com/dev/${endpoint}`,
+		json: true
     };
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		
+
 		if (error.response && error.response.body && error.response.body.errors) {
 			const errorMessages = error.response.body.errors.map((e: IDataObject) => e.message);
 			throw new Error(`AgileCRM error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
