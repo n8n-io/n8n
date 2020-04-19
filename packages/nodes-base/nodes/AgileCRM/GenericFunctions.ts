@@ -31,7 +31,8 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 		},
 		uri: uri || `https://n8nio.agilecrm.com/dev/${endpoint}`,
 		json: true
-    };
+	};
+	
 
 	try {
 		return await this.helpers.request!(options);
@@ -45,3 +46,4 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 		throw error;
 	}
 }
+

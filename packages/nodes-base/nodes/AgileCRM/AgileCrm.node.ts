@@ -10,7 +10,7 @@ import {
 	contactOperations,
 	contactFields
 } from './ContactDescription';
-import { agileCrmApiRequest } from './GenericFunctions';
+import { agileCrmApiRequest} from './GenericFunctions';
 
 
 export class AgileCrm implements INodeType {
@@ -77,6 +77,23 @@ export class AgileCrm implements INodeType {
 					const endpoint = `api/contacts/${contactId}`;
 					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint);
 		
+				}
+
+				if(operation === 'getAll'){
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					
+					if (returnAll) {
+						const endpoint = `api/contacts`;
+						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint);
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						const endpoint = `api/contacts?page_size=${limit}`;
+						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint);
+					}
+				}
+				
+				if(operation === 'create'){
+					
 				}
 
 				if (Array.isArray(responseData)) {
