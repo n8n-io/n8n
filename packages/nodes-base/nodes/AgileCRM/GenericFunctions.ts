@@ -25,6 +25,7 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 		headers: {
 			'Accept': 'application/json',
 		},
+		body: body! || {},
         auth: {
 			username: credentials!.email as string,
 			password: credentials!.apiKey as string
@@ -45,5 +46,15 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 
 		throw error;
 	}
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }
 

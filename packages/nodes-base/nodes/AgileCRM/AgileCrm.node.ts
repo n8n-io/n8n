@@ -10,7 +10,8 @@ import {
 	contactOperations,
 	contactFields
 } from './ContactDescription';
-import { agileCrmApiRequest} from './GenericFunctions';
+import { agileCrmApiRequest, validateJSON} from './GenericFunctions';
+import { IContact, IProperty } from './ContactInterface';
 
 
 export class AgileCrm implements INodeType {
@@ -93,7 +94,43 @@ export class AgileCrm implements INodeType {
 				}
 				
 				if(operation === 'create'){
-					
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const body: IContact = {};
+
+					if (jsonParameters) {
+						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+
+						if (additionalFieldsJson !== '' ) {
+
+							if (validateJSON(additionalFieldsJson) !== undefined) {
+
+								Object.assign(body, JSON.parse(additionalFieldsJson));
+
+							} else {
+								throw new Error('Additional fields must be a valid JSON');
+							}
+						}
+
+					} else {
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						if (additionalFields.starValue) {
+							body.star_value = additionalFields.starValue as string;
+						}
+						if (additionalFields.leadScore) {
+							body.lead_score = additionalFields.leadScore as string;
+						}
+						if (additionalFields.tags) {
+							body.tags = additionalFields.tags as string[];
+						}
+						if (additionalFields.properties) {
+							body.properties = (additionalFields.properties as IDataObject).property as IDataObject[];
+						}
+					}
+					const endpoint = 'api/contacts';
+					console.log(body);
+					responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body);
 				}
 
 				if (Array.isArray(responseData)) {
