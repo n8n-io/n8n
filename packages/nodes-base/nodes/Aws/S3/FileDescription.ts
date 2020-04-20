@@ -41,7 +41,7 @@ export const fileOperations = [
 				description: 'Upload a file',
 			},
 		],
-		default: 'copy',
+		default: 'download',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];

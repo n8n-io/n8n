@@ -1,7 +1,21 @@
+
 import {
-	IExecuteFunctions,
+	snakeCase,
+	paramCase,
+} from 'change-case';
+
+import {
+	createHash,
+} from 'crypto';
+
+import {
+	Builder,
+} from 'xml2js';
+
+import {
 	BINARY_ENCODING,
- } from 'n8n-core';
+	IExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -17,13 +31,13 @@ import {
 } from './BucketDescription';
 
 import {
-	 folderOperations,
-	 folderFields,
+	folderFields,
+	folderOperations,
 } from './FolderDescription';
 
 import {
-	fileOperations,
 	fileFields,
+	fileOperations,
 } from './FileDescription';
 
 import {
@@ -31,19 +45,6 @@ import {
 	awsApiRequestSOAP,
 	awsApiRequestSOAPAllItems,
 } from './GenericFunctions';
-
-import  {
-	snakeCase,
-	paramCase,
-} from 'change-case';
-
-import {
-	createHash,
- } from 'crypto';
-
-import {
-	Builder,
- } from 'xml2js';
 
 export class AwsS3 implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,15 +78,15 @@ export class AwsS3 implements INodeType {
 						value: 'bucket',
 					},
 					{
-						name: 'Folder',
-						value: 'folder',
-					},
-					{
 						name: 'File',
 						value: 'file',
 					},
+					{
+						name: 'Folder',
+						value: 'folder',
+					},
 				],
-				default: 'bucket',
+				default: 'file',
 				description: 'The operation to perform.',
 			},
 			// BUCKET
@@ -142,9 +143,15 @@ export class AwsS3 implements INodeType {
 							'$': {
 								xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
 							},
-							LocationConstraint: [credentials!.region],
 						}
 					};
+
+					// For some reasons does AWS not allow to supply "us-east-1" if you want to
+					// create it there it has to be empty?!?!
+					if (credentials!.region !== 'us-east-1') {
+						// @ts-ignore
+						body.CreateBucketConfiguration.LocationConstraint = [credentials!.region];
+					}
 
 					const builder = new Builder();
 					const data = builder.buildObject(body);
