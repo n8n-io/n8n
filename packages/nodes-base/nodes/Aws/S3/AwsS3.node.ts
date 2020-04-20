@@ -1,7 +1,21 @@
+
 import {
-	IExecuteFunctions,
+	snakeCase,
+	paramCase,
+} from 'change-case';
+
+import {
+	createHash,
+} from 'crypto';
+
+import {
+	Builder,
+} from 'xml2js';
+
+import {
 	BINARY_ENCODING,
- } from 'n8n-core';
+	IExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -17,13 +31,13 @@ import {
 } from './BucketDescription';
 
 import {
-	 folderOperations,
-	 folderFields,
+	folderFields,
+	folderOperations,
 } from './FolderDescription';
 
 import {
-	fileOperations,
 	fileFields,
+	fileOperations,
 } from './FileDescription';
 
 import {
@@ -31,17 +45,6 @@ import {
 	awsApiRequestSOAP,
 	awsApiRequestSOAPAllItems,
 } from './GenericFunctions';
-
-import  {
-	snakeCase,
-	paramCase,
-} from 'change-case';
-
-import {
-	createHash,
- } from 'crypto';
-
-import * as js2xmlparser from 'js2xmlparser';
 
 export class AwsS3 implements INodeType {
 	description: INodeTypeDescription = {
@@ -75,15 +78,15 @@ export class AwsS3 implements INodeType {
 						value: 'bucket',
 					},
 					{
-						name: 'Folder',
-						value: 'folder',
-					},
-					{
 						name: 'File',
 						value: 'file',
 					},
+					{
+						name: 'Folder',
+						value: 'folder',
+					},
 				],
-				default: 'bucket',
+				default: 'file',
 				description: 'The operation to perform.',
 			},
 			// BUCKET
@@ -136,13 +139,22 @@ export class AwsS3 implements INodeType {
 					}
 
 					const body: IDataObject = {
-						'@': {
-							xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
-						},
-						LocationConstraint: [credentials!.region],
+						CreateBucketConfiguration: {
+							'$': {
+								xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+							},
+						}
 					};
 
-					const data = js2xmlparser.parse('CreateBucketConfiguration',  body);
+					// For some reasons does AWS not allow to supply "us-east-1" if you want to
+					// create it there it has to be empty?!?!
+					if (credentials!.region !== 'us-east-1') {
+						// @ts-ignore
+						body.CreateBucketConfiguration.LocationConstraint = [credentials!.region];
+					}
+
+					const builder = new Builder();
+					const data = builder.buildObject(body);
 
 					responseData = await awsApiRequestSOAP.call(this, `${name}.s3`, 'PUT', '', data, qs, headers);
 
@@ -243,17 +255,23 @@ export class AwsS3 implements INodeType {
 					} else {
 					// delete everything inside the folder
 						const body: IDataObject = {
-							'@': {
-								xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+							Delete: {
+								'$': {
+									xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+								},
+								Object: [],
 							},
-							Object: [],
 						};
+
 						for (const childObject of responseData) {
-							(body.Object as IDataObject[]).push({
+							//@ts-ignore
+							(body.Delete.Object as IDataObject[]).push({
 								Key: childObject.Key as string
 							});
 						}
-						const data = js2xmlparser.parse('Delete',  body);
+
+						const builder = new Builder();
+						const data = builder.buildObject(body);
 
 						headers['Content-MD5'] = createHash('md5').update(data).digest('base64');
 
