@@ -33,7 +33,13 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.errors) {
 			// Try to return the error prettier
-			const errorMessages = error.response.body.errors;
+			let errorMessages = error.response.body.errors;
+
+			if (errorMessages[0].message) {
+				// @ts-ignore
+				errorMessages = errorMessages.map(errorItem => errorItem.message);
+			}
+
 			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join('|')}`);
 		}
 
