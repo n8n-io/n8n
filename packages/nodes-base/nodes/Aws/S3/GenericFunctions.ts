@@ -1,14 +1,18 @@
 import {
 	sign,
- } from 'aws4';
+} from 'aws4';
+
+import {
+	get,
+} from 'lodash';
 
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	parseString,
- } from 'xml2js';
+} from 'xml2js';
 
 import {
 	IExecuteFunctions,
@@ -20,10 +24,6 @@ import {
 import {
 	IDataObject,
  } from 'n8n-workflow';
-
-import {
-	get,
-} from 'lodash';
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
