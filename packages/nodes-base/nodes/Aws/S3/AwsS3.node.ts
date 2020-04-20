@@ -145,17 +145,14 @@ export class AwsS3 implements INodeType {
 							},
 						}
 					};
-
-					// For some reasons does AWS not allow to supply "us-east-1" if you want to
-					// create it there it has to be empty?!?!
+					let data = '';
+					// if credentials has the S3 defaul region (us-east-1) the body (XML) does not have to be sent.
 					if (credentials!.region !== 'us-east-1') {
 						// @ts-ignore
 						body.CreateBucketConfiguration.LocationConstraint = [credentials!.region];
+						const builder = new Builder();
+						data = builder.buildObject(body);
 					}
-
-					const builder = new Builder();
-					const data = builder.buildObject(body);
-
 					responseData = await awsApiRequestSOAP.call(this, `${name}.s3`, 'PUT', '', data, qs, headers);
 
 					returnData.push({ success: true });
