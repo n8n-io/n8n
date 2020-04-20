@@ -28,7 +28,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		uri: `https://${endpoint}${signOpts.path}`,
 		body: signOpts.body,
 	};
-	console.log('aja')
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
