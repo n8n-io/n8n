@@ -141,7 +141,7 @@ export const companyFields = [
 				description: 'The domain name of the company or organization'
 			},
 			{
-				displayName: 'Company Owmer',
+				displayName: 'Company Owner',
 				name: 'companyOwner',
 				type: 'options',
 				typeOptions: {
