@@ -41,7 +41,9 @@ import {
 	createHash,
  } from 'crypto';
 
-import * as js2xmlparser from 'js2xmlparser';
+import {
+	Builder,
+ } from 'xml2js';
 
 export class AwsS3 implements INodeType {
 	description: INodeTypeDescription = {
@@ -136,13 +138,16 @@ export class AwsS3 implements INodeType {
 					}
 
 					const body: IDataObject = {
-						'@': {
-							xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
-						},
-						LocationConstraint: [credentials!.region],
+						CreateBucketConfiguration: {
+							'$': {
+								xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+							},
+							LocationConstraint: [credentials!.region],
+						}
 					};
 
-					const data = js2xmlparser.parse('CreateBucketConfiguration',  body);
+					const builder = new Builder();
+					const data = builder.buildObject(body);
 
 					responseData = await awsApiRequestSOAP.call(this, `${name}.s3`, 'PUT', '', data, qs, headers);
 
@@ -243,17 +248,23 @@ export class AwsS3 implements INodeType {
 					} else {
 					// delete everything inside the folder
 						const body: IDataObject = {
-							'@': {
-								xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+							Delete: {
+								'$': {
+									xmlns: 'http://s3.amazonaws.com/doc/2006-03-01/',
+								},
+								Object: [],
 							},
-							Object: [],
 						};
+
 						for (const childObject of responseData) {
-							(body.Object as IDataObject[]).push({
+							//@ts-ignore
+							(body.Delete.Object as IDataObject[]).push({
 								Key: childObject.Key as string
 							});
 						}
-						const data = js2xmlparser.parse('Delete',  body);
+
+						const builder = new Builder();
+						const data = builder.buildObject(body);
 
 						headers['Content-MD5'] = createHash('md5').update(data).digest('base64');
 
