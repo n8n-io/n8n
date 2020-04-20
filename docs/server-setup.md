@@ -84,7 +84,7 @@ services:
   n8n:
     image: n8nio/n8n
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"
     labels:
       - traefik.enable=true
       - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
