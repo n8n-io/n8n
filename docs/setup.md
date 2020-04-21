@@ -31,3 +31,5 @@ To use it, simply start n8n with `--tunnel`
 ```bash
 n8n start --tunnel
 ```
+
+In case you run into issues, check out the [troubleshooting](troubleshooting.md) page or ask for help in the community [forum](https://community.n8n.io/).
