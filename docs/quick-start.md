@@ -39,3 +39,5 @@ docker run -it --rm \
 
 More information about the Docker setup can be found in the README file of the
 [Docker Image](https://github.com/n8n-io/n8n/blob/master/docker/images/n8n/README.md).
+
+In case you run into issues, check out the [troubleshooting](troubleshooting.md) page or ask for help in the community [forum](https://community.n8n.io/).
