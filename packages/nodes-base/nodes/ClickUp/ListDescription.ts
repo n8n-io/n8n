@@ -58,7 +58,7 @@ export const listFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -78,7 +78,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -94,7 +94,7 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
@@ -118,7 +118,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Folder ID',
-		name: 'folderId',
+		name: 'folder',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -137,7 +137,7 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
@@ -233,7 +233,7 @@ export const listFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -253,7 +253,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Space',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -293,7 +293,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Folder',
-		name: 'folderId',
+		name: 'folder',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -312,14 +312,14 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
 	},
 	{
 		displayName: 'List',
-		name: 'listId',
+		name: 'list',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -338,14 +338,14 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolderlessLists',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
 	},
 	{
 		displayName: 'List',
-		name: 'listId',
+		name: 'list',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -364,7 +364,7 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
 			loadOptionsDependsOn: [
-				'folderId',
+				'folder',
 			]
 		},
 		required: true,
@@ -374,7 +374,7 @@ export const listFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -394,7 +394,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -410,7 +410,7 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
@@ -434,7 +434,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Folder ID',
-		name: 'folderId',
+		name: 'folder',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -453,14 +453,14 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
 	},
 	{
 		displayName: 'List ID',
-		name: 'listId',
+		name: 'list',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -480,7 +480,7 @@ export const listFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -500,7 +500,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -516,7 +516,7 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
@@ -540,7 +540,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Folder ID',
-		name: 'folderId',
+		name: 'folder',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -559,14 +559,14 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
 	},
 	{
 		displayName: 'List ID',
-		name: 'listId',
+		name: 'list',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -586,7 +586,7 @@ export const listFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -606,7 +606,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -622,7 +622,7 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
@@ -646,7 +646,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Folder ID',
-		name: 'folderId',
+		name: 'folder',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -665,7 +665,7 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
@@ -721,7 +721,7 @@ export const listFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -741,7 +741,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -757,7 +757,7 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
@@ -781,7 +781,7 @@ export const listFields = [
 	},
 	{
 		displayName: 'Folder ID',
-		name: 'folderId',
+		name: 'folder',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -800,14 +800,14 @@ export const listFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
 	},
 	{
 		displayName: 'List ID',
-		name: 'listId',
+		name: 'list',
 		type: 'string',
 		default: '',
 		displayOptions: {

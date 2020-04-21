@@ -38,7 +38,7 @@ export const taskDependencyFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
-		name: 'taskId',
+		name: 'task',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -90,7 +90,7 @@ export const taskDependencyFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
-		name: 'taskId',
+		name: 'task',
 		type: 'string',
 		default: '',
 		displayOptions: {

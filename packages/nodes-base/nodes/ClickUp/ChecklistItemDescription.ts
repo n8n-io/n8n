@@ -43,7 +43,7 @@ export const checklistItemFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Checklist ID',
-		name: 'checklistId',
+		name: 'checklist',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -94,7 +94,7 @@ export const checklistItemFields = [
 		options: [
 			{
 				displayName: 'Assignee ID',
-				name: 'assigneeId',
+				name: 'assignee',
 				type: 'string',
 				default: '',
 			},
@@ -105,7 +105,7 @@ export const checklistItemFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Checklist ID',
-		name: 'checklistId',
+		name: 'checklist',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -122,7 +122,7 @@ export const checklistItemFields = [
 	},
 	{
 		displayName: 'Checklist Item ID',
-		name: 'checklistItemId',
+		name: 'checklistItem',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -142,7 +142,7 @@ export const checklistItemFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Checklist ID',
-		name: 'checklistId',
+		name: 'checklist',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -159,7 +159,7 @@ export const checklistItemFields = [
 	},
 	{
 		displayName: 'Checklist Item ID',
-		name: 'checklistItemId',
+		name: 'checklistItem',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -193,7 +193,7 @@ export const checklistItemFields = [
 		options: [
 			{
 				displayName: 'Assignee ID',
-				name: 'assigneeId',
+				name: 'assignee',
 				type: 'string',
 				default: '',
 			},
@@ -205,7 +205,7 @@ export const checklistItemFields = [
 			},
 			{
 				displayName: 'Parent Checklist Item ID',
-				name: 'parentId',
+				name: 'parent',
 				type: 'string',
 				default: '',
 				description: 'Checklist item that you want to nest the target checklist item underneath.',
