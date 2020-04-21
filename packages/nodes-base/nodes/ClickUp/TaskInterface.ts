@@ -5,7 +5,7 @@ import {
 export interface ITask {
 	name?: string;
 	content?: string;
-	assignees?: string[];
+	assignees?: string[] | IDataObject;
 	tags?: string[];
 	status?: string;
 	priority?: number;

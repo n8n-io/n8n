@@ -53,7 +53,7 @@ export const goalFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -145,7 +145,7 @@ export const goalFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Goal ID',
-		name: 'goalId',
+		name: 'goal',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -165,7 +165,7 @@ export const goalFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Goal ID',
-		name: 'goalId',
+		name: 'goal',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -185,7 +185,7 @@ export const goalFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -229,7 +229,7 @@ export const goalFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Goal ID',
-		name: 'goalId',
+		name: 'goal',
 		type: 'string',
 		default: '',
 		displayOptions: {

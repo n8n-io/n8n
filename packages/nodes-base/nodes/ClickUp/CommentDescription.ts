@@ -128,7 +128,7 @@ export const commentFields = [
 		options: [
 			{
 				displayName: 'Assignee ID',
-				name: 'assigneeId',
+				name: 'assignee',
 				type: 'string',
 				default: '',
 			},
@@ -146,7 +146,7 @@ export const commentFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Comment ID',
-		name: 'commentId',
+		name: 'comment',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -237,7 +237,7 @@ export const commentFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Comment ID',
-		name: 'commentId',
+		name: 'comment',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -271,7 +271,7 @@ export const commentFields = [
 		options: [
 			{
 				displayName: 'Assignee ID',
-				name: 'assigneeId',
+				name: 'assignee',
 				type: 'string',
 				default: '',
 			},

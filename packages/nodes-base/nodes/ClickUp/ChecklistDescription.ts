@@ -43,7 +43,7 @@ export const checklistFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
-		name: 'taskId',
+		name: 'task',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -80,7 +80,7 @@ export const checklistFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Checklist ID',
-		name: 'checklistId',
+		name: 'checklist',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -100,7 +100,7 @@ export const checklistFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Checklist ID',
-		name: 'checklistId',
+		name: 'checklist',
 		type: 'string',
 		default: '',
 		displayOptions: {

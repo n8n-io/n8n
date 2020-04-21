@@ -53,7 +53,7 @@ export const folderFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -73,7 +73,7 @@ export const folderFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -89,7 +89,7 @@ export const folderFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
@@ -116,7 +116,7 @@ export const folderFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -136,7 +136,7 @@ export const folderFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -152,14 +152,14 @@ export const folderFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
 	},
 	{
 		displayName: 'Folder ID',
-		name: 'folderId',
+		name: 'folder',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -175,7 +175,7 @@ export const folderFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
@@ -185,7 +185,7 @@ export const folderFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -205,7 +205,7 @@ export const folderFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -221,14 +221,14 @@ export const folderFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
 	},
 	{
 		displayName: 'Folder ID',
-		name: 'folderId',
+		name: 'folder',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -244,7 +244,7 @@ export const folderFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
@@ -254,7 +254,7 @@ export const folderFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -274,7 +274,7 @@ export const folderFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -290,7 +290,7 @@ export const folderFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
@@ -346,7 +346,7 @@ export const folderFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -366,7 +366,7 @@ export const folderFields = [
 	},
 	{
 		displayName: 'Space ID',
-		name: 'spaceId',
+		name: 'space',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -382,14 +382,14 @@ export const folderFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
-				'teamId',
+				'team',
 			]
 		},
 		required: true,
 	},
 	{
 		displayName: 'Folder ID',
-		name: 'folderId',
+		name: 'folder',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -405,7 +405,7 @@ export const folderFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getFolders',
 			loadOptionsDependsOn: [
-				'spaceId',
+				'space',
 			],
 		},
 		required: true,
