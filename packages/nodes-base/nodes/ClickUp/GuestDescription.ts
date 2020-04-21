@@ -48,7 +48,7 @@ export const guestFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -124,7 +124,7 @@ export const guestFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -144,7 +144,7 @@ export const guestFields = [
 	},
 	{
 		displayName: 'Guest ID',
-		name: 'guestId',
+		name: 'guest',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -164,7 +164,7 @@ export const guestFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -184,7 +184,7 @@ export const guestFields = [
 	},
 	{
 		displayName: 'Guest ID',
-		name: 'guestId',
+		name: 'guest',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -204,7 +204,7 @@ export const guestFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
-		name: 'teamId',
+		name: 'team',
 		type: 'options',
 		default: '',
 		displayOptions: {
@@ -224,7 +224,7 @@ export const guestFields = [
 	},
 	{
 		displayName: 'Guest ID',
-		name: 'guestId',
+		name: 'guest',
 		type: 'string',
 		default: '',
 		displayOptions: {

@@ -48,7 +48,7 @@ export const timeTrackingFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
-		name: 'taskId',
+		name: 'task',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -157,7 +157,7 @@ export const timeTrackingFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
-		name: 'taskId',
+		name: 'task',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -174,7 +174,7 @@ export const timeTrackingFields = [
 	},
 	{
 		displayName: 'Interval ID',
-		name: 'intervalId',
+		name: 'interval',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -194,7 +194,7 @@ export const timeTrackingFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
-		name: 'taskId',
+		name: 'task',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -235,7 +235,7 @@ export const timeTrackingFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Task ID',
-		name: 'taskId',
+		name: 'task',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -252,7 +252,7 @@ export const timeTrackingFields = [
 	},
 	{
 		displayName: 'Interval ID',
-		name: 'intervalId',
+		name: 'interval',
 		type: 'string',
 		default: '',
 		displayOptions: {

@@ -43,7 +43,7 @@ export const goalKeyResultFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Goal ID',
-		name: 'goalId',
+		name: 'goal',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -150,7 +150,7 @@ export const goalKeyResultFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				default: '',
+				default: 0,
 				description: 'Required for Percentage, Automatic (when Task IDs or List IDs are filled), Number and Currency',
 			},
 			{
@@ -160,7 +160,7 @@ export const goalKeyResultFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				default: '',
+				default: 0,
 				description: 'Required for Percentage, Automatic (when Task IDs or List IDs are filled), Number and Currency',
 			},
 			{
@@ -183,7 +183,7 @@ export const goalKeyResultFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Key Result ID',
-		name: 'keyResultId',
+		name: 'keyResult',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -203,7 +203,7 @@ export const goalKeyResultFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Key Result ID',
-		name: 'keyResultId',
+		name: 'keyResult',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -257,7 +257,7 @@ export const goalKeyResultFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Steps End',
@@ -266,7 +266,7 @@ export const goalKeyResultFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Steps Start',
@@ -275,7 +275,7 @@ export const goalKeyResultFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				default: '',
+				default: 0,
 			},
 			{
 				displayName: 'Unit',
