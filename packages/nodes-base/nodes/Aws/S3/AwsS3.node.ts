@@ -123,19 +123,19 @@ export class AwsS3 implements INodeType {
 						headers['x-amz-bucket-object-lock-enabled'] = additionalFields.bucketObjectLockEnabled as boolean;
 					}
 					if (additionalFields.grantFullControl) {
-						headers['x-amz-grant-full-control'] = additionalFields.grantFullControl;
+						headers['x-amz-grant-full-control'] = '';
 					}
 					if (additionalFields.grantRead) {
-						headers['x-amz-grant-read'] = additionalFields.grantRead;
+						headers['x-amz-grant-read'] = '';
 					}
 					if (additionalFields.grantReadAcp) {
-						headers['x-amz-grant-read-acp'] = additionalFields.grantReadAcp;
+						headers['x-amz-grant-read-acp'] = '';
 					}
 					if (additionalFields.grantWrite) {
-						headers['x-amz-grant-write'] = additionalFields.grantWrite;
+						headers['x-amz-grant-write'] = '';
 					}
 					if (additionalFields.grantWriteAcp) {
-						headers['x-amz-grant-write-acp']=additionalFields.grantWriteAcp;
+						headers['x-amz-grant-write-acp'] = '';
 					}
 					let region = credentials!.region as string;
 
