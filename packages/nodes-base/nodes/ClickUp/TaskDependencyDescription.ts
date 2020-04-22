@@ -54,10 +54,22 @@ export const taskDependencyFields = [
 		required: true,
 	},
 	{
-		displayName: 'Depends On',
-		name: 'dependsOn',
-		type: 'string',
+		displayName: 'Is',
+		name: 'is',
+		type: 'options',
 		default: '',
+		options: [
+			{
+				name: 'Bloking',
+				value: 'blocking',
+				description: `Tasks that can't start until the task above is completed`,
+			},
+			{
+				name: 'Waiting On',
+				value: 'waitingOn',
+				description: `Tasks that must be completed before the task above`,
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -68,12 +80,13 @@ export const taskDependencyFields = [
 				],
 			},
 		},
+		description: 'Dependency type between the two tasks',
+		required: true,
 	},
 	{
-		displayName: 'Dependency Of',
-		name: 'dependencyOf',
+		displayName: 'The Task ID',
+		name: 'theTaskId',
 		type: 'string',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -84,6 +97,7 @@ export const taskDependencyFields = [
 				],
 			},
 		},
+		required: true,
 	},
 /* -------------------------------------------------------------------------- */
 /*                                taskDependency:delete                        */
@@ -106,10 +120,22 @@ export const taskDependencyFields = [
 		required: true,
 	},
 	{
-		displayName: 'Depends On',
-		name: 'dependsOn',
-		type: 'string',
+		displayName: 'Is',
+		name: 'is',
+		type: 'options',
 		default: '',
+		options: [
+			{
+				name: 'Bloking',
+				value: 'blocking',
+				description: `Tasks that can't start until the task above is completed`,
+			},
+			{
+				name: 'Waiting On',
+				value: 'waitingOn',
+				description: `Tasks that must be completed before the task above`,
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: [
@@ -120,12 +146,13 @@ export const taskDependencyFields = [
 				],
 			},
 		},
+		description: 'Dependency type between the two tasks',
+		required: true,
 	},
 	{
-		displayName: 'Dependency Of',
-		name: 'dependencyOf',
+		displayName: 'The Task ID',
+		name: 'theTaskId',
 		type: 'string',
-		default: '',
 		displayOptions: {
 			show: {
 				resource: [
@@ -136,5 +163,6 @@ export const taskDependencyFields = [
 				],
 			},
 		},
+		required: true,
 	},
 ] as INodeProperties[];
