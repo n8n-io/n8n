@@ -337,12 +337,11 @@ export class AwsS3 implements INodeType {
 			if (resource === 'file') {
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CopyObject.html
 				if (operation === 'copy') {
-					const source = this.getNodeParameter('source', i) as string;
-					const bucketName = this.getNodeParameter('bucketName', i) as string;
-					const destination = this.getNodeParameter('destination', i) as string;
+					const sourcePath = this.getNodeParameter('sourcePath', i) as string;
+					const destinationPath = this.getNodeParameter('destinationPath', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					headers['x-amz-copy-source'] = source;
+					headers['x-amz-copy-source'] = sourcePath;
 
 					if (additionalFields.requesterPays) {
 						headers['x-amz-request-payer'] = 'requester';
@@ -399,11 +398,17 @@ export class AwsS3 implements INodeType {
 						headers['x-amz-metadata-directive'] = (additionalFields.metadataDirective as string).toUpperCase();
 					}
 
+					const destinationParts = destinationPath.split('/');
+
+					const bucketName = destinationParts[1];
+
+					const destination = `/${destinationParts.slice(2, destinationParts.length).join('/')}`;
+
 					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'GET', '', '', { location: '' });
 
 					const region = responseData.LocationConstraint._;
 
-					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'PUT', `${destination}`, '', qs, headers, {}, region);
+					responseData = await awsApiRequestSOAP.call(this, `${bucketName}.s3`, 'PUT', destination, '', qs, headers, {}, region);
 					returnData.push(responseData.CopyObjectResult);
 
 				}
