@@ -28,7 +28,8 @@
         "start:windows": "cd bin && n8n",
         "test": "jest",
         "tslint": "tslint -p tsconfig.json -c tslint.json",
-        "watch": "tsc --watch"
+        "watch": "tsc --watch",
+        "typeorm": "ts-node ./node_modules/typeorm/cli.js"
     },
     "bin": {
         "n8n": "./bin/n8n"
@@ -104,7 +105,7 @@
         "request-promise-native": "^1.0.7",
         "sqlite3": "^4.0.6",
         "sse-channel": "^3.1.1",
-        "typeorm": "^0.2.16"
+        "typeorm": "^0.2.24"
     },
     "jest": {
         "transform": {
