@@ -4,8 +4,13 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
+import {
+	OptionsWithUri,
+ } from 'request';
+
+import {
+	IDataObject,
+ } from 'n8n-workflow';
 
 export interface IAttachment  {
 	fields: {
@@ -64,4 +69,23 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		// Expected error data did not get returned so throw the actual error
 		throw error;
 	}
+}
+
+export async function apiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.page = 0;
+	query.per_page = 100;
+
+	do {
+		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		query.page++;
+		returnData.push.apply(returnData, responseData);
+	} while (
+		responseData.length !== 0
+	);
+
+	return returnData;
 }
