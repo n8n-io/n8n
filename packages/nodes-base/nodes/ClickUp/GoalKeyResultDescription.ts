@@ -151,7 +151,7 @@ export const goalKeyResultFields = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'Required for Percentage, Automatic (when Task IDs or List IDs are filled), Number and Currency',
+				description: 'Required for Percentage, Automatic, Number and Currency',
 			},
 			{
 				displayName: 'Steps End',
@@ -161,7 +161,7 @@ export const goalKeyResultFields = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'Required for Percentage, Automatic (when Task IDs or List IDs are filled), Number and Currency',
+				description: 'Required for Percentage, Automatic, Number and Currency',
 			},
 			{
 				displayName: 'Task IDs',
@@ -257,7 +257,7 @@ export const goalKeyResultFields = [
 				typeOptions: {
 					minValue: 0,
 				},
-				default: 0,
+				default: 1,
 			},
 			{
 				displayName: 'Steps End',
