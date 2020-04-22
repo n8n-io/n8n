@@ -54,38 +54,8 @@ export const taskDependencyFields = [
 		required: true,
 	},
 	{
-		displayName: 'Is',
-		name: 'is',
-		type: 'options',
-		default: '',
-		options: [
-			{
-				name: 'Bloking',
-				value: 'blocking',
-				description: `Tasks that can't start until the task above is completed`,
-			},
-			{
-				name: 'Waiting On',
-				value: 'waitingOn',
-				description: `Tasks that must be completed before the task above`,
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'Dependency type between the two tasks',
-		required: true,
-	},
-	{
-		displayName: 'The Task ID',
-		name: 'theTaskId',
+		displayName: 'Depends On Task ID',
+		name: 'dependsOnTask',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -120,38 +90,8 @@ export const taskDependencyFields = [
 		required: true,
 	},
 	{
-		displayName: 'Is',
-		name: 'is',
-		type: 'options',
-		default: '',
-		options: [
-			{
-				name: 'Bloking',
-				value: 'blocking',
-				description: `Tasks that can't start until the task above is completed`,
-			},
-			{
-				name: 'Waiting On',
-				value: 'waitingOn',
-				description: `Tasks that must be completed before the task above`,
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'delete',
-				],
-			},
-		},
-		description: 'Dependency type between the two tasks',
-		required: true,
-	},
-	{
-		displayName: 'The Task ID',
-		name: 'theTaskId',
+		displayName: 'Depends On Task ID',
+		name: 'dependsOnTask',
 		type: 'string',
 		displayOptions: {
 			show: {

@@ -885,29 +885,20 @@ export class ClickUp implements INodeType {
 			if (resource === 'taskDependency') {
 				if (operation === 'create') {
 					const taskId = this.getNodeParameter('task', i) as string;
-					const dependecyIs = this.getNodeParameter('is', i) as string;
-					const theTaskId = this.getNodeParameter('theTaskId', i) as string;
+					const dependsOnTaskId = this.getNodeParameter('dependsOnTask', i) as string;
 					const body: IDataObject = {};
-					if (dependecyIs === 'waitingOn') {
-						body.depends_on = theTaskId;
-					}
-					if (dependecyIs === 'blocking') {
-						body.dependency_of = theTaskId;
-					}
+
+					body.depends_on = dependsOnTaskId;
+
 					responseData = await clickupApiRequest.call(this, 'POST', `/task/${taskId}/dependency`, body);
 					responseData = { success: true };
 				}
 				if (operation === 'delete') {
 					const taskId = this.getNodeParameter('task', i) as string;
-					const dependecyIs = this.getNodeParameter('is', i) as string;
-					const theTaskId = this.getNodeParameter('theTaskId', i) as string;
+					const dependsOnTaskId = this.getNodeParameter('dependsOnTask', i) as string;
 
-					if (dependecyIs === 'waitingOn') {
-						qs.depends_on = theTaskId;
-					}
-					if (dependecyIs === 'blocking') {
-						qs.dependency_of = theTaskId;
-					}
+					qs.depends_on = dependsOnTaskId;
+
 					responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}/dependency`, {}, qs);
 					responseData = { success: true };
 				}
