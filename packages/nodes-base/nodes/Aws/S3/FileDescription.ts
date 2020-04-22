@@ -52,8 +52,8 @@ export const fileFields = [
 /*                                file:copy                                   */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Source',
-		name: 'source',
+		displayName: 'Source Path',
+		name: 'sourcePath',
 		type: 'string',
 		required: true,
 		default: '',
@@ -71,11 +71,12 @@ export const fileFields = [
 		description: 'The name of the source bucket and key name of the source object, separated by a slash (/)',
 	},
 	{
-		displayName: 'Bucket Name',
-		name: 'bucketName',
+		displayName: 'Destination Path',
+		name: 'destinationPath',
 		type: 'string',
 		required: true,
 		default: '',
+		placeholder: '/bucket/my-second-image.jpg',
 		displayOptions: {
 			show: {
 				resource: [
@@ -86,26 +87,7 @@ export const fileFields = [
 				],
 			},
 		},
-		description: 'The name of the destination bucket.',
-	},
-	{
-		displayName: 'Destination',
-		name: 'destination',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: '/my-second-image.jpg',
-		displayOptions: {
-			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'copy',
-				],
-			},
-		},
-		description: 'The key of the destination object.',
+		description: 'The name of the destination bucket and key name of the destination object, separated by a slash (/)',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -413,7 +395,7 @@ export const fileFields = [
 		displayName: 'Binary Data',
 		name: 'binaryData',
 		type: 'boolean',
-		default: false,
+		default: true,
 		displayOptions: {
 			show: {
 				operation: [
