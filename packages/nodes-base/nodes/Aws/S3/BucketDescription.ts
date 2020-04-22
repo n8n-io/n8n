@@ -143,6 +143,13 @@ export const bucketFields = [
 				default: false,
 				description: 'Allows grantee to write the ACL for the applicable bucket.',
 			},
+			{
+				displayName: 'Region',
+				name: 'region',
+				type: 'string',
+				default: '',
+				description: 'Region you want to create the bucket in, by default the buckets are created on the region defined on the credentials.',
+			},
 		],
 	},
 /* -------------------------------------------------------------------------- */
