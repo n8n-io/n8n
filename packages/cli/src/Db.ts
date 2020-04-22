@@ -45,6 +45,8 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
 				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
 				useNewUrlParser: true,
+				migrations: ['./databases/mongodb/Migrations/*.ts'],
+				migrationsRun: true
 			};
 			break;
 
@@ -60,6 +62,8 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
 				schema: await GenericHelpers.getConfigValue('database.postgresdb.schema') as string,
+				migrations: ['./databases/postgresdb/Migrations/*.ts'],
+				migrationsRun: true
 			};
 			break;
 
@@ -75,6 +79,8 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
+				migrations: ['./databases/mysqldb/Migrations/*.ts'],
+				migrationsRun: true
 			};
 			break;
 
@@ -85,6 +91,8 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 				type: 'sqlite',
 				database: path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				migrations: ['./databases/sqlite/Migrations/*.ts'],
+				migrationsRun: true
 			};
 			break;
 
@@ -94,7 +102,7 @@ export async function init(synchronize?: boolean): Promise<IDatabaseCollections>
 
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
-		synchronize: synchronize === true || process.env['NODE_ENV'] !== 'production',
+		synchronize: false,//synchronize === true || process.env['NODE_ENV'] !== 'production',
 		logging: false
 	});
 
