@@ -395,7 +395,7 @@ export const fileFields = [
 		displayName: 'Binary Data',
 		name: 'binaryData',
 		type: 'boolean',
-		default: false,
+		default: true,
 		displayOptions: {
 			show: {
 				operation: [
