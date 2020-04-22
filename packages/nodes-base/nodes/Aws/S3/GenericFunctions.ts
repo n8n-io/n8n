@@ -25,12 +25,13 @@ import {
 	IDataObject,
  } from 'n8n-workflow';
 
-export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const endpoint = `${service}.${credentials.region}.amazonaws.com`;
+
+	const endpoint = `${service}.${region || credentials.region}.amazonaws.com`;
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {headers: headers || {}, host: endpoint, method, path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`, body};
@@ -44,6 +45,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		uri: `https://${endpoint}${signOpts.path}`,
 		body: signOpts.body,
 	};
+
 	if (Object.keys(option).length !== 0) {
 		Object.assign(options, option);
 	}
@@ -64,8 +66,8 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	}
 }
 
-export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers?: object, options: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const response = await awsApiRequest.call(this, service, method, path, body, query, headers, options);
+export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers?: object, options: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+	const response = await awsApiRequest.call(this, service, method, path, body, query, headers, options, region);
 	try {
 		return JSON.parse(response);
 	} catch (e) {
@@ -73,8 +75,8 @@ export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions
 	}
 }
 
-export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const response = await awsApiRequest.call(this, service, method, path, body, query, headers);
+export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+	const response = await awsApiRequest.call(this, service, method, path, body, query, headers, option, region);
 	try {
 		return await new Promise((resolve, reject) => {
 			parseString(response, { explicitArray: false }, (err, data) => {
@@ -89,14 +91,14 @@ export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions
 	}
 }
 
-export async function awsApiRequestSOAPAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, propertyName: string, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function awsApiRequestSOAPAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, propertyName: string, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers: IDataObject = {},  option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
-		responseData = await awsApiRequestSOAP.call(this, service, method, path, body, query, headers);
+		responseData = await awsApiRequestSOAP.call(this, service, method, path, body, query, headers, option, region);
 
 		//https://forums.aws.amazon.com/thread.jspa?threadID=55746
 		if (get(responseData, `${propertyName.split('.')[0]}.NextContinuationToken`)) {
