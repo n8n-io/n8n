@@ -33,6 +33,11 @@ import {
 } from './LogEntryDescription';
 
 import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+
+import {
 	IIncident,
 } from './IncidentInterface';
 
@@ -81,6 +86,10 @@ export class PagerDuty implements INodeType {
 						name: 'Log Entry',
 						value: 'logEntry',
 					},
+					{
+						name: 'User',
+						value: 'user',
+					},
 				],
 				default: 'incident',
 				description: 'Resource to consume.',
@@ -94,6 +103,9 @@ export class PagerDuty implements INodeType {
 			// LOG ENTRY
 			...logEntryOperations,
 			...logEntryFields,
+			// USER
+			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -348,6 +360,14 @@ export class PagerDuty implements INodeType {
 						responseData = await pagerDutyApiRequest.call(this, 'GET', '/log_entries', {}, qs);
 						responseData = responseData.log_entries;
 					}
+				}
+			}
+			if (resource === 'user') {
+				//https://developer.pagerduty.com/api-reference/reference/REST/openapiv3.json/paths/~1users~1%7Bid%7D/get
+				if (operation === 'get') {
+					const userId = this.getNodeParameter('userId', i) as string;
+					responseData = await pagerDutyApiRequest.call(this, 'GET', `/users/${userId}`);
+					responseData = responseData.user;
 				}
 			}
 			if (Array.isArray(responseData)) {
