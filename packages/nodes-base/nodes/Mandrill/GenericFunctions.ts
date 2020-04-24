@@ -1,16 +1,16 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
 
 import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
 import * as _ from 'lodash';
-import { IDataObject } from 'n8n-workflow';
 
-export async function mandrillApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('mandrillApi');
 
 	if (credentials === undefined) {
