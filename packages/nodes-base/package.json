@@ -213,6 +213,7 @@
             "dist/nodes/RssFeedRead.node.js",
             "dist/nodes/Rundeck/Rundeck.node.js",
             "dist/nodes/Set.node.js",
+            "dist/nodes/Shopify/Shopify.node.js",
             "dist/nodes/Shopify/ShopifyTrigger.node.js",
             "dist/nodes/Slack/Slack.node.js",
             "dist/nodes/SplitInBatches.node.js",
