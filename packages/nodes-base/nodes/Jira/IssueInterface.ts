@@ -1,18 +1,21 @@
-import { IDataObject } from "n8n-workflow";
+import {
+	IDataObject,
+ } from 'n8n-workflow';
 
 export interface IFields {
-	summary?: string;
-	project?: IDataObject;
-	issuetype?: IDataObject;
-	labels?: string[];
-	priority?: IDataObject;
 	assignee?: IDataObject;
 	description?: string;
+	issuetype?: IDataObject;
+	labels?: string[];
 	parent?: IDataObject;
+	priority?: IDataObject;
+	project?: IDataObject;
+	summary?: string;
 }
 
 export interface IIssue {
 	fields?: IFields;
+	transition?: IDataObject;
 }
 
 export interface INotify {
