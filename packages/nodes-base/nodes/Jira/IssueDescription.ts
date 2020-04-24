@@ -312,7 +312,10 @@ export const issueFields = [
 			{
 				displayName: 'Status ID',
 				name: 'statusId',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTransitions',
+				},
 				required: false,
 				default: '',
 				description: 'The ID of the issue status.',

@@ -43,11 +43,21 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.error || error.response.body.errors;
-		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
+		let errorMessage = error.message;
+
+		if (error.response.body) {
+			if (error.response.body.errorMessages && error.response.body.errorMessages.length) {
+				errorMessage = JSON.stringify(error.response.body.errorMessages);
+			} else {
+				errorMessage = error.response.body.message || error.response.body.error || error.response.body.errors || error.message;
+			}
 		}
-		throw error;
+
+		if (typeof errorMessage !== 'string') {
+			errorMessage = JSON.stringify(errorMessage);
+		}
+
+		throw new Error(`Jira error response [${error.statusCode}]: ${errorMessage}`);
 	}
 }
 

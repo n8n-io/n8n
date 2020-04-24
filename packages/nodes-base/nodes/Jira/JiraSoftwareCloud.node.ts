@@ -112,12 +112,11 @@ export class JiraSoftwareCloud implements INodeType {
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const jiraCloudCredentials = this.getCredentials('jiraSoftwareCloudApi');
-				let projects;
 				let endpoint = '/project/search';
 				if (jiraCloudCredentials === undefined) {
 					endpoint = '/project';
 				}
-				projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
+				let projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
 
 				if (projects.values && Array.isArray(projects.values)) {
 					projects = projects.values;
@@ -138,9 +137,8 @@ export class JiraSoftwareCloud implements INodeType {
 			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projectId = this.getCurrentNodeParameter('project');
 				const returnData: INodePropertyOptions[] = [];
-				let issueTypes;
 
-				issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/issuetype', 'GET');
+				const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/issuetype', 'GET');
 
 				for (const issueType of issueTypes) {
 					if (issueType.scope.project.id === projectId) {
@@ -160,9 +158,8 @@ export class JiraSoftwareCloud implements INodeType {
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let labels;
 
-				labels = await jiraSoftwareCloudApiRequest.call(this, '/label', 'GET');
+				const labels = await jiraSoftwareCloudApiRequest.call(this, '/label', 'GET');
 
 				for (const label of labels.values) {
 					const labelName = label;
@@ -180,9 +177,8 @@ export class JiraSoftwareCloud implements INodeType {
 			// select them easily
 			async getPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let priorities;
 
-				priorities = await jiraSoftwareCloudApiRequest.call(this, '/priority', 'GET');
+				const priorities = await jiraSoftwareCloudApiRequest.call(this, '/priority', 'GET');
 
 				for (const priority of priorities) {
 					const priorityName = priority.name;
@@ -200,9 +196,8 @@ export class JiraSoftwareCloud implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let users;
 
-				users = await jiraSoftwareCloudApiRequest.call(this, '/users/search', 'GET');
+				const users = await jiraSoftwareCloudApiRequest.call(this, '/users/search', 'GET');
 
 				for (const user of users) {
 					const userName = user.displayName;
@@ -220,9 +215,8 @@ export class JiraSoftwareCloud implements INodeType {
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let groups;
 
-				groups = await jiraSoftwareCloudApiRequest.call(this, '/groups/picker', 'GET');
+				const groups = await jiraSoftwareCloudApiRequest.call(this, '/groups/picker', 'GET');
 
 				for (const group of groups.groups) {
 					const groupName = group.name;
@@ -234,7 +228,24 @@ export class JiraSoftwareCloud implements INodeType {
 					});
 				}
 				return returnData;
-			}
+			},
+
+			// Get all the groups to display them to user so that he can
+			// select them easily
+			async getTransitions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const issueKey = this.getCurrentNodeParameter('issueKey');
+				const transitions = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}/transitions`, 'GET');
+
+				for (const transition of transitions.transitions) {
+					returnData.push({
+						name: transition.name,
+						value: transition.id,
+					});
+				}
+				return returnData;
+			},
 		}
 	};
 
