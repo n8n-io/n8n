@@ -298,25 +298,35 @@ export class Keap implements INodeType {
 			if (resource === 'company') {
 				//https://developer.keap.com/docs/rest/#!/Company/createCompanyUsingPOST
 				if (operation === 'create') {
-					const addresses = (this.getNodeParameter('addressesUi', i) as IDataObject).addressesValues as IDataObject[];
-					const faxes = (this.getNodeParameter('faxesUi', i) as IDataObject).faxesValues as IDataObject[];
-					const phones = (this.getNodeParameter('phonesUi', i) as IDataObject).phonesValues as IDataObject[];
 					const companyName = this.getNodeParameter('companyName', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: ICompany = {
 						company_name: companyName,
 					};
-					keysToSnakeCase(additionalFields);
+					if (additionalFields.addressesUi) {
+						const addresses = (additionalFields.addressesUi as IDataObject).addressesValues as IDataObject[];
+						if (addresses) {
+							body.address = keysToSnakeCase(addresses)[0];
+						 }
+						 delete additionalFields.addressesUi;
+					}
+					if (additionalFields.faxesUi) {
+						const faxes = (additionalFields.faxesUi as IDataObject).faxesValues as IDataObject;
+						if (faxes) {
+							body.fax_number = faxes;
+						}
+						delete additionalFields.faxesUi;
+					}
+					if (additionalFields.phonesUi) {
+						const phones = (additionalFields.phonesUi as IDataObject).phonesValues as IDataObject;
+						if (phones) {
+							body.phone_number = phones;
+						}
+						delete additionalFields.phonesUi;
+					}
 					Object.assign(body, additionalFields);
-					if (addresses) {
-						body.address = keysToSnakeCase(addresses)[0] ;
-					 }
-					 if (faxes) {
-						body.fax_number = faxes[0];
-					}
-					if (phones) {
-						body.phone_number = phones[0];
-					}
+					keysToSnakeCase(body as IDataObject);
+					console.log(body);
 					responseData = await keapApiRequest.call(this, 'POST', '/companies', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Company/listCompaniesUsingGET
@@ -342,16 +352,16 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/createOrUpdateContactUsingPUT
 				if (operation === 'upsert') {
 					const duplicateOption = this.getNodeParameter('duplicateOption', i) as string;
-					const addresses = (this.getNodeParameter('addressesUi', i) as IDataObject).addressesValues as IDataObject[];
 					const emails = (this.getNodeParameter('emailsUi', i) as IDataObject).emailsValues as IDataObject[];
-					const faxes = (this.getNodeParameter('faxesUi', i) as IDataObject).faxesValues as IDataObject[];
-					const socialAccounts = (this.getNodeParameter('socialAccountsUi', i) as IDataObject).socialAccountsValues as IDataObject[];
 					const phones = (this.getNodeParameter('phonesUi', i) as IDataObject).phonesValues as IDataObject[];
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const addresses = additionalFields.addressesUi as IDataObject;
+					const socialAccounts = additionalFields.socialAccountsUi as IDataObject;
+					const faxes = additionalFields.faxesUi as IDataObject;
+
 					const body: IContact = {
 						duplicate_option: pascalCase(duplicateOption),
 					};
-
 					if (additionalFields.anniversary) {
 						body.anniversary = additionalFields.anniversary as string;
 					}
@@ -407,20 +417,21 @@ export class Keap implements INodeType {
 						body.company = { id: additionalFields.companyId as number };
 					}
 					if (addresses) {
-						body.addresses = keysToSnakeCase(addresses) as IAddress[];
+						body.addresses = keysToSnakeCase(addresses.addressesValues as IDataObject[]) as IAddress[];
 					 }
 					 if (emails) {
 						 body.email_addresses = emails as IEmailContact[];
 					 }
 					 if (faxes) {
-						body.fax_numbers = faxes as IFax[];
+						body.fax_numbers = keysToSnakeCase(faxes.faxesValues as IDataObject) as IFax[];
 					}
 					if (socialAccounts) {
-						body.social_accounts = socialAccounts as ISocialAccount[];
+						body.social_accounts = keysToSnakeCase(socialAccounts.socialAccountsValues as IDataObject) as ISocialAccount[];
 					}
 					if (phones) {
 						body.phone_numbers = phones as IPhone[];
 					}
+					console.log(body);
 					responseData = await keapApiRequest.call(this, 'PUT', '/contacts', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/deleteContactUsingDELETE
@@ -566,8 +577,8 @@ export class Keap implements INodeType {
 					const orderTitle = this.getNodeParameter('orderTitle', i) as string;
 					const orderType = this.getNodeParameter('orderType', i) as string;
 					const orderItems = (this.getNodeParameter('orderItemsUi', i) as IDataObject).orderItemsValues as IDataObject[];
-					const shippingAddress = (this.getNodeParameter('addressUi', i) as IDataObject).addressValues as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const shippingAddress = additionalFields.addressUi as IDataObject;
 					const body: IEcommerceOrder = {
 						contact_id: contactId,
 						order_date: orderDate,
@@ -577,12 +588,13 @@ export class Keap implements INodeType {
 					if (additionalFields.promoCodes) {
 						additionalFields.promoCodes = (additionalFields.promoCodes as string).split(',') as string[];
 					}
-					keysToSnakeCase(additionalFields);
-					Object.assign(body, additionalFields);
 					body.order_items = keysToSnakeCase(orderItems) as IItem[];
 					if (shippingAddress) {
-						body.shipping_address = keysToSnakeCase(shippingAddress)[0] as IShippingAddress;
+						body.shipping_address = keysToSnakeCase(shippingAddress.addressValues as IDataObject)[0] as IShippingAddress;
+						delete additionalFields.addressUi;
 					}
+					keysToSnakeCase(additionalFields);
+					Object.assign(body, additionalFields);
 					responseData = await keapApiRequest.call(this, 'POST', '/orders', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/deleteOrderUsingDELETE

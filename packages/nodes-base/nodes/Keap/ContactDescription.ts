@@ -93,6 +93,95 @@ export const contactFields = [
 		},
 		options: [
 			{
+				displayName: 'Addresses',
+				name: 'addressesUi',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: '',
+				placeholder: 'Add Address',
+				options: [
+					{
+						name: 'addressesValues',
+						displayName: 'Address',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								options: [
+									{
+										name: 'Billing',
+										value: 'BILLING',
+									},
+									{
+										name: 'Shipping',
+										value: 'SHIPPING',
+									},
+									{
+										name: 'Other',
+										value: 'OTHER',
+									},
+								],
+								default: '',
+							},
+							{
+								displayName: 'Country Code',
+								name: 'countryCode',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCountries',
+								},
+								default: '',
+							},
+							{
+								displayName: 'Line 1',
+								name: 'line1',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Line 2',
+								name: 'line2',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Locality',
+								name: 'locality',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Postal Code',
+								name: 'postalCode',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Region',
+								name: 'region',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Zip Code',
+								name: 'zipCode',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Zip Four',
+								name: 'zipFour',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Anniversary',
 				name: 'anniversary',
 				type: 'dateTime',
@@ -121,6 +210,46 @@ export const contactFields = [
 				name: 'familyName',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Faxes',
+				name: 'faxesUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Fax',
+				options: [
+					{
+						name: 'faxesValues',
+						displayName: 'Fax',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								options: [
+									{
+										name: 'Fax 1',
+										value: 'FAX1',
+									},
+									{
+										name: 'Fax 2',
+										value: 'FAX2',
+									},
+								],
+								default: '',
+							},
+							{
+								displayName: 'Number',
+								name: 'number',
+								type: 'string',
+								default: '',
+							},
+						],
+					}
+				],
 			},
 			{
 				displayName: 'Given Name',
@@ -219,6 +348,50 @@ export const contactFields = [
 				default: '',
 			},
 			{
+				displayName: 'Social Accounts',
+				name: 'socialAccountsUi',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: '',
+				placeholder: 'Add Social Account',
+				options: [
+					{
+						name: 'socialAccountsValues',
+						displayName: 'Social Account',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'Facebook',
+										value: 'Facebook',
+									},
+									{
+										name: 'Twitter',
+										value: 'Twitter',
+									},
+									{
+										name: 'LinkedIn',
+										value: 'LinkedIn',
+									},
+								],
+								default: '',
+							},
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'options',
@@ -232,105 +405,6 @@ export const contactFields = [
 				name: 'website',
 				type: 'string',
 				default: '',
-			},
-		],
-	},
-	{
-		displayName: 'Addresses',
-		name: 'addressesUi',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: '',
-		placeholder: 'Add Address',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'upsert',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'addressesValues',
-				displayName: 'Address',
-				values: [
-					{
-						displayName: 'Field',
-						name: 'field',
-						type: 'options',
-						options: [
-							{
-								name: 'Billing',
-								value: 'BILLING',
-							},
-							{
-								name: 'Shipping',
-								value: 'SHIPPING',
-							},
-							{
-								name: 'Other',
-								value: 'OTHER',
-							},
-						],
-						default: '',
-					},
-					{
-						displayName: 'Country Code',
-						name: 'countryCode',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getCountries',
-						},
-						default: '',
-					},
-					{
-						displayName: 'Line 1',
-						name: 'line1',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Line 2',
-						name: 'line2',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Locality',
-						name: 'locality',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Postal Code',
-						name: 'postalCode',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Region',
-						name: 'region',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Zip Code',
-						name: 'zipCode',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Zip Four',
-						name: 'zipFour',
-						type: 'string',
-						default: '',
-					},
-				],
 			},
 		],
 	},
@@ -381,56 +455,6 @@ export const contactFields = [
 					{
 						displayName: 'Email',
 						name: 'email',
-						type: 'string',
-						default: '',
-					},
-				],
-			}
-		],
-	},
-	{
-		displayName: 'Faxes',
-		name: 'faxesUi',
-		type: 'fixedCollection',
-		default: {},
-		typeOptions: {
-			multipleValues: true,
-		},
-		placeholder: 'Add Fax',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'upsert',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'faxesValues',
-				displayName: 'Fax',
-				values: [
-					{
-						displayName: 'Field',
-						name: 'field',
-						type: 'options',
-						options: [
-							{
-								name: 'Fax 1',
-								value: 'FAX1',
-							},
-							{
-								name: 'Fax 2',
-								value: 'FAX2',
-							},
-						],
-						default: '',
-					},
-					{
-						displayName: 'Number',
-						name: 'number',
 						type: 'string',
 						default: '',
 					},
@@ -493,60 +517,6 @@ export const contactFields = [
 					{
 						displayName: 'Number',
 						name: 'number',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Social Accounts',
-		name: 'socialAccountsUi',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		default: '',
-		placeholder: 'Add Social Account',
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'upsert',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'socialAccountsValues',
-				displayName: 'Social Account',
-				values: [
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'options',
-						options: [
-							{
-								name: 'Facebook',
-								value: 'Facebook',
-							},
-							{
-								name: 'Twitter',
-								value: 'Twitter',
-							},
-							{
-								name: 'LinkedIn',
-								value: 'LinkedIn',
-							},
-						],
-						default: '',
-					},
-					{
-						displayName: 'Name',
-						name: 'name',
 						type: 'string',
 						default: '',
 					},

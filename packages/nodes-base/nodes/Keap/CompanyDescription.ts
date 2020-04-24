@@ -71,10 +71,101 @@ export const companyFields = [
 		},
 		options: [
 			{
+				displayName: 'Addresses',
+				name: 'addressesUi',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: '',
+				placeholder: 'Add Address',
+				options: [
+					{
+						name: 'addressesValues',
+						displayName: 'Address',
+						values: [
+							{
+								displayName: 'Country Code',
+								name: 'countryCode',
+								type: 'string',
+								default: '',
+								description: 'ISO Alpha-3 Code'
+							},
+							{
+								displayName: 'Line 1',
+								name: 'line1',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Line 2',
+								name: 'line2',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Locality',
+								name: 'locality',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Region',
+								name: 'region',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Zip Code',
+								name: 'zipCode',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Zip Four',
+								name: 'zipFour',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Email',
 				name: 'emailAddress',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Faxes',
+				name: 'faxesUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: false,
+				},
+				placeholder: 'Add Fax',
+				options: [
+					{
+						name: 'faxesValues',
+						displayName: 'Fax',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Number',
+								name: 'number',
+								type: 'string',
+								default: '',
+							},
+						],
+					}
+				],
 			},
 			{
 				displayName: 'Notes',
@@ -92,167 +183,40 @@ export const companyFields = [
 				default: '',
 			},
 			{
+				displayName: 'Phones',
+				name: 'phonesUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: false,
+				},
+				placeholder: 'Add Phone',
+				options: [
+					{
+						name: 'phonesValues',
+						displayName: 'Phones',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Number',
+								name: 'number',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Website',
 				name: 'website',
 				type: 'string',
 				default: '',
-			},
-		],
-	},
-	{
-		displayName: 'Addresses',
-		name: 'addressesUi',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: false,
-		},
-		default: '',
-		placeholder: 'Add Address',
-		displayOptions: {
-			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'addressesValues',
-				displayName: 'Address',
-				values: [
-					{
-						displayName: 'Country Code',
-						name: 'countryCode',
-						type: 'string',
-						default: '',
-						description: 'ISO Alpha-3 Code'
-					},
-					{
-						displayName: 'Line 1',
-						name: 'line1',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Line 2',
-						name: 'line2',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Locality',
-						name: 'locality',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Postal Code',
-						name: 'postalCode',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Region',
-						name: 'region',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Zip Code',
-						name: 'zipCode',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Zip Four',
-						name: 'zipFour',
-						type: 'string',
-						default: '',
-					},
-				],
-			},
-		],
-	},
-	{
-		displayName: 'Faxes',
-		name: 'faxesUi',
-		type: 'fixedCollection',
-		default: {},
-		typeOptions: {
-			multipleValues: false,
-		},
-		placeholder: 'Add Fax',
-		displayOptions: {
-			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'faxesValues',
-				displayName: 'Fax',
-				values: [
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Number',
-						name: 'number',
-						type: 'string',
-						default: '',
-					},
-				],
-			}
-		],
-	},
-	{
-		displayName: 'Phones',
-		name: 'phonesUi',
-		type: 'fixedCollection',
-		default: {},
-		typeOptions: {
-			multipleValues: true,
-		},
-		placeholder: 'Add Phone',
-		displayOptions: {
-			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: [
-			{
-				name: 'phonesValues',
-				displayName: 'Phones',
-				values: [
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Number',
-						name: 'number',
-						type: 'string',
-						default: '',
-					},
-				],
 			},
 		],
 	},

@@ -67,6 +67,9 @@ export async function keapApiRequestAllItems(this: IHookFunctions| IExecuteFunct
 }
 
 export function keysToSnakeCase(elements: IDataObject[] | IDataObject) : IDataObject[] {
+	if (elements === undefined) {
+		return [];
+	}
 	if (!Array.isArray(elements)) {
 		elements = [elements];
 	}

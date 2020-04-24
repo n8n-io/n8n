@@ -83,7 +83,7 @@ export const ecommerceOrderFields = [
 	{
 		displayName: 'Order Title',
 		name: 'orderTitle',
-		type: 'dateTime',
+		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
@@ -167,106 +167,96 @@ export const ecommerceOrderFields = [
 				},
 				default: 0,
 			},
-		],
-	},
-	{
-		displayName: 'Shipping Address',
-		name: 'addressUi',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: false,
-		},
-		default: '',
-		placeholder: 'Add Address',
-		displayOptions: {
-			show: {
-				resource: [
-					'ecommerceOrder',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		options: [
 			{
-				name: 'addressValues',
-				displayName: 'Address',
-				values: [
+				displayName: 'Shipping Address',
+				name: 'addressUi',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: '',
+				placeholder: 'Add Address',
+				options: [
 					{
-						displayName: 'Company',
-						name: 'company',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Country Code',
-						name: 'countryCode',
-						type: 'options',
-						typeOptions: {
-							loadOptionsMethod: 'getCountries',
-						},
-						default: '',
-					},
-					{
-						displayName: 'First Name',
-						name: 'firstName',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Middle Name',
-						name: 'middleName',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Last Name',
-						name: 'lastName',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Line 1',
-						name: 'line1',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Line 2',
-						name: 'line2',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Locality',
-						name: 'locality',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Region',
-						name: 'region',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Zip Code',
-						name: 'zipCode',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Zip Four',
-						name: 'zipFour',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Phone',
-						name: 'phone',
-						type: 'string',
-						default: '',
+						name: 'addressValues',
+						displayName: 'Address',
+						values: [
+							{
+								displayName: 'Company',
+								name: 'company',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Country Code',
+								name: 'countryCode',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCountries',
+								},
+								default: '',
+							},
+							{
+								displayName: 'First Name',
+								name: 'firstName',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Middle Name',
+								name: 'middleName',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Last Name',
+								name: 'lastName',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Line 1',
+								name: 'line1',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Line 2',
+								name: 'line2',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Locality',
+								name: 'locality',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Region',
+								name: 'region',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Zip Code',
+								name: 'zipCode',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Zip Four',
+								name: 'zipFour',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Phone',
+								name: 'phone',
+								type: 'string',
+								default: '',
+							},
+						],
 					},
 				],
 			},
