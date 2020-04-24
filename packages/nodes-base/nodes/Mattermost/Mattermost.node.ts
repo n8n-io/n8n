@@ -32,7 +32,7 @@ export class Mattermost implements INodeType {
 		description: 'Sends data to Mattermost',
 		defaults: {
 			name: 'Mattermost',
-			color: '#0058CC',
+			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -849,6 +849,11 @@ export class Mattermost implements INodeType {
 						value: 'getAll',
 						description: 'Retrieve all users',
 					},
+					{
+						name: 'Get By Email',
+						value: 'getByEmail',
+						description: 'Get a user by email',
+					},
 				],
 				default: '',
 				description: 'The operation to perform.',
@@ -990,6 +995,27 @@ export class Mattermost implements INodeType {
 						description: 'The ID of the channel to exclude users for.',
 					},
 				],
+			},
+			// ----------------------------------
+			//         user:getByEmail
+			// ----------------------------------
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getByEmail',
+						],
+					},
+				},
+				default: '',
+				description: `User's email`,
 			},
 		],
 	};
@@ -1332,6 +1358,16 @@ export class Mattermost implements INodeType {
 
 					endpoint = `/users`;
 				}
+
+				if (operation === 'getByEmail') {
+					// ----------------------------------
+					//          user:getByEmail
+					// ----------------------------------
+					const email = this.getNodeParameter('email', i) as string;
+					requestMethod = 'GET';
+					endpoint = `users/email/${email}`;
+				}
+
 			}
 			else {
 				throw new Error(`The resource "${resource}" is not known!`);
