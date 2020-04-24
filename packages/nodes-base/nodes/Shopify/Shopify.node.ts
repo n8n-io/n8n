@@ -32,7 +32,7 @@ import {
 export class Shopify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Shopify',
-		name: 'shopifyN',
+		name: 'shopifyNode',
 		icon: 'file:shopify.png',
 		group: ['output'],
 		version: 1,
