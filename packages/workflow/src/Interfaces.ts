@@ -527,6 +527,7 @@ export interface IWebhookDescription {
 	responsePropertyName?: string;
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
+	responseContentDisposition?: WebhookContentDisposition | string;
 }
 
 export interface IWorkflowDataProxyData {
@@ -558,6 +559,7 @@ export interface IWebhookResponseData {
 
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary';
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
+export type WebhookContentDisposition = 'inline' | 'attachment';
 
 export interface INodeTypes {
 	nodeTypes: INodeTypeData;

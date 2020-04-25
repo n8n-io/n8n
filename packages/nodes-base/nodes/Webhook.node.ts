@@ -85,6 +85,7 @@ export class Webhook implements INodeType {
 				responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
 				responseContentType: '={{$parameter["options"]["responseContentType"]}}',
 				responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
+				responseContentDisposition: '={{$parameter["options"]["responseContentDisposition"]}}',
 				path: '={{$parameter["path"]}}',
 			},
 		],
@@ -267,6 +268,35 @@ export class Webhook implements INodeType {
 						default: '',
 						placeholder: 'application/xml',
 						description: 'Set a custom content-type to return if another one as the "application/json" should be returned.',
+					},
+					{
+						displayName: 'Response Content-Disposition',
+						name: 'responseContentDisposition',
+						type: 'options',
+						displayOptions: {
+							show: {
+								'/responseData': [
+									'firstEntryBinary',
+								],
+								'/responseMode': [
+									'lastNode',
+								],
+							},
+						},
+						options: [
+							{
+								name: 'Inline',
+								value: 'inline',
+								description: 'The content returned should be displayed inline in the browser.',
+							},
+							{
+								name: 'Attachment',
+								value: 'attachment',
+								description: 'The response should be downloaded (most browsers presenting a "Save-as" dialog).',
+							},
+						],
+						default: 'attachment',
+						description: 'Indicates whether the content is expected to be displayed inline in the browser, or as an attachment, that is downloaded and saved locally.',
 					},
 					{
 						displayName: 'Property Name',

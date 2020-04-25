@@ -288,6 +288,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 			}
 
 			const responseData = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseData'], 'firstEntryJson');
+			const responseContentDisposition = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseContentDisposition'], undefined);
 
 			if (didSendResponse === false) {
 				let data: IDataObject | IDataObject[];
@@ -357,6 +358,11 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 					if (didSendResponse === false) {
 						// Send the webhook response manually
 						res.setHeader('Content-Type', binaryData.mimeType);
+						if (responseContentDisposition === 'inline') {
+							res.setHeader('Content-Disposition', 'inline');
+						} else if (responseContentDisposition === 'attachment') {
+							res.setHeader('Content-Disposition', `attachment; filename="${binaryData.fileName}"`);
+						}
 						res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
 
 						responseCallback(null, {
