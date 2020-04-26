@@ -759,7 +759,11 @@ export class Workflow {
 			}
 		};
 
-		return this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData);
+		// Resolve the "outer" main values
+		const returnData = this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData);
+
+		// Resolve the "inner" values
+		return this.getParameterValue(returnData, runData, runIndex, itemIndex, node.name, connectionInputData);
 	}
 
 	/**
