@@ -12,8 +12,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	keysToSnakeCase,
 	bannerbearApiRequest,
+	keysToSnakeCase,
 } from './GenericFunctions';
 
 import {
