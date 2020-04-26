@@ -21,7 +21,7 @@ import {
 
 import {
 	createHmac,
- } from 'crypto';
+} from 'crypto';
 
 export class SurveyMonkeyTrigger implements INodeType {
 	description: INodeTypeDescription = {
