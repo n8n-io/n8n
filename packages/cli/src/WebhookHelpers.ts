@@ -149,6 +149,16 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 			};
 		}
 
+		if (webhookData.webhookDescription['responseHeaders'] !== undefined) {
+			const responseHeaders = workflow.getComplexParameterValue(workflowStartNode, webhookData.webhookDescription['responseHeaders'], undefined) as any;
+
+			if (responseHeaders !== undefined && responseHeaders['entries'] !== undefined) {
+				for (const item of responseHeaders['entries']) {
+					res.setHeader(item['name'], item['value'])
+				}
+			}
+		}
+
 		if (webhookResultData.noWebhookResponse === true && didSendResponse === false) {
 			// The response got already send
 			responseCallback(null, {
