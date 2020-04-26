@@ -734,7 +734,33 @@ export class Workflow {
 		return this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData) as boolean | number | string | undefined;
 	}
 
+	/**
+	 * Resolves value of complex parameter. But does not work for workflow-data.
+	 *
+	 * @param {INode} node
+	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
+	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)} [defaultValue]
+	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)}
+	 * @memberof Workflow
+	 */
+	getComplexParameterValue(node: INode, parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], defaultValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined = undefined): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined {
+		if (parameterValue === undefined) {
+			// Value is not set so return the default
+			return defaultValue;
+		}
 
+		// Get the value of the node (can be an expression)
+		const runIndex = 0;
+		const itemIndex = 0;
+		const connectionInputData: INodeExecutionData[] = [];
+		const runData: IRunExecutionData = {
+			resultData: {
+				runData: {},
+			}
+		};
+
+		return this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData);
+	}
 
 	/**
 	 * Returns from which of the given nodes the workflow should get started from
