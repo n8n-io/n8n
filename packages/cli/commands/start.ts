@@ -115,11 +115,7 @@ export class Start extends Command {
 				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 				// Wait till the database is ready
-				let dbReady = await startDbInitPromise;
-
-				if(!dbReady){
-					throw new Error("DB did not initialize.");
-				}
+				await startDbInitPromise;
 
 				if (flags.tunnel === true) {
 					this.log('\nWaiting for tunnel ...');
