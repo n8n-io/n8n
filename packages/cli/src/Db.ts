@@ -28,9 +28,11 @@ export let collections: IDatabaseCollections = {
 	Workflow: null,
 };
 
+import InitialMigration1587669153312 from './databases/postgresdb/migrations/1587669153312-InitialMigration'
+
 import * as path from 'path';
 
-export async function init(synchronize?: boolean): Promise<boolean> {
+export async function init(synchronize?: boolean): Promise<IDatabaseCollections> {
 	const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
@@ -63,7 +65,7 @@ export async function init(synchronize?: boolean): Promise<boolean> {
 				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
 				schema: await GenericHelpers.getConfigValue('database.postgresdb.schema') as string,
-				migrations: ['./databases/postgresdb/migrations/*.js']
+				migrations: [InitialMigration1587669153312]
 			};
 			break;
 
@@ -105,21 +107,45 @@ export async function init(synchronize?: boolean): Promise<boolean> {
 		migrationsRun: true
 	});
 
-	for(let i = 0; i < 1000; i++){
-		console.log(connectionOptions);
-	}
-
 	try{
 		connection = await createConnection(connectionOptions);
 
-		await connection.runMigrations({
-			transaction: "none"
+		let migrations = await connection.runMigrations({
+			transaction: 'none'
 		});
+
+		console.log(migrations);
+
 	}catch(e){
-		throw new Error("Couldn't connect to db / migrate stuff.")
+		console.log(`Error: ${e}`);
+		return e;
 	}
 
+	// TODO: Fix that properly
+	// @ts-ignore
+	collections.Credentials = getRepository(entities.CredentialsEntity);
+	// @ts-ignore
+	collections.Execution = getRepository(entities.ExecutionEntity);
+	// @ts-ignore
+	collections.Workflow = getRepository(entities.WorkflowEntity);
 
+	// Make sure that database did already get initialized
+	try {
+		// Try a simple query, if it fails it is normally a sign that
+		// database did not get initialized
+		await collections.Execution!.findOne({ id: 1 });
+	} catch (error) {
+		// If query errors and the problem is that the database does not exist
+		// run the init again with "synchronize: true"
+		if (dbNotExistError !== undefined && error.message.includes(dbNotExistError)) {
+			// Disconnect before we try to connect again
+			if (connection.isConnected) {
+				await connection.close();
+			}
 
-	return connection.isConnected;
+			return init(true);
+		}
+	}
+	return collections;
+	
 };
