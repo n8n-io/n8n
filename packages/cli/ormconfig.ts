@@ -2,6 +2,25 @@ import {MongoDb, SQLite, MySQLDb, PostgresDb} from './src/databases/index';
 
 module.exports = [
     {
+        "name": "sqlite",
+        "type": "sqlite",
+        "logging": true,
+        "entities": Object.values(SQLite),
+        "database": "C:\Users\Ronald\.n8n\database.sqlite",
+        "migrations": [
+           "./src/databases/sqlite/migrations/*.ts"
+        ],
+        "subscribers": [
+            "./src/databases/sqlite/subscribers/*.ts"
+        ],
+        "cli": {
+           "entitiesDir": "./src/databases/sqlite",
+           "migrationsDir": "./src/databases/sqlite/migrations",
+           "subscribersDir": "./src/databases/sqlite/subscribers"
+        }
+    },
+    {
+        "name": "mongodb",
         "type": "mongodb",
         "logging": false,
         "entities": Object.values(MongoDb),
@@ -18,38 +37,30 @@ module.exports = [
         }
     },
     {
+        "name": "postgres",
         "type": "postgres",
         "logging": false,
+        "host": "localhost",
+        "username": "postgres",
+        "password": "docker",
+        "port": 5432,
+        "database": "postgres",
+        "schema": "public",
         "entities": Object.values(PostgresDb),
         "migrations": [
-           "./src/databases/postgresdb/Migrations/**/*.ts"
+           "./src/databases/postgresdb/migrations/*.ts"
         ],
         "subscribers": [
            "src/subscriber/**/*.ts"
         ],
         "cli": {
            "entitiesDir": "./src/databases/postgresdb",
-           "migrationsDir": "./src/databases/postgresdb/Migrations",
-           "subscribersDir": "./src/databases/postgresdb/Subscribers"
+           "migrationsDir": "./src/databases/postgresdb/migrations",
+           "subscribersDir": "./src/databases/postgresdb/subscribers"
         }
     },
     {
-        "type": "sqlite",
-        "logging": false,
-        "entities": Object.values(SQLite),
-        "migrations": [
-           "./src/databases/sqlite/Migrations/**/*.ts"
-        ],
-        "subscribers": [
-           "src/subscriber/**/*.ts"
-        ],
-        "cli": {
-           "entitiesDir": "./src/databases/sqlite",
-           "migrationsDir": "./src/databases/sqlite/Migrations",
-           "subscribersDir": "./src/databases/sqlite/Subscribers"
-        }
-    },
-    {
+        "name": "mysql",
         "type": "mysql",
         "logging": false,
         "entities": Object.values(MySQLDb),
