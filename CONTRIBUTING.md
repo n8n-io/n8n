@@ -11,7 +11,9 @@ Great that you are here and you want to contribute to n8n
 - [Development Cycle](#development-cycle)
 - [Create Custom Nodes](#create-custom-nodes)
 - [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
+- [Checklist before submitting a new node](#checklist-before-submitting-a-new-node)
 - [Extend Documentation](#extend-documentation)
+- [Contributor License Agreement](#contributor-license-agreement)
 
 
 ## Code of Conduct
@@ -189,6 +191,24 @@ If you want to create a node which should be added to n8n follow these steps:
 When developing n8n must get restarted and the browser reloaded every time parameters of a node change (like new ones added, removed or changed). Only then will the new data be loaded and the node displayed correctly.
 
 If only the code of the node changes (the execute method) than it is not needed as each workflow automatically starts a new process and so will always load the latest code.
+
+
+## Checklist before submitting a new node
+
+If you'd like to submit a new node, please go through the following checklist. This will help us be quicker to review and merge your PR.
+
+- [ ]  Make failing requests to the API to ensure that the errors get displayed correctly (like malformed requests or requests with invalid credentials)
+- [ ]  Ensure that the default values do not change and that the parameters do not get renamed, as it would break the existing workflows of the users
+- [ ]  Ensure that all the top-level parameters use camelCase
+- [ ]  Ensure that all the options are ordered alphabetically, unless a different order is needed for a specific reason
+- [ ]  Ensure that the parameters have the correct type
+- [ ]  Make sure that the file-name and the Class name are identical (case sensitive). The name under "description" in the node-code should also be identical (except that it starts with a lower-case letter and that it will never have a space)
+- [ ]  Names of Trigger-Nodes always have to end with "Trigger"
+- [ ]  Add credentials and nodes to the `package.json` file in alphanumerical order
+- [ ]  Use tabs in all the files except in the `package.json` file, where 4-spaces have to get used
+- [ ]  To make it as simple as possible for the users, check other similar nodes to ensure that they all behave similarly
+- [ ]  Try to add as few parameters as possible on the main level to ensure that the node doesn't appear overwhelming. It should only contain the required parameters. All the other ones should be hidden on lower levels as "Additional Parameters" or "Options"
+- [ ]  Create only one node per service which can do everything via "Resource" and "Options" and not a separate one for each possible operation.
 
 
 ## Extend Documentation
