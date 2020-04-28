@@ -208,7 +208,7 @@ If you'd like to submit a new node, please go through the following checklist. T
 - [ ]  Use tabs in all the files except in the `package.json` file, where 4-spaces have to get used
 - [ ]  To make it as simple as possible for the users, check other similar nodes to ensure that they all behave similarly
 - [ ]  Try to add as few parameters as possible on the main level to ensure that the node doesn't appear overwhelming. It should only contain the required parameters. All the other ones should be hidden on lower levels as "Additional Parameters" or "Options"
-- [ ]  Create only one node per service which can do everything from "Resource" and "Options" and not a separate one for each possible operation.
+- [ ]  Create only one node per service which can do everything via "Resource" and "Options" and not a separate one for each possible operation.
 
 
 ## Extend Documentation
