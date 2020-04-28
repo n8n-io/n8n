@@ -11,7 +11,9 @@ Great that you are here and you want to contribute to n8n
 - [Development Cycle](#development-cycle)
 - [Create Custom Nodes](#create-custom-nodes)
 - [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
+- [Checklist before submitting a new node](#checklist-before-submitting-a-new-node)
 - [Extend Documentation](#extend-documentation)
+- [Contributor License Agreement](#contributor-license-agreement)
 
 
 ## Code of Conduct
@@ -191,7 +193,7 @@ When developing n8n must get restarted and the browser reloaded every time param
 If only the code of the node changes (the execute method) than it is not needed as each workflow automatically starts a new process and so will always load the latest code.
 
 
-## Checklist before submitting a node
+## Checklist before submitting a new node
 
 If you'd like to submit a new node, please go through the following checklist. This will help us be quicker to review and merge your PR.
 
