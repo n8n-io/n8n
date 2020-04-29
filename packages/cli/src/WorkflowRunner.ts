@@ -145,6 +145,10 @@ export class WorkflowRunner {
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
+		workflowExecution.then((fullRunData) => {
+			this.activeExecutions.remove(executionId, fullRunData);
+		});
+
 		return executionId;
 	}
 
