@@ -6,7 +6,7 @@ module.exports = [
         "type": "sqlite",
         "logging": true,
         "entities": Object.values(SQLite),
-        "database": "C:\Users\Ronald\.n8n\database.sqlite",
+        "database": "./packages/cli/database.sqlite",
         "migrations": [
            "./src/databases/sqlite/migrations/*.ts"
         ],
@@ -24,8 +24,10 @@ module.exports = [
         "type": "mongodb",
         "logging": false,
         "entities": Object.values(MongoDb),
+        "url": "mongodb://root:example@localhost:27017/n8n",
+        "authSource": 'admin',
         "migrations": [
-           "./src/databases/mongodb/Migrations/**/*.ts"
+           "./src/databases/mongodb/migrations/*.ts"
         ],
         "subscribers": [
            "src/subscriber/**/*.ts"
@@ -62,17 +64,44 @@ module.exports = [
     {
         "name": "mysql",
         "type": "mysql",
+        "database": "n8n",
+        "username": "root",
+        "password": "password",
+        "host": "localhost",
+        "port": "3308",
         "logging": false,
         "entities": Object.values(MySQLDb),
         "migrations": [
-           "./src/databases/mysqldb/Migrations/**/*.ts"
+           "./src/databases/mysqldb/migrations/*.ts"
         ],
         "subscribers": [
            "src/subscriber/**/*.ts"
         ],
         "cli": {
            "entitiesDir": "./src/databases/mysqldb",
-           "migrationsDir": "./src/databases/mysqldb/Migrations",
+           "migrationsDir": "./src/databases/mysqldb/migrations",
+           "subscribersDir": "./src/databases/mysqldb/Subscribers"
+        }
+    },
+        {
+        "name": "mysql",
+        "type": "mysql",
+        "database": "n8n",
+        "username": "root",
+        "password": "password",
+        "host": "localhost",
+        "port": "3308",
+        "logging": false,
+        "entities": Object.values(MySQLDb),
+        "migrations": [
+           "./src/databases/mysqldb/migrations/*.ts"
+        ],
+        "subscribers": [
+           "src/subscriber/**/*.ts"
+        ],
+        "cli": {
+           "entitiesDir": "./src/databases/mysqldb",
+           "migrationsDir": "./src/databases/mysqldb/migrations",
            "subscribersDir": "./src/databases/mysqldb/Subscribers"
         }
     },
