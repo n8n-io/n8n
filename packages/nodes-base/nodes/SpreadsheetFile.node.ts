@@ -174,6 +174,24 @@ export class SpreadsheetFile implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Compression',
+						name: 'compression',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'toFile',
+								],
+								'/fileFormat': [
+									'xlsx',
+									'ods',
+								],
+							},
+						},
+						default: false,
+						description: 'Weather compression will be applied or not',
+					},
+					{
 						displayName: 'File Name',
 						name: 'fileName',
 						type: 'string',
@@ -342,10 +360,16 @@ export class SpreadsheetFile implements INodeType {
 				wopts.bookType = 'rtf';
 			} else if (fileFormat === 'ods') {
 				wopts.bookType = 'ods';
+				if (options.compression) {
+					wopts.compression = true;
+				}
 			} else if (fileFormat === 'xls') {
 				wopts.bookType = 'xls';
 			} else if (fileFormat === 'xlsx') {
 				wopts.bookType = 'xlsx';
+				if (options.compression) {
+					wopts.compression = true;
+				}
 			}
 
 			// Convert the data in the correct format
