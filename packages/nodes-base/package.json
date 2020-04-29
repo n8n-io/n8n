@@ -297,6 +297,7 @@
         "pdf-parse": "^1.1.1",
         "pg-promise": "^9.0.3",
         "redis": "^2.8.0",
+        "request": "^2.88.2",
         "rhea": "^1.0.11",
         "rss-parser": "^3.7.0",
         "uuid": "^3.4.0",
