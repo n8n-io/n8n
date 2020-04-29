@@ -33,7 +33,7 @@ import {
 } from './databases/postgresdb/migrations';
 
 import {
-	InitialMigration1588086339467
+	InitialMigration1588157391238
 } from './databases/mysqldb/migrations';
 
 import {
@@ -91,7 +91,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
-				migrations: [InitialMigration1588086339467],
+				migrations: [InitialMigration1588157391238],
 				migrationsRun: true
 			};
 			break;
@@ -101,7 +101,7 @@ export async function init(): Promise<IDatabaseCollections> {
 			entities = SQLite;
 			connectionOptions = {
 				type: 'sqlite',
-				database: path.join(n8nFolder, 'database.sqlite'),
+				database:  path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
 				migrations: [InitialMigration1588102412422], 
 				migrationsRun: true
@@ -115,6 +115,7 @@ export async function init(): Promise<IDatabaseCollections> {
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
 		synchronize: false,
+		logging: true
 	});
 
 	try {
