@@ -92,6 +92,7 @@
             "dist/credentials/RundeckApi.credentials.js",
             "dist/credentials/ShopifyApi.credentials.js",
             "dist/credentials/SlackApi.credentials.js",
+		 	"dist/credentials/Sms77.credentials.js",
             "dist/credentials/Smtp.credentials.js",
             "dist/credentials/StripeApi.credentials.js",
             "dist/credentials/SalesmateApi.credentials.js",
