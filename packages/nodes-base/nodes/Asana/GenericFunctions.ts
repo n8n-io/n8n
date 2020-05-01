@@ -41,7 +41,7 @@ export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions |
 			// Return a clear error
 			throw new Error('The Asana credentials are not valid!');
 		}
-
+		console.log(error);
 		if (error.response && error.response.body && error.response.body.errors) {
 			// Try to return the error prettier
 			const errorMessages = error.response.body.errors.map((errorData: { message: string }) => {
