@@ -37,13 +37,13 @@ function buildMongoConnectionParams(
 		credentials.database && credentials.database.trim().length > 0
 			? credentials.database.trim()
 			: '';
-	if (credentials.shouldOverrideConnString) {
+	if (credentials.configurationType === 'connectionString') {
 		if (
-			credentials.connStringOverrideVal &&
-			credentials.connStringOverrideVal.trim().length > 0
+			credentials.connectionString &&
+			credentials.connectionString.trim().length > 0
 		) {
 			return {
-				connectionString: credentials.connStringOverrideVal.trim(),
+				connectionString: credentials.connectionString.trim(),
 				database: sanitizedDbName
 			};
 		} else {
@@ -67,11 +67,11 @@ function buildMongoConnectionParams(
 export function validateAndResolveMongoCredentials(
 	credentials?: ICredentialDataDecryptedObject
 ): IMongoCredentials {
-	if (credentials == undefined) {
+	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	} else {
 		return buildMongoConnectionParams(
-			(credentials as any) as IMongoCredentialsType
+			credentials as unknown as IMongoCredentialsType,
 		);
 	}
 }
