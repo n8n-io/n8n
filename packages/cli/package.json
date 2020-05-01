@@ -93,7 +93,7 @@
         "jwks-rsa": "^1.6.0",
         "localtunnel": "^2.0.0",
         "lodash.get": "^4.4.2",
-        "mongodb": "^3.2.3",
+        "mongodb": "^3.5.5",
         "mysql2": "^2.0.1",
         "n8n-core": "~0.32.0",
         "n8n-editor-ui": "~0.43.0",
