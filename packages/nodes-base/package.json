@@ -290,6 +290,8 @@
         "lodash.get": "^4.4.2",
         "lodash.set": "^4.3.2",
         "lodash.unset": "^4.5.2",
+        "moment": "2.24.0",
+        "moment-timezone": "^0.5.28",
         "mongodb": "^3.3.2",
         "mysql2": "^2.0.1",
         "n8n-core": "~0.32.0",
