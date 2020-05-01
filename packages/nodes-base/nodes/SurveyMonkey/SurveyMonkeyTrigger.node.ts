@@ -20,8 +20,16 @@ import {
 } from './GenericFunctions';
 
 import {
+	IAnswer,
+	IChoice,
+	IQuestion,
+	IRow,
+	IOther,
+} from './Interfaces';
+
+import {
 	createHmac,
- } from 'crypto';
+} from 'crypto';
 
 export class SurveyMonkeyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -59,8 +67,32 @@ export class SurveyMonkeyTrigger implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Type',
+				name: 'objectType',
+				type: 'options',
+				options: [
+					{
+						name: 'Collector',
+						value: 'collector',
+					},
+					{
+						name: 'Survey',
+						value: 'survey',
+					},
+				],
+				default: '',
+				required: true,
+			},
+			{
 				displayName: 'Event',
 				name: 'event',
+				displayOptions: {
+					show: {
+						objectType: [
+							'survey'
+						],
+					},
+				},
 				type: 'options',
 				options: [
 					{
@@ -94,8 +126,8 @@ export class SurveyMonkeyTrigger implements INodeType {
 						description: 'A response is deleted',
 					},
 					{
-						name: 'Response Desqualified',
-						value: 'response_desqualified',
+						name: 'Response Disqualified',
+						value: 'response_disqualified',
 						description: 'A survey response is disqualified ',
 					},
 					{
@@ -128,17 +160,56 @@ export class SurveyMonkeyTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Type',
-				name: 'objectType',
+				displayName: 'Event',
+				name: 'event',
 				type: 'options',
+				displayOptions: {
+					show: {
+						objectType: [
+							'collector',
+						],
+					},
+				},
 				options: [
 					{
-						name: 'Collector',
-						value: 'collector',
+						name: 'Collector Updated',
+						value: 'collector_updated',
+						description: 'A collector is updated',
 					},
 					{
-						name: 'Survey',
-						value: 'survey',
+						name: 'Collector Deleted',
+						value: 'collector_deleted',
+						description: 'A collector is deleted',
+					},
+					{
+						name: 'Response Completed',
+						value: 'response_completed',
+						description: 'A survey response is completed',
+					},
+					{
+						name: 'Response Created',
+						value: 'response_created',
+						description: 'A respondent begins a survey',
+					},
+					{
+						name: 'Response Deleted',
+						value: 'response_deleted',
+						description: 'A response is deleted',
+					},
+					{
+						name: 'Response Disqualified',
+						value: 'response_disqualified',
+						description: 'A survey response is disqualified ',
+					},
+					{
+						name: 'Response Overquota',
+						value: 'response_overquota',
+						description: `A response is over a survey’s quota`,
+					},
+					{
+						name: 'Response Updated',
+						value: 'response_updated',
+						description: 'A survey response is updated',
 					},
 				],
 				default: '',
@@ -219,6 +290,23 @@ export class SurveyMonkeyTrigger implements INodeType {
 				default: true,
 				description: 'By default the webhook-data only contain the IDs. If this option gets activated it<br />will resolve the data automatically.',
 			},
+			{
+				displayName: 'Only Answers',
+				name: 'onlyAnswers',
+				displayOptions: {
+					show: {
+						resolveData: [
+							true,
+						],
+						event: [
+							'response_completed',
+						],
+					},
+				},
+				type: 'boolean',
+				default: true,
+				description: 'Returns only the answers of the form and not any of the other data.',
+			},
 		],
 	};
 
@@ -275,7 +363,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 				const ids: string[] = [];
 
-				if (objectType === 'survey') {
+				if (objectType === 'survey' && event !== 'survey_created') {
 					const surveyIds = this.getNodeParameter('surveyIds') as string[];
 					ids.push.apply(ids, surveyIds);
 				} else if (objectType === 'collector') {
@@ -305,7 +393,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				const endpoint = '/webhooks';
 				const ids: string[] = [];
 
-				if (objectType === 'survey') {
+				if (objectType === 'survey' && event !== 'survey_created') {
 					const surveyIds = this.getNodeParameter('surveyIds') as string[];
 					ids.push.apply(ids, surveyIds);
 				} else if (objectType === 'collector') {
@@ -321,12 +409,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 					event_type: event,
 				};
 
-				if (objectType === 'collector' && event === 'collector_created') {
-					throw new Error('Type collector cannot be used with collector created event');
-				}
-
 				if (objectType === 'survey' && event === 'survey_created') {
 					delete body.object_type;
+					delete body.object_ids;
 				}
 
 				let responseData: IDataObject = {};
@@ -390,7 +475,6 @@ export class SurveyMonkeyTrigger implements INodeType {
 			});
 
 			req.on('end', async () => {
-
 				const computedSignature = createHmac('sha1', `${credentials.clientId}&${credentials.clientSecret}`).update(data.join('')).digest('base64');
 				if (headerData['sm-signature'] !== computedSignature) {
 				// Signature is not valid so ignore call
@@ -399,6 +483,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 				let responseData = JSON.parse(data.join(''));
 				let endpoint = '';
+
+				let returnItem: INodeExecutionData[] = [
+					{
+						json: responseData,
+					}
+				];
 
 				if (event === 'response_completed') {
 					const resolveData = this.getNodeParameter('resolveData') as boolean;
@@ -409,18 +499,198 @@ export class SurveyMonkeyTrigger implements INodeType {
 							endpoint = `/collectors/${responseData.resources.collector_id}/responses/${responseData.object_id}/details`;
 						}
 						responseData = await surveyMonkeyApiRequest.call(this, 'GET', endpoint);
+						const surveyId = responseData.survey_id;
+
+						const questions: IQuestion[] = [];
+						const answers = new Map<string, IAnswer[]>();
+
+						const { pages } = await surveyMonkeyApiRequest.call(this, 'GET', `/surveys/${surveyId}/details`);
+
+						for (const page of pages) {
+							questions.push.apply(questions, page.questions);
+						}
+
+						for (const page of responseData.pages as IDataObject[]) {
+							for (const question of page.questions as IDataObject[]) {
+								answers.set(question.id as string, question.answers as IAnswer[]);
+							}
+						}
+
+						const responseQuestions = new Map<string, number | string | string[] | IDataObject>();
+
+						for (const question of questions) {
+
+							/*
+							TODO add support for premiun companents
+							- File Upload
+							- Matrix of dropdowm menus
+							*/
+
+							// if question does not have an answer ignore it
+							if (!answers.get(question.id)) {
+								continue;
+							}
+
+							const heading = question.headings![0].heading as string;
+
+							if (question.family === 'open_ended' || question.family === 'datetime') {
+								if (question.subtype !== 'multi') {
+									responseQuestions.set(heading, answers.get(question.id)![0].text as string);
+								} else {
+
+									const results: IDataObject = {};
+									const keys = (question.answers.rows as IRow[]).map(e => e.text) as string[];
+									const values = answers.get(question.id)?.map(e => e.text) as string[];
+									for (let i = 0; i < keys.length; i++) {
+										// if for some reason there are questions texts repeted add the index to the key
+										if (results[keys[i]] !== undefined) {
+											results[`${keys[i]}(${i})`] = values[i] || '';
+										} else {
+											results[keys[i]] = values[i] || '';
+										}
+									}
+									responseQuestions.set(heading, results);
+								}
+							}
+
+							if (question.family === 'single_choice') {
+								const other = question.answers.other as IOther;
+								if (other && other.visible && other.is_answer_choice && answers.get(question.id)![0].other_id) {
+									responseQuestions.set(heading, answers.get(question.id)![0].text as string);
+
+								} else if (other && other.visible && !other.is_answer_choice){
+									const choiceId = answers.get(question.id)![0].choice_id;
+
+									const choice = (question.answers.choices as IChoice[])
+													.filter(e => e.id === choiceId)[0];
+
+													const comment = answers.get(question.id)
+									?.find(e => e.other_id === other.id)?.text as string;
+									responseQuestions.set(heading, { value: choice.text, comment });
+
+								} else {
+									const choiceId = answers.get(question.id)![0].choice_id;
+									const choice = (question.answers.choices as IChoice[])
+													.filter(e => e.id === choiceId)[0];
+									responseQuestions.set(heading, choice.text);
+								}
+							}
+
+							if (question.family === 'multiple_choice') {
+								const other = question.answers.other as IOther;
+								const choiceIds = answers.get(question.id)?.map((e) => e.choice_id);
+								const value = (question.answers.choices as IChoice[])
+												.filter(e => choiceIds?.includes(e.id))
+												.map(e => e.text) as string[];
+								// if "Add an "Other" Answer Option for Comments" is active and was selected
+								if (other && other.is_answer_choice && other.visible) {
+									const text = answers.get(question.id)
+												?.find(e => e.other_id === other.id)?.text as string;
+									value.push(text);
+								}
+								responseQuestions.set(heading, value);
+							}
+
+							if (question.family === 'matrix') {
+								// if more than one row it's a matrix/rating-scale
+								const rows = question.answers.rows as IRow[];
+
+								if (rows.length > 1) {
+
+									const results: IDataObject = {};
+									const choiceIds = answers.get(question.id)?.map(e => e.choice_id) as string[];
+									const rowIds = answers.get(question.id)?.map(e => e.row_id) as string[];
+
+									const rowsValues = (question.answers.rows as IRow[])
+														.filter(e => rowIds!.includes(e.id as string))
+														.map(e => e.text);
+
+									const choicesValues = (question.answers.choices as IChoice[])
+															.filter(e => choiceIds!.includes(e.id as string))
+															.map(e => e.text);
+
+									for (let i = 0; i < rowsValues.length; i++) {
+										results[rowsValues[i]] = choicesValues[i] || '';
+									}
+
+									// add the rows that were not answered
+									for (const row of question.answers.rows as IDataObject[]) {
+										if (!rowIds.includes(row.id as string)) {
+											results[row.text as string] = '';
+										}
+									}
+									// the comment then add the comment
+									const other = question.answers.other as IOther;
+									if (other !== undefined && other.visible) {
+										results.comment = answers.get(question.id)?.filter((e) => e.other_id)[0].text;
+									}
+
+									responseQuestions.set(heading, results);
+
+								} else {
+									const choiceIds = answers.get(question.id)?.map((e) => e.choice_id);
+									const value = (question.answers.choices as IChoice[])
+													.filter(e => choiceIds!.includes(e.id as string))
+													.map(e =>  (e.text === '') ? e.weight : e.text)[0];
+									responseQuestions.set(heading, value);
+
+									// if "Add an Other Answer Option for Comments" is active then add comment to the answer
+									const other = question.answers.other as IOther;
+									if (other !== undefined && other.visible) {
+										const response: IDataObject = {};
+										//const questionName = (question.answers.other as IOther).text as string;
+										const text = answers.get(question.id)?.filter((e) => e.other_id)[0].text;
+										response.value = value;
+										response.comment = text;
+										responseQuestions.set(heading, response);
+									}
+								}
+							}
+
+							if (question.family === 'demographic') {
+								const rows: IDataObject = {};
+								for (const row of answers.get(question.id) as IAnswer[]) {
+									rows[row.row_id as string] = row.text;
+								}
+								const addressInfo: IDataObject = {};
+								for (const answer of question.answers.rows as IDataObject[]) {
+									addressInfo[answer.type as string] = rows[answer.id as string] || '';
+								}
+								responseQuestions.set(heading, addressInfo);
+							}
+
+							if (question.family === 'presentation') {
+								if (question.subtype === 'image') {
+									const { url } = question.headings![0].image as IDataObject;
+									responseQuestions.set(heading, url as string);
+								}
+							}
+						}
+						delete responseData.pages;
+						responseData.questions = {};
+
+						// Map the "Map" to JSON
+						const tuples = JSON.parse(JSON.stringify([...responseQuestions]));
+						for (const [key, value] of tuples) {
+							responseData.questions[key] = value;
+						}
+
+						const onlyAnswers = this.getNodeParameter('onlyAnswers') as boolean;
+						if (onlyAnswers) {
+							responseData = responseData.questions;
+						}
+
+						returnItem = [
+							{
+								json: responseData,
+							}
+						];
 					}
 				}
 
-				const returnItem: INodeExecutionData = {
-					json: responseData,
-				};
-
 				return resolve({
 					workflowData: [
-						[
-							returnItem,
-						],
+						returnItem,
 					],
 				});
 			});
