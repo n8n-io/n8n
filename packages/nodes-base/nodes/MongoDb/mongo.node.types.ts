@@ -7,7 +7,8 @@ export interface IMongoParametricCredentials {
 	/**
 	 * Whether to allow overriding the parametric credentials with a connection string
 	 */
-	shouldOverrideConnString: false | undefined | null;
+	configurationType: 'values';
+
 	host: string;
 	database: string;
 	user: string;
@@ -22,11 +23,11 @@ export interface IMongoOverrideCredentials {
 	/**
 	 * Whether to allow overriding the parametric credentials with a connection string
 	 */
-	shouldOverrideConnString: true;
+	configurationType: 'connectionString';
 	/**
 	 * If using an override connection string, this is where it will be.
 	 */
-	connStringOverrideVal: string;
+	connectionString: string;
 	database: string;
 }
 
