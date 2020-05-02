@@ -258,6 +258,8 @@ export class JiraSoftwareCloud implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+		const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
+
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'issue') {
@@ -286,9 +288,15 @@ export class JiraSoftwareCloud implements INodeType {
 						};
 					}
 					if (additionalFields.assignee) {
-						fields.assignee = {
-							name: additionalFields.assignee as string,
-						};
+						if (jiraVersion === "server") {
+							fields.assignee = {
+								name: additionalFields.assignee as string,
+							};
+						} else {
+							fields.assignee = {
+								id: additionalFields.assignee as string,
+							};
+						}
 					}
 					if (additionalFields.description) {
 						fields.description = additionalFields.description as string;
@@ -339,9 +347,15 @@ export class JiraSoftwareCloud implements INodeType {
 						};
 					}
 					if (updateFields.assignee) {
-						fields.assignee = {
-							name: updateFields.assignee as string,
-						};
+						if (jiraVersion === "server") {
+							fields.assignee = {
+								name: updateFields.assignee as string,
+							};
+						} else {
+							fields.assignee = {
+								id: updateFields.assignee as string,
+							};
+						}
 					}
 					if (updateFields.description) {
 						fields.description = updateFields.description as string;
