@@ -521,7 +521,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						for (const question of questions) {
 
 							/*
-							TODO add support for premiun companents
+							TODO: add support for premium components
 							- File Upload
 							- Matrix of dropdowm menus
 							*/
