@@ -12,24 +12,23 @@ import {
 
 import { OptionsWithUri } from 'request';
 
-export class GraphApi implements INodeType {
+export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Graph API',
-		name: 'graphApi',
+		displayName: 'Facebook Graph API',
+		name: 'facebookGraphApi',
 		icon: 'file:facebook.png',
 		group: ['transform'],
 		version: 1,
 		description: 'Interacts with Facebook using the Graph API',
 		defaults: {
-			name: 'Graph API',
+			name: 'Facebook Graph API',
 			color: '#772244',
 		},
 		inputs: ['main'],
-		outputs: ['main', 'main'],
-		outputNames: ['success', 'failure'],
+		outputs: ['main'],
 		credentials: [
 			{
-				name: 'graphApi',
+				name: 'facebookGraphApi',
 				required: true,
 			},
 		],
@@ -85,35 +84,35 @@ export class GraphApi implements INodeType {
 					},
 					{
 						name: 'v6.0',
-						value: 'v6.0/',
+						value: 'v6.0',
 					},
 					{
 						name: 'v5.0',
-						value: 'v5.0/',
+						value: 'v5.0',
 					},
 					{
 						name: 'v4.0',
-						value: 'v4.0/',
+						value: 'v4.0',
 					},
 					{
 						name: 'v3.3',
-						value: 'v3.3/',
+						value: 'v3.3',
 					},
 					{
 						name: 'v3.2',
-						value: 'v3.2/',
+						value: 'v3.2',
 					},
 					{
 						name: 'v3.1',
-						value: 'v3.1/',
+						value: 'v3.1',
 					},
 					{
 						name: 'v3.0',
-						value: 'v3.0/',
+						value: 'v3.0',
 					},
 					{
 						name: 'v2.12',
-						value: 'v2.12/',
+						value: 'v2.12',
 					},
 				],
 				default: '',
@@ -270,18 +269,21 @@ export class GraphApi implements INodeType {
 		const items = this.getInputData();
 
 		let response: any; // tslint:disable-line:no-any
-		const successItems: INodeExecutionData[] = [];
-		const failureItems: INodeExecutionData[] = [];
+		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const graphApiCredentials = this.getCredentials('graphApi');
+			const graphApiCredentials = this.getCredentials('facebookGraphApi');
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
 			const httpRequestMethod = this.getNodeParameter('httpRequestMethod', itemIndex) as string;
-			const graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
+			let graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
 			const node = this.getNodeParameter('node', itemIndex) as string;
 			const edge = this.getNodeParameter('edge', itemIndex) as string;
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+
+			if (graphApiVersion !== '') {
+				graphApiVersion += '/';
+			}
 
 			let uri = `https://${hostUrl}/${graphApiVersion}${node}`;
 			if (edge) {
@@ -315,7 +317,7 @@ export class GraphApi implements INodeType {
 				if (options.queryParameters !== undefined) {
 					const queryParameters = options.queryParameters as IDataObject;
 
-					if (queryParameters.parameter != undefined) {
+					if (queryParameters.parameter !== undefined) {
 						for (const queryParameter of queryParameters.parameter as IDataObject[]) {
 							requestOptions.qs[queryParameter.name as string] = queryParameter.value;
 						}
@@ -379,22 +381,7 @@ export class GraphApi implements INodeType {
 					throw error;
 				}
 
-				let errorItem;
-				if (error.response !== undefined) {
-					// Since this is a Graph API node and we already know the request was
-					// not successful, we'll go straight to the error details.
-					const graphApiErrors = error.response.body?.error ?? {};
-
-					errorItem = {
-						statusCode: error.statusCode,
-						...graphApiErrors,
-						headers: error.response.headers,
-					};
-				} else {
-					// Unknown Graph API response, we'll dump everything in the response item
-					errorItem = error;
-				}
-				failureItems.push({ json: { ...errorItem }});
+				returnItems.push(items[itemIndex]);
 
 				continue;
 			}
@@ -404,13 +391,13 @@ export class GraphApi implements INodeType {
 					throw new Error('Response body is not valid JSON.');
 				}
 
-				failureItems.push({json: {message: response}});
+				returnItems.push(items[itemIndex]);
 				continue;
 			}
 
-			successItems.push({json: response});
+			returnItems.push({json: response});
 		}
 
-		return [successItems, failureItems];
+		return [returnItems];
 	}
 }
