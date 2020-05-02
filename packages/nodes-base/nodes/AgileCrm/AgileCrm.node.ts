@@ -76,7 +76,7 @@ export class AgileCrm implements INodeType {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 
 					const endpoint = `api/contacts/${contactId}`;
-					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint);
+					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
 		
 				}
 
@@ -85,11 +85,11 @@ export class AgileCrm implements INodeType {
 					
 					if (returnAll) {
 						const endpoint = `api/contacts`;
-						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint);
+						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
 					} else {
 						const limit = this.getNodeParameter('limit', i) as number;
 						const endpoint = `api/contacts?page_size=${limit}`;
-						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint);
+						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
 					}
 				}
 				
