@@ -84,6 +84,7 @@ export const contactFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		default: 20,
 		displayOptions: {
 			show: {
 				resource: [
