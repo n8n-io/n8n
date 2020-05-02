@@ -14,17 +14,14 @@ import {
 } from 'n8n-workflow';
 
 
-export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> {
+export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query: IDataObject = {}, uri?: string): Promise<any> {
 
-	const node = this.getNodeParameter('credentials', 1);
     const credentials = this.getCredentials('agileCrmApi');
-
 	const options: OptionsWithUri = {
 		method,
 		headers: {
 			'Accept': 'application/json',
 		},
-		body: body! || {},
         auth: {
 			username: credentials!.email as string,
 			password: credentials!.apiKey as string
@@ -32,8 +29,14 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 		uri: uri || `https://n8nio.agilecrm.com/dev/${endpoint}`,
 		json: true
 	};
-	
 
+	// Only add Body property if method not GET to avoid 400 response
+	if(method !== "GET"){
+		options.body = body;
+	}
+
+	console.log(options);
+	
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
