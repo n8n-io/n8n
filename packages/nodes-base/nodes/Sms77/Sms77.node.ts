@@ -19,7 +19,7 @@ export class Sms77 implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'Sms77',
+				name: 'sms77Api',
 				required: true,
 			}
 		],
@@ -131,13 +131,13 @@ export class Sms77 implements INodeType {
 				throw new Error(`The operation "${operation}" is not known!`);
 			}
 
-			returnData.push({
-				requestId: await sms77ApiRequest.call(this, 'POST', 'sms', {}, {
-					from: this.getNodeParameter('from', i),
-					to: this.getNodeParameter('to', i),
-					text: this.getNodeParameter('message', i),
-				} as IDataObject)
+			const responseData = await sms77ApiRequest.call(this, 'POST', 'sms', {}, {
+				from: this.getNodeParameter('from', i),
+				to: this.getNodeParameter('to', i),
+				text: this.getNodeParameter('message', i),
 			});
+
+			returnData.push(responseData);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
