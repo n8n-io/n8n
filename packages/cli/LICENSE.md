@@ -21,7 +21,7 @@ Software: n8n
 
 License: Apache 2.0
 
-Licensor: Jan Oberhauser
+Licensor: n8n GmbH
 
 
 ---------------------------------------------------------------------
