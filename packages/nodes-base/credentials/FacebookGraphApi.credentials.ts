@@ -4,9 +4,9 @@ import {
 } from 'n8n-workflow';
 
 
-export class GraphApi implements ICredentialType {
-	name = 'graphApi';
-	displayName = 'Graph API';
+export class FacebookGraphApi implements ICredentialType {
+	name = 'facebookGraphApi';
+	displayName = 'Facebook Graph API';
 	properties = [
 		{
 			displayName: 'Access Token',
