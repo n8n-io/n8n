@@ -1083,7 +1083,6 @@ class App {
 			return returnData;
 		}));
 
-
 		// Forces the execution to stop
 		this.app.post('/rest/executions-current/:id/stop', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionsStopData> => {
 			const executionId = req.params.id;
@@ -1151,6 +1150,26 @@ class App {
 		// Webhooks
 		// ----------------------------------------
 
+		// HEAD webhook requests
+		this.app.head(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
+
+			let response;
+			try {
+				response = await this.activeWorkflowRunner.executeWebhook('HEAD', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
 
 		// GET webhook requests
 		this.app.get(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
@@ -1173,7 +1192,6 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
-
 		// POST webhook requests
 		this.app.post(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
 			// Cut away the "/webhook/" to get the registred part of the url
@@ -1195,6 +1213,26 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
+		// HEAD webhook requests (test for UI)
+		this.app.head(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-test/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookTest.length + 2);
+
+			let response;
+			try {
+				response = await this.testWebhooks.callTestWebhook('HEAD', requestUrl, req, res);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			if (response.noWebhookResponse === true) {
+				// Nothing else to do as the response got already sent
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
 
 		// GET webhook requests (test for UI)
 		this.app.get(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
@@ -1216,7 +1254,6 @@ class App {
 
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
-
 
 		// POST webhook requests (test for UI)
 		this.app.post(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
