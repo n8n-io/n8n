@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 
-export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query: IDataObject = {}, uri?: string): Promise<any> {
+export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string,  body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> {
 
     const credentials = this.getCredentials('agileCrmApi');
 	const options: OptionsWithUri = {
@@ -34,8 +34,6 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 	if(method !== "GET"){
 		options.body = body;
 	}
-
-	console.log(options);
 	
 	try {
 		return await this.helpers.request!(options);

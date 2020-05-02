@@ -223,174 +223,162 @@ export const contactFields = [
 			description: 'Unique identifiers added to contact, for easy management of contacts. This is not applicable for companies.',
 		},
 		{
-			displayName: 'Properties',
-			name: 'properties',
+			displayName: 'First Name',
+			name: 'firstName',
+			type: 'string',
+			required: false,
+			default: "",
+			placeholder: 'First Name',
+			description: 'Contact first name.',
+		},
+		{
+			displayName: 'Last Name',
+			name: 'lastName',
+			type: 'string',
+			required: false,
+			default: "",
+			placeholder: 'Last Name',
+			description: 'Contact last name.',
+		},
+		{
+			displayName: 'Company',
+			name: 'company',
+			type: 'string',
+			required: false,
+			default: "",
+			placeholder: 'Company',
+			description: 'Company Name.',
+		},	
+		{
+			displayName: 'Title',
+			name: 'title',
+			type: 'string',
+			required: false,
+			default: "",
+			placeholder: 'Title',
+			description: 'Professional title.',
+		},
+		{
+			displayName: 'Email',
+			name: 'emailOptions',
 			type: 'fixedCollection',
-			default: {},
-			description: 'Contact properties are represented by list of JSON objects, each JSON object should follow the prototype shown. Custom fields will have type as CUSTOM and others will have type as SYSTEM.',
-			required: true,
+			required: false,
+			description: 'Contact email.',
 			typeOptions: {
 				multipleValues: true,
 			},
 			options: [
 				{
-					displayName: 'Property',
-					name: 'property',
+					displayName: 'Email Properties',
+					name: 'emailProperties',
 					values: [
 						{
 							displayName: 'Type',
-							name: 'type',
+							name: 'subtype',
 							type: 'options',
-							default: 'SYSTEM',
 							required: true,
-							description: 'Type of the field.',
-							options: [
-								{
-									name: 'SYSTEM',
-									value: 'SYSTEM',
-								},
-								{
-									name: 'CUSTOM',
-									value: 'CUSTOM'
-								}
-							]
-						},
-						{
-							displayName: 'Name',
-							name: 'name',
-							type: 'string',
-							default: '',
-							required: true,
-							description: 'Name of the field.'
-						},
-						{
-							displayName: 'Sub Type',
-							name: 'subType',
-							default: '',
-							required: false,
-							type: 'options',
-							description: 'Name of the field.',
-							displayOptions: {
-								show: {
-									type: [
-										'SYSTEM'
-									],
-									name: [
-										'email'
-									] 
-								}
-							},
+							default: "",
+							placeholder: '',
+							description: 'Type of Email',
 							options: [
 								{
 									name: 'Work',
-									value: 'work',
-
+									value: 'work'
 								},
 								{
 									name: 'Personal',
-									value: 'personal',
-
+									value: 'personal'
 								}
 							]
 						},
 						{
-							displayName: 'Sub Type',
-							name: 'subType',
-							default: '',
-							required: false,
-							type: 'options',
-							description: 'Name of the field.',
-							displayOptions: {
-								show: {
-									type: [
-										'SYSTEM'
-									],
-									name: [
-										'phone'
-									] 
-								}
-							},
-							options: [
-								{
-									name: 'Work',
-									value: 'work',
-
-								},
-								{
-									name: 'Home',
-									value: 'home',
-								},
-								{
-									name: 'Mobile',
-									value: 'mobile',
-								},
-								{
-									name: 'Main',
-									value: 'main',
-								},
-								{
-									name: 'Home Fax',
-									value: 'homeFax',
-								},
-								{
-									name: 'Work Fax',
-									value: 'workFax',
-								},
-								{
-									name: 'Other',
-									value: 'other',
-								},
-							]
-						},
+							displayName: 'Email',
+							name: 'email',
+							type: 'string',
+							required: true,
+							default: "",
+							placeholder: '',
+							description: 'Email',
+						}
+					]
+				},
+					
+			]
+		},
+		{
+			displayName: 'Address',
+			name: 'addressOptions',
+			type: 'fixedCollection',
+			required: false,
+			description: 'Contacts address.',
+			typeOptions: {
+				multipleValues: true,
+			},
+			options: [
+				{
+					displayName: 'Address Properties',
+					name: 'addressProperties',
+					values: [
 						{
-							displayName: 'Sub Type',
-							name: 'subType',
-							default: '',
-							required: false,
+							displayName: 'Type',
+							name: 'subtype',
 							type: 'options',
-							description: 'Name of the field.',
-							displayOptions: {
-								show: {
-									type: [
-										'SYSTEM'
-									],
-									name: [
-										'address'
-									] 
-								}
-							},
+							required: true,
+							default: "",
+							placeholder: '',
+							description: 'Type of address.',
 							options: [
 								{
 									name: 'Home',
-									value: 'home',
+									value: 'home'
 								},
 								{
 									name: 'Postal',
-									value: 'postal',
-								},
+									value: 'postal'
+								}
+								,
 								{
 									name: 'Office',
-									value: 'office',
-								},
+									value: 'office'
+								}
 							]
 						},
 						{
-							displayName: 'Sub Type',
-							name: 'subType',
-							default: '',
-							required: false,
+							displayName: 'Address',
+							name: 'address',
+							type: 'string',
+							required: true,
+							default: "",
+							placeholder: '',
+							description: 'Full address.',
+						}
+					]
+				},
+					
+			]
+		},
+		{
+			displayName: 'Website',
+			name: 'websiteOptions',
+			type: 'fixedCollection',
+			required: false,
+			description: 'Contacts websites.',
+			typeOptions: {
+				multipleValues: true,
+			},
+			options: [
+				{
+					displayName: 'Website properties.',
+					name: 'websiteProperties',
+					values: [
+						{
+							displayName: 'Type',
+							name: 'subtype',
 							type: 'options',
-							description: 'Name of the field.',
-							displayOptions: {
-								show: {
-									type: [
-										'SYSTEM'
-									],
-									name: [
-										'website'
-									] 
-								}
-							},
+							required: true,
+							default: "",
+							placeholder: '',
+							description: 'Type of website.',
 							options: [
 								{
 									name: 'URL',
@@ -439,34 +427,135 @@ export const contactFields = [
 							]
 						},
 						{
-							displayName: 'Sub Type',
-							name: 'subType',
-							default: '',
-							required: false,
+							displayName: 'URL',
+							name: 'url',
 							type: 'string',
-							description: 'Name of the field.',
-							displayOptions: {
-								show: {
-									type: [
-										'CUSTOM'
-									],
+							required: true,
+							default: "",
+							placeholder: '',
+							description: 'Website URL',
+						}
+					]
+				},
+					
+			]
+		},
+		{
+			displayName: 'Phone',
+			name: 'phoneOptions',
+			type: 'fixedCollection',
+			required: false,
+			description: 'Contacts phone.',
+			typeOptions: {
+				multipleValues: true,
+			},
+			options: [
+				{
+					displayName: 'Phone properties',
+					name: 'phoneProperties',
+					values: [
+						{
+							displayName: 'Type',
+							name: 'subtype',
+							type: 'options',
+							required: true,
+							default: "",
+							placeholder: '',
+							description: 'Type of phone number.',
+							options: [
+								{
+									name: 'Home',
+									value: 'home'
+								},
+								{
+									name: 'Work',
+									value: 'work'
 								}
-							}
+								,
+								{
+									name: 'Mobile',
+									value: 'mobile'
+								},
+								{
+									name: 'Main',
+									value: 'main'
+								},
+								{
+									name: 'Home Fax',
+									value: 'homeFax'
+								},
+								{
+									name: 'Work Fax',
+									value: 'workFax'
+								},
+								{
+									name: 'Other',
+									value: 'other'
+								},
+							]
+						},
+						{
+							displayName: 'Number',
+							name: 'number',
+							type: 'string',
+							required: true,
+							default: "",
+							placeholder: '',
+							description: 'Phone number.',
+						}
+					]
+				},
+					
+			]
+		},
+		{
+			displayName: 'Custom Properties',
+			name: 'customProperties',
+			type: 'fixedCollection',
+			required: false,
+			description: 'Custom Properties',
+			typeOptions: {
+				multipleValues: true,
+			},
+			options: [
+				{
+					displayName: 'Property',
+					name: 'customProperty',
+					values: [
+						{
+							displayName: 'Name',
+							name: 'name',
+							type: 'string',
+							required: true,
+							default: "",
+							placeholder: '',
+							description: 'Property name.'
+						},
+						{
+							displayName: 'Sub Type',
+							name: 'subtype',
+							type: 'string',
+							required: false,
+							default: "",
+							placeholder: '',
+							description: 'Property sub type.',
 						},
 						{
 							displayName: 'Value',
 							name: 'value',
-							default: '',
-							required: false,
 							type: 'string',
-							description: 'Value of the property.'
-						},
+							required: false,
+							default: "",
+							placeholder: '',
+							description: 'Property value.',
+						}
 					]
-				}
-
+				},
+					
 			]
-
 		},
+		
+		
 	],
 },
 
