@@ -212,7 +212,7 @@ export class Github implements INodeType {
 					{
 						name: 'Get Emails',
 						value: 'getEmails',
-						description: 'Returns the repositories of a user',
+						description: 'Returns the email addresses of a user',
 					},
 					{
 						name: 'Get Repositories',
