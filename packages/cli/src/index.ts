@@ -1,4 +1,5 @@
 export * from './CredentialTypes';
+export * from './ExternalHooks';
 export * from './Interfaces';
 export * from './LoadNodesAndCredentials';
 export * from './NodeTypes';

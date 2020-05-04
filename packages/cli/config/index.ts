@@ -252,6 +252,13 @@ const config = convict({
 		},
 	},
 
+	externalHookFiles: {
+		doc: 'Files containing external hooks',
+		format: String,
+		default: '',
+		env: 'EXTERNAL_HOOK_FILES'
+	},
+
 	nodes: {
 		exclude: {
 			doc: 'Nodes not to load',
