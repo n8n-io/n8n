@@ -30,8 +30,8 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 		json: true
 	};
 
-	// Only add Body property if method not GET to avoid 400 response
-	if(method !== "GET"){
+	// Only add Body property if method not GET or DELETE to avoid 400 response
+	if(method !== "GET" && method !== "DELETE"){
 		options.body = body;
 	}
 	

@@ -80,6 +80,14 @@ export class AgileCrm implements INodeType {
 		
 				}
 
+				if(operation === 'delete'){
+					const contactId = this.getNodeParameter('contactId', i) as string;
+
+					const endpoint = `api/contacts/${contactId}`;
+					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
+		
+				}
+
 				if(operation === 'getAll'){
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					

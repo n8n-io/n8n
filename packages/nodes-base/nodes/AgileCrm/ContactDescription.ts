@@ -30,6 +30,16 @@ export const contactOperations = [
 				value: 'create',
 				description: 'Create a new contact',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update contact properties',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a contact',
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform.',
@@ -555,9 +565,28 @@ export const contactFields = [
 					
 			]
 		},
-		
-		
 	],
+},
+/* -------------------------------------------------------------------------- */
+/*                                  contact:delete                               */
+/* -------------------------------------------------------------------------- */
+{
+	displayName: 'Contact ID',
+	name: 'contactId',
+	type: 'string',
+	required: true,
+	displayOptions: {
+		show: {
+			resource: [
+				'contact',
+			],
+			operation: [
+				'delete',
+			],
+		},
+	},
+	default: '',
+	description: 'Unique identifier for a particular contact',
 },
 
 ] as INodeProperties[];
