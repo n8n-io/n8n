@@ -81,6 +81,9 @@ export const issueFields = [
 		},
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
+			loadOptionsDependsOn: [
+				'jiraVersion',
+			],
 		},
 		description: 'Project',
 	},
