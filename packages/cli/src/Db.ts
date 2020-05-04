@@ -1,7 +1,7 @@
 import {
+	DatabaseType,
 	GenericHelpers,
 	IDatabaseCollections,
-	DatabaseType,
 } from './';
 
 import {
@@ -12,14 +12,13 @@ import {
 	ConnectionOptions,
 	createConnection,
 	getRepository,
-	Connection,
 } from 'typeorm';
 
 import {
 	MongoDb,
+	MySQLDb,
 	PostgresDb,
 	SQLite,
-	MySQLDb,
 } from './databases';
 
 export let collections: IDatabaseCollections = {
@@ -48,9 +47,7 @@ export async function init(): Promise<IDatabaseCollections> {
 
 	let entities;
 	let connectionOptions: ConnectionOptions;
-	let connection;
 
-	let dbNotExistError: string | undefined;
 	switch (dbType) {
 		case 'mongodb':
 			entities = MongoDb;
@@ -63,7 +60,6 @@ export async function init(): Promise<IDatabaseCollections> {
 			break;
 
 		case 'postgresdb':
-			dbNotExistError = 'does not exist';
 			entities = PostgresDb;
 			connectionOptions = {
 				type: 'postgres',
@@ -81,7 +77,6 @@ export async function init(): Promise<IDatabaseCollections> {
 
 		case 'mariadb':
 		case 'mysqldb':
-			dbNotExistError = 'does not exist';
 			entities = MySQLDb;
 			connectionOptions = {
 				type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
@@ -97,14 +92,13 @@ export async function init(): Promise<IDatabaseCollections> {
 			break;
 
 		case 'sqlite':
-			dbNotExistError = 'no such table:';
 			entities = SQLite;
 			connectionOptions = {
 				type: 'sqlite',
 				database:  path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
-				migrations: [InitialMigration1588102412422], 
-				migrationsRun: true
+				migrations: [InitialMigration1588102412422],
+				migrationsRun: true,
 			};
 			break;
 
@@ -115,29 +109,18 @@ export async function init(): Promise<IDatabaseCollections> {
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
 		synchronize: false,
-		logging: true
+		logging: false,
 	});
 
-	try {
-		connection = await createConnection(connectionOptions);
+	const connection = await createConnection(connectionOptions);
 
-		await connection.runMigrations({
-			transaction: 'none'
-		});
+	await connection.runMigrations({
+		transaction: 'none',
+	});
 
-		
-		if(connection.isConnected){
-			collections.Credentials = getRepository(entities.CredentialsEntity);
-			collections.Execution = getRepository(entities.ExecutionEntity);
-			collections.Workflow = getRepository(entities.WorkflowEntity);
-		} else {
-			init();
-		}
-
-	} catch (e){
-		console.log(e);
-	}
+	collections.Credentials = getRepository(entities.CredentialsEntity);
+	collections.Execution = getRepository(entities.ExecutionEntity);
+	collections.Workflow = getRepository(entities.WorkflowEntity);
 
 	return collections;
-	
-};
+}
