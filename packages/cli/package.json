@@ -72,7 +72,8 @@
         "run-script-os": "^1.0.7",
         "ts-jest": "^24.0.2",
         "tslint": "^5.17.0",
-        "typescript": "~3.7.4"
+        "typescript": "~3.7.4",
+        "ts-node": "^8.9.1"
     },
     "dependencies": {
         "@oclif/command": "^1.5.18",
@@ -105,7 +106,6 @@
         "request-promise-native": "^1.0.7",
         "sqlite3": "^4.2.0",
         "sse-channel": "^3.1.1",
-        "ts-node": "^8.9.1",
         "typeorm": "^0.2.24"
     },
     "jest": {

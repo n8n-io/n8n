@@ -1,4 +1,4 @@
-import {MongoDb, SQLite, MySQLDb, PostgresDb} from './src/databases/index';
+import {MongoDb, SQLite, MySQLDb, PostgresDb} from '../src/databases/index';
 
 module.exports = [
     {
@@ -84,8 +84,8 @@ module.exports = [
         }
     },
         {
-        "name": "mysql",
-        "type": "mysql",
+        "name": "mariadb",
+        "type": "mariadb",
         "database": "n8n",
         "username": "root",
         "password": "password",
