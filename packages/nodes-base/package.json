@@ -301,7 +301,7 @@
         "mongodb": "^3.5.5",
         "mysql2": "^2.0.1",
         "n8n-core": "~0.33.0",
-        "nodemailer": "^5.1.1",
+        "nodemailer": "^6.4.6",
         "pdf-parse": "^1.1.1",
         "pg-promise": "^9.0.3",
         "redis": "^2.8.0",
