@@ -129,6 +129,10 @@ export class TestWebhooks {
 			return false;
 		}
 
+		if (workflow.id === undefined) {
+			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
+		}
+
 		// Remove test-webhooks automatically if they do not get called (after 120 seconds)
 		const timeout = setTimeout(() => {
 			this.cancelTestWebhook(workflowData.id.toString());

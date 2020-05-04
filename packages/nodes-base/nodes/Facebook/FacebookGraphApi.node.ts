@@ -381,7 +381,22 @@ export class FacebookGraphApi implements INodeType {
 					throw error;
 				}
 
-				returnItems.push(items[itemIndex]);
+				let errorItem;
+				if (error.response !== undefined) {
+					// Since this is a Graph API node and we already know the request was
+					// not successful, we'll go straight to the error details.
+					const graphApiErrors = error.response.body?.error ?? {};
+
+					errorItem = {
+						statusCode: error.statusCode,
+						...graphApiErrors,
+						headers: error.response.headers,
+					};
+				} else {
+					// Unknown Graph API response, we'll dump everything in the response item
+					errorItem = error;
+				}
+				returnItems.push({ json: { ...errorItem } });
 
 				continue;
 			}
@@ -391,7 +406,7 @@ export class FacebookGraphApi implements INodeType {
 					throw new Error('Response body is not valid JSON.');
 				}
 
-				returnItems.push(items[itemIndex]);
+				returnItems.push({ json: { message: response } });
 				continue;
 			}
 
