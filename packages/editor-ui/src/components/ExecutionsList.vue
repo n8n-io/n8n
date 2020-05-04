@@ -504,11 +504,11 @@ export default mixins(
 			} else if (entry.finished === true) {
 				return 'The worklow execution was successful.';
 			} else if (entry.retryOf !== undefined) {
-				return `The workflow execution was a retry of "${entry.retryOf}" and did fail.<br />New retries have to be started from the original execution.`;
+				return `The workflow execution was a retry of "${entry.retryOf}" and failed.<br />New retries have to be started from the original execution.`;
 			} else if (entry.retrySuccessId !== undefined) {
-				return `The workflow execution did fail but the retry "${entry.retrySuccessId}" was successful.`;
+				return `The workflow execution failed but the retry "${entry.retrySuccessId}" was successful.`;
 			} else {
-				return 'The workflow execution did fail.';
+				return 'The workflow execution failed.';
 			}
 		},
 		async stopExecution (activeExecutionId: string) {
