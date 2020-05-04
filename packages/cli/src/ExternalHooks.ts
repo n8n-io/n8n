@@ -1,21 +1,10 @@
 import {
 	Db,
-	IDatabaseCollections,
+	IExternalHookFunctions,
 	IExternalHooks,
-} from "./";
+} from './';
 
 import * as config from '../config';
-// import {
-// 	access as fsAccess,
-// 	readdir as fsReaddir,
-// 	readFile as fsReadFile,
-// 	stat as fsStat,
-// } from 'fs';
-
-// TODO: Give different name
-interface IHookData {
-	DbCollections: IDatabaseCollections;
-}
 
 // export EXTERNAL_HOOK_FILES=/data/packages/cli/dist/src/externalHooksTemp/test-hooks.js
 
@@ -29,39 +18,42 @@ class ExternalHooksClass implements IExternalHooks {
 	async init(): Promise<void> {
 		console.log('ExternalHooks.init');
 
-		const externalHookFiles = config.get('externalHookFiles').split(',');
+		const externalHookFiles = config.get('externalHookFiles').split(':');
 
 		console.log('externalHookFiles');
 		console.log(externalHookFiles);
 
+		// Load all the provided hook-files
 		for (let hookFilePath of externalHookFiles) {
 			hookFilePath = hookFilePath.trim();
 			if (hookFilePath !== '') {
 				console.log(' --- load: ' + hookFilePath);
-				const hookFile = require(hookFilePath);
+				try {
+					const hookFile = require(hookFilePath);
 
-				for (const resource of Object.keys(hookFile)) {
-					// if (this.externalHooks[resource] === undefined) {
-					// 	this.externalHooks[resource] = {};
-					// }
+					for (const resource of Object.keys(hookFile)) {
+						for (const operation of Object.keys(hookFile[resource])) {
+							// Save all the hook functions directly under their string
+							// format in an array
+							const hookString = `${resource}.${operation}`;
+							if (this.externalHooks[hookString] === undefined) {
+								this.externalHooks[hookString] = [];
+							}
 
-					for (const operation of Object.keys(hookFile[resource])) {
-						const hookString = `${resource}.${operation}`;
-						if (this.externalHooks[hookString] === undefined) {
-							this.externalHooks[hookString] = [];
+							this.externalHooks[hookString].push.apply(this.externalHooks[hookString], hookFile[resource][operation]);
 						}
-
-						this.externalHooks[hookString].push.apply(this.externalHooks[hookString], hookFile[resource][operation]);
 					}
+				} catch (error) {
+					throw new Error(`Problem loading external hook file "${hookFilePath}": ${error.message}`);
 				}
 			}
 		}
 	}
 
-	async run(hookName: string): Promise<void> {
+	async run(hookName: string, hookParameters?: any[]): Promise<void> { // tslint:disable-line:no-any
 		console.log('RUN NOW: ' + hookName);
 
-		const hookData: IHookData = {
+		const externalHookFunctions: IExternalHookFunctions = {
 			DbCollections: Db.collections,
 		};
 
@@ -70,7 +62,7 @@ class ExternalHooksClass implements IExternalHooks {
 		}
 
 		for(const externalHookFunction of this.externalHooks[hookName]) {
-			externalHookFunction.call(hookData);
+			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
 	}
 

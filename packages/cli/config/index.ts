@@ -253,7 +253,7 @@ const config = convict({
 	},
 
 	externalHookFiles: {
-		doc: 'Files containing external hooks',
+		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
 		format: String,
 		default: '',
 		env: 'EXTERNAL_HOOK_FILES'
