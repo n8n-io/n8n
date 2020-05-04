@@ -41,4 +41,5 @@ export class CredentialsEntity implements ICredentialsDb {
 
 	@Column('timestamp')
 	updatedAt: Date;
+
 }
