@@ -555,7 +555,7 @@ class App {
 		this.app.get('/rest/node-parameter-options', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodePropertyOptions[]> => {
 			const nodeType = req.query.nodeType as string;
 			let credentials: INodeCredentials | undefined = undefined;
-			const currentNodeParameters = req.query.currentNodeParameters as INodeParameters[];
+			const currentNodeParameters = JSON.parse('' + req.query.currentNodeParameters) as INodeParameters;
 			if (req.query.credentials !== undefined) {
 				credentials = JSON.parse(req.query.credentials as string);
 			}
