@@ -96,7 +96,7 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 		}
 		if(body.tags){
 			options.body.tags = payload.tags;
-			options.uri = baseUri + 'api/contacts/edit/tagaas';
+			options.uri = baseUri + 'api/contacts/edit/tags';
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
 
 			payload.tags?.map((tag : string) => {
