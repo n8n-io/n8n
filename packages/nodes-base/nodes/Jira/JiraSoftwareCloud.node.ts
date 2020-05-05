@@ -140,18 +140,31 @@ export class JiraSoftwareCloud implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 
 				const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/issuetype', 'GET');
-
-				for (const issueType of issueTypes) {
-					if (issueType.scope.project.id === projectId) {
+				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+				if (jiraVersion === "server") {
+					for (const issueType of issueTypes) {
 						const issueTypeName = issueType.name;
 						const issueTypeId = issueType.id;
-
+	
 						returnData.push({
 							name: issueTypeName,
 							value: issueTypeId,
 						});
 					}
+				} else {
+					for (const issueType of issueTypes) {
+						if (issueType.scope.project.id === projectId) {
+							const issueTypeName = issueType.name;
+							const issueTypeId = issueType.id;
+	
+							returnData.push({
+								name: issueTypeName,
+								value: issueTypeId,
+							});
+						}
+					}
 				}
+				
 				return returnData;
 			},
 
@@ -197,18 +210,37 @@ export class JiraSoftwareCloud implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				const jiraVersion = this.getCurrentNodeParameter("jiraVersion") as string;
+				if (jiraVersion === "server") {
+					// the interface call must bring username
+					const users = await jiraSoftwareCloudApiRequest.call(this, "/user/search", "GET", {},
+						{
+							username: "'",
+						}
+					);
+					for (const user of users) {
+						const userName = user.displayName;
+						const userId = user.name;
+	
+						returnData.push({
+							name: userName,
+							value: userId,
+						});
+					}
+				} else {
+					const users = await jiraSoftwareCloudApiRequest.call(this, '/users/search', 'GET');
 
-				const users = await jiraSoftwareCloudApiRequest.call(this, '/users/search', 'GET');
+					for (const user of users) {
+						const userName = user.displayName;
+						const userId = user.accountId;
 
-				for (const user of users) {
-					const userName = user.displayName;
-					const userId = user.accountId;
-
-					returnData.push({
-						name: userName,
-						value: userId,
-					});
+						returnData.push({
+							name: userName,
+							value: userId,
+						});
+					}
 				}
+				
 				return returnData;
 			},
 
@@ -283,6 +315,9 @@ export class JiraSoftwareCloud implements INodeType {
 					if (additionalFields.labels) {
 						fields.labels = additionalFields.labels as string[];
 					}
+					if (additionalFields.serverLabels) {
+						fields.labels = additionalFields.serverLabels as string[];
+					}
 					if (additionalFields.priority) {
 						fields.priority = {
 							id: additionalFields.priority as string,
@@ -341,6 +376,9 @@ export class JiraSoftwareCloud implements INodeType {
 					}
 					if (updateFields.labels) {
 						fields.labels = updateFields.labels as string[];
+					}
+					if (updateFields.serverLabels) {
+						fields.labels = updateFields.serverLabels as string[];
 					}
 					if (updateFields.priority) {
 						fields.priority = {
