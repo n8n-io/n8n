@@ -48,7 +48,6 @@ import {
 	WorkflowCredentials,
 	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
 	WorkflowRunner,
 	GenericHelpers,
 } from './';
@@ -477,6 +476,8 @@ class App {
 			if (responseData.active === true) {
 				// When the workflow is supposed to be active add it again
 				try {
+					await this.externalHooks.run('workflow.activate', [responseData]);
+
 					await this.activeWorkflowRunner.add(id);
 				} catch (error) {
 					// If workflow could not be activated set it again to inactive
@@ -680,8 +681,6 @@ class App {
 				nodeAccess.date = this.getCurrentDate();
 			}
 
-			await this.externalHooks.run('credentials.create');
-
 			const encryptionKey = await UserSettings.getEncryptionKey();
 			if (encryptionKey === undefined) {
 				throw new Error('No encryption key got found to encrypt the credentials!');
@@ -709,6 +708,8 @@ class App {
 			credentials.setData(incomingData.data, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
+			await this.externalHooks.run('credentials.create', [newCredentialsData]);
+
 			// Add special database related data
 			newCredentialsData.createdAt = this.getCurrentDate();
 			newCredentialsData.updatedAt = this.getCurrentDate();
@@ -729,8 +730,6 @@ class App {
 			const incomingData = req.body;
 
 			const id = req.params.id;
-
-			await this.externalHooks.run('credentials.update', [id]);
 
 			if (incomingData.name === '') {
 				throw new Error('Credentials have to have a name set!');
@@ -769,6 +768,8 @@ class App {
 
 			// Add special database related data
 			newCredentialsData.updatedAt = this.getCurrentDate();
+
+			await this.externalHooks.run('credentials.update', [newCredentialsData]);
 
 			// Update the credentials in DB
 			await Db.collections.Credentials!.update(id, newCredentialsData);

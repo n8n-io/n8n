@@ -1,5 +1,6 @@
 import {
 	ActiveExecutions,
+	ExternalHooks,
 	IProcessMessageDataHook,
 	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
@@ -94,6 +95,9 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+		const externalHooks = ExternalHooks();
+		await externalHooks.run('workflow.execute', [data.workflowData, data.executionMode]);
+
 		const executionsProcess = config.get('executions.process') as string;
 		if (executionsProcess === 'main') {
 			return this.runMainProcess(data, loadStaticData);
