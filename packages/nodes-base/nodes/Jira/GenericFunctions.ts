@@ -11,22 +11,33 @@ import {
 
 import {
 	IDataObject,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	let data; let domain;
-	const jiraCloudCredentials = this.getCredentials('jiraSoftwareCloudApi');
-	const jiraServerCredentials = this.getCredentials('jiraSoftwareServerApi');
-	if (jiraCloudCredentials === undefined && jiraServerCredentials === undefined) {
+
+	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
+
+	let jiraCredentials: ICredentialDataDecryptedObject | undefined;
+	if (jiraVersion === 'server') {
+		jiraCredentials = this.getCredentials('jiraSoftwareServerApi');
+	} else {
+		jiraCredentials = this.getCredentials('jiraSoftwareCloudApi');
+	}
+
+	if (jiraCredentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	if (jiraCloudCredentials !== undefined) {
-		domain = jiraCloudCredentials!.domain;
-		data = Buffer.from(`${jiraCloudCredentials!.email}:${jiraCloudCredentials!.apiToken}`).toString('base64');
+
+	if (jiraVersion === 'server') {
+		domain = jiraCredentials!.domain;
+		data = Buffer.from(`${jiraCredentials!.email}:${jiraCredentials!.password}`).toString('base64');
 	} else {
-		domain = jiraServerCredentials!.domain;
-		data = Buffer.from(`${jiraServerCredentials!.email}:${jiraServerCredentials!.password}`).toString('base64');
+		domain = jiraCredentials!.domain;
+		data = Buffer.from(`${jiraCredentials!.email}:${jiraCredentials!.apiToken}`).toString('base64');
 	}
+
 	const options: OptionsWithUri = {
 		headers: {
 			Authorization: `Basic ${data}`,
