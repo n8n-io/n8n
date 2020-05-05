@@ -16,6 +16,11 @@ import {
 	companyFields
 } from './CompanyDescription';
 
+import {
+	dealOperations,
+	dealFields
+} from './DealDescription';
+
 import { agileCrmApiRequest, validateJSON, agileCrmApiRequestUpdate} from './GenericFunctions';
 import { IContact, IProperty, IContactUpdate } from './ContactInterface';
 
@@ -48,13 +53,17 @@ export class AgileCrm implements INodeType {
 				name: 'resource',
                 type: 'options',
                 options: [
+					{
+                        name: 'Company',
+                        value: 'company'
+					},
                     {
                         name: 'Contact',
                         value: 'contact'
 					},
 					{
-                        name: 'Company',
-                        value: 'company'
+                        name: 'Deal',
+                        value: 'deal'
                     },
                 ],
 				default: 'contact',
@@ -66,7 +75,11 @@ export class AgileCrm implements INodeType {
 
 			// COMPANY
 			...companyOperations,
-			...companyFields
+			...companyFields,
+
+			// DEAL
+			...dealOperations,
+			...dealFields
 		],
 
 	};
@@ -441,11 +454,42 @@ export class AgileCrm implements INodeType {
 
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
+			}
+			if(resource === 'deal'){
+
+				if(operation === 'get'){
+					const dealId = this.getNodeParameter('dealId', i) as string;
+
+					const endpoint = `api/opportunity/${dealId}`;
+					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
 				}
+
+				if(operation === 'delete'){
+					const contactId = this.getNodeParameter('dealId', i) as string;
+
+					const endpoint = `api/opportunity/${contactId}`;
+					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
+				}
+
+				if(operation === 'getAll'){
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	
+					if (returnAll) {
+						const endpoint = `api/opportunity`;
+						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						const endpoint = `api/opportunity?page_size=${limit}`;
+						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
+					}
+				}
+			}
+
+			
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
 			}
 
 		}
