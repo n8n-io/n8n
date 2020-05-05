@@ -10,6 +10,12 @@ import {
 	contactOperations,
 	contactFields
 } from './ContactDescription';
+
+import {
+	companyOperations,
+	companyFields
+} from './CompanyDescription';
+
 import { agileCrmApiRequest, validateJSON, agileCrmApiRequestUpdate} from './GenericFunctions';
 import { IContact, IProperty, IContactUpdate } from './ContactInterface';
 
@@ -45,7 +51,11 @@ export class AgileCrm implements INodeType {
                     {
                         name: 'Contact',
                         value: 'contact'
-                    }
+					},
+					{
+                        name: 'Company',
+                        value: 'company'
+                    },
                 ],
 				default: 'contact',
 				description: 'Resource to consume.',
@@ -53,6 +63,10 @@ export class AgileCrm implements INodeType {
 			// CONTACT
 			...contactOperations,
 			...contactFields,
+
+			// COMPANY
+			...companyOperations,
+			...companyFields
 		],
 
 	};
@@ -70,10 +84,11 @@ export class AgileCrm implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 
-			if(resource === 'contact'){
+			if(resource === 'contact' || resource === 'company'){
+				let idGetter = resource === 'contact' ? 'contactId' : 'companyId';
 
 				if(operation === 'get'){
-					const contactId = this.getNodeParameter('contactId', i) as string;
+					const contactId = this.getNodeParameter(idGetter, i) as string;
 
 					const endpoint = `api/contacts/${contactId}`;
 					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
@@ -81,7 +96,7 @@ export class AgileCrm implements INodeType {
 				}
 
 				if(operation === 'delete'){
-					const contactId = this.getNodeParameter('contactId', i) as string;
+					const contactId = this.getNodeParameter(idGetter, i) as string;
 
 					const endpoint = `api/contacts/${contactId}`;
 					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
@@ -91,14 +106,26 @@ export class AgileCrm implements INodeType {
 				if(operation === 'getAll'){
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					
-					if (returnAll) {
-						const endpoint = `api/contacts`;
-						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
+					if(resource === 'contact'){
+						if (returnAll) {
+							const endpoint = `api/contacts`;
+							responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							const endpoint = `api/contacts?page_size=${limit}`;
+							responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
+						}
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						const endpoint = `api/contacts?page_size=${limit}`;
-						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
+						if (returnAll) {
+							const endpoint = `api/contacts/companies/list`;
+							responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, {});
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							const endpoint = `api/contacts/companies/list?page_size=${limit}`;
+							responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, {});
+						}
 					}
+
 				}
 				
 				if(operation === 'create'){
@@ -124,6 +151,10 @@ export class AgileCrm implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
+						// if company, add 'company' as type. default is person
+						if(resource === 'company'){
+							body.type = 'COMPANY';
+						}
 						if (additionalFields.starValue) {
 							body.star_value = additionalFields.starValue as string;
 						}
@@ -133,56 +164,98 @@ export class AgileCrm implements INodeType {
 						if (additionalFields.tags) {
 							body.tags = additionalFields.tags as string[];
 						}
-						if(additionalFields.firstName){
-							properties.push({
-								type: 'SYSTEM',
-								name: 'first_name',
-								value: additionalFields.firstName as string
-							} as IDataObject);
-						}
-						if(additionalFields.lastName){
-							properties.push({
-								type: 'SYSTEM',
-								name: 'last_name',
-								value: additionalFields.lastName as string
-							} as IDataObject);
-						}
-						if(additionalFields.company){
-							properties.push({
-								type: 'SYSTEM',
-								name: 'company',
-								value: additionalFields.company as string
-							} as IDataObject);
-						}
-						if(additionalFields.title){
-							properties.push({
-								type: 'SYSTEM',
-								name: 'title',
-								value: additionalFields.title as string
-							} as IDataObject);
-						}
-						if(additionalFields.emailOptions){
-							//@ts-ignore
-							additionalFields.emailOptions.emailProperties.map(property => {
+
+						// Contact specific properties
+						if(resource === 'contact'){
+							if(additionalFields.firstName){
 								properties.push({
 									type: 'SYSTEM',
-									subtype: property.subtype as string,
+									name: 'first_name',
+									value: additionalFields.firstName as string
+								} as IDataObject);
+							}
+							if(additionalFields.lastName){
+								properties.push({
+									type: 'SYSTEM',
+									name: 'last_name',
+									value: additionalFields.lastName as string
+								} as IDataObject);
+							}
+							if(additionalFields.company){
+								properties.push({
+									type: 'SYSTEM',
+									name: 'company',
+									value: additionalFields.company as string
+								} as IDataObject);
+							}
+							if(additionalFields.title){
+								properties.push({
+									type: 'SYSTEM',
+									name: 'title',
+									value: additionalFields.title as string
+								} as IDataObject);
+							}
+							if(additionalFields.emailOptions){
+								//@ts-ignore
+								additionalFields.emailOptions.emailProperties.map(property => {
+									properties.push({
+										type: 'SYSTEM',
+										subtype: property.subtype as string,
+										name: 'email',
+										value: property.email as string
+									} as IDataObject);
+								})
+							}
+							if(additionalFields.addressOptions){
+								//@ts-ignore
+								additionalFields.addressOptions.addressProperties.map(property => {
+									properties.push({
+										type: 'SYSTEM',
+										subtype: property.subtype as string,
+										name: 'address',
+										value: property.address as string
+									} as IDataObject);
+								})
+							}
+
+							if(additionalFields.phoneOptions){
+								//@ts-ignore
+								additionalFields.phoneOptions.phoneProperties.map(property => {
+									properties.push({
+										type: 'SYSTEM',
+										subtype: property.subtype as string,
+										name: 'phone',
+										value: property.number as string
+									} as IDataObject);
+								})
+							}
+						} else if (resource === 'company') {
+							if(additionalFields.email){
+								properties.push({
+									type: 'SYSTEM',
 									name: 'email',
-									value: property.email as string
+									value: additionalFields.email as string
 								} as IDataObject);
-							})
-						}
-						if(additionalFields.addressOptions){
-							//@ts-ignore
-							additionalFields.addressOptions.addressProperties.map(property => {
+							}
+
+							if(additionalFields.address){
 								properties.push({
 									type: 'SYSTEM',
-									subtype: property.subtype as string,
 									name: 'address',
-									value: property.address as string
+									value: additionalFields.address as string
 								} as IDataObject);
-							})
+							}
+
+							if(additionalFields.phone){
+								properties.push({
+									type: 'SYSTEM',
+									name: 'phone',
+									value: additionalFields.phone as string
+								} as IDataObject);
+							}
+
 						}
+
 						if(additionalFields.websiteOptions){
 							//@ts-ignore
 							additionalFields.websiteOptions.websiteProperties.map(property => {
@@ -194,17 +267,7 @@ export class AgileCrm implements INodeType {
 								} as IDataObject);
 							})
 						}
-						if(additionalFields.phoneOptions){
-							//@ts-ignore
-							additionalFields.phoneOptions.phoneProperties.map(property => {
-								properties.push({
-									type: 'SYSTEM',
-									subtype: property.subtype as string,
-									name: 'phone',
-									value: property.number as string
-								} as IDataObject);
-							})
-						}
+
 						if(additionalFields.customProperties){
 							//@ts-ignore
 							additionalFields.customProperties.customProperty.map(property => {
@@ -223,8 +286,8 @@ export class AgileCrm implements INodeType {
 					responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body);
 				}
 
-				if(operation === "update") {
-					const contactId = this.getNodeParameter('contactId', i) as string;
+				if(operation === 'update') {
+					const contactId = this.getNodeParameter(idGetter, i) as string;
 					let contactUpdatePayload : IContactUpdate = {id: contactId};
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					const body: IContact = {};
@@ -255,56 +318,98 @@ export class AgileCrm implements INodeType {
 						if (additionalFields.tags) {
 							body.tags = additionalFields.tags as string[];
 						}
-						if(additionalFields.firstName){
-							properties.push({
-								type: 'SYSTEM',
-								name: 'first_name',
-								value: additionalFields.firstName as string
-							} as IDataObject);
-						}
-						if(additionalFields.lastName){
-							properties.push({
-								type: 'SYSTEM',
-								name: 'last_name',
-								value: additionalFields.lastName as string
-							} as IDataObject);
-						}
-						if(additionalFields.company){
-							properties.push({
-								type: 'SYSTEM',
-								name: 'company',
-								value: additionalFields.company as string
-							} as IDataObject);
-						}
-						if(additionalFields.title){
-							properties.push({
-								type: 'SYSTEM',
-								name: 'title',
-								value: additionalFields.title as string
-							} as IDataObject);
-						}
-						if(additionalFields.emailOptions){
-							//@ts-ignore
-							additionalFields.emailOptions.emailProperties.map(property => {
+
+						// Contact specific properties
+						if(resource === 'contact'){
+							if(additionalFields.firstName){
 								properties.push({
 									type: 'SYSTEM',
-									subtype: property.subtype as string,
+									name: 'first_name',
+									value: additionalFields.firstName as string
+								} as IDataObject);
+							}
+							if(additionalFields.lastName){
+								properties.push({
+									type: 'SYSTEM',
+									name: 'last_name',
+									value: additionalFields.lastName as string
+								} as IDataObject);
+							}
+							if(additionalFields.company){
+								properties.push({
+									type: 'SYSTEM',
+									name: 'company',
+									value: additionalFields.company as string
+								} as IDataObject);
+							}
+							if(additionalFields.title){
+								properties.push({
+									type: 'SYSTEM',
+									name: 'title',
+									value: additionalFields.title as string
+								} as IDataObject);
+							}
+							if(additionalFields.emailOptions){
+								//@ts-ignore
+								additionalFields.emailOptions.emailProperties.map(property => {
+									properties.push({
+										type: 'SYSTEM',
+										subtype: property.subtype as string,
+										name: 'email',
+										value: property.email as string
+									} as IDataObject);
+								})
+							}
+							if(additionalFields.addressOptions){
+								//@ts-ignore
+								additionalFields.addressOptions.addressProperties.map(property => {
+									properties.push({
+										type: 'SYSTEM',
+										subtype: property.subtype as string,
+										name: 'address',
+										value: property.address as string
+									} as IDataObject);
+								})
+							}
+
+							if(additionalFields.phoneOptions){
+								//@ts-ignore
+								additionalFields.phoneOptions.phoneProperties.map(property => {
+									properties.push({
+										type: 'SYSTEM',
+										subtype: property.subtype as string,
+										name: 'phone',
+										value: property.number as string
+									} as IDataObject);
+								})
+							}
+						} else if (resource === 'company') {
+							if(additionalFields.email){
+								properties.push({
+									type: 'SYSTEM',
 									name: 'email',
-									value: property.email as string
+									value: additionalFields.email as string
 								} as IDataObject);
-							})
-						}
-						if(additionalFields.addressOptions){
-							//@ts-ignore
-							additionalFields.addressOptions.addressProperties.map(property => {
+							}
+
+							if(additionalFields.address){
 								properties.push({
 									type: 'SYSTEM',
-									subtype: property.subtype as string,
 									name: 'address',
-									value: property.address as string
+									value: additionalFields.address as string
 								} as IDataObject);
-							})
+							}
+
+							if(additionalFields.phone){
+								properties.push({
+									type: 'SYSTEM',
+									name: 'phone',
+									value: additionalFields.phone as string
+								} as IDataObject);
+							}
+
 						}
+
 						if(additionalFields.websiteOptions){
 							//@ts-ignore
 							additionalFields.websiteOptions.websiteProperties.map(property => {
@@ -313,17 +418,6 @@ export class AgileCrm implements INodeType {
 									subtype: property.subtype as string,
 									name: 'webiste',
 									value: property.url as string
-								} as IDataObject);
-							})
-						}
-						if(additionalFields.phoneOptions){
-							//@ts-ignore
-							additionalFields.phoneOptions.phoneProperties.map(property => {
-								properties.push({
-									type: 'SYSTEM',
-									subtype: property.subtype as string,
-									name: 'phone',
-									value: property.number as string
 								} as IDataObject);
 							})
 						}
@@ -339,9 +433,6 @@ export class AgileCrm implements INodeType {
 							})
 						}
 						body.properties = properties;
-
-						
-
 					}
 
 					Object.assign(contactUpdatePayload, body);
@@ -356,7 +447,7 @@ export class AgileCrm implements INodeType {
 					returnData.push(responseData as IDataObject);
 				}
 			}
-				
+
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

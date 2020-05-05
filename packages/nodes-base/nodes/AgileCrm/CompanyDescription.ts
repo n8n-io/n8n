@@ -2,7 +2,7 @@ import {
 	INodeProperties,
  } from 'n8n-workflow';
 
-export const contactOperations = [
+export const companyOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const contactOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contact',
+					'company',
 				],
 			},
 		},
@@ -18,27 +18,27 @@ export const contactOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a contact',
+				description: 'Get a company',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all contacts',
+				description: 'Get all companies',
 			},
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new contact',
+				description: 'Create a new company',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update contact properties',
+				description: 'Update company properties',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a contact',
+				description: 'Delete a company',
 			},
 		],
 		default: 'get',
@@ -46,19 +46,19 @@ export const contactOperations = [
 	},
 ] as INodeProperties[];
 
-export const contactFields = [
+export const companyFields = [
 /* -------------------------------------------------------------------------- */
-/*                                  contact:get                               */
+/*                                  company:get                               */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
+		displayName: 'company ID',
+		name: 'companyId',
 		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'contact',
+					'company',
 				],
 				operation: [
 					'get',
@@ -66,12 +66,12 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Unique identifier for a particular contact',
+		description: 'Unique identifier for a particular company',
 	},
 	
 
 /* -------------------------------------------------------------------------- */
-/*                                  contact:get all                           */
+/*                                  company:get all                           */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -80,7 +80,7 @@ export const contactFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contact',
+					'company',
 				],
 				operation: [
 					'getAll',
@@ -98,7 +98,7 @@ export const contactFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'contact',
+					'company',
 				],
 				operation: [
 					'getAll',
@@ -111,7 +111,7 @@ export const contactFields = [
 	},
 
 /* -------------------------------------------------------------------------- */
-/*                                contact:create                               */
+/*                                company:create                               */
 /* -------------------------------------------------------------------------- */
 
 {
@@ -123,7 +123,7 @@ export const contactFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'contact',
+				'company',
 			],
 			operation: [
 				'create',
@@ -142,7 +142,7 @@ export const contactFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'contact',
+				'company',
 			],
 			operation: [
 				'create',
@@ -153,7 +153,7 @@ export const contactFields = [
 		},
 	},
 	
-	description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api" target="_blank">here</a>.`,
+	description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api" target="_blank">here</a>.`,
 },
 
 {
@@ -165,7 +165,7 @@ export const contactFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'contact',
+				'company',
 			],
 			operation: [
 				'create',
@@ -182,7 +182,7 @@ export const contactFields = [
 			type: 'options',
 			default: '',
 			required: false,
-			description: 'Rating of contact (Max value 5). This is not applicable for companies.',
+			description: 'Rating of company (Max value 5). This is not applicable for companies.',
 			options: [
 				{
 					name: '0',
@@ -215,7 +215,7 @@ export const contactFields = [
 			name: 'leadScore',
 			type: 'number',
 			default: '',
-			description: 'Score of contact. This is not applicable for companies.',
+			description: 'Score of company. This is not applicable for companies.',
 			required: false,
 			typeOptions: {
 				minValue: 0
@@ -231,149 +231,41 @@ export const contactFields = [
 			},
 			default: [],
 			placeholder: 'Tag',
-			description: 'Unique identifiers added to contact, for easy management of contacts. This is not applicable for companies.',
-		},
+			description: 'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
+        },
 		{
-			displayName: 'First Name',
-			name: 'firstName',
+			displayName: 'Name',
+			name: 'name',
 			type: 'string',
 			required: false,
 			default: "",
-			placeholder: 'First Name',
-			description: 'Contact first name.',
-		},
-		{
-			displayName: 'Last Name',
-			name: 'lastName',
-			type: 'string',
-			required: false,
-			default: "",
-			placeholder: 'Last Name',
-			description: 'Contact last name.',
-		},
-		{
-			displayName: 'Company',
-			name: 'company',
-			type: 'string',
-			required: false,
-			default: "",
-			placeholder: 'Company',
-			description: 'Company Name.',
-		},	
-		{
-			displayName: 'Title',
-			name: 'title',
-			type: 'string',
-			required: false,
-			default: "",
-			placeholder: 'Title',
-			description: 'Professional title.',
+			placeholder: 'Company name',
+			description: 'Company name.',
 		},
 		{
 			displayName: 'Email',
-			name: 'emailOptions',
-			type: 'fixedCollection',
+			name: 'email',
+			type: 'string',
 			required: false,
-			description: 'Contact email.',
-			typeOptions: {
-				multipleValues: true,
-			},
-			options: [
-				{
-					displayName: 'Email Properties',
-					name: 'emailProperties',
-					values: [
-						{
-							displayName: 'Type',
-							name: 'subtype',
-							type: 'options',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Type of Email',
-							options: [
-								{
-									name: 'Work',
-									value: 'work'
-								},
-								{
-									name: 'Personal',
-									value: 'personal'
-								}
-							]
-						},
-						{
-							displayName: 'Email',
-							name: 'email',
-							type: 'string',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Email',
-						}
-					]
-				},
-					
-			]
+			default: '',
+			placeholder: 'Company email',
+			description: 'Company email.',
 		},
 		{
 			displayName: 'Address',
-			name: 'addressOptions',
-			type: 'fixedCollection',
+			name: 'email',
+			type: 'string',
 			required: false,
-			description: 'Contacts address.',
-			typeOptions: {
-				multipleValues: true,
-			},
-			options: [
-				{
-					displayName: 'Address Properties',
-					name: 'addressProperties',
-					values: [
-						{
-							displayName: 'Type',
-							name: 'subtype',
-							type: 'options',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Type of address.',
-							options: [
-								{
-									name: 'Home',
-									value: 'home'
-								},
-								{
-									name: 'Postal',
-									value: 'postal'
-								}
-								,
-								{
-									name: 'Office',
-									value: 'office'
-								}
-							]
-						},
-						{
-							displayName: 'Address',
-							name: 'address',
-							type: 'string',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Full address.',
-						}
-					]
-				},
-					
-			]
+			default: '',
+			placeholder: 'Company address',
+			description: 'Company address.',
 		},
 		{
 			displayName: 'Website',
 			name: 'websiteOptions',
 			type: 'fixedCollection',
 			required: false,
-			description: 'Contacts websites.',
+			description: 'companys websites.',
 			typeOptions: {
 				multipleValues: true,
 			},
@@ -453,71 +345,12 @@ export const contactFields = [
 		},
 		{
 			displayName: 'Phone',
-			name: 'phoneOptions',
-			type: 'fixedCollection',
+			name: 'phone',
+			type: 'string',
 			required: false,
-			description: 'Contacts phone.',
-			typeOptions: {
-				multipleValues: true,
-			},
-			options: [
-				{
-					displayName: 'Phone properties',
-					name: 'phoneProperties',
-					values: [
-						{
-							displayName: 'Type',
-							name: 'subtype',
-							type: 'options',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Type of phone number.',
-							options: [
-								{
-									name: 'Home',
-									value: 'home'
-								},
-								{
-									name: 'Work',
-									value: 'work'
-								}
-								,
-								{
-									name: 'Mobile',
-									value: 'mobile'
-								},
-								{
-									name: 'Main',
-									value: 'main'
-								},
-								{
-									name: 'Home Fax',
-									value: 'homeFax'
-								},
-								{
-									name: 'Work Fax',
-									value: 'workFax'
-								},
-								{
-									name: 'Other',
-									value: 'other'
-								},
-							]
-						},
-						{
-							displayName: 'Number',
-							name: 'number',
-							type: 'string',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Phone number.',
-						}
-					]
-				},
-					
-			]
+			default: '',
+			placeholder: 'Company phone',
+			description: 'Company phone.',
 		},
 		{
 			displayName: 'Custom Properties',
@@ -568,17 +401,17 @@ export const contactFields = [
 	],
 },
 /* -------------------------------------------------------------------------- */
-/*                                  contact:delete                               */
+/*                                  company:delete                               */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'Contact ID',
-	name: 'contactId',
+	displayName: 'company ID',
+	name: 'companyId',
 	type: 'string',
 	required: true,
 	displayOptions: {
 		show: {
 			resource: [
-				'contact',
+				'company',
 			],
 			operation: [
 				'delete',
@@ -586,20 +419,20 @@ export const contactFields = [
 		},
 	},
 	default: '',
-	description: 'Unique identifier for a particular contact',
+	description: 'Unique identifier for a particular company',
 },
 /* -------------------------------------------------------------------------- */
-/*                                contact:update                               */
+/*                                company:update                               */
 /* -------------------------------------------------------------------------- */
 {
-	displayName: 'Contact ID',
-	name: 'contactId',
+	displayName: 'company ID',
+	name: 'companyId',
 	type: 'string',
 	required: true,
 	displayOptions: {
 		show: {
 			resource: [
-				'contact',
+				'company',
 			],
 			operation: [
 				'update',
@@ -607,7 +440,7 @@ export const contactFields = [
 		},
 	},
 	default: '',
-	description: 'Unique identifier for a particular contact',
+	description: 'Unique identifier for a particular company',
 },
 {
 	displayName: 'JSON Parameters',
@@ -618,7 +451,7 @@ export const contactFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'contact',
+				'company',
 			],
 			operation: [
 				'update',
@@ -637,7 +470,7 @@ export const contactFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'contact',
+				'company',
 			],
 			operation: [
 				'update',
@@ -648,8 +481,9 @@ export const contactFields = [
 		},
 	},
 	
-	description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-contacts---companies-api" target="_blank">here</a>.`,
+	description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api" target="_blank">here</a>.`,
 },
+
 {
 	displayName: 'Additional Fields',
 	name: 'additionalFields',
@@ -659,7 +493,7 @@ export const contactFields = [
 	displayOptions: {
 		show: {
 			resource: [
-				'contact',
+				'company',
 			],
 			operation: [
 				'update',
@@ -676,7 +510,7 @@ export const contactFields = [
 			type: 'options',
 			default: '',
 			required: false,
-			description: 'Rating of contact (Max value 5). This is not applicable for companies.',
+			description: 'Rating of company (Max value 5). This is not applicable for companies.',
 			options: [
 				{
 					name: '0',
@@ -709,7 +543,7 @@ export const contactFields = [
 			name: 'leadScore',
 			type: 'number',
 			default: '',
-			description: 'Score of contact. This is not applicable for companies.',
+			description: 'Score of company. This is not applicable for companies.',
 			required: false,
 			typeOptions: {
 				minValue: 0
@@ -725,149 +559,41 @@ export const contactFields = [
 			},
 			default: [],
 			placeholder: 'Tag',
-			description: 'Unique identifiers added to contact, for easy management of contacts. This is not applicable for companies.',
-		},
+			description: 'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
+        },
 		{
-			displayName: 'First Name',
-			name: 'firstName',
+			displayName: 'Name',
+			name: 'name',
 			type: 'string',
 			required: false,
 			default: "",
-			placeholder: 'First Name',
-			description: 'Contact first name.',
-		},
-		{
-			displayName: 'Last Name',
-			name: 'lastName',
-			type: 'string',
-			required: false,
-			default: "",
-			placeholder: 'Last Name',
-			description: 'Contact last name.',
-		},
-		{
-			displayName: 'Company',
-			name: 'company',
-			type: 'string',
-			required: false,
-			default: "",
-			placeholder: 'Company',
-			description: 'Company Name.',
-		},	
-		{
-			displayName: 'Title',
-			name: 'title',
-			type: 'string',
-			required: false,
-			default: "",
-			placeholder: 'Title',
-			description: 'Professional title.',
+			placeholder: 'Company name',
+			description: 'Company name.',
 		},
 		{
 			displayName: 'Email',
-			name: 'emailOptions',
-			type: 'fixedCollection',
+			name: 'email',
+			type: 'string',
 			required: false,
-			description: 'Contact email.',
-			typeOptions: {
-				multipleValues: true,
-			},
-			options: [
-				{
-					displayName: 'Email Properties',
-					name: 'emailProperties',
-					values: [
-						{
-							displayName: 'Type',
-							name: 'subtype',
-							type: 'options',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Type of Email',
-							options: [
-								{
-									name: 'Work',
-									value: 'work'
-								},
-								{
-									name: 'Personal',
-									value: 'personal'
-								}
-							]
-						},
-						{
-							displayName: 'Email',
-							name: 'email',
-							type: 'string',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Email',
-						}
-					]
-				},
-					
-			]
+			default: '',
+			placeholder: 'Company email',
+			description: 'Company email.',
 		},
 		{
 			displayName: 'Address',
-			name: 'addressOptions',
-			type: 'fixedCollection',
+			name: 'email',
+			type: 'string',
 			required: false,
-			description: 'Contacts address.',
-			typeOptions: {
-				multipleValues: true,
-			},
-			options: [
-				{
-					displayName: 'Address Properties',
-					name: 'addressProperties',
-					values: [
-						{
-							displayName: 'Type',
-							name: 'subtype',
-							type: 'options',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Type of address.',
-							options: [
-								{
-									name: 'Home',
-									value: 'home'
-								},
-								{
-									name: 'Postal',
-									value: 'postal'
-								}
-								,
-								{
-									name: 'Office',
-									value: 'office'
-								}
-							]
-						},
-						{
-							displayName: 'Address',
-							name: 'address',
-							type: 'string',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Full address.',
-						}
-					]
-				},
-					
-			]
+			default: '',
+			placeholder: 'Company address',
+			description: 'Company address.',
 		},
 		{
 			displayName: 'Website',
 			name: 'websiteOptions',
 			type: 'fixedCollection',
 			required: false,
-			description: 'Contacts websites.',
+			description: 'companys websites.',
 			typeOptions: {
 				multipleValues: true,
 			},
@@ -947,71 +673,12 @@ export const contactFields = [
 		},
 		{
 			displayName: 'Phone',
-			name: 'phoneOptions',
-			type: 'fixedCollection',
+			name: 'phone',
+			type: 'string',
 			required: false,
-			description: 'Contacts phone.',
-			typeOptions: {
-				multipleValues: true,
-			},
-			options: [
-				{
-					displayName: 'Phone properties',
-					name: 'phoneProperties',
-					values: [
-						{
-							displayName: 'Type',
-							name: 'subtype',
-							type: 'options',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Type of phone number.',
-							options: [
-								{
-									name: 'Home',
-									value: 'home'
-								},
-								{
-									name: 'Work',
-									value: 'work'
-								}
-								,
-								{
-									name: 'Mobile',
-									value: 'mobile'
-								},
-								{
-									name: 'Main',
-									value: 'main'
-								},
-								{
-									name: 'Home Fax',
-									value: 'homeFax'
-								},
-								{
-									name: 'Work Fax',
-									value: 'workFax'
-								},
-								{
-									name: 'Other',
-									value: 'other'
-								},
-							]
-						},
-						{
-							displayName: 'Number',
-							name: 'number',
-							type: 'string',
-							required: true,
-							default: "",
-							placeholder: '',
-							description: 'Phone number.',
-						}
-					]
-				},
-					
-			]
+			default: '',
+			placeholder: 'Company phone',
+			description: 'Company phone.',
 		},
 		{
 			displayName: 'Custom Properties',
