@@ -16,3 +16,11 @@ import {
      properties?: IDataObject[]; 
  }
 
+ export interface IContactUpdate {
+     id: string,
+     properties?: IDataObject[],
+     star_value?: string;
+     lead_score?: string;
+     tags?: string[];
+ }
+
