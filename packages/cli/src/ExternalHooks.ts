@@ -1,22 +1,27 @@
 import {
 	Db,
-	IExternalHookFunctions,
-	IExternalHooks,
+	IExternalHooksFunctions,
+	IExternalHooksClass,
 } from './';
 
 import * as config from '../config';
 
 // export EXTERNAL_HOOK_FILES=/data/packages/cli/dist/src/externalHooksTemp/test-hooks.js
 
-class ExternalHooksClass implements IExternalHooks {
+class ExternalHooksClass implements IExternalHooksClass {
 
 	externalHooks: {
 		[key: string]: Array<() => {}>
 	} = {};
+	initDidRun = false;
 
 
 	async init(): Promise<void> {
 		console.log('ExternalHooks.init');
+
+		if (this.initDidRun === true) {
+			return;
+		}
 
 		const externalHookFiles = config.get('externalHookFiles').split(':');
 
@@ -48,13 +53,15 @@ class ExternalHooksClass implements IExternalHooks {
 				}
 			}
 		}
+
+		this.initDidRun = true;
 	}
 
 	async run(hookName: string, hookParameters?: any[]): Promise<void> { // tslint:disable-line:no-any
 		console.log('RUN NOW: ' + hookName);
 
-		const externalHookFunctions: IExternalHookFunctions = {
-			DbCollections: Db.collections,
+		const externalHookFunctions: IExternalHooksFunctions = {
+			dbCollections: Db.collections,
 		};
 
 		if (this.externalHooks[hookName] === undefined) {
