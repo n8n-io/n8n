@@ -21,18 +21,20 @@
 				<font-awesome-icon icon="question-circle" />
 			</el-tooltip>
 		</div>
-		<el-row v-for="parameter in credentialTypeData.properties" :key="parameter.name" class="parameter-wrapper">
-			<el-col :span="6" class="parameter-name">
-				{{parameter.displayName}}:
-				<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-					<div slot="content" v-html="parameter.description"></div>
-					<font-awesome-icon icon="question-circle"/>
-				</el-tooltip>
-			</el-col>
-			<el-col :span="18">
-				<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" @valueChanged="valueChanged" />
-			</el-col>
-		</el-row>
+		<span v-for="parameter in credentialTypeData.properties" :key="parameter.name">
+			<el-row v-if="displayCredentialParameter(parameter)" class="parameter-wrapper">
+				<el-col :span="6" class="parameter-name">
+					{{parameter.displayName}}:
+					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
+						<div slot="content" v-html="parameter.description"></div>
+						<font-awesome-icon icon="question-circle"/>
+					</el-tooltip>
+				</el-col>
+				<el-col :span="18">
+					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" @valueChanged="valueChanged" />
+				</el-col>
+			</el-row>
+		</span>
 
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
@@ -85,6 +87,7 @@ import {
 	ICredentialType,
 	ICredentialNodeAccess,
 	INodeCredentialDescription,
+	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -161,6 +164,14 @@ export default mixins(
 			const tempValue = JSON.parse(JSON.stringify(this.propertyValue));
 			tempValue[name] = parameterData.value;
 			Vue.set(this, 'propertyValue', tempValue);
+		},
+		displayCredentialParameter (parameter: INodeProperties): boolean {
+			if (parameter.displayOptions === undefined) {
+				// If it is not defined no need to do a proper check
+				return true;
+			}
+
+			return this.displayParameter(this.propertyValue, parameter, '');
 		},
 		async createCredentials (): Promise<void> {
 			const nodesAccess = this.nodesAccess.map((nodeType) => {
