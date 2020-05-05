@@ -10,6 +10,7 @@ import {
 }
 
  export interface IContact {
+     type?: string,
      star_value?: string;
      lead_score?: string; 
      tags?: string[];
