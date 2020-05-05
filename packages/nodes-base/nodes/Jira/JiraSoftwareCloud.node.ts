@@ -141,11 +141,11 @@ export class JiraSoftwareCloud implements INodeType {
 
 				const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/issuetype', 'GET');
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
-				if (jiraVersion === "server") {
+				if (jiraVersion === 'server') {
 					for (const issueType of issueTypes) {
 						const issueTypeName = issueType.name;
 						const issueTypeId = issueType.id;
-	
+
 						returnData.push({
 							name: issueTypeName,
 							value: issueTypeId,
@@ -156,7 +156,7 @@ export class JiraSoftwareCloud implements INodeType {
 						if (issueType.scope.project.id === projectId) {
 							const issueTypeName = issueType.name;
 							const issueTypeId = issueType.id;
-	
+
 							returnData.push({
 								name: issueTypeName,
 								value: issueTypeId,
@@ -164,7 +164,7 @@ export class JiraSoftwareCloud implements INodeType {
 						}
 					}
 				}
-				
+
 				return returnData;
 			},
 
@@ -210,10 +210,10 @@ export class JiraSoftwareCloud implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const jiraVersion = this.getCurrentNodeParameter("jiraVersion") as string;
-				if (jiraVersion === "server") {
+				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+				if (jiraVersion === 'server') {
 					// the interface call must bring username
-					const users = await jiraSoftwareCloudApiRequest.call(this, "/user/search", "GET", {},
+					const users = await jiraSoftwareCloudApiRequest.call(this, '/user/search', 'GET', {},
 						{
 							username: "'",
 						}
@@ -221,7 +221,7 @@ export class JiraSoftwareCloud implements INodeType {
 					for (const user of users) {
 						const userName = user.displayName;
 						const userId = user.name;
-	
+
 						returnData.push({
 							name: userName,
 							value: userId,
@@ -240,7 +240,7 @@ export class JiraSoftwareCloud implements INodeType {
 						});
 					}
 				}
-				
+
 				return returnData;
 			},
 
@@ -324,7 +324,7 @@ export class JiraSoftwareCloud implements INodeType {
 						};
 					}
 					if (additionalFields.assignee) {
-						if (jiraVersion === "server") {
+						if (jiraVersion === 'server') {
 							fields.assignee = {
 								name: additionalFields.assignee as string,
 							};
@@ -386,7 +386,7 @@ export class JiraSoftwareCloud implements INodeType {
 						};
 					}
 					if (updateFields.assignee) {
-						if (jiraVersion === "server") {
+						if (jiraVersion === 'server') {
 							fields.assignee = {
 								name: updateFields.assignee as string,
 							};
