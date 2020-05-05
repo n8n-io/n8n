@@ -23,6 +23,7 @@ import {
 
 import { agileCrmApiRequest, validateJSON, agileCrmApiRequestUpdate} from './GenericFunctions';
 import { IContact, IProperty, IContactUpdate } from './ContactInterface';
+import { IDeal } from './DealInterface';
 
 
 export class AgileCrm implements INodeType {
@@ -482,6 +483,99 @@ export class AgileCrm implements INodeType {
 						const endpoint = `api/opportunity?page_size=${limit}`;
 						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
 					}
+				}
+
+				if(operation === 'create'){
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+
+					const body: IDeal = {};
+
+					if (jsonParameters) {
+						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+
+						if (additionalFieldsJson !== '' ) {
+
+							if (validateJSON(additionalFieldsJson) !== undefined) {
+
+								Object.assign(body, JSON.parse(additionalFieldsJson));
+
+							} else {
+								throw new Error('Additional fields must be a valid JSON');
+							}
+						}
+
+					} else {
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+		
+						body.close_date = new Date(this.getNodeParameter('closeDate', i) as string).getTime();
+						body.expected_value = this.getNodeParameter('expectedValue', i) as number;
+						body.milestone = this.getNodeParameter('milestone', i) as string;
+						body.probability = this.getNodeParameter('probability', i) as number;
+						body.name = this.getNodeParameter('name', i) as string;
+
+						if(additionalFields.contactIds){
+							body.contactIds = additionalFields.contactIds as string[];
+						}
+
+						if(additionalFields.customData){
+							// @ts-ignore
+							body.customData = additionalFields.customData.customProperty as IDealCustomProperty[];
+						}
+
+					}
+
+					let endpoint = 'api/opportunity'
+					responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body);
+				}
+
+				if(operation === 'update'){
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+
+					const body: IDeal = {};
+
+					if (jsonParameters) {
+						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+
+						if (additionalFieldsJson !== '' ) {
+
+							if (validateJSON(additionalFieldsJson) !== undefined) {
+
+								Object.assign(body, JSON.parse(additionalFieldsJson));
+
+							} else {
+								throw new Error('Additional fields must be a valid JSON');
+							}
+						}
+
+					} else {
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						body.id = this.getNodeParameter('dealId', i) as number;
+
+						if(additionalFields.expectedValue){
+							body.expected_value = additionalFields.expectedValue as number;
+						}
+
+						if(additionalFields.name){
+							body.name = additionalFields.name as string;
+						}
+
+						if(additionalFields.probability){
+							body.probability = additionalFields.probability as number;
+						}
+
+						if(additionalFields.contactIds){
+							body.contactIds = additionalFields.contactIds as string[];
+						}
+
+						if(additionalFields.customData){
+							// @ts-ignore
+							body.customData = additionalFields.customData.customProperty as IDealCustomProperty[];
+						}
+
+					}
+
+					let endpoint = 'api/opportunity/partial-update'
+					responseData = await agileCrmApiRequest.call(this, 'PUT', endpoint, body);
 				}
 			}
 

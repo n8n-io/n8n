@@ -116,7 +116,7 @@ export const dealFields = [
     {
         displayName: 'Close Date',
         name: 'closeDate',
-        type: 'string',
+        type: 'dateTime',
         required: true,
         displayOptions: {
             show: {
@@ -125,6 +125,9 @@ export const dealFields = [
                 ],
                 operation: [
                     'create',
+                ],
+                jsonParameters: [
+                    false,
                 ],
             },
         },
@@ -148,6 +151,9 @@ export const dealFields = [
                 operation: [
                     'create',
                 ],
+                jsonParameters: [
+                    false,
+                ],
             },
         },
         default: 1,
@@ -165,6 +171,9 @@ export const dealFields = [
                 ],
                 operation: [
                     'create',
+                ],
+                jsonParameters: [
+                    false,
                 ],
             },
         },
@@ -188,6 +197,9 @@ export const dealFields = [
                 operation: [
                     'create',
                 ],
+                jsonParameters: [
+                    false,
+                ],
             },
         },
         default: 50,
@@ -205,6 +217,9 @@ export const dealFields = [
                 ],
                 operation: [
                     'create',
+                ],
+                jsonParameters: [
+                    false,
                 ],
             },
         },
@@ -324,14 +339,34 @@ export const dealFields = [
         ]
     },
 
-
+/* -------------------------------------------------------------------------- */
+/*                                  deal:delete                               */
+/* -------------------------------------------------------------------------- */
+{
+    displayName: 'Deal ID',
+    name: 'dealId',
+    type: 'string',
+    required: true,
+    displayOptions: {
+        show: {
+            resource: [
+                'deal',
+            ],
+            operation: [
+                'delete',
+            ],
+        },
+    },
+    default: '',
+    description: 'Unique identifier for a particular deal',
+},
    
 /* -------------------------------------------------------------------------- */
 /*                                deal:update                               */
 /* -------------------------------------------------------------------------- */
     {
-        displayName: 'Close Date',
-        name: 'closeDate',
+        displayName: 'Deal ID',
+        name: 'dealId',
         type: 'string',
         required: true,
         displayOptions: {
@@ -345,88 +380,9 @@ export const dealFields = [
             },
         },
         default: '',
-        description: 'Closing date of deal.',
+        description: 'Unique identifier for a particular deal',
     },
-    {
-        displayName: 'Expected Value',
-        name: 'expectedValue',
-        type: 'number',
-        required: true,
-        typeOptions: {
-            minValue: 0,
-            maxValue: 10000
-        },
-        displayOptions: {
-            show: {
-                resource: [
-                    'deal',
-                ],
-                operation: [
-                    'update',
-                ],
-            },
-        },
-        default: '',
-        description: 'Expected Value of deal.',
-    },
-    {
-        displayName: 'Milestone',
-        name: 'milestone',
-        type: 'string',
-        required: true,
-        displayOptions: {
-            show: {
-                resource: [
-                    'deal',
-                ],
-                operation: [
-                    'update',
-                ],
-            },
-        },
-        default: '',
-        description: 'Milestone of deal.',
-    },
-    {
-        displayName: 'Probability',
-        name: 'probability',
-        type: 'number',
-        required: true,
-        typeOptions: {
-            minValue: 0,
-            maxValue: 100
-        },
-        displayOptions: {
-            show: {
-                resource: [
-                    'deal',
-                ],
-                operation: [
-                    'update',
-                ],
-            },
-        },
-        default: 50,
-        description: 'Expected Value of deal.',
-    },
-    {
-        displayName: 'Name',
-        name: 'name',
-        type: 'string',
-        required: true,
-        displayOptions: {
-            show: {
-                resource: [
-                    'deal',
-                ],
-                operation: [
-                    'update',
-                ],
-            },
-        },
-        default: '',
-        description: 'Name of deal.',
-    },
+
     {
         displayName: 'JSON Parameters',
         name: 'jsonParameters',
@@ -469,39 +425,11 @@ export const dealFields = [
         description: `Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api" target="_blank">here</a>.`,
     },
     {
-        displayName: 'Contact IDs',
-        name: 'contactIds',
-        type: 'string',
-        typeOptions: {
-            multipleValues: true,
-            multipleValueButtonText: 'Add Contact ID',
-        },
-        displayOptions: {
-            show: {
-                resource: [
-                    'deal',
-                ],
-                operation: [
-                    'update',
-                ],
-                jsonParameters: [
-                    false,
-                ],
-            },
-        },
-        default: [],
-        placeholder: 'Id',
-        description: 'Id numbers of contacts.',
-    },
-    {
-        displayName: 'Custom Data',
-        name: 'customData',
-        type: 'fixedCollection',
-        required: false,
-        description: 'Custom Data.',
-        typeOptions: {
-            multipleValues: true,
-        },
+        displayName: 'Additional Fields',
+        name: 'additionalFields',
+        type: 'collection',
+        placeholder: 'Add Field',
+        default: {},
         displayOptions: {
             show: {
                 resource: [
@@ -517,30 +445,86 @@ export const dealFields = [
         },
         options: [
             {
-                displayName: 'Data Properties',
-                name: 'customDataProperties',
-                values: [
+                displayName: 'Expected Value',
+                name: 'expectedValue',
+                type: 'number',
+                required: false,
+                typeOptions: {
+                    minValue: 0,
+                    maxValue: 10000
+                },
+                default: '',
+                description: 'Expected Value of deal.',
+            },
+            {
+                displayName: 'Probability',
+                name: 'probability',
+                type: 'number',
+                required: false,
+                typeOptions: {
+                    minValue: 0,
+                    maxValue: 100
+                },
+                default: 50,
+                description: 'Expected Value of deal.',
+            },
+            {
+                displayName: 'Name',
+                name: 'name',
+                type: 'string',
+                required: false,
+                default: '',
+                description: 'Name of deal.',
+            },
+            {
+                displayName: 'Contact Ids',
+                name: 'contactIds',
+                type: 'string',
+                typeOptions: {
+                    multipleValues: true,
+                    multipleValueButtonText: 'Add ID',
+                },
+                default: [],
+                placeholder: 'ID',
+                description: 'Unique contact identifiers.',
+            },
+            {
+                displayName: 'Custom Data',
+                name: 'customData',
+                type: 'fixedCollection',
+                required: false,
+                description: 'Custom Data',
+                typeOptions: {
+                    multipleValues: true,
+                },
+                options: [
                     {
-                        displayName: 'Name',
-                        name: 'name',
-                        type: 'string',
-                        required: true,
-                        default: "",
-                        placeholder: 'name',
-                        description: 'Name of property',
+                        displayName: 'Property',
+                        name: 'customProperty',
+                        values: [
+                            {
+                                displayName: 'Name',
+                                name: 'name',
+                                type: 'string',
+                                required: true,
+                                default: "",
+                                placeholder: '',
+                                description: 'Property name.'
+                            },
+                            {
+                                displayName: 'Value',
+                                name: 'value',
+                                type: 'string',
+                                required: false,
+                                default: "",
+                                placeholder: '',
+                                description: 'Property value.',
+                            }
+                        ]
                     },
-                    {
-                        displayName: 'Value',
-                        name: 'value',
-                        type: 'string',
-                        required: true,
-                        default: "",
-                        placeholder: '',
-                        description: 'Value of property',
-                    }
+                        
                 ]
             },
-                
         ]
     },
 

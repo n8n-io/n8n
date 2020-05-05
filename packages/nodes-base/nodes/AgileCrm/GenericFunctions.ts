@@ -35,6 +35,7 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 	if(method !== "GET" && method !== "DELETE"){
 		options.body = body;
 	}
+
 	
 	try {
 		return await this.helpers.request!(options);
