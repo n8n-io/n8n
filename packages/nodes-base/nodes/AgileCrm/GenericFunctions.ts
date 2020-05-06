@@ -1,5 +1,5 @@
 import {
-	OptionsWithUri,
+	OptionsWithUri
  } from 'request';
 
 import {
@@ -12,7 +12,7 @@ import {
 import {
 	IDataObject,
 } from 'n8n-workflow';
-import { IContactUpdate } from './ContactInterface';
+import { IContactUpdate, IProperty } from './ContactInterface';
 
 
 export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string,  body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> {
@@ -51,7 +51,7 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 
 }
 
-export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string = 'PUT', endpoint?: string,  body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> {
+export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string,  body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> {
 	const baseUri = 'https://n8nio.agilecrm.com/dev/';
     const credentials = this.getCredentials('agileCrmApi');
 	const options: OptionsWithUri = {
@@ -68,9 +68,9 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 		json: true
 	};
 
-	let successfulUpdates  = [];
+	const successfulUpdates  = [];
 	let lastSuccesfulUpdateReturn : any;
-	let payload : IContactUpdate = body;
+	const payload : IContactUpdate = body;
 	
 	try {
 		// Due to API, we must update each property separately 
@@ -82,7 +82,7 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 			// Iterate trough properties and show them as individial updates instead of only vague "properties"
 			payload.properties?.map((property : any) => {
 				successfulUpdates.push(`${property.name} `);
-			})
+			});
 
 			delete options.body.properties;
 		}
@@ -102,7 +102,7 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 
 			payload.tags?.map((tag : string) => {
 				successfulUpdates.push(`(Tag) ${tag} `);
-			})
+			});
 
 			delete options.body.tags;
 		}

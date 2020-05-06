@@ -16,5 +16,9 @@
     "lerna": "^3.13.1",
     "run-script-os": "^1.0.7"
   },
-  "postcss": {}
+  "postcss": {},
+  "dependencies": {
+    "@typescript-eslint/parser": "^2.31.0",
+    "tslint-eslint-rules": "^5.4.0"
+  }
 }

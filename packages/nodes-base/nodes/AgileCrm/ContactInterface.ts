@@ -10,7 +10,7 @@ import {
 }
 
  export interface IContact {
-     type?: string,
+     type?: string;
      star_value?: string;
      lead_score?: string; 
      tags?: string[];
@@ -18,8 +18,8 @@ import {
  }
 
  export interface IContactUpdate {
-     id: string,
-     properties?: IDataObject[],
+     id: string;
+     properties?: IDataObject[];
      star_value?: string;
      lead_score?: string;
      tags?: string[];
