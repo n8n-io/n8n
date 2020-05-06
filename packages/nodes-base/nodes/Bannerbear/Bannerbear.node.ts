@@ -148,23 +148,22 @@ export class Bannerbear implements INodeType {
 					}
 					responseData = await bannerbearApiRequest.call(this, 'POST', '/images', body);
 					if (additionalFields.waitForImage && responseData.status !== 'completed') {
-						let maxIntents = 2;
+						let maxTries = (additionalFields.waitForImageMaxTries as number) || 3;
+
 						const promise = (uid: string) => {
 							let data: IDataObject = {};
 							return new Promise((resolve, reject) => {
 								const timeout = setInterval(async () => {
-									if (!maxIntents) {
-										clearInterval(timeout);
-										reject(new Error('Image did not finish procesing after 2 intents'));
-									}
-
 									data = await bannerbearApiRequest.call(this, 'GET', `/images/${uid}`);
 
 									if (data.status === 'completed') {
 										clearInterval(timeout);
 										resolve(data);
 									}
-									maxIntents--;
+									if (--maxTries === 0) {
+										clearInterval(timeout);
+										reject(new Error('Image did not finish processing after multiple tries.'));
+									}
 								}, 2000);
 							});
 						};
