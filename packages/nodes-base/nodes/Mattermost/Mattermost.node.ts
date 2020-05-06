@@ -98,6 +98,11 @@ export class Mattermost implements INodeType {
 						description: 'Soft-deletes a channel',
 					},
 					{
+						name: 'Members',
+						value: 'members',
+						description: 'Returns the members of a channel.',
+					},
+					{
 						name: 'Restore',
 						value: 'restore',
 						description: 'Restores a soft-deleted channel',
@@ -262,6 +267,97 @@ export class Mattermost implements INodeType {
 				description: 'The ID of the channel to soft-delete.',
 			},
 
+			// ----------------------------------
+			//         channel:members
+			// ----------------------------------
+			{
+				displayName: 'Team ID',
+				name: 'teamId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTeams',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The Mattermost Team.',
+			},
+			{
+				displayName: 'Channel ID',
+				name: 'channelId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannelsInTeam',
+					loadOptionsDependsOn: [
+						'teamId',
+					],
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The Mattermost Team.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
 
 			// ----------------------------------
 			//         channel:restore
@@ -1049,10 +1145,42 @@ export class Mattermost implements INodeType {
 				return returnData;
 			},
 
+			// Get all the channels in a team
+			async getChannelsInTeam(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const teamId = this.getCurrentNodeParameter('teamId');
+				const endpoint = `users/me/teams/${teamId}/channels`;
+				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
+				if (responseData === undefined) {
+					throw new Error('No data got returned');
+				}
+
+				const returnData: INodePropertyOptions[] = [];
+				let name: string;
+				for (const data of responseData) {
+					if (data.delete_at !== 0) {
+						continue;
+					}
+
+					const channelTypes: IDataObject = {
+						'O': 'public',
+						'P': 'private',
+						'D': 'direct',
+					};
+
+					name = `${data.name} (${channelTypes[data.type as string]})`;
+
+					returnData.push({
+						name,
+						value: data.id,
+					});
+				}
+
+				return returnData;
+			},
 
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = 'teams';
+				const endpoint = 'users/me/teams';
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
@@ -1155,6 +1283,19 @@ export class Mattermost implements INodeType {
 					requestMethod = 'DELETE';
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					endpoint = `channels/${channelId}`;
+
+				} else if (operation === 'members') {
+					// ----------------------------------
+					//         channel:members
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					endpoint = `channels/${channelId}/members`;
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+					}
 
 				} else if (operation === 'restore') {
 					// ----------------------------------
@@ -1353,7 +1494,7 @@ export class Mattermost implements INodeType {
 					}
 
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit', i) as number;
 					}
 
 					endpoint = `/users`;
