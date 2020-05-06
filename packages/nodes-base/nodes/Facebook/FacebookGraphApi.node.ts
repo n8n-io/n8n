@@ -79,8 +79,12 @@ export class FacebookGraphApi implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Latest',
+						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v7.0',
+						value: 'v7.0',
 					},
 					{
 						name: 'v6.0',
@@ -109,10 +113,6 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'v3.0',
 						value: 'v3.0',
-					},
-					{
-						name: 'v2.12',
-						value: 'v2.12',
 					},
 				],
 				default: '',
