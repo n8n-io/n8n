@@ -181,7 +181,7 @@ export const companyFields = [
 				name: 'starValue',
 				type: 'options',
 				default: '',
-				required: false,
+				
 				description: 'Rating of company (Max value 5). This is not applicable for companies.',
 				options: [
 					{
@@ -216,7 +216,7 @@ export const companyFields = [
 				type: 'number',
 				default: '',
 				description: 'Score of company. This is not applicable for companies.',
-				required: false,
+				
 				typeOptions: {
 					minValue: 0
 				}
@@ -237,7 +237,7 @@ export const companyFields = [
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
-				required: false,
+				
 				default: '',
 				placeholder: 'Company name',
 				description: 'Company name.',
@@ -246,7 +246,7 @@ export const companyFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				required: false,
+				
 				default: '',
 				placeholder: 'Company email',
 				description: 'Company email.',
@@ -255,7 +255,7 @@ export const companyFields = [
 				displayName: 'Address',
 				name: 'email',
 				type: 'string',
-				required: false,
+				
 				default: '',
 				placeholder: 'Company address',
 				description: 'Company address.',
@@ -264,7 +264,7 @@ export const companyFields = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
-				required: false,
+				
 				description: 'companys websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -280,7 +280,7 @@ export const companyFields = [
 								type: 'options',
 								required: true,
 								default: '',
-								placeholder: '',
+								
 								description: 'Type of website.',
 								options: [
 									{
@@ -335,7 +335,7 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								placeholder: '',
+								
 								description: 'Website URL',
 							}
 						]
@@ -347,7 +347,7 @@ export const companyFields = [
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
-				required: false,
+				
 				default: '',
 				placeholder: 'Company phone',
 				description: 'Company phone.',
@@ -356,7 +356,7 @@ export const companyFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
-				required: false,
+				
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -372,25 +372,25 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								placeholder: '',
+								
 								description: 'Property name.'
 							},
 							{
 								displayName: 'Sub Type',
 								name: 'subtype',
 								type: 'string',
-								required: false,
+								
 								default: '',
-								placeholder: '',
+								
 								description: 'Property sub type.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								required: false,
+								
 								default: '',
-								placeholder: '',
+								
 								description: 'Property value.',
 							}
 						]
@@ -509,7 +509,7 @@ export const companyFields = [
 				name: 'starValue',
 				type: 'options',
 				default: '',
-				required: false,
+				
 				description: 'Rating of company (Max value 5). This is not applicable for companies.',
 				options: [
 					{
@@ -544,7 +544,7 @@ export const companyFields = [
 				type: 'number',
 				default: '',
 				description: 'Score of company. This is not applicable for companies.',
-				required: false,
+				
 				typeOptions: {
 					minValue: 0
 				}
@@ -565,7 +565,7 @@ export const companyFields = [
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
-				required: false,
+				
 				default: '',
 				placeholder: 'Company name',
 				description: 'Company name.',
@@ -574,7 +574,7 @@ export const companyFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				required: false,
+				
 				default: '',
 				placeholder: 'Company email',
 				description: 'Company email.',
@@ -583,7 +583,7 @@ export const companyFields = [
 				displayName: 'Address',
 				name: 'email',
 				type: 'string',
-				required: false,
+				
 				default: '',
 				placeholder: 'Company address',
 				description: 'Company address.',
@@ -592,7 +592,7 @@ export const companyFields = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
-				required: false,
+				
 				description: 'companys websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -608,7 +608,7 @@ export const companyFields = [
 								type: 'options',
 								required: true,
 								default: '',
-								placeholder: '',
+								
 								description: 'Type of website.',
 								options: [
 									{
@@ -663,7 +663,7 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								placeholder: '',
+								
 								description: 'Website URL',
 							}
 						]
@@ -675,7 +675,7 @@ export const companyFields = [
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
-				required: false,
+				
 				default: '',
 				placeholder: 'Company phone',
 				description: 'Company phone.',
@@ -684,7 +684,7 @@ export const companyFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
-				required: false,
+				
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -700,25 +700,25 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								placeholder: '',
+								
 								description: 'Property name.'
 							},
 							{
 								displayName: 'Sub Type',
 								name: 'subtype',
 								type: 'string',
-								required: false,
+								
 								default: '',
-								placeholder: '',
+								
 								description: 'Property sub type.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								required: false,
+								
 								default: '',
-								placeholder: '',
+								
 								description: 'Property value.',
 							}
 						]

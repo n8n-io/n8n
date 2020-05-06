@@ -181,7 +181,6 @@ export const contactFields = [
 				name: 'starValue',
 				type: 'options',
 				default: '',
-				required: false,
 				description: 'Rating of contact (Max value 5). This is not applicable for companies.',
 				options: [
 					{
@@ -216,7 +215,6 @@ export const contactFields = [
 				type: 'number',
 				default: '',
 				description: 'Score of contact. This is not applicable for companies.',
-				required: false,
 				typeOptions: {
 					minValue: 0
 				}
@@ -237,7 +235,6 @@ export const contactFields = [
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
-				required: false,
 				default: "",
 				placeholder: 'First Name',
 				description: 'Contact first name.',
@@ -246,7 +243,6 @@ export const contactFields = [
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
-				required: false,
 				default: "",
 				placeholder: 'Last Name',
 				description: 'Contact last name.',
@@ -255,7 +251,6 @@ export const contactFields = [
 				displayName: 'Company',
 				name: 'company',
 				type: 'string',
-				required: false,
 				default: "",
 				placeholder: 'Company',
 				description: 'Company Name.',
@@ -264,7 +259,6 @@ export const contactFields = [
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				required: false,
 				default: "",
 				placeholder: 'Title',
 				description: 'Professional title.',
@@ -273,7 +267,6 @@ export const contactFields = [
 				displayName: 'Email',
 				name: 'emailOptions',
 				type: 'fixedCollection',
-				required: false,
 				description: 'Contact email.',
 				typeOptions: {
 					multipleValues: true,
@@ -289,7 +282,7 @@ export const contactFields = [
 								type: 'options',
 								required: true,
 								default: "",
-								placeholder: '',
+								
 								description: 'Type of Email',
 								options: [
 									{
@@ -308,7 +301,7 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								placeholder: '',
+								
 								description: 'Email',
 							}
 						]
@@ -320,7 +313,6 @@ export const contactFields = [
 				displayName: 'Address',
 				name: 'addressOptions',
 				type: 'fixedCollection',
-				required: false,
 				description: 'Contacts address.',
 				typeOptions: {
 					multipleValues: true,
@@ -336,7 +328,7 @@ export const contactFields = [
 								type: 'options',
 								required: true,
 								default: "",
-								placeholder: '',
+								
 								description: 'Type of address.',
 								options: [
 									{
@@ -360,7 +352,7 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								placeholder: '',
+								
 								description: 'Full address.',
 							}
 						]
@@ -372,7 +364,6 @@ export const contactFields = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
-				required: false,
 				description: 'Contacts websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -388,7 +379,7 @@ export const contactFields = [
 								type: 'options',
 								required: true,
 								default: "",
-								placeholder: '',
+								
 								description: 'Type of website.',
 								options: [
 									{
@@ -443,7 +434,7 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								placeholder: '',
+								
 								description: 'Website URL',
 							}
 						]
@@ -455,7 +446,6 @@ export const contactFields = [
 				displayName: 'Phone',
 				name: 'phoneOptions',
 				type: 'fixedCollection',
-				required: false,
 				description: 'Contacts phone.',
 				typeOptions: {
 					multipleValues: true,
@@ -471,7 +461,7 @@ export const contactFields = [
 								type: 'options',
 								required: true,
 								default: "",
-								placeholder: '',
+								
 								description: 'Type of phone number.',
 								options: [
 									{
@@ -511,7 +501,7 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								placeholder: '',
+								
 								description: 'Phone number.',
 							}
 						]
@@ -523,7 +513,6 @@ export const contactFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
-				required: false,
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -539,25 +528,23 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								placeholder: '',
+								
 								description: 'Property name.'
 							},
 							{
 								displayName: 'Sub Type',
 								name: 'subtype',
 								type: 'string',
-								required: false,
 								default: "",
-								placeholder: '',
+								
 								description: 'Property sub type.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								required: false,
 								default: "",
-								placeholder: '',
+								
 								description: 'Property value.',
 							}
 						]
@@ -586,7 +573,7 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Unique identifier for a particular contact',
+		description: 'Id of contact to delete.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                contact:update                               */
@@ -675,7 +662,6 @@ export const contactFields = [
 			name: 'starValue',
 			type: 'options',
 			default: '',
-			required: false,
 			description: 'Rating of contact (Max value 5). This is not applicable for companies.',
 			options: [
 				{
@@ -710,7 +696,6 @@ export const contactFields = [
 			type: 'number',
 			default: '',
 			description: 'Score of contact. This is not applicable for companies.',
-			required: false,
 			typeOptions: {
 				minValue: 0
 			}
@@ -731,7 +716,6 @@ export const contactFields = [
 			displayName: 'First Name',
 			name: 'firstName',
 			type: 'string',
-			required: false,
 			default: "",
 			placeholder: 'First Name',
 			description: 'Contact first name.',
@@ -740,7 +724,6 @@ export const contactFields = [
 			displayName: 'Last Name',
 			name: 'lastName',
 			type: 'string',
-			required: false,
 			default: "",
 			placeholder: 'Last Name',
 			description: 'Contact last name.',
@@ -749,7 +732,6 @@ export const contactFields = [
 			displayName: 'Company',
 			name: 'company',
 			type: 'string',
-			required: false,
 			default: "",
 			placeholder: 'Company',
 			description: 'Company Name.',
@@ -758,7 +740,6 @@ export const contactFields = [
 			displayName: 'Title',
 			name: 'title',
 			type: 'string',
-			required: false,
 			default: "",
 			placeholder: 'Title',
 			description: 'Professional title.',
@@ -767,7 +748,6 @@ export const contactFields = [
 			displayName: 'Email',
 			name: 'emailOptions',
 			type: 'fixedCollection',
-			required: false,
 			description: 'Contact email.',
 			typeOptions: {
 				multipleValues: true,
@@ -783,7 +763,7 @@ export const contactFields = [
 							type: 'options',
 							required: true,
 							default: "",
-							placeholder: '',
+							
 							description: 'Type of Email',
 							options: [
 								{
@@ -802,7 +782,7 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							placeholder: '',
+							
 							description: 'Email',
 						}
 					]
@@ -814,7 +794,6 @@ export const contactFields = [
 			displayName: 'Address',
 			name: 'addressOptions',
 			type: 'fixedCollection',
-			required: false,
 			description: 'Contacts address.',
 			typeOptions: {
 				multipleValues: true,
@@ -830,7 +809,7 @@ export const contactFields = [
 							type: 'options',
 							required: true,
 							default: "",
-							placeholder: '',
+							
 							description: 'Type of address.',
 							options: [
 								{
@@ -854,7 +833,7 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							placeholder: '',
+							
 							description: 'Full address.',
 						}
 					]
@@ -866,7 +845,6 @@ export const contactFields = [
 			displayName: 'Website',
 			name: 'websiteOptions',
 			type: 'fixedCollection',
-			required: false,
 			description: 'Contacts websites.',
 			typeOptions: {
 				multipleValues: true,
@@ -882,7 +860,7 @@ export const contactFields = [
 							type: 'options',
 							required: true,
 							default: "",
-							placeholder: '',
+							
 							description: 'Type of website.',
 							options: [
 								{
@@ -937,7 +915,7 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							placeholder: '',
+							
 							description: 'Website URL',
 						}
 					]
@@ -949,7 +927,6 @@ export const contactFields = [
 			displayName: 'Phone',
 			name: 'phoneOptions',
 			type: 'fixedCollection',
-			required: false,
 			description: 'Contacts phone.',
 			typeOptions: {
 				multipleValues: true,
@@ -965,7 +942,7 @@ export const contactFields = [
 							type: 'options',
 							required: true,
 							default: "",
-							placeholder: '',
+							
 							description: 'Type of phone number.',
 							options: [
 								{
@@ -1005,7 +982,7 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							placeholder: '',
+							
 							description: 'Phone number.',
 						}
 					]
@@ -1017,7 +994,6 @@ export const contactFields = [
 			displayName: 'Custom Properties',
 			name: 'customProperties',
 			type: 'fixedCollection',
-			required: false,
 			description: 'Custom Properties',
 			typeOptions: {
 				multipleValues: true,
@@ -1033,25 +1009,23 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							placeholder: '',
+							
 							description: 'Property name.'
 						},
 						{
 							displayName: 'Sub Type',
 							name: 'subtype',
 							type: 'string',
-							required: false,
 							default: "",
-							placeholder: '',
+							
 							description: 'Property sub type.',
 						},
 						{
 							displayName: 'Value',
 							name: 'value',
 							type: 'string',
-							required: false,
 							default: "",
-							placeholder: '',
+							
 							description: 'Property value.',
 						}
 					]
