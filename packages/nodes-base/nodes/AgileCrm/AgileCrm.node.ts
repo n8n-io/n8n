@@ -171,9 +171,6 @@ export class AgileCrm implements INodeType {
 						if (additionalFields.starValue) {
 							body.star_value = additionalFields.starValue as string;
 						}
-						if (additionalFields.leadScore) {
-							body.lead_score = additionalFields.leadScore as string;
-						}
 						if (additionalFields.tags) {
 							body.tags = additionalFields.tags as string[];
 						}
@@ -325,15 +322,17 @@ export class AgileCrm implements INodeType {
 						if (additionalFields.starValue) {
 							body.star_value = additionalFields.starValue as string;
 						}
-						if (additionalFields.leadScore) {
-							body.lead_score = additionalFields.leadScore as string;
-						}
 						if (additionalFields.tags) {
 							body.tags = additionalFields.tags as string[];
 						}
 
 						// Contact specific properties
 						if(resource === 'contact'){
+
+							if (additionalFields.leadScore) {
+								body.lead_score = additionalFields.leadScore as string;
+							}
+							
 							if(additionalFields.firstName){
 								properties.push({
 									type: 'SYSTEM',
