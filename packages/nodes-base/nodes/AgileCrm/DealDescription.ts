@@ -303,7 +303,7 @@ export const dealFields = [
                 displayName: 'Custom Data',
                 name: 'customData',
                 type: 'fixedCollection',
-                required: false,
+                
                 description: 'Custom Data',
                 typeOptions: {
                     multipleValues: true,
@@ -319,16 +319,16 @@ export const dealFields = [
                                 type: 'string',
                                 required: true,
                                 default: "",
-                                placeholder: '',
+                                
                                 description: 'Property name.'
                             },
                             {
                                 displayName: 'Value',
                                 name: 'value',
                                 type: 'string',
-                                required: false,
+                                
                                 default: "",
-                                placeholder: '',
+                                
                                 description: 'Property value.',
                             }
                         ]
@@ -448,7 +448,7 @@ export const dealFields = [
                 displayName: 'Expected Value',
                 name: 'expectedValue',
                 type: 'number',
-                required: false,
+                
                 typeOptions: {
                     minValue: 0,
                     maxValue: 10000
@@ -460,7 +460,7 @@ export const dealFields = [
                 displayName: 'Probability',
                 name: 'probability',
                 type: 'number',
-                required: false,
+                
                 typeOptions: {
                     minValue: 0,
                     maxValue: 100
@@ -472,7 +472,7 @@ export const dealFields = [
                 displayName: 'Name',
                 name: 'name',
                 type: 'string',
-                required: false,
+                
                 default: '',
                 description: 'Name of deal.',
             },
@@ -492,7 +492,7 @@ export const dealFields = [
                 displayName: 'Custom Data',
                 name: 'customData',
                 type: 'fixedCollection',
-                required: false,
+                
                 description: 'Custom Data',
                 typeOptions: {
                     multipleValues: true,
@@ -508,16 +508,16 @@ export const dealFields = [
                                 type: 'string',
                                 required: true,
                                 default: "",
-                                placeholder: '',
+                                
                                 description: 'Property name.'
                             },
                             {
                                 displayName: 'Value',
                                 name: 'value',
                                 type: 'string',
-                                required: false,
+                                
                                 default: "",
-                                placeholder: '',
+                                
                                 description: 'Property value.',
                             }
                         ]
