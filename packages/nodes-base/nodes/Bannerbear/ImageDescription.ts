@@ -82,6 +82,33 @@ export const imageFields = [
 				description: 'Metadata that you need to store e.g. ID of a record in your DB',
 			},
 			{
+				displayName: 'Wait for Image',
+				name: 'waitForImage',
+				type: 'boolean',
+				default: false,
+				description: `Wait for the image to be proccesed before returning.<br />
+				If after three tries the images is not ready, an error will be thrown.<br />
+				Number of tries can be increased by setting "Wait Max Tries".`,
+			},
+			{
+				displayName: 'Wait Max Tries',
+				name: 'waitForImageMaxTries',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 10,
+				},
+				displayOptions: {
+					show: {
+						waitForImage: [
+							true,
+						],
+					},
+				},
+				default: 3,
+				description: `How often it should check if the image is available before it fails.`,
+			},
+			{
 				displayName: 'Webhook URL',
 				name: 'webhookUrl',
 				type: 'string',
@@ -117,7 +144,13 @@ export const imageFields = [
 					{
 						displayName: 'Name',
 						name: 'name',
-						type: 'string',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getModificationNames',
+							loadOptionsDependsOn: [
+								'templateId',
+							],
+						},
 						default: '',
 						description: 'The name of the item you want to change',
 					},
