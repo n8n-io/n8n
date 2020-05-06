@@ -73,7 +73,7 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 	const payload : IContactUpdate = body;
 	
 	try {
-		// Due to API, we must update each property separately 
+		// Due to API, we must update each property separately. For user it looks like one seamless update
 		if(payload.properties){
 			options.body.properties = payload.properties;
 			options.uri = baseUri + 'api/contacts/edit-properties';
