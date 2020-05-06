@@ -15,6 +15,16 @@ export const companyOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new company',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a company',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a company',
@@ -25,19 +35,9 @@ export const companyOperations = [
 				description: 'Get all companies',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new company',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update company properties',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a company',
 			},
 		],
 		default: 'get',
@@ -171,6 +171,41 @@ export const companyFields = [
 		},
 		options: [
 			{
+				displayName: 'Address',
+				name: 'email',
+				type: 'string',
+				
+				default: '',
+				placeholder: 'Company address',
+				description: 'Company address.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				
+				default: '',
+				placeholder: 'Company email',
+				description: 'Company email.',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				placeholder: 'Company name',
+				description: 'Company name.',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				
+				default: '',
+				placeholder: 'Company phone',
+				description: 'Company phone.',
+			},
+			{
 				displayName: 'Star Value',
 				name: 'starValue',
 				type: 'options',
@@ -204,16 +239,6 @@ export const companyFields = [
 				]
 			},
 			{
-				displayName: 'Lead Score',
-				name: 'leadScore',
-				type: 'number',
-				default: '',
-				description: 'Score of company. This is not applicable for companies.',
-				typeOptions: {
-					minValue: 0
-				}
-			},
-			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
@@ -226,37 +251,11 @@ export const companyFields = [
 				description: 'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
 			},
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				placeholder: 'Company name',
-				description: 'Company name.',
-			},
-			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				
-				default: '',
-				placeholder: 'Company email',
-				description: 'Company email.',
-			},
-			{
-				displayName: 'Address',
-				name: 'email',
-				type: 'string',
-				
-				default: '',
-				placeholder: 'Company address',
-				description: 'Company address.',
-			},
-			{
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
 				
-				description: 'companys websites.',
+				description: 'Companies websites.',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -271,12 +270,31 @@ export const companyFields = [
 								type: 'options',
 								required: true,
 								default: '',
-								
 								description: 'Type of website.',
 								options: [
 									{
-										name: 'URL',
-										value: 'url',
+										name: 'FACEBOOK',
+										value: 'facebook',
+									},
+									{
+										name: 'FEED',
+										value: 'feed',
+									},
+									{
+										name: 'FLICKR',
+										value: 'flickr',
+									},
+									{
+										name: 'LINKEDIN',
+										value: 'linkedin',
+									},
+									{
+										name: 'GITHUB',
+										value: 'github',
+									},
+									{
+										name: 'GOOGLE_PLUS',
+										value: 'googlePlus',
 									},
 									{
 										name: 'SKYPE',
@@ -287,32 +305,12 @@ export const companyFields = [
 										value: 'twitter',
 									},
 									{
-										name: 'LINKEDIN',
-										value: 'linkedin',
-									},
-									{
-										name: 'FACEBOOK',
-										value: 'facebook',
+										name: 'URL',
+										value: 'url',
 									},
 									{
 										name: 'XING',
 										value: 'xing',
-									},
-									{
-										name: 'FEED',
-										value: 'feed',
-									},
-									{
-										name: 'GOOGLE_PLUS',
-										value: 'googlePlus',
-									},
-									{
-										name: 'FLICKR',
-										value: 'flickr',
-									},
-									{
-										name: 'GITHUB',
-										value: 'github',
 									},
 									{
 										name: 'YOUTUBE',
@@ -333,15 +331,6 @@ export const companyFields = [
 					},
 					
 				]
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				
-				default: '',
-				placeholder: 'Company phone',
-				description: 'Company phone.',
 			},
 			{
 				displayName: 'Custom Properties',
@@ -386,7 +375,6 @@ export const companyFields = [
 							}
 						]
 					},
-					
 				]
 			},
 		],
@@ -410,7 +398,7 @@ export const companyFields = [
 			},
 		},
 		default: '',
-		description: 'Unique identifier for a particular company',
+		description: 'ID of company to delete',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                company:update                               */
@@ -495,6 +483,22 @@ export const companyFields = [
 		},
 		options: [
 			{
+				displayName: 'Address',
+				name: 'email',
+				type: 'string',
+				default: '',
+				placeholder: 'Company address',
+				description: 'Company address.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				placeholder: 'Company email',
+				description: 'Company email.',
+			},
+			{
 				displayName: 'Star Value',
 				name: 'starValue',
 				type: 'options',
@@ -528,16 +532,6 @@ export const companyFields = [
 				]
 			},
 			{
-				displayName: 'Lead Score',
-				name: 'leadScore',
-				type: 'number',
-				default: '',
-				description: 'Score of company. This is not applicable for companies.',
-				typeOptions: {
-					minValue: 0
-				}
-			},
-			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
@@ -558,20 +552,12 @@ export const companyFields = [
 				description: 'Company name.',
 			},
 			{
-				displayName: 'Email',
-				name: 'email',
+				displayName: 'Phone',
+				name: 'phone',
 				type: 'string',
 				default: '',
-				placeholder: 'Company email',
-				description: 'Company email.',
-			},
-			{
-				displayName: 'Address',
-				name: 'email',
-				type: 'string',
-				default: '',
-				placeholder: 'Company address',
-				description: 'Company address.',
+				placeholder: 'Company phone',
+				description: 'Company phone.',
 			},
 			{
 				displayName: 'Website',
@@ -595,8 +581,28 @@ export const companyFields = [
 								description: 'Type of website.',
 								options: [
 									{
-										name: 'URL',
-										value: 'url',
+										name: 'FACEBOOK',
+										value: 'facebook',
+									},
+									{
+										name: 'FEED',
+										value: 'feed',
+									},
+									{
+										name: 'FLICKR',
+										value: 'flickr',
+									},
+									{
+										name: 'LINKEDIN',
+										value: 'linkedin',
+									},
+									{
+										name: 'GITHUB',
+										value: 'github',
+									},
+									{
+										name: 'GOOGLE_PLUS',
+										value: 'googlePlus',
 									},
 									{
 										name: 'SKYPE',
@@ -607,32 +613,12 @@ export const companyFields = [
 										value: 'twitter',
 									},
 									{
-										name: 'LINKEDIN',
-										value: 'linkedin',
-									},
-									{
-										name: 'FACEBOOK',
-										value: 'facebook',
+										name: 'URL',
+										value: 'url',
 									},
 									{
 										name: 'XING',
 										value: 'xing',
-									},
-									{
-										name: 'FEED',
-										value: 'feed',
-									},
-									{
-										name: 'GOOGLE_PLUS',
-										value: 'googlePlus',
-									},
-									{
-										name: 'FLICKR',
-										value: 'flickr',
-									},
-									{
-										name: 'GITHUB',
-										value: 'github',
 									},
 									{
 										name: 'YOUTUBE',
@@ -650,16 +636,7 @@ export const companyFields = [
 							}
 						]
 					},
-					
 				]
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				placeholder: 'Company phone',
-				description: 'Company phone.',
 			},
 			{
 				displayName: 'Custom Properties',

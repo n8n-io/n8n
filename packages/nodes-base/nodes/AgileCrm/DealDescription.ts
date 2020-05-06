@@ -15,6 +15,16 @@ export const dealOperations = [
 			},
 		},
 		options: [
+            {
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new deal',
+            },
+            {
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a deal',
+			},
 			{
 				name: 'Get',
 				value: 'get',
@@ -26,20 +36,11 @@ export const dealOperations = [
 				description: 'Get all deals',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new deal',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update deal properties',
 			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a deal',
-			},
+
 		],
 		default: 'get',
 		description: 'The operation to perform.',
@@ -74,23 +75,6 @@ export const dealFields = [
 /*                                  deal:get all                           */
 /* -------------------------------------------------------------------------- */
     {
-        displayName: 'Return All',
-        name: 'returnAll',
-        type: 'boolean',
-        displayOptions: {
-            show: {
-                resource: [
-                    'deal',
-                ],
-                operation: [
-                    'getAll',
-                ],
-            },
-        },
-        default: false,
-        description: 'If all results should be returned or only up to a given limit.',
-    },
-    {
         displayName: 'Limit',
         name: 'limit',
         type: 'number',
@@ -109,6 +93,24 @@ export const dealFields = [
             },
         }
     },
+    {
+        displayName: 'Return All',
+        name: 'returnAll',
+        type: 'boolean',
+        displayOptions: {
+            show: {
+                resource: [
+                    'deal',
+                ],
+                operation: [
+                    'getAll',
+                ],
+            },
+        },
+        default: false,
+        description: 'If all results should be returned or only up to a given limit.',
+    },
+
 
 /* -------------------------------------------------------------------------- */
 /*                                deal:create                                 */
@@ -181,6 +183,27 @@ export const dealFields = [
         description: 'Milestone of deal.',
     },
     {
+        displayName: 'Name',
+        name: 'name',
+        type: 'string',
+        required: true,
+        displayOptions: {
+            show: {
+                resource: [
+                    'deal',
+                ],
+                operation: [
+                    'create',
+                ],
+                jsonParameters: [
+                    false,
+                ],
+            },
+        },
+        default: '',
+        description: 'Name of deal.',
+    },
+    {
         displayName: 'Probability',
         name: 'probability',
         type: 'number',
@@ -204,27 +227,6 @@ export const dealFields = [
         },
         default: 50,
         description: 'Expected probability.',
-    },
-    {
-        displayName: 'Name',
-        name: 'name',
-        type: 'string',
-        required: true,
-        displayOptions: {
-            show: {
-                resource: [
-                    'deal',
-                ],
-                operation: [
-                    'create',
-                ],
-                jsonParameters: [
-                    false,
-                ],
-            },
-        },
-        default: '',
-        description: 'Name of deal.',
     },
     {
         displayName: 'JSON Parameters',
@@ -355,7 +357,7 @@ export const dealFields = [
         },
     },
     default: '',
-    description: 'Unique identifier for a particular deal',
+    description: 'ID of deal to delete',
 },
    
 /* -------------------------------------------------------------------------- */
@@ -377,7 +379,7 @@ export const dealFields = [
             },
         },
         default: '',
-        description: 'Unique identifier for a particular deal',
+        description: 'Id of deal to update',
     },
 
     {
@@ -398,7 +400,7 @@ export const dealFields = [
         },
     },
     {
-        displayName: ' Additional Fields',
+        displayName: 'Additional Fields',
         name: 'additionalFieldsJson',
         type: 'json',
         typeOptions: {
@@ -453,6 +455,13 @@ export const dealFields = [
                 description: 'Expected Value of deal.',
             },
             {
+                displayName: 'Name',
+                name: 'name',
+                type: 'string',
+                default: '',
+                description: 'Name of deal.',
+            },
+            {
                 displayName: 'Probability',
                 name: 'probability',
                 type: 'number',
@@ -462,13 +471,6 @@ export const dealFields = [
                 },
                 default: 50,
                 description: 'Expected Value of deal.',
-            },
-            {
-                displayName: 'Name',
-                name: 'name',
-                type: 'string',
-                default: '',
-                description: 'Name of deal.',
             },
             {
                 displayName: 'Contact Ids',
