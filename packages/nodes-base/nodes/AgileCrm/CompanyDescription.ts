@@ -1,7 +1,6 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-
 export const companyOperations = [
 	{
 		displayName: 'Operation',
@@ -45,7 +44,6 @@ export const companyOperations = [
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
-
 export const companyFields = [
 /* -------------------------------------------------------------------------- */
 /*                                  company:get                               */
@@ -69,7 +67,6 @@ export const companyFields = [
 		description: 'Unique identifier for a particular company',
 	},
 	
-
 	/* -------------------------------------------------------------------------- */
 	/*                                  company:get all                           */
 	/* -------------------------------------------------------------------------- */
@@ -109,11 +106,9 @@ export const companyFields = [
 			},
 		}
 	},
-
 	/* -------------------------------------------------------------------------- */
 	/*                                company:create                               */
 	/* -------------------------------------------------------------------------- */
-
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
@@ -155,7 +150,6 @@ export const companyFields = [
 	
 		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api" target="_blank">here</a>.',
 	},
-
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -181,7 +175,6 @@ export const companyFields = [
 				name: 'starValue',
 				type: 'options',
 				default: '',
-				
 				description: 'Rating of company (Max value 5). This is not applicable for companies.',
 				options: [
 					{
@@ -216,7 +209,6 @@ export const companyFields = [
 				type: 'number',
 				default: '',
 				description: 'Score of company. This is not applicable for companies.',
-				
 				typeOptions: {
 					minValue: 0
 				}
@@ -237,7 +229,6 @@ export const companyFields = [
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
-				
 				default: '',
 				placeholder: 'Company name',
 				description: 'Company name.',
@@ -483,7 +474,6 @@ export const companyFields = [
 	
 		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api" target="_blank">here</a>.',
 	},
-
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -509,7 +499,6 @@ export const companyFields = [
 				name: 'starValue',
 				type: 'options',
 				default: '',
-				
 				description: 'Rating of company (Max value 5). This is not applicable for companies.',
 				options: [
 					{
@@ -544,7 +533,6 @@ export const companyFields = [
 				type: 'number',
 				default: '',
 				description: 'Score of company. This is not applicable for companies.',
-				
 				typeOptions: {
 					minValue: 0
 				}
@@ -565,7 +553,6 @@ export const companyFields = [
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
-				
 				default: '',
 				placeholder: 'Company name',
 				description: 'Company name.',
@@ -574,7 +561,6 @@ export const companyFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				
 				default: '',
 				placeholder: 'Company email',
 				description: 'Company email.',
@@ -583,7 +569,6 @@ export const companyFields = [
 				displayName: 'Address',
 				name: 'email',
 				type: 'string',
-				
 				default: '',
 				placeholder: 'Company address',
 				description: 'Company address.',
@@ -592,7 +577,6 @@ export const companyFields = [
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
-				
 				description: 'companys websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -608,7 +592,6 @@ export const companyFields = [
 								type: 'options',
 								required: true,
 								default: '',
-								
 								description: 'Type of website.',
 								options: [
 									{
@@ -663,7 +646,6 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								
 								description: 'Website URL',
 							}
 						]
@@ -675,7 +657,6 @@ export const companyFields = [
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
-				
 				default: '',
 				placeholder: 'Company phone',
 				description: 'Company phone.',
@@ -684,7 +665,6 @@ export const companyFields = [
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
-				
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -700,25 +680,20 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								
 								description: 'Property name.'
 							},
 							{
 								displayName: 'Sub Type',
 								name: 'subtype',
 								type: 'string',
-								
 								default: '',
-								
 								description: 'Property sub type.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								
 								default: '',
-								
 								description: 'Property value.',
 							}
 						]
@@ -728,5 +703,4 @@ export const companyFields = [
 			},
 		],
 	},
-
 ] as INodeProperties[];

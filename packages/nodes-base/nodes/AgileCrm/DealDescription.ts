@@ -319,16 +319,13 @@ export const dealFields = [
                                 type: 'string',
                                 required: true,
                                 default: "",
-                                
                                 description: 'Property name.'
                             },
                             {
                                 displayName: 'Value',
                                 name: 'value',
                                 type: 'string',
-                                
                                 default: "",
-                                
                                 description: 'Property value.',
                             }
                         ]
@@ -448,7 +445,6 @@ export const dealFields = [
                 displayName: 'Expected Value',
                 name: 'expectedValue',
                 type: 'number',
-                
                 typeOptions: {
                     minValue: 0,
                     maxValue: 10000
@@ -460,7 +456,6 @@ export const dealFields = [
                 displayName: 'Probability',
                 name: 'probability',
                 type: 'number',
-                
                 typeOptions: {
                     minValue: 0,
                     maxValue: 100
@@ -472,7 +467,6 @@ export const dealFields = [
                 displayName: 'Name',
                 name: 'name',
                 type: 'string',
-                
                 default: '',
                 description: 'Name of deal.',
             },
@@ -492,7 +486,6 @@ export const dealFields = [
                 displayName: 'Custom Data',
                 name: 'customData',
                 type: 'fixedCollection',
-                
                 description: 'Custom Data',
                 typeOptions: {
                     multipleValues: true,
@@ -508,16 +501,13 @@ export const dealFields = [
                                 type: 'string',
                                 required: true,
                                 default: "",
-                                
                                 description: 'Property name.'
                             },
                             {
                                 displayName: 'Value',
                                 name: 'value',
                                 type: 'string',
-                                
                                 default: "",
-                                
                                 description: 'Property value.',
                             }
                         ]

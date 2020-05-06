@@ -19,6 +19,7 @@
   "postcss": {},
   "dependencies": {
     "@typescript-eslint/parser": "^2.31.0",
-    "tslint-eslint-rules": "^5.4.0"
+    "tslint-eslint-rules": "^5.4.0",
+    "typescript-tslint-plugin": "^0.5.5"
   }
 }
