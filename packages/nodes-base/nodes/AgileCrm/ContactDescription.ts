@@ -282,7 +282,6 @@ export const contactFields = [
 								type: 'options',
 								required: true,
 								default: "",
-								
 								description: 'Type of Email',
 								options: [
 									{
@@ -301,7 +300,6 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								
 								description: 'Email',
 							}
 						]
@@ -352,7 +350,6 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								
 								description: 'Full address.',
 							}
 						]
@@ -379,7 +376,6 @@ export const contactFields = [
 								type: 'options',
 								required: true,
 								default: "",
-								
 								description: 'Type of website.',
 								options: [
 									{
@@ -434,7 +430,6 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								
 								description: 'Website URL',
 							}
 						]
@@ -461,7 +456,6 @@ export const contactFields = [
 								type: 'options',
 								required: true,
 								default: "",
-								
 								description: 'Type of phone number.',
 								options: [
 									{
@@ -501,7 +495,6 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								
 								description: 'Phone number.',
 							}
 						]
@@ -528,7 +521,6 @@ export const contactFields = [
 								type: 'string',
 								required: true,
 								default: "",
-								
 								description: 'Property name.'
 							},
 							{
@@ -536,7 +528,6 @@ export const contactFields = [
 								name: 'subtype',
 								type: 'string',
 								default: "",
-								
 								description: 'Property sub type.',
 							},
 							{
@@ -544,7 +535,6 @@ export const contactFields = [
 								name: 'value',
 								type: 'string',
 								default: "",
-								
 								description: 'Property value.',
 							}
 						]
@@ -782,7 +772,6 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							
 							description: 'Email',
 						}
 					]
@@ -833,7 +822,6 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							
 							description: 'Full address.',
 						}
 					]
@@ -915,7 +903,6 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							
 							description: 'Website URL',
 						}
 					]
@@ -942,7 +929,6 @@ export const contactFields = [
 							type: 'options',
 							required: true,
 							default: "",
-							
 							description: 'Type of phone number.',
 							options: [
 								{
@@ -982,7 +968,6 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							
 							description: 'Phone number.',
 						}
 					]
@@ -1009,7 +994,6 @@ export const contactFields = [
 							type: 'string',
 							required: true,
 							default: "",
-							
 							description: 'Property name.'
 						},
 						{
@@ -1017,7 +1001,6 @@ export const contactFields = [
 							name: 'subtype',
 							type: 'string',
 							default: "",
-							
 							description: 'Property sub type.',
 						},
 						{
@@ -1025,7 +1008,6 @@ export const contactFields = [
 							name: 'value',
 							type: 'string',
 							default: "",
-							
 							description: 'Property value.',
 						}
 					]
