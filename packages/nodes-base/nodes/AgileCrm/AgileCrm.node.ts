@@ -1,36 +1,36 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
-    INodeTypeDescription,
-    IDataObject
+	INodeTypeDescription
 } from 'n8n-workflow';
 
 import {
-	contactOperations,
-	contactFields
+	contactFields,
+	contactOperations
 } from './ContactDescription';
 
 import {
-	companyOperations,
-	companyFields
+	companyFields,
+	companyOperations
 } from './CompanyDescription';
 
 import {
-	dealOperations,
-	dealFields
+	dealFields,
+	dealOperations
 } from './DealDescription';
 
-import { agileCrmApiRequest, validateJSON, agileCrmApiRequestUpdate} from './GenericFunctions';
-import { IContact, IProperty, IContactUpdate } from './ContactInterface';
+import { IContact, IContactUpdate } from './ContactInterface';
+import { agileCrmApiRequest, agileCrmApiRequestUpdate, validateJSON} from './GenericFunctions';
 import { IDeal } from './DealInterface';
 
 
 export class AgileCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AgileCRM',
-        name: 'agileCrm',
-        icon: 'file:agilecrm.png',
+		name: 'agileCrm',
+		icon: 'file:agilecrm.png',
 		group: ['transform'],
 		version: 1,
 		description: 'Consume AgileCRM API',
@@ -39,8 +39,8 @@ export class AgileCrm implements INodeType {
 			color: '#772244',
 		},
 		inputs: ['main'],
-        outputs: ['main'],
-        credentials: [
+		outputs: ['main'],
+		credentials: [
 			{
 				name: 'agileCrmApi',
 				required: true,
@@ -52,21 +52,21 @@ export class AgileCrm implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
-                type: 'options',
-                options: [
+				type: 'options',
+				options: [
 					{
-                        name: 'Company',
-                        value: 'company'
-					},
-                    {
-                        name: 'Contact',
-                        value: 'contact'
+						name: 'Company',
+						value: 'company'
 					},
 					{
-                        name: 'Deal',
-                        value: 'deal'
-                    },
-                ],
+						name: 'Contact',
+						value: 'contact'
+					},
+					{
+						name: 'Deal',
+						value: 'deal'
+					},
+				],
 				default: 'contact',
 				description: 'Resource to consume.',
 			},
@@ -92,14 +92,13 @@ export class AgileCrm implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
 		let responseData;
-		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
 
 			if(resource === 'contact' || resource === 'company'){
-				let idGetter = resource === 'contact' ? 'contactId' : 'companyId';
+				const idGetter = resource === 'contact' ? 'contactId' : 'companyId';
 
 				if(operation === 'get'){
 					const contactId = this.getNodeParameter(idGetter, i) as string;
@@ -122,7 +121,7 @@ export class AgileCrm implements INodeType {
 					
 					if(resource === 'contact'){
 						if (returnAll) {
-							const endpoint = `api/contacts`;
+							const endpoint = 'api/contacts';
 							responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -131,7 +130,7 @@ export class AgileCrm implements INodeType {
 						}
 					} else {
 						if (returnAll) {
-							const endpoint = `api/contacts/companies/list`;
+							const endpoint = 'api/contacts/companies/list';
 							responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, {});
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -145,7 +144,7 @@ export class AgileCrm implements INodeType {
 				if(operation === 'create'){
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					const body: IContact = {};
-					let properties : IDataObject[] = [];
+					const properties : IDataObject[] = [];
 
 					if (jsonParameters) {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
@@ -218,7 +217,7 @@ export class AgileCrm implements INodeType {
 										name: 'email',
 										value: property.email as string
 									} as IDataObject);
-								})
+								});
 							}
 							if(additionalFields.addressOptions){
 								//@ts-ignore
@@ -229,7 +228,7 @@ export class AgileCrm implements INodeType {
 										name: 'address',
 										value: property.address as string
 									} as IDataObject);
-								})
+								});
 							}
 
 							if(additionalFields.phoneOptions){
@@ -241,7 +240,7 @@ export class AgileCrm implements INodeType {
 										name: 'phone',
 										value: property.number as string
 									} as IDataObject);
-								})
+								});
 							}
 						} else if (resource === 'company') {
 							if(additionalFields.email){
@@ -279,7 +278,7 @@ export class AgileCrm implements INodeType {
 									name: 'webiste',
 									value: property.url as string
 								} as IDataObject);
-							})
+							});
 						}
 
 						if(additionalFields.customProperties){
@@ -291,7 +290,7 @@ export class AgileCrm implements INodeType {
 									name: property.name,
 									value: property.value as string
 								} as IDataObject);
-							})
+							});
 						}
 						body.properties = properties;
 
@@ -302,10 +301,10 @@ export class AgileCrm implements INodeType {
 
 				if(operation === 'update') {
 					const contactId = this.getNodeParameter(idGetter, i) as string;
-					let contactUpdatePayload : IContactUpdate = {id: contactId};
+					const contactUpdatePayload : IContactUpdate = {id: contactId};
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					const body: IContact = {};
-					let properties : IDataObject[] = [];
+					const properties : IDataObject[] = [];
 
 					if (jsonParameters) {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
@@ -372,7 +371,7 @@ export class AgileCrm implements INodeType {
 										name: 'email',
 										value: property.email as string
 									} as IDataObject);
-								})
+								});
 							}
 							if(additionalFields.addressOptions){
 								//@ts-ignore
@@ -383,7 +382,7 @@ export class AgileCrm implements INodeType {
 										name: 'address',
 										value: property.address as string
 									} as IDataObject);
-								})
+								});
 							}
 
 							if(additionalFields.phoneOptions){
@@ -395,7 +394,7 @@ export class AgileCrm implements INodeType {
 										name: 'phone',
 										value: property.number as string
 									} as IDataObject);
-								})
+								});
 							}
 						} else if (resource === 'company') {
 							if(additionalFields.email){
@@ -433,7 +432,7 @@ export class AgileCrm implements INodeType {
 									name: 'webiste',
 									value: property.url as string
 								} as IDataObject);
-							})
+							});
 						}
 						if(additionalFields.customProperties){
 							//@ts-ignore
@@ -444,7 +443,7 @@ export class AgileCrm implements INodeType {
 									name: property.name,
 									value: property.value as string
 								} as IDataObject);
-							})
+							});
 						}
 						body.properties = properties;
 					}
@@ -476,7 +475,7 @@ export class AgileCrm implements INodeType {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 	
 					if (returnAll) {
-						const endpoint = `api/opportunity`;
+						const endpoint = 'api/opportunity';
 						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
 					} else {
 						const limit = this.getNodeParameter('limit', i) as number;
@@ -524,7 +523,7 @@ export class AgileCrm implements INodeType {
 
 					}
 
-					let endpoint = 'api/opportunity'
+					const endpoint = 'api/opportunity';
 					responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body);
 				}
 
@@ -574,7 +573,7 @@ export class AgileCrm implements INodeType {
 
 					}
 
-					let endpoint = 'api/opportunity/partial-update'
+					const endpoint = 'api/opportunity/partial-update';
 					responseData = await agileCrmApiRequest.call(this, 'PUT', endpoint, body);
 				}
 			}
