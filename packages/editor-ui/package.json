@@ -71,7 +71,7 @@
     "quill-autoformat": "^0.1.1",
     "sass-loader": "^8.0.0",
     "string-template-parser": "^1.2.6",
-    "ts-jest": "^24.0.2",
+    "ts-jest": "^25.5.0",
     "tslint": "^5.17.0",
     "typescript": "~3.7.4",
     "vue": "^2.6.9",
