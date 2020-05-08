@@ -36,7 +36,7 @@
         "jest": "^24.9.0",
         "source-map-support": "^0.5.9",
         "ts-jest": "^24.0.2",
-        "tslint": "^5.17.0",
+        "tslint": "6.1.2",
         "typescript": "~3.7.4"
     },
     "dependencies": {
