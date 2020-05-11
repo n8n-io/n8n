@@ -106,7 +106,7 @@ Please make sure that everything works correctly and that no unnecessary code ge
 Never change the incoming data a node receives (which can be queried with `this.getInputData()`) as it gets shared by all nodes. If data has to get added, changed or deleted it has to be cloned and the new data returned. If that is not done, sibling nodes which execute after the current one will operate on the altered data and would process different data than they were supposed to.
 It is however not needed to always clone all the data. If a node for, example only, changes only the binary data but not the JSON data, a new item can be created which reuses the reference to the JSON item.
 
-An example can be seen in the code of the [ReadBinartFile-Node](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ReadBinaryFile.node.ts#L69-L83).
+An example can be seen in the code of the [ReadBinaryFile-Node](https://github.com/n8n-io/n8n/blob/master/packages/nodes-base/nodes/ReadBinaryFile.node.ts#L69-L83).
 
 
 ### Write nodes in TypeScript
