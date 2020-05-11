@@ -1,6 +1,6 @@
 {
     "name": "n8n-workflow",
-    "version": "0.28.0",
+    "version": "0.30.0",
     "description": "Workflow base code of n8n",
     "license": "SEE LICENSE IN LICENSE.md",
     "homepage": "https://n8n.io",
@@ -31,7 +31,7 @@
         "@types/node": "^10.10.1",
         "jest": "^24.9.0",
         "ts-jest": "^24.0.2",
-        "tslint": "^5.17.0",
+        "tslint": "^6.1.2",
         "typescript": "~3.7.4"
     },
     "dependencies": {

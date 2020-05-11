@@ -1,7 +1,8 @@
 import {
-	IExecuteFunctions,
 	BINARY_ENCODING,
- } from 'n8n-core';
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
@@ -10,6 +11,7 @@ import {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+
 import {
 	channelFields,
 	channelOperations,
@@ -29,10 +31,51 @@ import {
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
+	validateJSON,
 } from './GenericFunctions';
 import {
 	IAttachment,
 } from './MessageInterface';
+
+interface Attachment {
+	fields: {
+		item?: object[];
+	};
+}
+
+interface Text {
+	type?: string;
+	text?: string;
+	emoji?: boolean;
+	verbatim?: boolean;
+}
+
+interface Confirm {
+	title?: Text;
+	text?: Text;
+	confirm?: Text;
+	deny?: Text;
+	style?: string;
+}
+
+interface Element {
+	type?: string;
+	text?: Text;
+	action_id?: string;
+	url?: string;
+	value?: string;
+	style?: string;
+	confirm?: Confirm;
+}
+
+interface Block {
+	type?: string;
+	elements?: Element[];
+	block_id?: string;
+	text?: Text;
+	fields?: Text[];
+	accessory?: Element;
+}
 
 export class Slack implements INodeType {
 	description: INodeTypeDescription = {
@@ -91,6 +134,7 @@ export class Slack implements INodeType {
 				default: 'accessToken',
 				description: 'The resource to operate on.',
 			},
+
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -116,6 +160,7 @@ export class Slack implements INodeType {
 				default: 'message',
 				description: 'The resource to operate on.',
 			},
+
 			...channelOperations,
 			...channelFields,
 			...messageOperations,
@@ -395,11 +440,12 @@ export class Slack implements INodeType {
 				if (operation === 'post') {
 					const channel = this.getNodeParameter('channel', i) as string;
 					const text = this.getNodeParameter('text', i) as string;
-					const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
 					const body: IDataObject = {
 						channel,
 						text,
 					};
+
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 					if (authentication === 'accessToken') {
 						body.as_user = this.getNodeParameter('as_user', i) as boolean;
@@ -408,22 +454,226 @@ export class Slack implements INodeType {
 						body.username = this.getNodeParameter('username', i) as string;
 					}
 
-					// The node does save the fields data differently than the API
-					// expects so fix the data befre we send the request
-					for (const attachment of attachments) {
-						if (attachment.fields !== undefined) {
-							if (attachment.fields.item !== undefined) {
-								// Move the field-content up
-								// @ts-ignore
-								attachment.fields = attachment.fields.item;
-							} else {
-								// If it does not have any items set remove it
-								delete attachment.fields;
+					if (!jsonParameters) {
+						const attachments = this.getNodeParameter('attachments', i, []) as unknown as Attachment[];
+						const blocksUi = (this.getNodeParameter('blocksUi', i, []) as IDataObject).blocksValues  as IDataObject[];
+
+						// The node does save the fields data differently than the API
+						// expects so fix the data befre we send the request
+						for (const attachment of attachments) {
+							if (attachment.fields !== undefined) {
+								if (attachment.fields.item !== undefined) {
+									// Move the field-content up
+									// @ts-ignore
+									attachment.fields = attachment.fields.item;
+								} else {
+									// If it does not have any items set remove it
+									delete attachment.fields;
+								}
 							}
 						}
-					}
-					body['attachments'] = attachments;
+						body['attachments'] = attachments;
 
+						if (blocksUi) {
+							const blocks: Block[] = [];
+							for (const blockUi of blocksUi) {
+								const block: Block = {};
+								const elements: Element[] = [];
+								block.block_id = blockUi.blockId as string;
+								block.type = blockUi.type as string;
+								if (block.type === 'actions') {
+									const elementsUi = (blockUi.elementsUi as IDataObject).elementsValues  as IDataObject[];
+									if (elementsUi) {
+										for (const elementUi of elementsUi) {
+											const element: Element = {};
+											if (elementUi.actionId === '') {
+												throw new Error('Action ID must be set');
+											}
+											if (elementUi.text === '') {
+												throw new Error('Text must be set');
+											}
+											element.action_id = elementUi.actionId as string;
+											element.type = elementUi.type as string;
+											element.text = {
+												text: elementUi.text as string,
+												type: 'plain_text',
+												emoji: elementUi.emoji as boolean,
+											 };
+											if (elementUi.url) {
+												element.url = elementUi.url as string;
+											}
+											if (elementUi.value) {
+												element.value = elementUi.value as string;
+											}
+											if (elementUi.style !== 'default') {
+												element.style = elementUi.style as string;
+											}
+											const confirmUi = (elementUi.confirmUi as IDataObject).confirmValue  as IDataObject;
+											 if (confirmUi) {
+												const confirm: Confirm = {};
+												const titleUi = (confirmUi.titleUi as IDataObject).titleValue  as IDataObject;
+												const textUi = (confirmUi.textUi as IDataObject).textValue  as IDataObject;
+												const confirmTextUi = (confirmUi.confirmTextUi as IDataObject).confirmValue  as IDataObject;
+												const denyUi = (confirmUi.denyUi as IDataObject).denyValue  as IDataObject;
+												const style = confirmUi.style as string;
+												if (titleUi) {
+													confirm.title = {
+														type: 'plain_text',
+														text: titleUi.text as string,
+														emoji: titleUi.emoji as boolean,
+													};
+												}
+												if (textUi) {
+													confirm.text = {
+														type: 'plain_text',
+														text: textUi.text as string,
+														emoji: textUi.emoji as boolean,
+													};
+												}
+												if (confirmTextUi) {
+													confirm.confirm = {
+														type: 'plain_text',
+														text: confirmTextUi.text as string,
+														emoji: confirmTextUi.emoji as boolean,
+													};
+												}
+												if (denyUi) {
+													confirm.deny = {
+														type: 'plain_text',
+														text: denyUi.text as string,
+														emoji: denyUi.emoji as boolean,
+													};
+												}
+												if (style !== 'default') {
+													confirm.style = style as string;
+												}
+												element.confirm = confirm;
+											 }
+											 elements.push(element);
+										}
+										block.elements = elements;
+									}
+								} else if (block.type === 'section') {
+									const textUi = (blockUi.textUi as IDataObject).textValue  as IDataObject;
+									if (textUi) {
+										const text: Text = {};
+										if (textUi.type === 'plainText') {
+											text.type = 'plain_text';
+											text.emoji = textUi.emoji as boolean;
+										} else {
+											text.type = 'mrkdwn';
+											text.verbatim = textUi.verbatim as boolean;
+										}
+										text.text = textUi.text as string;
+										block.text = text;
+									} else {
+										throw new Error('Property text must be defined');
+									}
+									const fieldsUi = (blockUi.fieldsUi as IDataObject).fieldsValues  as IDataObject[];
+									if (fieldsUi) {
+										const fields: Text[] = [];
+										for (const fieldUi of fieldsUi) {
+											const field: Text = {};
+											if (fieldUi.type === 'plainText') {
+												field.type = 'plain_text';
+												field.emoji = fieldUi.emoji as boolean;
+											} else {
+												field.type = 'mrkdwn';
+												field.verbatim = fieldUi.verbatim as boolean;
+											}
+											field.text = fieldUi.text as string;
+											fields.push(field);
+										}
+										// If not fields were added then it's not needed to send the property
+										if (fields.length > 0) {
+											block.fields = fields;
+										}
+									}
+									const accessoryUi = (blockUi.accessoryUi as IDataObject).accessoriesValues  as IDataObject;
+									if (accessoryUi) {
+										const accessory: Element = {};
+										if (accessoryUi.type === 'button') {
+											accessory.type = 'button';
+											accessory.text = {
+												text: accessoryUi.text as string,
+												type: 'plain_text',
+												emoji: accessoryUi.emoji as boolean,
+											};
+											if (accessoryUi.url) {
+												accessory.url = accessoryUi.url as string;
+											}
+											if (accessoryUi.value) {
+												accessory.value = accessoryUi.value as string;
+											}
+											if (accessoryUi.style !== 'default') {
+												accessory.style = accessoryUi.style as string;
+											}
+											const confirmUi = (accessoryUi.confirmUi as IDataObject).confirmValue  as IDataObject;
+											if (confirmUi) {
+											   const confirm: Confirm = {};
+											   const titleUi = (confirmUi.titleUi as IDataObject).titleValue  as IDataObject;
+											   const textUi = (confirmUi.textUi as IDataObject).textValue  as IDataObject;
+											   const confirmTextUi = (confirmUi.confirmTextUi as IDataObject).confirmValue  as IDataObject;
+											   const denyUi = (confirmUi.denyUi as IDataObject).denyValue  as IDataObject;
+											   const style = confirmUi.style as string;
+											   if (titleUi) {
+												   confirm.title = {
+													   type: 'plain_text',
+													   text: titleUi.text as string,
+													   emoji: titleUi.emoji as boolean,
+												   };
+											   }
+											   if (textUi) {
+												   confirm.text = {
+													   type: 'plain_text',
+													   text: textUi.text as string,
+													   emoji: textUi.emoji as boolean,
+												   };
+											   }
+											   if (confirmTextUi) {
+												   confirm.confirm = {
+													   type: 'plain_text',
+													   text: confirmTextUi.text as string,
+													   emoji: confirmTextUi.emoji as boolean,
+												   };
+											   }
+											   if (denyUi) {
+												   confirm.deny = {
+													   type: 'plain_text',
+													   text: denyUi.text as string,
+													   emoji: denyUi.emoji as boolean,
+												   };
+											   }
+											   if (style !== 'default') {
+												   confirm.style = style as string;
+											   }
+											   accessory.confirm = confirm;
+											}
+										}
+										block.accessory = accessory;
+									}
+								}
+								blocks.push(block);
+							}
+							body.blocks = blocks;
+						}
+
+					} else {
+						const attachmentsJson = this.getNodeParameter('attachmentsJson', i, []) as string;
+						const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
+						if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
+							throw new Error('Attachments it is not a valid json');
+						}
+						if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
+							throw new Error('Blocks it is not a valid json');
+						}
+						if (attachmentsJson !== '') {
+							body.attachments = attachmentsJson;
+						}
+						if (blocksJson !== '') {
+							body.blocks = blocksJson;
+						}
+					}
 					// Add all the other options to the request
 					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 					Object.assign(body, otherOptions);

@@ -1,15 +1,15 @@
 # Data Structure
 
-For "basic usage" it is not necessarily needed to understand how the data is structured
-which gets passed from one node to another. It becomes however important if you want to:
+For "basic usage" it is not necessarily needed to understand how the data that
+gets passed from one node to another is structured. However, it becomes important if you want to:
 
- - create an own node
+ - create your own node
  - write custom expressions
- - use the Function or Function Item Node
- - you want to get the most out of n8n in general
+ - use the Function or Function Item node
+ - you want to get the most out of n8n
 
 
-In n8n all data passed between nodes is an array of objects. It has the structure below:
+In n8n, all the data that is passed between nodes is an array of objects. It has the following structure:
 
 ```json
 [

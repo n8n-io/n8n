@@ -1,16 +1,17 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject
- } from 'n8n-workflow';
- import * as _ from 'lodash';
+} from 'n8n-workflow';
+import * as _ from 'lodash';
 
 export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
@@ -83,4 +84,14 @@ export async function slackApiRequestAllItems(this: IExecuteFunctions | ILoadOpt
 	);
 
 	return returnData;
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }

@@ -1,11 +1,11 @@
 # Server Setup
 
-!> ***Important***: Make sure that you secure your n8n instance like described under [Security](security.md)!
+!> ***Important***: Make sure that you secure your n8n instance as described under [Security](security.md).
 
 
 ## Example setup with docker-compose
 
-If you have already installed docker and docker-compose you can directly start with step 4.
+If you have already installed docker and docker-compose, then you can directly start with step 4.
 
 
 ### 1. Install Docker
@@ -84,7 +84,7 @@ services:
   n8n:
     image: n8nio/n8n
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"
     labels:
       - traefik.enable=true
       - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
@@ -150,9 +150,9 @@ SSL_EMAIL=user@example.com
 ### 7. Create data folder
 
 Create the folder which is defined as `DATA_FOLDER`. In the example
-above it is `/root/n8n/`.
+above, it is `/root/n8n/`.
 
-In that folder will the database file from SQLite be saved and also the encryption key.
+In that folder, the database file from SQLite as well as the encryption key will be saved.
 
 The folder can be created like this:
 ```
@@ -176,7 +176,7 @@ sudo docker-compose stop
 
 ### 9. Done
 
-n8n will now be reachable via the above define subdomain + domain combination.
+n8n will now be reachable via the above defined subdomain + domain combination.
 The above example would result in: https://n8n.example.com
 
-n8n will only be reachable via https not via http!
+n8n will only be reachable via https and not via http.

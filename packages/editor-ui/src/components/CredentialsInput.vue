@@ -42,7 +42,7 @@
 			</el-tooltip>
 		</div>
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
-			<el-row v-if="displayNodeParameter(parameter)" class="parameter-wrapper">
+			<el-row v-if="displayCredentialParameter(parameter)" class="parameter-wrapper">
 				<el-col :span="6" class="parameter-name">
 					{{parameter.displayName}}:
 					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
@@ -55,7 +55,6 @@
 				</el-col>
 			</el-row>
 		</div>
-
 
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
@@ -112,6 +111,7 @@ import {
 	ICredentialType,
 	ICredentialNodeAccess,
 	INodeCredentialDescription,
+	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -232,6 +232,18 @@ export default mixins(
 			tempValue[name] = parameterData.value;
 			Vue.set(this, 'propertyValue', tempValue);
 		},
+		displayCredentialParameter (parameter: INodeProperties): boolean {
+			if (parameter.type === 'hidden') {
+				return false;
+			}
+
+			if (parameter.displayOptions === undefined) {
+				// If it is not defined no need to do a proper check
+				return true;
+			}
+
+			return this.displayParameter(this.propertyValue as INodeParameters, parameter, '');
+		},
 		async createCredentials (closeDialog: boolean): Promise<ICredentialsResponse | null> {
 			const nodesAccess = this.nodesAccess.map((nodeType) => {
 				return {
@@ -260,13 +272,6 @@ export default mixins(
 			this.$emit('credentialsCreated', {data: result, options: { closeDialog }});
 
 			return result;
-		},
-		displayNodeParameter (parameter: INodeProperties): boolean {
-			if (parameter.type === 'hidden') {
-				return false;
-			}
-
-			return true;
 		},
 		async oAuth2CredentialAuthorize () {
 			let url;

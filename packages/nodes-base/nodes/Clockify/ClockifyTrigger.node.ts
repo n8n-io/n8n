@@ -107,7 +107,7 @@ export class ClockifyTrigger implements INodeType {
 				const workflowTimezone = this.getTimezone();
 				resource = `workspaces/${workspaceId}/user/${webhookData.userId}/time-entries`;
 				qs.start = webhookData.lastTimeChecked;
-				qs.end = moment().tz(workflowTimezone).format('YYYY-MM-DDTHH:mm:SS') + 'Z';
+				qs.end = moment().tz(workflowTimezone).format('YYYY-MM-DDTHH:mm:ss') + 'Z';
 				qs.hydrated = true;
 				qs['in-progress'] = false;
 			break;
@@ -119,7 +119,6 @@ export class ClockifyTrigger implements INodeType {
 		if (Array.isArray(result) && result.length !== 0) {
 			result = [this.helpers.returnJsonArray(result)];
 		}
-		return result;
-
+		return null;
 	}
 }

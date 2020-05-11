@@ -277,6 +277,7 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
 	let value;
+	const values: any[] = []; // tslint:disable-line:no-any
 	if (parameter.displayOptions.show) {
 		// All the defined rules have to match to display parameter
 		for (const propertyName of Object.keys(parameter.displayOptions.show)) {
@@ -288,7 +289,14 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 				value = get(nodeValues, propertyName);
 			}
 
-			if (value === undefined || !parameter.displayOptions.show[propertyName].includes(value as string)) {
+			values.length = 0;
+			if (!Array.isArray(value)) {
+				values.push(value);
+			} else {
+				values.push.apply(values, value);
+			}
+
+			if (values.length === 0 || !parameter.displayOptions.show[propertyName].some(v => values.includes(v))) {
 				return false;
 			}
 		}
@@ -304,7 +312,15 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
 			}
-			if (value !== undefined && parameter.displayOptions.hide[propertyName].includes(value as string)) {
+
+			values.length = 0;
+			if (!Array.isArray(value)) {
+				values.push(value);
+			} else {
+				values.push.apply(values, value);
+			}
+
+			if (values.length !== 0 && parameter.displayOptions.hide[propertyName].some(v => values.includes(v))) {
 				return false;
 			}
 		}
@@ -728,12 +744,6 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 		return [];
 	}
 
-	if (workflow.id === undefined) {
-		// Workflow has no id which means it is not saved and so  webhooks
-		// will not be enabled
-		return [];
-	}
-
 	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
 
 	if (nodeType.description.webhooks === undefined) {
@@ -741,12 +751,14 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 		return [];
 	}
 
+	const workflowId = workflow.id || '__UNSAVED__';
+
 	const returnData: IWebhookData[] = [];
 	for (const webhookDescription of nodeType.description.webhooks) {
 		let nodeWebhookPath = workflow.getSimpleParameterValue(node, webhookDescription['path'], 'GET');
 		if (nodeWebhookPath === undefined) {
 			// TODO: Use a proper logger
-			console.error(`No webhook path could be found for node "${node.name}" in workflow "${workflow.id}".`);
+			console.error(`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`);
 			continue;
 		}
 
@@ -756,13 +768,13 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			nodeWebhookPath = nodeWebhookPath.slice(1);
 		}
 
-		const path = getNodeWebhookPath(workflow.id, node, nodeWebhookPath);
+		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath);
 
 		const httpMethod = workflow.getSimpleParameterValue(node, webhookDescription['httpMethod'], 'GET');
 
 		if (httpMethod === undefined) {
 			// TODO: Use a proper logger
-			console.error(`The webhook "${path}" for node "${node.name}" in workflow "${workflow.id}" could not be added because the httpMethod is not defined.`);
+			console.error(`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`);
 			continue;
 		}
 
@@ -771,7 +783,7 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			node: node.name,
 			path,
 			webhookDescription,
-			workflowId: workflow.id,
+			workflowId,
 			workflowExecuteAdditionalData: additionalData,
 		});
 	}
