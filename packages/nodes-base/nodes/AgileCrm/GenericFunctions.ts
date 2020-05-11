@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -12,81 +12,74 @@ import {
 import {
 	IDataObject,
 } from 'n8n-workflow';
-import { IContactUpdate, IProperty } from './ContactInterface';
+import { IContactUpdate } from './ContactInterface';
 
 
-export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string,  body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> {
+export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-    const credentials = this.getCredentials('agileCrmApi');
+	const credentials = this.getCredentials('agileCrmApi');
 	const options: OptionsWithUri = {
 		method,
 		headers: {
 			'Accept': 'application/json',
 		},
-        auth: {
+		auth: {
 			username: credentials!.email as string,
 			password: credentials!.apiKey as string
 		},
 		uri: uri || `https://n8nio.agilecrm.com/dev/${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	// Only add Body property if method not GET or DELETE to avoid 400 response
-	if(method !== "GET" && method !== "DELETE"){
+	if (method !== 'GET' && method !== 'DELETE') {
 		options.body = body;
 	}
 
-	
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.errors) {
-			const errorMessages = error.response.body.errors.map((e: IDataObject) => e.message);
-			throw new Error(`AgileCRM error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
-		}
-
-		throw error;
+		throw new Error(`AgileCRM error response: ${error.message}`);
 	}
 
 }
 
-export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string,  body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> {
+export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const baseUri = 'https://n8nio.agilecrm.com/dev/';
-    const credentials = this.getCredentials('agileCrmApi');
+	const credentials = this.getCredentials('agileCrmApi');
 	const options: OptionsWithUri = {
 		method,
 		headers: {
 			'Accept': 'application/json',
 		},
-		body: {id: body.id},
-        auth: {
+		body: { id: body.id },
+		auth: {
 			username: credentials!.email as string,
-			password: credentials!.apiKey as string
+			password: credentials!.apiKey as string,
 		},
 		uri: uri || baseUri,
-		json: true
+		json: true,
 	};
 
-	const successfulUpdates  = [];
-	let lastSuccesfulUpdateReturn : any;
-	const payload : IContactUpdate = body;
-	
+	const successfulUpdates = [];
+	let lastSuccesfulUpdateReturn: any; // tslint:disable-line:no-any
+	const payload: IContactUpdate = body;
+
 	try {
 		// Due to API, we must update each property separately. For user it looks like one seamless update
-		if(payload.properties){
+		if (payload.properties) {
 			options.body.properties = payload.properties;
 			options.uri = baseUri + 'api/contacts/edit-properties';
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
 
 			// Iterate trough properties and show them as individial updates instead of only vague "properties"
-			payload.properties?.map((property : any) => {
-				successfulUpdates.push(`${property.name} `);
+			payload.properties?.map((property: any) => { // tslint:disable-line:no-any
+				successfulUpdates.push(`${property.name}`);
 			});
 
 			delete options.body.properties;
 		}
-		if(payload.lead_score){
+		if (payload.lead_score) {
 			options.body.lead_score = payload.lead_score;
 			options.uri = baseUri + 'api/contacts/edit/lead-score';
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
@@ -95,18 +88,18 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 
 			delete options.body.lead_score;
 		}
-		if(body.tags){
+		if (body.tags) {
 			options.body.tags = payload.tags;
 			options.uri = baseUri + 'api/contacts/edit/tags';
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
 
-			payload.tags?.map((tag : string) => {
-				successfulUpdates.push(`(Tag) ${tag} `);
+			payload.tags?.map((tag: string) => {
+				successfulUpdates.push(`(Tag) ${tag}`);
 			});
 
 			delete options.body.tags;
 		}
-		if(body.star_value){
+		if (body.star_value) {
 			options.body.star_value = payload.star_value;
 			options.uri = baseUri + 'api/contacts/edit/add-star';
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
@@ -119,13 +112,11 @@ export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFu
 		return lastSuccesfulUpdateReturn;
 
 	} catch (error) {
-
-		if (error.response && error.response.body && error.response.body.errors) {
-			const errorMessages = error.response.body.errors.map((e: IDataObject) => e.message);
-			throw new Error(`AgileCRM error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
+		if (successfulUpdates.length === 0) {
+			throw new Error(`AgileCRM error response: ${error.message}`);
+		} else {
+			throw new Error(`Not all properties updated. Updated properties: ${successfulUpdates.join(', ')} \n \nAgileCRM error response: ${error.message}`);
 		}
-
-		throw new Error(`Not all items updated. Updated items: ${successfulUpdates.join(' , ')} \n \n` + error); 
 	}
 
 }
@@ -139,4 +130,3 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	}
 	return result;
 }
-
