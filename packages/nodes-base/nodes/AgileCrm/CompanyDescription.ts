@@ -45,11 +45,11 @@ export const companyOperations = [
 	},
 ] as INodeProperties[];
 export const companyFields = [
-/* -------------------------------------------------------------------------- */
-/*                                  company:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  company:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'company ID',
+		displayName: 'Company ID',
 		name: 'companyId',
 		type: 'string',
 		required: true,
@@ -66,7 +66,7 @@ export const companyFields = [
 		default: '',
 		description: 'Unique identifier for a particular company',
 	},
-	
+
 	/* -------------------------------------------------------------------------- */
 	/*                                  company:get all                           */
 	/* -------------------------------------------------------------------------- */
@@ -147,7 +147,6 @@ export const companyFields = [
 				],
 			},
 		},
-	
 		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api" target="_blank">here</a>.',
 	},
 	{
@@ -174,18 +173,14 @@ export const companyFields = [
 				displayName: 'Address',
 				name: 'email',
 				type: 'string',
-				
 				default: '',
-				placeholder: 'Company address',
 				description: 'Company address.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
-				
 				default: '',
-				placeholder: 'Company email',
 				description: 'Company email.',
 			},
 			{
@@ -193,16 +188,13 @@ export const companyFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				placeholder: 'Company name',
 				description: 'Company name.',
 			},
 			{
 				displayName: 'Phone',
 				name: 'phone',
 				type: 'string',
-				
 				default: '',
-				placeholder: 'Company phone',
 				description: 'Company phone.',
 			},
 			{
@@ -247,14 +239,12 @@ export const companyFields = [
 					multipleValueButtonText: 'Add Tag',
 				},
 				default: [],
-				placeholder: 'Tag',
 				description: 'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
 			},
 			{
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
-				
 				description: 'Companies websites.',
 				typeOptions: {
 					multipleValues: true,
@@ -273,35 +263,35 @@ export const companyFields = [
 								description: 'Type of website.',
 								options: [
 									{
-										name: 'FACEBOOK',
+										name: 'Facebook',
 										value: 'facebook',
 									},
 									{
-										name: 'FEED',
+										name: 'Feed',
 										value: 'feed',
 									},
 									{
-										name: 'FLICKR',
+										name: 'Flickr',
 										value: 'flickr',
 									},
 									{
-										name: 'LINKEDIN',
-										value: 'linkedin',
-									},
-									{
-										name: 'GITHUB',
+										name: 'Github',
 										value: 'github',
 									},
 									{
-										name: 'GOOGLE_PLUS',
+										name: 'Google Plus',
 										value: 'googlePlus',
 									},
 									{
-										name: 'SKYPE',
+										name: 'LinkedIn',
+										value: 'linkedin',
+									},
+									{
+										name: 'Skype',
 										value: 'skype',
 									},
 									{
-										name: 'TWITTER',
+										name: 'Twitter',
 										value: 'twitter',
 									},
 									{
@@ -309,14 +299,14 @@ export const companyFields = [
 										value: 'url',
 									},
 									{
-										name: 'XING',
+										name: 'Xing',
 										value: 'xing',
 									},
 									{
-										name: 'YOUTUBE',
+										name: 'YouTube',
 										value: 'youtube',
 									},
-								]
+								],
 							},
 							{
 								displayName: 'URL',
@@ -324,19 +314,16 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								
 								description: 'Website URL',
-							}
-						]
+							},
+						],
 					},
-					
-				]
+				],
 			},
 			{
 				displayName: 'Custom Properties',
 				name: 'customProperties',
 				type: 'fixedCollection',
-				
 				description: 'Custom Properties',
 				typeOptions: {
 					multipleValues: true,
@@ -352,33 +339,29 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								
 								description: 'Property name.'
 							},
 							{
 								displayName: 'Sub Type',
 								name: 'subtype',
 								type: 'string',
-								
 								default: '',
-								
 								description: 'Property sub type.',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'string',
-								
 								default: '',
-								
 								description: 'Property value.',
-							}
-						]
+							},
+						],
 					},
-				]
+				],
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                  company:delete                               */
 	/* -------------------------------------------------------------------------- */
@@ -400,11 +383,12 @@ export const companyFields = [
 		default: '',
 		description: 'ID of company to delete',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                company:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'company ID',
+		displayName: 'Company ID',
 		name: 'companyId',
 		type: 'string',
 		required: true,
@@ -459,7 +443,6 @@ export const companyFields = [
 				],
 			},
 		},
-	
 		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api" target="_blank">here</a>.',
 	},
 	{
@@ -487,7 +470,6 @@ export const companyFields = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				placeholder: 'Company address',
 				description: 'Company address.',
 			},
 			{
@@ -495,7 +477,6 @@ export const companyFields = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				placeholder: 'Company email',
 				description: 'Company email.',
 			},
 			{
@@ -507,29 +488,29 @@ export const companyFields = [
 				options: [
 					{
 						name: '0',
-						value: 0
+						value: 0,
 					},
 					{
 						name: '1',
-						value: 1
+						value: 1,
 					},
 					{
 						name: '2',
-						value: 2
+						value: 2,
 					},
 					{
 						name: '3',
-						value: 3
+						value: 3,
 					},
 					{
 						name: '4',
-						value: 4
+						value: 4,
 					},
 					{
 						name: '5',
-						value: 5
+						value: 5,
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Tags',
@@ -540,7 +521,6 @@ export const companyFields = [
 					multipleValueButtonText: 'Add Tag',
 				},
 				default: [],
-				placeholder: 'Tag',
 				description: 'Unique identifiers added to company, for easy management of companys. This is not applicable for companies.',
 			},
 			{
@@ -548,7 +528,6 @@ export const companyFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				placeholder: 'Company name',
 				description: 'Company name.',
 			},
 			{
@@ -556,14 +535,13 @@ export const companyFields = [
 				name: 'phone',
 				type: 'string',
 				default: '',
-				placeholder: 'Company phone',
 				description: 'Company phone.',
 			},
 			{
 				displayName: 'Website',
 				name: 'websiteOptions',
 				type: 'fixedCollection',
-				description: 'companys websites.',
+				description: 'Companys websites.',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -581,35 +559,35 @@ export const companyFields = [
 								description: 'Type of website.',
 								options: [
 									{
-										name: 'FACEBOOK',
+										name: 'Facebook',
 										value: 'facebook',
 									},
 									{
-										name: 'FEED',
+										name: 'Feed',
 										value: 'feed',
 									},
 									{
-										name: 'FLICKR',
+										name: 'Flickr',
 										value: 'flickr',
 									},
 									{
-										name: 'LINKEDIN',
-										value: 'linkedin',
-									},
-									{
-										name: 'GITHUB',
+										name: 'Github',
 										value: 'github',
 									},
 									{
-										name: 'GOOGLE_PLUS',
+										name: 'Google Plus',
 										value: 'googlePlus',
 									},
 									{
-										name: 'SKYPE',
+										name: 'LinkedIn',
+										value: 'linkedin',
+									},
+									{
+										name: 'Skype',
 										value: 'skype',
 									},
 									{
-										name: 'TWITTER',
+										name: 'Twitter',
 										value: 'twitter',
 									},
 									{
@@ -617,14 +595,14 @@ export const companyFields = [
 										value: 'url',
 									},
 									{
-										name: 'XING',
+										name: 'Xing',
 										value: 'xing',
 									},
 									{
-										name: 'YOUTUBE',
+										name: 'YouTube',
 										value: 'youtube',
 									},
-								]
+								],
 							},
 							{
 								displayName: 'URL',
@@ -633,10 +611,10 @@ export const companyFields = [
 								required: true,
 								default: '',
 								description: 'Website URL',
-							}
-						]
+							},
+						],
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Custom Properties',
@@ -657,7 +635,7 @@ export const companyFields = [
 								type: 'string',
 								required: true,
 								default: '',
-								description: 'Property name.'
+								description: 'Property name.',
 							},
 							{
 								displayName: 'Sub Type',
@@ -672,10 +650,9 @@ export const companyFields = [
 								type: 'string',
 								default: '',
 								description: 'Property value.',
-							}
-						]
+							},
+						],
 					},
-					
 				]
 			},
 		],
