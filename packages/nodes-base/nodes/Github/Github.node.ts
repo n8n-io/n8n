@@ -245,6 +245,11 @@ export class Github implements INodeType {
 				},
 				options: [
 					{
+						name: 'Get Emails',
+						value: 'getEmails',
+						description: 'Returns the email addresses of a user',
+					},
+					{
 						name: 'Get Repositories',
 						value: 'getRepositories',
 						description: 'Returns the repositories of a user',

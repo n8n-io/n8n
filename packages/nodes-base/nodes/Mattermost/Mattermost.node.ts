@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+ } from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -10,9 +13,13 @@ import {
 
 import {
 	apiRequest,
+	apiRequestAllItems,
 	IAttachment,
 } from './GenericFunctions';
 
+import {
+	snakeCase,
+} from 'change-case';
 
 export class Mattermost implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +32,7 @@ export class Mattermost implements INodeType {
 		description: 'Sends data to Mattermost',
 		defaults: {
 			name: 'Mattermost',
-			color: '#0058CC',
+			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -89,6 +96,11 @@ export class Mattermost implements INodeType {
 						name: 'Delete',
 						value: 'delete',
 						description: 'Soft-deletes a channel',
+					},
+					{
+						name: 'Members',
+						value: 'members',
+						description: 'Returns the members of a channel.',
 					},
 					{
 						name: 'Restore',
@@ -255,6 +267,97 @@ export class Mattermost implements INodeType {
 				description: 'The ID of the channel to soft-delete.',
 			},
 
+			// ----------------------------------
+			//         channel:members
+			// ----------------------------------
+			{
+				displayName: 'Team ID',
+				name: 'teamId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTeams',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The Mattermost Team.',
+			},
+			{
+				displayName: 'Channel ID',
+				name: 'channelId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannelsInTeam',
+					loadOptionsDependsOn: [
+						'teamId',
+					],
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The Mattermost Team.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
 
 			// ----------------------------------
 			//         channel:restore
@@ -837,6 +940,16 @@ export class Mattermost implements INodeType {
 						value: 'deactive',
 						description: 'Deactivates the user and revokes all its sessions by archiving its user object.',
 					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Retrieve all users',
+					},
+					{
+						name: 'Get By Email',
+						value: 'getByEmail',
+						description: 'Get a user by email',
+					},
 				],
 				default: '',
 				description: 'The operation to perform.',
@@ -863,6 +976,143 @@ export class Mattermost implements INodeType {
 				description: 'User GUID'
 			},
 
+			// ----------------------------------
+			//         user:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'In Channel',
+						name: 'inChannel',
+						type: 'string',
+						default: '',
+						description: 'The ID of the channel to get users for.',
+					},
+					{
+						displayName: 'In Team',
+						name: 'inTeam',
+						type: 'string',
+						default: '',
+						description: 'The ID of the team to get users for.',
+					},
+					{
+						displayName: 'Not In Team',
+						name: 'notInTeam',
+						type: 'string',
+						default: '',
+						description: 'The ID of the team to exclude users for.',
+					},
+					{
+						displayName: 'Not In Channel',
+						name: 'notInChannel',
+						type: 'string',
+						default: '',
+						description: 'The ID of the channel to exclude users for.',
+					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'options',
+						options: [
+							{
+								name: 'Created At',
+								value: 'createdAt',
+							},
+							{
+								name: 'Last Activity At',
+								value: 'lastActivityAt',
+							},
+							{
+								name: 'Status',
+								value: 'status',
+							},
+							{
+								name: 'username',
+								value: 'username',
+							},
+						],
+						default: 'username',
+						description: 'The ID of the channel to exclude users for.',
+					},
+				],
+			},
+			// ----------------------------------
+			//         user:getByEmail
+			// ----------------------------------
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getByEmail',
+						],
+					},
+				},
+				default: '',
+				description: `User's email`,
+			},
 		],
 	};
 
@@ -895,10 +1145,42 @@ export class Mattermost implements INodeType {
 				return returnData;
 			},
 
+			// Get all the channels in a team
+			async getChannelsInTeam(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const teamId = this.getCurrentNodeParameter('teamId');
+				const endpoint = `users/me/teams/${teamId}/channels`;
+				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
+				if (responseData === undefined) {
+					throw new Error('No data got returned');
+				}
+
+				const returnData: INodePropertyOptions[] = [];
+				let name: string;
+				for (const data of responseData) {
+					if (data.delete_at !== 0) {
+						continue;
+					}
+
+					const channelTypes: IDataObject = {
+						'O': 'public',
+						'P': 'private',
+						'D': 'direct',
+					};
+
+					name = `${data.name} (${channelTypes[data.type as string]})`;
+
+					returnData.push({
+						name,
+						value: data.id,
+					});
+				}
+
+				return returnData;
+			},
 
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = 'teams';
+				const endpoint = 'users/me/teams';
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
@@ -962,6 +1244,7 @@ export class Mattermost implements INodeType {
 		let operation: string;
 		let resource: string;
 		let requestMethod = 'POST';
+		let returnAll = false;
 
 		// For Post
 		let body: IDataObject;
@@ -986,7 +1269,7 @@ export class Mattermost implements INodeType {
 					endpoint = 'channels';
 
 					body.team_id = this.getNodeParameter('teamId', i) as string;
-					body.displayName = this.getNodeParameter('displayName', i) as string;
+					body.display_name = this.getNodeParameter('displayName', i) as string;
 					body.name = this.getNodeParameter('channel', i) as string;
 
 					const type = this.getNodeParameter('type', i) as string;
@@ -1000,6 +1283,19 @@ export class Mattermost implements INodeType {
 					requestMethod = 'DELETE';
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					endpoint = `channels/${channelId}`;
+
+				} else if (operation === 'members') {
+					// ----------------------------------
+					//         channel:members
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					endpoint = `channels/${channelId}/members`;
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+					}
 
 				} else if (operation === 'restore') {
 					// ----------------------------------
@@ -1129,13 +1425,106 @@ export class Mattermost implements INodeType {
 					requestMethod = 'DELETE';
 					endpoint = `users/${userId}`;
 				}
+
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         user:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.inTeam) {
+						qs.in_team = additionalFields.inTeam;
+					}
+
+					if (additionalFields.notInTeam) {
+						qs.not_in_team = additionalFields.notInTeam;
+					}
+
+					if (additionalFields.inChannel) {
+						qs.in_channel = additionalFields.inChannel;
+					}
+
+					if (additionalFields.notInChannel) {
+						qs.not_in_channel = additionalFields.notInChannel;
+					}
+
+					if (additionalFields.sort) {
+						qs.sort = snakeCase(additionalFields.sort as string);
+					}
+
+					const validRules = {
+						inTeam: ['last_activity_at', 'created_at', 'username'],
+						inChannel: ['status', 'username'],
+					};
+
+					if (additionalFields.sort) {
+						if (additionalFields.inTeam !== undefined || additionalFields.inChannel !== undefined)  {
+
+							if (additionalFields.inTeam !== undefined
+							&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
+								throw new Error(`When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
+							}
+							if (additionalFields.inChannel !== undefined
+							&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
+									throw new Error(`When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
+							}
+							if (additionalFields.inChannel !== undefined
+							&& additionalFields.inChannel === ''
+							&& additionalFields.sort !== 'username') {
+								throw new Error('When sort is different than username In Channel must be set');
+							}
+
+							if (additionalFields.inTeam !== undefined
+								&& additionalFields.inTeam === ''
+								&& additionalFields.sort !== 'username') {
+									throw new Error('When sort is different than username In Team must be set');
+								}
+
+						} else {
+							throw new Error(`When sort is defined either 'in team' or 'in channel' must be defined`);
+						}
+					}
+
+					if (additionalFields.sort === 'username') {
+						qs.sort = '';
+					}
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+					}
+
+					endpoint = `/users`;
+				}
+
+				if (operation === 'getByEmail') {
+					// ----------------------------------
+					//          user:getByEmail
+					// ----------------------------------
+					const email = this.getNodeParameter('email', i) as string;
+					requestMethod = 'GET';
+					endpoint = `users/email/${email}`;
+				}
+
 			}
 			else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
-			const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-			returnData.push(responseData);
+			let responseData;
+			if (returnAll) {
+				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+			} else {
+				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData);
+			} else {
+				returnData.push(responseData);
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

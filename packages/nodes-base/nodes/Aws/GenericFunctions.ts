@@ -46,7 +46,6 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	}
 }
 
-
 export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -55,7 +54,6 @@ export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions
 		return response;
 	}
 }
-
 
 export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);

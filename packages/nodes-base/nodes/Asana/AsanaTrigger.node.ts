@@ -25,7 +25,7 @@ export class AsanaTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when Asana events occure.',
 		defaults: {
-			name: 'Asana Trigger',
+			name: 'Asana-Trigger',
 			color: '#559922',
 		},
 		inputs: [],
@@ -97,7 +97,11 @@ export class AsanaTrigger implements INodeType {
 				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+
+				if (webhookUrl.includes('%20')) {
+					throw new Error('The name of the Asana Trigger Node is not allowed to contain any spaces!');
+				}
 
 				const resource = this.getNodeParameter('resource') as string;
 

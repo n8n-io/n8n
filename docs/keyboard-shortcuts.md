@@ -13,7 +13,7 @@ The following keyboard shortcuts can currently be used:
  - **Tab**: Open "Node Creator". Type to filter and navigate with arrow keys. To create press "enter"
 
 
-## With node/s selected
+## With node(s) selected
 
  - **ArrowDown**: Select sibling node bellow the current one
  - **ArrowLeft**: Select node left of the current one

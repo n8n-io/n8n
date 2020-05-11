@@ -4,9 +4,9 @@ import {
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 } from 'n8n-core';
 
 import {
@@ -31,11 +31,16 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
 		if (error.response && error.response.body && error.response.body.errors) {
 			// Try to return the error prettier
-			const errorMessages = error.response.body.errors.map((e: IDataObject) => e.message);
-			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
+			let errorMessages = error.response.body.errors;
+
+			if (errorMessages[0].message) {
+				// @ts-ignore
+				errorMessages = errorMessages.map(errorItem => errorItem.message);
+			}
+
+			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join('|')}`);
 		}
 
 		throw error;
@@ -54,6 +59,7 @@ export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteF
 
 	query.limit = query.limit || 250;
 	query.count = 100;
+	body.limit = body.limit || 100;
 
 	do {
 		responseData = await hubspotApiRequest.call(this, method, endpoint, body, query);
