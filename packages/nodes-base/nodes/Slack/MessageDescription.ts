@@ -114,6 +114,22 @@ export const messageFields = [
 		description: 'Set the bot\'s user name.',
 	},
 	{
+		displayName: 'JSON parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				operation: [
+					'post'
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Attachments',
 		name: 'attachments',
 		type: 'collection',
@@ -538,6 +554,926 @@ export const messageFields = [
 		],
 	},
 	{
+		displayName: 'Blocks',
+		name: 'blocksUi',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Block',
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'post'
+				],
+				resource: [
+					'message',
+				],
+				jsonParameters: [
+					false,
+				],
+			},
+		},
+		default: {},
+		description: 'The blocks to add',
+		placeholder: 'Add Block',
+		options: [
+			{
+				name: 'blocksValues',
+				displayName: 'Block',
+				values: [
+					{
+						displayName: 'Type',
+						name: 'type',
+						type: 'options',
+						options: [
+							{
+								name: 'Actions',
+								value: 'actions',
+							},
+							{
+								name: 'Section',
+								value: 'section',
+							},
+						],
+						default: 'actions',
+					},
+					{
+						displayName: 'Block ID',
+						name: 'blockId',
+						type: 'string',
+						displayOptions: {
+							show: {
+								type: [
+									'actions',
+								],
+							},
+						},
+						default: '',
+						description: `A string acting as a unique identifier for a block.</br>
+								You can use this block_id when you receive an interaction payload to</br>
+								identify the source of the action. If not specified, a block_id will be generated.</br>
+								Maximum length for this field is 255 characters.`,
+					},
+					{
+						displayName: 'Elements',
+						name: 'elementsUi',
+						placeholder: 'Add Element',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'actions',
+								],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'elementsValues',
+								displayName: 'Element',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: [
+											{
+												name: 'Button',
+												value: 'button',
+											},
+										],
+										default: 'button',
+										description: 'The type of element',
+									},
+									{
+										displayName: 'Text',
+										name: 'text',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										default: '',
+										description: 'The text for the block.',
+									},
+									{
+										displayName: 'Emoji',
+										name: 'emoji',
+										type: 'boolean',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										default: false,
+										description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format.',
+									},
+									{
+										displayName: 'Action ID',
+										name: 'actionId',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										default: '',
+										description: `An identifier for this action. You can use this when you receive an interaction</br>
+												payload to identify the source of the action. Should be unique among all other action_ids used</br>
+												elsewhere by your app. `,
+									},
+									{
+										displayName: 'URL',
+										name: 'url',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										default: '',
+										description: `A URL to load in the user's browser when the button is clicked.</br>
+												Maximum length for this field is 3000 characters. If you're using url, you'll still</br>
+												receive an interaction payload and will need to send an acknowledgement response.`,
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										default: '',
+										description: 'The value to send along with the interaction payload.',
+									},
+									{
+										displayName: 'Style',
+										name: 'style',
+										type: 'options',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										options: [
+											{
+												name: 'Danger',
+												value: 'danger',
+											},
+											{
+												name: 'Default',
+												value: 'default',
+											},
+											{
+												name: 'Primary',
+												value: 'primary',
+											},
+										],
+										default: 'default',
+										description: 'Decorates buttons with alternative visual color schemes.',
+									},
+									{
+										displayName: 'Confirm',
+										name: 'confirmUi',
+										placeholder: 'Add Confirm',
+										type: 'fixedCollection',
+										typeOptions: {
+											multipleValues: false,
+										},
+										default: {},
+										options: [
+											{
+												name: 'confirmValue',
+												displayName: 'Confirm',
+												values: [
+													{
+														displayName: 'Title',
+														name: 'titleUi',
+														placeholder: 'Add Title',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																name: 'titleValue',
+																displayName: 'Title',
+																values: [
+																	{
+																		displayName: 'Text',
+																		name: 'text',
+																		type: 'string',
+																		default: '',
+																		description: 'Text of the title.',
+																	},
+																	{
+																		displayName: 'Emoji',
+																		name: 'emoji',
+																		type: 'boolean',
+																		default: false,
+																		description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
+																	},
+																],
+															},
+														],
+														description: `Defines the dialog's title.`,
+													},
+													{
+														displayName: 'Text',
+														name: 'textUi',
+														placeholder: 'Add Text',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																name: 'textValue',
+																displayName: 'Text',
+																values: [
+																	{
+																		displayName: 'Text',
+																		name: 'text',
+																		type: 'string',
+																		default: '',
+																		description: 'The text for the block',
+																	},
+																	{
+																		displayName: 'Emoji',
+																		name: 'emoji',
+																		type: 'boolean',
+																		default: false,
+																		description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
+																	},
+																],
+															},
+														],
+														description: `Defines the explanatory text that appears in the confirm dialog.`,
+													},
+													{
+														displayName: 'Confirm',
+														name: 'confirmTextUi',
+														placeholder: 'Add Confirm',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																name: 'confirmValue',
+																displayName: 'Confirm',
+																values: [
+																	{
+																		displayName: 'Text',
+																		name: 'text',
+																		type: 'string',
+																		default: '',
+																		description: `Defines the explanatory text that appears in the confirm dialog.`,
+																	},
+																	{
+																		displayName: 'Emoji',
+																		name: 'emoji',
+																		type: 'boolean',
+																		default: false,
+																		description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
+																	},
+																],
+															},
+														],
+														description: 'Defines the text of the button that confirms the action',
+													},
+													{
+														displayName: 'Deny',
+														name: 'denyUi',
+														placeholder: 'Add Deny',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																name: 'denyValue',
+																displayName: 'Deny',
+																values: [
+																	{
+																		displayName: 'Text',
+																		name: 'text',
+																		type: 'string',
+																		default: '',
+																		description: 'Defines the text of the button that cancels the action',
+																	},
+																	{
+																		displayName: 'Emoji',
+																		name: 'emoji',
+																		type: 'boolean',
+																		default: false,
+																		description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
+																	},
+																],
+															},
+														],
+														description: 'Defines the text of the button that cancels the action',
+													},
+													{
+														displayName: 'Style',
+														name: 'style',
+														type: 'options',
+														options: [
+															{
+																name: 'Danger',
+																value: 'danger',
+															},
+															{
+																name: 'Default',
+																value: 'default',
+															},
+															{
+																name: 'Primary',
+																value: 'primary',
+															},
+														],
+														default: 'default',
+														description: 'Defines the color scheme applied to the confirm button.',
+													},
+												],
+											},
+										],
+										description: 'Defines an optional confirmation dialog after the button is clicked.',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Block ID',
+						name: 'blockId',
+						type: 'string',
+						displayOptions: {
+							show: {
+								type: [
+									'section',
+								],
+							},
+						},
+						default: '',
+						description: `A string acting as a unique identifier for a block.</br>
+								You can use this block_id when you receive an interaction payload to</br>
+								identify the source of the action. If not specified, a block_id will be generated.</br>
+								Maximum length for this field is 255 characters.`,
+					},
+					{
+						displayName: 'Text',
+						name: 'textUi',
+						placeholder: 'Add Text',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: false,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'section',
+								],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'textValue',
+								displayName: 'Text',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: [
+											{
+												name: 'Markdowm',
+												value: 'mrkwdn',
+											},
+											{
+												name: 'Plain Text',
+												value: 'plainText',
+											},
+										],
+										default: 'mrkwdn',
+										description: 'The formatting to use for this text object.',
+									},
+									{
+										displayName: 'Text',
+										name: 'text',
+										type: 'string',
+										default: '',
+										description: 'The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn.',
+									},
+									{
+										displayName: 'Emoji',
+										name: 'emoji',
+										displayOptions: {
+											show: {
+												type: [
+													'plainText',
+												],
+											},
+										},
+										type: 'boolean',
+										default: false,
+										description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text.',
+									},
+									{
+										displayName: 'Verbatim',
+										name: 'verbatim',
+										displayOptions: {
+											show: {
+												type: [
+													'mrkwdn',
+												],
+											},
+										},
+										type: 'boolean',
+										default: false,
+										description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed. ',
+									},
+								],
+							},
+						],
+						description: 'Define the text of the button that cancels the action',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fieldsUi',
+						placeholder: 'Add Fields',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'section',
+								],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'fieldsValues',
+								displayName: 'Text',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: [
+											{
+												name: 'Markdowm',
+												value: 'mrkwdn',
+											},
+											{
+												name: 'Plain Text',
+												value: 'plainText',
+											},
+										],
+										default: 'mrkwdn',
+										description: 'The formatting to use for this text object.',
+									},
+									{
+										displayName: 'Text',
+										name: 'text',
+										type: 'string',
+										default: '',
+										description: 'The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn.',
+									},
+									{
+										displayName: 'Emoji',
+										name: 'emoji',
+										type: 'boolean',
+										displayOptions: {
+											show: {
+												type: [
+													'plainText',
+												],
+											},
+										},
+										default: false,
+										description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text.',
+									},
+									{
+										displayName: 'Verbatim',
+										name: 'verbatim',
+										displayOptions: {
+											show: {
+												type: [
+													'mrkwdn',
+												],
+											},
+										},
+										type: 'boolean',
+										default: false,
+										description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed. ',
+									},
+								],
+							},
+						],
+						description: `An array of text objects. Any text objects included with</br>
+								fields will be rendered in a compact format that allows for 2 columns of</br>
+								side-by-side text. Maximum number of items is 10.`,
+					},
+					{
+						displayName: 'Accessory',
+						name: 'accessoryUi',
+						placeholder: 'Add Accessory',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: false,
+						},
+						displayOptions: {
+							show: {
+								type: [
+									'section',
+								],
+							},
+						},
+						default: {},
+						options: [
+							{
+								name: 'accessoriesValues',
+								displayName: 'Accessory',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: [
+											{
+												name: 'Button',
+												value: 'button',
+											},
+										],
+										default: 'button',
+										description: 'The type of element',
+									},
+									{
+										displayName: 'Text',
+										name: 'text',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+										description: 'The text for the block.',
+									},
+									{
+										displayName: 'Emoji',
+										name: 'emoji',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										type: 'boolean',
+										default: false,
+										description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format.',
+									},
+									{
+										displayName: 'Action ID',
+										name: 'actionId',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+										description: `An identifier for this action. You can use this when you receive an interaction</br>
+												payload to identify the source of the action. Should be unique among all other action_ids used</br>
+												elsewhere by your app. `,
+									},
+									{
+										displayName: 'URL',
+										name: 'url',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+										description: `A URL to load in the user's browser when the button is clicked.</br>
+												Maximum length for this field is 3000 characters. If you're using url, you'll still</br>
+												receive an interaction payload and will need to send an acknowledgement response.`,
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+										description: 'The value to send along with the interaction payload.',
+									},
+									{
+										displayName: 'Style',
+										name: 'style',
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										type: 'options',
+										options: [
+											{
+												name: 'Danger',
+												value: 'danger',
+											},
+											{
+												name: 'Default',
+												value: 'default',
+											},
+											{
+												name: 'Primary',
+												value: 'primary',
+											},
+										],
+										default: 'default',
+										description: 'Decorates buttons with alternative visual color schemes.',
+									},
+									{
+										displayName: 'Confirm',
+										name: 'confirmUi',
+										placeholder: 'Add Confirm',
+										type: 'fixedCollection',
+										typeOptions: {
+											multipleValues: false,
+										},
+										displayOptions: {
+											show: {
+												type: [
+													'button',
+												],
+											},
+										},
+										default: {},
+										options: [
+											{
+												name: 'confirmValue',
+												displayName: 'Confirm',
+												values: [
+													{
+														displayName: 'Title',
+														name: 'titleUi',
+														placeholder: 'Add Title',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																name: 'titleValue',
+																displayName: 'Title',
+																values: [
+																	{
+																		displayName: 'Text',
+																		name: 'text',
+																		type: 'string',
+																		default: '',
+																		description: 'Text of the title.',
+																	},
+																	{
+																		displayName: 'Emoji',
+																		name: 'emoji',
+																		type: 'boolean',
+																		default: false,
+																		description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
+																	},
+																],
+															},
+														],
+														description: 'Defines an optional confirmation dialog after the button is clicked.',
+													},
+													{
+														displayName: 'Text',
+														name: 'textUi',
+														placeholder: 'Add Text',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																name: 'textValue',
+																displayName: 'Text',
+																values: [
+																	{
+																		displayName: 'Text',
+																		name: 'text',
+																		type: 'string',
+																		default: '',
+																		description: 'The text for the block',
+																	},
+																	{
+																		displayName: 'Emoji',
+																		name: 'emoji',
+																		type: 'boolean',
+																		default: false,
+																		description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
+																	},
+																],
+															},
+														],
+														description: `Defines the explanatory text that appears in the confirm dialog.`,
+													},
+													{
+														displayName: 'Confirm',
+														name: 'confirmTextUi',
+														placeholder: 'Add Confirm',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																name: 'confirmValue',
+																displayName: 'Confirm',
+																values: [
+																	{
+																		displayName: 'Text',
+																		name: 'text',
+																		type: 'string',
+																		default: '',
+																		description: `Defines the explanatory text that appears in the confirm dialog.`,
+																	},
+																	{
+																		displayName: 'Emoji',
+																		name: 'emoji',
+																		type: 'boolean',
+																		default: false,
+																		description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
+																	},
+																],
+															},
+														],
+														description: `Defines the explanatory text that appears in the confirm dialog.`,
+													},
+													{
+														displayName: 'Deny',
+														name: 'denyUi',
+														placeholder: 'Add Deny',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: false,
+														},
+														default: {},
+														options: [
+															{
+																name: 'denyValue',
+																displayName: 'Deny',
+																values: [
+																	{
+																		displayName: 'Text',
+																		name: 'text',
+																		type: 'string',
+																		default: '',
+																		description: 'Define the text of the button that cancels the action',
+																	},
+																	{
+																		displayName: 'Emoji',
+																		name: 'emoji',
+																		type: 'boolean',
+																		default: false,
+																		description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
+																	},
+																],
+															},
+														],
+														description: 'Define the text of the button that cancels the action',
+													},
+													{
+														displayName: 'Style',
+														name: 'style',
+														type: 'options',
+														options: [
+															{
+																name: 'Danger',
+																value: 'danger',
+															},
+															{
+																name: 'Default',
+																value: 'default',
+															},
+															{
+																name: 'Primary',
+																value: 'primary',
+															},
+														],
+														default: 'default',
+														description: 'Defines the color scheme applied to the confirm button.',
+													},
+												],
+											},
+										],
+										description: 'Defines an optional confirmation dialog after the button is clicked.',
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Attachments',
+		name: 'attachmentsJson',
+		type: 'json',
+		default: '',
+		required: false,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'post',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'The attachments to add',
+	},
+	{
+		displayName: 'Blocks',
+		name: 'blocksJson',
+		type: 'json',
+		default: '',
+		required: false,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'post',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'The blocks to add',
+	},
+	{
 		displayName: 'Attachments',
 		name: 'attachments',
 		type: 'collection',
@@ -547,6 +1483,9 @@ export const messageFields = [
 		},
 		displayOptions: {
 			show: {
+				jsonParameters: [
+					false,
+				],
 				operation: [
 					'update'
 				],

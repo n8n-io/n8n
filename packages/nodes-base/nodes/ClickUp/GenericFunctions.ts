@@ -1,4 +1,7 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -6,7 +9,10 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+
+import {
+	IDataObject,
+ } from 'n8n-workflow';
 
 export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('clickUpApi');
@@ -42,12 +48,14 @@ export async function clickupApiRequestAllItems(this: IHookFunctions | IExecuteF
 
 	let responseData;
 	query.page = 0;
-	query.limit = 100;
 
 	do {
 		responseData = await clickupApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query.page++;
+		if (query.limit && query.limit <= returnData.length) {
+			return returnData;
+		}
 	} while (
 		responseData[propertyName] &&
 		responseData[propertyName].length !== 0
