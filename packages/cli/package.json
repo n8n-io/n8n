@@ -28,7 +28,8 @@
         "start:windows": "cd bin && n8n",
         "test": "jest",
         "tslint": "tslint -p tsconfig.json -c tslint.json",
-        "watch": "tsc --watch"
+        "watch": "tsc --watch",
+        "typeorm": "ts-node ./node_modules/typeorm/cli.js"
     },
     "bin": {
         "n8n": "./bin/n8n"
@@ -70,8 +71,9 @@
         "p-cancelable": "^2.0.0",
         "run-script-os": "^1.0.7",
         "ts-jest": "^24.0.2",
-        "tslint": "^5.17.0",
-        "typescript": "~3.7.4"
+        "tslint": "^6.1.2",
+        "typescript": "~3.7.4",
+        "ts-node": "^8.9.1"
     },
     "dependencies": {
         "@oclif/command": "^1.5.18",
@@ -102,9 +104,9 @@
         "open": "^7.0.0",
         "pg": "^7.11.0",
         "request-promise-native": "^1.0.7",
-        "sqlite3": "^4.0.6",
+        "sqlite3": "^4.2.0",
         "sse-channel": "^3.1.1",
-        "typeorm": "^0.2.16"
+        "typeorm": "^0.2.24"
     },
     "jest": {
         "transform": {

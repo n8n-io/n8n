@@ -277,6 +277,7 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
 	let value;
+	const values: any[] = []; // tslint:disable-line:no-any
 	if (parameter.displayOptions.show) {
 		// All the defined rules have to match to display parameter
 		for (const propertyName of Object.keys(parameter.displayOptions.show)) {
@@ -288,7 +289,14 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 				value = get(nodeValues, propertyName);
 			}
 
-			if (value === undefined || !parameter.displayOptions.show[propertyName].includes(value as string)) {
+			values.length = 0;
+			if (!Array.isArray(value)) {
+				values.push(value);
+			} else {
+				values.push.apply(values, value);
+			}
+
+			if (values.length === 0 || !parameter.displayOptions.show[propertyName].some(v => values.includes(v))) {
 				return false;
 			}
 		}
@@ -304,7 +312,15 @@ export function displayParameter(nodeValues: INodeParameters, parameter: INodePr
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
 			}
-			if (value !== undefined && parameter.displayOptions.hide[propertyName].includes(value as string)) {
+
+			values.length = 0;
+			if (!Array.isArray(value)) {
+				values.push(value);
+			} else {
+				values.push.apply(values, value);
+			}
+
+			if (values.length !== 0 && parameter.displayOptions.hide[propertyName].some(v => values.includes(v))) {
 				return false;
 			}
 		}
