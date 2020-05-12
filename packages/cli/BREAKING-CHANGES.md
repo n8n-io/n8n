@@ -7,6 +7,7 @@ This list shows all the versions which include breaking changes and how to upgra
 ### What changed?
 
 The names of the following nodes were not set correctly and got fixed:
+  - AMQP Sender
   - Bitbucket-Trigger
   - Coda
   - Eventbrite-Trigger
@@ -38,6 +39,7 @@ There are two ways to upgrade the workflows and to make them work in the new ver
 **Advanced**
 
 After upgrading, select the whole workflow in the editor, copy it, and paste it into a text editor. In the JSON, change the node types manually by replacing the values for "type" as follows:
+  - "n8n-nodes-base.amqpSender" -> "n8n-nodes-base.amqp"
   - "n8n-nodes-base.bitbucket" -> "n8n-nodes-base.bitbucketTrigger"
   - "n8n-nodes-base.Coda" -> "n8n-nodes-base.coda"
   - "n8n-nodes-base.eventbrite" -> "n8n-nodes-base.eventbriteTrigger"

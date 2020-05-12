@@ -120,7 +120,7 @@
             "dist/nodes/AgileCrm/AgileCrm.node.js",
             "dist/nodes/Airtable/Airtable.node.js",
             "dist/nodes/AcuityScheduling/AcuitySchedulingTrigger.node.js",
-            "dist/nodes/Amqp/AmqpSender.node.js",
+            "dist/nodes/Amqp/Amqp.node.js",
             "dist/nodes/Amqp/AmqpTrigger.node.js",
             "dist/nodes/Asana/Asana.node.js",
             "dist/nodes/Asana/AsanaTrigger.node.js",
