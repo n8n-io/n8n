@@ -14,7 +14,7 @@ const pdf = require('pdf-parse');
 export class ReadPdf implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read PDF',
-		name: 'Read PDF',
+		name: 'readPDF',
 		icon: 'fa:file-pdf',
 		group: ['input'],
 		version: 1,

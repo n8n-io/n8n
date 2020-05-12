@@ -49,7 +49,7 @@ interface IPostMessageBody {
 export class Rocketchat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Rocketchat',
-		name: 'Rocketchat',
+		name: 'rocketchat',
 		icon: 'file:rocketchat.png',
 		group: ['output'],
 		version: 1,
