@@ -7,7 +7,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-export class Amqp implements INodeType {
+export class AmqpSender implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Sender',
 		name: 'amqpSender',
