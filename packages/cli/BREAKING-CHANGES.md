@@ -8,12 +8,15 @@ This list shows all the versions which include breaking changes and how to upgra
 
 The names of the following nodes were not set correctly and got fixed:
   - Bitbucket-Trigger
-  - Eventbrite -Trigger
+  - Coda
+  - Eventbrite-Trigger
+  - Flow
   - Gumroad-Trigger
   - Jira
   - Mailchimp-Trigger
   - PayPal Trigger
   - Read PDF
+  - Rocketchat
   - Shopify
   - Shopify-Trigger
   - Stripe-Trigger
@@ -36,12 +39,15 @@ There are two ways to upgrade the workflows and to make them work in the new ver
 
 After upgrading, select the whole workflow in the editor, copy it, and paste it into a text editor. In the JSON, change the node types manually by replacing the values for "type" as follows:
   - "n8n-nodes-base.bitbucket" -> "n8n-nodes-base.bitbucketTrigger"
+  - "n8n-nodes-base.Coda" -> "n8n-nodes-base.coda"
   - "n8n-nodes-base.eventbrite" -> "n8n-nodes-base.eventbriteTrigger"
+  - "n8n-nodes-base.Flow" -> "n8n-nodes-base.flow"
   - "n8n-nodes-base.gumroad" -> "n8n-nodes-base.gumroadTrigger"
   - "n8n-nodes-base.Jira Software Cloud" -> "n8n-nodes-base.jira"
   - "n8n-nodes-base.Mailchimp" -> "n8n-nodes-base.mailchimpTrigger"
   - "n8n-nodes-base.PayPal" -> "n8n-nodes-base.payPalTrigger"
   - "n8n-nodes-base.Read PDF" -> "n8n-nodes-base.readPDF"
+  - "n8n-nodes-base.Rocketchat" -> "n8n-nodes-base.rocketchat"
   - "n8n-nodes-base.shopify" -> "n8n-nodes-base.shopifyTrigger"
   - "n8n-nodes-base.shopifyNode" -> "n8n-nodes-base.shopify"
   - "n8n-nodes-base.stripe" -> "n8n-nodes-base.stripeTrigger"
