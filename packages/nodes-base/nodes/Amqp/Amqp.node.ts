@@ -10,7 +10,7 @@ import {
 export class Amqp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AMQP Sender',
-		name: 'amqpSender',
+		name: 'amqp',
 		icon: 'file:amqp.png',
 		group: ['transform'],
 		version: 1,
