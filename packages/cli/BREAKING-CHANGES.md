@@ -21,7 +21,7 @@ The names of the following nodes were not set correctly and got fixed:
 
 ### When is action necessary?
 
-If any of the nodes mentioned above are used in any workflow.
+If any of the nodes mentioned above, are used in any of your workflows.
 
 ### How to upgrade:
 
