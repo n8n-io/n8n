@@ -18,7 +18,7 @@ import {
 export class MailchimpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp Trigger',
-		name: 'Mailchimp',
+		name: 'mailchimpTrigger',
 		icon: 'file:mailchimp.png',
 		group: ['trigger'],
 		version: 1,

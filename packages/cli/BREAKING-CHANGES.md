@@ -2,6 +2,53 @@
 
 This list shows all the versions which include breaking changes and how to upgrade
 
+## 0.67.0
+
+### What changed?
+
+The name of the following nodes were not set correctly and got fixed:
+ - Bitbucket-Trigger
+ - Eventbrite -Trigger
+ - Gumroad-Trigger
+ - Jira
+ - Mailchimp-Trigger
+ - PayPal Trigger
+ - Read PDF
+ - Shopify
+ - Shopify-Trigger
+ - Stripe-Trigger
+ - Toggl-Trigger
+
+### When is action necessary?
+
+If any of the above nodes is used in any workflow.
+
+### How to upgrade:
+
+There are two ways to upgrade the workflows and to make them work in the new version:
+
+**Simple**
+
+Delete the above nodes and totally recreate them (best write down the settings before upgrading)
+
+**Advanced**
+
+After upgrading select the whole workflow in the editor, copy it, and paste it into a text-editor. In the appearing JSON change the node types manually by replacing the values for "type" as follows:
+  - "n8n-nodes-base.bitbucket" -> "n8n-nodes-base.bitbucketTrigger"
+  - "n8n-nodes-base.eventbrite" -> "n8n-nodes-base.eventbriteTrigger"
+  - "n8n-nodes-base.gumroad" -> "n8n-nodes-base.gumroadTrigger"
+  - "n8n-nodes-base.Jira Software Cloud" -> "n8n-nodes-base.jira"
+  - "n8n-nodes-base.Mailchimp" -> "n8n-nodes-base.mailchimpTrigger"
+  - "n8n-nodes-base.PayPal" -> "n8n-nodes-base.payPalTrigger"
+  - "n8n-nodes-base.Read PDF" -> "n8n-nodes-base.readPDF"
+  - "n8n-nodes-base.shopify" -> "n8n-nodes-base.shopifyTrigger"
+  - "n8n-nodes-base.shopifyNode" -> "n8n-nodes-base.shopify"
+  - "n8n-nodes-base.stripe" -> "n8n-nodes-base.stripeTrigger"
+  - "n8n-nodes-base.toggl" -> "n8n-nodes-base.togglTrigger"
+
+Then delete all existing nodes, and then paste the changed JSON directly into n8n. It should then recreate all nodes and connections again this time again with working nodes.
+
+
 ## 0.62.0
 
 ### What changed?
