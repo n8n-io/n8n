@@ -20,7 +20,7 @@ import {
 export class EventbriteTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Eventbrite Trigger',
-		name: 'eventbrite',
+		name: 'eventbriteTrigger',
 		icon: 'file:eventbrite.png',
 		group: ['trigger'],
 		version: 1,

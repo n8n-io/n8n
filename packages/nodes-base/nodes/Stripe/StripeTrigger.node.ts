@@ -17,7 +17,7 @@ import {
 export class StripeTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stripe Trigger',
-		name: 'stripe',
+		name: 'stripeTrigger',
 		icon: 'file:stripe.png',
 		group: ['trigger'],
 		version: 1,

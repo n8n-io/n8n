@@ -21,7 +21,7 @@ import {
 export class ShopifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Shopify Trigger',
-		name: 'shopify',
+		name: 'shopifyTrigger',
 		icon: 'file:shopify.png',
 		group: ['trigger'],
 		version: 1,
