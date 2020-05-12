@@ -29,7 +29,7 @@ If any of the nodes mentioned above, are used in any of your workflows.
 
 ### How to upgrade:
 
-There are two ways to upgrade the workflows and to make them work in the new version:
+For the nodes mentioned above, you'll need to give them access to the credentials again by opening the credentials and moving them from "No Access" to "Access". After you've done that, there are two ways to upgrade the workflows and to make them work in the new version:
 
 **Simple**
 
