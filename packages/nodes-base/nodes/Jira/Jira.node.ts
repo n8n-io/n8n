@@ -30,17 +30,17 @@ import {
 	NotificationRecipientsRestrictions,
  } from './IssueInterface';
 
-export class JiraSoftwareCloud implements INodeType {
+export class Jira implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jira Software',
-		name: 'Jira Software Cloud',
+		name: 'jira',
 		icon: 'file:jira.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Jira Software API',
 		defaults: {
-			name: 'Jira Software',
+			name: 'Jira',
 			color: '#4185f7',
 		},
 		inputs: ['main'],

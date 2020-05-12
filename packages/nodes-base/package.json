@@ -184,7 +184,7 @@
             "dist/nodes/InvoiceNinja/InvoiceNinja.node.js",
             "dist/nodes/InvoiceNinja/InvoiceNinjaTrigger.node.js",
             "dist/nodes/Interval.node.js",
-            "dist/nodes/Jira/JiraSoftwareCloud.node.js",
+            "dist/nodes/Jira/Jira.node.js",
             "dist/nodes/JotForm/JotFormTrigger.node.js",
             "dist/nodes/LinkFish/LinkFish.node.js",
             "dist/nodes/Mailchimp/Mailchimp.node.js",
