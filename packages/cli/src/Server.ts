@@ -755,6 +755,21 @@ class App {
 				throw new Error('No encryption key got found to encrypt the credentials!');
 			}
 
+			// Load the currently saved credentials to be able to persist some of the data if
+			const result = await Db.collections.Credentials!.findOne(id);
+			if (result === undefined) {
+				throw new ResponseHelper.ResponseError(`Credentials with the id "${id}" do not exist.`, undefined, 400);
+			}
+
+			const currentlySavedCredentials = new Credentials(result.name, result.type, result.nodesAccess, result.data);
+			const decryptedData = currentlySavedCredentials.getData(encryptionKey!);
+
+			// Do not overwrite the oauth data else data like the access or refresh token would get lost
+			// everytime anybody changes anything on the credentials even if it is just the name.
+			if (decryptedData.oauthTokenData) {
+				incomingData.data.oauthTokenData = decryptedData.oauthTokenData;
+			}
+
 			// Encrypt the data
 			const credentials = new Credentials(incomingData.name, incomingData.type, incomingData.nodesAccess);
 			credentials.setData(incomingData.data, encryptionKey);
