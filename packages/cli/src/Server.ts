@@ -1032,7 +1032,15 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			savedCredentialsData.oauthTokenData = oauthToken.data;
+			if (savedCredentialsData.oauthTokenData) {
+				// Only overwrite supplied data as some providers do for example just return the
+				// refresh_token on the very first request and not on subsequent ones.
+				Object.assign(savedCredentialsData.oauthTokenData, oauthToken.data);
+			} else {
+				// No data exists so simply set
+				savedCredentialsData.oauthTokenData = oauthToken.data;
+			}
+
 			_.unset(savedCredentialsData, 'csrfSecret');
 
 			credentials.setData(savedCredentialsData, encryptionKey);
