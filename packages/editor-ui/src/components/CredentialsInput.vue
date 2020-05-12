@@ -30,6 +30,19 @@
 					</el-button>
 					Is NOT connected
 				</span>
+
+				<div v-if="credentialProperties.length">
+					<div class="clickable oauth-callback-headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? 'Click to display Webhook URLs' : 'Click to hide Webhook URLs'">
+						<font-awesome-icon icon="angle-up" class="minimize-button minimize-icon" />
+						OAuth Callback URL
+					</div>
+					<el-tooltip v-if="!isMinimized" class="item" effect="light" content="Click to copy Callback URL" placement="right">
+						<div class="callback-url left-ellipsis clickable" @click="copyCallbackUrl">
+							{{oAuthCallbackUrl}}
+						</div>
+					</el-tooltip>
+				</div>
+
 			</el-col>
 		</el-row>
 
@@ -95,6 +108,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
+import { copyPaste } from '@/components/mixins/copyPaste';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -121,6 +135,7 @@ import ParameterInput from '@/components/ParameterInput.vue';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(
+	copyPaste,
 	nodeHelpers,
 	restApi,
 	showMessage,
@@ -139,6 +154,7 @@ export default mixins(
 	},
 	data () {
 		return {
+			isMinimized: true,
 			helpTexts: {
 				credentialsData: 'The credentials to set.',
 				credentialsName: 'The name the credentials should be saved as. Use a name<br />which makes it clear to what exactly they give access to.<br />For credentials of an Email account that could be the Email address itself.',
@@ -207,8 +223,20 @@ export default mixins(
 
 			return this.credentialDataDynamic !== null && !!this.credentialDataDynamic.data!.oauthTokenData;
 		},
+		oAuthCallbackUrl (): string {
+			return this.$store.getters.getWebhookBaseUrl + 'rest/oauth2-credential/callback';
+		},
 	},
 	methods: {
+		copyCallbackUrl (): void {
+			this.copyToClipboard(this.oAuthCallbackUrl);
+
+			this.$showMessage({
+				title: 'Copied',
+				message: `The callback URL got copied!`,
+				type: 'success',
+			});
+		},
 		parentTypes (name: string): string[] {
 			const credentialType = this.$store.getters.credentialType(name);
 
@@ -489,6 +517,20 @@ export default mixins(
 		display: none;
 	}
 
+	.callback-url {
+		position: relative;
+		top: 0;
+		width: 100%;
+		font-size: 0.9em;
+		white-space: normal;
+		overflow: visible;
+		text-overflow: initial;
+		color: #404040;
+		text-align: left;
+		direction: ltr;
+		word-break: break-all;
+	}
+
 	.headline:hover,
 	.headline-regular:hover {
 		.credentials-info {
@@ -496,6 +538,17 @@ export default mixins(
 		}
 	}
 
+	.expanded .minimize-button {
+		-webkit-transform: rotate(180deg);
+		-moz-transform: rotate(180deg);
+		-o-transform: rotate(180deg);
+		transform: rotate(180deg);
+	}
+
+	.oauth-callback-headline {
+		padding-top: 1em;
+		font-weight: 500;
+	}
 }
 
 </style>
