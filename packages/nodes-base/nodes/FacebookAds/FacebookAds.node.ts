@@ -2,7 +2,8 @@ import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription,
+    INodeTypeDescription,
+    IDataObject
 } from 'n8n-workflow';
 import { adAccountInsightOperations, adAccountInsightFields } from './AdAccountInsightDescription';
 
@@ -46,18 +47,19 @@ export class FacebookAds implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();
-
+        const returnData : IDataObject[] = [];
+        let responseData;
+        const resource = this.getNodeParameter('resource', 0) as string;
+        const operation = this.getNodeParameter('operation', 0) as string;
 		let item: INodeExecutionData;
-		let myString: string;
 
-		// Itterates over all input items and add the key "myString" with the
-		// value the parameter "myString" resolves to.
-		// (This could be a different value for each item in case it contains an expression)
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			myString = this.getNodeParameter('myString', itemIndex, '') as string;
-			item = items[itemIndex];
+            if (resource === 'adAccountInsight') {
+                if (operation === 'get' || operation === 'create') {
+                    
+                }
+            }
 
-			item.json['myString'] = myString;
 		}
 
 		return this.prepareOutputData(items);
