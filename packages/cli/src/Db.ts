@@ -14,6 +14,8 @@ import {
 	getRepository,
 } from 'typeorm';
 
+import * as config from '../config';
+
 import {
 	MongoDb,
 	MySQLDb,
@@ -32,6 +34,10 @@ import {
 } from './databases/postgresdb/migrations';
 
 import {
+	InitialMigration1587563438936
+} from './databases/mongodb/migrations';
+
+import {
 	InitialMigration1588157391238
 } from './databases/mysqldb/migrations';
 
@@ -48,14 +54,19 @@ export async function init(): Promise<IDatabaseCollections> {
 	let entities;
 	let connectionOptions: ConnectionOptions;
 
+	const entityPrefix = config.get('database.tablePrefix');
+
 	switch (dbType) {
 		case 'mongodb':
 			entities = MongoDb;
 			connectionOptions = {
 				type: 'mongodb',
-				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				entityPrefix,
 				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
 				useNewUrlParser: true,
+				migrations: [InitialMigration1587563438936],
+				migrationsRun: true,
+				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
 
@@ -63,7 +74,7 @@ export async function init(): Promise<IDatabaseCollections> {
 			entities = PostgresDb;
 			connectionOptions = {
 				type: 'postgres',
-				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				entityPrefix,
 				database: await GenericHelpers.getConfigValue('database.postgresdb.database') as string,
 				host: await GenericHelpers.getConfigValue('database.postgresdb.host') as string,
 				password: await GenericHelpers.getConfigValue('database.postgresdb.password') as string,
@@ -71,7 +82,8 @@ export async function init(): Promise<IDatabaseCollections> {
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
 				schema: await GenericHelpers.getConfigValue('database.postgresdb.schema') as string,
 				migrations: [InitialMigration1587669153312],
-				migrationsRun: true
+				migrationsRun: true,
+				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
 
@@ -81,13 +93,14 @@ export async function init(): Promise<IDatabaseCollections> {
 			connectionOptions = {
 				type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
 				database: await GenericHelpers.getConfigValue('database.mysqldb.database') as string,
-				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				entityPrefix,
 				host: await GenericHelpers.getConfigValue('database.mysqldb.host') as string,
 				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
 				migrations: [InitialMigration1588157391238],
-				migrationsRun: true
+				migrationsRun: true,
+				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
 
@@ -96,9 +109,10 @@ export async function init(): Promise<IDatabaseCollections> {
 			connectionOptions = {
 				type: 'sqlite',
 				database:  path.join(n8nFolder, 'database.sqlite'),
-				entityPrefix: await GenericHelpers.getConfigValue('database.tablePrefix') as string,
+				entityPrefix,
 				migrations: [InitialMigration1588102412422],
 				migrationsRun: true,
+				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
 
