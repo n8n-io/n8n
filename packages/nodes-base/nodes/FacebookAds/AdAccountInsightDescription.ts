@@ -32,7 +32,7 @@ export const adAccountInsightOperations = [
 export const adAccountInsightFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                adAccount:get                                */
+/*                                adAccountInsights:get                       */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ad set ID',
@@ -45,7 +45,7 @@ export const adAccountInsightFields = [
 					'adAccountInsight',
 				],
 				operation: [
-					'get'
+					'get', 'create'
 				]
 			},
 		},
@@ -63,7 +63,7 @@ export const adAccountInsightFields = [
 					'adAccountInsight',
 				],
 				operation: [
-					'get',
+					'get', 'create'
 				],
 			},
 		},
