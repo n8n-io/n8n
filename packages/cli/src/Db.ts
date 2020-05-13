@@ -80,7 +80,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				password: await GenericHelpers.getConfigValue('database.postgresdb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
-				schema: await GenericHelpers.getConfigValue('database.postgresdb.schema') as string,
+				schema: config.get('database.postgresdb.schema'),
 				migrations: [InitialMigration1587669153312],
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,

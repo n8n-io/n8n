@@ -6,7 +6,11 @@ export class InitialMigration1587669153312 implements MigrationInterface {
 	name = 'InitialMigration1587669153312';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.get('database.tablePrefix');
+		const schema = config.get('database.postgresdb.schema');
+		if (schema) {
+			tablePrefix = schema + '.' + tablePrefix;
+		}
 
 		await queryRunner.query(`CREATE TABLE IF NOT EXISTS ${tablePrefix}credentials_entity ("id" SERIAL NOT NULL, "name" character varying(128) NOT NULL, "data" text NOT NULL, "type" character varying(32) NOT NULL, "nodesAccess" json NOT NULL, "createdAt" TIMESTAMP NOT NULL, "updatedAt" TIMESTAMP NOT NULL, CONSTRAINT PK_814c3d3c36e8a27fa8edb761b0e PRIMARY KEY ("id"))`, undefined);
 		await queryRunner.query(`CREATE INDEX IF NOT EXISTS IDX_07fde106c0b471d8cc80a64fc8 ON ${tablePrefix}credentials_entity (type) `, undefined);
@@ -16,7 +20,11 @@ export class InitialMigration1587669153312 implements MigrationInterface {
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		let tablePrefix = config.get('database.tablePrefix');
+		const schema = config.get('database.postgresdb.schema');
+		if (schema) {
+			tablePrefix = schema + '.' + tablePrefix;
+		}
 
 		await queryRunner.query(`DROP TABLE ${tablePrefix}workflow_entity`, undefined);
 		await queryRunner.query(`DROP INDEX IDX_c4d999a5e90784e8caccf5589d`, undefined);
