@@ -106,6 +106,7 @@
         "request-promise-native": "^1.0.7",
         "sqlite3": "^4.2.0",
         "sse-channel": "^3.1.1",
+        "tslib": "1.11.2",
         "typeorm": "^0.2.24"
     },
     "jest": {
