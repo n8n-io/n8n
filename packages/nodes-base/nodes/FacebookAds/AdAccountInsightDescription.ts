@@ -34,9 +34,10 @@ export const adAccountInsightFields = [
 /* -------------------------------------------------------------------------- */
 /*                                adAccountInsights:get                       */
 /* -------------------------------------------------------------------------- */
+
 	{
 		displayName: 'Ad set ID',
-		name: 'adSetId',
+		name: 'itemId',
 		type: 'string',
 		required: true,
 		displayOptions: {
@@ -45,12 +46,68 @@ export const adAccountInsightFields = [
 					'adAccountInsight',
 				],
 				operation: [
-					'get', 'create'
+					'get'
 				]
 			},
 		},
 		description: 'ID of ad account to',
-    },
+	},
+	{
+		displayName: 'Campaign ID',
+		name: 'itemId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'adAccountInsight',
+				],
+				operation: [
+					'create'
+				]
+			},
+		},
+		description: 'ID of ad account to',
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: 'Insert JSON data instead of manual parameter selection.',
+		displayOptions: {
+			show: {
+				resource: [
+					'adAccountInsight'
+				],
+				operation: [
+					'get', 'create'
+				]
+			}
+		}
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'adAccountInsight'
+				],
+				operation: [
+					'get', 'create'
+				],
+				jsonParameters: [
+					true,
+				]
+			}
+		}
+	},
     {
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -65,6 +122,9 @@ export const adAccountInsightFields = [
 				operation: [
 					'get', 'create'
 				],
+				jsonParameters: [
+					false,
+				]
 			},
 		},
 		options: [
@@ -308,15 +368,16 @@ export const adAccountInsightFields = [
 				displayName: 'Default Summary',
 				name: 'defaultSummary',
 				type: 'boolean',
-				description: 'Determine whether to return a summary. If summary is set, this param is be ignored; otherwise, a summary section with the same fields as specified by fields will be included in the summary section.',
 				default: false,
+				description: 'Determine whether to return a summary. If summary is set, this param is be ignored; otherwise, a summary section with the same fields as specified by fields will be included in the summary section.',
 			},
 			{
 				displayName: 'Export Columns',
 				name: 'exportColumns',
 				type: 'string',
+				default: '',
 				description: 'Comma separated fields on the exporting report file. It is an optional param. Exporting columns are equal to the param fields, if you leave this param blank.',
-				placeholder: 'Field'
+				placeholder: 'column1,column2'
 			},
 			{
 				displayName: 'Export Format',
@@ -341,7 +402,7 @@ export const adAccountInsightFields = [
 				type: 'string',
 				default: '',
 				description: 'Set the file name of the exporting report.',
-				placeholder: 'Field',
+				placeholder: 'reportfile',
 			},
 			{
 				displayName: 'Fields',
@@ -349,7 +410,7 @@ export const adAccountInsightFields = [
 				type: 'string',
 				default: '',
 				description: 'Comma separated fields to be retrieved. Default behavior is to return impressions and spend.',
-				placeholder: 'Field',
+				placeholder: 'field1,field2,field3',
 			},
 			{
 				displayName: 'Filters',
@@ -570,11 +631,11 @@ export const adAccountInsightFields = [
 			},
 			{
 				displayName: 'Summary',
-				name: 'field',
+				name: 'summary',
 				type: 'string',
 				default: '',
 				description: 'If this param is used, a summary section will be included, with the comma separated fields listed in this param.',
-				placeholder: 'Fields',
+				placeholder: 'field1,field2,field3',
 			},
 			{
 				displayName: 'Summary Action Breakdowns',

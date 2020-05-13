@@ -23,16 +23,23 @@ export async function facebookAdsApiRequest(this: IHookFunctions | IExecuteFunct
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
-	}
+    }
+    
+    console.log(options);
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response.body) {
-			errorMessage = error.response.body.message || error.response.body.Message || error.message;
-		}
-
-		throw new Error(errorMessage);
+        console.log(error);
 	}
+}
+
+export function validateJSON(json : string | undefined) : {} | undefined {
+    let result;
+    try {
+        result = JSON.parse(json!);
+    } catch (exception) {
+        result = undefined;
+    }
+    return result;
 }
