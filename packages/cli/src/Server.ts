@@ -21,7 +21,7 @@ import * as csrf from 'csrf';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
-	CredentialsOverwrites,
+	CredentialsHelper,
 	CredentialTypes,
 	Db,
 	IActivationError,
@@ -51,7 +51,6 @@ import {
 	WorkflowCredentials,
 	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
 	WorkflowRunner,
 	GenericHelpers,
 } from './';
@@ -63,6 +62,7 @@ import {
 } from 'n8n-core';
 
 import {
+	ICredentialsEncrypted,
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
@@ -70,6 +70,7 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	IRunData,
+	IWorkflowCredentials,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -913,12 +914,15 @@ class App {
 				throw new Error('No encryption key got found to decrypt the credentials!');
 			}
 
-			const credentials = new Credentials(result.name, result.type, result.nodesAccess, result.data);
-			const savedCredentialsData = credentials.getData(encryptionKey);
-
-			// Load the credentials overwrites if any exist
-			const credentialsOverwrites = CredentialsOverwrites();
-			const oauthCredentials = credentialsOverwrites.applyOverwrite(credentials.type, savedCredentialsData);
+			// Decrypt the currently saved credentials
+			const workflowCredentials: IWorkflowCredentials = {
+				[result.type as string]: {
+					[result.name as string]: result as ICredentialsEncrypted,
+				},
+			};
+			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
 
 			const token = new csrf();
 			// Generate a CSRF prevention token and send it as a OAuth2 state stringma/ERR
@@ -939,8 +943,11 @@ class App {
 				state: stateEncodedStr,
 			});
 
-			savedCredentialsData.csrfSecret = csrfSecret;
-			credentials.setData(savedCredentialsData, encryptionKey);
+			// Encrypt the data
+			const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+			decryptedDataOriginal.csrfSecret = csrfSecret;
+
+			credentials.setData(decryptedDataOriginal, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
 			// Add special database related data
@@ -992,15 +999,18 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			const credentials = new Credentials(result.name, result.type, result.nodesAccess, result.data);
-			const savedCredentialsData = credentials.getData(encryptionKey!);
-
-			// Load the credentials overwrites if any exist
-			const credentialsOverwrites = CredentialsOverwrites();
-			const oauthCredentials = credentialsOverwrites.applyOverwrite(credentials.type, savedCredentialsData);
+			// Decrypt the currently saved credentials
+			const workflowCredentials: IWorkflowCredentials = {
+				[result.type as string]: {
+					[result.name as string]: result as ICredentialsEncrypted,
+				},
+			};
+			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
 
 			const token = new csrf();
-			if (oauthCredentials.csrfSecret === undefined || !token.verify(oauthCredentials.csrfSecret as string, state.token)) {
+			if (decryptedDataOriginal.csrfSecret === undefined || !token.verify(decryptedDataOriginal.csrfSecret as string, state.token)) {
 				const errorResponse = new ResponseHelper.ResponseError('The OAuth2 callback state is invalid!', undefined, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
@@ -1032,18 +1042,19 @@ class App {
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
-			if (savedCredentialsData.oauthTokenData) {
+			if (decryptedDataOriginal.oauthTokenData) {
 				// Only overwrite supplied data as some providers do for example just return the
 				// refresh_token on the very first request and not on subsequent ones.
-				Object.assign(savedCredentialsData.oauthTokenData, oauthToken.data);
+				Object.assign(decryptedDataOriginal.oauthTokenData, oauthToken.data);
 			} else {
 				// No data exists so simply set
-				savedCredentialsData.oauthTokenData = oauthToken.data;
+				decryptedDataOriginal.oauthTokenData = oauthToken.data;
 			}
 
-			_.unset(savedCredentialsData, 'csrfSecret');
+			_.unset(decryptedDataOriginal, 'csrfSecret');
 
-			credentials.setData(savedCredentialsData, encryptionKey);
+			const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+			credentials.setData(decryptedDataOriginal, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 			// Add special database related data
 			newCredentialsData.updatedAt = this.getCurrentDate();

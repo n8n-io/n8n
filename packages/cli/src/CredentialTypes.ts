@@ -5,16 +5,15 @@ import {
 
 import {
 	CredentialsOverwrites,
+	ICredentialsTypeData,
 } from './';
 
 class CredentialTypesClass implements ICredentialTypesInterface {
 
-	credentialTypes: {
-		[key: string]: ICredentialType
-	} = {};
+	credentialTypes: ICredentialsTypeData = {};
 
 
-	async init(credentialTypes: { [key: string]: ICredentialType }): Promise<void> {
+	async init(credentialTypes: ICredentialsTypeData): Promise<void> {
 		this.credentialTypes = credentialTypes;
 
 		// Load the credentials overwrites if any exist

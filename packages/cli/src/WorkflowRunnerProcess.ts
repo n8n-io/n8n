@@ -1,5 +1,7 @@
 
 import {
+	CredentialsOverwrites,
+	CredentialTypes,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
 	WorkflowExecuteAdditionalData,
@@ -57,6 +59,14 @@ export class WorkflowRunnerProcess {
 
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(nodeTypesData);
+
+		// Init credential types the workflow uses (is needed to apply default values to credentials)
+		const credentialTypes = CredentialTypes();
+		await credentialTypes.init(inputData.credentialsTypeData);
+
+		// Load the credentials overwrites if any exist
+		const credentialsOverwrites = CredentialsOverwrites();
+		await credentialsOverwrites.init();
 
 		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials);
