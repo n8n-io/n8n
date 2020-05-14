@@ -1,13 +1,45 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const adOperations = [
+export const adInsightsOperations = [
+	{
+		displayName: 'Type',
+		name: 'type',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'insightsReport'
+				]
+			}
+		},
+		options: [
+			{
+				name: 'Ad',
+				value: 'ad'
+			},
+			{
+				name: 'Ad Account',
+				value: 'adAccount'
+			},
+			{
+				name: 'Ad Campaign',
+				value: 'adCampaign'
+			},
+			{
+				name: 'Ad Set',
+				value: 'adSet'
+			}
+		],
+		default: 'ad',
+		description: 'The description text',
+	},
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
+				type: [
 					'adAccount', 'adCampaign', 'adSet', 'ad'
 				],
 			},
@@ -16,12 +48,12 @@ export const adOperations = [
             {
 				name: 'Create',
 				value: 'create',
-				description: 'Create insights report run.',
+				description: 'Create a insights report run.',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get insights report.',
+				description: 'Get an insights report.',
             }
 		],
 		default: 'create',
@@ -29,7 +61,7 @@ export const adOperations = [
 	},
 ] as INodeProperties[];
 
-export const adFields = [
+export const adInsightsFields = [
 
 /* -------------------------------------------------------------------------- */
 /*                                ad*:get/create                      		  */
@@ -41,7 +73,7 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
+				type: [
 					'ad'
 				],
 				operation: [
@@ -58,7 +90,7 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
+				type: [
 					'adAccount', 'adCampaign', 'adSet', 'ad'
 				],
 				operation: [
@@ -75,7 +107,7 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
+				type: [
 					'adSet'
 				],
 				operation: [
@@ -92,7 +124,7 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
+				type: [
 					'adAccount', 'adCampaign'
 				],
 				operation: [
@@ -110,7 +142,7 @@ export const adFields = [
 		description: 'Insert JSON data instead of manual parameter selection.',
 		displayOptions: {
 			show: {
-				resource: [
+				type: [
 					'ad', 'adAccount', 'adCampaign', 'adSet'
 				],
 				operation: [
@@ -129,7 +161,7 @@ export const adFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
+				type: [
 					'ad', 'adAccount', 'adCampaign', 'adSet'
 				],
 				operation: [
@@ -149,7 +181,7 @@ export const adFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
+				type: [
 					'ad', 'adAccount', 'adCampaign', 'adSet'
 				],
 				operation: [

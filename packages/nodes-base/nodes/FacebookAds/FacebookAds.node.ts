@@ -5,9 +5,10 @@ import {
     INodeTypeDescription,
     IDataObject
 } from 'n8n-workflow';
-import { adOperations, adFields } from './AdAccountInsightDescription';
+import { adInsightsOperations, adInsightsFields } from './AdInsightsDescription';
 import { IAdInsightParameters, IFilter, ITimeRange } from './AdInsightInterface';
 import { validateJSON, facebookAdsApiRequest } from './GenericFunctions';
+import { adFields, adOperations } from './AdDescription';
 
 
 export class FacebookAds implements INodeType {
@@ -41,25 +42,19 @@ export class FacebookAds implements INodeType {
                         value: 'ad'
                     },
                     {
-                        name: 'Ad Account',
-                        value: 'adAccount'
-                    },
-                    {
-                        name: 'Ad Campaign',
-                        value: 'adCampaign'
-                    },
-                    {
-                        name: 'Ad Set',
-                        value: 'adSet'
+                        name: 'Insights Report',
+                        value: 'insightsReport'
                     }
                 ],
 				default: 'ad',
-				description: 'The description text',
+				description: 'Facebook Ads resource to use.',
             },
-            
-            // Ad Account
+            // Ad
             ...adOperations,
-            ...adFields
+            ...adFields,            
+            // Ad Insights
+            ...adInsightsOperations,
+            ...adInsightsFields
 		]
 	};
 
