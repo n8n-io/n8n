@@ -2,6 +2,7 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
+	ICredentialType,
 	IDataObject,
 	IExecutionError,
 	IRun,
@@ -34,6 +35,10 @@ export interface IActivationError {
 
 export interface ICustomRequest extends Request {
 	parsedUrl: Url | undefined;
+}
+
+export interface ICredentialsTypeData {
+	[key: string]: ICredentialType;
 }
 
 export interface ICredentialsOverwrite {
@@ -350,7 +355,10 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 }
 
+
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
+	credentialsOverwrite: ICredentialsOverwrite;
+	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
 	nodeTypeData: ITransferNodeTypes;
 }

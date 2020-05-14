@@ -55,7 +55,7 @@
 			</el-tooltip>
 		</div>
 		<div v-for="parameter in credentialProperties" :key="parameter.name">
-			<el-row v-if="displayCredentialParameter(parameter)" class="parameter-wrapper">
+			<el-row class="parameter-wrapper">
 				<el-col :span="6" class="parameter-name">
 					{{parameter.displayName}}:
 					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
@@ -128,6 +128,7 @@ import {
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
+	NodeHelpers,
 } from 'n8n-workflow';
 
 import ParameterInput from '@/components/ParameterInput.vue';
@@ -199,6 +200,9 @@ export default mixins(
 		},
 		credentialProperties (): INodeProperties[] {
 			return this.credentialTypeData.properties.filter((propertyData: INodeProperties) => {
+				if (!this.displayCredentialParameter(propertyData)) {
+					return false;
+				}
 				return !this.credentialTypeData.__overwrittenProperties || !this.credentialTypeData.__overwrittenProperties.includes(propertyData.name);
 			});
 		},
@@ -283,7 +287,8 @@ export default mixins(
 				name: this.name,
 				type: (this.credentialTypeData as ICredentialType).name,
 				nodesAccess,
-				data: this.propertyValue,
+				// Save only the none default data
+				data: NodeHelpers.getNodeParameters(this.credentialTypeData.properties as INodeProperties[], this.propertyValue as INodeParameters, false, false),
 			} as ICredentialsDecrypted;
 
 			let result;
@@ -402,7 +407,8 @@ export default mixins(
 				name: this.name,
 				type: (this.credentialTypeData as ICredentialType).name,
 				nodesAccess,
-				data: this.propertyValue,
+				// Save only the none default data
+				data: NodeHelpers.getNodeParameters(this.credentialTypeData.properties as INodeProperties[], this.propertyValue as INodeParameters, false, false),
 			} as ICredentialsDecrypted;
 
 			let result;
