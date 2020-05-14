@@ -142,6 +142,9 @@ export const adInsightsFields = [
 		description: 'Insert JSON data instead of manual parameter selection.',
 		displayOptions: {
 			show: {
+				resource: [
+					'insightsReport'
+				],
 				type: [
 					'ad', 'adAccount', 'adCampaign', 'adSet'
 				],
@@ -483,7 +486,7 @@ export const adInsightsFields = [
 				type: 'fixedCollection',
 				default: 'properties',
 				description: 'Filters on the report data. This parameter is an array of filter objects.',
-				tyoeOptions: {
+				typeOptions: {
 					multipleValues: true
 				},
 				options: [

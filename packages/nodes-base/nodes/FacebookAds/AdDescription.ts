@@ -33,6 +33,9 @@ export const adOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
+                resource: [
+					'ad'
+				],
 				operation: [
 					'get'
 				],
@@ -76,6 +79,9 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
+                resource: [
+					'ad'
+				],
 				operation: [
 					'get'
                 ],
@@ -94,6 +100,9 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
+                resource: [
+					'ad'
+				],
 				operation: [
 					'get'
                 ],
@@ -112,6 +121,9 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
+                resource: [
+					'ad'
+				],
 				operation: [
 					'get'
                 ],
@@ -130,6 +142,9 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
+                resource: [
+					'ad'
+				],
 				operation: [
 					'get'
                 ],
@@ -149,6 +164,9 @@ export const adFields = [
 		default: {},
         displayOptions: {
             show: {
+                resource: [
+					'ad'
+				],
                 operation: [
                     'get'
                 ],
@@ -251,28 +269,36 @@ export const adFields = [
                 typeOptions: {
                     multipleValues: true
                 },
-                default: 'impression',
                 options: [
                     {
-                        displayName: 'Status',
+                        displayName: 'Status Properties',
                         name: 'properties',
                         values: [
                             {
-                                name: 'ACTIVE',
-                                value: 'ACTIVE'
-                            },
-                            {
-                                name: 'ARCHIVED',
-                                value: 'ARCHIVED'
-                            },
-                            {
-                                name: 'DELETED',
-                                value: 'DELETED'
-                            },
-                            {
-                                name: 'PAUSED',
-                                value: 'PAUSED'
-                            },
+                                displayName: 'Status',
+                                name: 'status',
+                                type: 'options',
+                                default: '',
+                                description: 'Effective status.',
+                                options: [
+                                    {
+                                        name: 'ACTIVE',
+                                        value: 'ACTIVE'
+                                    },
+                                    {
+                                        name: 'ARCHIVED',
+                                        value: 'ARCHIVED'
+                                    },
+                                    {
+                                        name: 'DELETED',
+                                        value: 'DELETED'
+                                    },
+                                    {
+                                        name: 'PAUSED',
+                                        value: 'PAUSED'
+                                    },
+                                ]
+                            }
                         ]
                     }
                 ]
@@ -329,6 +355,9 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
+                resource: [
+					'ad'
+				],
 				operation: [
 					'create'
                 ],
@@ -344,6 +373,9 @@ export const adFields = [
 		required: true,
 		displayOptions: {
 			show: {
+                resource: [
+					'ad'
+				],
 				operation: [
 					'create'
                 ],
