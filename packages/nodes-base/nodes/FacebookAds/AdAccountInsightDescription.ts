@@ -1,6 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
-export const adAccountInsightOperations = [
+export const adOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,7 +8,7 @@ export const adAccountInsightOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'adAccountInsight',
+					'adAccount', 'adCampaign', 'adSet', 'ad'
 				],
 			},
 		},
@@ -16,12 +16,12 @@ export const adAccountInsightOperations = [
             {
 				name: 'Create',
 				value: 'create',
-				description: 'Create ad account insights report.',
+				description: 'Create insights report run.',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get ad account insights report.',
+				description: 'Get insights report.',
             }
 		],
 		default: 'create',
@@ -29,12 +29,28 @@ export const adAccountInsightOperations = [
 	},
 ] as INodeProperties[];
 
-export const adAccountInsightFields = [
+export const adFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                adAccountInsights:get                       */
+/*                                ad*:get/create                      		  */
 /* -------------------------------------------------------------------------- */
-
+	{
+		displayName: 'Ad ID',
+		name: 'itemId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'ad'
+				],
+				operation: [
+					'create'
+				]
+			},
+		},
+		description: 'ID of ad account to get.',
+	},
 	{
 		displayName: 'Ad set ID',
 		name: 'itemId',
@@ -43,14 +59,31 @@ export const adAccountInsightFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'adAccountInsight',
+					'adAccount', 'adCampaign', 'adSet', 'ad'
 				],
 				operation: [
 					'get'
 				]
 			},
 		},
-		description: 'ID of ad account to',
+		description: 'ID of ad account to get.',
+	},
+	{
+		displayName: 'Ad set ID',
+		name: 'itemId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'adSet'
+				],
+				operation: [
+					'create'
+				]
+			},
+		},
+		description: 'Set ad ID to create report from.',
 	},
 	{
 		displayName: 'Campaign ID',
@@ -60,7 +93,7 @@ export const adAccountInsightFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'adAccountInsight',
+					'adAccount', 'adCampaign'
 				],
 				operation: [
 					'create'
@@ -78,10 +111,10 @@ export const adAccountInsightFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'adAccountInsight'
+					'ad', 'adAccount', 'adCampaign', 'adSet'
 				],
 				operation: [
-					'get', 'create'
+					'create', 'get'
 				]
 			}
 		}
@@ -97,10 +130,10 @@ export const adAccountInsightFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'adAccountInsight'
+					'ad', 'adAccount', 'adCampaign', 'adSet'
 				],
 				operation: [
-					'get', 'create'
+					'create', 'get'
 				],
 				jsonParameters: [
 					true,
@@ -117,10 +150,10 @@ export const adAccountInsightFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'adAccountInsight',
+					'ad', 'adAccount', 'adCampaign', 'adSet'
 				],
 				operation: [
-					'get', 'create'
+					'create', 'get'
 				],
 				jsonParameters: [
 					false,

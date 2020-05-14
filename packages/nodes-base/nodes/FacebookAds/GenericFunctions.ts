@@ -13,24 +13,19 @@ export async function facebookAdsApiRequest(this: IHookFunctions | IExecuteFunct
 		throw new Error('No credentials got returned!');
 	}
 
-	let options: OptionsWithUri = {
+	const options: OptionsWithUri = {
+		headers: { 'Authorization': `Bearer ${credentials.accessToken}`},
 		method,
 		qs,
-		body : {access_token : credentials.access_token},
+		body,
 		uri: uri ||`https://graph.facebook.com/v7.0/${resource}`,
 		json: true
 	};
-	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
-		delete options.body;
-    }
     
-    console.log(options);
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-        console.log(error);
+		throw new Error(`Facebook Ads error. Status Code: ${error.statusCode} Message: ${error.message}`);
 	}
 }
 
