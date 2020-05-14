@@ -12,7 +12,14 @@ class CredentialsOverwritesClass {
 
 	private overwriteData: ICredentialsOverwrite = {};
 
-	async init() {
+	async init(overwriteData?: ICredentialsOverwrite) {
+		if (overwriteData !== undefined) {
+			// If data is already given it can directly be set instead of
+			// loaded from environment
+			this.overwriteData = overwriteData;
+			return;
+		}
+
 		const data = await GenericHelpers.getConfigValue('credentials.overwrite') as string;
 
 		try {

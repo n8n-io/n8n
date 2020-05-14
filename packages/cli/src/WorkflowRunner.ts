@@ -1,5 +1,9 @@
 import {
 	ActiveExecutions,
+	CredentialsOverwrites,
+	CredentialTypes,
+	ICredentialsOverwrite,
+	ICredentialsTypeData,
 	IProcessMessageDataHook,
 	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
@@ -31,12 +35,14 @@ import { fork } from 'child_process';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
+	credentialsOverwrites: ICredentialsOverwrite;
 	push: Push.Push;
 
 
 	constructor() {
 		this.push = Push.getInstance();
 		this.activeExecutions = ActiveExecutions.getInstance();
+		this.credentialsOverwrites = CredentialsOverwrites().getAll();
 	}
 
 
@@ -192,8 +198,16 @@ export class WorkflowRunner {
 			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
 		}
 
+		const credentialTypes = CredentialTypes();
+		const credentialTypeData: ICredentialsTypeData = {};
+		for (const credentialType of Object.keys(data.credentials)) {
+			credentialTypeData[credentialType] = credentialTypes.getByName(credentialType);
+		}
+
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = this.credentialsOverwrites;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypeData; // TODO: Still needs correct value
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 
