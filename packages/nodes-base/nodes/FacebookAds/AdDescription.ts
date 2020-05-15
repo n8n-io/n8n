@@ -13,18 +13,13 @@ export const adOperations = [
 			},
 		},
 		options: [
-            {
-				name: 'Create',
-				value: 'create',
-				description: 'Create an ad.',
-			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get ads.',
             }
 		],
-		default: 'create',
+		default: 'get',
 		description: 'The operation to perform.',
     },
     {
@@ -170,9 +165,6 @@ export const adFields = [
                 operation: [
                     'get'
                 ],
-                getBy: [
-                    'adAccount'
-                ],
             },
         },
         options: [
@@ -262,46 +254,12 @@ export const adFields = [
                 ]
             },
             {
-                displayName: 'Effective Status',
-                name: 'effectiveStatus',
-                type: 'fixedCollection',
-                description: 'Filter ads by effective status.',
-                typeOptions: {
-                    multipleValues: true
-                },
-                options: [
-                    {
-                        displayName: 'Status Properties',
-                        name: 'properties',
-                        values: [
-                            {
-                                displayName: 'Status',
-                                name: 'status',
-                                type: 'options',
-                                default: '',
-                                description: 'Effective status.',
-                                options: [
-                                    {
-                                        name: 'ACTIVE',
-                                        value: 'ACTIVE'
-                                    },
-                                    {
-                                        name: 'ARCHIVED',
-                                        value: 'ARCHIVED'
-                                    },
-                                    {
-                                        name: 'DELETED',
-                                        value: 'DELETED'
-                                    },
-                                    {
-                                        name: 'PAUSED',
-                                        value: 'PAUSED'
-                                    },
-                                ]
-                            }
-                        ]
-                    }
-                ]
+                displayName: 'Fields',
+                name: 'fields',
+                type: 'string',
+                description: 'Comma separated fields of ad item you want to retrieve.',
+                default: '',
+                placeholder: 'bid_amount,campaign'
             },
             {
 				displayName: 'Time Range',
@@ -334,54 +292,6 @@ export const adFields = [
                     },
 				]
             },
-            {
-                displayName: 'Updated Since',
-                name: 'updatedSince',
-                type: 'number',
-                required: true,
-                description: 'Time since the Ad has been updated.',
-                default: ''
-            }
         ]
     },
-
-/* -------------------------------------------------------------------------- */
-/*                                ad:create                           		  */
-/* -------------------------------------------------------------------------- */
-    {
-		displayName: 'Ad Creative ID',
-		name: 'adCreativeId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-                resource: [
-					'ad'
-				],
-				operation: [
-					'create'
-                ],
-			},
-		},
-        description: 'ID of ad creative.',
-        default: ''
-    },
-    {
-		displayName: 'Ad Set ID',
-		name: 'adSetId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-                resource: [
-					'ad'
-				],
-				operation: [
-					'create'
-                ],
-			},
-		},
-        description: 'ID of ad creative.',
-        default: ''
-	},
 ] as INodeProperties[];

@@ -68,7 +68,7 @@ export class FacebookAds implements INodeType {
         const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-            if (resource === 'adAccount' || resource === 'ad' || resource === 'adSet' || resource === 'adCampaign') {
+            if (resource === 'insightsReport') {
                 if (operation === 'get' || operation === 'create') {
                     const jsonParameters = this.getNodeParameter('jsonParameters', itemIndex) as boolean;
                     const body : IAdInsightParameters = {};
@@ -182,7 +182,51 @@ export class FacebookAds implements INodeType {
                             }
                         }
                 }
+            }
 
+            if (resource === 'ad') {
+                if (operation === 'get') {
+                    const body : IAdInsightParameters = {};
+                    const itemId : string = this.getNodeParameter('itemId', itemIndex) as string;
+                    const getBy : string = this.getNodeParameter('getBy', itemIndex) as string;
+                    const additionalFields : IDataObject = this.getNodeParameter('additionalFields', itemIndex) as IDataObject;
+
+                    if (additionalFields) {
+                        if (additionalFields.datePreset) {
+                            body.date_preset = additionalFields.datePreset as string;
+                        }
+                        if (additionalFields.datePreset) {
+                            body.fields = additionalFields.fields.split(',') as string[];
+                        }
+                        if (additionalFields.timeRange) {
+                            body.time_range = additionalFields.timeRange.properties as ITimeRange;
+                        }
+                    }
+
+                    let endpoint : string;
+                    let method : string;
+
+                    if (getBy === 'id') {
+                        endpoint = `${itemId}`;
+                        method = 'GET';
+                        responseData = await facebookAdsApiRequest.call(this, method, endpoint, body);
+                    }
+                    if (getBy === 'adAccount') {
+                        endpoint = `act_${itemId}/ads`;
+                        method = 'GET';
+                        responseData = await facebookAdsApiRequest.call(this, method, endpoint, body);
+                    }
+                    if (getBy === 'adCampaign') {
+                        endpoint = `${itemId}/ads`;
+                        method = 'GET';
+                        responseData = await facebookAdsApiRequest.call(this, method, endpoint, body);
+                    }
+                    if (getBy === 'adSet') {
+                        endpoint = `${itemId}/ads`;
+                        method = 'GET';
+                        responseData = await facebookAdsApiRequest.call(this, method, endpoint, body);
+                    }
+                }
             }
             
             if (Array.isArray(responseData)) {

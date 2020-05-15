@@ -484,7 +484,6 @@ export const adInsightsFields = [
 				displayName: 'Filters',
 				name: 'filters',
 				type: 'fixedCollection',
-				default: 'properties',
 				description: 'Filters on the report data. This parameter is an array of filter objects.',
 				typeOptions: {
 					multipleValues: true
