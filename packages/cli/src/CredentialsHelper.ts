@@ -6,6 +6,7 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
 	INodeParameters,
+	INodeProperties,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -41,6 +42,38 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 
 	/**
+	 * Returns all the properties of the credentials with the given name
+	 *
+	 * @param {string} type The name of the type to return credentials off
+	 * @returns {INodeProperties[]}
+	 * @memberof CredentialsHelper
+	 */
+	getCredentialsProperties(type: string): INodeProperties[] {
+		const credentialTypes = CredentialTypes();
+		const credentialTypeData = credentialTypes.getByName(type);
+
+		if (credentialTypeData === undefined) {
+			throw new Error(`The credentials of type "${type}" are not known.`);
+		}
+
+		if (credentialTypeData.extends === undefined) {
+			return credentialTypeData.properties;
+		}
+
+		const combineProperties = [] as INodeProperties[];
+		for (const credentialsTypeName of credentialTypeData.extends) {
+			const mergeCredentialProperties = this.getCredentialsProperties(credentialsTypeName);
+			NodeHelpers.mergeNodeProperties(combineProperties, mergeCredentialProperties);
+		}
+
+		// The properties defined on the parent credentials take presidence
+		NodeHelpers.mergeNodeProperties(combineProperties, credentialTypeData.properties);
+
+		return combineProperties;
+	}
+
+
+	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 *
 	 * @param {string} name Name of the credentials to return data of
@@ -71,15 +104,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @memberof CredentialsHelper
 	 */
 	applyDefaultsAndOverwrites(decryptedDataOriginal: ICredentialDataDecryptedObject, type: string): ICredentialDataDecryptedObject {
-		const credentialTypes = CredentialTypes();
-		const credentialType = credentialTypes.getByName(type);
-
-		if (credentialType === undefined) {
-			throw new Error(`The credential type "${type}" is not known and can so not be decrypted.`);
-		}
+		const credentialsProperties = this.getCredentialsProperties(type);
 
 		// Add the default credential values
-		const decryptedData = NodeHelpers.getNodeParameters(credentialType.properties, decryptedDataOriginal as INodeParameters, true, false) as ICredentialDataDecryptedObject;
+		const decryptedData = NodeHelpers.getNodeParameters(credentialsProperties, decryptedDataOriginal as INodeParameters, true, false) as ICredentialDataDecryptedObject;
 
 		if (decryptedDataOriginal.oauthTokenData !== undefined) {
 			// The OAuth data gets removed as it is not defined specifically as a parameter

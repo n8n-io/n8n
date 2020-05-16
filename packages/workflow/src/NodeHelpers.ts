@@ -1093,3 +1093,27 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 		destination.typeUnknown = true;
 	}
 }
+
+
+
+/**
+ * Merges the given node properties
+ *
+ * @export
+ * @param {INodeProperties[]} mainProperties
+ * @param {INodeProperties[]} addProperties
+ */
+export function mergeNodeProperties(mainProperties: INodeProperties[], addProperties: INodeProperties[]): void {
+	let existingIndex: number;
+	for (const property of addProperties) {
+		existingIndex = mainProperties.findIndex(element => element.name === property.name);
+
+		if (existingIndex === -1) {
+			// Property does not exist yet, so add
+			mainProperties.push(property);
+		} else {
+			// Property exists already, so overwrite
+			mainProperties[existingIndex] = property;
+		}
+	}
+}
