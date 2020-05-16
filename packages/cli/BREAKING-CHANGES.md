@@ -41,6 +41,7 @@ The names of the following nodes were not set correctly and got fixed:
   - Coda
   - Eventbrite-Trigger
   - Flow
+  - Flow-Trigger
   - Gumroad-Trigger
   - Jira
   - Mailchimp-Trigger
@@ -73,6 +74,7 @@ After upgrading, select the whole workflow in the editor, copy it, and paste it 
   - "n8n-nodes-base.Coda" -> "n8n-nodes-base.coda"
   - "n8n-nodes-base.eventbrite" -> "n8n-nodes-base.eventbriteTrigger"
   - "n8n-nodes-base.Flow" -> "n8n-nodes-base.flow"
+  - "n8n-nodes-base.flow" -> "n8n-nodes-base.flowTrigger"
   - "n8n-nodes-base.gumroad" -> "n8n-nodes-base.gumroadTrigger"
   - "n8n-nodes-base.Jira Software Cloud" -> "n8n-nodes-base.jira"
   - "n8n-nodes-base.Mailchimp" -> "n8n-nodes-base.mailchimpTrigger"
