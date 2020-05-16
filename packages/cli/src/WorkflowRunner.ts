@@ -179,8 +179,8 @@ export class WorkflowRunner {
 		const executionId = this.activeExecutions.add(data, subprocess);
 
 		// Check if workflow contains a "executeWorkflow" Node as in this
-		// case we can not know which nodeTypes will be needed and so have
-		// to load all of them in the workflowRunnerProcess
+		// case we can not know which nodeTypes and credentialTypes will
+		// be needed and so have to load all of them in the workflowRunnerProcess
 		let loadAllNodeTypes = false;
 		for (const node of data.workflowData.nodes) {
 			if (node.type === 'n8n-nodes-base.executeWorkflow') {
@@ -190,19 +190,19 @@ export class WorkflowRunner {
 		}
 
 		let nodeTypeData: ITransferNodeTypes;
+		let credentialTypeData: ICredentialsTypeData;
+
 		if (loadAllNodeTypes === true) {
-			// Supply all nodeTypes
+			// Supply all nodeTypes and credentialTypes
 			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
+			const credentialTypes = CredentialTypes();
+			credentialTypeData = credentialTypes.credentialTypes;
 		} else {
-			// Supply only nodeTypes which the workflow needs
+			// Supply only nodeTypes and credentialTypes which the workflow needs
 			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
+			credentialTypeData = WorkflowHelpers.getCredentialsData(data.credentials);
 		}
 
-		const credentialTypes = CredentialTypes();
-		const credentialTypeData: ICredentialsTypeData = {};
-		for (const credentialType of Object.keys(data.credentials)) {
-			credentialTypeData[credentialType] = credentialTypes.getByName(credentialType);
-		}
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
