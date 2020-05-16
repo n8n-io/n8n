@@ -37,6 +37,7 @@ import {
 } from '@/Interface';
 
 import {
+	NodeHelpers,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -172,20 +173,6 @@ export default mixins(
 		},
 	},
 	methods: {
-		mergeCredentialProperties (mainProperties: INodeProperties[], addProperties: INodeProperties[]): void {
-			let existingIndex: number;
-			for (const property of addProperties) {
-				existingIndex = mainProperties.findIndex(element => element.name === property.name);
-
-				if (existingIndex === -1) {
-					// Property does not exist yet, so add
-					mainProperties.push(property);
-				} else {
-					// Property exists already, so overwrite
-					mainProperties[existingIndex] = property;
-				}
-			}
-		},
 		getCredentialProperties (name: string): INodeProperties[] {
 			const credentialsData = this.$store.getters.credentialType(name);
 
@@ -200,11 +187,11 @@ export default mixins(
 			const combineProperties = [] as INodeProperties[];
 			for (const credentialsTypeName of credentialsData.extends) {
 				const mergeCredentialProperties = this.getCredentialProperties(credentialsTypeName);
-				this.mergeCredentialProperties(combineProperties, mergeCredentialProperties);
+				NodeHelpers.mergeNodeProperties(combineProperties, mergeCredentialProperties);
 			}
 
 			// The properties defined on the parent credentials take presidence
-			this.mergeCredentialProperties(combineProperties, credentialsData.properties);
+			NodeHelpers.mergeNodeProperties(combineProperties, credentialsData.properties);
 
 			return combineProperties;
 		},
@@ -214,10 +201,6 @@ export default mixins(
 			if (credentialData === null || credentialData.extends === undefined) {
 				return credentialData;
 			}
-
-			// TODO: The credential-extend-resolve-logic is currently not needed in the backend
-			//       as the whole credential data gets saved with the defaults. That logic should,
-			//       however, probably also get improved in the future.
 
 			// Credentials extends another one. So get the properties of the one it
 			// extends and add them.
