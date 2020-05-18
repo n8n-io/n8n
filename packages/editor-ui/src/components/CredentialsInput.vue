@@ -336,6 +336,12 @@ export default mixins(
 				if (credentialData === null) {
 					return;
 				}
+
+				// Set the internal data directly so that even if it fails it displays a "Save" instead
+				// of the "Create" button. If that would not be done, people could not retry after a
+				// connect issue as it woult try to create credentials again which would fail as they
+				// exist already.
+				Vue.set(this, 'credentialDataTemp', credentialData);
 			} else {
 				// Exists already but got maybe changed. So save first
 				credentialData = await this.updateCredentials(false) as ICredentialsDecryptedResponse;
@@ -515,7 +521,7 @@ export default mixins(
 
 	.oauth-information {
 		line-height: 2.5em;
-		margin-top: 2em;
+		margin: 2em 0;
 	}
 
 	.parameter-wrapper {
