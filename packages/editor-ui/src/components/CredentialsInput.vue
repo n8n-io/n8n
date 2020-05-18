@@ -12,13 +12,41 @@
 				<el-input size="small" type="text" v-model="name"></el-input>
 			</el-col>
 		</el-row>
+		<br />
+		<div class="headline" v-if="credentialProperties.length">
+			Credential Data:
+			<el-tooltip class="credentials-info" placement="top" effect="light">
+				<div slot="content" v-html="helpTexts.credentialsData"></div>
+				<font-awesome-icon icon="question-circle" />
+			</el-tooltip>
+		</div>
+		<div v-for="parameter in credentialProperties" :key="parameter.name">
+			<el-row class="parameter-wrapper">
+				<el-col :span="6" class="parameter-name">
+					{{parameter.displayName}}:
+					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
+						<div slot="content" v-html="parameter.description"></div>
+						<font-awesome-icon icon="question-circle"/>
+					</el-tooltip>
+				</el-col>
+				<el-col :span="18">
+					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" @valueChanged="valueChanged" />
+				</el-col>
+			</el-row>
+		</div>
 
 		<el-row v-if="isOAuthType" class="oauth-information">
 			<el-col :span="6" class="headline">
 				OAuth
 			</el-col>
 			<el-col :span="18">
-				<span v-if="isOAuthConnected === true">
+				<span v-if="requiredPropertiesFilled === false">
+					<el-button title="Connect OAuth Credentials" circle :disabled="true">
+						<font-awesome-icon icon="redo" />
+					</el-button>
+					Not all required credential properties are filled
+				</span>
+				<span v-else-if="isOAuthConnected === true">
 					<el-button title="Reconnect OAuth Credentials" @click.stop="oAuth2CredentialAuthorize()" circle>
 						<font-awesome-icon icon="redo" />
 					</el-button>
@@ -45,29 +73,6 @@
 
 			</el-col>
 		</el-row>
-
-		<br />
-		<div class="headline" v-if="credentialProperties.length">
-			Credential Data:
-			<el-tooltip class="credentials-info" placement="top" effect="light">
-				<div slot="content" v-html="helpTexts.credentialsData"></div>
-				<font-awesome-icon icon="question-circle" />
-			</el-tooltip>
-		</div>
-		<div v-for="parameter in credentialProperties" :key="parameter.name">
-			<el-row class="parameter-wrapper">
-				<el-col :span="6" class="parameter-name">
-					{{parameter.displayName}}:
-					<el-tooltip placement="top" class="parameter-info" v-if="parameter.description" effect="light">
-						<div slot="content" v-html="parameter.description"></div>
-						<font-awesome-icon icon="question-circle"/>
-					</el-tooltip>
-				</el-col>
-				<el-col :span="18">
-					<parameter-input :parameter="parameter" :value="propertyValue[parameter.name]" :path="parameter.name" :isCredential="true" @valueChanged="valueChanged" />
-				</el-col>
-			</el-row>
-		</div>
 
 		<el-row class="nodes-access-wrapper">
 			<el-col :span="6" class="headline">
@@ -229,6 +234,18 @@ export default mixins(
 		},
 		oAuthCallbackUrl (): string {
 			return this.$store.getters.getWebhookBaseUrl + 'rest/oauth2-credential/callback';
+		},
+		requiredPropertiesFilled (): boolean {
+			for (const property of this.credentialProperties) {
+				if (property.required !== true) {
+					continue;
+				}
+
+				if (!this.propertyValue[property.name]) {
+					return false;
+				}
+			}
+			return true;
 		},
 	},
 	methods: {
