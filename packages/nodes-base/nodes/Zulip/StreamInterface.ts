@@ -18,10 +18,6 @@ export interface IStream {
     is_announcement_only?: boolean;
 }
 
-export interface ISubscription {
-    [value : string] : string;
-}
-
 export interface IPrincipal {
     email: string;
 }
