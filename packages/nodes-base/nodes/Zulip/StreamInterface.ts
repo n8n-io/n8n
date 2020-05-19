@@ -1,7 +1,7 @@
 export interface IStream {
-    subscriptions?: [{}];
+    subscriptions?: string;
     invite_only?: boolean;
-    principals?: string[];
+    principals?: string;
     authorization_errors_fatal?: boolean;
     history_public_to_subscribers?: boolean;
     stream_post_policy?: number;
@@ -16,5 +16,12 @@ export interface IStream {
     new_name?: string;
     is_private?: boolean;
     is_announcement_only?: boolean;
-    
+}
+
+export interface ISubscription {
+    [value : string] : string;
+}
+
+export interface IPrincipal {
+    email: string;
 }
