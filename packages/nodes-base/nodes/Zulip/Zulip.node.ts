@@ -23,7 +23,7 @@ import {
 import { snakeCase } from 'change-case';
 import { streamFields, streamOperations } from './StreamDescription';
 import { userOperations, userFields } from './UserDescription';
-import { IStream, ISubscription, IPrincipal } from './StreamInterface';
+import { IStream, IPrincipal } from './StreamInterface';
 import { validateJSON } from './GenericFunctions';
 import { IUser } from './UserInterface';
 
@@ -434,6 +434,7 @@ export class Zulip implements INodeType {
 					responseData = await zulipApiRequest.call(this, 'DELETE', `/users/${userId}`, body);
 				}
 			}
+			// Specific checks because API returns multiple objects within 1 object with each key name
 			if (responseData.members) {
 				returnData.push.apply(returnData, responseData.members as IDataObject[]);
 			}
