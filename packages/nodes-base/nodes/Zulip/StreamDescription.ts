@@ -89,7 +89,6 @@ export const streamFields = [
 
 		description: `JSON format parameters for stream creation.`,
 	},
-
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -244,20 +243,6 @@ export const streamFields = [
         },
         options: [
             {
-                displayName: 'Include Public',
-                name: 'includePublic',
-                type: 'boolean',
-                default: true,
-                description: 'Include all public streams.',
-            },
-            {
-                displayName: 'Include Subscribed',
-                name: 'includeSubscribed',
-                type: 'boolean',
-                default: true,
-                description: 'Include all streams that the user is subscribed to.',
-            },
-            {
                 displayName: 'Include All Active',
                 name: 'includeAllActive',
                 type: 'boolean',
@@ -277,6 +262,20 @@ export const streamFields = [
                 type: 'boolean',
                 default: true,
                 description: 'If the user is a bot, include all streams that the bots owner is subscribed to.',
+            },
+            {
+                displayName: 'Include Public',
+                name: 'includePublic',
+                type: 'boolean',
+                default: true,
+                description: 'Include all public streams.',
+            },
+            {
+                displayName: 'Include Subscribed',
+                name: 'includeSubscribed',
+                type: 'boolean',
+                default: true,
+                description: 'Include all streams that the user is subscribed to.',
             },
         ]
     },
@@ -393,25 +392,19 @@ export const streamFields = [
 		},
 		options: [
             {
-                displayName: 'Description',
-                name: 'description',
-                type: 'string',
-                default: '',
-                description: 'The new description for the stream.',
-            },
-            {
-                displayName: 'New Name',
-                name: 'newName',
-                type: 'string',
-                default: '',
-                description: 'The new name for the stream.',
-            },
-            {
                 displayName: 'Announcement Only',
                 name: 'isAnnouncementOnly',
                 type: 'boolean',
                 default: false,
                 description: 'Whether the stream is limited to announcements.',
+            },
+            {
+                displayName: 'Description',
+                name: 'description',
+                type: 'string',
+                default: '',
+                description: 'The new description for the stream.',
+                placeholder: 'Place of discussion'
             },
             {
                 displayName: 'Is Private',
@@ -426,6 +419,14 @@ export const streamFields = [
                 type: 'boolean',
                 default: false,
                 description: 'Whether the streams message history should be available to newly subscribed members, or users can only access messages they actually received while subscribed to the stream.',
+            },
+            {
+                displayName: 'New Name',
+                name: 'newName',
+                type: 'string',
+                default: '',
+                description: 'The new name for the stream.',
+                placeholder: 'Italy'
             },
             {
 				displayName: 'Stream Post Policy',
