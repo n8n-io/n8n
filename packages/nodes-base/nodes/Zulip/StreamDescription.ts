@@ -49,42 +49,6 @@ export const streamFields = [
 /*                                stream:create                               */
 /* -------------------------------------------------------------------------- */
     {
-        displayName: 'Name',
-        name: 'name',
-        type: 'string',
-        required: true,
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'stream',
-                ],
-                operation: [
-                    'create',
-                ],
-            },
-        },
-        description: 'Name of stream to create.',
-    },
-    {
-        displayName: 'Description',
-        name: 'description',
-        type: 'string',
-        required: true,
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'stream',
-                ],
-                operation: [
-                    'create',
-                ],
-            },
-        },
-        description: 'Description of stream to create.',
-    },
-    {
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
@@ -147,6 +111,27 @@ export const streamFields = [
 		},
 		options: [
             {
+                displayName: 'Announce',
+                name: 'announce',
+                type: 'boolean',
+                default: false,
+                description: 'If announce is True and one of the streams specified in subscriptions has to be created (i.e. doesnt exist to begin with), an announcement will be made notifying that a new stream was created.',
+            },
+            {
+                displayName: 'Authorization Errors Fatal',
+                name: 'authorizationErrorsFatal',
+                type: 'boolean',
+                default: false,
+                description: 'A boolean specifying whether authorization errors (such as when the requesting user is not authorized to access a private stream) should be considered fatal or not. When True, an authorization error is reported as such. When set to False, the returned JSON payload indicates that there was an authorization error, but the response is still considered a successful one.',
+            },
+            {
+                displayName: 'History Public to Subscribers',
+                name: 'historyPublicToSubscribers',
+                type: 'boolean',
+                default: false,
+                description: 'Whether the streams message history should be available to newly subscribed members, or users can only access messages they actually received while subscribed to the stream.',
+            },
+            {
                 displayName: 'Invite Only',
                 name: 'inviteOnly',
                 type: 'boolean',
@@ -179,18 +164,38 @@ export const streamFields = [
 				],
             },
             {
-                displayName: 'Authorization Errors Fatal',
-                name: 'authorizationsErrorsFatal',
-                type: 'boolean',
-                default: false,
-                description: 'A boolean specifying whether authorization errors (such as when the requesting user is not authorized to access a private stream) should be considered fatal or not. When True, an authorization error is reported as such. When set to False, the returned JSON payload indicates that there was an authorization error, but the response is still considered a successful one.',
-            },
-            {
-                displayName: 'History Public to Subscribers',
-                name: 'historyPublicToSubscribers',
-                type: 'boolean',
-                default: false,
-                description: 'Whether the streams message history should be available to newly subscribed members, or users can only access messages they actually received while subscribed to the stream.',
+                displayName: 'Subscriptions',
+                name: 'subscriptions',
+                type: 'fixedCollection',
+                required: true,
+                description: '"A list of dictionaries containing the the key name and value specifying the name of the stream to subscribe. If the stream does not exist a new stream is created.',
+                typeOptions: {
+                    multipleValues: true,
+                },
+                options: [
+                    {
+                        displayName: 'Subscription Properties',
+                        name: 'properties',
+                        values: [
+                            {
+                                displayName: 'Name',
+                                name: 'name',
+                                type: 'string',
+                                required: true,
+                                default: '',
+                                description: 'Name of Subscription.',
+                            },
+                            {
+                                displayName: 'Description',
+                                name: 'description',
+                                type: 'string',
+                                required: true,
+                                default: '',
+                                description: 'Description of Subscription.',
+                            }
+                        ],
+                    },
+                ],
             },
             {
 				displayName: 'Stream Post Policy',
@@ -215,14 +220,7 @@ export const streamFields = [
                         description: 'Only new members can post.'
                     },
 				],
-            },
-            {
-                displayName: 'Announce',
-                name: 'announce',
-                type: 'boolean',
-                default: false,
-                description: 'If announce is True and one of the streams specified in subscriptions has to be created (i.e. doesnt exist to begin with), an announcement will be made notifying that a new stream was created.',
-            },
+            }
         ]
     },
 /* -------------------------------------------------------------------------- */
@@ -330,7 +328,7 @@ export const streamFields = [
                 ],
             },
         },
-        description: 'ID of stream to delete.',
+        description: 'ID of stream to update.',
     },
     {
 		displayName: 'JSON Parameters',
@@ -454,6 +452,27 @@ export const streamFields = [
 				],
             },
         ]
+    },
+/* -------------------------------------------------------------------------- */
+/*                                stream:delete                               */
+/* -------------------------------------------------------------------------- */
+    {
+        displayName: 'Stream ID',
+        name: 'streamId',
+        type: 'string',
+        required: true,
+        default: '',
+        displayOptions: {
+            show: {
+                resource: [
+                    'stream',
+                ],
+                operation: [
+                    'delete',
+                ],
+            },
+        },
+        description: 'ID of stream to delete.',
     },
 
 ] as INodeProperties[];
