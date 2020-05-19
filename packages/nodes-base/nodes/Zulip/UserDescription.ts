@@ -67,24 +67,6 @@ export const userFields = [
 		description: 'The email address of the new user.',
     },
     {
-		displayName: 'Password',
-		name: 'password',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: '',
-		description: 'The password of the new user.',
-    },
-    {
 		displayName: 'Full Name',
 		name: 'fullName',
 		type: 'string',
@@ -101,6 +83,24 @@ export const userFields = [
 		},
 		default: '',
 		description: 'The full name of the new user.',
+    },
+    {
+		displayName: 'Password',
+		name: 'password',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: '',
+		description: 'The password of the new user.',
     },
     {
 		displayName: 'Short Name',
