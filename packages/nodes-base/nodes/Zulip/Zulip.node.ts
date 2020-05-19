@@ -25,6 +25,7 @@ import { streamFields, streamOperations } from './StreamDescription';
 import { userOperations, userFields } from './UserDescription';
 import { IStream } from './StreamInterface';
 import { validateJSON } from './GenericFunctions';
+import { IUser } from './UserInterface';
 
 export class Zulip implements INodeType {
 	description: INodeTypeDescription = {
@@ -311,7 +312,7 @@ export class Zulip implements INodeType {
 				if (operation === 'delete') {
 					const streamId = this.getNodeParameter('streamId', i) as string;
 
-					responseData = await zulipApiRequest.call(this, 'POST', `streams/${streamId}`, {});
+					responseData = await zulipApiRequest.call(this, 'POST', `/streams/${streamId}`, {});
 				}
 
 				if (operation === 'update') {
@@ -359,6 +360,74 @@ export class Zulip implements INodeType {
 						responseData = await zulipApiRequest.call(this, 'PATCH', `/streams/${streamId}`, body);
 					}
 
+				}
+			}
+
+			if (resource === 'user') {
+				const body : IUser = {};
+
+				if (operation === 'get') {
+					const userId = this.getNodeParameter('userId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.clientGravatar) {
+						body.client_gravatar = additionalFields.client_gravatar as boolean;
+					}
+					if (additionalFields.includeCustomProfileFields) {
+						body.include_custom_profile_fields = additionalFields.includeCustomProfileFields as boolean;
+					}
+
+					responseData = await zulipApiRequest.call(this, 'GET', `/users/${userId}`, body);
+
+				}
+
+				if (operation === 'getAll') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.clientGravatar) {
+						body.client_gravatar = additionalFields.client_gravatar as boolean;
+					}
+					if (additionalFields.includeCustomProfileFields) {
+						body.include_custom_profile_fields = additionalFields.includeCustomProfileFields as boolean;
+					}
+
+					responseData = await zulipApiRequest.call(this, 'GET', `/users`, body);
+				}
+
+				if (operation === 'create') {
+					body.email = this.getNodeParameter('email', i) as string;
+					body.password = this.getNodeParameter('password', i) as string;
+					body.full_name = this.getNodeParameter('fullName', i) as string;
+					body.short_name = this.getNodeParameter('shortName', i) as string;
+
+					responseData = await zulipApiRequest.call(this, 'POST', `/users`, body);
+				}
+
+				if (operation === 'update') {					
+					const userId = this.getNodeParameter('userId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.fullName) {
+						body.full_name = additionalFields.fullName as string;
+					}
+					if (additionalFields.isAdmin) {
+						body.is_admin = additionalFields.isAdmin as boolean;
+					}
+					if (additionalFields.isGuest) {
+						body.is_guest = additionalFields.isGuest as boolean;
+					}
+					if (additionalFields.profileData) {
+						//@ts-ignore
+						body.profile_data = additionalFields.profileData.properties as [{}];
+					}
+
+					responseData = await zulipApiRequest.call(this, 'PATCH', `/users/${userId}`, body);
+				}
+
+				if (operation === 'deactivate') {
+					const userId = this.getNodeParameter('userId', i) as string;
+
+					responseData = await zulipApiRequest.call(this, 'DELETE', `/users/${userId}`, body);
 				}
 			}
 			if (Array.isArray(responseData)) {
