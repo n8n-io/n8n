@@ -21,6 +21,8 @@ import {
 	IMessage,
 } from './MessageInterface';
 import { snakeCase } from 'change-case';
+import { streamFields, streamOperations } from './StreamDescription';
+import { userOperations, userFields } from './UserDescription';
 
 export class Zulip implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,12 +55,30 @@ export class Zulip implements INodeType {
 						name: 'Message',
 						value: 'message',
 					},
+					{
+						name: 'Stream',
+						value: 'stream',
+					},
+					{
+						name: 'User',
+						value: 'user',
+					},
 				],
 				default: 'message',
 				description: 'Resource to consume.',
 			},
+			// MESSAGE
 			...messageOperations,
 			...messageFields,
+
+			// STREAM
+			...streamOperations,
+			...streamFields,
+
+			// USER
+			...userOperations,
+			...userFields
+
 		],
 	};
 
