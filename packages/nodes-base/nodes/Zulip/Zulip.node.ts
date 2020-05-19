@@ -23,7 +23,7 @@ import {
 import { snakeCase } from 'change-case';
 import { streamFields, streamOperations } from './StreamDescription';
 import { userOperations, userFields } from './UserDescription';
-import { IStream } from './StreamInterface';
+import { IStream, ISubscription, IPrincipal } from './StreamInterface';
 import { validateJSON } from './GenericFunctions';
 import { IUser } from './UserInterface';
 
@@ -283,14 +283,18 @@ export class Zulip implements INodeType {
 
 						if (additionalFields.subscriptions) {
 							//@ts-ignore
-							body.subscriptions = additionalFields.subscriptions.properties as [{}];
+							body.subscriptions = JSON.stringify(additionalFields.subscriptions.properties);
 						}
 						if (additionalFields.inviteOnly) {
 							body.invite_only = additionalFields.inviteOnly as boolean;
 						}
 						if (additionalFields.principals) {
+							const principals : string[] = [];
 							//@ts-ignore
-							body.principals = additionalFields.principals.properties as string[];
+							additionalFields.principals.properties.map((principal : IPrincipal) => {
+								principals.push(principal.email);
+							});
+							body.principals = JSON.stringify(principals);
 						}
 						if (additionalFields.authorizationErrorsFatal) {
 							body.authorization_errors_fatal = additionalFields.authorizationErrorsFatal as boolean;
@@ -312,7 +316,7 @@ export class Zulip implements INodeType {
 				if (operation === 'delete') {
 					const streamId = this.getNodeParameter('streamId', i) as string;
 
-					responseData = await zulipApiRequest.call(this, 'POST', `/streams/${streamId}`, {});
+					responseData = await zulipApiRequest.call(this, 'DELETE', `/streams/${streamId}`, {});
 				}
 
 				if (operation === 'update') {
@@ -430,9 +434,18 @@ export class Zulip implements INodeType {
 					responseData = await zulipApiRequest.call(this, 'DELETE', `/users/${userId}`, body);
 				}
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
+			if (responseData.members) {
+				returnData.push.apply(returnData, responseData.members as IDataObject[]);
+			}
+
+			if (responseData.streams) {
+				returnData.push.apply(returnData, responseData.streams as IDataObject[]);
+			}
+
+			if (responseData.subscriptions) {
+				returnData.push.apply(returnData, responseData.subscriptions as IDataObject[]);
+			}
+			else {
 				returnData.push(responseData as IDataObject);
 			}
 		}

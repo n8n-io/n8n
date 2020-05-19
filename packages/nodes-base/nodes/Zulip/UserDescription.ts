@@ -104,7 +104,7 @@ export const userFields = [
     },
     {
 		displayName: 'Short Name',
-		name: 'fullName',
+		name: 'shortName',
 		type: 'string',
 		required: true,
 		displayOptions: {
