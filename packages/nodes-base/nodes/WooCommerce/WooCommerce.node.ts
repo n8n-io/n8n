@@ -136,102 +136,11 @@ export class WooCommerce implements INodeType {
 					const body: IProduct = {
 						name,
 					};
-					if (additionalFields.backorders) {
-						body.backorders = additionalFields.backorders as string;
+
+					for(let fields in additionalFields) {
+						body[fields.toString()] = additionalFields[fields]
 					}
-					if (additionalFields.buttonText) {
-						body.button_text = additionalFields.buttonText as string;
-					}
-					if (additionalFields.catalogVisibility) {
-						body.catalog_visibility = additionalFields.catalogVisibility as string;
-					}
-					if (additionalFields.categories) {
-						body.categories = (additionalFields.categories as string[]).map(category => ({ id: parseInt(category, 10) })) as unknown as IDataObject[];
-					}
-					if (additionalFields.crossSellIds) {
-						body.cross_sell_ids = (additionalFields.crossSellIds as string).split(',') as string[];
-					}
-					if (additionalFields.dateOnSaleFrom) {
-						body.date_on_sale_from = additionalFields.dateOnSaleFrom as string;
-					}
-					if (additionalFields.dateOnSaleTo) {
-						body.date_on_sale_to = additionalFields.dateOnSaleTo as string;
-					}
-					if (additionalFields.description) {
-						body.description = additionalFields.description as string;
-					}
-					if (additionalFields.downloadable) {
-						body.downloadable = additionalFields.downloadable as boolean;
-					}
-					if (additionalFields.externalUrl) {
-						body.external_url = additionalFields.externalUrl as string;
-					}
-					if (additionalFields.featured) {
-						body.featured = additionalFields.featured as boolean;
-					}
-					if (additionalFields.manageStock) {
-						body.manage_stock = additionalFields.manageStock as boolean;
-					}
-					if (additionalFields.parentId) {
-						body.parent_id = additionalFields.parentId as string;
-					}
-					if (additionalFields.purchaseNote) {
-						body.purchase_note = additionalFields.purchaseNote as string;
-					}
-					if (additionalFields.regularPrice) {
-						body.regular_price = additionalFields.regularPrice as string;
-					}
-					if (additionalFields.reviewsAllowed) {
-						body.reviews_allowed = additionalFields.reviewsAllowed as boolean;
-					}
-					if (additionalFields.salePrice) {
-						body.sale_price = additionalFields.salePrice as string;
-					}
-					if (additionalFields.shippingClass) {
-						body.shipping_class = additionalFields.shippingClass as string;
-					}
-					if (additionalFields.shortDescription) {
-						body.short_description = additionalFields.shortDescription as string;
-					}
-					if (additionalFields.sku) {
-						body.sku = additionalFields.sku as string;
-					}
-					if (additionalFields.slug) {
-						body.slug = additionalFields.slug as string;
-					}
-					if (additionalFields.soldIndividually) {
-						body.sold_individually = additionalFields.soldIndividually as boolean;
-					}
-					if (additionalFields.status) {
-						body.status = additionalFields.status as string;
-					}
-					if (additionalFields.stockQuantity) {
-						body.stock_quantity = additionalFields.stockQuantity as number;
-					}
-					if (additionalFields.stockStatus) {
-						body.stock_status = additionalFields.stockStatus as string;
-					}
-					if (additionalFields.tags) {
-						body.tags = (additionalFields.tags as string[]).map(tag => ({ 'id': parseInt(tag, 10) })) as unknown as IDataObject[];
-					}
-					if (additionalFields.taxClass) {
-						body.tax_class = additionalFields.taxClass as string;
-					}
-					if (additionalFields.taxStatus) {
-						body.tax_status = additionalFields.taxStatus as string;
-					}
-					if (additionalFields.type) {
-						body.type = additionalFields.type as string;
-					}
-					if (additionalFields.upsellIds) {
-						body.upsell_ids = (additionalFields.upsellIds as string).split(',') as string[];
-					}
-					if (additionalFields.virtual) {
-						body.virtual = additionalFields.virtual as boolean;
-					}
-					if (additionalFields.weight) {
-						body.weight = additionalFields.weight as string;
-					}
+
 					const images = (this.getNodeParameter('imagesUi', i) as IDataObject).imagesValues as IImage[];
 					if (images) {
 						body.images = images;
