@@ -27,7 +27,7 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 			username: credentials!.email as string,
 			password: credentials!.apiKey as string
 		},
-		uri: uri || `https://n8nio.agilecrm.com/dev/${endpoint}`,
+		uri: uri || `https://${credentials!.subdomain}.agilecrm.com/dev/${endpoint}`,
 		json: true,
 	};
 
@@ -45,8 +45,9 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 }
 
 export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const baseUri = 'https://n8nio.agilecrm.com/dev/';
+
 	const credentials = this.getCredentials('agileCrmApi');
+	const baseUri = `https://${credentials!.subdomain}.agilecrm.com/dev/`;
 	const options: OptionsWithUri = {
 		method,
 		headers: {
