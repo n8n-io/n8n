@@ -98,6 +98,11 @@ export class Mattermost implements INodeType {
 						description: 'Soft-deletes a channel',
 					},
 					{
+						name: 'Member',
+						value: 'members',
+						description: 'Get a page of members for a channel.',
+					},
+					{
 						name: 'Restore',
 						value: 'restore',
 						description: 'Restores a soft-deleted channel',
@@ -262,6 +267,114 @@ export class Mattermost implements INodeType {
 				description: 'The ID of the channel to soft-delete.',
 			},
 
+			// ----------------------------------
+			//         channel:member
+			// ----------------------------------
+			{
+				displayName: 'Team ID',
+				name: 'teamId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTeams',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'member'
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The Mattermost Team.',
+			},
+			{
+				displayName: 'Channel ID',
+				name: 'channelId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannelsInTeam',
+					loadOptionsDependsOn: [
+						'teamId',
+					],
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'member'
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The Mattermost Team.',
+			},
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'channel',
+						],
+						operation: [
+							'member',
+						],
+					},
+				},
+				default: true,
+				description: 'By default the response only contain the ID of the user.<br />If this option gets activated it will resolve the user automatically.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'channel',
+						],
+						operation: [
+							'member',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'channel',
+						],
+						operation: [
+							'member',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
 
 			// ----------------------------------
 			//         channel:restore
@@ -854,6 +967,11 @@ export class Mattermost implements INodeType {
 						value: 'getByEmail',
 						description: 'Get a user by email',
 					},
+					{
+						name: 'Get By ID',
+						value: 'getById',
+						description: 'Get a user by id',
+					},
 				],
 				default: '',
 				description: 'The operation to perform.',
@@ -1017,6 +1135,54 @@ export class Mattermost implements INodeType {
 				default: '',
 				description: `User's email`,
 			},
+
+			// ----------------------------------
+			//         user:getById
+			// ----------------------------------
+			{
+				displayName: 'User IDs',
+				name: 'userIds',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getById',
+						],
+					},
+				},
+				default: '',
+				description: `User's ID`,
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getById',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Since',
+						name: 'since',
+						type: 'dateTime',
+						default: '',
+						description: 'Only return users that have been modified since the given Unix timestamp (in milliseconds).',
+					},
+				],
+			},
 		],
 	};
 
@@ -1049,10 +1215,42 @@ export class Mattermost implements INodeType {
 				return returnData;
 			},
 
+			// Get all the channels in a team
+			async getChannelsInTeam(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const teamId = this.getCurrentNodeParameter('teamId');
+				const endpoint = `users/me/teams/${teamId}/channels`;
+				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
+				if (responseData === undefined) {
+					throw new Error('No data got returned');
+				}
+
+				const returnData: INodePropertyOptions[] = [];
+				let name: string;
+				for (const data of responseData) {
+					if (data.delete_at !== 0) {
+						continue;
+					}
+
+					const channelTypes: IDataObject = {
+						'O': 'public',
+						'P': 'private',
+						'D': 'direct',
+					};
+
+					name = `${data.name} (${channelTypes[data.type as string]})`;
+
+					returnData.push({
+						name,
+						value: data.id,
+					});
+				}
+
+				return returnData;
+			},
 
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = 'teams';
+				const endpoint = 'users/me/teams';
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
@@ -1117,6 +1315,10 @@ export class Mattermost implements INodeType {
 		let resource: string;
 		let requestMethod = 'POST';
 		let returnAll = false;
+		let userIds: string[] = [];
+
+		resource = this.getNodeParameter('resource', 0) as string;
+		operation = this.getNodeParameter('operation', 0) as string;
 
 		// For Post
 		let body: IDataObject;
@@ -1127,9 +1329,6 @@ export class Mattermost implements INodeType {
 			let endpoint = '';
 			body = {};
 			qs = {};
-
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
 
 			if (resource === 'channel') {
 				if (operation === 'create') {
@@ -1155,6 +1354,19 @@ export class Mattermost implements INodeType {
 					requestMethod = 'DELETE';
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					endpoint = `channels/${channelId}`;
+
+				} else if (operation === 'member') {
+					// ----------------------------------
+					//         channel:member
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					endpoint = `channels/${channelId}/members`;
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+					}
 
 				} else if (operation === 'restore') {
 					// ----------------------------------
@@ -1353,7 +1565,7 @@ export class Mattermost implements INodeType {
 					}
 
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit', i) as number;
 					}
 
 					endpoint = `/users`;
@@ -1368,6 +1580,25 @@ export class Mattermost implements INodeType {
 					endpoint = `users/email/${email}`;
 				}
 
+				if (operation === 'getById') {
+					// ----------------------------------
+					//          user:getById
+					// ----------------------------------
+					userIds = (this.getNodeParameter('userIds', i) as string).split(',') as string[];
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.since) {
+						qs.since = new Date(additionalFields.since as string).getTime();
+					}
+
+					requestMethod = 'POST';
+
+					endpoint = 'users/ids';
+
+					//@ts-ignore
+					body = userIds;
+
+				}
 			}
 			else {
 				throw new Error(`The resource "${resource}" is not known!`);
@@ -1378,6 +1609,18 @@ export class Mattermost implements INodeType {
 				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 			} else {
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				if (resource === 'channel' && operation === 'members') {
+					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+					if (resolveData) {
+						const userIds: string[] = [];
+						for (const data of responseData) {
+							userIds.push(data.user_id);
+						}
+						if (userIds.length > 0) {
+							responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds , qs);
+						}
+					}
+				}
 			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData);
