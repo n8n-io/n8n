@@ -268,7 +268,7 @@ export class Mattermost implements INodeType {
 			},
 
 			// ----------------------------------
-			//         channel:member
+			//         channel:members
 			// ----------------------------------
 			{
 				displayName: 'Team ID',
@@ -283,7 +283,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'member'
+							'members',
 						],
 						resource: [
 							'channel',
@@ -308,7 +308,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'member'
+							'members',
 						],
 						resource: [
 							'channel',
@@ -327,7 +327,7 @@ export class Mattermost implements INodeType {
 							'channel',
 						],
 						operation: [
-							'member',
+							'members',
 						],
 					},
 				},
@@ -340,11 +340,11 @@ export class Mattermost implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
+						operation: [
+							'members',
+						],
 						resource: [
 							'channel',
-						],
-						operation: [
-							'member',
 						],
 					},
 				},
@@ -357,11 +357,11 @@ export class Mattermost implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
+						operation: [
+							'members',
+						],
 						resource: [
 							'channel',
-						],
-						operation: [
-							'member',
 						],
 						returnAll: [
 							false,
@@ -1355,9 +1355,9 @@ export class Mattermost implements INodeType {
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					endpoint = `channels/${channelId}`;
 
-				} else if (operation === 'member') {
+				} else if (operation === 'members') {
 					// ----------------------------------
-					//         channel:member
+					//         channel:members
 					// ----------------------------------
 
 					requestMethod = 'GET';

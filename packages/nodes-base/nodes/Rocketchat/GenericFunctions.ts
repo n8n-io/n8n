@@ -29,14 +29,13 @@ export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFuncti
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.error(error);
+		let errorMessage = error.message;
 
-		const errorMessage = error.response.body.message || error.response.body.Message;
-
-		if (errorMessage !== undefined) {
-			throw errorMessage;
+		if (error.response.body.error) {
+			errorMessage = error.response.body.error;
 		}
-		throw error.response.body;
+
+		throw new Error(`Rocket.chat error response [${error.statusCode}]: ${errorMessage}`);
 	}
 }
 
