@@ -45,9 +45,9 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.response.body && error.response.body.detail) {
-			throw new Error(`Mailchimp Error: response [${error.statusCode}]: ${error.response.body.detail}`);
+			throw new Error(`Mailchimp Error response [${error.statusCode}]: ${error.response.body.detail}`);
 		}
-		throw new Error(error);
+		throw error;
 	}
 }
 
