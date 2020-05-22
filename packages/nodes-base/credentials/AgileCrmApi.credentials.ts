@@ -19,5 +19,11 @@ export class AgileCrmApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'Subdomain',
+			name: 'subdomain',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
 	];
 }
