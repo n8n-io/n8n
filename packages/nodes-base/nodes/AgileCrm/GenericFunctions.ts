@@ -45,8 +45,9 @@ export async function agileCrmApiRequest(this: IHookFunctions | IExecuteFunction
 }
 
 export async function agileCrmApiRequestUpdate(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method = 'PUT', endpoint?: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const baseUri = 'https://n8nio.agilecrm.com/dev/';
+	
 	const credentials = this.getCredentials('agileCrmApi');
+	const baseUri = `https://${credentials!.subdomain}.agilecrm.com/dev/`;
 	const options: OptionsWithUri = {
 		method,
 		headers: {
