@@ -450,7 +450,10 @@ export default mixins(
 
 				// Check how much data there is to display
 				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
-				this.dataSize = JSON.stringify(inputData).length;
+
+				const jsonItems = inputData.map(item => item.json);
+
+				this.dataSize = JSON.stringify(jsonItems).length;
 
 				if (this.dataSize < 204800) {
 					// Data is reasonable small (< 200kb) so display it directly
