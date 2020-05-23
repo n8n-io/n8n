@@ -19,7 +19,16 @@
 
 		<div class="header">
 			<div class="title-text">
-				<strong>Results: {{ dataCount }}</strong>&nbsp;
+				<strong v-if="dataCount < this.MAX_DISPLAY_ITEMS_AUTO_ALL && dataSize < MAX_DISPLAY_DATA_SIZE">
+					Results: {{ dataCount }}
+				</strong>
+				<strong v-else>Results:
+					<el-select v-model="maxDisplayItems" @click.stop>
+						<el-option v-for="option in maxDisplayItemsOptions" :label="option" :value="option" :key="option" />
+					</el-select>&nbsp;/
+					{{ dataCount }}
+				</strong>
+				&nbsp;
 				<el-popover
 					v-if="runMetadata"
 					placement="right"
@@ -184,6 +193,11 @@ import {
 	ITableData,
 } from '@/Interface';
 
+import {
+	MAX_DISPLAY_DATA_SIZE,
+	MAX_DISPLAY_ITEMS_AUTO_ALL,
+} from '@/constants';
+
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -211,8 +225,12 @@ export default mixins(
 				runIndex: 0,
 				showData: false,
 				outputIndex: 0,
+				maxDisplayItems: 25 as number | null,
 				binaryDataDisplayVisible: false,
 				binaryDataDisplayData: null as IBinaryDisplayData | null,
+
+				MAX_DISPLAY_DATA_SIZE,
+				MAX_DISPLAY_ITEMS_AUTO_ALL,
 			};
 		},
 		computed: {
@@ -228,6 +246,9 @@ export default mixins(
 				}
 				const executionData: IRunExecutionData = this.workflowExecution.data;
 				return executionData.resultData.runData;
+			},
+			maxDisplayItemsOptions (): number[] {
+				return [25, 50, 100, 250, 500, 1000, this.dataCount].filter(option => option <= this.dataCount);
 			},
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
@@ -323,17 +344,25 @@ export default mixins(
 				return 0;
 			},
 			jsonData (): IDataObject[] {
-				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
+				let inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
 				if (inputData.length === 0 || !Array.isArray(inputData)) {
 					return [];
+				}
+
+				if (this.maxDisplayItems !== null) {
+					inputData = inputData.slice(0, this.maxDisplayItems);
 				}
 
 				return this.convertToJson(inputData);
 			},
 			tableData (): ITableData | undefined {
-				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
+				let inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
 				if (inputData.length === 0) {
 					return undefined;
+				}
+
+				if (this.maxDisplayItems !== null) {
+					inputData = inputData.slice(0,this.maxDisplayItems);
 				}
 
 				return this.convertToTable(inputData);
@@ -451,11 +480,11 @@ export default mixins(
 				// Check how much data there is to display
 				const inputData = this.getNodeInputData(this.node, this.runIndex, this.outputIndex);
 
-				const jsonItems = inputData.map(item => item.json);
+				const jsonItems = inputData.slice(0, this.maxDisplayItems || inputData.length).map(item => item.json);
 
 				this.dataSize = JSON.stringify(jsonItems).length;
 
-				if (this.dataSize < 204800) {
+				if (this.dataSize < this.MAX_DISPLAY_DATA_SIZE) {
 					// Data is reasonable small (< 200kb) so display it directly
 					this.showData = true;
 				}
@@ -469,6 +498,7 @@ export default mixins(
 			node (newNode, oldNode) {
 				// Reset the selected output index every time another node gets selected
 				this.outputIndex = 0;
+				this.maxDisplayItems = 25;
 				this.refreshDataSize();
 			},
 			jsonData () {
