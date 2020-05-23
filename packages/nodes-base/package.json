@@ -111,6 +111,7 @@
             "dist/credentials/WebflowApi.credentials.js",
             "dist/credentials/WordpressApi.credentials.js",
             "dist/credentials/WooCommerceApi.credentials.js",
+            "dist/credentials/WufooApi.credentials.js",
             "dist/credentials/ZendeskApi.credentials.js",
             "dist/credentials/ZulipApi.credentials.js"
         ],
@@ -249,6 +250,7 @@
             "dist/nodes/Wordpress/Wordpress.node.js",
             "dist/nodes/WooCommerce/WooCommerce.node.js",
             "dist/nodes/WooCommerce/WooCommerceTrigger.node.js",
+            "dist/nodes/Wufoo/WufooTrigger.node.js",
             "dist/nodes/WriteBinaryFile.node.js",
             "dist/nodes/Xml.node.js",
             "dist/nodes/Zendesk/Zendesk.node.js",
