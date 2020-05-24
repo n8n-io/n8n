@@ -933,7 +933,7 @@ export class GoogleDrive implements INodeType {
 
 					let queryCorpora = '';
 					if (options.corpora) {
-						queryCorpora = (options.corpora as string[]).join(', ');
+						queryCorpora = options.corpora as string;
 					}
 
 					let driveId : string | undefined;
