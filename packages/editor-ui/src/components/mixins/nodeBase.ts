@@ -65,6 +65,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 		'name',
 		'nodeId',
 		'instance',
+		'isReadOnly',
 	],
 	methods: {
 		__addNode (node: INodeUi) {
@@ -182,7 +183,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 					endpoint: inputData.endpoint,
 					endpointStyle: inputData.endpointStyle,
 					isSource: false,
-					isTarget: true,
+					isTarget: !this.isReadOnly,
 					parameters: {
 						nodeIndex: this.nodeIndex,
 						type: inputName,
@@ -246,7 +247,7 @@ export const nodeBase = mixins(nodeIndex).extend({
 					maxConnections: inputData.maxConnections,
 					endpoint: inputData.endpoint,
 					endpointStyle: inputData.endpointStyle,
-					isSource: true,
+					isSource: !this.isReadOnly,
 					isTarget: false,
 					parameters: {
 						nodeIndex: this.nodeIndex,
@@ -275,61 +276,63 @@ export const nodeBase = mixins(nodeIndex).extend({
 				this.instance.addEndpoint(this.nodeName, newEndpointData);
 			});
 
-			// Make nodes draggable
-			this.instance.draggable(this.nodeName, {
-				grid: [10, 10],
-				start: (params: { e: MouseEvent }) => {
-					if (params.e && !this.$store.getters.isNodeSelected(this.data.name)) {
-						// Only the node which gets dragged directly gets an event, for all others it is
-						// undefined. So check if the currently dragged node is selected and if not clear
-						// the drag-selection.
-						this.instance.clearDragSelection();
-						this.$store.commit('resetSelectedNodes');
-					}
-
-					this.$store.commit('addActiveAction', 'dragActive');
-				},
-				stop: (params: { e: MouseEvent}) => {
-					if (this.$store.getters.isActionActive('dragActive')) {
-						const moveNodes = this.$store.getters.getSelectedNodes.slice();
-						const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
-						if (!selectedNodeNames.includes(this.data.name)) {
-							// If the current node is not in selected add it to the nodes which
-							// got moved manually
-							moveNodes.push(this.data);
+			if (this.isReadOnly === false) {
+				// Make nodes draggable
+				this.instance.draggable(this.nodeName, {
+					grid: [10, 10],
+					start: (params: { e: MouseEvent }) => {
+						if (params.e && !this.$store.getters.isNodeSelected(this.data.name)) {
+							// Only the node which gets dragged directly gets an event, for all others it is
+							// undefined. So check if the currently dragged node is selected and if not clear
+							// the drag-selection.
+							this.instance.clearDragSelection();
+							this.$store.commit('resetSelectedNodes');
 						}
 
-						// This does for some reason just get called once for the node that got clicked
-						// even though "start" and "drag" gets called for all. So lets do for now
-						// some dirty DOM query to get the new positions till I have more time to
-						// create a proper solution
-						let newNodePositon: XYPositon;
-						moveNodes.forEach((node: INodeUi) => {
-							const nodeElement = `node-${this.getNodeIndex(node.name)}`;
-							const element = document.getElementById(nodeElement);
-							if (element === null) {
-								return;
+						this.$store.commit('addActiveAction', 'dragActive');
+					},
+					stop: (params: { e: MouseEvent }) => {
+						if (this.$store.getters.isActionActive('dragActive')) {
+							const moveNodes = this.$store.getters.getSelectedNodes.slice();
+							const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
+							if (!selectedNodeNames.includes(this.data.name)) {
+								// If the current node is not in selected add it to the nodes which
+								// got moved manually
+								moveNodes.push(this.data);
 							}
 
-							newNodePositon = [
-								parseInt(element.style.left!.slice(0, -2), 10),
-								parseInt(element.style.top!.slice(0, -2), 10),
-							];
+							// This does for some reason just get called once for the node that got clicked
+							// even though "start" and "drag" gets called for all. So lets do for now
+							// some dirty DOM query to get the new positions till I have more time to
+							// create a proper solution
+							let newNodePositon: XYPositon;
+							moveNodes.forEach((node: INodeUi) => {
+								const nodeElement = `node-${this.getNodeIndex(node.name)}`;
+								const element = document.getElementById(nodeElement);
+								if (element === null) {
+									return;
+								}
 
-							const updateInformation = {
-								name: node.name,
-								properties: {
-									// @ts-ignore, draggable does not have definitions
-									position: newNodePositon,
-								},
-							};
+								newNodePositon = [
+									parseInt(element.style.left!.slice(0, -2), 10),
+									parseInt(element.style.top!.slice(0, -2), 10),
+								];
 
-							this.$store.commit('updateNodeProperties', updateInformation);
-						});
-					}
-				},
-				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
-			});
+								const updateInformation = {
+									name: node.name,
+									properties: {
+										// @ts-ignore, draggable does not have definitions
+										position: newNodePositon,
+									},
+								};
+
+								this.$store.commit('updateNodeProperties', updateInformation);
+							});
+						}
+					},
+					filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
+				});
+			}
 		},
 
 		isCtrlKeyPressed (e: MouseEvent | KeyboardEvent): boolean {
