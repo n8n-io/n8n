@@ -192,7 +192,7 @@ class LoadNodesAndCredentialsClass {
 	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
-		const files = await glob(path.join(directory, '*\.@(node|credentials)\.js'));
+		const files = await glob(path.join(directory, '**/*\.@(node|credentials)\.js'));
 
 		let fileName: string;
 		let type: string;
