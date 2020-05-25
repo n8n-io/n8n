@@ -439,11 +439,11 @@ export class Zulip implements INodeType {
 				returnData.push.apply(returnData, responseData.members as IDataObject[]);
 			}
 
-			if (responseData.streams) {
+			else if (responseData.streams) {
 				returnData.push.apply(returnData, responseData.streams as IDataObject[]);
 			}
 
-			if (responseData.subscriptions) {
+			else if (responseData.subscriptions) {
 				returnData.push.apply(returnData, responseData.subscriptions as IDataObject[]);
 			}
 			else {
