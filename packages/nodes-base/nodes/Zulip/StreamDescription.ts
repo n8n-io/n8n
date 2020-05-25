@@ -185,7 +185,8 @@ export const streamFields = [
             {
 				displayName: 'Principals',
 				name: 'principals',
-				type: 'fixedCollection',
+                type: 'fixedCollection',
+                default: '',
 				description: 'A list of email addresses of the users that will be subscribed/unsubscribed to the streams specified in the subscriptions argument. If not provided, then the requesting user/bot is subscribed.',
 				typeOptions: {
 					multipleValues: true,
