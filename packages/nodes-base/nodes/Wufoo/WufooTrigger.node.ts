@@ -109,61 +109,58 @@ export class WufooTrigger implements INodeType {
 			// Otherwise an update occurs.
 
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				return true;
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const form = this.getNodeParameter('form') as IDataObject;
+				const formHash = this.getNodeParameter('form') as IDataObject;
 				const metadata = this.getNodeParameter('metadata') as boolean;
-				const endpoint = `forms/${form.value}/webhooks.json`;
+				const endpoint = `forms/${formHash}/webhooks.json`;
+				const handShakeKey = randomBytes(20).toString('hex') as string;
+				
+				webhookData.handShakeKey = handShakeKey;
 
-				if (!webhookData.handShake) {
-					webhookData.handShakeKey = randomBytes(20).toString('hex');
-				}
 				const body: IWebhook = {
 					url: webhookUrl as string,
-					handshakeKey: webhookData.handshakeKey as string,
+					handshakeKey: webhookData.handShakeKey as string,
 					metadata
 				};
 
-				console.log(body);
+				const result = await wufooApiRequest.call(this, 'PUT', endpoint, body);
 
-				const result = await wufooApiRequest.call(this, 'POST', endpoint, body);
-				console.log(result);
-				webhookData.id = result.WebHookPutResult.hash;
+				webhookData.webhookId = result.WebHookPutResult.Hash;
+
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const form = this.getNodeParameter('form') as IDataObject;
-				const endpoint = `forms/${form.value}/webhooks/${webhookData.id}.json`;
+				const formHash = this.getNodeParameter('form') as IDataObject;
+				const endpoint = `forms/${formHash}/webhooks/${webhookData.webhookId}.json`;
 				try {
 					await wufooApiRequest.call(this, 'DELETE', endpoint);
 				} catch(error) {
 					return false;
 				}
-				delete webhookData.id;
+				delete webhookData.webhookId;
+				delete webhookData.handShakeKey;
 				return true;
 			},
-
-				//@ts-ignore
-			async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-				const req = this.getRequestObject();
-				const webhookData = this.getWorkflowStaticData('node');
-				console.log(req);
-				// @ts-ignore
-				if (req.handShakeKey !== webhookData.handShakeKey) {
-					return {};
-				}
-				return {
-					workflowData: [
-						this.helpers.returnJsonArray(req.body.forms),
-					],
-				};
-			}
 		},
 	};
 
-
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const req = this.getRequestObject();
+		const webhookData = this.getWorkflowStaticData('node');
+		console.log(req);
+		// @ts-ignore
+		if (req.handShakeKey !== webhookData.handShakeKey) {
+			return {};
+		}
+		return {
+			workflowData: [
+				this.helpers.returnJsonArray(req.body.forms),
+			],
+		};
+	}
 }

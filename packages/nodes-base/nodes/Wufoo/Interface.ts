@@ -1,10 +1,10 @@
 export interface IFormQuery {
-    includeTodayCount?: boolean;
-    pretty?: boolean;
+		includeTodayCount?: boolean;
+		pretty?: boolean;
 }
 
 export interface IWebhook {
-    url: string;
-    handshakeKey?: string;
-    metadata?: boolean;
+		url: string;
+		handshakeKey?: string;
+		metadata?: boolean;
 }

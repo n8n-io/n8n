@@ -19,20 +19,20 @@ export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions |
 			password: '',
 		},
 		method,
-		qs,
 		body,
+		qs,
 		uri: `https://${credentials!.subdomain}.wufoo.com/api/v3/${resource}`,
 		json: true
 	};
+
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
 
-	console.log(options);
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new Error(error);
+		throw new Error(error.message);
 	}
 }

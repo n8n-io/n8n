@@ -46,6 +46,7 @@
 		"forin": true,
 		"jsdoc-format": true,
 		"label-position": true,
+		"indent": [true, "tabs", 2],
 		"member-access": [
 			true,
 			"no-public"
