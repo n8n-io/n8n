@@ -262,7 +262,11 @@ export class Zulip implements INodeType {
 				if (operation === 'create') {
 
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject[];
 
+					//@ts-ignore
+					body.subscriptions = JSON.stringify(subscriptions.properties);
+					
 					if (jsonParameters) {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
@@ -281,10 +285,6 @@ export class Zulip implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						if (additionalFields.subscriptions) {
-							//@ts-ignore
-							body.subscriptions = JSON.stringify(additionalFields.subscriptions.properties);
-						}
 						if (additionalFields.inviteOnly) {
 							body.invite_only = additionalFields.inviteOnly as boolean;
 						}
