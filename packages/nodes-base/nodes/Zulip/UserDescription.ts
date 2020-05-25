@@ -237,6 +237,7 @@ export const userFields = [
 				displayName: 'Profile Data',
 				name: 'profileData',
 				type: 'fixedCollection',
+				default: '',
 				description: 'A dictionary containing the to be updated custom profile field data for the user.',
 				typeOptions: {
 					multipleValues: true,
