@@ -17,7 +17,7 @@ n8n is a free and open [fair-code](http://faircode.io) licensed node based Workf
 - [Securing n8n](#securing-n8n)
 - [Persist data](#persist-data)
 - [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
-- [Updating a Tunning docker-compose Instance](#updating-a-running-docker-compose-instance)
+- [Updating a Running docker-compose Instance](#updating-a-running-docker-compose-instance)
 - [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
 - [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
 - [Support](#support)
