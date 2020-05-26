@@ -16,7 +16,7 @@ import {
 import {
 	wufooApiRequest
 } from './GenericFunctions';
-import { IFormQuery, IWebhook } from './Interface';
+import { IFormQuery, IWebhook, IField } from './Interface';
 import {randomBytes} from 'crypto';
 
 export class WufooTrigger implements INodeType {
@@ -64,7 +64,7 @@ export class WufooTrigger implements INodeType {
 				name: 'metadata',
 				type: 'boolean',
 				default: false,
-				description: 'If set to true, the Webhook will include form/field structure data in each POST.',
+				description: 'If set to true, the Webhook will include form/field structure data.',
 			}
 		],
 
@@ -107,7 +107,6 @@ export class WufooTrigger implements INodeType {
 			// No API endpoint to allow checking of existing webhooks.
 			// Creating new webhook will not overwrite existing one if parameters are the same.
 			// Otherwise an update occurs.
-
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				return false;
 			},
@@ -117,18 +116,16 @@ export class WufooTrigger implements INodeType {
 				const formHash = this.getNodeParameter('form') as IDataObject;
 				const metadata = this.getNodeParameter('metadata') as boolean;
 				const endpoint = `forms/${formHash}/webhooks.json`;
-				const handShakeKey = randomBytes(20).toString('hex') as string;
-				
-				webhookData.handShakeKey = handShakeKey;
 
+				// Handshake key for webhook endpoint protection
+				webhookData.handshakeKey = randomBytes(20).toString('hex') as string;
 				const body: IWebhook = {
 					url: webhookUrl as string,
-					handshakeKey: webhookData.handShakeKey as string,
+					handshakeKey: webhookData.handshakeKey as string,
 					metadata
 				};
 
 				const result = await wufooApiRequest.call(this, 'PUT', endpoint, body);
-
 				webhookData.webhookId = result.WebHookPutResult.Hash;
 
 				return true;
@@ -143,7 +140,7 @@ export class WufooTrigger implements INodeType {
 					return false;
 				}
 				delete webhookData.webhookId;
-				delete webhookData.handShakeKey;
+				delete webhookData.handshakeKey;
 				return true;
 			},
 		},
@@ -152,15 +149,49 @@ export class WufooTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const webhookData = this.getWorkflowStaticData('node');
-		console.log(req);
+		const metadata = this.getNodeParameter('metadata') as boolean;
+		let returnObject : IDataObject = {
+			entries: [] as IField[]
+		};
 		// @ts-ignore
-		if (req.handShakeKey !== webhookData.handShakeKey) {
+		if (req.body.HandshakeKey !== webhookData.handshakeKey) {
 			return {};
 		}
-		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body.forms),
-			],
-		};
+		if (metadata) {
+			returnObject = {
+				createdBy: req.body.CreatedBy as string,
+				entryId: req.body.EntryId as number,
+				dateCreated: req.body.DateCreated as Date,
+				formId: req.body.FormId as string,
+				formStructure: JSON.parse(req.body.FormStructure),
+				fieldStructure: JSON.parse(req.body.FieldStructure),
+				entries: [] as IField[]
+			};
+		} 
+		const fieldsObject = JSON.parse(req.body.FieldStructure);
+		// tslint:disable-next-line: no-any
+		fieldsObject.Fields.map((field : any) => {
+			const returnField : IField = {
+				title: field.Title,
+				type: field.Type,
+				id: field.ID,
+				value: req.body[field.ID]
+			};
+			(returnObject.entries as IField[]).push(returnField);
+		});
+
+		if (metadata) {
+			return {
+				workflowData: [
+					this.helpers.returnJsonArray([returnObject as unknown as IDataObject]),
+				],
+			};
+		} else {
+			return {
+				workflowData: [
+					this.helpers.returnJsonArray(returnObject.entries as unknown as IDataObject),
+				],
+			};
+		}
 	}
 }

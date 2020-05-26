@@ -19,6 +19,7 @@ export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions |
 			password: '',
 		},
 		method,
+		form : body,
 		body,
 		qs,
 		uri: `https://${credentials!.subdomain}.wufoo.com/api/v3/${resource}`,
@@ -26,7 +27,7 @@ export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions |
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body).length === 0 || method === 'PUT') {
 		delete options.body;
 	}
 
