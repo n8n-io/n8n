@@ -20,6 +20,12 @@ import {
 	 ICouponLine
 } from './OrderInterface';
 
+import {
+	IDimension,
+	IImage,
+	IProduct,
+} from './ProductInterface';
+
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('wooCommerceApi');
 	if (credentials === undefined) {
@@ -134,5 +140,11 @@ export function toSnakeCase(data:
 				remove = false;
 			}
 		}
+	}
+}
+
+export function setFields(fieldsToSet: IDataObject, body: any) {
+	for(let fields in fieldsToSet) {
+		body[snakeCase(fields.toString())] = fieldsToSet[fields]
 	}
 }
