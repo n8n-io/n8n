@@ -60,7 +60,7 @@ export class WufooTrigger implements INodeType {
 				description: 'The form upon which will trigger this node when a new entry is made.',
 			},
 			{
-				displayName: 'Raw Data',
+				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
 				default: false,
