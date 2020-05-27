@@ -126,6 +126,8 @@ import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
 
+import { v4 as uuidv4 } from 'uuid';
+
 import { debounce } from 'lodash';
 import axios from 'axios';
 import {
@@ -945,6 +947,10 @@ export default mixins(
 
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
+
+				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
+					newNodeData.webhookPath = uuidv4();
+				}
 
 				await this.addNodes([newNodeData]);
 
