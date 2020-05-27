@@ -1,8 +1,5 @@
-import { DateTime } from "../DateTime.node";
-
 export interface IFormQuery {
 		includeTodayCount?: boolean;
-		pretty?: boolean;
 }
 
 export interface IWebhook {
@@ -12,8 +9,12 @@ export interface IWebhook {
 }
 
 export interface IField {
-		title: string;
-		type: string;
-		id: string;
-		value: string | number | Date | DateTime | boolean | undefined;
+		Title: string;
+		Instructions: string;
+		IsRequired: number;
+		ClassNames: string;
+		DefaultVal: string;
+		Page: number;
+		Type: string;
+		ID: string;
 }

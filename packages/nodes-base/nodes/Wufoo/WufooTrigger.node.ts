@@ -5,18 +5,18 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 
 import {
 	wufooApiRequest
 } from './GenericFunctions';
-import { IFormQuery, IWebhook, IField } from './Interface';
+import { IField, IFormQuery, IWebhook} from './Interface';
 import {randomBytes} from 'crypto';
 
 export class WufooTrigger implements INodeType {
@@ -60,11 +60,11 @@ export class WufooTrigger implements INodeType {
 				description: 'The form upon which will trigger this node when a new entry is made.',
 			},
 			{
-				displayName: 'Metadata',
-				name: 'metadata',
+				displayName: 'Raw Data',
+				name: 'rawData',
 				type: 'boolean',
 				default: false,
-				description: 'If set to true, the Webhook will include form/field structure data.',
+				description: 'If set to true, the Webhook will include form/field structure data. If false, only form entries will be provided.',
 			}
 		],
 
@@ -114,7 +114,7 @@ export class WufooTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const formHash = this.getNodeParameter('form') as IDataObject;
-				const metadata = this.getNodeParameter('metadata') as boolean;
+				const metadata = this.getNodeParameter('rawData') as boolean;
 				const endpoint = `forms/${formHash}/webhooks.json`;
 
 				// Handshake key for webhook endpoint protection
@@ -149,14 +149,19 @@ export class WufooTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const webhookData = this.getWorkflowStaticData('node');
-		const metadata = this.getNodeParameter('metadata') as boolean;
-		let returnObject : IDataObject = {
-			entries: [] as IField[]
-		};
-		// @ts-ignore
+		const metadata = this.getNodeParameter('rawData') as boolean;
+		const entries : IDataObject = {};
+		let returnObject : IDataObject = {};
+
 		if (req.body.HandshakeKey !== webhookData.handshakeKey) {
 			return {};
 		}
+
+		const fieldsObject = JSON.parse(req.body.FieldStructure);
+		fieldsObject.Fields.map((field : IField) => {
+			entries[field.Title] = req.body[field.ID];
+		});
+
 		if (metadata) {
 			returnObject = {
 				createdBy: req.body.CreatedBy as string,
@@ -165,31 +170,19 @@ export class WufooTrigger implements INodeType {
 				formId: req.body.FormId as string,
 				formStructure: JSON.parse(req.body.FormStructure),
 				fieldStructure: JSON.parse(req.body.FieldStructure),
-				entries: [] as IField[]
+				entries
 			};
-		} 
-		const fieldsObject = JSON.parse(req.body.FieldStructure);
-		// tslint:disable-next-line: no-any
-		fieldsObject.Fields.map((field : any) => {
-			const returnField : IField = {
-				title: field.Title,
-				type: field.Type,
-				id: field.ID,
-				value: req.body[field.ID]
-			};
-			(returnObject.entries as IField[]).push(returnField);
-		});
 
-		if (metadata) {
 			return {
 				workflowData: [
 					this.helpers.returnJsonArray([returnObject as unknown as IDataObject]),
 				],
 			};
+
 		} else {
 			return {
 				workflowData: [
-					this.helpers.returnJsonArray(returnObject.entries as unknown as IDataObject),
+					this.helpers.returnJsonArray(entries as unknown as IDataObject),
 				],
 			};
 		}
