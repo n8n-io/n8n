@@ -17,6 +17,7 @@ n8n is a free and open [fair-code](http://faircode.io) licensed node based Workf
 - [Securing n8n](#securing-n8n)
 - [Persist data](#persist-data)
 - [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
+- [Updating a Running docker-compose Instance](#updating-a-running-docker-compose-instance)
 - [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
 - [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
 - [Support](#support)
@@ -226,6 +227,18 @@ The following environment variables support file input:
 A basic step by step example setup of n8n with docker-compose and Lets Encrypt is available on the
 [Server Setup](https://docs.n8n.io/#/server-setup) page.
 
+## Updating a running docker-compose instance
+
+```
+# Pull down the latest version from dockerhub
+docker pull n8nio/n8n
+# Stop current setup
+sudo docker-compose stop
+# Delete it (will only delete the docker-containers, data is stored separately)
+sudo docker-compose rm 
+# Then start it again
+sudo docker-compose up -d
+```
 
 ## Setting Timezone
 
