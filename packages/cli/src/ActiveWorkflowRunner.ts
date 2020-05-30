@@ -241,13 +241,26 @@ export class ActiveWorkflowRunner {
 				}
 
 			} catch (error) {
-				// The workflow was saved with two webhooks with the
-				// same path/method so delete all webhooks saved
+
+				let errorMessage = '';
 
 				await Db.collections.Webhook?.delete({ workflowId: workflow.id });
 
-				// then show error to the user
-				throw new Error(error.message || error.detail);
+				// if it's a workflow from the the insert
+				// TODO check if there is standard error code for deplicate key violation that works
+				// with all databases
+				if (error.name === 'QueryFailedError') {
+
+					errorMessage = `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
+
+				} else if (error.detail) {
+					// it's a error runnig the webhook methods (checkExists, create)
+					errorMessage = error.detail;
+				} else {
+					errorMessage = error;
+				}
+
+				throw new Error(errorMessage);
 			}
 		}
 		// Save static data!

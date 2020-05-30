@@ -141,12 +141,14 @@ export class TestWebhooks {
 		let key: string;
 		for (const webhookData of webhooks) {
 			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
+
+			await this.activeWebhooks!.add(workflow, webhookData, mode);
+
 			this.testWebhookData[key] = {
 				sessionId,
 				timeout,
 				workflowData,
 			};
-			await this.activeWebhooks!.add(workflow, webhookData, mode);
 
 			// Save static data!
 			this.testWebhookData[key].workflowData.staticData = workflow.staticData;

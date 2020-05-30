@@ -1,8 +1,7 @@
 import {
 	Column,
 	Entity,
-	Unique,
-	PrimaryGeneratedColumn,
+	PrimaryColumn,
 } from 'typeorm';
 
 import {
@@ -10,19 +9,15 @@ import {
  } from '../../Interfaces';
 
 @Entity()
-@Unique(['webhookPath', 'method'])
 export class WebhookEntity implements IWebhookDb {
-
-	@PrimaryGeneratedColumn()
-	id: number;
 
 	@Column()
 	workflowId: number;
 
-	@Column()
+	@PrimaryColumn()
 	webhookPath: string;
 
-	@Column()
+	@PrimaryColumn()
 	method: string;
 
 	@Column()
