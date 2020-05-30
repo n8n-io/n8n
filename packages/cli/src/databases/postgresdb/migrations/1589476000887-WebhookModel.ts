@@ -1,7 +1,18 @@
-import {MigrationInterface, QueryRunner} from 'typeorm';
+import {
+	MigrationInterface,
+	QueryRunner,
+} from 'typeorm';
 
-import { IWorkflowDb, NodeTypes, WebhookHelpers } from '../../..';
-import { Workflow } from 'n8n-workflow/dist/src/Workflow';
+import {
+	IWorkflowDb,
+	NodeTypes,
+	WebhookHelpers,
+ } from '../../..';
+
+import {
+	Workflow,
+} from 'n8n-workflow/dist/src/Workflow';
+
 import {
 	IWebhookDb,
  } from '../../../Interfaces';
@@ -18,7 +29,7 @@ export class WebhookModel1589476000887 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
-        await queryRunner.query(`CREATE TABLE ${tablePrefix}webhook_entity ("id" SERIAL NOT NULL, "workflowId" integer NOT NULL, "webhookPath" character varying NOT NULL, "method" character varying NOT NULL, "node" character varying NOT NULL, CONSTRAINT "UQ_b21ace2e13596ccd87dc9bf4ea6" UNIQUE ("webhookPath", "method"), CONSTRAINT "PK_202217c8b912cf70b93b1e87256" PRIMARY KEY ("id"))`, undefined);
+        await queryRunner.query(`CREATE TABLE ${tablePrefix}webhook_entity ("workflowId" integer NOT NULL, "webhookPath" character varying NOT NULL, "method" character varying NOT NULL, "node" character varying NOT NULL, CONSTRAINT "PK_b21ace2e13596ccd87dc9bf4ea6" PRIMARY KEY ("webhookPath", "method"))`, undefined);
 
 		const workflows = await queryRunner.query(`SELECT * FROM ${tablePrefix}workflow_entity WHERE active=true`) as IWorkflowDb[];
 		const data: IWebhookDb[] = [];

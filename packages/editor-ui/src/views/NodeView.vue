@@ -1585,6 +1585,11 @@ export default mixins(
 							console.error(e); // eslint-disable-line no-console
 						}
 						node.parameters = nodeParameters !== null ? nodeParameters : {};
+
+						// if it's a webhook and the path is empty set the UUID as the default path
+						if (node.type === 'n8n-nodes-base.webhook' && node.parameters.path === '') {
+							node.parameters.path = node.webhookPath as string;
+						}
 					}
 
 					foundNodeIssues = this.getNodeIssues(nodeType, node);
