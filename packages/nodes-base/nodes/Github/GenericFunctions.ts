@@ -50,7 +50,7 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 
 			const baseUrl = credentials!.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;
-
+			//@ts-ignore
 			return await this.helpers.requestOAuth.call(this, 'githubOAuth2Api', options);
 		}
 	} catch (error) {
