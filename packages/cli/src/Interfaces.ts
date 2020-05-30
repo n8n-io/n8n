@@ -44,7 +44,6 @@ export interface IDatabaseCollections {
 }
 
 export interface IWebhookDb {
-	id?: number | ObjectID;
 	workflowId: number | string | ObjectID;
 	webhookPath: string;
 	method: string;
