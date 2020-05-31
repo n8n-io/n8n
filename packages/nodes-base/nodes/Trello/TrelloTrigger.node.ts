@@ -40,7 +40,7 @@ export class TrelloTrigger implements INodeType {
 		webhooks: [
 			{
 				name: 'setup',
-				httpMethod: 'GET',
+				httpMethod: 'HEAD',
 				responseMode: 'onReceived',
 				path: 'webhook',
 			},

@@ -432,6 +432,80 @@ export class EditImage implements INodeType {
 				},
 				description: 'The color to use for the background when image gets rotated by anything which is not a multiple of 90..',
 			},
+
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					hide: {
+						operation: [
+							'information',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'File Name',
+						name: 'fileName',
+						type: 'string',
+						default: '',
+						description: 'File name to set in binary data.',
+					},
+					{
+						displayName: 'Format',
+						name: 'format',
+						type: 'options',
+						options: [
+							{
+								name: 'bmp',
+								value: 'bmp',
+							},
+							{
+								name: 'gif',
+								value: 'gif',
+							},
+							{
+								name: 'jpeg',
+								value: 'jpeg',
+							},
+							{
+								name: 'png',
+								value: 'png',
+							},
+							{
+								name: 'tiff',
+								value: 'tiff',
+							},
+						],
+						default: 'jpeg',
+						description: 'Set the output image format.',
+					},
+					{
+						displayName: 'Quality',
+						name: 'quality',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						default: 100,
+						displayOptions: {
+							show: {
+								format: [
+									'jpeg',
+									'png',
+									'tiff',
+								],
+							},
+						},
+						description: 'Sets the jpeg|png|tiff compression level from 0 to 100 (best).',
+					},
+
+				],
+			},
 		]
 	};
 
@@ -441,6 +515,8 @@ export class EditImage implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const dataPropertyName = this.getNodeParameter('dataPropertyName') as string;
+
+		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		// TODO: Later should make so that it sends directly a valid buffer and the buffer.from stuff is not needed anymore
 		if (item.binary === undefined) {
@@ -548,6 +624,24 @@ export class EditImage implements INodeType {
 			// data references which do not get changed still stay behind
 			// but the incoming data does not get changed.
 			Object.assign(newItem.binary, item.binary);
+		}
+
+		if (options.quality !== undefined) {
+			gmInstance = gmInstance.quality(options.quality as number);
+		}
+
+		if (options.format !== undefined) {
+			gmInstance = gmInstance.setFormat(options.format as string);
+			newItem.binary![dataPropertyName as string].fileExtension = options.format as string;
+			newItem.binary![dataPropertyName as string].mimeType = `image/${options.format}`;
+			const fileName = newItem.binary![dataPropertyName as string].fileName;
+			if (fileName && fileName.includes('.')) {
+				newItem.binary![dataPropertyName as string].fileName = fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
+			}
+		}
+
+		if (options.fileName !== undefined) {
+			newItem.binary![dataPropertyName as string].fileName = options.fileName as string;
 		}
 
 		return new Promise<INodeExecutionData>((resolve, reject) => {

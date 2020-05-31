@@ -219,7 +219,7 @@ export class Zulip implements INodeType {
 							}
 						}
 					};
-					responseData = await zulipApiRequest.call(this, 'POST', '/user_uploads', {}, {}, undefined, { formData } );
+					responseData = await zulipApiRequest.call(this, 'POST', '/user_uploads', {}, {}, undefined, { formData });
 					responseData.uri = `${credentials!.url}${responseData.uri}`;
 				}
 			}
@@ -247,6 +247,7 @@ export class Zulip implements INodeType {
 					}
 
 					responseData = await zulipApiRequest.call(this, 'GET', `/streams`, body);
+					responseData = responseData.streams;
 				}
 
 				if (operation === 'getSubscribed') {
@@ -257,41 +258,40 @@ export class Zulip implements INodeType {
 					}
 
 					responseData = await zulipApiRequest.call(this, 'GET', `/users/me/subscriptions`, body);
+					responseData = responseData.subscriptions;
 				}
 
 				if (operation === 'create') {
-
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject[];
 
 					//@ts-ignore
 					body.subscriptions = JSON.stringify(subscriptions.properties);
-					
+
 					if (jsonParameters) {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
 						if (additionalFieldsJson !== '') {
-
 							if (validateJSON(additionalFieldsJson) !== undefined) {
-
 								Object.assign(body, JSON.parse(additionalFieldsJson));
-
 							} else {
 								throw new Error('Additional fields must be a valid JSON');
 							}
 						}
 
 					} else {
-
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject;
+						body.subscriptions = JSON.stringify(subscriptions.properties);
 
 						if (additionalFields.inviteOnly) {
 							body.invite_only = additionalFields.inviteOnly as boolean;
 						}
 						if (additionalFields.principals) {
-							const principals : string[] = [];
+							const principals: string[] = [];
 							//@ts-ignore
-							additionalFields.principals.properties.map((principal : IPrincipal) => {
+							additionalFields.principals.properties.map((principal: IPrincipal) => {
 								principals.push(principal.email);
 							});
 							body.principals = JSON.stringify(principals);
@@ -368,7 +368,7 @@ export class Zulip implements INodeType {
 			}
 
 			if (resource === 'user') {
-				const body : IUser = {};
+				const body: IUser = {};
 
 				if (operation === 'get') {
 					const userId = this.getNodeParameter('userId', i) as string;
@@ -396,6 +396,7 @@ export class Zulip implements INodeType {
 					}
 
 					responseData = await zulipApiRequest.call(this, 'GET', `/users`, body);
+					responseData = responseData.members;
 				}
 
 				if (operation === 'create') {
@@ -407,7 +408,7 @@ export class Zulip implements INodeType {
 					responseData = await zulipApiRequest.call(this, 'POST', `/users`, body);
 				}
 
-				if (operation === 'update') {					
+				if (operation === 'update') {
 					const userId = this.getNodeParameter('userId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -434,19 +435,10 @@ export class Zulip implements INodeType {
 					responseData = await zulipApiRequest.call(this, 'DELETE', `/users/${userId}`, body);
 				}
 			}
-			// Specific checks because API returns multiple objects within 1 object with each key name
-			if (responseData.members) {
-				returnData.push.apply(returnData, responseData.members as IDataObject[]);
-			}
 
-			else if (responseData.streams) {
-				returnData.push.apply(returnData, responseData.streams as IDataObject[]);
-			}
-
-			else if (responseData.subscriptions) {
-				returnData.push.apply(returnData, responseData.subscriptions as IDataObject[]);
-			}
-			else {
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
 				returnData.push(responseData as IDataObject);
 			}
 		}
