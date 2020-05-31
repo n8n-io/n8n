@@ -33,11 +33,11 @@ export const streamOperations = [
 				value: 'getSubscribed',
 				description: 'Get subscribed streams.',
 			},
-			// {
-			// 	name: 'Update',
-			// 	value: 'update',
-			// 	description: 'Update a stream.',
-			// },
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a stream.',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
