@@ -1,11 +1,15 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+
 import {
-	IDataObject
+	IDataObject,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -27,7 +31,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'googleOAuth2Api', options);
+		return await this.helpers.requestOAuth.call(this, 'googleCalendarOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier

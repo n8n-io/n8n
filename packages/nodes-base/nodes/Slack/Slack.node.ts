@@ -110,7 +110,7 @@ export class Slack implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
-							'oauth2',
+							'oAuth2',
 						],
 					},
 				},
@@ -128,7 +128,7 @@ export class Slack implements INodeType {
 					},
 					{
 						name: 'OAuth2',
-						value: 'oauth2',
+						value: 'oAuth2',
 					},
 				],
 				default: 'accessToken',
