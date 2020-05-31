@@ -33,11 +33,11 @@ export const userOperations = [
 				value: 'getAll',
 				description: 'Get all users.',
 			},
-			// {
-			// 	name: 'Update',
-			// 	value: 'update',
-			// 	description: 'Update a user.',
-			// },
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a user.',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
