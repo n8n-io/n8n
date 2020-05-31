@@ -1,13 +1,19 @@
-import { IDataObject } from 'n8n-workflow';
-import { google, sheets_v4 } from 'googleapis';
-import { JWT } from 'google-auth-library';
-import { getAuthenticationClient } from './GoogleApi';
+import {
+	IDataObject,
+} from 'n8n-workflow';
+
+import {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+ } from 'n8n-core';
+
+import {
+	googleApiRequest,
+ } from './GenericFunctions';
 
 import {
 	utils as xlsxUtils,
 } from 'xlsx';
-
-const Sheets = google.sheets('v4'); // tslint:disable-line:variable-name
 
 export interface ISheetOptions {
 	scope: string[];
@@ -46,18 +52,16 @@ export type ValueRenderOption = 'FORMATTED_VALUE' | 'FORMULA' | 'UNFORMATTED_VAL
 
 export class GoogleSheet {
 	id: string;
-	credentials: IGoogleAuthCredentials;
-	scopes: string[];
+	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
 
-	constructor(spreadsheetId: string, credentials: IGoogleAuthCredentials, options?: ISheetOptions | undefined) {
+	constructor(spreadsheetId: string, executeFunctions: IExecuteFunctions | ILoadOptionsFunctions, options?: ISheetOptions | undefined) {
 		// options = <SheetOptions>options || {};
 		if (!options) {
 			options = {} as ISheetOptions;
 		}
 
+		this.executeFunctions = executeFunctions;
 		this.id = spreadsheetId;
-		this.credentials = credentials;
-		this.scopes = options.scope || ['https://www.googleapis.com/auth/spreadsheets'];
 	}
 
 
@@ -69,37 +73,29 @@ export class GoogleSheet {
 	 * @memberof GoogleSheet
 	 */
 	async clearData(range: string): Promise<object> {
-		const client = await this.getAuthenticationClient();
 
-		// @ts-ignore
-		const response = await Sheets.spreadsheets.values.clear(
-			{
-				auth: client,
-				spreadsheetId: this.id,
-				range,
-			}
-		);
+		const body = {
+			spreadsheetId: this.id,
+			range,
+		};
 
-		return response.data;
+		const response = await googleApiRequest.call(this.executeFunctions, 'POST', `/v4/spreadsheets/${this.id}/values/${range}:clear`, body);
+
+		return response;
 	}
 
     /**
      * Returns the cell values
      */
 	async getData(range: string, valueRenderMode: ValueRenderOption): Promise<string[][] | undefined> {
-		const client = await this.getAuthenticationClient();
 
-		// @ts-ignore
-		const response = await Sheets.spreadsheets.values.get(
-			{
-				auth: client,
-				spreadsheetId: this.id,
-				range,
-				valueRenderOption: valueRenderMode,
-			}
-		);
+		const query = {
+			valueRenderOption: valueRenderMode,
+		};
 
-		return response.data.values as string[][] | undefined;
+		const response = await googleApiRequest.call(this.executeFunctions, 'GET', `/v4/spreadsheets/${this.id}/values/${range}`, {}, query);
+
+		return response.values as string[][] | undefined;
 	}
 
 
@@ -107,39 +103,29 @@ export class GoogleSheet {
 	 * Returns the sheets in a Spreadsheet
 	 */
 	async spreadsheetGetSheets() {
-		const client = await this.getAuthenticationClient();
 
-		// @ts-ignore
-		const response = await Sheets.spreadsheets.get(
-			{
-				auth: client,
-				spreadsheetId: this.id,
-				fields: 'sheets.properties'
-			}
-		);
+		const query = {
+			fields: 'sheets.properties',
+		};
 
-		return response.data;
+		const response = await googleApiRequest.call(this.executeFunctions, 'GET', `/v4/spreadsheets/${this.id}`, {}, query);
+
+		return response;
 	}
 
 
 	/**
 	 * Sets values in one or more ranges of a spreadsheet.
 	 */
-	async spreadsheetBatchUpdate(requests: sheets_v4.Schema$Request[]) { // tslint:disable-line:no-any
-		const client = await this.getAuthenticationClient();
+	async spreadsheetBatchUpdate(requests: IDataObject[]) { // tslint:disable-line:no-any
 
-		// @ts-ignore
-		const response = await Sheets.spreadsheets.batchUpdate(
-			{
-				auth: client,
-				spreadsheetId: this.id,
-				requestBody: {
-					requests,
-				},
-			}
-		);
+		const body = {
+			requests
+		};
 
-		return response.data;
+		const response = await googleApiRequest.call(this.executeFunctions, 'POST', `/v4/spreadsheets/${this.id}:batchUpdate`, body);
+
+		return response;
 	}
 
 
@@ -147,21 +133,15 @@ export class GoogleSheet {
      * Sets the cell values
      */
 	async batchUpdate(updateData: ISheetUpdateData[], valueInputMode: ValueInputOption) {
-		const client = await this.getAuthenticationClient();
 
-		// @ts-ignore
-		const response = await Sheets.spreadsheets.values.batchUpdate(
-			{
-				auth: client,
-				spreadsheetId: this.id,
-				valueInputOption: valueInputMode,
-				resource: {
-					data: updateData,
-				},
-			}
-		);
+		const body = {
+			data: updateData,
+			valueInputOption: valueInputMode,
+		};
 
-		return response.data;
+		const response = await googleApiRequest.call(this.executeFunctions, 'POST', `/v4/spreadsheets/${this.id}/values:batchUpdate`, body);
+
+		return response;
 	}
 
 
@@ -169,23 +149,15 @@ export class GoogleSheet {
      * Sets the cell values
      */
 	async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
-		const client = await this.getAuthenticationClient();
 
-		// @ts-ignore
-		const response = await Sheets.spreadsheets.values.update(
-			{
-				// @ts-ignore
-				auth: client,
-				spreadsheetId: this.id,
-				range,
-				valueInputOption: valueInputMode,
-				resource: {
-					values: data
-				}
-			}
-		);
+		const body = {
+			valueInputOption: valueInputMode,
+			values: data,
+		};
 
-		return response.data;
+		const response = await googleApiRequest.call(this.executeFunctions, 'POST', `/v4/spreadsheets/${this.id}/values/${range}`, body);
+
+		return response;
 	}
 
 
@@ -193,32 +165,20 @@ export class GoogleSheet {
      * Appends the cell values
      */
 	async appendData(range: string, data: string[][], valueInputMode: ValueInputOption) {
-		const client = await this.getAuthenticationClient();
 
-		// @ts-ignore
-		const response = await Sheets.spreadsheets.values.append(
-			{
-				auth: client,
-				spreadsheetId: this.id,
-				range,
-				valueInputOption: valueInputMode,
-				resource: {
-					values: data
-				}
-			}
-		);
+		const body = {
+			range,
+			values: data,
+		};
 
-		return response.data;
+		const query = {
+			valueInputOption: valueInputMode,
+		};
+
+		const response = await googleApiRequest.call(this.executeFunctions, 'POST', `/v4/spreadsheets/${this.id}/values/${range}:append`, body, query);
+
+		return response;
 	}
-
-
-    /**
-     * Returns the authentication client needed to access spreadsheet
-     */
-	async getAuthenticationClient(): Promise<JWT> {
-		return getAuthenticationClient(this.credentials.email, this.credentials.privateKey, this.scopes);
-	}
-
 
     /**
      * Returns the given sheet data in a strucutred way
@@ -505,5 +465,4 @@ export class GoogleSheet {
 
 		return setData;
 	}
-
 }

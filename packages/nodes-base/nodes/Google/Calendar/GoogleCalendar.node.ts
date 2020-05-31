@@ -44,7 +44,7 @@ export class GoogleCalendar implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'googleOAuth2Api',
+				name: 'googleCalendarOAuth2Api',
 				required: true,
 			},
 		],
