@@ -297,6 +297,7 @@ export interface INode {
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
+	webhookPath?: string;
 }
 
 
