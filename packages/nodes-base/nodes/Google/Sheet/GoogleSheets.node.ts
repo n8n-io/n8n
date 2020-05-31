@@ -1,6 +1,8 @@
-import { sheets_v4 } from 'googleapis';
 
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+ } from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -12,7 +14,6 @@ import {
 
 import {
 	GoogleSheet,
-	IGoogleAuthCredentials,
 	ILookupValues,
 	ISheetUpdateData,
 	IToDelete,
@@ -30,7 +31,7 @@ export class GoogleSheets implements INodeType {
 		description: 'Read, update and write data to Google Sheets',
 		defaults: {
 			name: 'Google Sheets',
-			color: '#995533',
+			color: '#0aa55c',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -38,9 +39,43 @@ export class GoogleSheets implements INodeType {
 			{
 				name: 'googleApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'serviceAccount',
+						],
+					},
+				},
+			},
+			{
+				name: 'googleSheetsOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'serviceAccount',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -541,18 +576,7 @@ export class GoogleSheets implements INodeType {
 			async getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const spreadsheetId = this.getCurrentNodeParameter('sheetId') as string;
 
-				const credentials = this.getCredentials('googleApi');
-
-				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
-				}
-
-				const googleCredentials = {
-					email: credentials.email,
-					privateKey: credentials.privateKey,
-				} as IGoogleAuthCredentials;
-
-				const sheet = new GoogleSheet(spreadsheetId, googleCredentials);
+				const sheet = new GoogleSheet(spreadsheetId, this);
 				const responseData = await sheet.spreadsheetGetSheets();
 
 				if (responseData === undefined) {
@@ -579,18 +603,8 @@ export class GoogleSheets implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const spreadsheetId = this.getNodeParameter('sheetId', 0) as string;
-		const credentials = this.getCredentials('googleApi');
 
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
-
-		const googleCredentials = {
-			email: credentials.email,
-			privateKey: credentials.privateKey,
-		} as IGoogleAuthCredentials;
-
-		const sheet = new GoogleSheet(spreadsheetId, googleCredentials);
+		const sheet = new GoogleSheet(spreadsheetId, this);
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -638,7 +652,7 @@ export class GoogleSheets implements INodeType {
 			//         delete
 			// ----------------------------------
 
-			const requests: sheets_v4.Schema$Request[] = [];
+			const requests: IDataObject[] = [];
 
 			const toDelete = this.getNodeParameter('toDelete', 0) as IToDelete;
 
