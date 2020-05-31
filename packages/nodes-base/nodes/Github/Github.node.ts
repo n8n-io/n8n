@@ -47,7 +47,7 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
-							'oauth2',
+							'oAuth2',
 						],
 					},
 				},
@@ -65,7 +65,7 @@ export class Github implements INodeType {
 					},
 					{
 						name: 'OAuth2',
-						value: 'oauth2',
+						value: 'oAuth2',
 					},
 				],
 				default: 'accessToken',

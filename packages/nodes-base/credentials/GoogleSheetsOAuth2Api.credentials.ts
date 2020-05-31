@@ -14,7 +14,7 @@ export class GoogleSheetsOAuth2Api implements ICredentialType {
 	extends = [
 		'googleOAuth2Api',
 	];
-	displayName = 'Google OAuth2 API';
+	displayName = 'Google Sheets OAuth2 API';
 	properties = [
 		{
 			displayName: 'Scope',
