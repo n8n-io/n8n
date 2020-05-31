@@ -33,11 +33,11 @@ export const streamOperations = [
 				value: 'getSubscribed',
 				description: 'Get subscribed streams.',
 			},
-			// {
-			// 	name: 'Update',
-			// 	value: 'update',
-			// 	description: 'Update a stream.',
-			// },
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a stream.',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -48,51 +48,6 @@ export const streamFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                stream:create                               */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Subscriptions',
-		name: 'subscriptions',
-		type: 'fixedCollection',
-		required: true,
-		default: '',
-		description: 'A list of dictionaries containing the the key name and value specifying the name of the stream to subscribe. If the stream does not exist a new stream is created.',
-		displayOptions: {
-			show: {
-				resource: [
-					'stream',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		typeOptions: {
-			multipleValues: true,
-		},
-		options: [
-			{
-				displayName: 'Subscription Properties',
-				name: 'properties',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						required: true,
-						default: '',
-						description: 'Name of Subscription.',
-					},
-					{
-						displayName: 'Description',
-						name: 'description',
-						type: 'string',
-						required: true,
-						default: '',
-						description: 'Description of Subscription.',
-					}
-				],
-			},
-		],
-	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',

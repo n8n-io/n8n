@@ -263,9 +263,8 @@ export class Zulip implements INodeType {
 
 				if (operation === 'create') {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
-					const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject[];
+					const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject;
 
-					//@ts-ignore
 					body.subscriptions = JSON.stringify(subscriptions.properties);
 
 					if (jsonParameters) {
