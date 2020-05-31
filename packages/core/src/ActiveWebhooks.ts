@@ -39,7 +39,7 @@ export class ActiveWebhooks {
 
 		//check that there is not a webhook already registed with that path/method
 		if (this.webhookUrls[webhookKey] !== undefined) {
-			throw new Error('There is test wenhook registered on that path');
+			throw new Error(`Test-Webhook can not be activated because another one with the same method "${webhookData.httpMethod}" and path "${webhookData.path}" is already active!`);
 		}
 
 		if (this.workflowWebhooks[webhookData.workflowId] === undefined) {

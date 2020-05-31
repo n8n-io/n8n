@@ -133,7 +133,7 @@ export class Webhook implements INodeType {
 				default: '',
 				placeholder: 'webhook',
 				required: true,
-				description: 'The path to listen to. Slashes("/") in the path are not allowed.',
+				description: 'The path to listen to.',
 			},
 			{
 				displayName: 'Response Code',
