@@ -8,9 +8,16 @@ fi
 
 if [ "$#" -gt 0 ]; then
   # Got started with arguments
-	shift
-  exec su-exec node ./packages/cli/bin/n8n "$@"
+  COMMAND=$1;
+
+  if [[ "$COMMAND" == "n8n" ]]; then
+    shift
+    exec su-exec node ./packages/cli/bin/n8n "$@"
+  else
+    exec su-exec node "$@"
+  fi
+
 else
-  # Got started without arguments
-  exec su-exec node ./packages/cli/bin/n8n
+# Got started without arguments
+exec su-exec node ./packages/cli/bin/n8n
 fi
