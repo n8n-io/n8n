@@ -53,7 +53,7 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
-							'oauth2',
+							'oAuth2',
 						],
 					},
 				},
@@ -71,7 +71,7 @@ export class GoogleSheets implements INodeType {
 					},
 					{
 						name: 'OAuth2',
-						value: 'oauth2',
+						value: 'oAuth2',
 					},
 				],
 				default: 'serviceAccount',
