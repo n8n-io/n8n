@@ -12,7 +12,7 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 
-import { getAuthenticationClient } from './GoogleApi';
+import { getAuthenticationClient } from '../GoogleApi';
 
 
 export class GoogleDrive implements INodeType {
