@@ -47,13 +47,13 @@
 					Not all required credential properties are filled
 				</span>
 				<span v-else-if="isOAuthConnected === true">
-					<el-button title="Reconnect OAuth Credentials" @click.stop="oAuth2CredentialAuthorize()" circle>
+					<el-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
 						<font-awesome-icon icon="redo" />
 					</el-button>
 					Is connected
 				</span>
 				<span v-else>
-					<el-button title="Connect OAuth Credentials" @click.stop="oAuth2CredentialAuthorize()" circle>
+					<el-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
 						<font-awesome-icon icon="sign-in-alt" />
 					</el-button>
 					Is NOT connected
@@ -222,8 +222,11 @@ export default mixins(
 			if (this.credentialTypeData.name === 'oAuth2Api') {
 				return true;
 			}
+			if (this.credentialTypeData.name === 'oAuth1Api') {
+				return true;
+			}
 			const types = this.parentTypes(this.credentialTypeData.name);
-			return types.includes('oAuth2Api');
+			return types.includes('oAuth2Api') || types.includes('oAuth1Api');
 		},
 		isOAuthConnected (): boolean {
 			if (this.isOAuthType === false) {
@@ -233,7 +236,9 @@ export default mixins(
 			return this.credentialDataDynamic !== null && !!this.credentialDataDynamic.data!.oauthTokenData;
 		},
 		oAuthCallbackUrl (): string {
-			return this.$store.getters.getWebhookBaseUrl + 'rest/oauth2-credential/callback';
+			const types = this.parentTypes(this.credentialTypeData.name);
+			const oauthType = (this.credentialTypeData.name === 'oAuth2Api' || types.includes('oAuth2Api')) ? 'oauth2' : 'oauth1';
+			return this.$store.getters.getWebhookBaseUrl + `rest/${oauthType}-credential/callback`;
 		},
 		requiredPropertiesFilled (): boolean {
 			for (const property of this.credentialProperties) {
@@ -323,7 +328,7 @@ export default mixins(
 
 			return result;
 		},
-		async oAuth2CredentialAuthorize () {
+		async oAuthCredentialAuthorize () {
 			let url;
 
 			let credentialData = this.credentialDataDynamic;
@@ -350,8 +355,14 @@ export default mixins(
 				}
 			}
 
+			const types = this.parentTypes(this.credentialTypeData.name);
+
 			try {
-				url = await this.restApi().oAuth2CredentialAuthorize(credentialData as ICredentialsResponse) as string;
+				if (this.credentialTypeData.name === 'oAuth2Api' || types.includes('oAuth2Api')) {
+					url = await this.restApi().oAuth2CredentialAuthorize(credentialData as ICredentialsResponse) as string;
+				} else if (this.credentialTypeData.name === 'oAuth1Api' || types.includes('oAuth1Api')) {
+					url = await this.restApi().oAuth1CredentialAuthorize(credentialData as ICredentialsResponse) as string;
+				}
 			} catch (error) {
 				this.$showError(error, 'OAuth Authorization Error', 'Error generating authorization URL:');
 				return;

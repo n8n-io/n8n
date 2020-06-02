@@ -20,7 +20,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 	};
 	try {
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'salesforceOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'salesforceOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body[0] && error.response.body[0].message) {
 			// Try to return the error prettier
