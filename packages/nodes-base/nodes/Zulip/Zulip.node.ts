@@ -263,16 +263,16 @@ export class Zulip implements INodeType {
 
 				if (operation === 'create') {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject;
+
+					body.subscriptions = JSON.stringify(subscriptions.properties);
 
 					if (jsonParameters) {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
 						if (additionalFieldsJson !== '') {
-
 							if (validateJSON(additionalFieldsJson) !== undefined) {
-
 								Object.assign(body, JSON.parse(additionalFieldsJson));
-
 							} else {
 								throw new Error('Additional fields must be a valid JSON');
 							}
@@ -342,10 +342,10 @@ export class Zulip implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (additionalFields.description) {
-							body.description = additionalFields.description as string;
+							body.description = JSON.stringify(additionalFields.description as string);
 						}
 						if (additionalFields.newName) {
-							body.new_name = additionalFields.newName as string;
+							body.new_name = JSON.stringify(additionalFields.newName as string);
 						}
 						if (additionalFields.isPrivate) {
 							body.is_private = additionalFields.isPrivate as boolean;
@@ -412,7 +412,7 @@ export class Zulip implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (additionalFields.fullName) {
-						body.full_name = additionalFields.fullName as string;
+						body.full_name = JSON.stringify(additionalFields.fullName as string);
 					}
 					if (additionalFields.isAdmin) {
 						body.is_admin = additionalFields.isAdmin as boolean;
