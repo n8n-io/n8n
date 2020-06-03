@@ -597,8 +597,8 @@ class App {
 
 
 		// Returns the node icon
-		this.app.get('/rest/node-icon/:nodeType', async (req: express.Request, res: express.Response): Promise<void> => {
-			const nodeTypeName = req.params.nodeType;
+		this.app.get(['/rest/node-icon/:nodeType', '/rest/node-icon/:scope/:nodeType'], async (req: express.Request, res: express.Response): Promise<void> => {
+			const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${req.params.nodeType}`;
 
 			const nodeTypes = NodeTypes();
 			const nodeType = nodeTypes.getByName(nodeTypeName);
