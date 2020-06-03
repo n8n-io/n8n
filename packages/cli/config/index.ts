@@ -169,6 +169,12 @@ const config = convict({
 		env: 'N8N_PORT',
 		doc: 'HTTP port n8n can be reached'
 	},
+	listen_address: {
+		format: String,
+		default: '0.0.0.0',
+		env: 'N8N_LISTEN_ADDRESS',
+		doc: 'IP address n8n should listen on'
+	},
 	protocol: {
 		format: ['http', 'https'],
 		default: 'http',
