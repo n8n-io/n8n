@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const tweetOperations = [
 	{
@@ -78,53 +78,15 @@ export const tweetFields = [
 				},
 				options: [
 					{
-						name: 'attachmentsValues',
-						displayName: 'Attachments Values',
+						name: 'attachment',
+						displayName: 'Attachment',
 						values: [
 							{
-								displayName: 'Data',
-								name: 'data',
+								displayName: 'Binary Property',
+								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
-								description: 'The base64-encoded file content being uploaded.',
-							},
-							{
-								displayName: 'Category',
-								name: 'category',
-								type: 'options',
-								options: [
-									{
-										name: 'Amplify Video',
-										value: 'amplifyVideo',
-									},
-									{
-										name: 'Gif',
-										value: 'tweetGif',
-									},
-									{
-										name: 'Image',
-										value: 'tweetImage',
-									},
-									{
-										name: 'Video',
-										value: 'tweetVideo',
-									},
-								],
-								default: '',
-								description: 'The category that represents how the media will be used',
-							},
-						],
-					},
-					{
-						name: 'attachmentsBinary',
-						displayName: 'Attachments Binary',
-						values: [
-							{
-								displayName: 'Property',
-								name: 'property',
-								type: 'string',
-								default: '',
-								description: 'Name of the binary properties which contain data which should be added to email as attachment',
+								description: 'Name of the binary properties which contain data which should be added to tweet as attachment',
 							},
 							{
 								displayName: 'Category',

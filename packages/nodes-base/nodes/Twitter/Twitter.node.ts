@@ -1,7 +1,7 @@
 
 import {
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -22,11 +22,11 @@ import {
 
 import {
 	ITweet,
- } from './TweetInterface';
+} from './TweetInterface';
 
- import {
-	 snakeCase,
- } from 'change-case';
+import {
+	snakeCase,
+} from 'change-case';
 
 export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
@@ -73,62 +73,55 @@ export class Twitter implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
-		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
 			if (resource === 'tweet') {
-				//https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
+				// https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
 				if (operation === 'create') {
 					const text = this.getNodeParameter('text', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: ITweet = {
 						status: text,
 					};
+
 					if (additionalFields.attachmentsUi) {
 						const mediaIds = [];
 						const attachmentsUi = additionalFields.attachmentsUi as IDataObject;
 						const uploadUri = 'https://upload.twitter.com/1.1/media/upload.json';
-						if (attachmentsUi.attachmentsValues) {
-							const attachtments = attachmentsUi.attachmentsValues as IDataObject[];
-							for (const attachment of attachtments) {
-								const body = {
-									media_data: attachment.data,
-									media_category: snakeCase(attachment.category as string).toUpperCase(),
-								};
-								const response = await twitterApiRequest.call(this, 'POST', '', body, {}, uploadUri);
-								mediaIds.push(response.media_id);
-							}
-						}
-						if (attachmentsUi.attachmentsBinary) {
-							const attachtments = attachmentsUi.attachmentsBinary as IDataObject[];
+
+						if (attachmentsUi.attachment) {
+							const attachtments = attachmentsUi.attachment as IDataObject[];
 							for (const attachment of attachtments) {
 
 								const binaryData = items[i].binary as IBinaryKeyData;
-								const propertyName = attachment.property as string;
+								const binaryPropertyName = attachment.binaryPropertyName as string;
 
 								if (binaryData === undefined) {
 									throw new Error('No binary data set. So file can not be written!');
 								}
 
-								if (!binaryData[propertyName]) {
+								if (!binaryData[binaryPropertyName]) {
 									continue;
 								}
 
-								const body = {
-									media_data: binaryData[propertyName].data,
+								const attachmentBody = {
+									media_data: binaryData[binaryPropertyName].data,
 									media_category: snakeCase(attachment.category as string).toUpperCase(),
 								};
-								const response = await twitterApiRequest.call(this, 'POST', '', body, {}, uploadUri);
+								const response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
 								mediaIds.push(response.media_id_string);
 							}
 						}
+
 						body.media_ids = mediaIds.join(',');
 					}
+
 					if (additionalFields.possiblySensitive) {
 						body.possibly_sensitive = additionalFields.possibly_sensitive as boolean;
 					}
+
 					if (additionalFields.locationFieldsUi) {
 						const locationUi = additionalFields.locationFieldsUi as IDataObject;
 						if (locationUi.locationFieldsValues) {
@@ -137,6 +130,7 @@ export class Twitter implements INodeType {
 							body.long = parseFloat(values.lalatitude as string);
 						}
 					}
+
 					responseData = await twitterApiRequest.call(this, 'POST', '/statuses/update.json', body);
 				}
 			}
