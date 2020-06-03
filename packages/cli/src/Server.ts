@@ -988,7 +988,7 @@ class App {
 				throw new Error('Insufficient parameters for OAuth1 callback');
 			}
 
-			const result = await Db.collections.Credentials!.findOne(cid as any);
+			const result = await Db.collections.Credentials!.findOne(cid as any); // tslint:disable-line:no-any
 			if (result === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', undefined, 404);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
@@ -1041,7 +1041,7 @@ class App {
 			// Add special database related data
 			newCredentialsData.updatedAt = this.getCurrentDate();
 			// Save the credentials in DB
-			await Db.collections.Credentials!.update(cid as any, newCredentialsData);
+			await Db.collections.Credentials!.update(cid as any, newCredentialsData); // tslint:disable-line:no-any
 
 			res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
 		});

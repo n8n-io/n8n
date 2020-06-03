@@ -1,6 +1,6 @@
 import {
 	OptionsWithUrl,
- } from 'request';
+} from 'request';
 
 import {
 	IHookFunctions,
