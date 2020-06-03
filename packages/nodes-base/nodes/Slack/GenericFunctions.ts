@@ -43,7 +43,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 			return await this.helpers.request(options);
 		} else {
 			//@ts-ignore
-			return await this.helpers.requestOAuth.call(this, 'slackOAuth2Api', options, 'bearer', 'authed_user.access_token');
+			return await this.helpers.requestOAuth2.call(this, 'slackOAuth2Api', options, 'bearer', 'authed_user.access_token');
 		}
 	} catch (error) {
 		if (error.statusCode === 401) {
