@@ -219,14 +219,11 @@ export default mixins(
 			return this.credentialDataTemp;
 		},
 		isOAuthType (): boolean {
-			if (this.credentialTypeData.name === 'oAuth2Api') {
-				return true;
-			}
-			if (this.credentialTypeData.name === 'oAuth1Api') {
+			if (['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeData.name)) {
 				return true;
 			}
 			const types = this.parentTypes(this.credentialTypeData.name);
-			return types.includes('oAuth2Api') || types.includes('oAuth1Api');
+			return types.includes('oAuth1Api') || types.includes('oAuth2Api');
 		},
 		isOAuthConnected (): boolean {
 			if (this.isOAuthType === false) {
