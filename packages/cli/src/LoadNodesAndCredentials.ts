@@ -113,9 +113,9 @@ class LoadNodesAndCredentialsClass {
 				if (isNpmScopedPackage) {
 					results.push(...await getN8nNodePackagesRecursive(`${relativePath}${file}/`));
 				}
-			}	
+			}
 			return results;
-		}
+		};
 		return getN8nNodePackagesRecursive('');
 	}
 
