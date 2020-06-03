@@ -13,10 +13,13 @@ import {
 import * as bodyParser from 'body-parser';
 require('body-parser-xml')(bodyParser);
 import * as history from 'connect-history-api-fallback';
-import * as requestPromise from 'request-promise-native';
 import * as _ from 'lodash';
 import * as clientOAuth2 from 'client-oauth2';
+import * as clientOAuth1 from 'oauth-1.0a';
+import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
+import * as requestPromise  from 'request-promise-native';
+import { createHmac } from 'crypto';
 
 import {
 	ActiveExecutions,
@@ -90,7 +93,8 @@ import * as jwks from 'jwks-rsa';
 // @ts-ignore
 import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
-
+import * as querystring from 'querystring';
+import { OptionsWithUrl } from 'request-promise-native';
 
 class App {
 
@@ -889,6 +893,158 @@ class App {
 
 			return returnData;
 		}));
+
+		// ----------------------------------------
+		// OAuth1-Credential/Auth
+		// ----------------------------------------
+
+		// Authorize OAuth Data
+		this.app.get('/rest/oauth1-credential/auth', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+			if (req.query.id === undefined) {
+				throw new Error('Required credential id is missing!');
+			}
+
+			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
+			if (result === undefined) {
+				res.status(404).send('The credential is not known.');
+				return '';
+			}
+
+			let encryptionKey = undefined;
+			encryptionKey = await UserSettings.getEncryptionKey();
+			if (encryptionKey === undefined) {
+				throw new Error('No encryption key got found to decrypt the credentials!');
+			}
+
+			// Decrypt the currently saved credentials
+			const workflowCredentials: IWorkflowCredentials = {
+				[result.type as string]: {
+					[result.name as string]: result as ICredentialsEncrypted,
+				},
+			};
+			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+
+			const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
+
+			const oauth = new clientOAuth1({
+				consumer: {
+					key: _.get(oauthCredentials, 'consumerKey') as string,
+					secret: _.get(oauthCredentials, 'consumerSecret') as string,
+				},
+				signature_method: signatureMethod,
+				hash_function(base, key) {
+					const algorithm = (signatureMethod === 'HMAC-SHA1') ? 'sha1' : 'sha256';
+					return createHmac(algorithm, key)
+							.update(base)
+							.digest('base64');
+				},
+			});
+
+			const callback = `${WebhookHelpers.getWebhookBaseUrl()}rest/oauth1-credential/callback?cid=${req.query.id}`;
+
+			const options: RequestOptions  = {
+				method: 'POST',
+				url: (_.get(oauthCredentials, 'requestTokenUrl') as string),
+				data: {
+					oauth_callback: callback,
+				},
+			};
+
+			const data = oauth.toHeader(oauth.authorize(options as RequestOptions));
+
+			//@ts-ignore
+			options.headers = data;
+
+			const response = await requestPromise(options);
+
+			// Response comes as x-www-form-urlencoded string so convert it to JSON
+
+			const responseJson = querystring.parse(response);
+
+			const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${responseJson.oauth_token}`;
+
+			// Encrypt the data
+			const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+
+			credentials.setData(decryptedDataOriginal, encryptionKey);
+			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
+
+			// Add special database related data
+			newCredentialsData.updatedAt = this.getCurrentDate();
+
+			// Update the credentials in DB
+			await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
+
+			return returnUri;
+		}));
+
+		// Verify and store app code. Generate access tokens and store for respective credential.
+		this.app.get('/rest/oauth1-credential/callback', async (req: express.Request, res: express.Response) => {
+			const { oauth_verifier, oauth_token, cid } = req.query;
+
+			if (oauth_verifier === undefined || oauth_token === undefined) {
+				throw new Error('Insufficient parameters for OAuth1 callback');
+			}
+
+			const result = await Db.collections.Credentials!.findOne(cid as any); // tslint:disable-line:no-any
+			if (result === undefined) {
+				const errorResponse = new ResponseHelper.ResponseError('The credential is not known.', undefined, 404);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
+			}
+
+			let encryptionKey = undefined;
+			encryptionKey = await UserSettings.getEncryptionKey();
+			if (encryptionKey === undefined) {
+				const errorResponse = new ResponseHelper.ResponseError('No encryption key got found to decrypt the credentials!', undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
+			}
+
+			// Decrypt the currently saved credentials
+			const workflowCredentials: IWorkflowCredentials = {
+				[result.type as string]: {
+					[result.name as string]: result as ICredentialsEncrypted,
+				},
+			};
+			const credentialsHelper = new CredentialsHelper(workflowCredentials, encryptionKey);
+			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
+			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
+
+			const options: OptionsWithUrl  = {
+				method: 'POST',
+				url: _.get(oauthCredentials, 'accessTokenUrl') as string,
+				qs: {
+					oauth_token,
+					oauth_verifier,
+				}
+			};
+
+			let oauthToken;
+
+			try {
+				oauthToken = await requestPromise(options);
+			} catch (error) {
+				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
+			}
+
+			// Response comes as x-www-form-urlencoded string so convert it to JSON
+
+			const oauthTokenJson = querystring.parse(oauthToken);
+
+			decryptedDataOriginal.oauthTokenData = oauthTokenJson;
+
+			const credentials = new Credentials(result.name, result.type, result.nodesAccess);
+			credentials.setData(decryptedDataOriginal, encryptionKey);
+			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
+			// Add special database related data
+			newCredentialsData.updatedAt = this.getCurrentDate();
+			// Save the credentials in DB
+			await Db.collections.Credentials!.update(cid as any, newCredentialsData); // tslint:disable-line:no-any
+
+			res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
+		});
 
 
 		// ----------------------------------------

@@ -32,7 +32,7 @@ export async function helpscoutApiRequest(this: IExecuteFunctions | IExecuteSing
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'helpScoutOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'helpScoutOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body
 		&&	error.response.body._embedded
