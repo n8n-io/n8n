@@ -47,6 +47,7 @@
     },
     "files": [
         "bin",
+        "templates",
         "dist",
         "oclif.manifest.json"
     ],
