@@ -619,7 +619,7 @@ export class Dropbox implements INodeType {
 			}
 
 			const responseData = await dropboxApiRequest.call(this, requestMethod, endpoint, body, headers, encoding);
-			console.log(responseData);
+
 			if (resource === 'file' && operation === 'download') {
 
 				const newItem: INodeExecutionData = {
