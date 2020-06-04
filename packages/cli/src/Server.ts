@@ -573,7 +573,7 @@ class App {
 
 			const nodeTypes = NodeTypes();
 
-			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials);
+			const loadDataInstance = new LoadNodeParameterOptions(nodeType, nodeTypes, JSON.parse('' + req.query.currentNodeParameters), credentials!);
 
 			const workflowData = loadDataInstance.getWorkflowData() as IWorkflowBase;
 			const workflowCredentials = await WorkflowCredentials(workflowData.nodes);
@@ -607,8 +607,8 @@ class App {
 
 
 		// Returns the node icon
-		this.app.get('/rest/node-icon/:nodeType', async (req: express.Request, res: express.Response): Promise<void> => {
-			const nodeTypeName = req.params.nodeType;
+		this.app.get(['/rest/node-icon/:nodeType', '/rest/node-icon/:scope/:nodeType'], async (req: express.Request, res: express.Response): Promise<void> => {
+			const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${req.params.nodeType}`;
 
 			const nodeTypes = NodeTypes();
 			const nodeType = nodeTypes.getByName(nodeTypeName);
