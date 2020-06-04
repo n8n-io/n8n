@@ -104,7 +104,7 @@ import * as moment from 'moment-timezone';
 export class Keap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Keap',
-		name: ' keap',
+		name: 'keap',
 		icon: 'file:keap.png',
 		group: ['input'],
 		version: 1,
