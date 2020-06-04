@@ -10,15 +10,7 @@ import { OptionsWithUri } from 'request';
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function dropboxApiRequest(
-	this: IHookFunctions | IExecuteFunctions,
-	method: string,
-	endpoint: string,
-	body: object,
-	headers?: object,
-	encoding?: string | null
-): Promise<any> {
-	// tslint:disable-line:no-any
+export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, headers?: object, encoding?: string | null): Promise<any> {// tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		headers,
@@ -36,21 +28,16 @@ export async function dropboxApiRequest(
 	if (encoding !== null) {
 		delete options.encoding;
   }
-  
-	const authenticationMethod = this.getNodeParameter(
-		'authentication',
-		0
-	) as string;
+
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+
+	console.log(options);
 
 	try {
 		if (authenticationMethod === 'accessToken') {
 			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth.call(
-				this,
-				'dropboxOAuth2Api',
-				options
-			);
+			return await this.helpers.requestOAuth.call(this, 'dropboxOAuth2Api', options);
 		}
 	} catch (error) {
 		if (error.statusCode === 401) {
