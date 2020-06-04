@@ -85,7 +85,7 @@ export const tweetFields = [
 								displayName: 'Binary Property',
 								name: 'binaryPropertyName',
 								type: 'string',
-								default: '',
+								default: 'data',
 								description: 'Name of the binary properties which contain data which should be added to tweet as attachment',
 							},
 							{
