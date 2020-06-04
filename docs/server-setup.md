@@ -105,6 +105,7 @@ services:
       - N8N_BASIC_AUTH_PASSWORD
       - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
       - N8N_PORT=5678
+      - N8N_LISTEN_ADDRESS=0.0.0.0
       - N8N_PROTOCOL=https
       - NODE_ENV=production
       - WEBHOOK_TUNNEL_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
