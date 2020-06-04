@@ -31,8 +31,6 @@ export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
-	console.log(options);
-
 	try {
 		if (authenticationMethod === 'accessToken') {
 			return await this.helpers.request(options);
