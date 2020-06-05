@@ -230,13 +230,23 @@ class App {
 
 		// Get push connections
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+			console.log({
+				headers: req.headers,
+				method: req.method,
+				url: req.url,
+				query: req.query,
+			});
+
 			if (req.url.indexOf('/rest/push') === 0) {
+				console.log('*** Is Push-Connect-Request');
+
 				// TODO: Later also has to add some kind of authentication token
 				if (req.query.sessionId === undefined) {
 					next(new Error('The query parameter "sessionId" is missing!'));
 					return;
 				}
 
+				console.log('*** Push-Connection gets added');
 				this.push.add(req.query.sessionId as string, req, res);
 				return;
 			}
