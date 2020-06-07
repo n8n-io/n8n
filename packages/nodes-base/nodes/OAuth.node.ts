@@ -137,7 +137,7 @@ export class OAuth implements INodeType {
 				uri: url,
 				json: true,
 			};
-
+			//@ts-ignore
 			const responseData = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions);
 			return [this.helpers.returnJsonArray(responseData)];
 		} else {
