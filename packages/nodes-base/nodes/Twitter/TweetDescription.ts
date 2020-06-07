@@ -20,6 +20,11 @@ export const tweetOperations = [
 				value: 'create',
 				description: 'Create a new tweet',
 			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search tweets',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -70,54 +75,10 @@ export const tweetFields = [
 		options: [
 			{
 				displayName: 'Attachments',
-				name: 'attachmentsUi',
-				placeholder: 'Add Attachments',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						name: 'attachment',
-						displayName: 'Attachment',
-						values: [
-							{
-								displayName: 'Binary Property',
-								name: 'binaryPropertyName',
-								type: 'string',
-								default: 'data',
-								description: 'Name of the binary properties which contain data which should be added to tweet as attachment',
-							},
-							{
-								displayName: 'Category',
-								name: 'category',
-								type: 'options',
-								options: [
-									{
-										name: 'Amplify Video',
-										value: 'amplifyVideo',
-									},
-									{
-										name: 'Gif',
-										value: 'tweetGif',
-									},
-									{
-										name: 'Image',
-										value: 'tweetImage',
-									},
-									{
-										name: 'Video',
-										value: 'tweetVideo',
-									},
-								],
-								default: '',
-								description: 'The category that represents how the media will be used',
-							},
-						],
-					},
-				],
-				default: '',
-				description: 'Array of supported attachments to add to the message.',
+				name: 'attachments',
+				type: 'string',
+				default: 'data',
+				description: 'Name of the binary properties which contain<br />data which should be added to tweet as attachment.<br />Multiple ones can be comma separated.',
 			},
 			{
 				displayName: 'Display Coordinates',
@@ -166,5 +127,198 @@ export const tweetFields = [
 				description: 'If you upload Tweet media that might be considered sensitive content such as nudity, or medical procedures, you must set this value to true.',
 			},
 		]
+	},
+/* -------------------------------------------------------------------------- */
+/*                                tweet:search                                */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Search Text',
+		name: 'searchText',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		description: `A UTF-8, URL-encoded search query of 500 characters maximum,</br>
+		including operators. Queries may additionally be limited by complexity.</br>
+		Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.`,
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'tweet',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'tweet',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Entities',
+				name: 'includeEntities',
+				type: 'boolean',
+				default: false,
+				description: 'The entities node will not be included when set to false',
+			},
+			{
+				displayName: 'Lang',
+				name: 'lang',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLanguages',
+				},
+				default: '',
+				description: 'Restricts tweets to the given language, given by an ISO 639-1 code. Language detection is best-effort.',
+			},
+			{
+				displayName: 'Location',
+				name: 'locationFieldsUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Location',
+				default: {},
+				description: `Subscriber location information.n`,
+				options: [
+					{
+						name: 'locationFieldsValues',
+						displayName: 'Location',
+						values: [
+							{
+								displayName: 'Latitude',
+								name: 'latitude',
+								type: 'string',
+								required: true,
+								description: 'The location latitude.',
+								default: '',
+							},
+							{
+								displayName: 'Longitude',
+								name: 'longitude',
+								type: 'string',
+								required: true,
+								description: 'The location longitude.',
+								default: '',
+							},
+							{
+								displayName: 'Radius',
+								name: 'radius',
+								type: 'options',
+								options: [
+									{
+										name: 'Milles',
+										value: 'mi',
+									},
+									{
+										name: 'Kilometers',
+										value: 'km',
+									},
+								],
+								required: true,
+								description: 'Returns tweets by users located within a given radius of the given latitude/longitude.',
+								default: '',
+							},
+							{
+								displayName: 'Distance',
+								name: 'distance',
+								type: 'number',
+								typeOptions: {
+									minValue: 0,
+								},
+								required: true,
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Result Type',
+				name: 'resultType',
+				type: 'options',
+				options: [
+					{
+						name: 'Mixed',
+						value: 'mixed',
+						description: 'Include both popular and real time results in the response.',
+					},
+					{
+						name: 'Recent',
+						value: 'recent',
+						description: 'Return only the most recent results in the response',
+					},
+					{
+						name: 'Popular',
+						value: 'popular',
+						description: 'Return only the most popular results in the response.'
+					},
+				],
+				default: 'mixed',
+				description: 'Specifies what type of search results you would prefer to receive',
+			},
+			{
+				displayName: 'Until',
+				name: 'until',
+				type: 'dateTime',
+				default: '',
+				description: 'Returns tweets created before the given date',
+			},
+		],
 	},
 ] as INodeProperties[];
