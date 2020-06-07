@@ -75,54 +75,10 @@ export const tweetFields = [
 		options: [
 			{
 				displayName: 'Attachments',
-				name: 'attachmentsUi',
-				placeholder: 'Add Attachments',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						name: 'attachment',
-						displayName: 'Attachment',
-						values: [
-							{
-								displayName: 'Binary Property',
-								name: 'binaryPropertyName',
-								type: 'string',
-								default: 'data',
-								description: 'Name of the binary properties which contain data which should be added to tweet as attachment',
-							},
-							// {
-							// 	displayName: 'Category',
-							// 	name: 'category',
-							// 	type: 'options',
-							// 	options: [
-							// 		{
-							// 			name: 'Amplify Video',
-							// 			value: 'amplifyVideo',
-							// 		},
-							// 		{
-							// 			name: 'Gif',
-							// 			value: 'tweetGif',
-							// 		},
-							// 		{
-							// 			name: 'Image',
-							// 			value: 'tweetImage',
-							// 		},
-							// 		{
-							// 			name: 'Video',
-							// 			value: 'tweetVideo',
-							// 		},
-							// 	],
-							// 	default: '',
-							// 	description: 'The category that represents how the media will be used',
-							// },
-						],
-					},
-				],
-				default: '',
-				description: 'Array of supported attachments to add to the message.',
+				name: 'attachments',
+				type: 'string',
+				default: 'data',
+				description: 'Name of the binary properties which contain<br />data which should be added to tweet as attachment.<br />Multiple ones can be comma separated.',
 			},
 			{
 				displayName: 'Display Coordinates',
