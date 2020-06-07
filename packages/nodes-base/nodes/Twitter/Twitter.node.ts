@@ -109,96 +109,96 @@ export class Twitter implements INodeType {
 						status: text,
 					};
 
-					if (additionalFields.attachmentsUi) {
+					if (additionalFields.attachments) {
 						const mediaIds = [];
-						const attachmentsUi = additionalFields.attachmentsUi as IDataObject;
+						const attachments = additionalFields.attachments as string;
 						const uploadUri = 'https://upload.twitter.com/1.1/media/upload.json';
 
-						if (attachmentsUi.attachment) {
-							const attachtments = attachmentsUi.attachment as IDataObject[];
-							for (const attachment of attachtments) {
+						const attachmentProperties: string[] = attachments.split(',').map((propertyName) => {
+							return propertyName.trim();
+						});
 
-								const binaryData = items[i].binary as IBinaryKeyData;
-								const binaryPropertyName = attachment.binaryPropertyName as string;
+						for (const binaryPropertyName of attachmentProperties) {
 
-								if (binaryData === undefined) {
-									throw new Error('No binary data set. So file can not be written!');
-								}
+							const binaryData = items[i].binary as IBinaryKeyData;
 
-								if (!binaryData[binaryPropertyName]) {
-									continue;
-								}
-
-								let attachmentBody = {};
-								let response: IDataObject = {};
-
-								if (binaryData[binaryPropertyName].mimeType.includes('image')) {
-
-									const attachmentBody = {
-										media_data: binaryData[binaryPropertyName].data,
-									};
-
-									response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
-
-								} else {
-
-									// https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init
-
-									attachmentBody = {
-										command: 'INIT',
-										total_bytes: Buffer.from(binaryData[binaryPropertyName].data, BINARY_ENCODING).byteLength,
-										media_type: binaryData[binaryPropertyName].mimeType,
-									};
-
-									response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
-
-									const mediaId = response.media_id_string;
-
-									// break the data on 5mb chunks (max size that can be uploaded at once)
-
-									const binaryParts = chunks(Buffer.from(binaryData[binaryPropertyName].data, BINARY_ENCODING), 5242880);
-
-									let index = 0;
-
-									for (const binaryPart of binaryParts) {
-
-										//https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-append
-
-										attachmentBody = {
-											name: binaryData[binaryPropertyName].fileName,
-											command: 'APPEND',
-											media_id: mediaId,
-											media_data: Buffer.from(binaryPart).toString('base64'),
-											segment_index: index,
-										};
-
-										response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
-
-										index++;
-									}
-
-									//https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-finalize
-
-									attachmentBody = {
-										command: 'FINALIZE',
-										media_id: mediaId,
-									};
-
-									response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
-
-									// data has not been uploaded yet, so wait for it to be ready
-									if (response.processing_info) {
-										const { check_after_secs } = (response.processing_info as IDataObject);
-										await new Promise((resolve, reject) => {
-											setTimeout(() => {
-												resolve();
-											}, (check_after_secs as number) * 1000);
-										});
-									}
-								}
-
-								mediaIds.push(response.media_id_string);
+							if (binaryData === undefined) {
+								throw new Error('No binary data set. So file can not be written!');
 							}
+
+							if (!binaryData[binaryPropertyName]) {
+								continue;
+							}
+
+							let attachmentBody = {};
+							let response: IDataObject = {};
+
+							if (binaryData[binaryPropertyName].mimeType.includes('image')) {
+
+								const attachmentBody = {
+									media_data: binaryData[binaryPropertyName].data,
+								};
+
+								response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
+
+							} else {
+
+								// https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init
+
+								attachmentBody = {
+									command: 'INIT',
+									total_bytes: Buffer.from(binaryData[binaryPropertyName].data, BINARY_ENCODING).byteLength,
+									media_type: binaryData[binaryPropertyName].mimeType,
+								};
+
+								response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
+
+								const mediaId = response.media_id_string;
+
+								// break the data on 5mb chunks (max size that can be uploaded at once)
+
+								const binaryParts = chunks(Buffer.from(binaryData[binaryPropertyName].data, BINARY_ENCODING), 5242880);
+
+								let index = 0;
+
+								for (const binaryPart of binaryParts) {
+
+									//https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-append
+
+									attachmentBody = {
+										name: binaryData[binaryPropertyName].fileName,
+										command: 'APPEND',
+										media_id: mediaId,
+										media_data: Buffer.from(binaryPart).toString('base64'),
+										segment_index: index,
+									};
+
+									response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
+
+									index++;
+								}
+
+								//https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-finalize
+
+								attachmentBody = {
+									command: 'FINALIZE',
+									media_id: mediaId,
+								};
+
+								response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
+
+								// data has not been uploaded yet, so wait for it to be ready
+								if (response.processing_info) {
+									const { check_after_secs } = (response.processing_info as IDataObject);
+									await new Promise((resolve, reject) => {
+										setTimeout(() => {
+											resolve();
+										}, (check_after_secs as number) * 1000);
+									});
+								}
+							}
+
+							mediaIds.push(response.media_id_string);
 						}
 
 						body.media_ids = mediaIds.join(',');
