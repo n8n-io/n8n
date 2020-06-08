@@ -33,11 +33,14 @@ export const pushConnection = mixins(
 		},
 		methods: {
 			pushAutomaticReconnect (): void {
+				console.log('pushAutomaticReconnect: 1');
 				if (this.reconnectTimeout !== null) {
+					console.log('pushAutomaticReconnect: 2');
 					return;
 				}
 
 				this.reconnectTimeout = setTimeout(() => {
+					console.log('pushAutomaticReconnect: 3');
 					this.pushConnect();
 				}, 3000);
 			},
@@ -46,6 +49,8 @@ export const pushConnection = mixins(
 			 * Connect to server to receive data via EventSource
 			 */
 			pushConnect (): void {
+				console.log('pushConnect: 1');
+
 				// Make sure existing event-source instances get
 				// always removed that we do not end up with multiple ones
 				this.pushDisconnect();
@@ -55,23 +60,32 @@ export const pushConnection = mixins(
 				this.eventSource = new EventSource(connectionUrl);
 				this.eventSource.addEventListener('message', this.pushMessageReceived, false);
 
+				console.log('pushConnect: 2');
 				this.eventSource.addEventListener('open', () => {
+					console.log('pushConnect: 20 - open');
 					this.$store.commit('setPushConnectionActive', true);
+					console.log('pushConnect: 21');
 					if (this.reconnectTimeout !== null) {
+						console.log('pushConnect: 22');
 						clearTimeout(this.reconnectTimeout);
 						this.reconnectTimeout = null;
 					}
 				}, false);
 
 				this.eventSource.addEventListener('error', () => {
+					console.log('pushConnect: 30 - error');
+
 					this.pushDisconnect();
 
 					if (this.reconnectTimeout !== null) {
+						console.log('pushConnect: 31');
 						clearTimeout(this.reconnectTimeout);
 						this.reconnectTimeout = null;
 					}
 
+					console.log('pushConnect: 32');
 					this.$store.commit('setPushConnectionActive', false);
+					console.log('pushConnect: 33');
 					this.pushAutomaticReconnect();
 				}, false);
 			},
@@ -80,11 +94,15 @@ export const pushConnection = mixins(
 			 * Close connection to server
 			 */
 			pushDisconnect (): void {
+				console.log('pushDisconnect: 1');
+
 				if (this.eventSource !== null) {
+					console.log('pushDisconnect: 2');
 					this.eventSource.close();
 					this.eventSource = null;
 
 					this.$store.commit('setPushConnectionActive', false);
+					console.log('pushDisconnect: 3');
 				}
 			},
 

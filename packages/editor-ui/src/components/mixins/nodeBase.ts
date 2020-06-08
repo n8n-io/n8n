@@ -29,12 +29,6 @@ export const nodeBase = mixins(nodeIndex).extend({
 		isMacOs (): boolean {
 			return /(ipad|iphone|ipod|mac)/i.test(navigator.platform);
 		},
-		isReadOnly (): boolean {
-			if (['NodeViewExisting', 'NodeViewNew'].includes(this.$route.name as string)) {
-				return false;
-			}
-			return true;
-		},
 		nodeName (): string {
 			return NODE_NAME_PREFIX + this.nodeIndex;
 		},
