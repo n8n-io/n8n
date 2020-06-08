@@ -68,6 +68,7 @@
             "dist/credentials/HttpHeaderAuth.credentials.js",
             "dist/credentials/HubspotApi.credentials.js",
             "dist/credentials/HubspotDeveloperApi.credentials.js",
+            "dist/credentials/HubspotOAuth2Api.credentials.js",
             "dist/credentials/HunterApi.credentials.js",
             "dist/credentials/Imap.credentials.js",
             "dist/credentials/IntercomApi.credentials.js",

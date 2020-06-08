@@ -14,12 +14,8 @@ import {
 } from 'n8n-workflow';
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const node = this.getNode();
-	const credentialName = Object.keys(node.credentials!)[0];
-	const credentials = this.getCredentials(credentialName);
-
-	query!.hapikey = credentials!.apiKey as string;
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
@@ -28,8 +24,18 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 		json: true,
 		useQuerystring: true,
 	};
+
 	try {
-		return await this.helpers.request!(options);
+		if (authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('hubspotApi');
+
+			options.qs.hapikey = credentials!.apiKey as string;
+
+			return await this.helpers.request!(options);
+		} else {
+			// @ts-ignore
+			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, 'Bearer');
+		}
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.errors) {
 			// Try to return the error prettier
