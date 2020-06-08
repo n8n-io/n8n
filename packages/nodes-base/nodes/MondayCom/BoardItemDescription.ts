@@ -16,6 +16,16 @@ export const boardItemOperations = [
 		},
 		options: [
 			{
+				name: 'Change Column Value',
+				value: 'changeColumnValue',
+				description: 'Change a column value for a board item',
+			},
+			{
+				name: 'Change Multiple Column Values',
+				value: 'changeMultipleColumnValues',
+				description: 'Change multiple column values for a board item',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: `Create an item in a board's group`,
@@ -376,5 +386,152 @@ export const boardItemFields = [
 		},
 		default: 50,
 		description: 'How many results to return.',
+	},
+/* -------------------------------------------------------------------------- */
+/*                                 boardItem:changeColumnValue                */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Board ID',
+		name: 'boardId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getBoards',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: 'The unique identifier of the board.',
+	},
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: `Item's ID`
+	},
+	{
+		displayName: 'Column ID',
+		name: 'columnId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getColumns',
+			loadOptionsDependsOn: [
+				'boardId'
+			],
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: `The column's unique identifier.`,
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
+		type: 'json',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: 'The column value in JSON format.',
+	},
+/* -------------------------------------------------------------------------- */
+/*                                 boardItem:changeMultipleColumnValues       */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Board ID',
+		name: 'boardId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getBoards',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeMultipleColumnValues',
+				],
+			},
+		},
+		description: 'The unique identifier of the board.',
+	},
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeMultipleColumnValues',
+				],
+			},
+		},
+		description: `Item's ID`
+	},
+	{
+		displayName: 'Column Values',
+		name: 'columnValues',
+		type: 'json',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeMultipleColumnValues',
+				],
+			},
+		},
+		description: 'The column fields and values in JSON format.',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
 	},
 ] as INodeProperties[];
