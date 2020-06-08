@@ -123,6 +123,7 @@
             "dist/credentials/UpleadApi.credentials.js",
             "dist/credentials/VeroApi.credentials.js",
             "dist/credentials/WebflowApi.credentials.js",
+            "dist/credentials/WebflowOAuth2Api.credentials.js",
             "dist/credentials/WooCommerceApi.credentials.js",
             "dist/credentials/WordpressApi.credentials.js",
             "dist/credentials/ZendeskApi.credentials.js",
