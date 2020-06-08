@@ -455,37 +455,25 @@ export class MondayCom implements INodeType {
 				}
 			}
 			if (resource === 'boardItem') {
-				if (operation === 'create') {
-					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-					const groupId = this.getNodeParameter('groupId', i) as string;
-					const itemName = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+				if (operation === 'addUpdate') {
+					const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+					const value = this.getNodeParameter('value', i) as string;
 
 					const body: IGraphqlBody = {
 						query:
-							`mutation ($boardId: Int!, $groupId: String!, $itemName: String!, $columnValues: JSON) {
-								create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) {
+							`mutation ($itemId: Int!, $value: String!) {
+								create_update (item_id: $itemId, body: $value) {
 									id
 								}
 							}`,
 						variables: {
-							boardId,
-							groupId,
-							itemName,
+							itemId,
+							value,
 						},
 					};
 
-					if (additionalFields.columnValues) {
-						try {
-							JSON.parse(additionalFields.columnValues as string);
-						} catch (e) {
-							throw new Error('Custom Values must be a valid JSON');
-						}
-						body.variables.columnValues = JSON.stringify(JSON.parse(additionalFields.columnValues as string));
-					}
-
 					responseData = await mondayComApiRequest.call(this, body);
-					responseData = responseData.data.create_item;
+					responseData = responseData.data.create_update;
 				}
 				if (operation === 'changeColumnValue') {
 					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
@@ -544,6 +532,38 @@ export class MondayCom implements INodeType {
 
 					responseData = await mondayComApiRequest.call(this, body);
 					responseData = responseData.data.change_multiple_column_values;
+				}
+				if (operation === 'create') {
+					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+					const groupId = this.getNodeParameter('groupId', i) as string;
+					const itemName = this.getNodeParameter('name', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IGraphqlBody = {
+						query:
+							`mutation ($boardId: Int!, $groupId: String!, $itemName: String!, $columnValues: JSON) {
+								create_item (board_id: $boardId, group_id: $groupId, item_name: $itemName, column_values: $columnValues) {
+									id
+								}
+							}`,
+						variables: {
+							boardId,
+							groupId,
+							itemName,
+						},
+					};
+
+					if (additionalFields.columnValues) {
+						try {
+							JSON.parse(additionalFields.columnValues as string);
+						} catch (e) {
+							throw new Error('Custom Values must be a valid JSON');
+						}
+						body.variables.columnValues = JSON.stringify(JSON.parse(additionalFields.columnValues as string));
+					}
+
+					responseData = await mondayComApiRequest.call(this, body);
+					responseData = responseData.data.create_item;
 				}
 				if (operation === 'delete') {
 					const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
