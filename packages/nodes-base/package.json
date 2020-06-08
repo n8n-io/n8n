@@ -321,6 +321,7 @@
         "glob-promise": "^3.4.0",
         "gm": "^1.23.1",
         "imap-simple": "^4.3.0",
+        "iso-639-1": "^2.1.3",
         "jsonwebtoken": "^8.5.1",
         "lodash.get": "^4.4.2",
         "lodash.set": "^4.3.2",
