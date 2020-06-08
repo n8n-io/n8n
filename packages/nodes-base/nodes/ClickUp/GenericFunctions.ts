@@ -15,14 +15,8 @@ import {
  } from 'n8n-workflow';
 
 export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('clickUpApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
 	const options: OptionsWithUri = {
 		headers: {
-			Authorization: credentials.accessToken,
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -31,15 +25,33 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 		uri: uri ||`https://api.clickup.com/api/v2${resource}`,
 		json: true
 	};
+
 	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
+		const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+
+		if (authenticationMethod === 'accessToken') {
+
+			const credentials = this.getCredentials('clickUpApi');
+
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.headers!['Authorization'] = credentials.accessToken;
+			return await this.helpers.request!(options);
+
+		} else {
+			return await this.helpers.requestOAuth2!.call(this, 'clickUpOAuth2Api', options);
+		}
+
+	} catch(error) {
 		let errorMessage = error;
 		if (error.err) {
 			errorMessage = error.err;
 		}
 		throw new Error('ClickUp Error: ' + errorMessage);
 	}
+
 }
 
 export async function clickupApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string ,method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
