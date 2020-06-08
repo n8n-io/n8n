@@ -1649,6 +1649,7 @@ class App {
 
 export async function start(): Promise<void> {
 	const PORT = config.get('port');
+	const ADDRESS = config.get('listen_address');
 
 	const app = new App();
 
@@ -1667,9 +1668,9 @@ export async function start(): Promise<void> {
 		server = http.createServer(app.app);
 	}
 
-	server.listen(PORT, async () => {
+	server.listen(PORT, ADDRESS, async () => {
 		const versions = await GenericHelpers.getVersions();
-		console.log(`n8n ready on port ${PORT}`);
+		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 	});
 }
