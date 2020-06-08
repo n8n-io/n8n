@@ -97,6 +97,7 @@
             "dist/credentials/OAuth2Api.credentials.js",
             "dist/credentials/OpenWeatherMapApi.credentials.js",
             "dist/credentials/PagerDutyApi.credentials.js",
+            "dist/credentials/PagerDutyOAuth2Api.credentials.js",
             "dist/credentials/PayPalApi.credentials.js",
             "dist/credentials/PipedriveApi.credentials.js",
             "dist/credentials/Postgres.credentials.js",
