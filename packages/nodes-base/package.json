@@ -99,6 +99,7 @@
             "dist/credentials/PagerDutyApi.credentials.js",
             "dist/credentials/PayPalApi.credentials.js",
             "dist/credentials/PipedriveApi.credentials.js",
+            "dist/credentials/PipedriveOAuth2Api.credentials.js",
             "dist/credentials/Postgres.credentials.js",
             "dist/credentials/Redis.credentials.js",
             "dist/credentials/RocketchatApi.credentials.js",
