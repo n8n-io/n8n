@@ -31,14 +31,10 @@ export class GithubTrigger implements INodeType {
 		inputs: [],
 		outputs: ['main'],
 		credentials: [
-			// {
-			// 	name: 'githubApi',
-			// 	required: true,
-			// }, 
 			{
-				name: 'githubOAuth2Api',
+				name: 'githubApi',
 				required: true,
-			}, 
+			}
 		],
 		webhooks: [
 			{
