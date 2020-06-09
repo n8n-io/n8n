@@ -18,9 +18,19 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string): Promise<any> { // tslint:disable-line:no-any
+export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object): Promise<any> { // tslint:disable-line:no-any
 
-	const options: OptionsWithUri = {
+	let options: OptionsWithUri = {
+		method,
+		headers: {
+			'User-Agent': 'n8n',
+		},
+		body,
+		uri: '',
+		json: true
+	};
+
+	let getOptions: OptionsWithUri = {
 		method,
 		headers: {
 			'User-Agent': 'n8n',
@@ -30,16 +40,18 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	try {
-		//const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 		const credentials = this.getCredentials('spotifyApi');
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
 		}
 
-		const baseUrl = credentials!.server || 'https://api.spotify.com/v1/me/';
+		const baseUrl = credentials!.server || 'https://api.spotify.com/v1/';
 		options.uri = `${baseUrl}${endpoint}`;
+		getOptions.uri = `${baseUrl}${endpoint}`;
 
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
+		getOptions.headers!.Authorization = `Bearer ${credentials.accessToken}`;
+		if( method === 'GET') return await this.helpers.request(getOptions);
 		return await this.helpers.request(options);
 	} catch (error) {
 		if (error.statusCode === 401) {
