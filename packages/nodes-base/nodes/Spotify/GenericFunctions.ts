@@ -36,7 +36,7 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 			throw new Error('No credentials got returned!');
 		}
 
-		const baseUrl = credentials!.server || 'https://api.spotify.com/v1/me';
+		const baseUrl = credentials!.server || 'https://api.spotify.com/v1/me/';
 		options.uri = `${baseUrl}${endpoint}`;
 
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
