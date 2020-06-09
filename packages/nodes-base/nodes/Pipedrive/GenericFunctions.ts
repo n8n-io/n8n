@@ -23,7 +23,6 @@ export interface ICustomProperties {
 	[key: string]: ICustomInterface;
 }
 
-
 /**
  * Make an API request to Pipedrive
  *
@@ -34,16 +33,7 @@ export interface ICustomProperties {
  * @returns {Promise<any>}
  */
 export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('pipedriveApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	if (query === undefined) {
-		query = {};
-	}
-
-	query.api_token = credentials.apiToken;
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
 		method,
@@ -65,8 +55,27 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		options.formData = formData;
 	}
 
+	if (query === undefined) {
+		query = {};
+	}
+
+	let responseData;
+
 	try {
-		const responseData = await this.helpers.request(options);
+		if (authenticationMethod === 'accessToken') {
+
+			const credentials = this.getCredentials('pipedriveApi');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			query.api_token = credentials.apiToken;
+
+			responseData = await this.helpers.request(options);
+
+		} else {
+			responseData = await this.helpers.requestOAuth2!.call(this, 'pipedriveOAuth2Api', options);
+		}
 
 		if (downloadFile === true) {
 			return {
@@ -82,7 +91,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 			additionalData: responseData.additional_data,
 			data: responseData.data,
 		};
-	} catch (error) {
+	} catch(error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
 			throw new Error('The Pipedrive credentials are not valid!');
@@ -101,8 +110,6 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		throw error;
 	}
 }
-
-
 
 /**
  * Make an API request to paginated Pipedrive endpoint
