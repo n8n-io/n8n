@@ -949,7 +949,7 @@ export default mixins(
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
 
 				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
-					newNodeData.webhookPath = uuidv4();
+					newNodeData.webhookId = uuidv4();
 				}
 
 				await this.addNodes([newNodeData]);
@@ -1588,7 +1588,7 @@ export default mixins(
 
 						// if it's a webhook and the path is empty set the UUID as the default path
 						if (node.type === 'n8n-nodes-base.webhook' && node.parameters.path === '') {
-							node.parameters.path = node.webhookPath as string;
+							node.parameters.path = node.webhookId as string;
 						}
 					}
 
