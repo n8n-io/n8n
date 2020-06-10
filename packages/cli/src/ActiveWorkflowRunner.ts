@@ -211,7 +211,7 @@ export class ActiveWorkflowRunner {
 	 */
 	async addWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode): Promise<void> {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
-		let path = '';
+		let path = '' as string | undefined;
 
 		for (const webhookData of webhooks) {
 
@@ -221,12 +221,20 @@ export class ActiveWorkflowRunner {
 			path = node.parameters.path as string;
 
 			if (node.parameters.path === undefined) {
-				path = workflow.getSimpleParameterValue(node, webhookData.webhookDescription['path'], 'GET') as string;
+				path = workflow.getSimpleParameterValue(node, webhookData.webhookDescription['path']) as string | undefined;
+
+				if (path === undefined) {
+					// TODO: Use a proper logger
+					console.error(`No webhook path could be found for node "${node.name}" in workflow "${workflow.id}".`);
+					continue;
+				}
 			}
+
+			const isFullPath: boolean = workflow.getSimpleParameterValue(node, webhookData.webhookDescription['isFullPath'], false) as boolean;
 
 			const webhook = {
 				workflowId: webhookData.workflowId,
-				webhookPath: NodeHelpers.getNodeWebhookPath(workflow.id as string, node, path),
+				webhookPath: NodeHelpers.getNodeWebhookPath(workflow.id as string, node, path, isFullPath),
 				node: node.name,
 				method: webhookData.httpMethod,
 			} as IWebhookDb;
@@ -257,7 +265,7 @@ export class ActiveWorkflowRunner {
 					// it's a error runnig the webhook methods (checkExists, create)
 					errorMessage = error.detail;
 				} else {
-					errorMessage = error;
+					errorMessage = error.message;
 				}
 
 				throw new Error(errorMessage);
