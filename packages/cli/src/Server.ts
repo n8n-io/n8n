@@ -34,7 +34,7 @@ import {
 	IExecutionsListResponse,
 	IExecutionsStopData,
 	IExecutionsSummary,
-	IExternalHooks,
+	IExternalHooksClass,
 	IN8nUISettings,
 	IPackageVersions,
 	IWorkflowBase,
@@ -94,7 +94,7 @@ class App {
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
-	externalHooks: IExternalHooks;
+	externalHooks: IExternalHooksClass;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
