@@ -252,7 +252,7 @@ export class Spotify implements INodeType {
 				displayName: 'Playlist ID',
 				name: 'playlistID',
 				type: 'string',
-				default: '4T0a8fjfDRlHpShdAQMdC9',
+				default: '3w2I1EAz5YLJrQe0CBauxk',
 				required: true,
 				displayOptions: {
 					show: {
@@ -263,7 +263,7 @@ export class Spotify implements INodeType {
 						],
 					},
 				},
-				placeholder: '4T0a8fjfDRlHpShdAQMdC9',
+				placeholder: '3w2I1EAz5YLJrQe0CBauxk',
 				description: `The end of an playlist's Spotify URI`,
 			},
 			{
@@ -338,7 +338,7 @@ export class Spotify implements INodeType {
 		// For Post
 		let body: IDataObject;
 		// For Query string
-		//let qs: IDataObject;
+		let qs: IDataObject;
 
 		let requestMethod: string;
 		let endpoint: string;
@@ -351,6 +351,7 @@ export class Spotify implements INodeType {
 		requestMethod = 'GET';
 		endpoint = '';
 		body = {};
+		qs = {};
 
 		if( resource === 'player' ) {
 			if(['pause'].includes(operation)) {
@@ -422,16 +423,7 @@ export class Spotify implements INodeType {
 				const id = this.getNodeParameter('playlistID', 0) as string;
 				const trackId = this.getNodeParameter('trackID', 0) as string;
 
-				body.tracks = [
-					{
-					  "uri": `spotify:track:${trackId}`,
-					  "positions": [
-						0
-					  ]
-					}
-				]
-
-				endpoint = `${resource}/${id}/tracks`;
+				endpoint = `${resource}/${id}/tracks?uris=spotify:track:${trackId}`;
 			}
 		} else if( resource == 'tracks') {
 			const id = this.getNodeParameter('trackID', 0) as string;
@@ -444,10 +436,12 @@ export class Spotify implements INodeType {
 			}
 		}
 
-		const responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body);
+		const responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-		console.log(responseData);
+		if( responseData === undefined ) {
+			return [this.helpers.returnJsonArray({ status: 'Success!' })];
+		}
 
-		return this.prepareOutputData(responseData);
+		return [this.helpers.returnJsonArray(responseData)];
 	}
 }

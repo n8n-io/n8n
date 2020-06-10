@@ -18,14 +18,17 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object): Promise<any> { // tslint:disable-line:no-any
+export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
 
 	let options: OptionsWithUri = {
 		method,
 		headers: {
 			'User-Agent': 'n8n',
+			'Content-Type': 'text/plain',
+			'Accept': ' application/json',
 		},
 		body,
+		qs: query,
 		uri: '',
 		json: true
 	};
@@ -34,6 +37,8 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		method,
 		headers: {
 			'User-Agent': 'n8n',
+			'Content-Type': 'text/plain',
+			'Accept': ' application/json',
 		},
 		uri: '',
 		json: true
