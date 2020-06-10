@@ -7,7 +7,7 @@ import {
 	IWorkflowDb,
 	NodeTypes,
 	WebhookHelpers,
- } from '../../..';
+} from '../../..';
 
 import {
 	Workflow,
@@ -15,21 +15,21 @@ import {
 
 import {
 	IWebhookDb,
- } from '../../../Interfaces';
+} from '../../../Interfaces';
 
- import * as config from '../../../../config';
+import * as config from '../../../../config';
 
 export class WebhookModel1589476000887 implements MigrationInterface {
 	name = 'WebhookModel1589476000887';
 
-    async up(queryRunner: QueryRunner): Promise<void> {
+	async up(queryRunner: QueryRunner): Promise<void> {
 		let tablePrefix = config.get('database.tablePrefix');
 		const schema = config.get('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
-        await queryRunner.query(`CREATE TABLE ${tablePrefix}webhook_entity ("workflowId" integer NOT NULL, "webhookPath" character varying NOT NULL, "method" character varying NOT NULL, "node" character varying NOT NULL, CONSTRAINT "PK_b21ace2e13596ccd87dc9bf4ea6" PRIMARY KEY ("webhookPath", "method"))`, undefined);
+		await queryRunner.query(`CREATE TABLE ${tablePrefix}webhook_entity ("workflowId" integer NOT NULL, "webhookPath" character varying NOT NULL, "method" character varying NOT NULL, "node" character varying NOT NULL, CONSTRAINT "PK_b21ace2e13596ccd87dc9bf4ea6" PRIMARY KEY ("webhookPath", "method"))`, undefined);
 
 		const workflows = await queryRunner.query(`SELECT * FROM ${tablePrefix}workflow_entity WHERE active=true`) as IWorkflowDb[];
 		const data: IWebhookDb[] = [];
@@ -61,13 +61,13 @@ export class WebhookModel1589476000887 implements MigrationInterface {
 		}
 	}
 
-    async down(queryRunner: QueryRunner): Promise<void> {
+	async down(queryRunner: QueryRunner): Promise<void> {
 		let tablePrefix = config.get('database.tablePrefix');
 		const schema = config.get('database.postgresdb.schema');
 		if (schema) {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
-        await queryRunner.query(`DROP TABLE ${tablePrefix}webhook_entity`, undefined);
-    }
+		await queryRunner.query(`DROP TABLE ${tablePrefix}webhook_entity`, undefined);
+	}
 
 }
