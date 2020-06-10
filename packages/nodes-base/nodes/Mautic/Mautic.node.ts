@@ -1,5 +1,3 @@
-import { snakeCase } from 'change-case';
-
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
@@ -15,11 +13,17 @@ import {
 	mauticApiRequest,
 	mauticApiRequestAllItems,
 	validateJSON,
+	getErrors,
 } from './GenericFunctions';
+
 import {
 	contactFields,
 	contactOperations,
 } from './ContactDescription';
+
+import {
+	snakeCase,
+ } from 'change-case';
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,9 +44,43 @@ export class Mautic implements INodeType {
 			{
 				name: 'mauticApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'credentials',
+						],
+					},
+				},
+			},
+			{
+				name: 'mauticOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Credentials',
+						value: 'credentials',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'credentials',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -73,6 +111,32 @@ export class Mautic implements INodeType {
 					returnData.push({
 						name: company.fields.all.companyname,
 						value: company.id,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available tags to display them to user so that he can
+			// select them easily
+			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const tags = await mauticApiRequestAllItems.call(this, 'tags', 'GET', '/tags');
+				for (const tag of tags) {
+					returnData.push({
+						name: tag.tag,
+						value: tag.tag,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available stages to display them to user so that he can
+			// select them easily
+			async getStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const stages = await mauticApiRequestAllItems.call(this, 'stages', 'GET', '/stages');
+				for (const stage of stages) {
+					returnData.push({
+						name: stage.name,
+						value: stage.id,
 					});
 				}
 				return returnData;
@@ -124,6 +188,62 @@ export class Mautic implements INodeType {
 					if (additionalFields.ownerId) {
 						body.ownerId = additionalFields.ownerId as string;
 					}
+					if (additionalFields.addressUi) {
+						const addressValues = (additionalFields.addressUi as IDataObject).addressValues as IDataObject;
+						if (addressValues) {
+							body.address1 = addressValues.address1 as string;
+							body.address2 = addressValues.address2 as string;
+							body.city = addressValues.city as string;
+							body.state = addressValues.state as string;
+							body.country = addressValues.country as string;
+							body.zipcode = addressValues.zipCode as string;
+						}
+					}
+					if (additionalFields.socialMediaUi) {
+						const socialMediaValues = (additionalFields.socialMediaUi as IDataObject).socialMediaValues as IDataObject;
+						if (socialMediaValues) {
+							body.facebook = socialMediaValues.facebook as string;
+							body.foursquare = socialMediaValues.foursquare as string;
+							body.instagram = socialMediaValues.instagram as string;
+							body.linkedin = socialMediaValues.linkedIn as string;
+							body.skype = socialMediaValues.skype as string;
+							body.twitter = socialMediaValues.twitter as string;
+						}
+					}
+					if (additionalFields.b2bOrb2c) {
+						body.b2b_or_b2c = additionalFields.b2bOrb2c as string;
+					}
+					if (additionalFields.crmId) {
+						body.crm_id = additionalFields.crmId as string;
+					}
+					if (additionalFields.fax) {
+						body.fax = additionalFields.fax as string;
+					}
+					if (additionalFields.hasPurchased) {
+						body.haspurchased = additionalFields.hasPurchased as boolean;
+					}
+					if (additionalFields.mobile) {
+						body.mobile = additionalFields.mobile as string;
+					}
+					if (additionalFields.phone) {
+						body.phone = additionalFields.phone as string;
+					}
+					if (additionalFields.prospectOrCustomer) {
+						body.prospect_or_customer = additionalFields.prospectOrCustomer as string;
+					}
+					if (additionalFields.sandbox) {
+						body.sandbox = additionalFields.sandbox as boolean;
+					}
+					if (additionalFields.stage) {
+						body.stage = additionalFields.stage as string;
+					}
+					if (additionalFields.tags) {
+						body.tags = additionalFields.tags as string;
+					}
+					if (additionalFields.website) {
+						body.website = additionalFields.website as string;
+					}
+
 					responseData = await mauticApiRequest.call(this, 'POST', '/contacts/new', body);
 					responseData = responseData.contact;
 				}
@@ -167,6 +287,61 @@ export class Mautic implements INodeType {
 					if (updateFields.ownerId) {
 						body.ownerId = updateFields.ownerId as string;
 					}
+					if (updateFields.addressUi) {
+						const addressValues = (updateFields.addressUi as IDataObject).addressValues as IDataObject;
+						if (addressValues) {
+							body.address1 = addressValues.address1 as string;
+							body.address2 = addressValues.address2 as string;
+							body.city = addressValues.city as string;
+							body.state = addressValues.state as string;
+							body.country = addressValues.country as string;
+							body.zipcode = addressValues.zipCode as string;
+						}
+					}
+					if (updateFields.socialMediaUi) {
+						const socialMediaValues = (updateFields.socialMediaUi as IDataObject).socialMediaValues as IDataObject;
+						if (socialMediaValues) {
+							body.facebook = socialMediaValues.facebook as string;
+							body.foursquare = socialMediaValues.foursquare as string;
+							body.instagram = socialMediaValues.instagram as string;
+							body.linkedin = socialMediaValues.linkedIn as string;
+							body.skype = socialMediaValues.skype as string;
+							body.twitter = socialMediaValues.twitter as string;
+						}
+					}
+					if (updateFields.b2bOrb2c) {
+						body.b2b_or_b2c = updateFields.b2bOrb2c as string;
+					}
+					if (updateFields.crmId) {
+						body.crm_id = updateFields.crmId as string;
+					}
+					if (updateFields.fax) {
+						body.fax = updateFields.fax as string;
+					}
+					if (updateFields.hasPurchased) {
+						body.haspurchased = updateFields.hasPurchased as boolean;
+					}
+					if (updateFields.mobile) {
+						body.mobile = updateFields.mobile as string;
+					}
+					if (updateFields.phone) {
+						body.phone = updateFields.phone as string;
+					}
+					if (updateFields.prospectOrCustomer) {
+						body.prospect_or_customer = updateFields.prospectOrCustomer as string;
+					}
+					if (updateFields.sandbox) {
+						body.sandbox = updateFields.sandbox as boolean;
+					}
+					if (updateFields.stage) {
+						body.stage = updateFields.stage as string;
+					}
+					if (updateFields.tags) {
+						body.tags = updateFields.tags as string;
+					}
+					if (updateFields.website) {
+						body.website = updateFields.website as string;
+					}
 					responseData = await mauticApiRequest.call(this, 'PATCH', `/contacts/${contactId}/edit`, body);
 					responseData = responseData.contact;
 				}
@@ -193,6 +368,9 @@ export class Mautic implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 						qs.start = 0;
 						responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
+						if (responseData.errors) {
+							throw new Error(getErrors(responseData));
+						}
 						responseData = responseData.contacts;
 						responseData = Object.values(responseData);
 					}
