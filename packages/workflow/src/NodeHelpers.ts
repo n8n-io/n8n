@@ -859,13 +859,13 @@ export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookD
  */
 export function getNodeWebhookPath(workflowId: string, node: INode, path: string, isFullPath?: boolean): string {
 	let webhookPath = '';
-	if (node.webhookPath === undefined) {
+	if (node.webhookId === undefined) {
 		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
 	} else {
 		if (isFullPath === true) {
 			return path;
 		}
-		webhookPath = `${node.webhookPath}/${path}`;
+		webhookPath = `${node.webhookId}/${path}`;
 	}
 	return webhookPath;
 }
