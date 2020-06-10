@@ -32,7 +32,7 @@ export class GithubTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'githubOAuth2Api',
+				name: 'githubApi',
 				required: true,
 				displayOptions: {
 					show: {
