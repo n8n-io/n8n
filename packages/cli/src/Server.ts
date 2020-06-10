@@ -46,7 +46,6 @@ import {
 	WorkflowCredentials,
 	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
 	WorkflowRunner,
 	GenericHelpers,
 } from './';
