@@ -111,6 +111,7 @@
             "dist/credentials/Smtp.credentials.js",
             "dist/credentials/StripeApi.credentials.js",
             "dist/credentials/SpotifyApi.credentials.js",
+            "dist/credentials/SpotifyOAuth2Api.credentials.js",
             "dist/credentials/SalesmateApi.credentials.js",
             "dist/credentials/SegmentApi.credentials.js",
             "dist/credentials/SurveyMonkeyApi.credentials.js",

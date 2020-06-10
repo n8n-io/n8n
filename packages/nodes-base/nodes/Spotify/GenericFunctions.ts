@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 /**
- * Make an API request to Github
+ * Make an API request to Spotify
  *
  * @param {IHookFunctions} this
  * @param {string} method
@@ -36,8 +36,8 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	let getOptions: OptionsWithUri = {
 		method,
 		headers: {
-			'User-Agent': 'n8n',
-			'Content-Type': 'text/plain',
+			//'User-Agent': 'n8n',
+			//'Content-Type': 'text/plain',
 			'Accept': ' application/json',
 		},
 		uri: '',
@@ -45,19 +45,40 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	try {
-		const credentials = this.getCredentials('spotifyApi');
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
+
+		if (authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('spotifyApi');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			const baseUrl = credentials!.server || 'https://api.spotify.com/v1';
+			options.uri = `${baseUrl}${endpoint}`;
+			getOptions.uri = `${baseUrl}${endpoint}`;
+	
+			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
+			getOptions.headers!.Authorization = `Bearer ${credentials.accessToken}`;
+			if( method === 'GET') return await this.helpers.request(getOptions);
+			return await this.helpers.request(options);
+		} else {
+			const credentials = this.getCredentials('spotifyOAuth2Api');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			const baseUrl = 'https://api.spotify.com/v1'; //credentials!.server || 
+			options.uri = `${baseUrl}${endpoint}`;
+			getOptions.uri = `${baseUrl}${endpoint}`;
+	
+			console.log(options);
+			console.log(this);
+
+			//@ts-ignore
+			if( method === 'GET') return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', getOptions);
+			//@ts-ignore
+			return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
 		}
-
-		const baseUrl = credentials!.server || 'https://api.spotify.com/v1/';
-		options.uri = `${baseUrl}${endpoint}`;
-		getOptions.uri = `${baseUrl}${endpoint}`;
-
-		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-		getOptions.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-		if( method === 'GET') return await this.helpers.request(getOptions);
-		return await this.helpers.request(options);
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error

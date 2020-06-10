@@ -29,9 +29,44 @@ export class Spotify implements INodeType {
 			{
 				name: 'spotifyApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'spotifyOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -357,15 +392,15 @@ export class Spotify implements INodeType {
 			if(['pause'].includes(operation)) {
 				requestMethod = 'PUT';
 
-				endpoint = `me/${fullOperation}`;
+				endpoint = `/me/${fullOperation}`;
 			} else if(['recently-played', 'currently-playing'].includes(operation)) {
 				requestMethod = 'GET';
 
-				endpoint = `me/${fullOperation}`;
+				endpoint = `/me/${fullOperation}`;
 			} else if(['next', 'previous'].includes(operation)) {
 				requestMethod = 'POST';
 
-				endpoint = `me/${fullOperation}`;
+				endpoint = `/me/${fullOperation}`;
 			}
 		} else if( resource == 'albums') {
 			const id = this.getNodeParameter('albumID', 0) as string;
@@ -373,22 +408,22 @@ export class Spotify implements INodeType {
 			requestMethod = 'GET';
 
 			if(['albums'].includes(operation)) {
-				endpoint = `${resource}/${id}`
+				endpoint = `$/{resource}/${id}`
 			} else if(['tracks'].includes(operation)) {
-				endpoint = `${resource}/${id}/${operation}`
+				endpoint = `/${resource}/${id}/${operation}`
 			}
 		} else if( resource == 'artists') {
 			const id = this.getNodeParameter('artistID', 0) as string;
 			requestMethod = 'GET';
 
 			if(['albums','related-artists'].includes(operation)) { //top-tracks requires a country param
-				endpoint = `${resource}/${id}/${operation}`
+				endpoint = `/${resource}/${id}/${operation}`
 			} else if(['top-tracks'].includes(operation)){
 				const country = this.getNodeParameter('country', 0) as string;
 
-				endpoint = `${resource}/${id}/top-tracks?country=${country}`
+				endpoint = `/${resource}/${id}/top-tracks?country=${country}`
 			} else if(['artist'].includes(operation)) {
-				endpoint = `${resource}/${id}`
+				endpoint = `/${resource}/${id}`
 			}
 		} else if( resource == 'playlists') {
 			if(['delete'].includes(operation)) {
@@ -406,33 +441,33 @@ export class Spotify implements INodeType {
 					}
 				]
 
-				endpoint = `${resource}/${id}/tracks`;
+				endpoint = `/${resource}/${id}/tracks`;
 			} else if(['user-playlists'].includes(operation)) {
 				requestMethod = 'GET';
 
-				endpoint = `me/${resource}`;
+				endpoint = `/me/${resource}`;
 			} else if(['get'].includes(operation)) {
 				requestMethod = 'GET';
 
 				const id = this.getNodeParameter('playlistID', 0) as string;
 
-				endpoint = `${resource}/${id}`;
+				endpoint = `/${resource}/${id}`;
 			} else if(['add'].includes(operation)) {
 				requestMethod = 'POST';
 
 				const id = this.getNodeParameter('playlistID', 0) as string;
 				const trackId = this.getNodeParameter('trackID', 0) as string;
 
-				endpoint = `${resource}/${id}/tracks?uris=spotify:track:${trackId}`;
+				endpoint = `/${resource}/${id}/tracks?uris=spotify:track:${trackId}`;
 			}
 		} else if( resource == 'tracks') {
 			const id = this.getNodeParameter('trackID', 0) as string;
 			requestMethod = 'GET';
 
 			if(['audio-features', 'audio-analysis'].includes(operation)) {
-				endpoint = `${operation}/${id}`
+				endpoint = `/${operation}/${id}`
 			} else if(['tracks'].includes(operation)) {
-				endpoint = `${resource}/${id}`
+				endpoint = `/${resource}/${id}`
 			}
 		}
 
