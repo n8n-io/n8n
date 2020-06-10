@@ -281,7 +281,21 @@ export class HubspotTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const credentials = this.getCredentials('hubspotDeveloperApi');
+
+		const authenticationMethod = this.getNodeParameter('authentication') as string;
+
+		let credentials : IDataObject;
+
+		if (authenticationMethod === 'hubspotDeveloperApi') {
+			credentials = this.getCredentials('hubspotDeveloperApi') as IDataObject;
+		} else {
+			credentials = this.getCredentials('hubspotOAuth2Api') as IDataObject;
+		}
+
+		if (credentials === undefined) {
+			throw new Error('No credentials found!');
+		}
+
 		const req = this.getRequestObject();
 		const bodyData = req.body;
 		const headerData = this.getHeaderData();
