@@ -8,12 +8,10 @@ import {
 import { IDataObject } from 'n8n-workflow';
 
 export async function clearbitApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, api: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('clearbitApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+
 	let options: OptionsWithUri = {
-		headers: { Authorization: `Bearer ${credentials.apiKey}`},
+		headers: {},
 		method,
 		qs,
 		body,
@@ -24,9 +22,21 @@ export async function clearbitApiRequest(this: IHookFunctions | IExecuteFunction
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
+
 	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
+		if (authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('clearbitApi');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+			//@ts-ignore
+			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
+			// @ts-ignore
+			return await this.helpers.request(options);
+		} else {
+			return await this.helpers.requestOAuth2?.call(this, 'clearbitOAuth2Api', options);
+		}
+	} catch(error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
 			throw new Error('The Clearbit credentials are not valid!');

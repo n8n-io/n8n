@@ -39,6 +39,7 @@
             "dist/credentials/BitlyApi.credentials.js",
             "dist/credentials/ChargebeeApi.credentials.js",
             "dist/credentials/ClearbitApi.credentials.js",
+            "dist/credentials/ClearbitOAuth2Api.credentials.js",
             "dist/credentials/ClickUpApi.credentials.js",
             "dist/credentials/ClockifyApi.credentials.js",
             "dist/credentials/CockpitApi.credentials.js",
