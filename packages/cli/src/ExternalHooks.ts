@@ -6,7 +6,6 @@ import {
 
 import * as config from '../config';
 
-// export EXTERNAL_HOOK_FILES=/data/packages/cli/dist/src/externalHooksTemp/test-hooks.js
 
 class ExternalHooksClass implements IExternalHooksClass {
 

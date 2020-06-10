@@ -10,6 +10,7 @@ import {
 import {
 	ActiveExecutions,
 	Db,
+	ExternalHooks,
 	GenericHelpers,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -102,6 +103,10 @@ export class Execute extends Command {
 
 		// Wait till the n8n-packages have been read
 		await loadNodesAndCredentialsPromise;
+
+		// Load all external hooks
+		const externalHooks = ExternalHooks();
+		await externalHooks.init();
 
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();
