@@ -167,7 +167,7 @@ export class Spotify implements INodeType {
 				displayName: 'Album ID',
 				name: 'albumID',
 				type: 'string',
-				default: '62XZju4HxxXF6CBIqqG2ei',
+				default: '',
 				required: true,
 				displayOptions: {
 					show: {
@@ -219,7 +219,7 @@ export class Spotify implements INodeType {
 				displayName: 'Artist ID',
 				name: 'artistID',
 				type: 'string',
-				default: '69tiO1fG8VWduDl3ji2qhI',
+				default: '',
 				required: true,
 				displayOptions: {
 					show: {
@@ -287,7 +287,7 @@ export class Spotify implements INodeType {
 				displayName: 'Playlist ID',
 				name: 'playlistID',
 				type: 'string',
-				default: '3w2I1EAz5YLJrQe0CBauxk',
+				default: '',
 				required: true,
 				displayOptions: {
 					show: {
@@ -305,7 +305,7 @@ export class Spotify implements INodeType {
 				displayName: 'Track ID',
 				name: 'trackID',
 				type: 'string',
-				default: '0a4rkBrO9C3BOPWullYPIM',
+				default: '',
 				required: true,
 				displayOptions: {
 					show: {
@@ -353,7 +353,7 @@ export class Spotify implements INodeType {
 				displayName: 'Track ID',
 				name: 'trackID',
 				type: 'string',
-				default: '0a4rkBrO9C3BOPWullYPIM',
+				default: '',
 				required: true,
 				displayOptions: {
 					show: {
