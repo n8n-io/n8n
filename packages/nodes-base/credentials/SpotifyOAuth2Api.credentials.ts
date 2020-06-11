@@ -14,9 +14,8 @@ export class SpotifyOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Spotify Server',
 			name: 'server',
-			type: 'string' as NodePropertyTypes,
+			type: 'hidden' as NodePropertyTypes,
 			default: 'https://api.spotify.com/',
-			description: 'The server to connect to. Does only have to get changed if Github Enterprise gets used.',
 		},
 		{
 			displayName: 'Authorization URL',
