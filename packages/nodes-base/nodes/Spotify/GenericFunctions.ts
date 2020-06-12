@@ -12,6 +12,7 @@ import {
  * @param {string} method
  * @param {string} url
  * @param {object} body
+ * @param {object} query
  * @returns {Promise<any>}
  */
 export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
@@ -44,7 +45,7 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 
 			const baseUrl = 'https://api.spotify.com/v1';
 			options.uri = `${baseUrl}${endpoint}`;
-	
+
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request(options);
