@@ -105,10 +105,10 @@ export async function buildFiles (options?: IBuildOptions): Promise<string> {
 	}
 
 	return new Promise((resolve, reject) => {
+		copyfiles([join(process.cwd(), './*.png'), outputDirectory], { up: true }, () => resolve(outputDirectory));
 		buildProcess.on('exit', code => {
 			// Remove the tmp tsconfig file
 			tsconfigData.cleanup();
-			copyfiles([join(process.cwd(), './*.png'), outputDirectory], { up: true }, () => resolve(outputDirectory));
 		});
 	});
 }
