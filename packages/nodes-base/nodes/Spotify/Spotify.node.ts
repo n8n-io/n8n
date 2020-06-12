@@ -446,7 +446,7 @@ export class Spotify implements INodeType {
 
 				endpoint = endpoint + `?uri=${id}`;
 			}
-		} else if( resource == 'albums') {
+		} else if( resource === 'albums') {
 			const uri = this.getNodeParameter('id', 0) as string;
 
 			const id = uri.replace('spotify:album:', '');
@@ -458,23 +458,23 @@ export class Spotify implements INodeType {
 			} else if(['tracks'].includes(operation)) {
 				endpoint = `/${resource}/${id}/${operation}`;
 			}
-		} else if( resource == 'artists') {
+		} else if( resource === 'artists') {
 			const uri = this.getNodeParameter('id', 0) as string;
 
 			const id = uri.replace('spotify:artist:', '');
 
 			requestMethod = 'GET';
 
-			endpoint = `/${resource}/${id}`
+			endpoint = `/${resource}/${id}`;
 
 			if(['albums','related-artists'].includes(operation)) {
-				endpoint = endpoint + `/${operation}`
+				endpoint = endpoint + `/${operation}`;
 			} else if(['top-tracks'].includes(operation)){
 				const country = this.getNodeParameter('country', 0) as string;
 
-				endpoint = endpoint + `/top-tracks?country=${country}`
+				endpoint = endpoint + `/top-tracks?country=${country}`;
 			}
-		} else if( resource == 'playlists') {
+		} else if( resource === 'playlists') {
 			if(['delete'].includes(operation)) {
 				requestMethod = 'DELETE';
 
@@ -491,7 +491,7 @@ export class Spotify implements INodeType {
 						0
 					  ]
 					}
-				]
+				];
 
 				endpoint = `/${resource}/${id}/tracks`;
 			} else if(['user-playlists'].includes(operation)) {
@@ -517,7 +517,7 @@ export class Spotify implements INodeType {
 
 				endpoint = `/${resource}/${id}/tracks?uris=${trackId}`;
 			}
-		} else if( resource == 'tracks') {
+		} else if( resource === 'tracks') {
 			const uri = this.getNodeParameter('id', 0) as string;
 
 			const id = uri.replace('spotify:track:', '');
@@ -525,9 +525,9 @@ export class Spotify implements INodeType {
 			requestMethod = 'GET';
 
 			if(['audio-features'].includes(operation)) {
-				endpoint = `/${operation}/${id}`
+				endpoint = `/${operation}/${id}`;
 			} else if(['tracks'].includes(operation)) {
-				endpoint = `/${resource}/${id}`
+				endpoint = `/${resource}/${id}`;
 			}
 		}
 

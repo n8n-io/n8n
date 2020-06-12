@@ -12,12 +12,11 @@ import {
  * @param {string} method
  * @param {string} url
  * @param {object} body
- * @param {object} query
  * @returns {Promise<any>}
  */
 export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
 
-	let options: OptionsWithUri = {
+	const options: OptionsWithUri = {
 		method,
 		headers: {
 			'User-Agent': 'n8n',
