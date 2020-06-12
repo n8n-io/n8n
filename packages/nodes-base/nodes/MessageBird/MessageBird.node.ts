@@ -64,11 +64,11 @@ export class MessageBird implements INodeType {
 					{
 						name: 'Send',
 						value: 'send',
-						description: 'Send text messages (SMS)'
+						description: 'Send text messages (SMS)',
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.'
+				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -91,7 +91,7 @@ export class MessageBird implements INodeType {
 						],
 					},
 				},
-				description: 'The number from which to send the message'
+				description: 'The number from which to send the message.',
 			},
 			{
 				displayName: 'To',
@@ -103,10 +103,10 @@ export class MessageBird implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['send'],
-						resource: ['sms']
-					}
+						resource: ['sms'],
+					},
 				},
-				description: 'all recipients separated by commas'
+				description: 'All recipients separated by commas.',
 			},
 
 			{
@@ -125,7 +125,7 @@ export class MessageBird implements INodeType {
 						],
 					},
 				},
-				description: 'The message to be send'
+				description: 'The message to be send.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -160,7 +160,7 @@ export class MessageBird implements INodeType {
 							},
 						],
 						default: '',
-						description: 'Using unicode will limit the maximum number of characters to 70 instead of 160',
+						description: 'Using unicode will limit the maximum number of characters to 70 instead of 160.',
 					},
 					{
 						displayName: 'Gateway',
@@ -175,7 +175,7 @@ export class MessageBird implements INodeType {
 						placeholder: '1,2',
 						type: 'string',
 						default: '',
-						description: 'Group IDs separated by commas, If provided recipients can be omitted',
+						description: 'Group IDs separated by commas, If provided recipients can be omitted.',
 					},
 					{
 						displayName: 'Message Type',
@@ -184,12 +184,12 @@ export class MessageBird implements INodeType {
 						placeholder: 'Permissible values from 0-3',
 						options: [
 							{
-								name: 'Normal',
-								value: 0
-							},
-							{
 								name: 'Flash',
 								value: 1,
+							},
+							{
+								name: 'Normal',
+								value: 0,
 							},
 						],
 						default: 1,
@@ -222,20 +222,20 @@ export class MessageBird implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'SMS',
-								value: 'sms'
-							},
-							{
 								name: 'Binary',
 								value: 'binary'
 							},
 							{
 								name: 'Flash',
 								value: 'flash'
-							}
+							},
+							{
+								name: 'SMS',
+								value: 'sms'
+							},
 						],
 						default: '',
-						description: 'The type of message.<br /> Values can be: sms, binary, or flash.'
+						description: 'The type of message.<br /> Values can be: sms, binary, or flash.',
 					},
 					{
 						displayName: 'Type Details',
