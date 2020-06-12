@@ -190,6 +190,7 @@
       "dist/nodes/Google/Sheet/GoogleSheets.node.js",
       "dist/nodes/GraphQL/GraphQL.node.js",
       "dist/nodes/Gumroad/GumroadTrigger.node.js",
+      "dist/nodes/HackerNews/HackerNews.node.js",
       "dist/nodes/Harvest/Harvest.node.js",
       "dist/nodes/HelpScout/HelpScout.node.js",
       "dist/nodes/HelpScout/HelpScoutTrigger.node.js",
