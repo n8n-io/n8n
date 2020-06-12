@@ -41,7 +41,7 @@ export class SpotifyOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'response_type=code',
+			default: '',
 		},
 		{
 			displayName: 'Authentication',
