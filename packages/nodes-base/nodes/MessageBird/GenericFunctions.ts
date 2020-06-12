@@ -1,15 +1,15 @@
 import {
-	IExecuteFunctions,
-	IHookFunctions,
- } from 'n8n-core';
+	OptionsWithUri,
+} from 'request';
 
 import {
-	OptionsWithUri,
- } from 'request';
+	IExecuteFunctions,
+	IHookFunctions,
+} from 'n8n-core';
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 /**
  * Make an API request to Message Bird
@@ -26,7 +26,7 @@ export async function messageBirdApiRequest(
 	resource: string,
 	body: IDataObject,
 	query: IDataObject = {},
-): Promise<any> {
+): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('messageBirdApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials returned!');
@@ -41,7 +41,7 @@ export async function messageBirdApiRequest(
 		qs: query,
 		body,
 		uri: `https://rest.messagebird.com${resource}`,
-		json: true
+		json: true,
 	};
 
 	try {
