@@ -1,7 +1,15 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-import { OptionsWithUri } from 'request';
+import {
+	IExecuteFunctions,
+	IHookFunctions,
+ } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import {
+	OptionsWithUri,
+ } from 'request';
+
+import {
+	IDataObject,
+ } from 'n8n-workflow';
 
 /**
  * Make an API request to Message Bird
@@ -17,23 +25,17 @@ export async function messageBirdApiRequest(
 	method: string,
 	resource: string,
 	body: IDataObject,
-	query?: IDataObject
+	query: IDataObject = {},
 ): Promise<any> {
 	const credentials = this.getCredentials('messageBirdApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials returned!');
 	}
 
-	if (query === undefined) {
-		query = {};
-	}
-	let token;
-	token = token = `AccessKey ${credentials.accessKey}`;
-
 	const options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
-			Authorization: token
+			Authorization: `AccessKey ${credentials.accessKey}`,
 		},
 		method,
 		qs: query,
@@ -51,18 +53,12 @@ export async function messageBirdApiRequest(
 
 		if (error.response && error.response.body && error.response.body.errors) {
 			// Try to return the error prettier
-			let errorMessage;
-			for (let i = 0; i < error.response.body.errors.length; i++) {
-				errorMessage =
-					errorMessage +
-					`Message Bird Error response [${error.statusCode}]: ${error.response.body.errors[i].description}`;
-			}
-			throw new Error(errorMessage);
+			const errorMessage = error.response.body.errors.map((e: IDataObject) => e.description);
+
+			throw new Error(`MessageBird Error response [${error.statusCode}]: ${errorMessage.join('|')}`);
 		}
 
 		// If that data does not exist for some reason return the actual error
-		throw new Error(
-			`Message Bird error ${error.response.body.errors[0].description}`
-		);
+		throw error;
 	}
 }

@@ -1,19 +1,24 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+ } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeExecutionData,
-	INodeType
+	INodeType,
 } from 'n8n-workflow';
 
-import { messageBirdApiRequest } from './GenericFunctions';
+import {
+	messageBirdApiRequest,
+ } from './GenericFunctions';
 
 export class MessageBird implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MessageBird',
 		name: 'messageBird',
 		icon: 'file:messagebird.png',
-		group: ['transform'],
+		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sending SMS',
@@ -50,15 +55,17 @@ export class MessageBird implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: ['sms']
-					}
+						resource: [
+							'sms',
+						],
+					},
 				},
 				options: [
 					{
 						name: 'Send',
 						value: 'send',
 						description: 'Send text messages (SMS)'
-					}
+					},
 				],
 				default: 'send',
 				description: 'The operation to perform.'
@@ -76,9 +83,13 @@ export class MessageBird implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: ['send'],
-						resource: ['sms']
-					}
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
 				},
 				description: 'The number from which to send the message'
 			},
@@ -106,9 +117,13 @@ export class MessageBird implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: ['send'],
-						resource: ['sms']
-					}
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
 				},
 				description: 'The message to be send'
 			},
@@ -119,91 +134,87 @@ export class MessageBird implements INodeType {
 				placeholder: 'Add Fields',
 				default: {},
 				options: [
-					//date-time format
 					{
 						displayName: 'Created Date-time',
 						name: 'createdDatetime',
 						type: 'dateTime',
-						placeholder: '2011-08-30T09:30:16.768-04:00',
 						default: '',
-						description:
-							'The date and time of the creation of the message in RFC3339 format (Y-m-dTH:i:sP).'
+						description: 'The date and time of the creation of the message in RFC3339 format (Y-m-dTH:i:sP).',
 					},
 					{
 						displayName: 'Datacoding',
 						name: 'datacoding',
-						type: 'string',
+						type: 'options',
+						options: [
+							{
+								name: 'Auto',
+								value: 'auto',
+							},
+							{
+								name: 'Plain',
+								value: 'plain',
+							},
+							{
+								name: 'Unicode',
+								value: 'unicode',
+							},
+						],
 						default: '',
-						description:
-							'Using unicode will limit the maximum number of characters to 70 instead of 160'
+						description: 'Using unicode will limit the maximum number of characters to 70 instead of 160',
 					},
 					{
 						displayName: 'Gateway',
 						name: 'gateway',
 						type: 'number',
 						default: '',
-						description: 'The SMS route that is used to send the message.'
+						description: 'The SMS route that is used to send the message.',
 					},
 					{
-						displayName: 'Group Ids',
+						displayName: 'Group IDs',
 						name: 'groupIds',
 						placeholder: '1,2',
 						type: 'string',
 						default: '',
-						description:
-							'group ids separated by commas, If provided recipients can be omitted'
+						description: 'Group IDs separated by commas, If provided recipients can be omitted',
 					},
 					{
-						displayName: 'Mclass',
+						displayName: 'Message Type',
 						name: 'mclass',
 						type: 'options',
-						placeholder: 'permissible values from 0-3',
+						placeholder: 'Permissible values from 0-3',
 						options: [
 							{
-								name: '0',
-								value: '0'
+								name: 'Normal',
+								value: 0
 							},
 							{
-								name: '1',
-								value: '1'
+								name: 'Flash',
+								value: 1,
 							},
-							{
-								name: '2',
-								value: '2'
-							},
-							{
-								name: '3',
-								value: '3'
-							}
 						],
-						default: '',
-						description:
-							'Indicated the message type. 1 is a normal message, 0 is a flash message.'
+						default: 1,
+						description: 'Indicated the message type. 1 is a normal message, 0 is a flash message.',
 					},
 					{
 						displayName: 'Reference',
 						name: 'reference',
 						type: 'string',
 						default: '',
-						description: 'A client reference.'
+						description: 'A client reference.',
 					},
 					{
 						displayName: 'Report Url',
 						name: 'reportUrl',
 						type: 'string',
 						default: '',
-						description:
-							'The status report URL to be used on a per-message basis.<br /> Reference is required for a status report webhook to be sent.'
+						description: 'The status report URL to be used on a per-message basis.<br /> Reference is required for a status report webhook to be sent.',
 					},
-					//date-time format
 					{
 						displayName: 'Scheduled Date-time',
 						name: 'scheduledDatetime',
 						type: 'dateTime',
 						default: '',
-						placeholder: '2011-08-30T09:30:16.768-04:00',
-						description:
-							'The scheduled date and time of the message in RFC3339 format (Y-m-dTH:i:sP).'
+						description: 'The scheduled date and time of the message in RFC3339 format (Y-m-dTH:i:sP).',
 					},
 					{
 						displayName: 'Type',
@@ -211,44 +222,41 @@ export class MessageBird implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'sms',
+								name: 'SMS',
 								value: 'sms'
 							},
 							{
-								name: 'binary',
+								name: 'Binary',
 								value: 'binary'
 							},
 							{
-								name: 'flash',
+								name: 'Flash',
 								value: 'flash'
 							}
 						],
 						default: '',
-						description:
-							'The type of message.<br /> Values can be: sms, binary, or flash.'
+						description: 'The type of message.<br /> Values can be: sms, binary, or flash.'
 					},
-					//hash
 					{
 						displayName: 'Type Details',
 						name: 'typeDetails',
 						type: 'string',
 						default: '',
-						description:
-							'A hash with extra information.<br /> Is only used when a binary message is sent.'
+						description: 'A hash with extra information.<br /> Is only used when a binary message is sent.',
 					},
 					{
 						displayName: 'Validity',
 						name: 'validity',
 						type: 'number',
-						default: '',
+						default: 1,
 						typeOptions: {
-							minValue: 1
+							minValue: 1,
 						},
-						description: 'The amount of seconds that the message is valid.'
-					}
-				]
-			}
-		]
+						description: 'The amount of seconds that the message is valid.',
+					},
+				],
+			},
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
