@@ -33,6 +33,8 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
+		const baseUrl = 'https://api.spotify.com/v1';
+
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('spotifyApi');
 			if (credentials === undefined) {
@@ -43,7 +45,6 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 				delete options.body;
 			}
 
-			const baseUrl = 'https://api.spotify.com/v1';
 			options.uri = `${baseUrl}${endpoint}`;
 
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
@@ -59,7 +60,6 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 				delete options.body;
 			}
 
-			const baseUrl = 'https://api.spotify.com/v1';
 			options.uri = `${baseUrl}${endpoint}`;
 
 			return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
