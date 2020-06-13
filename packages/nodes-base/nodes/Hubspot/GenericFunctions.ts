@@ -14,7 +14,12 @@ import {
 } from 'n8n-workflow';
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const authenticationMethod = this.getNodeParameter('authentication', 0);
+
+	let authenticationMethod = this.getNodeParameter('authentication', 0);
+
+	if (this.getNode().type.includes('Trigger')) {
+		authenticationMethod = 'developerApi';
+	}
 
 	const options: OptionsWithUri = {
 		method,
@@ -26,8 +31,14 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	try {
-		if (authenticationMethod === 'accessToken') {
+		if (authenticationMethod === 'apiKey') {
 			const credentials = this.getCredentials('hubspotApi');
+
+			options.qs.hapikey = credentials!.apiKey as string;
+
+			return await this.helpers.request!(options);
+		} else if (authenticationMethod === 'developerApi') {
+			const credentials = this.getCredentials('hubspotDeveloperApi');
 
 			options.qs.hapikey = credentials!.apiKey as string;
 
@@ -37,15 +48,23 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, 'Bearer');
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.errors) {
-			// Try to return the error prettier
-			let errorMessages = error.response.body.errors;
+		let errorMessages;
 
-			if (errorMessages[0].message) {
-				// @ts-ignore
-				errorMessages = errorMessages.map(errorItem => errorItem.message);
+		if (error.response && error.response.body) {
+
+			if (error.response.body.message) {
+
+				errorMessages = [error.response.body.message];
+
+			} else if (error.response.body.errors) {
+				// Try to return the error prettier
+				errorMessages = error.response.body.errors;
+
+				if (errorMessages[0].message) {
+					// @ts-ignore
+					errorMessages = errorMessages.map(errorItem => errorItem.message);
+				}
 			}
-
 			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join('|')}`);
 		}
 
