@@ -14,6 +14,9 @@ Sets how n8n should be made available.
 # The port n8n should be made available on
 N8N_PORT=5678
 
+# The IP address n8n should listen on
+N8N_LISTEN_ADDRESS=0.0.0.0
+
 # This ones are currently only important for the webhook URL creation.
 # So if "WEBHOOK_TUNNEL_URL" got set they do get ignored. It is however
 # encouraged to set them correctly anyway in case they will become

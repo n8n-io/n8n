@@ -42,3 +42,35 @@ export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingle
 		throw error;
 	}
 }
+
+export async function twitterApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.count = 100;
+	do {
+		responseData = await twitterApiRequest.call(this, method, endpoint, body, query);
+		query.since_id = responseData.search_metadata.max_id;
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		responseData.search_metadata &&
+		responseData.search_metadata.next_results
+	);
+
+	return returnData;
+}
+
+export function chunks (buffer: Buffer, chunkSize: number) {
+	const result = [];
+	const len = buffer.length;
+	let i = 0;
+
+	while (i < len) {
+		result.push(buffer.slice(i, i += chunkSize));
+	}
+
+	return result;
+}
+
+
