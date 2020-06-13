@@ -3,6 +3,12 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
+const scopes = [
+	'contacts',
+	'forms',
+	'tickets',
+];
+
 export class HubspotOAuth2Api implements ICredentialType {
 	name = 'hubspotOAuth2Api';
 	extends = [
@@ -27,8 +33,8 @@ export class HubspotOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
-			default: '',
+			type: 'hidden' as NodePropertyTypes,
+			default: scopes.join(' '),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
@@ -39,20 +45,8 @@ export class HubspotOAuth2Api implements ICredentialType {
 		{
             displayName: 'Authentication',
             name: 'authentication',
-            type: 'options' as NodePropertyTypes,
-            options: [
-                {
-                    name: 'Body',
-                    value: 'body',
-                    description: 'Send credentials in body',
-                },
-                {
-                    name: 'Header',
-                    value: 'header',
-                    description: 'Send credentials as Basic Auth header',
-                },
-            ],
-            default: 'header',
+            type: 'hidden' as NodePropertyTypes,
+            default: 'body',
             description: 'Resource to consume.',
         },
 	];
