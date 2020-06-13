@@ -37,24 +37,6 @@ export class HubspotTrigger implements INodeType {
 			{
 				name: 'hubspotDeveloperApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'developerApi',
-						],
-					},
-				},
-			},
-			{
-				name: 'hubspotOAuth2Api',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'oAuth2',
-						],
-					},
-				},
 			},
 		],
 		webhooks: [
@@ -72,23 +54,6 @@ export class HubspotTrigger implements INodeType {
 			},
 		],
 		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Developer API',
-						value: 'developerApi',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2',
-					},
-				],
-				default: 'developerApi',
-				description: 'The method of authentication.',
-			},
 			{
 				displayName: 'App ID',
 				name: 'appId',
@@ -282,15 +247,7 @@ export class HubspotTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 
-		const authenticationMethod = this.getNodeParameter('authentication') as string;
-
-		let credentials : IDataObject;
-
-		if (authenticationMethod === 'hubspotDeveloperApi') {
-			credentials = this.getCredentials('hubspotDeveloperApi') as IDataObject;
-		} else {
-			credentials = this.getCredentials('hubspotOAuth2Api') as IDataObject;
-		}
+		const credentials = this.getCredentials('hubspotDeveloperApi') as IDataObject;
 
 		if (credentials === undefined) {
 			throw new Error('No credentials found!');
@@ -303,12 +260,18 @@ export class HubspotTrigger implements INodeType {
 		if (headerData['x-hubspot-signature'] === undefined) {
 			return {};
 		}
-		const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
-		const signature =  createHash('sha256').update(hash).digest('hex');
-		//@ts-ignore
-		if (signature !== headerData['x-hubspot-signature']) {
-			return {};
+
+		// check signare if client secret is defined
+
+		if (credentials.clientSecret !== '') {
+			const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
+			const signature =  createHash('sha256').update(hash).digest('hex');
+			//@ts-ignore
+			if (signature !== headerData['x-hubspot-signature']) {
+				return {};
+			}
 		}
+
 		for (let i = 0; i < bodyData.length; i++) {
 			const subscriptionType = bodyData[i].subscriptionType as string;
 			if (subscriptionType.includes('contact')) {
