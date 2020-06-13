@@ -670,7 +670,7 @@ export class GoogleSheets implements INodeType {
 									sheetId: range.sheetId,
 									dimension: deletePropertyToDimensions[propertyName] as string,
 									startIndex: range.startIndex,
-									endIndex: range.startIndex + range.amount,
+									endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
 								}
 							}
 						});
