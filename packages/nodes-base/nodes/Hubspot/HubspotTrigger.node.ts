@@ -37,6 +37,24 @@ export class HubspotTrigger implements INodeType {
 			{
 				name: 'hubspotDeveloperApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'developerApi',
+						],
+					},
+				},
+			},
+			{
+				name: 'hubspotOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -54,6 +72,23 @@ export class HubspotTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Developer API',
+						value: 'developerApi',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'developerApi',
+				description: 'The method of authentication.',
+			},
 			{
 				displayName: 'App ID',
 				name: 'appId',
@@ -246,7 +281,21 @@ export class HubspotTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const credentials = this.getCredentials('hubspotDeveloperApi');
+
+		const authenticationMethod = this.getNodeParameter('authentication') as string;
+
+		let credentials : IDataObject;
+
+		if (authenticationMethod === 'hubspotDeveloperApi') {
+			credentials = this.getCredentials('hubspotDeveloperApi') as IDataObject;
+		} else {
+			credentials = this.getCredentials('hubspotOAuth2Api') as IDataObject;
+		}
+
+		if (credentials === undefined) {
+			throw new Error('No credentials found!');
+		}
+
 		const req = this.getRequestObject();
 		const bodyData = req.body;
 		const headerData = this.getHeaderData();
