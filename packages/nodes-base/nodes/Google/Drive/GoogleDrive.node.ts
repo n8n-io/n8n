@@ -797,7 +797,7 @@ export class GoogleDrive implements INodeType {
 							{
 								name: 'domain',
 								value: 'domain',
-								description:"All files shared to the user's domain that are searchable",
+								description: 'All files shared to the user\'s domain that are searchable',
 							},
 							{
 								name: 'drive',
@@ -945,7 +945,7 @@ export class GoogleDrive implements INodeType {
 						queryCorpora = options.corpora as string;
 					}
 
-					let driveId : string | undefined;
+					let driveId: string | undefined;
 					driveId = options.driveId as string;
 					if (driveId === '') {
 						driveId = undefined;

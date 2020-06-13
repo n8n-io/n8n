@@ -138,7 +138,7 @@ export class Twitter implements INodeType {
 							const isImage = binaryData[binaryPropertyName].mimeType.includes('image');
 
 							if (isImage && isAnimatedWebp) {
-								throw new Error('Animated .webp images are not supported use .git instead');
+								throw new Error('Animated .webp images are not supported use .gif instead');
 							}
 
 							if (isImage) {
