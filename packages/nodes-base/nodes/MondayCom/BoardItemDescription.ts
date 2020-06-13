@@ -82,10 +82,10 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: `Item's ID`
+		description: 'The unique identifier of the item to add update to.',
 	},
 	{
-		displayName: 'Body',
+		displayName: 'Update Text',
 		name: 'value',
 		type: 'string',
 		required: true,
@@ -100,7 +100,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: 'The update text',
+		description: 'The update text to add.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 boardItem:changeColumnValue                */
@@ -142,7 +142,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: `Item's ID`
+		description: 'The unique identifier of the item to to change column of.',
 	},
 	{
 		displayName: 'Column ID',
@@ -184,7 +184,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: 'The column value in JSON format.',
+		description: 'The column value in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-column-value" target="_blank">here</a>.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 boardItem:changeMultipleColumnValues       */
@@ -244,7 +244,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: 'The column fields and values in JSON format.',
+		description: 'The column fields and values in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-multiple-column-values" target="_blank">here</a>.',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
