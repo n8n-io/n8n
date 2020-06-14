@@ -14,26 +14,48 @@ import {
  } from 'n8n-workflow';
 
 export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('zendeskApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	const base64Key =  Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64');
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+
 	let options: OptionsWithUri = {
-		headers: { 'Authorization': `Basic ${base64Key}`},
+		headers: {},
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials.url}/api/v2${resource}.json`,
+		//@ts-ignore
+		uri,
 		json: true
 	};
+
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
+
 	try {
-		return await this.helpers.request!(options);
-	} catch (err) {
+		if (authenticationMethod === 'apiToken') {
+			const credentials = this.getCredentials('zendeskApi');
+
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			const base64Key =  Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64');
+			options.uri = `https://${credentials.subdomain}.zendesk.com/api/v2${resource}.json`;
+			options.headers!['Authorization'] = `Basic ${base64Key}`;
+
+			return await this.helpers.request!(options);
+		} else {
+			const credentials = this.getCredentials('zendeskOAuth2Api');
+
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.uri = `https://${credentials.subdomain}.zendesk.com/api/v2${resource}.json`;
+
+			return await this.helpers.requestOAuth2!.call(this, 'zendeskOAuth2Api', options);
+		}
+	} catch(err) {
 		let errorMessage = err.message;
 		if (err.response && err.response.body && err.response.body.error) {
 			errorMessage = err.response.body.error;
