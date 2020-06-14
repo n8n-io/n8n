@@ -32,7 +32,7 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 	}
 
 	try {
-		if (authenticationMethod === 'accessToken') {
+		if (authenticationMethod === 'apiToken') {
 			const credentials = this.getCredentials('zendeskApi');
 
 			if (credentials === undefined) {
