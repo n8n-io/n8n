@@ -219,12 +219,17 @@ export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: strin
 		//@ts-ignore
 		url: requestOptions.url,
 		method: requestOptions.method,
-		data: requestOptions.body,
+		data: { ...requestOptions.qs, ...requestOptions.body },
 		json: requestOptions.json,
 	};
 
-	//@ts-ignore
-	newRequestOptions.form = oauth.authorize(newRequestOptions as RequestOptions, token);
+	if (Object.keys(requestOptions.qs).length !== 0) {
+		//@ts-ignore
+		newRequestOptions.qs = oauth.authorize(newRequestOptions as RequestOptions, token);
+	} else {
+		//@ts-ignore
+		newRequestOptions.form = oauth.authorize(newRequestOptions as RequestOptions, token);
+	}
 
 	return this.helpers.request!(newRequestOptions)
 		.catch(async (error: IResponseError) => {
