@@ -45,7 +45,7 @@ export class ZendeskTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
-							'accessToken',
+							'apiToken',
 						],
 					},
 				},
@@ -77,15 +77,15 @@ export class ZendeskTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
-						value: 'accessToken',
+						name: 'API Token',
+						value: 'apiToken',
 					},
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
 					},
 				],
-				default: 'accessToken',
+				default: 'apiToken',
 				description: 'The resource to operate on.',
 			},
 			{
