@@ -3,6 +3,10 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
+const scopes = [
+	'read',
+	'write',
+];
 
 export class ZendeskOAuth2Api implements ICredentialType {
 	name = 'zendeskOAuth2Api';
@@ -15,7 +19,8 @@ export class ZendeskOAuth2Api implements ICredentialType {
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string' as NodePropertyTypes,
-			default: 'n8n',
+			default: '',
+			placeholder: 'n8n',
 			description: 'The subdomain of your Zendesk work environment.',
 			required: true,
 		},
@@ -52,8 +57,8 @@ export class ZendeskOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
-			default: 'write read',
+			type: 'hidden' as NodePropertyTypes,
+			default: scopes.join(' '),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
