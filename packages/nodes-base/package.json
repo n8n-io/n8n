@@ -132,6 +132,7 @@
       "dist/credentials/WooCommerceApi.credentials.js",
       "dist/credentials/WordpressApi.credentials.js",
       "dist/credentials/ZendeskApi.credentials.js",
+      "dist/credentials/ZendeskOAuth2Api.credentials.js",
       "dist/credentials/ZohoOAuth2Api.credentials.js",
       "dist/credentials/ZulipApi.credentials.js"
     ],
