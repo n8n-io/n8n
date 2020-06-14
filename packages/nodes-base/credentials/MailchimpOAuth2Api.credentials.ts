@@ -12,20 +12,6 @@ export class MailchimpOAuth2Api implements ICredentialType {
 	displayName = 'Mailchimp OAuth2 API';
 	properties = [
 		{
-			displayName: 'Mailchimp Server',
-			name: 'server',
-			type: 'string' as NodePropertyTypes,
-			default: 'https://login.mailchimp.com/',
-			description: 'The server to connect to.',
-		},
-		{
-			displayName: 'Datacenter',
-			name: 'dataCenter',
-			type: 'string' as NodePropertyTypes,
-			default: 'us10',
-			description: 'Datacenter that your Mailchimp application is hosted on. Found in the URL of your Mailchimp dashboard.',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
