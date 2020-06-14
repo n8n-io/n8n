@@ -622,7 +622,7 @@ export class GoogleSheets implements INodeType {
 			// ----------------------------------
 			//         append
 			// ----------------------------------
-			const keyRow = this.getNodeParameter('keyRow', 0) as number;
+			const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
 
 			const items = this.getInputData();
 
@@ -670,7 +670,7 @@ export class GoogleSheets implements INodeType {
 									sheetId: range.sheetId,
 									dimension: deletePropertyToDimensions[propertyName] as string,
 									startIndex: range.startIndex,
-									endIndex: range.startIndex + range.amount,
+									endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
 								}
 							}
 						});
@@ -693,8 +693,8 @@ export class GoogleSheets implements INodeType {
 				return [];
 			}
 
-			const dataStartRow = this.getNodeParameter('dataStartRow', 0) as number;
-			const keyRow = this.getNodeParameter('keyRow', 0) as number;
+			const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
+			const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
 
 			const items = this.getInputData();
 
@@ -735,8 +735,8 @@ export class GoogleSheets implements INodeType {
 					}
 				];
 			} else {
-				const dataStartRow = this.getNodeParameter('dataStartRow', 0) as number;
-				const keyRow = this.getNodeParameter('keyRow', 0) as number;
+				const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
+				const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
 
 				returnData = sheet.structureArrayDataByColumn(sheetData, keyRow, dataStartRow);
 			}
@@ -769,8 +769,8 @@ export class GoogleSheets implements INodeType {
 				const data = await sheet.batchUpdate(updateData, valueInputMode);
 			} else {
 				const keyName = this.getNodeParameter('key', 0) as string;
-				const keyRow = this.getNodeParameter('keyRow', 0) as number;
-				const dataStartRow = this.getNodeParameter('dataStartRow', 0) as number;
+				const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
+				const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);
 
 				const setData: IDataObject[] = [];
 				items.forEach((item) => {
