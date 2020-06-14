@@ -3,6 +3,14 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
+const scopes = [
+	'surveys_read',
+	'collectors_read',
+	'responses_read',
+	'responses_read_detail',
+	'webhooks_write',
+	'webhooks_read',
+];
 
 export class SurveyMonkeyOAuth2Api implements ICredentialType {
 	name = 'surveyMonkeyOAuth2Api';
@@ -28,8 +36,8 @@ export class SurveyMonkeyOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
-			default: 'surveys_read,surveys_write,responses_read,responses_write,webhooks_read,webhooks_write',
+			type: 'hidden' as NodePropertyTypes,
+			default: scopes.join(','),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
