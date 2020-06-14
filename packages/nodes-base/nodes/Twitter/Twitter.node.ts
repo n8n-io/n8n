@@ -133,7 +133,15 @@ export class Twitter implements INodeType {
 							let attachmentBody = {};
 							let response: IDataObject = {};
 
-							if (binaryData[binaryPropertyName].mimeType.includes('image')) {
+							const isAnimatedWebp = (Buffer.from(binaryData[binaryPropertyName].data, 'base64').toString().indexOf('ANMF') !== -1);
+
+							const isImage = binaryData[binaryPropertyName].mimeType.includes('image');
+
+							if (isImage && isAnimatedWebp) {
+								throw new Error('Animated .webp images are not supported use .gif instead');
+							}
+
+							if (isImage) {
 
 								const attachmentBody = {
 									media_data: binaryData[binaryPropertyName].data,
