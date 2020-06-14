@@ -3,6 +3,12 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
+const scopes = [
+	'webhooks:write',
+	'webhooks:read',
+	'forms:read',
+];
+
 
 export class TypeformOAuth2Api implements ICredentialType {
 	name = 'typeformOAuth2Api';
@@ -28,8 +34,8 @@ export class TypeformOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
-			default: 'webhooks:write,webhooks:read,forms:read,',
+			type: 'hidden' as NodePropertyTypes,
+			default: scopes.join(','),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
