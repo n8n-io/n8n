@@ -16,6 +16,21 @@ export const boardItemOperations = [
 		},
 		options: [
 			{
+				name: 'Add Update',
+				value: 'addUpdate',
+				description: `Add an update to an item.`,
+			},
+			{
+				name: 'Change Column Value',
+				value: 'changeColumnValue',
+				description: 'Change a column value for a board item',
+			},
+			{
+				name: 'Change Multiple Column Values',
+				value: 'changeMultipleColumnValues',
+				description: 'Change multiple column values for a board item',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: `Create an item in a board's group`,
@@ -48,6 +63,192 @@ export const boardItemOperations = [
 
 export const boardItemFields = [
 
+/* -------------------------------------------------------------------------- */
+/*                                 boardItem:addUpdate                         */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'addUpdate',
+				],
+			},
+		},
+		description: 'The unique identifier of the item to add update to.',
+	},
+	{
+		displayName: 'Update Text',
+		name: 'value',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'addUpdate',
+				],
+			},
+		},
+		description: 'The update text to add.',
+	},
+/* -------------------------------------------------------------------------- */
+/*                                 boardItem:changeColumnValue                */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Board ID',
+		name: 'boardId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getBoards',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: 'The unique identifier of the board.',
+	},
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: 'The unique identifier of the item to to change column of.',
+	},
+	{
+		displayName: 'Column ID',
+		name: 'columnId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getColumns',
+			loadOptionsDependsOn: [
+				'boardId'
+			],
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: `The column's unique identifier.`,
+	},
+	{
+		displayName: 'Value',
+		name: 'value',
+		type: 'json',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeColumnValue',
+				],
+			},
+		},
+		description: 'The column value in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-column-value" target="_blank">here</a>.',
+	},
+/* -------------------------------------------------------------------------- */
+/*                                 boardItem:changeMultipleColumnValues       */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Board ID',
+		name: 'boardId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getBoards',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeMultipleColumnValues',
+				],
+			},
+		},
+		description: 'The unique identifier of the board.',
+	},
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeMultipleColumnValues',
+				],
+			},
+		},
+		description: `Item's ID`
+	},
+	{
+		displayName: 'Column Values',
+		name: 'columnValues',
+		type: 'json',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'boardItem',
+				],
+				operation: [
+					'changeMultipleColumnValues',
+				],
+			},
+		},
+		description: 'The column fields and values in JSON format. Documentation can be found <a href="https://monday.com/developers/v2#mutations-section-columns-change-multiple-column-values" target="_blank">here</a>.',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+	},
 /* -------------------------------------------------------------------------- */
 /*                                 boardItem:create                           */
 /* -------------------------------------------------------------------------- */
