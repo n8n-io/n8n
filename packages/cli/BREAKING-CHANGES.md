@@ -3,7 +3,22 @@
 This list shows all the versions which include breaking changes and how to upgrade.
 
 
-## ???
+## 0.69.0
+
+### What changed?
+
+We have simplified how attachments are handled by the Twitter node. Rather than clicking on `Add Attachments` and having to specify the `Catergory`, you can now add attachments by just clicking on `Add Field` and selecting `Attachments`. There's no longer an option to specify the type of attachment you are adding.
+
+### When is action necessary?
+
+If you have used the Attachments option in your Twitter nodes.
+
+### How to upgrade:
+
+You'll need to re-create the attachments for the Twitter node.
+
+
+## 0.68.0
 
 ### What changed?
 
