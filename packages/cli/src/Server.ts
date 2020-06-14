@@ -27,6 +27,7 @@ import {
 	CredentialsHelper,
 	CredentialTypes,
 	Db,
+	ExternalHooks,
 	IActivationError,
 	ICustomRequest,
 	ICredentialsDb,
@@ -41,6 +42,7 @@ import {
 	IExecutionsListResponse,
 	IExecutionsStopData,
 	IExecutionsSummary,
+	IExternalHooksClass,
 	IN8nUISettings,
 	IPackageVersions,
 	IWorkflowBase,
@@ -103,6 +105,7 @@ class App {
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	externalHooks: IExternalHooksClass;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
@@ -134,6 +137,8 @@ class App {
 		this.protocol = config.get('protocol');
 		this.sslKey  = config.get('ssl_key');
 		this.sslCert = config.get('ssl_cert');
+
+		this.externalHooks = ExternalHooks();
 	}
 
 
@@ -351,13 +356,15 @@ class App {
 		// Creates a new workflow
 		this.app.post('/rest/workflows', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
 
-			const newWorkflowData = req.body;
+			const newWorkflowData = req.body as IWorkflowBase;
 
 			newWorkflowData.name = newWorkflowData.name.trim();
 			newWorkflowData.createdAt = this.getCurrentDate();
 			newWorkflowData.updatedAt = this.getCurrentDate();
 
 			newWorkflowData.id = undefined;
+
+			await this.externalHooks.run('workflow.create', [newWorkflowData]);
 
 			// Save the workflow in DB
 			const result = await Db.collections.Workflow!.save(newWorkflowData);
@@ -434,8 +441,10 @@ class App {
 		// Updates an existing workflow
 		this.app.patch('/rest/workflows/:id', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IWorkflowResponse> => {
 
-			const newWorkflowData = req.body;
+			const newWorkflowData = req.body as IWorkflowBase;
 			const id = req.params.id;
+
+			await this.externalHooks.run('workflow.update', [newWorkflowData]);
 
 			if (this.activeWorkflowRunner.isActive(id)) {
 				// When workflow gets saved always remove it as the triggers could have been
@@ -478,6 +487,8 @@ class App {
 			if (responseData.active === true) {
 				// When the workflow is supposed to be active add it again
 				try {
+					await this.externalHooks.run('workflow.activate', [responseData]);
+
 					await this.activeWorkflowRunner.add(id);
 				} catch (error) {
 					// If workflow could not be activated set it again to inactive
@@ -501,6 +512,8 @@ class App {
 		// Deletes a specific workflow
 		this.app.delete('/rest/workflows/:id', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			const id = req.params.id;
+
+			await this.externalHooks.run('workflow.delete', [id]);
 
 			if (this.activeWorkflowRunner.isActive(id)) {
 				// Before deleting a workflow deactivate it
@@ -663,6 +676,8 @@ class App {
 		this.app.delete('/rest/credentials/:id', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
 			const id = req.params.id;
 
+			await this.externalHooks.run('credentials.delete', [id]);
+
 			await Db.collections.Credentials!.delete({ id });
 
 			return true;
@@ -707,6 +722,8 @@ class App {
 			const credentials = new Credentials(incomingData.name, incomingData.type, incomingData.nodesAccess);
 			credentials.setData(incomingData.data, encryptionKey);
 			const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
+
+			await this.externalHooks.run('credentials.create', [newCredentialsData]);
 
 			// Add special database related data
 			newCredentialsData.createdAt = this.getCurrentDate();
@@ -782,6 +799,8 @@ class App {
 
 			// Add special database related data
 			newCredentialsData.updatedAt = this.getCurrentDate();
+
+			await this.externalHooks.run('credentials.update', [newCredentialsData]);
 
 			// Update the credentials in DB
 			await Db.collections.Credentials!.update(id, newCredentialsData);
