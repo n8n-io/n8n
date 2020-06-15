@@ -45,7 +45,7 @@ export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunc
 	options.headers = Object.assign({}, options.headers, headers);
 
 	try {
-		if (authenticationMethod === 'accessToken') {
+		if (authenticationMethod === 'apiToken') {
 			const credentials = this.getCredentials('pagerDutyApi');
 
 			if (credentials === undefined) {
