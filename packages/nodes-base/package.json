@@ -45,6 +45,7 @@
       "dist/credentials/CodaApi.credentials.js",
       "dist/credentials/CopperApi.credentials.js",
       "dist/credentials/CalendlyApi.credentials.js",
+      "dist/credentials/DiscordOAuth2Api.credentials.js",
       "dist/credentials/DisqusApi.credentials.js",
       "dist/credentials/DriftApi.credentials.js",
       "dist/credentials/DropboxApi.credentials.js",

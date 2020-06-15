@@ -21,7 +21,37 @@ export class Discord implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		credentials: [
+			{
+				name: 'discordOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
+		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'None',
+						value: 'none',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'none',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Webhook URL',
 				name: 'webhookUri',
@@ -44,8 +74,6 @@ export class Discord implements INodeType {
 			}
 		],
 	};
-
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
