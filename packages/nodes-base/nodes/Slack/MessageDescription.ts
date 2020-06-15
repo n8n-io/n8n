@@ -487,26 +487,6 @@ export const messageFields = [
 		description: `Timestamp of the message to be updated.`,
 	},
 	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'update'
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Pass true to update the message as the authed user. Bot users in this context are considered authed users.',
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
