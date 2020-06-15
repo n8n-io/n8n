@@ -26,7 +26,13 @@ export class PagerDutyOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'grant_type=authorization_code',
+			default: '',
+		},
+		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'hidden' as NodePropertyTypes,
+			default: '',
 		},
 		{
             displayName: 'Authentication',
