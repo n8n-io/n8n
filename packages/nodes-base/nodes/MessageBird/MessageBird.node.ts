@@ -1,17 +1,13 @@
-import {
-	IExecuteFunctions,
- } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeExecutionData,
-	INodeType,
+	INodeType
 } from 'n8n-workflow';
 
-import {
-	messageBirdApiRequest,
- } from './GenericFunctions';
+import { messageBirdApiRequest } from './GenericFunctions';
 
 export class MessageBird implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,20 +51,18 @@ export class MessageBird implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-						],
-					},
+						resource: ['sms']
+					}
 				},
 				options: [
 					{
 						name: 'Send',
 						value: 'send',
-						description: 'Send text messages (SMS)',
-					},
+						description: 'Send text messages (SMS)'
+					}
 				],
 				default: 'send',
-				description: 'The operation to perform.',
+				description: 'The operation to perform.'
 			},
 
 			// ----------------------------------
@@ -83,15 +77,11 @@ export class MessageBird implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
-					},
+						operation: ['send'],
+						resource: ['sms']
+					}
 				},
-				description: 'The number from which to send the message.',
+				description: 'The number from which to send the message.'
 			},
 			{
 				displayName: 'To',
@@ -103,10 +93,10 @@ export class MessageBird implements INodeType {
 				displayOptions: {
 					show: {
 						operation: ['send'],
-						resource: ['sms'],
-					},
+						resource: ['sms']
+					}
 				},
-				description: 'All recipients separated by commas.',
+				description: 'All recipients separated by commas.'
 			},
 
 			{
@@ -117,15 +107,11 @@ export class MessageBird implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-						],
-					},
+						operation: ['send'],
+						resource: ['sms']
+					}
 				},
-				description: 'The message to be send.',
+				description: 'The message to be send.'
 			},
 			{
 				displayName: 'Additional Fields',
@@ -139,7 +125,8 @@ export class MessageBird implements INodeType {
 						name: 'createdDatetime',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time of the creation of the message in RFC3339 format (Y-m-dTH:i:sP).',
+						description:
+							'The date and time of the creation of the message in RFC3339 format (Y-m-dTH:i:sP).'
 					},
 					{
 						displayName: 'Datacoding',
@@ -148,26 +135,27 @@ export class MessageBird implements INodeType {
 						options: [
 							{
 								name: 'Auto',
-								value: 'auto',
+								value: 'auto'
 							},
 							{
 								name: 'Plain',
-								value: 'plain',
+								value: 'plain'
 							},
 							{
 								name: 'Unicode',
-								value: 'unicode',
-							},
+								value: 'unicode'
+							}
 						],
 						default: '',
-						description: 'Using unicode will limit the maximum number of characters to 70 instead of 160.',
+						description:
+							'Using unicode will limit the maximum number of characters to 70 instead of 160.'
 					},
 					{
 						displayName: 'Gateway',
 						name: 'gateway',
 						type: 'number',
 						default: '',
-						description: 'The SMS route that is used to send the message.',
+						description: 'The SMS route that is used to send the message.'
 					},
 					{
 						displayName: 'Group IDs',
@@ -175,7 +163,8 @@ export class MessageBird implements INodeType {
 						placeholder: '1,2',
 						type: 'string',
 						default: '',
-						description: 'Group IDs separated by commas, If provided recipients can be omitted.',
+						description:
+							'Group IDs separated by commas, If provided recipients can be omitted.'
 					},
 					{
 						displayName: 'Message Type',
@@ -185,36 +174,39 @@ export class MessageBird implements INodeType {
 						options: [
 							{
 								name: 'Flash',
-								value: 1,
+								value: 1
 							},
 							{
 								name: 'Normal',
-								value: 0,
-							},
+								value: 0
+							}
 						],
 						default: 1,
-						description: 'Indicated the message type. 1 is a normal message, 0 is a flash message.',
+						description:
+							'Indicated the message type. 1 is a normal message, 0 is a flash message.'
 					},
 					{
 						displayName: 'Reference',
 						name: 'reference',
 						type: 'string',
 						default: '',
-						description: 'A client reference.',
+						description: 'A client reference.'
 					},
 					{
 						displayName: 'Report Url',
 						name: 'reportUrl',
 						type: 'string',
 						default: '',
-						description: 'The status report URL to be used on a per-message basis.<br /> Reference is required for a status report webhook to be sent.',
+						description:
+							'The status report URL to be used on a per-message basis.<br /> Reference is required for a status report webhook to be sent.'
 					},
 					{
 						displayName: 'Scheduled Date-time',
 						name: 'scheduledDatetime',
 						type: 'dateTime',
 						default: '',
-						description: 'The scheduled date and time of the message in RFC3339 format (Y-m-dTH:i:sP).',
+						description:
+							'The scheduled date and time of the message in RFC3339 format (Y-m-dTH:i:sP).'
 					},
 					{
 						displayName: 'Type',
@@ -232,17 +224,19 @@ export class MessageBird implements INodeType {
 							{
 								name: 'SMS',
 								value: 'sms'
-							},
+							}
 						],
 						default: '',
-						description: 'The type of message.<br /> Values can be: sms, binary, or flash.',
+						description:
+							'The type of message.<br /> Values can be: sms, binary, or flash.'
 					},
 					{
 						displayName: 'Type Details',
 						name: 'typeDetails',
 						type: 'string',
 						default: '',
-						description: 'A hash with extra information.<br /> Is only used when a binary message is sent.',
+						description:
+							'A hash with extra information.<br /> Is only used when a binary message is sent.'
 					},
 					{
 						displayName: 'Validity',
@@ -250,13 +244,13 @@ export class MessageBird implements INodeType {
 						type: 'number',
 						default: 1,
 						typeOptions: {
-							minValue: 1,
+							minValue: 1
 						},
-						description: 'The amount of seconds that the message is valid.',
-					},
-				],
-			},
-		],
+						description: 'The amount of seconds that the message is valid.'
+					}
+				]
+			}
+		]
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
