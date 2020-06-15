@@ -19,16 +19,11 @@ import {
 
 export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('pagerDutyApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
 		headers: {
-			Accept: 'application/vnd.pagerduty+json;version=2',
-			Authorization: `Token token=${credentials.apiToken}`,
+			Accept: 'application/vnd.pagerduty+json;version=2'
 		},
 		method,
 		body,
@@ -39,15 +34,30 @@ export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunc
 			arrayFormat: 'brackets',
 		},
 	};
+
 	if (!Object.keys(body).length) {
 		delete options.form;
 	}
 	if (!Object.keys(query).length) {
 		delete options.qs;
 	}
+
 	options.headers = Object.assign({}, options.headers, headers);
+
 	try {
-		return await this.helpers.request!(options);
+		if (authenticationMethod === 'apiToken') {
+			const credentials = this.getCredentials('pagerDutyApi');
+
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.headers!['Authorization'] = `Token token=${credentials.apiToken}`;
+
+			return await this.helpers.request!(options);
+		} else {
+			return await this.helpers.requestOAuth2!.call(this, 'pagerDutyOAuth2Api', options);
+		}
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error && error.response.body.error.errors) {
 			// Try to return the error prettier
