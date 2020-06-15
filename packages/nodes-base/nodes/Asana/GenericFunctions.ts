@@ -17,16 +17,10 @@ import { OptionsWithUri } from 'request';
  * @returns {Promise<any>}
  */
 export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('asanaApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Bearer ${credentials.accessToken}`,
-		},
+		headers: {},
 		method,
 		body: { data: body },
 		qs: query,
@@ -35,7 +29,20 @@ export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions |
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		if (authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('asanaApi');
+
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+
+			return await this.helpers.request!(options);
+		} else {
+			//@ts-ignore
+			return await this.helpers.requestOAuth2.call(this, 'asanaOAuth2Api', options);
+		}
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
