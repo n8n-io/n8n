@@ -1,10 +1,8 @@
-import { google } from 'googleapis';
-const { Readable } = require('stream');
-
 import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
@@ -12,8 +10,9 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 
-import { getAuthenticationClient } from '../GoogleApi';
-
+import {
+	googleApiRequest,
+} from './GenericFunctions';
 
 export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,9 +33,43 @@ export class GoogleDrive implements INodeType {
 			{
 				name: 'googleApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'serviceAccount',
+						],
+					},
+				},
+			},
+			{
+				name: 'googleDriveOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'serviceAccount',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -764,7 +797,7 @@ export class GoogleDrive implements INodeType {
 							{
 								name: 'domain',
 								value: 'domain',
-								description:"All files shared to the user's domain that are searchable",
+								description: 'All files shared to the user\'s domain that are searchable',
 							},
 							{
 								name: 'drive',
@@ -813,26 +846,6 @@ export class GoogleDrive implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const credentials = this.getCredentials('googleApi');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
-
-		const scopes = [
-			'https://www.googleapis.com/auth/drive',
-			'https://www.googleapis.com/auth/drive.appdata',
-			'https://www.googleapis.com/auth/drive.photos.readonly',
-		];
-
-		const client = await getAuthenticationClient(credentials.email as string, credentials.privateKey as string, scopes);
-
-		const drive = google.drive({
-			version: 'v3',
-			// @ts-ignore
-			auth: client,
-		});
-
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -857,22 +870,20 @@ export class GoogleDrive implements INodeType {
 
 					const fileId = this.getNodeParameter('fileId', i) as string;
 
-					const copyOptions = {
-						fileId,
+					const body: IDataObject = {
 						fields: queryFields,
-						requestBody: {} as IDataObject,
 					};
 
 					const optionProperties = ['name', 'parents'];
 					for (const propertyName of optionProperties) {
 						if (options[propertyName] !== undefined) {
-							copyOptions.requestBody[propertyName] = options[propertyName];
+							body[propertyName] = options[propertyName];
 						}
 					}
 
-					const response = await drive.files.copy(copyOptions);
+					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/copy`, body);
 
-					returnData.push(response.data as IDataObject);
+					returnData.push(response as IDataObject);
 
 				} else if (operation === 'download') {
 					// ----------------------------------
@@ -881,15 +892,13 @@ export class GoogleDrive implements INodeType {
 
 					const fileId = this.getNodeParameter('fileId', i) as string;
 
-					const response = await drive.files.get(
-						{
-							fileId,
-							alt: 'media',
-						},
-						{
-							responseType: 'arraybuffer',
-						},
-					);
+					const requestOptions = {
+						resolveWithFullResponse: true,
+						encoding: null,
+						json: false,
+					};
+
+					const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files/${fileId}`, {}, { alt: 'media' }, undefined, requestOptions);
 
 					let mimeType: string | undefined;
 					if (response.headers['content-type']) {
@@ -912,7 +921,7 @@ export class GoogleDrive implements INodeType {
 
 					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
 
-					const data = Buffer.from(response.data as string);
+					const data = Buffer.from(response.body as string);
 
 					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, undefined, mimeType);
 
@@ -936,7 +945,7 @@ export class GoogleDrive implements INodeType {
 						queryCorpora = options.corpora as string;
 					}
 
-					let driveId : string | undefined;
+					let driveId: string | undefined;
 					driveId = options.driveId as string;
 					if (driveId === '') {
 						driveId = undefined;
@@ -988,20 +997,19 @@ export class GoogleDrive implements INodeType {
 
 					const pageSize = this.getNodeParameter('limit', i) as number;
 
-					const res = await drive.files.list({
+					const qs = {
 						pageSize,
 						orderBy: 'modifiedTime',
 						fields: `nextPageToken, files(${queryFields})`,
 						spaces: querySpaces,
-						corpora: queryCorpora,
-						driveId,
 						q: queryString,
-						includeItemsFromAllDrives: (queryCorpora !== '' || driveId !== ''), // Actually depracated,
-						supportsAllDrives: (queryCorpora !== '' || driveId !== ''), 		// see https://developers.google.com/drive/api/v3/reference/files/list
-																							// However until June 2020 still needs to be set, to avoid API errors.
-					});
+						includeItemsFromAllDrives: (queryCorpora !== '' || driveId !== ''),
+						supportsAllDrives: (queryCorpora !== '' || driveId !== ''),
+					};
 
-					const files = res!.data.files;
+					const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
+
+					const files = response!.files;
 
 					return [this.helpers.returnJsonArray(files as IDataObject[])];
 
@@ -1044,29 +1052,35 @@ export class GoogleDrive implements INodeType {
 					const name = this.getNodeParameter('name', i) as string;
 					const parents = this.getNodeParameter('parents', i) as string[];
 
-					const response = await drive.files.create({
-						requestBody: {
-							name,
-							originalFilename,
-							parents,
-						},
+					let qs: IDataObject = {
 						fields: queryFields,
-						media: {
-							mimeType,
-							body: ((buffer: Buffer) => {
-								const readableInstanceStream = new Readable({
-									read() {
-										this.push(buffer);
-										this.push(null);
-									}
-								});
+						uploadType: 'media',
+					};
 
-								return readableInstanceStream;
-							})(body),
+					const requestOptions = {
+						headers: {
+							'Content-Type': mimeType,
+							'Content-Length': body.byteLength,
 						},
-					});
+						encoding: null,
+						json: false,
+					};
 
-					returnData.push(response.data as IDataObject);
+					let response = await googleApiRequest.call(this, 'POST', `/upload/drive/v3/files`, body, qs, undefined, requestOptions);
+
+					body = {
+						mimeType,
+						name,
+						originalFilename,
+					};
+
+					qs = {
+						addParents: parents.join(','),
+					};
+
+					response = await googleApiRequest.call(this, 'PATCH', `/drive/v3/files/${JSON.parse(response).id}`, body, qs);
+
+					returnData.push(response as IDataObject);
 				}
 
 			} else if (resource === 'folder') {
@@ -1077,19 +1091,19 @@ export class GoogleDrive implements INodeType {
 
 					const name = this.getNodeParameter('name', i) as string;
 
-					const fileMetadata = {
+					const body = {
 						name,
 						mimeType: 'application/vnd.google-apps.folder',
 						parents: options.parents || [],
 					};
 
-					const response = await drive.files.create({
-						// @ts-ignore
-						resource: fileMetadata,
+					const qs = {
 						fields: queryFields,
-					});
+					};
 
-					returnData.push(response.data as IDataObject);
+					const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
+
+					returnData.push(response as IDataObject);
 				}
 			}
 			if (['file', 'folder'].includes(resource)) {
@@ -1100,9 +1114,7 @@ export class GoogleDrive implements INodeType {
 
 					const fileId = this.getNodeParameter('fileId', i) as string;
 
-					await drive.files.delete({
-						fileId,
-					});
+					const response = await googleApiRequest.call(this, 'DELETE', `/drive/v3/files/${fileId}`);
 
 					// If we are still here it did succeed
 					returnData.push({

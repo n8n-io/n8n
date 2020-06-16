@@ -10,7 +10,6 @@ import {
 import {
 	IDataObject,
 } from 'n8n-workflow';
-import { errors } from 'imap-simple';
 
 interface OMauticErrorResponse {
 	errors: Array<{
@@ -19,7 +18,7 @@ interface OMauticErrorResponse {
 	}>;
 }
 
-function getErrors(error: OMauticErrorResponse): string {
+export function getErrors(error: OMauticErrorResponse): string {
 	const returnErrors: string[] = [];
 
 	for (const errorItem of error.errors) {
@@ -31,23 +30,40 @@ function getErrors(error: OMauticErrorResponse): string {
 
 
 export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('mauticApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	const base64Key =  Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
+
 	const options: OptionsWithUri = {
-		headers: { Authorization: `Basic ${base64Key}` },
+		headers: {},
 		method,
 		qs: query,
-		uri: uri || `${credentials.url}/api${endpoint}`,
+		uri: uri || `/api${endpoint}`,
 		body,
 		json: true
 	};
-	try {
-		const returnData = await this.helpers.request!(options);
 
-		if (returnData.error) {
+	try {
+
+		let returnData;
+
+		if (authenticationMethod === 'credentials') {
+			const credentials = this.getCredentials('mauticApi') as IDataObject;
+
+			const base64Key =  Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
+
+			options.headers!.Authorization = `Basic ${base64Key}`;
+
+			options.uri = `${credentials.url}${options.uri}`;
+			//@ts-ignore
+			returnData = await this.helpers.request(options);
+		} else {
+			const credentials = this.getCredentials('mauticOAuth2Api') as IDataObject;
+
+			options.uri = `${credentials.url}${options.uri}`;
+			//@ts-ignore
+			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options);
+		}
+
+		if (returnData.errors) {
 			// They seem to to sometimes return 200 status but still error.
 			throw new Error(getErrors(returnData));
 		}

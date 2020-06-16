@@ -213,20 +213,20 @@ export class OpenWeatherMap implements INodeType {
 			// Set base data
 			qs = {
 				APPID: credentials.accessToken,
-				units: this.getNodeParameter('format', 0) as string
+				units: this.getNodeParameter('format', i) as string
 			};
 
 			// Get the location
-			locationSelection = this.getNodeParameter('locationSelection', 0) as string;
+			locationSelection = this.getNodeParameter('locationSelection', i) as string;
 			if (locationSelection === 'cityName') {
-				qs.q = this.getNodeParameter('cityName', 0) as string;
+				qs.q = this.getNodeParameter('cityName', i) as string;
 			} else if (locationSelection === 'cityId') {
-				qs.id = this.getNodeParameter('cityId', 0) as number;
+				qs.id = this.getNodeParameter('cityId', i) as number;
 			} else if (locationSelection === 'coordinates') {
-				qs.lat = this.getNodeParameter('latitude', 0) as string;
-				qs.lon = this.getNodeParameter('longitude', 0) as string;
+				qs.lat = this.getNodeParameter('latitude', i) as string;
+				qs.lon = this.getNodeParameter('longitude', i) as string;
 			} else if (locationSelection === 'zipCode') {
-				qs.zip = this.getNodeParameter('zipCode', 0) as string;
+				qs.zip = this.getNodeParameter('zipCode', i) as string;
 			} else {
 				throw new Error(`The locationSelection "${locationSelection}" is not known!`);
 			}
