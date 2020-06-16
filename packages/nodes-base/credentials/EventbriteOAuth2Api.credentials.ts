@@ -40,21 +40,8 @@ export class EventbriteOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'options' as NodePropertyTypes,
-			options: [
-				{
-					name: 'Body',
-					value: 'body',
-					description: 'Send credentials in body',
-				},
-				{
-					name: 'Header',
-					value: 'header',
-					description: 'Send credentials as Basic Auth header',
-				},
-			],
-			default: 'header',
-			description: 'Resource to consume.',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'body'
 		},
 	];
 }
