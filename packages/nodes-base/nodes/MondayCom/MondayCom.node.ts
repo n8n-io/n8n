@@ -455,6 +455,84 @@ export class MondayCom implements INodeType {
 				}
 			}
 			if (resource === 'boardItem') {
+				if (operation === 'addUpdate') {
+					const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+					const value = this.getNodeParameter('value', i) as string;
+
+					const body: IGraphqlBody = {
+						query:
+							`mutation ($itemId: Int!, $value: String!) {
+								create_update (item_id: $itemId, body: $value) {
+									id
+								}
+							}`,
+						variables: {
+							itemId,
+							value,
+						},
+					};
+
+					responseData = await mondayComApiRequest.call(this, body);
+					responseData = responseData.data.create_update;
+				}
+				if (operation === 'changeColumnValue') {
+					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+					const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+					const columnId = this.getNodeParameter('columnId', i) as string;
+					const value = this.getNodeParameter('value', i) as string;
+
+					const body: IGraphqlBody = {
+						query:
+							`mutation ($boardId: Int!, $itemId: Int!, $columnId: String!, $value: JSON!) {
+								change_column_value (board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) {
+									id
+								}
+							}`,
+						variables: {
+							boardId,
+							itemId,
+							columnId,
+						},
+					};
+
+					try {
+						JSON.parse(value);
+					} catch (e) {
+						throw new Error('Custom Values must be a valid JSON');
+					}
+					body.variables.value = JSON.stringify(JSON.parse(value));
+
+					responseData = await mondayComApiRequest.call(this, body);
+					responseData = responseData.data.change_column_value;
+				}
+				if (operation === 'changeMultipleColumnValues') {
+					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
+					const itemId = parseInt((this.getNodeParameter('itemId', i) as string), 10);
+					const columnValues = this.getNodeParameter('columnValues', i) as string;
+
+					const body: IGraphqlBody = {
+						query:
+							`mutation ($boardId: Int!, $itemId: Int!, $columnValues: JSON!) {
+								change_multiple_column_values (board_id: $boardId, item_id: $itemId, column_values: $columnValues) {
+									id
+								}
+							}`,
+						variables: {
+							boardId,
+							itemId,
+						},
+					};
+
+					try {
+						JSON.parse(columnValues);
+					} catch (e) {
+						throw new Error('Custom Values must be a valid JSON');
+					}
+					body.variables.columnValues = JSON.stringify(JSON.parse(columnValues));
+
+					responseData = await mondayComApiRequest.call(this, body);
+					responseData = responseData.data.change_multiple_column_values;
+				}
 				if (operation === 'create') {
 					const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 					const groupId = this.getNodeParameter('groupId', i) as string;
