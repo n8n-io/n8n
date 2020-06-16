@@ -76,7 +76,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The resource to operate on.',
+				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Event',
