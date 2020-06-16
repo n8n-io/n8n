@@ -106,7 +106,7 @@ export class GoogleTasks implements INodeType {
 
 					if (additionalFields.links) {
 						body.links = (additionalFields.links as string[]).map(link => {
-							return { link: link };
+							return { link };
 						});
 					}
 					if (additionalFields.status)
@@ -144,7 +144,7 @@ export class GoogleTasks implements INodeType {
 						qs
 					);
 				}
-				if (operation == 'delete') {
+				if (operation === 'delete') {
 					//https://developers.google.com/tasks/v1/reference/tasks/delete
 					const taskListId = this.getNodeParameter('task', i) as string;
 					const taskId = this.getNodeParameter('taskId', i) as string;
@@ -226,7 +226,7 @@ export class GoogleTasks implements INodeType {
 						responseData = responseData.items;
 					}
 				}
-				if (operation == 'update') {
+				if (operation === 'update') {
 					body = {};
 					//https://developers.google.com/tasks/v1/reference/tasks/patch
 					const taskListId = this.getNodeParameter('task', i) as string;
