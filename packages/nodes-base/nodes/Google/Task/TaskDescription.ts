@@ -376,7 +376,7 @@ export const taskFields = [
 					'Flag indicating whether hidden tasks are returned in the result'
 			},
 			{
-				displayName: 'updated Min',
+				displayName: 'Updated Min',
 				name: 'updatedMin',
 				type: 'string',
 
