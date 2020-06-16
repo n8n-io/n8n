@@ -197,6 +197,30 @@ export interface IExecutingWorkflowData {
 	workflowExecution?: PCancelable<IRun>;
 }
 
+export interface IExternalHooks {
+	credentials?: {
+		create?: Array<{ (this: IExternalHooksFunctions, credentialsData: ICredentialsEncrypted): Promise<void>; }>
+		delete?: Array<{ (this: IExternalHooksFunctions, credentialId: string): Promise<void>; }>
+		update?: Array<{ (this: IExternalHooksFunctions, credentialsData: ICredentialsDb): Promise<void>; }>
+	};
+	workflow?: {
+		activate?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void>; }>
+		create?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowBase): Promise<void>; }>
+		delete?: Array<{ (this: IExternalHooksFunctions, workflowId: string): Promise<void>; }>
+		execute?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb, mode: WorkflowExecuteMode): Promise<void>; }>
+		update?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void>; }>
+	};
+}
+
+export interface IExternalHooksFunctions {
+	dbCollections: IDatabaseCollections;
+}
+
+export interface IExternalHooksClass {
+	init(): Promise<void>;
+	run(hookName: string, hookParameters?: any[]): Promise<void>; // tslint:disable-line:no-any
+}
+
 export interface IN8nConfig {
 	database: IN8nConfigDatabase;
 	endpoints: IN8nConfigEndpoints;
