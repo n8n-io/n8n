@@ -17,10 +17,12 @@ export class Zoom implements INodeType {
 		group: ['input'],
 		version: 1,
 		description: 'Consume Zoom API',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Zoom',
 			color: '#772244'
 		},
+		icon: 'file:zoom.png',
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
@@ -60,6 +62,19 @@ export class Zoom implements INodeType {
 				],
 				default: 'accessToken',
 				description: 'The resource to operate on.'
+			},
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'meeting',
+						value: 'meeting'
+					}
+				],
+				default: 'meeting',
+				description: 'The resource to operate on.'
 			}
 		]
 	};
@@ -72,26 +87,27 @@ export class Zoom implements INodeType {
 		let responseData;
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		for (let i = 0; i < length; i++) {
-			qs = {};
-			if (resource === 'channel') {
-				//https://api.slack.com/methods/conversations.archive
-				if (operation === 'archive') {
-					const channel = this.getNodeParameter('channelId', i) as string;
-					const body: IDataObject = {
-						channel
-					};
-					responseData = await zoomApiRequest.call(
-						this,
-						'POST',
-						'/conversations.archive',
-						body,
-						qs
-					);
-				}
-			}
-		}
+		// const operation = this.getNodeParameter('operation', 0) as string;
+		console.log(this.getCredentials('zoomOAuth2Api'));
+		// for (let i = 0; i < length; i++) {
+		//     qs = {};
+		//     if (resource === 'channel') {
+		//         //https://api.slack.com/methods/conversations.archive
+		//         if (operation === 'archive') {
+		//             const channel = this.getNodeParameter('channelId', i) as string;
+		//             const body: IDataObject = {
+		//                 channel
+		//             };
+		//             responseData = await zoomApiRequest.call(
+		//                 this,
+		//                 'POST',
+		//                 '/conversations.archive',
+		//                 body,
+		//                 qs
+		//             );
+		//         }
+		//     }
+		// }
 		if (Array.isArray(responseData)) {
 			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} else {
