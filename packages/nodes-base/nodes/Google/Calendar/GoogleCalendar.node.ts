@@ -1,4 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -6,14 +8,22 @@ import {
 	INodeTypeDescription,
 	INodeType,
 	ILoadOptionsFunctions,
-	INodePropertyOptions
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import {
+	googleApiRequest,
+	googleApiRequestAllItems,
+} from './GenericFunctions';
 
-import { eventOperations, eventFields } from './EventDescription';
+import {
+	eventOperations,
+	eventFields,
+} from './EventDescription';
 
-import { IEvent } from './EventInterface';
+import {
+	IEvent,
+} from './EventInterface';
 
 import * as moment from 'moment-timezone';
 
@@ -28,14 +38,14 @@ export class GoogleCalendar implements INodeType {
 		description: 'Consume Google Calendar API.',
 		defaults: {
 			name: 'Google Calendar',
-			color: '#3E87E4'
+			color: '#3E87E4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
 				name: 'googleCalendarOAuth2Api',
-				required: true
+				required: true,
 			}
 		],
 		properties: [
@@ -46,15 +56,15 @@ export class GoogleCalendar implements INodeType {
 				options: [
 					{
 						name: 'Event',
-						value: 'event'
-					}
+						value: 'event',
+					},
 				],
 				default: 'event',
 				description: 'The resource to operate on.'
 			},
 			...eventOperations,
-			...eventFields
-		]
+			...eventFields,
+		],
 	};
 
 	methods = {
