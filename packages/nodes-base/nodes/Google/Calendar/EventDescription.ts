@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations = [
 	{
@@ -7,67 +7,60 @@ export const eventOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-			},
+				resource: ['event']
+			}
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Add a event to calendar',
+				description: 'Add a event to calendar'
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an event',
+				description: 'Delete an event'
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve an event',
+				description: 'Retrieve an event'
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all events from a calendar',
+				description: 'Retrieve all events from a calendar'
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an event',
-			},
+				description: 'Update an event'
+			}
 		],
 		default: 'create',
-		description: 'The operation to perform.',
-	},
+		description: 'The operation to perform.'
+	}
 ] as INodeProperties[];
 
 export const eventFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 event:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
+			loadOptionsMethod: 'getCalendars'
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['create'],
+				resource: ['event']
+			}
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Start',
@@ -76,16 +69,12 @@ export const eventFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['create'],
+				resource: ['event']
+			}
 		},
 		default: '',
-		description: 'Start time of the event.',
+		description: 'Start time of the event.'
 	},
 	{
 		displayName: 'End',
@@ -94,16 +83,12 @@ export const eventFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['create'],
+				resource: ['event']
+			}
 		},
 		default: '',
-		description: 'End time of the event.',
+		description: 'End time of the event.'
 	},
 	{
 		displayName: 'Use Default Reminders',
@@ -111,15 +96,11 @@ export const eventFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['create'],
+				resource: ['event']
+			}
 		},
-		default: true,
+		default: true
 	},
 	{
 		displayName: 'Additional Fields',
@@ -129,13 +110,9 @@ export const eventFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['create'],
+				resource: ['event']
+			}
 		},
 		options: [
 			{
@@ -145,15 +122,15 @@ export const eventFields = [
 				options: [
 					{
 						name: 'Yes',
-						value: 'yes',
+						value: 'yes'
 					},
 					{
 						name: 'No',
-						value: 'no',
-					},
+						value: 'no'
+					}
 				],
 				default: 'no',
-				description: 'Wheater the event is all day or not',
+				description: 'Wheater the event is all day or not'
 			},
 			{
 				displayName: 'Attendees',
@@ -161,55 +138,57 @@ export const eventFields = [
 				type: 'string',
 				typeOptions: {
 					multipleValues: true,
-					multipleValueButtonText: 'Add Attendee',
+					multipleValueButtonText: 'Add Attendee'
 				},
 				default: '',
-				description: 'The attendees of the event',
+				description: 'The attendees of the event'
 			},
 			{
 				displayName: 'Color',
 				name: 'color',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getColors',
+					loadOptionsMethod: 'getColors'
 				},
 				default: '',
-				description: 'The color of the event.',
+				description: 'The color of the event.'
 			},
 			{
 				displayName: 'Guests Can Invite Others',
 				name: 'guestsCanInviteOthers',
 				type: 'boolean',
 				default: true,
-				description: 'Whether attendees other than the organizer can invite others to the event',
+				description:
+					'Whether attendees other than the organizer can invite others to the event'
 			},
 			{
 				displayName: 'Guests Can Modify',
 				name: 'guestsCanModify',
 				type: 'boolean',
 				default: false,
-				description: 'Whether attendees other than the organizer can modify the event',
+				description:
+					'Whether attendees other than the organizer can modify the event'
 			},
 			{
 				displayName: 'Guests Can See Other Guests',
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
-				description: `Whether attendees other than the organizer can see who the event's attendees are.`,
+				description: `Whether attendees other than the organizer can see who the event's attendees are.`
 			},
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'Opaque identifier of the event',
+				description: 'Opaque identifier of the event'
 			},
 			{
 				displayName: 'Location',
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: 'Geographic location of the event as free-form text.',
+				description: 'Geographic location of the event as free-form text.'
 			},
 			{
 				displayName: 'Max Attendees',
@@ -217,7 +196,7 @@ export const eventFields = [
 				type: 'number',
 				default: 0,
 				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				If there are more than the specified number of attendees, only the participant is returned`
 			},
 			{
 				displayName: 'Repeat Frecuency',
@@ -226,37 +205,37 @@ export const eventFields = [
 				options: [
 					{
 						name: 'Daily',
-						value: 'Daily',
+						value: 'Daily'
 					},
 					{
 						name: 'Weekly',
-						value: 'weekly',
+						value: 'weekly'
 					},
 					{
 						name: 'Monthly',
-						value: 'monthly',
+						value: 'monthly'
 					},
 					{
 						name: 'Yearly',
-						value: 'yearly',
-					},
+						value: 'yearly'
+					}
 				],
-				default: '',
+				default: ''
 			},
 			{
 				displayName: 'Repeat Until',
 				name: 'repeatUntil',
 				type: 'dateTime',
-				default: '',
+				default: ''
 			},
 			{
 				displayName: 'Repeat How Many Times?',
 				name: 'repeatHowManyTimes',
 				type: 'number',
 				typeOptions: {
-					minValue: 1,
+					minValue: 1
 				},
-				default: 1,
+				default: 1
 			},
 			{
 				displayName: 'Send Updates',
@@ -266,28 +245,31 @@ export const eventFields = [
 					{
 						name: 'All',
 						value: 'all',
-						description: ' Notifications are sent to all guests',
+						description: ' Notifications are sent to all guests'
 					},
 					{
 						name: 'External Only',
 						value: 'externalOnly',
-						description: 'Notifications are sent to non-Google Calendar guests only',
+						description:
+							'Notifications are sent to non-Google Calendar guests only'
 					},
 					{
 						name: 'None',
 						value: 'none',
-						description: ' No notifications are sent. This value should only be used for migration use case',
-					},
+						description:
+							' No notifications are sent. This value should only be used for migration use case'
+					}
 				],
-				description: 'Whether to send notifications about the creation of the new event',
-				default: '',
+				description:
+					'Whether to send notifications about the creation of the new event',
+				default: ''
 			},
 			{
 				displayName: 'Summary',
 				name: 'summary',
 				type: 'string',
 				default: '',
-				description: 'Title of the event.',
+				description: 'Title of the event.'
 			},
 			{
 				displayName: 'Show Me As',
@@ -297,26 +279,27 @@ export const eventFields = [
 					{
 						name: 'Available',
 						value: 'transparent',
-						description: 'The event does not block time on the calendar',
+						description: 'The event does not block time on the calendar'
 					},
 					{
 						name: 'Busy',
 						value: 'opaque',
-						description: ' The event does block time on the calendar.',
-					},
+						description: ' The event does block time on the calendar.'
+					}
 				],
 				default: 'opaque',
-				description: 'Whether the event blocks time on the calendar',
+				description: 'Whether the event blocks time on the calendar'
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
+					loadOptionsMethod: 'getTimezones'
 				},
 				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on timezone set in n8n.'
+				description:
+					'The timezone the event will have set. By default events are schedule on timezone set in n8n.'
 			},
 			{
 				displayName: 'Visibility',
@@ -326,28 +309,32 @@ export const eventFields = [
 					{
 						name: 'Confidential',
 						value: 'confidential',
-						description: 'The event is private. This value is provided for compatibility reasons.',
+						description:
+							'The event is private. This value is provided for compatibility reasons.'
 					},
 					{
 						name: 'Default',
 						value: 'default',
-						description: ' Uses the default visibility for events on the calendar.',
+						description:
+							' Uses the default visibility for events on the calendar.'
 					},
 					{
 						name: 'Private',
 						value: 'private',
-						description: 'The event is private and only event attendees may view event details.',
+						description:
+							'The event is private and only event attendees may view event details.'
 					},
 					{
 						name: 'Public',
 						value: 'public',
-						description: 'The event is public and event details are visible to all readers of the calendar.',
-					},
+						description:
+							'The event is public and event details are visible to all readers of the calendar.'
+					}
 				],
 				default: 'default',
-				description: 'Visibility of the event.',
-			},
-		],
+				description: 'Visibility of the event.'
+			}
+		]
 	},
 	{
 		displayName: 'Reminders',
@@ -356,21 +343,15 @@ export const eventFields = [
 		default: '',
 		placeholder: 'Add Reminder',
 		typeOptions: {
-			multipleValues: true,
+			multipleValues: true
 		},
 		required: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'create',
-				],
-				useDefaultReminders: [
-					false,
-				],
-			},
+				resource: ['event'],
+				operation: ['create'],
+				useDefaultReminders: [false]
+			}
 		},
 		options: [
 			{
@@ -384,14 +365,14 @@ export const eventFields = [
 						options: [
 							{
 								name: 'Email',
-								value: 'email',
+								value: 'email'
 							},
 							{
 								name: 'Popup',
-								value: 'popup',
-							},
+								value: 'popup'
+							}
 						],
-						default: '',
+						default: ''
 					},
 					{
 						displayName: 'Minutes Before',
@@ -399,37 +380,33 @@ export const eventFields = [
 						type: 'number',
 						typeOptions: {
 							minValue: 0,
-							maxValue: 40320,
+							maxValue: 40320
 						},
-						default: 0,
-					},
-				],
+						default: 0
+					}
+				]
 			}
 		],
-		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`,
+		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 event:delete                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
+			loadOptionsMethod: 'getCalendars'
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['delete'],
+				resource: ['event']
+			}
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Event ID',
@@ -438,15 +415,11 @@ export const eventFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['delete'],
+				resource: ['event']
+			}
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Options',
@@ -456,13 +429,9 @@ export const eventFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['delete'],
+				resource: ['event']
+			}
 		},
 		options: [
 			{
@@ -473,46 +442,45 @@ export const eventFields = [
 					{
 						name: 'All',
 						value: 'all',
-						description: ' Notifications are sent to all guests',
+						description: ' Notifications are sent to all guests'
 					},
 					{
 						name: 'External Only',
 						value: 'externalOnly',
-						description: 'Notifications are sent to non-Google Calendar guests only',
+						description:
+							'Notifications are sent to non-Google Calendar guests only'
 					},
 					{
 						name: 'None',
 						value: 'none',
-						description: ' No notifications are sent. This value should only be used for migration use case',
-					},
+						description:
+							' No notifications are sent. This value should only be used for migration use case'
+					}
 				],
-				description: 'Whether to send notifications about the creation of the new event',
-				default: '',
-			},
-		],
+				description:
+					'Whether to send notifications about the creation of the new event',
+				default: ''
+			}
+		]
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 event:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
+			loadOptionsMethod: 'getCalendars'
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['get'],
+				resource: ['event']
+			}
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Event ID',
@@ -521,15 +489,11 @@ export const eventFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['get'],
+				resource: ['event']
+			}
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Options',
@@ -539,13 +503,9 @@ export const eventFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['get'],
+				resource: ['event']
+			}
 		},
 		options: [
 			{
@@ -554,42 +514,38 @@ export const eventFields = [
 				type: 'number',
 				default: 0,
 				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				If there are more than the specified number of attendees, only the participant is returned`
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
+					loadOptionsMethod: 'getTimezones'
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
-			},
-		],
+				description: `Time zone used in the response. The default is the time zone of the calendar.`
+			}
+		]
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 event:getAll                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:getAll                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
+			loadOptionsMethod: 'getCalendars'
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['getAll'],
+				resource: ['event']
+			}
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Return All',
@@ -597,16 +553,13 @@ export const eventFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['getAll'],
+				resource: ['event']
+			}
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description:
+			'If all results should be returned or only up to a given limit.'
 	},
 	{
 		displayName: 'Limit',
@@ -614,23 +567,17 @@ export const eventFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-				returnAll: [
-					false,
-				],
-			},
+				operation: ['getAll'],
+				resource: ['event'],
+				returnAll: [false]
+			}
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
+			maxValue: 500
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return.'
 	},
 	{
 		displayName: 'Options',
@@ -640,13 +587,9 @@ export const eventFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['getAll'],
+				resource: ['event']
+			}
 		},
 		options: [
 			{
@@ -654,7 +597,8 @@ export const eventFields = [
 				name: 'iCalUID',
 				type: 'string',
 				default: '',
-				description: 'Specifies event ID in the iCalendar format to be included in the response',
+				description:
+					'Specifies event ID in the iCalendar format to be included in the response'
 			},
 			{
 				displayName: 'Max Attendees',
@@ -662,7 +606,7 @@ export const eventFields = [
 				type: 'number',
 				default: 0,
 				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				If there are more than the specified number of attendees, only the participant is returned`
 			},
 			{
 				displayName: 'Order By',
@@ -672,37 +616,40 @@ export const eventFields = [
 					{
 						name: 'Start Time',
 						value: 'startTime',
-						description: 'Order by the start date/time (ascending). This is only available when querying single events (i.e. the parameter singleEvents is True)',
+						description:
+							'Order by the start date/time (ascending). This is only available when querying single events (i.e. the parameter singleEvents is True)'
 					},
 					{
 						name: 'Updated',
 						value: 'updated',
-						description: 'Order by last modification time (ascending).',
-					},
+						description: 'Order by last modification time (ascending).'
+					}
 				],
 				default: '',
-				description: 'The order of the events returned in the result.',
+				description: 'The order of the events returned in the result.'
 			},
 			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Free text search terms to find events that match these terms in any field, except for extended properties.',
+				description:
+					'Free text search terms to find events that match these terms in any field, except for extended properties.'
 			},
 			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include deleted events (with status equals "cancelled") in the result.',
+				description:
+					'Whether to include deleted events (with status equals "cancelled") in the result.'
 			},
 			{
 				displayName: 'Show Hidden Invitations',
 				name: 'showHiddenInvitations',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include hidden invitations in the result.',
+				description: 'Whether to include hidden invitations in the result.'
 			},
 			{
 				displayName: 'Single Events',
@@ -710,31 +657,31 @@ export const eventFields = [
 				type: 'boolean',
 				default: false,
 				description: `Whether to expand recurring events into instances and only return single one-off</br>
-				events and instances of recurring events, but not the underlying recurring events themselves.`,
+				events and instances of recurring events, but not the underlying recurring events themselves.`
 			},
 			{
 				displayName: 'Time Max',
 				name: 'timeMax',
 				type: 'dateTime',
 				default: '',
-				description: `Upper bound (exclusive) for an event's start time to filter by`,
+				description: `Upper bound (exclusive) for an event's start time to filter by`
 			},
 			{
 				displayName: 'Time Min',
 				name: 'timeMin',
 				type: 'dateTime',
 				default: '',
-				description: `Lower bound (exclusive) for an event's end time to filter by`,
+				description: `Lower bound (exclusive) for an event's end time to filter by`
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timeZone',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
+					loadOptionsMethod: 'getTimezones'
 				},
 				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+				description: `Time zone used in the response. The default is the time zone of the calendar.`
 			},
 			{
 				displayName: 'Updated Min',
@@ -742,32 +689,28 @@ export const eventFields = [
 				type: 'dateTime',
 				default: '',
 				description: `Lower bound for an event's last modification time (as a RFC3339 timestamp) to filter by.<b/r>
-				When specified, entries deleted since this time will always be included regardless of showDeleted`,
-			},
-		],
+				When specified, entries deleted since this time will always be included regardless of showDeleted`
+			}
+		]
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 event:update                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:update                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
+			loadOptionsMethod: 'getCalendars'
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['update'],
+				resource: ['event']
+			}
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Event ID',
@@ -776,15 +719,11 @@ export const eventFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['update'],
+				resource: ['event']
+			}
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Use Default Reminders',
@@ -792,15 +731,11 @@ export const eventFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['update'],
+				resource: ['event']
+			}
 		},
-		default: true,
+		default: true
 	},
 	{
 		displayName: 'Update Fields',
@@ -810,13 +745,9 @@ export const eventFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'event',
-				],
-			},
+				operation: ['update'],
+				resource: ['event']
+			}
 		},
 		options: [
 			{
@@ -826,15 +757,15 @@ export const eventFields = [
 				options: [
 					{
 						name: 'Yes',
-						value: 'yes',
+						value: 'yes'
 					},
 					{
 						name: 'No',
-						value: 'no',
-					},
+						value: 'no'
+					}
 				],
 				default: 'no',
-				description: 'Wheater the event is all day or not',
+				description: 'Wheater the event is all day or not'
 			},
 			{
 				displayName: 'Attendees',
@@ -842,62 +773,64 @@ export const eventFields = [
 				type: 'string',
 				typeOptions: {
 					multipleValues: true,
-					multipleValueButtonText: 'Add Attendee',
+					multipleValueButtonText: 'Add Attendee'
 				},
 				default: '',
-				description: 'The attendees of the event',
+				description: 'The attendees of the event'
 			},
 			{
 				displayName: 'Color',
 				name: 'color',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getColors',
+					loadOptionsMethod: 'getColors'
 				},
 				default: '',
-				description: 'The color of the event.',
+				description: 'The color of the event.'
 			},
 			{
 				displayName: 'End',
 				name: 'end',
 				type: 'dateTime',
 				default: '',
-				description: 'End time of the event.',
+				description: 'End time of the event.'
 			},
 			{
 				displayName: 'Guests Can Invite Others',
 				name: 'guestsCanInviteOthers',
 				type: 'boolean',
 				default: true,
-				description: 'Whether attendees other than the organizer can invite others to the event',
+				description:
+					'Whether attendees other than the organizer can invite others to the event'
 			},
 			{
 				displayName: 'Guests Can Modify',
 				name: 'guestsCanModify',
 				type: 'boolean',
 				default: false,
-				description: 'Whether attendees other than the organizer can modify the event',
+				description:
+					'Whether attendees other than the organizer can modify the event'
 			},
 			{
 				displayName: 'Guests Can See Other Guests',
 				name: 'guestsCanSeeOtherGuests',
 				type: 'boolean',
 				default: true,
-				description: `Whether attendees other than the organizer can see who the event's attendees are.`,
+				description: `Whether attendees other than the organizer can see who the event's attendees are.`
 			},
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'Opaque identifier of the event',
+				description: 'Opaque identifier of the event'
 			},
 			{
 				displayName: 'Location',
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: 'Geographic location of the event as free-form text.',
+				description: 'Geographic location of the event as free-form text.'
 			},
 			{
 				displayName: 'Max Attendees',
@@ -905,7 +838,7 @@ export const eventFields = [
 				type: 'number',
 				default: 0,
 				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
+				If there are more than the specified number of attendees, only the participant is returned`
 			},
 			{
 				displayName: 'Repeat Frecuency',
@@ -914,44 +847,44 @@ export const eventFields = [
 				options: [
 					{
 						name: 'Daily',
-						value: 'Daily',
+						value: 'Daily'
 					},
 					{
 						name: 'Weekly',
-						value: 'weekly',
+						value: 'weekly'
 					},
 					{
 						name: 'Monthly',
-						value: 'monthly',
+						value: 'monthly'
 					},
 					{
 						name: 'Yearly',
-						value: 'yearly',
-					},
+						value: 'yearly'
+					}
 				],
-				default: '',
+				default: ''
 			},
 			{
 				displayName: 'Repeat Until',
 				name: 'repeatUntil',
 				type: 'dateTime',
-				default: '',
+				default: ''
 			},
 			{
 				displayName: 'Repeat How Many Times?',
 				name: 'repeatHowManyTimes',
 				type: 'number',
 				typeOptions: {
-					minValue: 1,
+					minValue: 1
 				},
-				default: 1,
+				default: 1
 			},
 			{
 				displayName: 'Start',
 				name: 'start',
 				type: 'dateTime',
 				default: '',
-				description: 'Start time of the event.',
+				description: 'Start time of the event.'
 			},
 			{
 				displayName: 'Send Updates',
@@ -961,28 +894,31 @@ export const eventFields = [
 					{
 						name: 'All',
 						value: 'all',
-						description: ' Notifications are sent to all guests',
+						description: ' Notifications are sent to all guests'
 					},
 					{
 						name: 'External Only',
 						value: 'externalOnly',
-						description: 'Notifications are sent to non-Google Calendar guests only',
+						description:
+							'Notifications are sent to non-Google Calendar guests only'
 					},
 					{
 						name: 'None',
 						value: 'none',
-						description: ' No notifications are sent. This value should only be used for migration use case',
-					},
+						description:
+							' No notifications are sent. This value should only be used for migration use case'
+					}
 				],
-				description: 'Whether to send notifications about the creation of the new event',
-				default: '',
+				description:
+					'Whether to send notifications about the creation of the new event',
+				default: ''
 			},
 			{
 				displayName: 'Summary',
 				name: 'summary',
 				type: 'string',
 				default: '',
-				description: 'Title of the event.',
+				description: 'Title of the event.'
 			},
 			{
 				displayName: 'Show Me As',
@@ -992,26 +928,27 @@ export const eventFields = [
 					{
 						name: 'Available',
 						value: 'transparent',
-						description: 'The event does not block time on the calendar',
+						description: 'The event does not block time on the calendar'
 					},
 					{
 						name: 'Busy',
 						value: 'opaque',
-						description: ' The event does block time on the calendar.',
-					},
+						description: ' The event does block time on the calendar.'
+					}
 				],
 				default: 'opaque',
-				description: 'Whether the event blocks time on the calendar',
+				description: 'Whether the event blocks time on the calendar'
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
+					loadOptionsMethod: 'getTimezones'
 				},
 				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on n8n timezone '
+				description:
+					'The timezone the event will have set. By default events are schedule on n8n timezone '
 			},
 			{
 				displayName: 'Visibility',
@@ -1021,28 +958,32 @@ export const eventFields = [
 					{
 						name: 'Confidential',
 						value: 'confidential',
-						description: 'The event is private. This value is provided for compatibility reasons.',
+						description:
+							'The event is private. This value is provided for compatibility reasons.'
 					},
 					{
 						name: 'Default',
 						value: 'default',
-						description: ' Uses the default visibility for events on the calendar.',
+						description:
+							' Uses the default visibility for events on the calendar.'
 					},
 					{
 						name: 'Public',
 						value: 'public',
-						description: 'The event is public and event details are visible to all readers of the calendar.',
+						description:
+							'The event is public and event details are visible to all readers of the calendar.'
 					},
 					{
 						name: 'Private',
 						value: 'private',
-						description: 'The event is private and only event attendees may view event details.',
-					},
+						description:
+							'The event is private and only event attendees may view event details.'
+					}
 				],
 				default: 'default',
-				description: 'Visibility of the event.',
-			},
-		],
+				description: 'Visibility of the event.'
+			}
+		]
 	},
 	{
 		displayName: 'Reminders',
@@ -1051,21 +992,15 @@ export const eventFields = [
 		default: '',
 		placeholder: 'Add Reminder',
 		typeOptions: {
-			multipleValues: true,
+			multipleValues: true
 		},
 		required: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'update',
-				],
-				useDefaultReminders: [
-					false,
-				],
-			},
+				resource: ['event'],
+				operation: ['update'],
+				useDefaultReminders: [false]
+			}
 		},
 		options: [
 			{
@@ -1079,14 +1014,14 @@ export const eventFields = [
 						options: [
 							{
 								name: 'Email',
-								value: 'email',
+								value: 'email'
 							},
 							{
 								name: 'Popup',
-								value: 'popup',
-							},
+								value: 'popup'
+							}
 						],
-						default: '',
+						default: ''
 					},
 					{
 						displayName: 'Minutes Before',
@@ -1094,13 +1029,13 @@ export const eventFields = [
 						type: 'number',
 						typeOptions: {
 							minValue: 0,
-							maxValue: 40320,
+							maxValue: 40320
 						},
-						default: 0,
-					},
-				],
+						default: 0
+					}
+				]
 			}
 		],
-		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`,
-	},
+		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`
+	}
 ] as INodeProperties[];
