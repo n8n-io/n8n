@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const taskOperations = [
 	{
@@ -46,7 +48,7 @@ export const taskOperations = [
 
 export const taskFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:create                               */
+	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'TaskList',
@@ -64,7 +66,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: '',
 	},
@@ -86,14 +88,14 @@ export const taskFields = [
 		},
 		options: [
 			{
-				displayName: 'Completion date',
+				displayName: 'Completion Date',
 				name: 'completed',
 				type: 'dateTime',
 				default: '',
 				description: `Completion date of the task (as a RFC 3339 timestamp). This field is omitted if the task has not been completed.`,
 			},
 			{
-				displayName: 'Deleted status',
+				displayName: 'Deleted',
 				name: 'deleted',
 				type: 'boolean',
 				default: false,
@@ -128,23 +130,16 @@ export const taskFields = [
 				description: 'Previous sibling task identifier. If the task is created at the first position among its siblings, this parameter is omitted.',
 			},
 			{
-				displayName: 'Self Link',
-				name: 'selfLink',
-				type: 'string',
-				default: '',
-				description: 'URL pointing to this task. Used to retrieve, update, or delete this task.',
-			},
-			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
 				options: [
 					{
-						name: 'needs Action',
+						name: 'Needs Action',
 						value: 'needsAction',
 					},
 					{
-						name: 'completed',
+						name: 'Completed',
 						value: 'completed',
 					}
 				],
@@ -158,11 +153,10 @@ export const taskFields = [
 				default: '',
 				description: 'Title of the task.',
 			},
-
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:delete                               */
+	/*                                 task:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'TaskList',
@@ -180,7 +174,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: '',
 	},
@@ -197,12 +191,12 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: '',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:get                                  */
+	/*                                 task:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'TaskList',
@@ -237,12 +231,12 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: '',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:getAll                                  */
+	/*                                 task:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'TaskList',
@@ -260,7 +254,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: '',
 	},
@@ -276,7 +270,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: false,
 		description: 'If all results should be returned or only up to a given limit.',
@@ -296,7 +290,7 @@ export const taskFields = [
 				returnAll: [
 					false,
 				],
-			}
+			},
 		},
 		typeOptions: {
 			minValue: 1,
@@ -319,9 +313,8 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
-
 		options: [
 			{
 				displayName: 'Completed Max',
@@ -352,14 +345,6 @@ export const taskFields = [
 				description: 'Upper bound for a task due date (as a RFC 3339 timestamp) to filter by.',
 			},
 			{
-				displayName: 'Page Token',
-				name: 'pageToken',
-				type: 'string',
-				default: '',
-				description: 'Token specifying the result page to return.',
-			},
-
-			{
 				displayName: 'Show Completed',
 				name: 'showCompleted',
 				type: 'boolean',
@@ -383,14 +368,14 @@ export const taskFields = [
 			{
 				displayName: 'Updated Min',
 				name: 'updatedMin',
-				type: 'string',
+				type: 'dateTime',
 				default: '',
 				description: 'Lower bound for a task last modification time (as a RFC 3339 timestamp) to filter by.',
 			},
 		]
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:update                               */
+	/*                                 task:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'TaskList',
@@ -408,7 +393,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: '',
 	},
@@ -425,7 +410,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: '',
 	},
@@ -447,7 +432,7 @@ export const taskFields = [
 		},
 		options: [
 			{
-				displayName: 'Completion date',
+				displayName: 'Completion Date',
 				name: 'completed',
 				type: 'dateTime',
 				default: '',
@@ -455,7 +440,7 @@ export const taskFields = [
 			},
 
 			{
-				displayName: 'Deleted status',
+				displayName: 'Deleted',
 				name: 'deleted',
 				type: 'boolean',
 				default: false,
@@ -465,6 +450,9 @@ export const taskFields = [
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				default: '',
 				description: 'Additional Notes.',
 			},
@@ -476,23 +464,16 @@ export const taskFields = [
 				description: 'Previous sibling task identifier. If the task is created at the first position among its siblings, this parameter is omitted.',
 			},
 			{
-				displayName: 'Self Link',
-				name: 'selfLink',
-				type: 'string',
-				default: '',
-				description: 'URL pointing to this task. Used to retrieve, update, or delete this task.',
-			},
-			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
 				options: [
 					{
-						name: 'needs Update',
+						name: 'Needs Update',
 						value: 'needsAction',
 					},
 					{
-						name: 'completed',
+						name: 'Completed',
 						value: 'completed',
 					}
 				],
@@ -506,8 +487,6 @@ export const taskFields = [
 				default: '',
 				description: 'Title of the task.',
 			},
-
-
-		]
-	}
+		],
+	},
 ] as INodeProperties[];

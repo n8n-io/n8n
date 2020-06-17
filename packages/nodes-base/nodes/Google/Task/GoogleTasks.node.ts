@@ -1,16 +1,25 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+ } from 'n8n-core';
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
-	INodePropertyOptions
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
-import { taskOperations, taskFields } from './TaskDescription';
+import {
+	googleApiRequest,
+	googleApiRequestAllItems,
+} from './GenericFunctions';
+
+import {
+	taskOperations,
+	taskFields,
+} from './TaskDescription';
 
 export class GoogleTasks implements INodeType {
 	description: INodeTypeDescription = {
@@ -129,10 +138,6 @@ export class GoogleTasks implements INodeType {
 						body.deleted = additionalFields.deleted as boolean;
 					}
 
-					if (additionalFields.selfLink) {
-						body.selfLink = additionalFields.selfLink as string;
-					}
-
 					responseData = await googleApiRequest.call(
 						this,
 						'POST',
@@ -186,9 +191,6 @@ export class GoogleTasks implements INodeType {
 					if (options.dueMax) {
 						qs.dueMax = options.dueMax as string;
 					}
-					if (options.pageToken) {
-						qs.pageToken = options.pageToken as string;
-					}
 					if (options.showCompleted) {
 						qs.showCompleted = options.showCompleted as boolean;
 					}
@@ -198,10 +200,10 @@ export class GoogleTasks implements INodeType {
 					if (options.showHidden) {
 						qs.showHidden = options.showHidden as boolean;
 					}
-
 					if (options.updatedMin) {
 						qs.updatedMin = options.updatedMin as string;
 					}
+
 					if (returnAll) {
 						responseData = await googleApiRequestAllItems.call(
 							this,
@@ -261,10 +263,6 @@ export class GoogleTasks implements INodeType {
 						body.deleted = updateFields.deleted as boolean;
 					}
 
-					if (updateFields.selfLink) {
-						body.selfLink = updateFields.selfLink as string;
-					}
-
 					responseData = await googleApiRequest.call(
 						this,
 						'PATCH',
@@ -274,12 +272,11 @@ export class GoogleTasks implements INodeType {
 					);
 				}
 			}
-		}
-
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else if (responseData !== undefined) {
+				returnData.push(responseData as IDataObject);
+			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
