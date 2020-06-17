@@ -5,6 +5,10 @@ import {
 	IHookFunctions,
 } from 'n8n-core';
 
+import {
+	IDataObject,
+} from 'n8n-workflow';
+
 /**
  * Make an API request to Spotify
  *
@@ -14,7 +18,8 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
+export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions,
+	method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		method,
@@ -68,4 +73,26 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		// If that data does not exist for some reason return the actual error
 		throw error;
 	}
+}
+
+export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions,
+	method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	do {
+		responseData = await spotifyApiRequest.call(this, method, endpoint, body, query);
+		returnData.push(responseData);
+
+		query = {
+			'offset': responseData['limit'] + responseData['offset']
+		};
+
+	} while (
+		responseData['next'] !== null
+	);
+
+	return returnData;
 }
