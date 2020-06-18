@@ -1,7 +1,7 @@
 import {
 	Column,
 	Entity,
-	PrimaryColumn,
+	Index,
 } from 'typeorm';
 
 import {
@@ -9,15 +9,16 @@ import {
  } from '../../Interfaces';
 
 @Entity()
+@Index(['webhookPath', 'method'], { unique: true })
 export class WebhookEntity implements IWebhookDb {
 
 	@Column()
 	workflowId: number;
 
-	@PrimaryColumn()
+	@Column()
 	webhookPath: string;
 
-	@PrimaryColumn()
+	@Column()
 	method: string;
 
 	@Column()

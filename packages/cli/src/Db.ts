@@ -40,11 +40,13 @@ import {
 } from './databases/mongodb/migrations';
 
 import {
-	InitialMigration1588157391238
+	InitialMigration1588157391238,
+	WebhookModel1592447867632,
 } from './databases/mysqldb/migrations';
 
 import {
-	InitialMigration1588102412422
+	InitialMigration1588102412422,
+	WebhookModel1592445003908,
 } from './databases/sqlite/migrations';
 
 import * as path from 'path';
@@ -100,7 +102,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
-				migrations: [InitialMigration1588157391238],
+				migrations: [InitialMigration1588157391238, WebhookModel1592447867632],
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
@@ -112,7 +114,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				type: 'sqlite',
 				database:  path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix,
-				migrations: [InitialMigration1588102412422],
+				migrations: [InitialMigration1588102412422, WebhookModel1592445003908],
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
