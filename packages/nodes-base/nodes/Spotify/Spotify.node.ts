@@ -29,49 +29,11 @@ export class Spotify implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'spotifyApi',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'accessToken',
-						],
-					},
-				},
-			},
-			{
 				name: 'spotifyOAuth2Api',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'oAuth2',
-						],
-					},
-				},
 			},
 		],
 		properties: [
-			// ----------------------------------
-			//         Authentication
-			// ----------------------------------
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Access Token',
-						value: 'accessToken',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2',
-					},
-				],
-				default: 'oAuth2',
-				description: 'The resource to operate on.',
-			},
 			// ----------------------------------------------------------
 			//         Resource to Operate on
 			//		   Player, Album, Artisits, Playlists, Tracks

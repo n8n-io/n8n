@@ -35,10 +35,7 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	try {
-		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-
-		const credentials = authenticationMethod === 'accessToken' ?
-			this.getCredentials('spotifyApi') : this.getCredentials('spotifyOAuth2Api');
+		const credentials = this.getCredentials('spotifyOAuth2Api');
 
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
@@ -52,13 +49,7 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 
 		options.uri = `${baseUrl}${endpoint}`;
 
-		if (authenticationMethod === 'accessToken') {
-			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-
-			return await this.helpers.request(options);
-		} else {
-			return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
-		}
+		return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
