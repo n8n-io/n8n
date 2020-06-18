@@ -44,7 +44,7 @@ export class ZoomOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'body'
+			default: 'header'
 		}
 	];
 }
