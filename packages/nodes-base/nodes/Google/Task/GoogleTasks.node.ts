@@ -1,16 +1,25 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+ } from 'n8n-core';
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
-	INodePropertyOptions
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
-import { taskOperations, taskFields } from './TaskDescription';
 
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import {
+	googleApiRequest,
+	googleApiRequestAllItems,
+} from './GenericFunctions';
+
+import {
+	taskOperations,
+	taskFields,
+} from './TaskDescription';
 
 export class GoogleTasks implements INodeType {
 	description: INodeTypeDescription = {
@@ -98,43 +107,36 @@ export class GoogleTasks implements INodeType {
 						i
 					) as IDataObject;
 
-					if (additionalFields.parent)
+					if (additionalFields.parent) {
 						qs.parent = additionalFields.parent as string;
-
-					if (additionalFields.previous)
-						qs.previous = additionalFields.previous as string;
-
-					if (additionalFields.links) {
-						body.links = (additionalFields.links as string[]).map(link => {
-							return { link };
-						});
 					}
-					if (additionalFields.status)
+					if (additionalFields.previous) {
+						qs.previous = additionalFields.previous as string;
+					}
+
+					if (additionalFields.status) {
 						body.status = additionalFields.status as string;
+					}
 
-					if (additionalFields.notes)
+					if (additionalFields.notes) {
 						body.notes = additionalFields.notes as string;
+					}
 
-					if (additionalFields.title)
+					if (additionalFields.title) {
 						body.title = additionalFields.title as string;
+					}
 
-					if (additionalFields.dueDate)
+					if (additionalFields.dueDate) {
 						body.dueDate = additionalFields.dueDate as string;
+					}
 
-					if (additionalFields.completed)
+					if (additionalFields.completed) {
 						body.completed = additionalFields.completed as string;
+					}
 
-					if (additionalFields.deleted)
+					if (additionalFields.deleted) {
 						body.deleted = additionalFields.deleted as boolean;
-
-					if (additionalFields.hidden)
-						body.hidden = additionalFields.hidden as boolean;
-
-					if (additionalFields.position)
-						body.position = additionalFields.position as string;
-
-					if (additionalFields.selfLink)
-						body.selfLink = additionalFields.selfLink as string;
+					}
 
 					responseData = await googleApiRequest.call(
 						this,
@@ -189,9 +191,6 @@ export class GoogleTasks implements INodeType {
 					if (options.dueMax) {
 						qs.dueMax = options.dueMax as string;
 					}
-					if (options.pageToken) {
-						qs.pageToken = options.pageToken as string;
-					}
 					if (options.showCompleted) {
 						qs.showCompleted = options.showCompleted as boolean;
 					}
@@ -201,10 +200,10 @@ export class GoogleTasks implements INodeType {
 					if (options.showHidden) {
 						qs.showHidden = options.showHidden as boolean;
 					}
-
 					if (options.updatedMin) {
 						qs.updatedMin = options.updatedMin as string;
 					}
+
 					if (returnAll) {
 						responseData = await googleApiRequestAllItems.call(
 							this,
@@ -236,38 +235,33 @@ export class GoogleTasks implements INodeType {
 						i
 					) as IDataObject;
 
-					if (updateFields.parent) qs.parent = updateFields.parent as string;
-
-					if (updateFields.previous)
+					if (updateFields.previous) {
 						qs.previous = updateFields.previous as string;
-
-					if (updateFields.links) {
-						body.links = (updateFields.links as string[]).map(link => {
-							return { link: link };
-						});
 					}
-					if (updateFields.status) body.status = updateFields.status as string;
 
-					if (updateFields.notes) body.notes = updateFields.notes as string;
+					if (updateFields.status) {
+						body.status = updateFields.status as string;
+					}
 
-					if (updateFields.title) body.title = updateFields.title as string;
+					if (updateFields.notes) {
+						body.notes = updateFields.notes as string;
+					}
 
-					if (updateFields.dueDate)
+					if (updateFields.title) {
+						body.title = updateFields.title as string;
+					}
+
+					if (updateFields.dueDate) {
 						body.dueDate = updateFields.dueDate as string;
+					}
 
-					if (updateFields.completed)
+					if (updateFields.completed) {
 						body.completed = updateFields.completed as string;
+					}
 
-					if (updateFields.deleted)
+					if (updateFields.deleted) {
 						body.deleted = updateFields.deleted as boolean;
-
-					if (updateFields.hidden) body.hidden = updateFields.hidden as boolean;
-
-					if (updateFields.position)
-						body.position = updateFields.position as string;
-
-					if (updateFields.selfLink)
-						body.selfLink = updateFields.selfLink as string;
+					}
 
 					responseData = await googleApiRequest.call(
 						this,
@@ -278,12 +272,11 @@ export class GoogleTasks implements INodeType {
 					);
 				}
 			}
-		}
-
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else if (responseData !== undefined) {
+				returnData.push(responseData as IDataObject);
+			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
