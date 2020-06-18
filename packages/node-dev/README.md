@@ -190,7 +190,7 @@ The following properties can be set in the node description:
  - **maxNodes** [optional]: If not an unlimited amount of nodes of that type can exist in a workflow the max-amount can be specified
  - **name** [required]: Nme of the node (for n8n to use internally in camelCase)
  - **properties** [required]: Properties which get displayed in the Editor UI and can be set by the user
- - **subtitle** [optional]: Text which should be displayed underneath the name of the node in the Editor UI (can be an expression)
+ - **subtitle** [required]: Text which should be displayed underneath the name of the node in the Editor UI (can be an expression)
  - **version** [required]: Version of the node. Currently always "1" (integer). For future usage does not get used yet.
  - **webhooks** [optional]: Webhooks the node should listen to
 

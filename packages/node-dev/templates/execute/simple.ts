@@ -12,6 +12,7 @@ export class ClassNameReplace implements INodeType {
 		name: 'N8nNameReplace',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'NodeDescriptionReplace',
 		defaults: {
 			name: 'DisplayNameReplace',
