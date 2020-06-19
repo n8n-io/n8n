@@ -42,10 +42,11 @@ import {
 } from './helpers/box-folder-helpers';
 
 import {
-	downloadFile
-	, copyFile,
+	downloadFile,
+	copyFile,
 	modifyFile,
-	deleteFile
+	deleteFile,
+	uploadFile
 } from './helpers/box-file.helpers';
 
 import {
@@ -56,6 +57,7 @@ import {
 	IBoxApiDeleteFolderOptions,
 	IBoxApiDownloadFileOptions,
 	IBoxApiDeleteOptions,
+	IBoxApiUploadOptions,
 	IBoxApiCopyFileOptions,
 	IBoxApiModifyFileOptions
 } from './interfaces/index';
@@ -81,7 +83,7 @@ export class Box implements INodeType {
 			...boxApiResources,
 			...boxFolderOperations,
 			...boxFileOperations
-		]
+		],
 	};
 
 
@@ -219,6 +221,41 @@ export class Box implements INodeType {
 							{
 								file: this.getNodeParameter(fileApiParamType.currentFileVal, i) as string,
 							} as IBoxApiDeleteOptions,
+						);
+						break;
+
+					case boxApiResourceActionTypes.uploadVal:
+
+						const item = items[i];
+
+						let isBinaryData = this.getNodeParameter(fileApiParamType.binaryDataVal, i)
+
+						let content = '';
+						if (isBinaryData) {
+
+							if (item.binary === undefined) {
+								throw new Error('No binary data exists on item!');
+							}
+
+							const propertyNameUpload = this.getNodeParameter(fileApiParamType.binaryPropertyVal, i) as string;
+
+							if (item.binary[propertyNameUpload] === undefined) {
+								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							}
+							content = item.binary[propertyNameUpload].data;
+						}
+
+						responseData = await uploadFile(
+							credentials.accessToken as string,
+							this,
+							{
+								content: content,
+								isBinary: this.getNodeParameter(fileApiParamType.binaryDataVal, i),
+								name: this.getNodeParameter(fileApiParamType.fileNameVal, i),
+								parent: this.getNodeParameter(fileApiParamType.folderVal, i),
+								path: this.getNodeParameter(fileApiParamType.filePathVal, i),
+								type: this.getNodeParameter(fileApiParamType.contentTypeVal, i)
+							} as IBoxApiUploadOptions,
 						);
 						break;
 				}
