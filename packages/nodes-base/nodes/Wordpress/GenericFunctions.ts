@@ -7,32 +7,51 @@ import {
 import { IDataObject } from 'n8n-workflow';
 
 export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('wordpressApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
 	let options: OptionsWithUri = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
 		},
-		auth: {
-			user: credentials!.username as string,
-			password: credentials!.password as string,
-		},
+		auth: {},
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials!.url}/wp-json/wp/v2${resource}`,
+		uri: '',
 		json: true
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
+
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+
 	try {
-		return await this.helpers.request!(options);
+		if (authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('wordpressApi');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.auth = {
+				user: credentials!.username as string,
+				password: credentials!.password as string,
+			};
+
+			options.uri = `${credentials!.url}/wp-json/wp/v2${resource}`;
+
+			return await this.helpers.request!(options);
+		} else {
+			const credentials = this.getCredentials('wordpressOAuth2Api');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.uri = `${credentials!.url}/wp-json/wp/v2${resource}`;
+			delete options.auth;
+
+			return await this.helpers.requestOAuth2!.call(this, 'wordpressOAuth2Api', options);
+		}
 	} catch (error) {
 		let errorMessage = error.message;
 		if (error.response.body) {
