@@ -111,7 +111,7 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'Set the bot\'s user name.',
+		description: 'Set the bot\'s user name. This field will be ignored if you are using a user token.',
 	},
 	{
 		displayName: 'JSON parameters',
