@@ -222,7 +222,7 @@ let uploadFileProperties: INodeProperties[] = [
         name: fileApiParamType.filePathVal,
         type: 'string',
         default: '',
-        required: true,
+        required: false,
         displayOptions: {
             show: {
                 operation: [
@@ -378,6 +378,6 @@ export const boxFileOperations = [
     ...copyFileProperties,
     ...modifyFileProperties,
     ...deleteFileProperties,
-	...uploadFileProperties
+    ...uploadFileProperties
 
 ] as INodeProperties[];
