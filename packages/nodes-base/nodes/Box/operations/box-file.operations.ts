@@ -218,41 +218,118 @@ let deleteFileProperties: INodeProperties[] = [
 
 let uploadFileProperties: INodeProperties[] = [
     {
-        displayName: fileApiParamType.folder,
-        name: fileApiParamType.folderVal,
+        displayName: fileApiParamType.filePath,
+        name: fileApiParamType.filePathVal,
         type: 'string',
-        required: true,
         default: '',
+        required: true,
         displayOptions: {
             show: {
                 operation: [
-                    boxApiResourceActionTypes.modifyVal
+                    boxApiResourceActionTypes.uploadVal
                 ],
                 resource: [
                     boxApiResourceType.fileVal
                 ],
             },
         },
-        description: 'Id of the parent folder',
+        placeholder: '/invoices/2019/invoice_1.pdf',
+        description: 'The local path of the file.',
     },
     {
         displayName: fileApiParamType.fileName,
         name: fileApiParamType.fileNameVal,
         type: 'string',
-        required: true,
         default: '',
+        required: true,
         displayOptions: {
             show: {
                 operation: [
-                    boxApiResourceActionTypes.modifyVal
+                    boxApiResourceActionTypes.uploadVal
                 ],
                 resource: [
                     boxApiResourceType.fileVal
                 ],
             },
         },
-        description: 'Name of the file',
-    }
+        description: 'File name of the file.',
+    },
+    {
+        displayName: fileApiParamType.contentType,
+        name: fileApiParamType.contentTypeVal,
+        type: 'string',
+        default: '',
+        required: true,
+        displayOptions: {
+            show: {
+                operation: [
+                    boxApiResourceActionTypes.uploadVal
+                ],
+                resource: [
+                    boxApiResourceType.fileVal
+                ],
+            },
+        },
+        description: 'Content type of the file.',
+    },
+    {
+        displayName: fileApiParamType.folder,
+        name: fileApiParamType.folderVal,
+        type: 'string',
+        default: '',
+        required: true,
+        displayOptions: {
+            show: {
+                operation: [
+                    boxApiResourceActionTypes.uploadVal
+                ],
+                resource: [
+                    boxApiResourceType.fileVal
+                ],
+            },
+        },
+        description: 'Id of the target folder',
+    },
+    {
+        displayName: fileApiParamType.binaryData,
+        name: fileApiParamType.binaryDataVal,
+        type: 'boolean',
+        default: false,
+        displayOptions: {
+            show: {
+                operation: [
+                    boxApiResourceActionTypes.uploadVal
+                ],
+                resource: [
+                    boxApiResourceType.fileVal
+                ],
+            },
+        },
+        description: 'If the data to upload should be taken from binary field.',
+    },
+    {
+        displayName: fileApiParamType.binaryProperty,
+        name: fileApiParamType.binaryPropertyVal,
+        type: 'string',
+        default: 'data',
+        required: true,
+        displayOptions: {
+            show: {
+                operation: [
+                    boxApiResourceActionTypes.uploadVal
+                ],
+                resource: [
+                    boxApiResourceType.fileVal
+                ],
+                binaryData: [
+                    true
+                ],
+            },
+
+        },
+        placeholder: '',
+        description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+    },
 ]
 
 export const boxFileOperations = [
@@ -300,6 +377,7 @@ export const boxFileOperations = [
     ...downloadFileProperties,
     ...copyFileProperties,
     ...modifyFileProperties,
-    ...deleteFileProperties
+    ...deleteFileProperties,
+	...uploadFileProperties
 
 ] as INodeProperties[];
