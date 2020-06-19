@@ -1,5 +1,8 @@
 import { OptionsWithUri } from 'request';
 import { IDataObject, INodeExecutionData, IBinaryData } from 'n8n-workflow';
+const request = require('request-promise-native');
+var fs = require("fs");
+
 import {
     IExecuteFunctions,
     BINARY_ENCODING
@@ -14,7 +17,9 @@ import {
     IFileCopySuccessful,
     IFileModifySuccessful,
     IFileDeleteSuccessful,
-    IBoxFileEntry
+    IFileUploadSuccessful,
+    IBoxFileEntry,
+    IBoxApiUploadOptions
 } from '../interfaces/index';
 import {
     boxApiBaseUri
@@ -23,6 +28,7 @@ import {
 import {
     boxApiErrorMessages
 } from '../box.messages'
+import { response } from 'express';
 
 export async function downloadFile(accessToken: string, baseFunctions: IExecuteFunctions, apiOptions: IBoxApiDownloadFileOptions): Promise<IBinaryData> {
     let responseData = {};
@@ -270,4 +276,79 @@ export async function deleteFile(accessToken: string, baseFunctions: IExecuteFun
     }
 
     return responseData as IFileDeleteSuccessful;
+}
+
+export async function uploadFile(accessToken: string, baseFunctions: IExecuteFunctions, apiOptions: IBoxApiUploadOptions): Promise<any> {
+
+    let responseData = {};
+
+    if (apiOptions && apiOptions.name && apiOptions.parent) {
+
+        try {
+            let binaryData: any = '';
+            if (apiOptions.isBinary) {
+                binaryData = Buffer.from(apiOptions.content, BINARY_ENCODING);
+            } else {
+                if (apiOptions.path) {
+                    binaryData = fs.readFileSync(apiOptions.path);
+                } else {
+                    throw new Error(boxApiErrorMessages.InvalidpathError);
+                }
+            }
+
+            const metadata = {
+                name: apiOptions.name,
+                parent: { id: apiOptions.parent }
+            }
+
+            const options = {
+                uri: 'https://upload.box.com/api/2.0/files/content',
+                headers: {
+                    'content-type': 'multipart/form-data',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                formData: {
+                    file: {
+                        value: binaryData,
+                        options: {
+                            filename: apiOptions.name,
+                            contentType: apiOptions.type,
+                        },
+                    },
+                    attributes: JSON.stringify(metadata),
+                },
+                method: 'POST',
+            }
+            responseData = await request(options);
+            const { total_count, entries } = JSON.parse(responseData as any);
+            return { success: true, data: { entries: entries, total_count: total_count } } as IFileUploadSuccessful;
+
+        }
+        catch (error) {
+
+            if (error.statusCode === 401) {
+                throw new Error(boxApiErrorMessages.CredentialsNotFoundError);
+            }
+
+            if (error.statusCode === 409) {
+                throw new Error(boxApiErrorMessages.DuplicateFileNameOrDiskSpaceError);
+            }
+
+            if (error.statusCode === 403) {
+                throw new Error(boxApiErrorMessages.InvalidPermissionsError);
+            }
+
+            if (error.statusCode === 503) {
+                throw new Error(boxApiErrorMessages.LongRunningProcessError);
+            }
+
+            if (error.error && error.error.error_summary) {
+                throw new Error(`Box error response [${error.statusCode}]: ${error.error.error_summary}`);
+            }
+        }
+    } else {
+        throw new Error(boxApiErrorMessages.InvalidParamsError);
+    }
+
+    return { success: false } as IFileUploadSuccessful;
 }
