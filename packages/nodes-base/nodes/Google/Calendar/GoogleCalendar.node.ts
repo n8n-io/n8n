@@ -97,16 +97,16 @@ export class GoogleCalendar implements INodeType {
 				this: ILoadOptionsFunctions
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { calendar } = await googleApiRequest.call(
+				const { event } = await googleApiRequest.call(
 					this,
 					'GET',
 					'/calendar/v3/colors'
 				);
-				for (const key of Object.keys(calendar)) {
-					const colorName = calendar[key].background;
+				for (const key of Object.keys(event)) {
+					const colorName = `Background: ${event[key].background} - Foreground: ${event[key].foreground}`;
 					const colorId = key;
 					returnData.push({
-						name: `${colorName} - ${colorId}`,
+						name: `${colorName}`,
 						value: colorId
 					});
 				}
