@@ -36,7 +36,8 @@ import {
 } from './databases/postgresdb/migrations';
 
 import {
-	InitialMigration1587563438936
+	InitialMigration1587563438936,
+	WebhookModel1592679094242,
 } from './databases/mongodb/migrations';
 
 import {
@@ -68,7 +69,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				entityPrefix,
 				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
 				useNewUrlParser: true,
-				migrations: [InitialMigration1587563438936],
+				migrations: [InitialMigration1587563438936, WebhookModel1592679094242],
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 			};

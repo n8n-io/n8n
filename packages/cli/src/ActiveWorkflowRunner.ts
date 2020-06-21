@@ -35,7 +35,6 @@ import {
 
 import * as express from 'express';
 
-
 export class ActiveWorkflowRunner {
 	private activeWorkflows: ActiveWorkflows | null = null;
 
@@ -240,6 +239,7 @@ export class ActiveWorkflowRunner {
 			} as IWebhookDb;
 
 			try {
+
 				await Db.collections.Webhook?.insert(webhook);
 
 				const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, false);
@@ -257,7 +257,7 @@ export class ActiveWorkflowRunner {
 				// if it's a workflow from the the insert
 				// TODO check if there is standard error code for deplicate key violation that works
 				// with all databases
-				if (error.name === 'QueryFailedError') {
+				if (error.name === 'MongoError' || error.name === 'QueryFailedError') {
 
 					errorMessage = `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
 
@@ -303,13 +303,17 @@ export class ActiveWorkflowRunner {
 			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, false);
 		}
 
+		// if it's a mongo objectId convert it to string
+		if (typeof workflowData.id === 'object') {
+			workflowData.id = workflowData.id.toString();
+		}
+
 		const webhook = {
 			workflowId: workflowData.id,
 		} as IWebhookDb;
 
 		await Db.collections.Webhook?.delete(webhook);
 	}
-
 
 	/**
 	 * Runs the given workflow

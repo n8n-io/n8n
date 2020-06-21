@@ -2,6 +2,8 @@ import {
 	Column,
 	Entity,
 	Index,
+	ObjectID,
+	ObjectIdColumn,
 } from 'typeorm';
 
 import {
@@ -9,8 +11,10 @@ import {
  } from '../../Interfaces';
 
 @Entity()
-@Index(['webhookPath', 'method'], { unique: true })
 export class WebhookEntity implements IWebhookDb {
+
+	@ObjectIdColumn()
+	id: ObjectID;
 
 	@Column()
 	workflowId: number;
