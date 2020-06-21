@@ -36,11 +36,6 @@ export class WebhookModel1589476000887 implements MigrationInterface {
 		const nodeTypes = NodeTypes();
 		for (const workflow of workflows) {
 			const workflowInstance = new Workflow({ id: workflow.id as string, name: workflow.name, nodes: workflow.nodes, connections: workflow.connections, active: workflow.active, nodeTypes, staticData: workflow.staticData, settings: workflow.settings });
-			// I'm writing something more simple than this. I tried to use the built in method
-			// getWorkflowWebhooks but it needs additionaldata and to get it I need the credentials
-			// and for some reason when I use
-			//	const credentials = await WorkflowCredentials(node);
-			// to get the credentials I got an error I think is cuz the database is yet not ready.
 			const webhooks = WebhookHelpers.getWorkflowWebhooksBasic(workflowInstance);
 			for (const webhook of webhooks) {
 				data.push({
