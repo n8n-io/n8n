@@ -317,7 +317,7 @@
     "@types/xml2js": "^0.4.3",
     "gulp": "^4.0.0",
     "jest": "^24.9.0",
-    "n8n-workflow": "~0.32.0",
+    "n8n-workflow": "~0.33.0",
     "ts-jest": "^24.0.2",
     "tslint": "^5.17.0",
     "typescript": "~3.7.4"
