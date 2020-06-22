@@ -45,7 +45,7 @@
         "crypto-js": "3.1.9-1",
         "lodash.get": "^4.4.2",
         "mmmagic": "^0.5.2",
-        "n8n-workflow": "~0.32.0",
+        "n8n-workflow": "~0.33.0",
         "p-cancelable": "^2.0.0",
         "request": "^2.88.2",
         "request-promise-native": "^1.0.7"
