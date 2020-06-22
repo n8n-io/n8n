@@ -178,6 +178,15 @@ export const eventFields = [
 				description: 'The color of the event.',
 			},
 			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
 				displayName: 'Guests Can Invite Others',
 				name: 'guestsCanInviteOthers',
 				type: 'boolean',
@@ -857,6 +866,15 @@ export const eventFields = [
 				},
 				default: '',
 				description: 'The color of the event.',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 			},
 			{
 				displayName: 'End',
