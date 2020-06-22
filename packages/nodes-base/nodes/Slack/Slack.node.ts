@@ -454,6 +454,10 @@ export class Slack implements INodeType {
 						body.username = this.getNodeParameter('username', i) as string;
 					}
 
+					// ignore body.as_user as it's deprecated
+
+					delete body.as_user;
+
 					if (!jsonParameters) {
 						const attachments = this.getNodeParameter('attachments', i, []) as unknown as Attachment[];
 						const blocksUi = (this.getNodeParameter('blocksUi', i, []) as IDataObject).blocksValues as IDataObject[];
@@ -690,10 +694,6 @@ export class Slack implements INodeType {
 						text,
 						ts,
 					};
-
-					if (authentication === 'accessToken') {
-						body.as_user = this.getNodeParameter('as_user', i) as boolean;
-					}
 
 					// The node does save the fields data differently than the API
 					// expects so fix the data befre we send the request
