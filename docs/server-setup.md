@@ -58,7 +58,15 @@ IP address: <IP_OF_YOUR_SERVER>
 
 Save this file as `docker-compose.yml`
 
-Normally no changes should be needed.
+Normally no changes should be needed, but if you are planning on reading/writing local files with n8n (e.g. by using the write binary files integration), you will need to configure a data directory for those files here. If you are running n8n as a root user, add this under ``volumes`` for the n8n service:
+
+      - /local-files:/files
+
+If you are running n8n as a non-root user, add this under ``volumes`` for the n8n service:
+
+      - /home/<YOUR USERNAME>/n8n-local-files:/files``
+
+Then, you will be able to write files to the ``/files`` directory in n8n and they will appear on your server in either ``/local-files`` or ``/home/<YOUR USERNAME>/n8n-local-files``, respectively.
 
 ```yaml
 version: "3"
