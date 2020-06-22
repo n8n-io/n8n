@@ -40,21 +40,11 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 				throw new Error('No credentials got returned!');
 			}
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-			console.log("options if");
-			console.log(options);
+
 			//@ts-ignore
 
 			return await this.helpers.request(options);
 		} else {
-			console.log("options else");
-			console.log(options);
-			let credentials = this.getCredentials('zoomOAuth2Api');
-			// let oauthtoken1 = credentials!.oauthTokenData;
-
-
-			console.log(credentials);
-			console.log("credss");
-
 			//@ts-ignore
 
 			return await this.helpers.requestOAuth2.call(this, 'zoomOAuth2Api', options);
