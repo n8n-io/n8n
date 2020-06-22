@@ -32,7 +32,18 @@ export class MongoDb implements INodeType {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		if (operation === 'find') {
+		if (operation === 'delete') {
+			// ----------------------------------
+			//         delete
+			// ----------------------------------
+
+			const { deletedCount } = await mdb
+				.collection(this.getNodeParameter('collection', 0) as string)
+				.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string));
+
+			returnItems = this.helpers.returnJsonArray([{ deletedCount }]);
+
+		} else if (operation === 'find') {
 			// ----------------------------------
 			//         find
 			// ----------------------------------

@@ -1,5 +1,7 @@
 import {
+	CredentialsHelper,
 	Db,
+	ExternalHooks,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IPushDataExecutionFinished,
@@ -302,6 +304,10 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 		workflowData = workflowInfo.code;
 	}
 
+	const externalHooks = ExternalHooks();
+	await externalHooks.init();
+	await externalHooks.run('workflow.execute', [workflowData, mode]);
+
 	const nodeTypes = NodeTypes();
 
 	const workflowName = workflowData ? workflowData.name : undefined;
@@ -404,6 +410,7 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 
 	return {
 		credentials,
+		credentialsHelper: new CredentialsHelper(credentials, encryptionKey),
 		encryptionKey,
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.get('endpoints.rest') as string,
