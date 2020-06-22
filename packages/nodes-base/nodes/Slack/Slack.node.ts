@@ -1,17 +1,41 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
+	channelFields,
+	channelOperations,
+} from './ChannelDescription';
+import {
+	messageFields,
+	messageOperations,
+} from './MessageDescription';
+import {
+	starFields,
+	starOperations,
+} from './StarDescription';
+import {
+	fileFields,
+	fileOperations,
+} from './FileDescription';
+import {
+	slackApiRequest,
+	slackApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
+import {
+	IAttachment,
+} from './MessageInterface';
 
 interface Attachment {
 	fields: {
@@ -61,7 +85,7 @@ export class Slack implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to Slack',
+		description: 'Consume Slack API',
 		defaults: {
 			name: 'Slack',
 			color: '#BB2244',
@@ -72,9 +96,45 @@ export class Slack implements INodeType {
 			{
 				name: 'slackApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'slackOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
+
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -85,1534 +145,322 @@ export class Slack implements INodeType {
 						value: 'channel',
 					},
 					{
+						name: 'File',
+						value: 'file',
+					},
+					{
 						name: 'Message',
 						value: 'message',
+					},
+					{
+						name: 'Star',
+						value: 'star',
 					},
 				],
 				default: 'message',
 				description: 'The resource to operate on.',
 			},
 
-
-
-			// ----------------------------------
-			//         operations
-			// ----------------------------------
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'channel',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Create',
-						value: 'create',
-						description: 'Create a new channel',
-					},
-					{
-						name: 'Invite',
-						value: 'invite',
-						description: 'Invite a user to a channel',
-					},
-				],
-				default: 'create',
-				description: 'The operation to perform.',
-			},
-
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'message',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Post',
-						value: 'post',
-						description: 'Post a message into a channel',
-					},
-				],
-				default: 'post',
-				description: 'The operation to perform.',
-			},
-
-
-
-			// ----------------------------------
-			//         channel
-			// ----------------------------------
-
-			// ----------------------------------
-			//         channel:create
-			// ----------------------------------
-			{
-				displayName: 'Name',
-				name: 'channel',
-				type: 'string',
-				default: '',
-				placeholder: 'Channel name',
-				displayOptions: {
-					show: {
-						operation: [
-							'create'
-						],
-						resource: [
-							'channel',
-						],
-					},
-				},
-				required: true,
-				description: 'The name of the channel to create.',
-			},
-
-			// ----------------------------------
-			//         channel:invite
-			// ----------------------------------
-			{
-				displayName: 'Channel ID',
-				name: 'channel',
-				type: 'string',
-				default: '',
-				placeholder: 'myChannel',
-				displayOptions: {
-					show: {
-						operation: [
-							'invite'
-						],
-						resource: [
-							'channel',
-						],
-					},
-				},
-				required: true,
-				description: 'The ID of the channel to invite user to.',
-			},
-			{
-				displayName: 'User ID',
-				name: 'username',
-				type: 'string',
-				default: '',
-				placeholder: 'frank',
-				displayOptions: {
-					show: {
-						operation: [
-							'invite'
-						],
-						resource: [
-							'channel',
-						],
-					},
-				},
-				required: true,
-				description: 'The ID of the user to invite into channel.',
-			},
-
-
-
-			// ----------------------------------
-			//         message
-			// ----------------------------------
-
-			// ----------------------------------
-			//         message:post
-			// ----------------------------------
-			{
-				displayName: 'Channel',
-				name: 'channel',
-				type: 'string',
-				default: '',
-				placeholder: 'Channel name',
-				displayOptions: {
-					show: {
-						operation: [
-							'post'
-						],
-						resource: [
-							'message',
-						],
-					},
-				},
-				required: true,
-				description: 'The channel to send the message to.',
-			},
-			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'post'
-						],
-						resource: [
-							'message',
-						],
-					},
-				},
-				description: 'The text to send.',
-			},
-			{
-				displayName: 'As User',
-				name: 'as_user',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'post'
-						],
-						resource: [
-							'message',
-						],
-					},
-				},
-				description: 'Post the message as authenticated user instead of bot.',
-			},
-			{
-				displayName: 'User Name',
-				name: 'username',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						as_user: [
-							false
-						],
-						operation: [
-							'post'
-						],
-						resource: [
-							'message',
-						],
-					},
-				},
-				description: 'Set the bot\'s user name.',
-			},
-			{
-				displayName: 'JSON parameters',
-				name: 'jsonParameters',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'post'
-						],
-						resource: [
-							'message',
-						],
-					},
-				},
-			},
-			{
-				displayName: 'Attachments',
-				name: 'attachments',
-				type: 'collection',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add attachment',
-				},
-				displayOptions: {
-					show: {
-						operation: [
-							'post'
-						],
-						resource: [
-							'message',
-						],
-						jsonParameters: [
-							false,
-						],
-					},
-				},
-				default: {}, // TODO: Remove comment: has to make default array for the main property, check where that happens in UI
-				description: 'The attachments to add',
-				placeholder: 'Add attachment item',
-				options: [
-					{
-						displayName: 'Fallback Text',
-						name: 'fallback',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Required plain-text summary of the attachment.',
-					},
-					{
-						displayName: 'Text',
-						name: 'text',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Text to send.',
-					},
-					{
-						displayName: 'Title',
-						name: 'title',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Title of the message.',
-					},
-					{
-						displayName: 'Title Link',
-						name: 'title_link',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Link of the title.',
-					},
-					{
-						displayName: 'Color',
-						name: 'color',
-						type: 'color',
-						default: '#ff0000',
-						description: 'Color of the line left of text.',
-					},
-					{
-						displayName: 'Pretext',
-						name: 'pretext',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Text which appears before the message block.',
-					},
-					{
-						displayName: 'Author Name',
-						name: 'author_name',
-						type: 'string',
-						default: '',
-						description: 'Name that should appear.',
-					},
-					{
-						displayName: 'Author Link',
-						name: 'author_link',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Link for the author.',
-					},
-					{
-						displayName: 'Author Icon',
-						name: 'author_icon',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Icon which should appear for the user.',
-					},
-					{
-						displayName: 'Image URL',
-						name: 'image_url',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'URL of image.',
-					},
-					{
-						displayName: 'Thumbnail URL',
-						name: 'thumb_url',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'URL of thumbnail.',
-					},
-					{
-						displayName: 'Footer',
-						name: 'footer',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Text of footer to add.',
-					},
-					{
-						displayName: 'Footer Icon',
-						name: 'footer_icon',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Icon which should appear next to footer.',
-					},
-					{
-						displayName: 'Timestamp',
-						name: 'ts',
-						type: 'dateTime',
-						default: '',
-						description: 'Time message relates to.',
-					},
-					{
-						displayName: 'Fields',
-						name: 'fields',
-						placeholder: 'Add Fields',
-						description: 'Fields to add to message.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'item',
-								displayName: 'Item',
-								values: [
-									{
-										displayName: 'Title',
-										name: 'title',
-										type: 'string',
-										default: '',
-										description: 'Title of the item.',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: 'Value of the item.',
-									},
-									{
-										displayName: 'Short',
-										name: 'short',
-										type: 'boolean',
-										default: true,
-										description: 'If items can be displayed next to each other.',
-									},
-								]
-							},
-						],
-					}
-				],
-			},
-			{
-				displayName: 'Blocks',
-				name: 'blocksUi',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Block',
-				},
-				displayOptions: {
-					show: {
-						operation: [
-							'post'
-						],
-						resource: [
-							'message',
-						],
-						jsonParameters: [
-							false,
-						],
-					},
-				},
-				default: {},
-				description: 'The blocks to add',
-				placeholder: 'Add Block',
-				options: [
-					{
-						name: 'blocksValues',
-						displayName: 'Block',
-						values: [
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								options: [
-									{
-										name: 'Actions',
-										value: 'actions',
-									},
-									{
-										name: 'Section',
-										value: 'section',
-									},
-								],
-								default: 'actions',
-							},
-							{
-								displayName: 'Block ID',
-								name: 'blockId',
-								type: 'string',
-								displayOptions: {
-									show: {
-										type: [
-											'actions',
-										],
-									},
-								},
-								default: '',
-								description: `A string acting as a unique identifier for a block.</br>
-								You can use this block_id when you receive an interaction payload to</br>
-								identify the source of the action. If not specified, a block_id will be generated.</br>
-								Maximum length for this field is 255 characters.`,
-							},
-							{
-								displayName: 'Elements',
-								name: 'elementsUi',
-								placeholder: 'Add Element',
-								type: 'fixedCollection',
-								typeOptions: {
-									multipleValues: true,
-								},
-								displayOptions: {
-									show: {
-										type: [
-											'actions',
-										],
-									},
-								},
-								default: {},
-								options: [
-									{
-										name: 'elementsValues',
-										displayName: 'Element',
-										values: [
-											{
-												displayName: 'Type',
-												name: 'type',
-												type: 'options',
-												options: [
-													{
-														name: 'Button',
-														value: 'button',
-													},
-												],
-												default: 'button',
-												description: 'The type of element',
-											},
-											{
-												displayName: 'Text',
-												name: 'text',
-												type: 'string',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												default: '',
-												description: 'The text for the block.',
-											},
-											{
-												displayName: 'Emoji',
-												name: 'emoji',
-												type: 'boolean',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												default: false,
-												description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format.',
-											},
-											{
-												displayName: 'Action ID',
-												name: 'actionId',
-												type: 'string',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												default: '',
-												description: `An identifier for this action. You can use this when you receive an interaction</br>
-												payload to identify the source of the action. Should be unique among all other action_ids used</br>
-												elsewhere by your app. `,
-											},
-											{
-												displayName: 'URL',
-												name: 'url',
-												type: 'string',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												default: '',
-												description: `A URL to load in the user's browser when the button is clicked.</br>
-												Maximum length for this field is 3000 characters. If you're using url, you'll still</br>
-												receive an interaction payload and will need to send an acknowledgement response.`,
-											},
-											{
-												displayName: 'Value',
-												name: 'value',
-												type: 'string',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												default: '',
-												description: 'The value to send along with the interaction payload.',
-											},
-											{
-												displayName: 'Style',
-												name: 'style',
-												type: 'options',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												options: [
-													{
-														name: 'Danger',
-														value: 'danger',
-													},
-													{
-														name: 'Default',
-														value: 'default',
-													},
-													{
-														name: 'Primary',
-														value: 'primary',
-													},
-												],
-												default: 'default',
-												description: 'Decorates buttons with alternative visual color schemes.',
-											},
-											{
-												displayName: 'Confirm',
-												name: 'confirmUi',
-												placeholder: 'Add Confirm',
-												type: 'fixedCollection',
-												typeOptions: {
-													multipleValues: false,
-												},
-												default: {},
-												options: [
-													{
-														name: 'confirmValue',
-														displayName: 'Confirm',
-														values: [
-															{
-																displayName: 'Title',
-																name: 'titleUi',
-																placeholder: 'Add Title',
-																type: 'fixedCollection',
-																typeOptions: {
-																	multipleValues: false,
-																},
-																default: {},
-																options: [
-																	{
-																		name: 'titleValue',
-																		displayName: 'Title',
-																		values: [
-																			{
-																				displayName: 'Text',
-																				name: 'text',
-																				type: 'string',
-																				default: '',
-																				description: 'Text of the title.',
-																			},
-																			{
-																				displayName: 'Emoji',
-																				name: 'emoji',
-																				type: 'boolean',
-																				default: false,
-																				description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
-																			},
-																		],
-																	},
-																],
-																description: `Defines the dialog's title.`,
-															},
-															{
-																displayName: 'Text',
-																name: 'textUi',
-																placeholder: 'Add Text',
-																type: 'fixedCollection',
-																typeOptions: {
-																	multipleValues: false,
-																},
-																default: {},
-																options: [
-																	{
-																		name: 'textValue',
-																		displayName: 'Text',
-																		values: [
-																			{
-																				displayName: 'Text',
-																				name: 'text',
-																				type: 'string',
-																				default: '',
-																				description: 'The text for the block',
-																			},
-																			{
-																				displayName: 'Emoji',
-																				name: 'emoji',
-																				type: 'boolean',
-																				default: false,
-																				description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
-																			},
-																		],
-																	},
-																],
-																description: `Defines the explanatory text that appears in the confirm dialog.`,
-															},
-															{
-																displayName: 'Confirm',
-																name: 'confirmTextUi',
-																placeholder: 'Add Confirm',
-																type: 'fixedCollection',
-																typeOptions: {
-																	multipleValues: false,
-																},
-																default: {},
-																options: [
-																	{
-																		name: 'confirmValue',
-																		displayName: 'Confirm',
-																		values: [
-																			{
-																				displayName: 'Text',
-																				name: 'text',
-																				type: 'string',
-																				default: '',
-																				description: `Defines the explanatory text that appears in the confirm dialog.`,
-																			},
-																			{
-																				displayName: 'Emoji',
-																				name: 'emoji',
-																				type: 'boolean',
-																				default: false,
-																				description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
-																			},
-																		],
-																	},
-																],
-																description: 'Defines the text of the button that confirms the action',
-															},
-															{
-																displayName: 'Deny',
-																name: 'denyUi',
-																placeholder: 'Add Deny',
-																type: 'fixedCollection',
-																typeOptions: {
-																	multipleValues: false,
-																},
-																default: {},
-																options: [
-																	{
-																		name: 'denyValue',
-																		displayName: 'Deny',
-																		values: [
-																			{
-																				displayName: 'Text',
-																				name: 'text',
-																				type: 'string',
-																				default: '',
-																				description: 'Defines the text of the button that cancels the action',
-																			},
-																			{
-																				displayName: 'Emoji',
-																				name: 'emoji',
-																				type: 'boolean',
-																				default: false,
-																				description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
-																			},
-																		],
-																	},
-																],
-																description: 'Defines the text of the button that cancels the action',
-															},
-															{
-																displayName: 'Style',
-																name: 'style',
-																type: 'options',
-																options: [
-																	{
-																		name: 'Danger',
-																		value: 'danger',
-																	},
-																	{
-																		name: 'Default',
-																		value: 'default',
-																	},
-																	{
-																		name: 'Primary',
-																		value: 'primary',
-																	},
-																],
-																default: 'default',
-																description: 'Defines the color scheme applied to the confirm button.',
-															},
-														],
-													},
-												],
-												description: 'Defines an optional confirmation dialog after the button is clicked.',
-											},
-										],
-									},
-								],
-							},
-							{
-								displayName: 'Block ID',
-								name: 'blockId',
-								type: 'string',
-								displayOptions: {
-									show: {
-										type: [
-											'section',
-										],
-									},
-								},
-								default: '',
-								description: `A string acting as a unique identifier for a block.</br>
-								You can use this block_id when you receive an interaction payload to</br>
-								identify the source of the action. If not specified, a block_id will be generated.</br>
-								Maximum length for this field is 255 characters.`,
-							},
-							{
-								displayName: 'Text',
-								name: 'textUi',
-								placeholder: 'Add Text',
-								type: 'fixedCollection',
-								typeOptions: {
-									multipleValues: false,
-								},
-								displayOptions: {
-									show: {
-										type: [
-											'section',
-										],
-									},
-								},
-								default: {},
-								options: [
-									{
-										name: 'textValue',
-										displayName: 'Text',
-										values: [
-											{
-												displayName: 'Type',
-												name: 'type',
-												type: 'options',
-												options: [
-													{
-														name: 'Markdowm',
-														value: 'mrkwdn',
-													},
-													{
-														name: 'Plain Text',
-														value: 'plainText',
-													},
-												],
-												default: 'mrkwdn',
-												description: 'The formatting to use for this text object.',
-											},
-											{
-												displayName: 'Text',
-												name: 'text',
-												type: 'string',
-												default: '',
-												description: 'The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn.',
-											},
-											{
-												displayName: 'Emoji',
-												name: 'emoji',
-												displayOptions: {
-													show: {
-														type: [
-															'plainText',
-														],
-													},
-												},
-												type: 'boolean',
-												default: false,
-												description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text.',
-											},
-											{
-												displayName: 'Verbatim',
-												name: 'verbatim',
-												displayOptions: {
-													show: {
-														type: [
-															'mrkwdn',
-														],
-													},
-												},
-												type: 'boolean',
-												default: false,
-												description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed. ',
-											},
-										],
-									},
-								],
-								description: 'Define the text of the button that cancels the action',
-							},
-							{
-								displayName: 'Fields',
-								name: 'fieldsUi',
-								placeholder: 'Add Fields',
-								type: 'fixedCollection',
-								typeOptions: {
-									multipleValues: true,
-								},
-								displayOptions: {
-									show: {
-										type: [
-											'section',
-										],
-									},
-								},
-								default: {},
-								options: [
-									{
-										name: 'fieldsValues',
-										displayName: 'Text',
-										values: [
-											{
-												displayName: 'Type',
-												name: 'type',
-												type: 'options',
-												options: [
-													{
-														name: 'Markdowm',
-														value: 'mrkwdn',
-													},
-													{
-														name: 'Plain Text',
-														value: 'plainText',
-													},
-												],
-												default: 'mrkwdn',
-												description: 'The formatting to use for this text object.',
-											},
-											{
-												displayName: 'Text',
-												name: 'text',
-												type: 'string',
-												default: '',
-												description: 'The text for the block. This field accepts any of the standard text formatting markup when type is mrkdwn.',
-											},
-											{
-												displayName: 'Emoji',
-												name: 'emoji',
-												type: 'boolean',
-												displayOptions: {
-													show: {
-														type: [
-															'plainText',
-														],
-													},
-												},
-												default: false,
-												description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format. This field is only usable when type is plain_text.',
-											},
-											{
-												displayName: 'Verbatim',
-												name: 'verbatim',
-												displayOptions: {
-													show: {
-														type: [
-															'mrkwdn',
-														],
-													},
-												},
-												type: 'boolean',
-												default: false,
-												description: 'When set to false (as is default) URLs will be auto-converted into links, conversation names will be link-ified, and certain mentions will be automatically parsed. ',
-											},
-										],
-									},
-								],
-								description: `An array of text objects. Any text objects included with</br>
-								fields will be rendered in a compact format that allows for 2 columns of</br>
-								side-by-side text. Maximum number of items is 10.`,
-							},
-							{
-								displayName: 'Accessory',
-								name: 'accessoryUi',
-								placeholder: 'Add Accessory',
-								type: 'fixedCollection',
-								typeOptions: {
-									multipleValues: false,
-								},
-								displayOptions: {
-									show: {
-										type: [
-											'section',
-										],
-									},
-								},
-								default: {},
-								options: [
-									{
-										name: 'accessoriesValues',
-										displayName: 'Accessory',
-										values: [
-											{
-												displayName: 'Type',
-												name: 'type',
-												type: 'options',
-												options: [
-													{
-														name: 'Button',
-														value: 'button',
-													},
-												],
-												default: 'button',
-												description: 'The type of element',
-											},
-											{
-												displayName: 'Text',
-												name: 'text',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												type: 'string',
-												default: '',
-												description: 'The text for the block.',
-											},
-											{
-												displayName: 'Emoji',
-												name: 'emoji',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												type: 'boolean',
-												default: false,
-												description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format.',
-											},
-											{
-												displayName: 'Action ID',
-												name: 'actionId',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												type: 'string',
-												default: '',
-												description: `An identifier for this action. You can use this when you receive an interaction</br>
-												payload to identify the source of the action. Should be unique among all other action_ids used</br>
-												elsewhere by your app. `,
-											},
-											{
-												displayName: 'URL',
-												name: 'url',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												type: 'string',
-												default: '',
-												description: `A URL to load in the user's browser when the button is clicked.</br>
-												Maximum length for this field is 3000 characters. If you're using url, you'll still</br>
-												receive an interaction payload and will need to send an acknowledgement response.`,
-											},
-											{
-												displayName: 'Value',
-												name: 'value',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												type: 'string',
-												default: '',
-												description: 'The value to send along with the interaction payload.',
-											},
-											{
-												displayName: 'Style',
-												name: 'style',
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												type: 'options',
-												options: [
-													{
-														name: 'Danger',
-														value: 'danger',
-													},
-													{
-														name: 'Default',
-														value: 'default',
-													},
-													{
-														name: 'Primary',
-														value: 'primary',
-													},
-												],
-												default: 'default',
-												description: 'Decorates buttons with alternative visual color schemes.',
-											},
-											{
-												displayName: 'Confirm',
-												name: 'confirmUi',
-												placeholder: 'Add Confirm',
-												type: 'fixedCollection',
-												typeOptions: {
-													multipleValues: false,
-												},
-												displayOptions: {
-													show: {
-														type: [
-															'button',
-														],
-													},
-												},
-												default: {},
-												options: [
-													{
-														name: 'confirmValue',
-														displayName: 'Confirm',
-														values: [
-															{
-																displayName: 'Title',
-																name: 'titleUi',
-																placeholder: 'Add Title',
-																type: 'fixedCollection',
-																typeOptions: {
-																	multipleValues: false,
-																},
-																default: {},
-																options: [
-																	{
-																		name: 'titleValue',
-																		displayName: 'Title',
-																		values: [
-																			{
-																				displayName: 'Text',
-																				name: 'text',
-																				type: 'string',
-																				default: '',
-																				description: 'Text of the title.',
-																			},
-																			{
-																				displayName: 'Emoji',
-																				name: 'emoji',
-																				type: 'boolean',
-																				default: false,
-																				description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
-																			},
-																		],
-																	},
-																],
-																description: 'Defines an optional confirmation dialog after the button is clicked.',
-															},
-															{
-																displayName: 'Text',
-																name: 'textUi',
-																placeholder: 'Add Text',
-																type: 'fixedCollection',
-																typeOptions: {
-																	multipleValues: false,
-																},
-																default: {},
-																options: [
-																	{
-																		name: 'textValue',
-																		displayName: 'Text',
-																		values: [
-																			{
-																				displayName: 'Text',
-																				name: 'text',
-																				type: 'string',
-																				default: '',
-																				description: 'The text for the block',
-																			},
-																			{
-																				displayName: 'Emoji',
-																				name: 'emoji',
-																				type: 'boolean',
-																				default: false,
-																				description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
-																			},
-																		],
-																	},
-																],
-																description: `Defines the explanatory text that appears in the confirm dialog.`,
-															},
-															{
-																displayName: 'Confirm',
-																name: 'confirmTextUi',
-																placeholder: 'Add Confirm',
-																type: 'fixedCollection',
-																typeOptions: {
-																	multipleValues: false,
-																},
-																default: {},
-																options: [
-																	{
-																		name: 'confirmValue',
-																		displayName: 'Confirm',
-																		values: [
-																			{
-																				displayName: 'Text',
-																				name: 'text',
-																				type: 'string',
-																				default: '',
-																				description: `Defines the explanatory text that appears in the confirm dialog.`,
-																			},
-																			{
-																				displayName: 'Emoji',
-																				name: 'emoji',
-																				type: 'boolean',
-																				default: false,
-																				description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
-																			},
-																		],
-																	},
-																],
-																description: `Defines the explanatory text that appears in the confirm dialog.`,
-															},
-															{
-																displayName: 'Deny',
-																name: 'denyUi',
-																placeholder: 'Add Deny',
-																type: 'fixedCollection',
-																typeOptions: {
-																	multipleValues: false,
-																},
-																default: {},
-																options: [
-																	{
-																		name: 'denyValue',
-																		displayName: 'Deny',
-																		values: [
-																			{
-																				displayName: 'Text',
-																				name: 'text',
-																				type: 'string',
-																				default: '',
-																				description: 'Define the text of the button that cancels the action',
-																			},
-																			{
-																				displayName: 'Emoji',
-																				name: 'emoji',
-																				type: 'boolean',
-																				default: false,
-																				description: 'Indicates whether emojis in a text field should be escaped into the colon emoji format',
-																			},
-																		],
-																	},
-																],
-																description: 'Define the text of the button that cancels the action',
-															},
-															{
-																displayName: 'Style',
-																name: 'style',
-																type: 'options',
-																options: [
-																	{
-																		name: 'Danger',
-																		value: 'danger',
-																	},
-																	{
-																		name: 'Default',
-																		value: 'default',
-																	},
-																	{
-																		name: 'Primary',
-																		value: 'primary',
-																	},
-																],
-																default: 'default',
-																description: 'Defines the color scheme applied to the confirm button.',
-															},
-														],
-													},
-												],
-												description: 'Defines an optional confirmation dialog after the button is clicked.',
-											},
-										],
-									},
-								],
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Attachments',
-				name: 'attachmentsJson',
-				type: 'json',
-				default: '',
-				required: false,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				displayOptions: {
-					show: {
-						resource: [
-							'message',
-						],
-						operation: [
-							'post',
-						],
-						jsonParameters: [
-							true,
-						],
-					},
-				},
-				description: 'The attachments to add',
-			},
-			{
-				displayName: 'Blocks',
-				name: 'blocksJson',
-				type: 'json',
-				default: '',
-				required: false,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				displayOptions: {
-					show: {
-						resource: [
-							'message',
-						],
-						operation: [
-							'post',
-						],
-						jsonParameters: [
-							true,
-						],
-					},
-				},
-				description: 'The blocks to add',
-			},
-			{
-				displayName: 'Other Options',
-				name: 'otherOptions',
-				type: 'collection',
-				displayOptions: {
-					show: {
-						operation: [
-							'post'
-						],
-						resource: [
-							'message',
-						],
-					},
-				},
-				default: {},
-				description: 'Other options to set',
-				placeholder: 'Add options',
-				options: [
-					{
-						displayName: 'Icon Emoji',
-						name: 'icon_emoji',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/as_user': [
-									false
-								],
-								'/operation': [
-									'post'
-								],
-								'/resource': [
-									'message',
-								],
-							},
-						},
-						default: '',
-						description: 'Emoji to use as the icon for this message. Overrides icon_url.',
-					},
-					{
-						displayName: 'Icon URL',
-						name: 'icon_url',
-						type: 'string',
-						displayOptions: {
-							show: {
-								'/as_user': [
-									false
-								],
-								'/operation': [
-									'post'
-								],
-								'/resource': [
-									'message',
-								],
-							},
-						},
-						default: '',
-						description: 'URL to an image to use as the icon for this message.',
-					},
-					{
-						displayName: 'Make Reply',
-						name: 'thread_ts',
-						type: 'string',
-						default: '',
-						description: 'Provide another message\'s ts value to make this message a reply.',
-					},
-					{
-						displayName: 'Unfurl Links',
-						name: 'unfurl_links',
-						type: 'boolean',
-						default: false,
-						description: 'Pass true to enable unfurling of primarily text-based content.',
-					},
-					{
-						displayName: 'Unfurl Media',
-						name: 'unfurl_media',
-						type: 'boolean',
-						default: true,
-						description: 'Pass false to disable unfurling of media content.',
-					},
-					{
-						displayName: 'Markdown',
-						name: 'mrkdwn',
-						type: 'boolean',
-						default: true,
-						description: 'Use Slack Markdown parsing.',
-					},
-					{
-						displayName: 'Reply Broadcast',
-						name: 'reply_broadcast',
-						type: 'boolean',
-						default: false,
-						description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
-					},
-					{
-						displayName: 'Link Names',
-						name: 'link_names',
-						type: 'boolean',
-						default: false,
-						description: 'Find and link channel names and usernames.',
-					},
-				],
-			},
+			...channelOperations,
+			...channelFields,
+			...messageOperations,
+			...messageFields,
+			...starOperations,
+			...starFields,
+			...fileOperations,
+			...fileFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the users to display them to user so that he can
+			// select them easily
+			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const users = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list');
+				for (const user of users) {
+					const userName = user.name;
+					const userId = user.id;
+					returnData.push({
+						name: userName,
+						value: userId,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+			// Get all the users to display them to user so that he can
+			// select them easily
+			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const channels = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list');
+				for (const channel of channels) {
+					const channelName = channel.name;
+					const channelId = channel.id;
+					returnData.push({
+						name: channelName,
+						value: channelId,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+		}
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-
-		const credentials = this.getCredentials('slackApi');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
-
-		const baseUrl = `https://slack.com/api/`;
-		let operation: string;
-		let resource: string;
-		let requestMethod = 'POST';
-
-		// For Post
-		let body: IDataObject;
-		// For Query string
+		const length = items.length as unknown as number;
 		let qs: IDataObject;
+		let responseData;
+		const authentication = this.getNodeParameter('authentication', 0) as string;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
 
-		for (let i = 0; i < items.length; i++) {
-			let endpoint = '';
-			body = {};
+		for (let i = 0; i < length; i++) {
 			qs = {};
-
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
-
 			if (resource === 'channel') {
-				if (operation === 'create') {
-					// ----------------------------------
-					//         channel:create
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = 'channels.create';
-
-					body.name = this.getNodeParameter('channel', i) as string;
-				} else if (operation === 'invite') {
-					// ----------------------------------
-					//         channel:invite
-					// ----------------------------------
-
-					requestMethod = 'POST';
-					endpoint = 'channels.invite';
-
-					body.channel = this.getNodeParameter('channel', i) as string;
-					body.user = this.getNodeParameter('username', i) as string;
+				//https://api.slack.com/methods/conversations.archive
+				if (operation === 'archive') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const body: IDataObject = {
+						channel,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.archive', body, qs);
 				}
-			} else if (resource === 'message') {
+				//https://api.slack.com/methods/conversations.close
+				if (operation === 'close') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const body: IDataObject = {
+						channel,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.close', body, qs);
+				}
+				//https://api.slack.com/methods/conversations.create
+				if (operation === 'create') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						name: channel,
+					};
+					if (additionalFields.isPrivate) {
+						body.is_private = additionalFields.isPrivate as boolean;
+					}
+					if (additionalFields.users) {
+						body.user_ids = (additionalFields.users as string[]).join(',');
+					}
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.create', body, qs);
+					responseData = responseData.channel;
+				}
+				//https://api.slack.com/methods/conversations.kick
+				if (operation === 'kick') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const userId = this.getNodeParameter('userId', i) as string;
+					const body: IDataObject = {
+						name: channel,
+						user: userId,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.kick', body, qs);
+				}
+				//https://api.slack.com/methods/conversations.join
+				if (operation === 'join') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const body: IDataObject = {
+						channel,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.join', body, qs);
+					responseData = responseData.channel;
+				}
+				//https://api.slack.com/methods/conversations.info
+				if (operation === 'get') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					qs.channel = channel,
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.info', {}, qs);
+					responseData = responseData.channel;
+				}
+				//https://api.slack.com/methods/conversations.list
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					if (filters.types) {
+						qs.types = (filters.types as string[]).join(',');
+					}
+					if (filters.excludeArchived) {
+						qs.exclude_archived = filters.excludeArchived as boolean;
+					}
+					if (returnAll === true) {
+						responseData = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list', {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await slackApiRequest.call(this, 'GET', '/conversations.list', {}, qs);
+						responseData = responseData.channels;
+					}
+				}
+				//https://api.slack.com/methods/conversations.history
+				if (operation === 'history') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					qs.channel = channel;
+					if (filters.inclusive) {
+						qs.inclusive = filters.inclusive as boolean;
+					}
+					if (filters.latest) {
+						qs.latest = filters.latest as string;
+					}
+					if (filters.oldest) {
+						qs.oldest = filters.oldest as string;
+					}
+					if (returnAll === true) {
+						responseData = await slackApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.history', {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await slackApiRequest.call(this, 'GET', '/conversations.history', {}, qs);
+						responseData = responseData.messages;
+					}
+				}
+				//https://api.slack.com/methods/conversations.invite
+				if (operation === 'invite') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const userId = this.getNodeParameter('userId', i) as string;
+					const body: IDataObject = {
+						channel,
+						user: userId,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.invite', body, qs);
+					responseData = responseData.channel;
+				}
+				//https://api.slack.com/methods/conversations.leave
+				if (operation === 'leave') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const body: IDataObject = {
+						channel,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.leave', body, qs);
+				}
+				//https://api.slack.com/methods/conversations.open
+				if (operation === 'open') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: IDataObject = {};
+					if (options.channelId) {
+						body.channel = options.channelId as string;
+					}
+					if (options.returnIm) {
+						body.return_im = options.returnIm as boolean;
+					}
+					if (options.users) {
+						body.users = (options.users as string[]).join(',');
+					}
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.open', body, qs);
+					responseData = responseData.channel;
+				}
+				//https://api.slack.com/methods/conversations.rename
+				if (operation === 'rename') {
+					const channel = this.getNodeParameter('channelId', i) as IDataObject;
+					const name = this.getNodeParameter('name', i) as IDataObject;
+					const body: IDataObject = {
+						channel,
+						name,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.rename', body, qs);
+					responseData = responseData.channel;
+				}
+				//https://api.slack.com/methods/conversations.replies
+				if (operation === 'replies') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const ts = this.getNodeParameter('ts', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					qs.channel = channel;
+					qs.ts = ts;
+					if (filters.inclusive) {
+						qs.inclusive = filters.inclusive as boolean;
+					}
+					if (filters.latest) {
+						qs.latest = filters.latest as string;
+					}
+					if (filters.oldest) {
+						qs.oldest = filters.oldest as string;
+					}
+					if (returnAll === true) {
+						responseData = await slackApiRequestAllItems.call(this, 'messages', 'GET', '/conversations.replies', {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await slackApiRequest.call(this, 'GET', '/conversations.replies', {}, qs);
+						responseData = responseData.messages;
+					}
+				}
+				//https://api.slack.com/methods/conversations.setPurpose
+				if (operation === 'setPurpose') {
+					const channel = this.getNodeParameter('channelId', i) as IDataObject;
+					const purpose = this.getNodeParameter('purpose', i) as IDataObject;
+					const body: IDataObject = {
+						channel,
+						purpose,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.setPurpose', body, qs);
+					responseData = responseData.channel;
+				}
+				//https://api.slack.com/methods/conversations.setTopic
+				if (operation === 'setTopic') {
+					const channel = this.getNodeParameter('channelId', i) as IDataObject;
+					const topic = this.getNodeParameter('topic', i) as IDataObject;
+					const body: IDataObject = {
+						channel,
+						topic,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.setTopic', body, qs);
+					responseData = responseData.channel;
+				}
+				//https://api.slack.com/methods/conversations.unarchive
+				if (operation === 'unarchive') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const body: IDataObject = {
+						channel,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.unarchive', body, qs);
+				}
+			}
+			if (resource === 'message') {
+				//https://api.slack.com/methods/chat.postMessage
 				if (operation === 'post') {
-					// ----------------------------------
-					//         message:post
-					// ----------------------------------
+					const channel = this.getNodeParameter('channel', i) as string;
+					const text = this.getNodeParameter('text', i) as string;
+					const body: IDataObject = {
+						channel,
+						text,
+					};
 
-					requestMethod = 'POST';
-					endpoint = 'chat.postMessage';
-
-					body.channel = this.getNodeParameter('channel', i) as string;
-					body.text = this.getNodeParameter('text', i) as string;
-					body.as_user = this.getNodeParameter('as_user', i) as boolean;
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
+					if (authentication === 'accessToken') {
+						body.as_user = this.getNodeParameter('as_user', i) as boolean;
+					}
 					if (body.as_user === false) {
 						body.username = this.getNodeParameter('username', i) as string;
 					}
 
+					// ignore body.as_user as it's deprecated
+
+					delete body.as_user;
+
 					if (!jsonParameters) {
 						const attachments = this.getNodeParameter('attachments', i, []) as unknown as Attachment[];
 						const blocksUi = (this.getNodeParameter('blocksUi', i, []) as IDataObject).blocksValues  as IDataObject[];
-
 
 						// The node does save the fields data differently than the API
 						// expects so fix the data befre we send the request
@@ -1833,32 +681,182 @@ export class Slack implements INodeType {
 					// Add all the other options to the request
 					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 					Object.assign(body, otherOptions);
+					responseData = await slackApiRequest.call(this, 'POST', '/chat.postMessage', body, qs);
 				}
+				//https://api.slack.com/methods/chat.update
+				if (operation === 'update') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const text = this.getNodeParameter('text', i) as string;
+					const ts = this.getNodeParameter('ts', i) as string;
+					const attachments = this.getNodeParameter('attachments', i, []) as unknown as IAttachment[];
+					const body: IDataObject = {
+						channel,
+						text,
+						ts,
+					};
+
+					// The node does save the fields data differently than the API
+					// expects so fix the data befre we send the request
+					for (const attachment of attachments) {
+						if (attachment.fields !== undefined) {
+							if (attachment.fields.item !== undefined) {
+								// Move the field-content up
+								// @ts-ignore
+								attachment.fields = attachment.fields.item;
+							} else {
+								// If it does not have any items set remove it
+								delete attachment.fields;
+							}
+						}
+					}
+					body['attachments'] = attachments;
+
+					// Add all the other options to the request
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					Object.assign(body, updateFields);
+					responseData = await slackApiRequest.call(this, 'POST', '/chat.update', body, qs);
+				}
+			}
+			if (resource === 'star') {
+				//https://api.slack.com/methods/stars.add
+				if (operation === 'add') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: IDataObject = {};
+					if (options.channelId) {
+						body.channel = options.channelId as string;
+					}
+					if (options.fileId) {
+						body.file = options.fileId as string;
+					}
+					if (options.fileComment) {
+						body.file_comment = options.fileComment as string;
+					}
+					if (options.timestamp) {
+						body.timestamp = options.timestamp as string;
+					}
+					responseData = await slackApiRequest.call(this, 'POST', '/stars.add', body, qs);
+				}
+				//https://api.slack.com/methods/stars.remove
+				if (operation === 'delete') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: IDataObject = {};
+					if (options.channelId) {
+						body.channel = options.channelId as string;
+					}
+					if (options.fileId) {
+						body.file = options.fileId as string;
+					}
+					if (options.fileComment) {
+						body.file_comment = options.fileComment as string;
+					}
+					if (options.timestamp) {
+						body.timestamp = options.timestamp as string;
+					}
+					responseData = await slackApiRequest.call(this, 'POST', '/stars.remove', body, qs);
+				}
+				//https://api.slack.com/methods/stars.list
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === true) {
+						responseData = await slackApiRequestAllItems.call(this, 'items', 'GET', '/stars.list', {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await slackApiRequest.call(this, 'GET', '/stars.list', {}, qs);
+						responseData = responseData.items;
+					}
+				}
+			}
+			if (resource === 'file') {
+				//https://api.slack.com/methods/files.upload
+				if (operation === 'upload') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const binaryData = this.getNodeParameter('binaryData', i) as boolean;
+					const body: IDataObject = {};
+					if (options.channelIds) {
+						body.channels = (options.channelIds as string[]).join(',');
+					}
+					if (options.fileName) {
+						body.filename = options.fileName as string;
+					}
+					if (options.initialComment) {
+						body.initial_comment = options.initialComment as string;
+					}
+					if (options.threadTs) {
+						body.thread_ts = options.threadTs as string;
+					}
+					if (options.title) {
+						body.title = options.title as string;
+					}
+					if (binaryData) {
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						if (items[i].binary === undefined
+						//@ts-ignore
+						|| items[i].binary[binaryPropertyName] === undefined) {
+							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
+						body.file = {
+							//@ts-ignore
+							value: Buffer.from(items[i].binary[binaryPropertyName].data, BINARY_ENCODING),
+							options: {
+								//@ts-ignore
+								filename: items[i].binary[binaryPropertyName].fileName,
+								//@ts-ignore
+								contentType: items[i].binary[binaryPropertyName].mimeType,
+							}
+						};
+						responseData = await slackApiRequest.call(this, 'POST', '/files.upload', {}, qs, { 'Content-Type': 'multipart/form-data' }, {  formData: body });
+						responseData = responseData.file;
+					} else {
+						const fileContent = this.getNodeParameter('fileContent', i) as string;
+						body.content = fileContent;
+						responseData = await slackApiRequest.call(this, 'POST', '/files.upload', body, qs, { 'Content-Type': 'application/x-www-form-urlencoded' }, { form: body });
+						responseData = responseData.file;
+					}
+				}
+				//https://api.slack.com/methods/files.list
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					if (filters.channelId) {
+						qs.channel = filters.channelId as string;
+					}
+					if (filters.showFilesHidden) {
+						qs.show_files_hidden_by_limit = filters.showFilesHidden as boolean;
+					}
+					if (filters.tsFrom) {
+						qs.ts_from = filters.tsFrom as string;
+					}
+					if (filters.tsTo) {
+						qs.ts_to = filters.tsTo as string;
+					}
+					if (filters.types) {
+						qs.types = (filters.types as string[]).join(',') as string;
+					}
+					if (filters.userId) {
+						qs.user = filters.userId as string;
+					}
+					if (returnAll === true) {
+						responseData = await slackApiRequestAllItems.call(this, 'files', 'GET', '/files.list', {}, qs);
+					} else {
+						qs.count = this.getNodeParameter('limit', i) as number;
+						responseData = await slackApiRequest.call(this, 'GET', '/files.list', {}, qs);
+						responseData = responseData.files;
+					}
+				}
+				//https://api.slack.com/methods/files.info
+				if (operation === 'get') {
+					const fileId = this.getNodeParameter('fileId', i) as string;
+					qs.file = fileId;
+					responseData = await slackApiRequest.call(this, 'GET', '/files.info', {}, qs);
+					responseData = responseData.file;
+				}
+			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				returnData.push(responseData as IDataObject);
 			}
-
-			const options = {
-				method: requestMethod,
-				body,
-				qs,
-				uri: `${baseUrl}/${endpoint}`,
-				headers: {
-					Authorization: `Bearer ${credentials.accessToken }`,
-					'content-type': 'application/json; charset=utf-8'
-				},
-				json: true
-			};
-
-			const responseData = await this.helpers.request(options);
-
-			if (!responseData.ok) {
-				throw new Error(`Request to Slack did fail with error: "${responseData.error}"`);
-			}
-
-			returnData.push(responseData as IDataObject);
 		}
-
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

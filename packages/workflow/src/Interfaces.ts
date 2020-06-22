@@ -2,6 +2,8 @@ import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
 import * as express from 'express';
 
+export type IAllExecuteFunctions = IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | IPollFunctions | ITriggerFunctions | IWebhookFunctions;
+
 export interface IBinaryData {
 	[key: string]: string | undefined;
 	data: string;
@@ -33,6 +35,27 @@ export interface IGetCredentials {
 	get(type: string, name: string): Promise<ICredentialsEncrypted>;
 }
 
+export abstract class ICredentials {
+	name: string;
+	type: string;
+	data: string | undefined;
+	nodesAccess: ICredentialNodeAccess[];
+
+	constructor(name: string, type: string, nodesAccess: ICredentialNodeAccess[], data?: string) {
+		this.name = name;
+		this.type = type;
+		this.nodesAccess = nodesAccess;
+		this.data = data;
+	}
+
+	abstract getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject;
+	abstract getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation;
+	abstract getDataToSave(): ICredentialsEncrypted;
+	abstract hasNodeAccess(nodeType: string): boolean;
+	abstract setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void;
+	abstract setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void;
+}
+
 // Defines which nodes are allowed to access the credentials and
 // when that access got grented from which user
 export interface ICredentialNodeAccess {
@@ -55,10 +78,26 @@ export interface ICredentialsEncrypted {
 	data?: string;
 }
 
+export abstract class ICredentialsHelper {
+	encryptionKey: string;
+	workflowCredentials: IWorkflowCredentials;
+
+	constructor(workflowCredentials: IWorkflowCredentials, encryptionKey: string) {
+		this.encryptionKey = encryptionKey;
+		this.workflowCredentials = workflowCredentials;
+	}
+
+	abstract getCredentials(name: string, type: string): ICredentials;
+	abstract getDecrypted(name: string, type: string): ICredentialDataDecryptedObject;
+	abstract updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
+}
+
 export interface ICredentialType {
 	name: string;
 	displayName: string;
+	extends?: string[];
 	properties: INodeProperties[];
+	__overwrittenProperties?: string[];
 }
 
 export interface ICredentialTypes {
@@ -78,7 +117,7 @@ export interface ICredentialData {
 }
 
 // The encrypted credentials which the nodes can access
-export type CredentialInformation = string | number | boolean;
+export type CredentialInformation = string | number | boolean | IDataObject;
 
 
 // The encrypted credentials which the nodes can access
@@ -345,7 +384,7 @@ export interface INodeParameters {
 }
 
 
-export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'json' | 'multiOptions' | 'number' | 'options' | 'string';
+export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'hidden' | 'json' | 'multiOptions' | 'number' | 'options' | 'string';
 
 export type EditorTypes = 'code';
 
@@ -673,6 +712,7 @@ export interface IWorkflowExecuteHooks {
 
 export interface IWorkflowExecuteAdditionalData {
 	credentials: IWorkflowCredentials;
+	credentialsHelper: ICredentialsHelper;
 	encryptionKey: string;
 	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[]) => Promise<any>; // tslint:disable-line:no-any
 	// hooks?: IWorkflowExecuteHooks;
