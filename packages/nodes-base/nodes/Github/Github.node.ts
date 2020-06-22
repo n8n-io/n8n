@@ -33,9 +33,44 @@ export class Github implements INodeType {
 			{
 				name: 'githubApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'githubOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -209,11 +244,6 @@ export class Github implements INodeType {
 					},
 				},
 				options: [
-					{
-						name: 'Get Emails',
-						value: 'getEmails',
-						description: 'Returns the email addresses of a user',
-					},
 					{
 						name: 'Get Repositories',
 						value: 'getRepositories',
@@ -1092,12 +1122,6 @@ export class Github implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-
-		const credentials = this.getCredentials('githubApi');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
 
 		// Operations which overwrite the returned data
 		const overwriteDataOperations = [

@@ -45,18 +45,10 @@ export interface ITypeformAnswerField {
  * @returns {Promise<any>}
  */
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('typeformApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	query = query || {};
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
-		headers: {
-			'Authorization': `bearer ${credentials.accessToken}`,
-		},
+		headers: {},
 		method,
 		body,
 		qs: query,
@@ -64,8 +56,23 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		json: true,
 	};
 
+	query = query || {};
+
 	try {
-		return await this.helpers.request!(options);
+		if (authenticationMethod === 'accessToken') {
+
+			const credentials = this.getCredentials('typeformApi');
+
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.headers!['Authorization'] = `bearer ${credentials.accessToken}`;
+
+			return await this.helpers.request!(options);
+		} else {
+			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
+		}
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error

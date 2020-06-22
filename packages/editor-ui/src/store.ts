@@ -571,6 +571,9 @@ export const store = new Vuex.Store({
 			}
 			return `${state.baseUrl}${endpoint}`;
 		},
+		getWebhookBaseUrl: (state): string => {
+			return state.urlBaseWebhook;
+		},
 		getWebhookUrl: (state): string => {
 			return `${state.urlBaseWebhook}${state.endpointWebhook}`;
 		},

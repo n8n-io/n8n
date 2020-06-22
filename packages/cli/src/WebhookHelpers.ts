@@ -176,6 +176,9 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 			};
 		}
 
+		// Save static data if it changed
+		await WorkflowHelpers.saveStaticData(workflow);
+
 		if (webhookData.webhookDescription['responseHeaders'] !== undefined) {
 			const responseHeaders = workflow.getComplexParameterValue(workflowStartNode, webhookData.webhookDescription['responseHeaders'], undefined) as {
 				entries?: Array<{
