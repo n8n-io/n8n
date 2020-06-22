@@ -6,14 +6,11 @@ import {
 //https://api.slack.com/authentication/oauth-v2
 const userScopes = [
 	'chat:write',
-	'conversations:history',
-	'conversations:read',
 	'files:read',
 	'files:write',
 	'stars:read',
 	'stars:write',
 ];
-
 
 export class SlackOAuth2Api implements ICredentialType {
 	name = 'slackOAuth2Api';
