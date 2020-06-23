@@ -98,7 +98,7 @@ export const meetingFields = [
 				name: 'alternative_hosts',
 				type: 'string',
 				default: '',
-				description: 'Alternative hosts email ids.',
+				description: 'Alternative hosts email IDs.',
 			},
 			{
 				displayName: 'Auto recording',
@@ -242,11 +242,11 @@ export const meetingFields = [
 						value: 1,
 					},
 					{
-						name: 'Attendees need to register for every occurence',
+						name: 'Attendees need to register for every occurrence',
 						value: 2,
 					},
 					{
-						name: 'Attendees register once and can choose one or more occurences to attend',
+						name: 'Attendees register once and can choose one or more occurrences to attend',
 						value: 3,
 					},
 				],
@@ -326,18 +326,18 @@ export const meetingFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence Id',
-				name: 'occurenceId',
+				displayName: 'Occurrence ID',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'To view meeting details of a particular occurence of the recurring meeting.',
+				description: 'To view meeting details of a particular occurrence of the recurring meeting.',
 			},
 			{
-				displayName: 'Show Previous Occurences',
-				name: 'showPreviousOccurences',
+				displayName: 'Show Previous Occurrences',
+				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: '',
-				description: 'To view meeting details of all previous occurences of the recurring meeting.',
+				description: 'To view meeting details of all previous occurrences of the recurring meeting.',
 			},
 		],
 	},
@@ -360,7 +360,7 @@ export const meetingFields = [
 				],
 			},
 		},
-		description: 'User ID or email-id.',
+		description: 'User ID or email-ID.',
 	},
 	{
 		displayName: 'Return All',
@@ -483,11 +483,11 @@ export const meetingFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence Id',
-				name: 'occurenceId',
+				displayName: 'Occurence ID',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Meeting occurence Id.',
+				description: 'Meeting occurrence ID.',
 			},
 			{
 				displayName: 'Schedule a reminder',
@@ -503,7 +503,7 @@ export const meetingFields = [
 	/*                                 meeting:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -630,11 +630,11 @@ export const meetingFields = [
 				description: 'Start video when host joins the meeting.',
 			},
 			{
-				displayName: 'Occurence Id',
-				name: 'occurenceId',
+				displayName: 'Occurrence Id',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Occurence ID.',
+				description: 'Occurrence ID.',
 			},
 			{
 				displayName: 'Meeting topic',
@@ -696,15 +696,15 @@ export const meetingFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Attendees register once and can attend any of the occurences',
+						name: 'Attendees register once and can attend any of the occurrences',
 						value: 1,
 					},
 					{
-						name: 'Attendees need to register for every occurence',
+						name: 'Attendees need to register for every occurrence',
 						value: 2,
 					},
 					{
-						name: 'Attendees register once and can choose one or more occurences to attend',
+						name: 'Attendees register once and can choose one or more occurrences to attend',
 						value: 3,
 					},
 				],

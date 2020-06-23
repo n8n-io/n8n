@@ -209,11 +209,11 @@ export const webinarFields = [
 						value: 1,
 					},
 					{
-						name: 'Attendees need to register for every occurence',
+						name: 'Attendees need to register for every occurrence',
 						value: 2,
 					},
 					{
-						name: 'Attendees register once and can choose one or more occurences to attend',
+						name: 'Attendees register once and can choose one or more occurrences to attend',
 						value: 3,
 					},
 				],
@@ -312,14 +312,14 @@ export const webinarFields = [
 				name: 'occurenceId',
 				type: 'string',
 				default: '',
-				description: 'To view webinar details of a particular occurence of the recurring webinar.',
+				description: 'To view webinar details of a particular occurrence of the recurring webinar.',
 			},
 			{
-				displayName: 'Show Previous Occurences',
-				name: 'showPreviousOccurences',
+				displayName: 'Show Previous Occurrences',
+				name: 'showPreviousOccurrences',
 				type: 'boolean',
 				default: '',
-				description: 'To view webinar details of all previous occurences of the recurring webinar.',
+				description: 'To view webinar details of all previous occurrences of the recurring webinar.',
 			},
 		],
 	},
@@ -386,7 +386,7 @@ export const webinarFields = [
 		description: 'How many results to return.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 webina:delete                                */
+	/*                                 webinar:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Webinar Id',
@@ -424,11 +424,11 @@ export const webinarFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence Id',
-				name: 'occurenceId',
+				displayName: 'Occurrence Id',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Webinar occurence Id.',
+				description: 'Webinar occurrence Id.',
 			},
 
 		],
@@ -566,11 +566,11 @@ export const webinarFields = [
 				description: 'Start video when host joins the webinar.',
 			},
 			{
-				displayName: 'Occurence Id',
-				name: 'occurence_id',
+				displayName: 'Occurrence Id',
+				name: 'occurrence_id',
 				type: 'string',
 				default: '',
-				description: `Webinar occurence Id.`,
+				description: `Webinar occurrence Id.`,
 			},
 			{
 				displayName: 'Password',
@@ -599,27 +599,27 @@ export const webinarFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Attendees register once and can attend any of the occurences',
+						name: 'Attendees register once and can attend any of the occurrences',
 						value: 1,
 					},
 					{
-						name: 'Attendees need to register for every occurence',
+						name: 'Attendees need to register for every occurrence',
 						value: 2,
 					},
 					{
-						name: 'Attendees register once and can choose one or more occurences to attend',
+						name: 'Attendees register once and can choose one or more occurrences to attend',
 						value: 3,
 					},
 				],
 				default: 1,
-				description: 'Registration type. Used for recurring webinars with fixed time only',
+				description: 'Registration type. Used for recurring webinars with fixed time only.',
 			},
 			{
 				displayName: 'Start time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
+				description: 'Start time should be used only for scheduled or recurring webinar with fixed time.',
 			},
 			{
 				displayName: 'Timezone',
