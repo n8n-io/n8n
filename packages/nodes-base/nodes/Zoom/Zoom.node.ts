@@ -29,6 +29,7 @@ import {
 	webinarOperations,
 	webinarFields,
 } from './WebinarDescription';
+
 import * as moment from 'moment-timezone';
 
 interface Settings {
@@ -46,8 +47,6 @@ interface Settings {
 	registration_type?: number;
 	approval_type?: number;
 	practice_session?: boolean;
-
-
 }
 export class Zoom implements INodeType {
 	description: INodeTypeDescription = {
