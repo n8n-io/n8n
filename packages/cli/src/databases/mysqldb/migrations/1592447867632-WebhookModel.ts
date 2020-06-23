@@ -13,7 +13,7 @@ import {
 
 import {
 	Workflow,
-} from 'n8n-workflow/dist/src/Workflow';
+} from 'n8n-workflow';
 
 import {
 	IWebhookDb,
