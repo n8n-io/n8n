@@ -115,20 +115,6 @@ export const meetingRegistrantFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence Ids',
-				name: 'occurenceId',
-				type: 'string',
-				default: '',
-				description: 'Occurence IDs separated by comma.',
-			},
-			{
-				displayName: 'Last Name',
-				name: 'lastName',
-				type: 'string',
-				default: '',
-				description: 'Last Name.',
-			},
-			{
 				displayName: 'Address',
 				name: 'address',
 				type: 'string',
@@ -143,11 +129,11 @@ export const meetingRegistrantFields = [
 				description: 'Valid city of registrant.',
 			},
 			{
-				displayName: 'State',
-				name: 'state',
+				displayName: 'Comments',
+				name: 'comments',
 				type: 'string',
 				default: '',
-				description: 'Valid state of registrant.',
+				description: 'Allows registrants to provide any questions they have.',
 			},
 			{
 				displayName: 'Country',
@@ -157,25 +143,25 @@ export const meetingRegistrantFields = [
 				description: 'Valid country of registrant.',
 			},
 			{
-				displayName: 'Zip code',
-				name: 'zip',
+				displayName: 'Job title',
+				name: 'job_title',
 				type: 'string',
 				default: '',
-				description: 'Valid zip-code of registrant.',
+				description: 'Job title of registrant.',
 			},
 			{
-				displayName: 'Phone Number',
-				name: 'phone',
+				displayName: 'Last Name',
+				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'Valid phone number of registrant.',
+				description: 'Last Name.',
 			},
 			{
-				displayName: 'Comments',
-				name: 'comments',
+				displayName: 'Occurence Ids',
+				name: 'occurenceId',
 				type: 'string',
 				default: '',
-				description: 'Allows registrants to provide any questions they have.',
+				description: 'Occurence IDs separated by comma.',
 			},
 			{
 				displayName: 'Organization',
@@ -185,11 +171,11 @@ export const meetingRegistrantFields = [
 				description: 'Organization of registrant.',
 			},
 			{
-				displayName: 'Job title',
-				name: 'job_title',
+				displayName: 'Phone Number',
+				name: 'phone',
 				type: 'string',
 				default: '',
-				description: 'Job title of registrant.',
+				description: 'Valid phone number of registrant.',
 			},
 			{
 				displayName: 'Purchasing time frame',
@@ -246,6 +232,21 @@ export const meetingRegistrantFields = [
 				default: '',
 				description: 'Role in purchase process.'
 			},
+			{
+				displayName: 'State',
+				name: 'state',
+				type: 'string',
+				default: '',
+				description: 'Valid state of registrant.',
+			},
+			{
+				displayName: 'Zip code',
+				name: 'zip',
+				type: 'string',
+				default: '',
+				description: 'Valid zip-code of registrant.',
+			},
+
 		],
 	},
 	/* -------------------------------------------------------------------------- */

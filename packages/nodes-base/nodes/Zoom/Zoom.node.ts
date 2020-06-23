@@ -183,11 +183,15 @@ export class Zoom implements INodeType {
 						'additionalFields',
 						i
 					) as IDataObject;
-					if (additionalFields.showPreviousOccurences)
+					if (additionalFields.showPreviousOccurences) {
 						qs.show_previous_occurences = additionalFields.showPreviousOccurences as boolean;
 
-					if (additionalFields.occurenceId)
+					}
+
+					if (additionalFields.occurenceId) {
 						qs.occurence_id = additionalFields.occurenceId as string;
+
+					}
 
 					responseData = await zoomApiRequest.call(
 						this,
@@ -218,11 +222,15 @@ export class Zoom implements INodeType {
 						'additionalFields',
 						i
 					) as IDataObject;
-					if (additionalFields.scheduleForReminder)
+					if (additionalFields.scheduleForReminder) {
 						qs.schedule_for_reminder = additionalFields.scheduleForReminder as boolean;
 
-					if (additionalFields.occurenceId)
+					}
+
+					if (additionalFields.occurenceId) {
 						qs.occurence_id = additionalFields.occurenceId;
+
+					}
 
 					responseData = await zoomApiRequest.call(
 						this,
@@ -669,11 +677,15 @@ export class Zoom implements INodeType {
 						'additionalFields',
 						i
 					) as IDataObject;
-					if (additionalFields.showPreviousOccurences)
+					if (additionalFields.showPreviousOccurences) {
 						qs.show_previous_occurences = additionalFields.showPreviousOccurences as boolean;
 
-					if (additionalFields.occurenceId)
+					}
+
+					if (additionalFields.occurenceId) {
 						qs.occurence_id = additionalFields.occurenceId as string;
+
+					}
 
 					responseData = await zoomApiRequest.call(
 						this,
@@ -705,8 +717,10 @@ export class Zoom implements INodeType {
 					) as IDataObject;
 
 
-					if (additionalFields.occurenceId)
+					if (additionalFields.occurenceId) {
 						qs.occurence_id = additionalFields.occurenceId;
+
+					}
 
 					responseData = await zoomApiRequest.call(
 						this,
