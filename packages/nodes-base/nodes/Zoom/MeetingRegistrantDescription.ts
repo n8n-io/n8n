@@ -52,8 +52,6 @@ export const meetingRegistrantFields = [
 			show: {
 				operation: [
 					'create',
-
-
 				],
 				resource: [
 					'meetingRegistrants',
@@ -63,31 +61,21 @@ export const meetingRegistrantFields = [
 		description: 'Meeting ID.',
 	},
 	{
-		displayName: 'Occurence Id',
-		name: 'occurenceId',
+		displayName: 'Email',
+		name: 'email',
 		type: 'string',
-		default: '',
 		required: true,
+		default: '',
 		displayOptions: {
 			show: {
 				operation: [
 					'create',
-
-
 				],
 				resource: [
 					'meetingRegistrants',
 				],
 			},
 		},
-		description: 'Occurence ID.',
-	},
-	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		required: true,
-		default: '',
 		description: 'Valid email-id of registrant.',
 	},
 	{
@@ -96,6 +84,16 @@ export const meetingRegistrantFields = [
 		required: true,
 		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'meetingRegistrants',
+				],
+			},
+		},
 		description: 'First Name.',
 	},
 	{
@@ -107,7 +105,7 @@ export const meetingRegistrantFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
+					'create',
 
 				],
 				resource: [
@@ -116,6 +114,13 @@ export const meetingRegistrantFields = [
 			}
 		},
 		options: [
+			{
+				displayName: 'Occurence Ids',
+				name: 'occurenceId',
+				type: 'string',
+				default: '',
+				description: 'Occurence IDs separated by comma.',
+			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
@@ -211,8 +216,6 @@ export const meetingRegistrantFields = [
 						name: 'No timeframe',
 						value: 'No timeframe',
 					},
-
-
 				],
 				default: '',
 				description: 'Meeting type.'
@@ -258,8 +261,6 @@ export const meetingRegistrantFields = [
 			show: {
 				operation: [
 					'getAll',
-
-
 				],
 				resource: [
 					'meetingRegistrants',
@@ -318,7 +319,7 @@ export const meetingRegistrantFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get',
+					'getAll',
 
 				],
 				resource: [
@@ -351,10 +352,8 @@ export const meetingRegistrantFields = [
 						name: 'Denied',
 						value: 'denied',
 					},
-
-
 				],
-				default: '',
+				default: 'approved',
 				description: `Registrant Status.`,
 			},
 
@@ -366,15 +365,13 @@ export const meetingRegistrantFields = [
 	{
 		displayName: 'Meeting Id',
 		name: 'meetingId',
-		type: 'number',
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				operation: [
 					'update',
-
-
 				],
 				resource: [
 					'meetingRegistrants',
@@ -384,24 +381,63 @@ export const meetingRegistrantFields = [
 		description: 'Meeting ID.',
 	},
 	{
-		displayName: 'Occurence Id',
-		name: 'occurenceId',
-		type: 'string',
-		default: '',
+		displayName: 'Action',
+		name: 'action',
+		type: 'options',
 		required: true,
 		displayOptions: {
 			show: {
 				operation: [
 					'update',
-
-
 				],
 				resource: [
 					'meetingRegistrants',
 				],
 			},
 		},
-		description: 'Occurence ID.',
+		options: [
+			{
+				name: 'Cancel',
+				value: 'cancel',
+			},
+			{
+				name: 'Approved',
+				value: 'approve',
+			},
+			{
+				name: 'Deny',
+				value: 'deny',
+			},
+		],
+		default: '',
+		description: `Registrant Status.`,
 	},
+	{
+		displayName: 'Additional settings',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'meetingRegistrants',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Occurence Id',
+				name: 'occurenceId',
+				type: 'string',
+				default: '',
+				description: 'Occurence ID.',
+			},
+
+		],
+	}
 
 ] as INodeProperties[];

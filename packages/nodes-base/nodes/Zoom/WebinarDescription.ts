@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const meetingOperations = [
+export const webinarOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const meetingOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			},
 		},
@@ -18,27 +18,27 @@ export const meetingOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a meeting',
+				description: 'Create a webinar',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a meeting',
+				description: 'Delete a webinar',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve a meeting',
+				description: 'Retrieve a webinar',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all meetings',
+				description: 'Retrieve all webinars',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a meeting',
+				description: 'Update a webinar',
 			}
 		],
 		default: 'create',
@@ -46,9 +46,9 @@ export const meetingOperations = [
 	}
 ] as INodeProperties[];
 
-export const meetingFields = [
+export const webinarFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 meeting:create                                */
+	/*                                 webinar:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User Id',
@@ -62,7 +62,7 @@ export const meetingFields = [
 					'create',
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			},
 		},
@@ -81,55 +81,50 @@ export const meetingFields = [
 
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			}
 		},
 		options: [
 			{
-				displayName: 'Meeting topic',
+				displayName: 'Webinar topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: `Meeting topic.`,
+				description: `Webinar topic.`,
 			},
 			{
-				displayName: 'Meeting type',
+				displayName: 'Webinar type',
 				name: 'type',
 				type: 'options',
 				options: [
 					{
-						name: 'Instant Meeting',
-						value: 1,
+						name: 'Webinar',
+						value: 5,
 					},
 					{
-						name: 'Scheduled Meeting',
-						value: 2,
+						name: 'Recurring webinar with no fixed time',
+						value: 6,
 					},
 					{
-						name: 'Recurring meeting with no fixed time',
-						value: 3,
+						name: 'Recurring webinar with  fixed time',
+						value: 9,
 					},
-					{
-						name: 'Recurring meeting with no fixed time',
-						value: 8,
-					},
-
 				],
-				default: 2,
-				description: 'Meeting type.'
+				default: 5,
+				description: 'Webinar type.'
 			},
 			{
 				displayName: 'Start time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
+				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
-				type: 'number',
+				type: 'string',
 				default: '',
 				description: 'Duration.',
 			},
@@ -144,74 +139,39 @@ export const meetingFields = [
 				description: `Time zone used in the response. The default is the time zone of the calendar.`,
 			},
 			{
-				displayName: 'Schedule for',
-				name: 'scheduleFor',
-				type: 'string',
-				default: '',
-				description: 'Schedule meeting for someone else from your account, provide their email id.',
-			},
-			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Password to join the meeting with maximum 10 characters.',
+				description: 'Password to join the webinar with maximum 10 characters.',
 			},
 			{
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
 				default: '',
-				description: 'Meeting agenda.',
-			},
-			{
-				displayName: 'Host Meeting in China',
-				name: 'cn_meeting',
-				type: 'boolean',
-				default: false,
-				description: 'Host Meeting in China.',
-			},
-			{
-				displayName: 'Host Meeting in India',
-				name: 'in_meeting',
-				type: 'boolean',
-				default: false,
-				description: 'Host Meeting in India.',
+				description: 'Webinar agenda.',
 			},
 			{
 				displayName: 'Host Video',
 				name: 'host_video',
 				type: 'boolean',
 				default: false,
-				description: 'Start video when host joins the meeting.',
+				description: 'Start video when host joins the webinar.',
 			},
 			{
-				displayName: 'Participant Video',
-				name: 'participant_video',
+				displayName: 'Panelists Video',
+				name: 'panelists_video',
 				type: 'boolean',
 				default: false,
-				description: 'Start video when participant joins the meeting.',
+				description: 'Start video when panelists joins the webinar.',
 			},
 			{
-				displayName: 'Join before Host',
-				name: 'join_before_host',
+				displayName: 'Practice Session',
+				name: 'practice_session',
 				type: 'boolean',
 				default: false,
-				description: 'Allow participants to join the meeting before host starts it.',
-			},
-			{
-				displayName: 'Muting before entry',
-				name: 'mute_upon_entry',
-				type: 'boolean',
-				default: false,
-				description: 'Mute participants upon entry.',
-			},
-			{
-				displayName: 'Watermark',
-				name: 'watermark',
-				type: 'boolean',
-				default: false,
-				description: 'Adds watermark when viewing a shared screen.',
+				description: 'Enable Practice session.',
 			},
 			{
 				displayName: 'Alternative Hosts',
@@ -219,6 +179,27 @@ export const meetingFields = [
 				type: 'string',
 				default: '',
 				description: 'Alternative hosts email ids.',
+			},
+			{
+				displayName: 'Approval type',
+				name: 'approval_type',
+				type: 'options',
+				options: [
+					{
+						name: 'Automatically approve',
+						value: 0,
+					},
+					{
+						name: 'Manually approve',
+						value: 1,
+					},
+					{
+						name: 'No registration required',
+						value: 2,
+					},
+				],
+				default: 2,
+				description: 'Approval type.',
 			},
 			{
 				displayName: 'Auto recording',
@@ -261,7 +242,7 @@ export const meetingFields = [
 
 				],
 				default: 'both',
-				description: 'Determine how participants can join audio portion of the meeting.',
+				description: 'Determine how participants can join audio portion of the webinar.',
 			},
 			{
 				displayName: 'Registration type',
@@ -282,17 +263,17 @@ export const meetingFields = [
 					},
 				],
 				default: 1,
-				description: 'Registration type. Used for recurring meetings with fixed time only',
+				description: 'Registration type. Used for recurring webinar with fixed time only',
 			},
 
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 meeting:get                                */
+	/*                                 webinar:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
-		name: 'meetingId',
+		displayName: 'Webinar Id',
+		name: 'webinarId',
 		type: 'string',
 		default: '',
 		required: true,
@@ -302,11 +283,11 @@ export const meetingFields = [
 					'get',
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			},
 		},
-		description: 'Meeting ID.',
+		description: 'Webinar ID.',
 	},
 	{
 		displayName: 'Additional settings',
@@ -321,7 +302,7 @@ export const meetingFields = [
 
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			},
 		},
@@ -331,19 +312,19 @@ export const meetingFields = [
 				name: 'occurenceId',
 				type: 'string',
 				default: '',
-				description: 'To view meeting details of a particular occurence of the recurring meeting.',
+				description: 'To view webinar details of a particular occurence of the recurring webinar.',
 			},
 			{
 				displayName: 'Show Previous Occurences',
 				name: 'showPreviousOccurences',
 				type: 'boolean',
 				default: '',
-				description: 'To view meeting details of all previous occurences of the recurring meeting.',
+				description: 'To view webinar details of all previous occurences of the recurring webinar.',
 			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 meeting:getAll                               */
+	/*                                 webinar:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User Id',
@@ -357,7 +338,7 @@ export const meetingFields = [
 					'getAll',
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			},
 		},
@@ -373,7 +354,7 @@ export const meetingFields = [
 					'getAll',
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			},
 		},
@@ -390,7 +371,7 @@ export const meetingFields = [
 					'getAll',
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 				returnAll: [
 					false,
@@ -417,40 +398,18 @@ export const meetingFields = [
 
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			},
 		},
-		options: [
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				options: [
-					{
-						name: 'Scheduled',
-						value: 'scheduled',
-					},
-					{
-						name: 'Live',
-						value: 'live',
-					},
-					{
-						name: 'Upcoming',
-						value: 'upcoming',
-					},
-				],
-				default: 'live',
-				description: `Meeting type.`,
-			},
-		]
+
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 meeting:delete                                */
+	/*                                 webina:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
-		name: 'meetingId',
+		displayName: 'Webinar Id',
+		name: 'webinarId',
 		type: 'string',
 		default: '',
 		required: true,
@@ -460,11 +419,11 @@ export const meetingFields = [
 					'delete'
 				],
 				resource: [
-					'meeting',
+					'webinarId',
 				],
 			},
 		},
-		description: 'Meeting ID.',
+		description: 'WebinarId ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -478,7 +437,7 @@ export const meetingFields = [
 					'delete',
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			},
 		},
@@ -488,24 +447,18 @@ export const meetingFields = [
 				name: 'occurenceId',
 				type: 'string',
 				default: '',
-				description: 'Meeting occurence Id.',
+				description: 'Webinar occurence Id.',
 			},
-			{
-				displayName: 'Schedule a reminder',
-				name: 'scheduleForReminder',
-				type: 'boolean',
-				default: false,
-				description: 'Notify hosts and alternative hosts about meeting cancellation via email',
-			},
+
 		],
 
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 meeting:update                                */
+	/*                                 webinar:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
-		name: 'meetingId',
+		displayName: 'User Id',
+		name: 'userId',
 		type: 'string',
 		default: '',
 		required: true,
@@ -515,11 +468,11 @@ export const meetingFields = [
 					'update',
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
 			},
 		},
-		description: 'Meeting ID.',
+		description: 'User ID or email address of user.',
 	},
 	{
 		displayName: 'Additional settings',
@@ -531,64 +484,60 @@ export const meetingFields = [
 			show: {
 				operation: [
 					'update',
+
 				],
 				resource: [
-					'meeting',
+					'webinar',
 				],
-			},
+			}
 		},
 		options: [
 			{
 				displayName: 'Occurence Id',
-				name: 'occurenceId',
+				name: 'occurence_id',
 				type: 'string',
 				default: '',
-				description: 'Occurence ID.',
+				description: `Webinar occurence Id.`,
 			},
 			{
-				displayName: 'Meeting topic',
+				displayName: 'Webinar topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
-				description: `Meeting topic.`,
+				description: `Webinar topic.`,
 			},
 			{
-				displayName: 'Meeting type',
+				displayName: 'Webinar type',
 				name: 'type',
 				type: 'options',
 				options: [
 					{
-						name: 'Instant Meeting',
-						value: 1,
+						name: 'Webinar',
+						value: 5,
 					},
 					{
-						name: 'Scheduled Meeting',
-						value: 2,
+						name: 'Recurring webinar with no fixed time',
+						value: 6,
 					},
 					{
-						name: 'Recurring meeting with no fixed time',
-						value: 3,
+						name: 'Recurring webinar with  fixed time',
+						value: 9,
 					},
-					{
-						name: 'Recurring meeting with no fixed time',
-						value: 8,
-					},
-
 				],
-				default: 2,
-				description: 'Meeting type.'
+				default: 5,
+				description: 'Webinar type.'
 			},
 			{
 				displayName: 'Start time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
-				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
+				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
 			},
 			{
 				displayName: 'Duration',
 				name: 'duration',
-				type: 'number',
+				type: 'string',
 				default: '',
 				description: 'Duration.',
 			},
@@ -603,74 +552,39 @@ export const meetingFields = [
 				description: `Time zone used in the response. The default is the time zone of the calendar.`,
 			},
 			{
-				displayName: 'Schedule for',
-				name: 'scheduleFor',
-				type: 'string',
-				default: '',
-				description: 'Schedule meeting for someone else from your account, provide their email id.',
-			},
-			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Password to join the meeting with maximum 10 characters.',
+				description: 'Password to join the webinar with maximum 10 characters.',
 			},
 			{
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
 				default: '',
-				description: 'Meeting agenda.',
-			},
-			{
-				displayName: 'Host Meeting in China',
-				name: 'cn_meeting',
-				type: 'boolean',
-				default: false,
-				description: 'Host Meeting in China.',
-			},
-			{
-				displayName: 'Host Meeting in India',
-				name: 'in_meeting',
-				type: 'boolean',
-				default: false,
-				description: 'Host Meeting in India.',
+				description: 'Webinar agenda.',
 			},
 			{
 				displayName: 'Host Video',
 				name: 'host_video',
 				type: 'boolean',
 				default: false,
-				description: 'Start video when host joins the meeting.',
+				description: 'Start video when host joins the webinar.',
 			},
 			{
-				displayName: 'Participant Video',
-				name: 'participant_video',
+				displayName: 'Panelists Video',
+				name: 'panelists_video',
 				type: 'boolean',
 				default: false,
-				description: 'Start video when participant joins the meeting.',
+				description: 'Start video when panelists joins the webinar.',
 			},
 			{
-				displayName: 'Join before Host',
-				name: 'join_before_host',
+				displayName: 'Practice Session',
+				name: 'practice_session',
 				type: 'boolean',
 				default: false,
-				description: 'Allow participants to join the meeting before host starts it.',
-			},
-			{
-				displayName: 'Muting before entry',
-				name: 'mute_upon_entry',
-				type: 'boolean',
-				default: false,
-				description: 'Mute participants upon entry.',
-			},
-			{
-				displayName: 'Watermark',
-				name: 'watermark',
-				type: 'boolean',
-				default: false,
-				description: 'Adds watermark when viewing a shared screen.',
+				description: 'Enable Practice session.',
 			},
 			{
 				displayName: 'Alternative Hosts',
@@ -678,6 +592,27 @@ export const meetingFields = [
 				type: 'string',
 				default: '',
 				description: 'Alternative hosts email ids.',
+			},
+			{
+				displayName: 'Approval type',
+				name: 'approval_type',
+				type: 'options',
+				options: [
+					{
+						name: 'Automatically approve',
+						value: 0,
+					},
+					{
+						name: 'Manually approve',
+						value: 1,
+					},
+					{
+						name: 'No registration required',
+						value: 2,
+					},
+				],
+				default: 2,
+				description: 'Approval type.',
 			},
 			{
 				displayName: 'Auto recording',
@@ -702,7 +637,7 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Audio',
-				name: 'auto_recording',
+				name: 'audio',
 				type: 'options',
 				options: [
 					{
@@ -717,9 +652,10 @@ export const meetingFields = [
 						name: 'VOIP',
 						value: 'voip',
 					},
+
 				],
 				default: 'both',
-				description: 'Determine how participants can join audio portion of the meeting.',
+				description: 'Determine how participants can join audio portion of the webinar.',
 			},
 			{
 				displayName: 'Registration type',
@@ -740,8 +676,9 @@ export const meetingFields = [
 					},
 				],
 				default: 1,
-				description: 'Registration type. Used for recurring meetings with fixed time only',
+				description: 'Registration type. Used for recurring webinars with fixed time only',
 			},
+
 		],
 	},
 

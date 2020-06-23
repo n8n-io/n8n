@@ -31,8 +31,6 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
-	console.log("options");
-	console.log(options);
 	try {
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('zoomApi');
@@ -42,7 +40,6 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
 			//@ts-ignore
-
 			return await this.helpers.request(options);
 		} else {
 			//@ts-ignore
@@ -78,9 +75,10 @@ export async function zoomApiRequestAllItems(
 ): Promise<any> {
 	// tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
+
 	let responseData;
-	query.page = 1;
-	query.count = 100;
+	//query.maxResults = 300;
+
 	do {
 		responseData = await zoomApiRequest.call(
 			this,
@@ -89,32 +87,14 @@ export async function zoomApiRequestAllItems(
 			body,
 			query
 		);
-		query.cursor = encodeURIComponent(
-			_.get(responseData, 'response_metadata.next_cursor')
-		);
-		query.page++;
+		query.page_number = responseData['page_number'];
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		(responseData.response_metadata !== undefined &&
-			responseData.response_metadata.mext_cursor !== undefined &&
-			responseData.response_metadata.next_cursor !== '' &&
-			responseData.response_metadata.next_cursor !== null) ||
-		(responseData.paging !== undefined &&
-			responseData.paging.pages !== undefined &&
-			responseData.paging.page !== undefined &&
-			responseData.paging.page < responseData.paging.pages)
+		responseData['page_number'] !== undefined &&
+		responseData['page_number'] !== ''
 	);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any {
-	// tslint:disable-line:no-any
-	let result;
-	try {
-		result = JSON.parse(json!);
-	} catch (exception) {
-		result = undefined;
-	}
-	return result;
-}
+
