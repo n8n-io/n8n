@@ -10,7 +10,7 @@ export class SIGNL4 implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Send SIGNL4 alert.',
+		description: 'Send SIGNL4 alert. Find our more at https://www.signl4.com.',
 		defaults: {
 			name: 'SIGNL4',
 			color: '#0000FF',
