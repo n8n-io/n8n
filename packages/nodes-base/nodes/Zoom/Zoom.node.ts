@@ -177,18 +177,17 @@ export class Zoom implements INodeType {
 				if (operation === 'get') {
 					//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meeting
 					const meetingId = this.getNodeParameter('meetingId', i) as string;
-
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
 						i
 					) as IDataObject;
-					if (additionalFields.showPreviousOccurences) {
-						qs.show_previous_occurences = additionalFields.showPreviousOccurences as boolean;
+					if (additionalFields.showPreviousOccurrences) {
+						qs.show_previous_occurrences = additionalFields.showPreviousOccurrences as boolean;
 
 					}
 
-					if (additionalFields.occurenceId) {
-						qs.occurence_id = additionalFields.occurenceId as string;
+					if (additionalFields.occurrenceId) {
+						qs.occurrence_id = additionalFields.occurrenceId as string;
 
 					}
 
@@ -226,8 +225,8 @@ export class Zoom implements INodeType {
 
 					}
 
-					if (additionalFields.occurenceId) {
-						qs.occurence_id = additionalFields.occurenceId;
+					if (additionalFields.occurrenceId) {
+						qs.occurrence_id = additionalFields.occurrenceId;
 
 					}
 
@@ -363,8 +362,8 @@ export class Zoom implements INodeType {
 						i
 					) as IDataObject;
 
-					if (additionalFields.occurenceId) {
-						qs.occurence_id = additionalFields.occurenceId as string;
+					if (additionalFields.occurrenceId) {
+						qs.occurrence_id = additionalFields.occurrenceId as string;
 					}
 
 					if (additionalFields.cn_meeting) {
@@ -488,8 +487,8 @@ export class Zoom implements INodeType {
 						'additionalFields',
 						i
 					) as IDataObject;
-					if (additionalFields.occurenceId) {
-						qs.occurence_ids = additionalFields.occurenceId as string;
+					if (additionalFields.occurrenceId) {
+						qs.occurrence_ids = additionalFields.occurrenceId as string;
 					}
 					if (additionalFields.lastName) {
 						body.last_name = additionalFields.lastName as string;
@@ -542,8 +541,8 @@ export class Zoom implements INodeType {
 						'additionalFields',
 						i
 					) as IDataObject;
-					if (additionalFields.occurenceId) {
-						qs.occurence_id = additionalFields.occurenceId as string;
+					if (additionalFields.occurrenceId) {
+						qs.occurrence_id = additionalFields.occurrenceId as string;
 					}
 					if (additionalFields.status) {
 						qs.status = additionalFields.status as string;
@@ -567,7 +566,7 @@ export class Zoom implements INodeType {
 						i
 					) as IDataObject;
 					if (additionalFields.occurenceId) {
-						qs.occurence_id = additionalFields.occurenceId as string;
+						qs.occurrence_id = additionalFields.occurrenceId as string;
 					}
 					responseData = await zoomApiRequest.call(
 						this,
@@ -676,13 +675,13 @@ export class Zoom implements INodeType {
 						'additionalFields',
 						i
 					) as IDataObject;
-					if (additionalFields.showPreviousOccurences) {
-						qs.show_previous_occurences = additionalFields.showPreviousOccurences as boolean;
+					if (additionalFields.showPreviousOccurrences) {
+						qs.show_previous_occurrences = additionalFields.showPreviousOccurrences as boolean;
 
 					}
 
-					if (additionalFields.occurenceId) {
-						qs.occurence_id = additionalFields.occurenceId as string;
+					if (additionalFields.occurrenceId) {
+						qs.occurrence_id = additionalFields.occurrenceId as string;
 
 					}
 
@@ -716,8 +715,8 @@ export class Zoom implements INodeType {
 					) as IDataObject;
 
 
-					if (additionalFields.occurenceId) {
-						qs.occurence_id = additionalFields.occurenceId;
+					if (additionalFields.occurrenceId) {
+						qs.occurrence_id = additionalFields.occurrenceId;
 
 					}
 
@@ -737,8 +736,8 @@ export class Zoom implements INodeType {
 						'additionalFields',
 						i
 					) as IDataObject;
-					if (additionalFields.occurence_id) {
-						qs.occurence_id = additionalFields.occurence_id as string;
+					if (additionalFields.occurrence_id) {
+						qs.occurrence_id = additionalFields.occurrence_id as string;
 
 					}
 					const settings: Settings = {};

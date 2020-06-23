@@ -155,11 +155,11 @@ export const meetingRegistrantFields = [
 				description: 'Last Name.',
 			},
 			{
-				displayName: 'Occurence Ids',
-				name: 'occurenceId',
+				displayName: 'Occurrence Ids',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Occurence IDs separated by comma.',
+				description: 'Occurrence IDs separated by comma.',
 			},
 			{
 				displayName: 'Organization',
@@ -328,11 +328,11 @@ export const meetingRegistrantFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence Id',
-				name: 'occurence_id',
+				displayName: 'Occurrence Id',
+				name: 'occurrence_id',
 				type: 'string',
 				default: '',
-				description: `Occurence Id.`,
+				description: `Occurrence Id.`,
 			},
 			{
 				displayName: 'Status',
@@ -429,11 +429,11 @@ export const meetingRegistrantFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence Id',
-				name: 'occurenceId',
+				displayName: 'Occurrence Id',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Occurence ID.',
+				description: 'Occurrence ID.',
 			},
 
 		],
