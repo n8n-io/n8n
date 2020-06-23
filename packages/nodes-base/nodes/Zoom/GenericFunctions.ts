@@ -46,7 +46,6 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 			return await this.helpers.request(options);
 		} else {
 			//@ts-ignore
-
 			return await this.helpers.requestOAuth2.call(this, 'zoomOAuth2Api', options);
 		}
 	} catch (error) {
