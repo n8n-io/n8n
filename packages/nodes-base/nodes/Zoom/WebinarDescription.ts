@@ -51,7 +51,7 @@ export const webinarFields = [
 	/*                                 webinar:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'userId',
 		type: 'string',
 		default: '',
@@ -98,7 +98,7 @@ export const webinarFields = [
 				name: 'alternative_hosts',
 				type: 'string',
 				default: '',
-				description: 'Alternative hosts email ids.',
+				description: 'Alternative hosts email IDs.',
 			},
 			{
 				displayName: 'Approval type',
@@ -272,7 +272,7 @@ export const webinarFields = [
 	/*                                 webinar:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Webinar Id',
+		displayName: 'Webinar ID',
 		name: 'webinarId',
 		type: 'string',
 		default: '',
@@ -308,7 +308,7 @@ export const webinarFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence Id',
+				displayName: 'Occurence ID',
 				name: 'occurenceId',
 				type: 'string',
 				default: '',
@@ -327,7 +327,7 @@ export const webinarFields = [
 	/*                                 webinar:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'userId',
 		type: 'string',
 		default: '',
@@ -342,7 +342,7 @@ export const webinarFields = [
 				],
 			},
 		},
-		description: 'User ID or email-id.',
+		description: 'User ID or email-ID.',
 	},
 	{
 		displayName: 'Return All',
@@ -389,7 +389,7 @@ export const webinarFields = [
 	/*                                 webinar:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Webinar Id',
+		displayName: 'Webinar ID',
 		name: 'webinarId',
 		type: 'string',
 		default: '',
@@ -404,7 +404,7 @@ export const webinarFields = [
 				],
 			},
 		},
-		description: 'WebinarId ID.',
+		description: 'Webinar ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -424,11 +424,11 @@ export const webinarFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurrence Id',
+				displayName: 'Occurrence ID',
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
-				description: 'Webinar occurrence Id.',
+				description: 'Webinar occurrence ID.',
 			},
 
 		],
@@ -438,7 +438,7 @@ export const webinarFields = [
 	/*                                 webinar:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'userId',
 		type: 'string',
 		default: '',
@@ -485,7 +485,7 @@ export const webinarFields = [
 				name: 'alternative_hosts',
 				type: 'string',
 				default: '',
-				description: 'Alternative hosts email ids.',
+				description: 'Alternative hosts email IDs.',
 			},
 			{
 				displayName: 'Approval type',
@@ -566,11 +566,11 @@ export const webinarFields = [
 				description: 'Start video when host joins the webinar.',
 			},
 			{
-				displayName: 'Occurrence Id',
+				displayName: 'Occurrence ID',
 				name: 'occurrence_id',
 				type: 'string',
 				default: '',
-				description: `Webinar occurrence Id.`,
+				description: `Webinar occurrence ID.`,
 			},
 			{
 				displayName: 'Password',

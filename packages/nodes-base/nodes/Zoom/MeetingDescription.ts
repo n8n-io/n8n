@@ -51,7 +51,7 @@ export const meetingFields = [
 	/*                                 meeting:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'userId',
 		type: 'string',
 		default: '',
@@ -258,7 +258,7 @@ export const meetingFields = [
 				name: 'scheduleFor',
 				type: 'string',
 				default: '',
-				description: 'Schedule meeting for someone else from your account, provide their email id.',
+				description: 'Schedule meeting for someone else from your account, provide their email ID.',
 			},
 			{
 				displayName: 'Start time',
@@ -290,7 +290,7 @@ export const meetingFields = [
 	/*                                 meeting:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -345,7 +345,7 @@ export const meetingFields = [
 	/*                                 meeting:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'userId',
 		type: 'string',
 		default: '',
@@ -448,7 +448,7 @@ export const meetingFields = [
 	/*                                 meeting:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -549,7 +549,7 @@ export const meetingFields = [
 				name: 'alternative_hosts',
 				type: 'string',
 				default: '',
-				description: 'Alternative hosts email ids.',
+				description: 'Alternative hosts email IDs.',
 			},
 			{
 				displayName: 'Audio',
@@ -630,7 +630,7 @@ export const meetingFields = [
 				description: 'Start video when host joins the meeting.',
 			},
 			{
-				displayName: 'Occurrence Id',
+				displayName: 'Occurrence ID',
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
@@ -716,7 +716,7 @@ export const meetingFields = [
 				name: 'scheduleFor',
 				type: 'string',
 				default: '',
-				description: 'Schedule meeting for someone else from your account, provide their email id.',
+				description: 'Schedule meeting for someone else from your account, provide their email ID.',
 			},
 			{
 				displayName: 'Start time',
