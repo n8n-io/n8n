@@ -1,13 +1,16 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
-	ILoadOptionsFunctions
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
-import * as _ from 'lodash';
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
 
@@ -60,8 +63,6 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		// If that data does not exist for some reason return the actual error
 		throw error;
 	}
-
-
 }
 
 
@@ -75,10 +76,7 @@ export async function zoomApiRequestAllItems(
 ): Promise<any> {
 	// tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
-
 	let responseData;
-	//query.maxResults = 300;
-
 	do {
 		responseData = await zoomApiRequest.call(
 			this,

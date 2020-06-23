@@ -36,8 +36,6 @@ export const meetingRegistrantOperations = [
 	}
 ] as INodeProperties[];
 
-
-
 export const meetingRegistrantFields = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 meetingRegistrants:create                                */
