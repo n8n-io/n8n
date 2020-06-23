@@ -1,7 +1,7 @@
 import {
 	MigrationInterface,
 	QueryRunner,
-} from "typeorm";
+} from 'typeorm';
 
 import * as config from '../../../../config';
 
@@ -13,7 +13,7 @@ import {
 
 import {
 	Workflow,
-} from 'n8n-workflow/dist/src/Workflow';
+} from 'n8n-workflow';
 
 import {
 	IWebhookDb,
