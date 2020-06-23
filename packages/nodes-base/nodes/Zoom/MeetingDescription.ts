@@ -87,131 +87,11 @@ export const meetingFields = [
 		},
 		options: [
 			{
-				displayName: 'Meeting topic',
-				name: 'topic',
-				type: 'string',
-				default: '',
-				description: `Meeting topic.`,
-			},
-			{
-				displayName: 'Meeting type',
-				name: 'type',
-				type: 'options',
-				options: [
-					{
-						name: 'Instant Meeting',
-						value: 1,
-					},
-					{
-						name: 'Scheduled Meeting',
-						value: 2,
-					},
-					{
-						name: 'Recurring meeting with no fixed time',
-						value: 3,
-					},
-					{
-						name: 'Recurring meeting with no fixed time',
-						value: 8,
-					},
-
-				],
-				default: 2,
-				description: 'Meeting type.'
-			},
-			{
-				displayName: 'Start time',
-				name: 'startTime',
-				type: 'dateTime',
-				default: '',
-				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
-			},
-			{
-				displayName: 'Duration',
-				name: 'duration',
-				type: 'number',
-				default: '',
-				description: 'Duration.',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timeZone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
-			},
-			{
-				displayName: 'Schedule for',
-				name: 'scheduleFor',
-				type: 'string',
-				default: '',
-				description: 'Schedule meeting for someone else from your account, provide their email id.',
-			},
-			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				default: '',
-				description: 'Password to join the meeting with maximum 10 characters.',
-			},
-			{
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
 				default: '',
 				description: 'Meeting agenda.',
-			},
-			{
-				displayName: 'Host Meeting in China',
-				name: 'cn_meeting',
-				type: 'boolean',
-				default: false,
-				description: 'Host Meeting in China.',
-			},
-			{
-				displayName: 'Host Meeting in India',
-				name: 'in_meeting',
-				type: 'boolean',
-				default: false,
-				description: 'Host Meeting in India.',
-			},
-			{
-				displayName: 'Host Video',
-				name: 'host_video',
-				type: 'boolean',
-				default: false,
-				description: 'Start video when host joins the meeting.',
-			},
-			{
-				displayName: 'Participant Video',
-				name: 'participant_video',
-				type: 'boolean',
-				default: false,
-				description: 'Start video when participant joins the meeting.',
-			},
-			{
-				displayName: 'Join before Host',
-				name: 'join_before_host',
-				type: 'boolean',
-				default: false,
-				description: 'Allow participants to join the meeting before host starts it.',
-			},
-			{
-				displayName: 'Muting before entry',
-				name: 'mute_upon_entry',
-				type: 'boolean',
-				default: false,
-				description: 'Mute participants upon entry.',
-			},
-			{
-				displayName: 'Watermark',
-				name: 'watermark',
-				type: 'boolean',
-				default: false,
-				description: 'Adds watermark when viewing a shared screen.',
 			},
 			{
 				displayName: 'Alternative Hosts',
@@ -264,6 +144,95 @@ export const meetingFields = [
 				description: 'Determine how participants can join audio portion of the meeting.',
 			},
 			{
+				displayName: 'Duration',
+				name: 'duration',
+				type: 'number',
+				default: '',
+				description: 'Duration.',
+			},
+			{
+				displayName: 'Host Meeting in China',
+				name: 'cn_meeting',
+				type: 'boolean',
+				default: false,
+				description: 'Host Meeting in China.',
+			},
+			{
+				displayName: 'Host Meeting in India',
+				name: 'in_meeting',
+				type: 'boolean',
+				default: false,
+				description: 'Host Meeting in India.',
+			},
+			{
+				displayName: 'Host Video',
+				name: 'host_video',
+				type: 'boolean',
+				default: false,
+				description: 'Start video when host joins the meeting.',
+			},
+			{
+				displayName: 'Join before Host',
+				name: 'join_before_host',
+				type: 'boolean',
+				default: false,
+				description: 'Allow participants to join the meeting before host starts it.',
+			},
+			{
+				displayName: 'Meeting topic',
+				name: 'topic',
+				type: 'string',
+				default: '',
+				description: `Meeting topic.`,
+			},
+			{
+				displayName: 'Meeting type',
+				name: 'type',
+				type: 'options',
+				options: [
+					{
+						name: 'Instant Meeting',
+						value: 1,
+					},
+					{
+						name: 'Scheduled Meeting',
+						value: 2,
+					},
+					{
+						name: 'Recurring meeting with no fixed time',
+						value: 3,
+					},
+					{
+						name: 'Recurring meeting with no fixed time',
+						value: 8,
+					},
+
+				],
+				default: 2,
+				description: 'Meeting type.'
+			},
+			{
+				displayName: 'Muting before entry',
+				name: 'mute_upon_entry',
+				type: 'boolean',
+				default: false,
+				description: 'Mute participants upon entry.',
+			},
+			{
+				displayName: 'Participant Video',
+				name: 'participant_video',
+				type: 'boolean',
+				default: false,
+				description: 'Start video when participant joins the meeting.',
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				default: '',
+				description: 'Password to join the meeting with maximum 10 characters.',
+			},
+			{
 				displayName: 'Registration type',
 				name: 'registration_type',
 				type: 'options',
@@ -284,7 +253,37 @@ export const meetingFields = [
 				default: 1,
 				description: 'Registration type. Used for recurring meetings with fixed time only',
 			},
-
+			{
+				displayName: 'Schedule for',
+				name: 'scheduleFor',
+				type: 'string',
+				default: '',
+				description: 'Schedule meeting for someone else from your account, provide their email id.',
+			},
+			{
+				displayName: 'Start time',
+				name: 'startTime',
+				type: 'dateTime',
+				default: '',
+				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
+			},
+			{
+				displayName: 'Timezone',
+				name: 'timeZone',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTimezones',
+				},
+				default: '',
+				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+			},
+			{
+				displayName: 'Watermark',
+				name: 'watermark',
+				type: 'boolean',
+				default: false,
+				description: 'Adds watermark when viewing a shared screen.',
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -539,6 +538,98 @@ export const meetingFields = [
 		},
 		options: [
 			{
+				displayName: 'Agenda',
+				name: 'agenda',
+				type: 'string',
+				default: '',
+				description: 'Meeting agenda.',
+			},
+			{
+				displayName: 'Alternative Hosts',
+				name: 'alternative_hosts',
+				type: 'string',
+				default: '',
+				description: 'Alternative hosts email ids.',
+			},
+			{
+				displayName: 'Audio',
+				name: 'auto_recording',
+				type: 'options',
+				options: [
+					{
+						name: 'Both Telephony and VoiP',
+						value: 'both',
+					},
+					{
+						name: 'Telephony',
+						value: 'telephony',
+					},
+					{
+						name: 'VOIP',
+						value: 'voip',
+					},
+				],
+				default: 'both',
+				description: 'Determine how participants can join audio portion of the meeting.',
+			},
+			{
+				displayName: 'Auto recording',
+				name: 'auto_recording',
+				type: 'options',
+				options: [
+					{
+						name: 'Record on local',
+						value: 'local',
+					},
+					{
+						name: 'Record on cloud',
+						value: 'cloud',
+					},
+					{
+						name: 'Disabled',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description: 'Auto recording.',
+			},
+
+			{
+				displayName: 'Duration',
+				name: 'duration',
+				type: 'number',
+				default: '',
+				description: 'Duration.',
+			},
+			{
+				displayName: 'Join before Host',
+				name: 'join_before_host',
+				type: 'boolean',
+				default: false,
+				description: 'Allow participants to join the meeting before host starts it.',
+			},
+			{
+				displayName: 'Host Meeting in China',
+				name: 'cn_meeting',
+				type: 'boolean',
+				default: false,
+				description: 'Host Meeting in China.',
+			},
+			{
+				displayName: 'Host Meeting in India',
+				name: 'in_meeting',
+				type: 'boolean',
+				default: false,
+				description: 'Host Meeting in India.',
+			},
+			{
+				displayName: 'Host Video',
+				name: 'host_video',
+				type: 'boolean',
+				default: false,
+				description: 'Start video when host joins the meeting.',
+			},
+			{
 				displayName: 'Occurence Id',
 				name: 'occurenceId',
 				type: 'string',
@@ -579,35 +670,11 @@ export const meetingFields = [
 				description: 'Meeting type.'
 			},
 			{
-				displayName: 'Start time',
-				name: 'startTime',
-				type: 'dateTime',
-				default: '',
-				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
-			},
-			{
-				displayName: 'Duration',
-				name: 'duration',
-				type: 'number',
-				default: '',
-				description: 'Duration.',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timeZone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
-			},
-			{
-				displayName: 'Schedule for',
-				name: 'scheduleFor',
-				type: 'string',
-				default: '',
-				description: 'Schedule meeting for someone else from your account, provide their email id.',
+				displayName: 'Muting before entry',
+				name: 'mute_upon_entry',
+				type: 'boolean',
+				default: false,
+				description: 'Mute participants upon entry.',
 			},
 			{
 				displayName: 'Password',
@@ -617,109 +684,11 @@ export const meetingFields = [
 				description: 'Password to join the meeting with maximum 10 characters.',
 			},
 			{
-				displayName: 'Agenda',
-				name: 'agenda',
-				type: 'string',
-				default: '',
-				description: 'Meeting agenda.',
-			},
-			{
-				displayName: 'Host Meeting in China',
-				name: 'cn_meeting',
-				type: 'boolean',
-				default: false,
-				description: 'Host Meeting in China.',
-			},
-			{
-				displayName: 'Host Meeting in India',
-				name: 'in_meeting',
-				type: 'boolean',
-				default: false,
-				description: 'Host Meeting in India.',
-			},
-			{
-				displayName: 'Host Video',
-				name: 'host_video',
-				type: 'boolean',
-				default: false,
-				description: 'Start video when host joins the meeting.',
-			},
-			{
 				displayName: 'Participant Video',
 				name: 'participant_video',
 				type: 'boolean',
 				default: false,
 				description: 'Start video when participant joins the meeting.',
-			},
-			{
-				displayName: 'Join before Host',
-				name: 'join_before_host',
-				type: 'boolean',
-				default: false,
-				description: 'Allow participants to join the meeting before host starts it.',
-			},
-			{
-				displayName: 'Muting before entry',
-				name: 'mute_upon_entry',
-				type: 'boolean',
-				default: false,
-				description: 'Mute participants upon entry.',
-			},
-			{
-				displayName: 'Watermark',
-				name: 'watermark',
-				type: 'boolean',
-				default: false,
-				description: 'Adds watermark when viewing a shared screen.',
-			},
-			{
-				displayName: 'Alternative Hosts',
-				name: 'alternative_hosts',
-				type: 'string',
-				default: '',
-				description: 'Alternative hosts email ids.',
-			},
-			{
-				displayName: 'Auto recording',
-				name: 'auto_recording',
-				type: 'options',
-				options: [
-					{
-						name: 'Record on local',
-						value: 'local',
-					},
-					{
-						name: 'Record on cloud',
-						value: 'cloud',
-					},
-					{
-						name: 'Disabled',
-						value: 'none',
-					},
-				],
-				default: 'none',
-				description: 'Auto recording.',
-			},
-			{
-				displayName: 'Audio',
-				name: 'auto_recording',
-				type: 'options',
-				options: [
-					{
-						name: 'Both Telephony and VoiP',
-						value: 'both',
-					},
-					{
-						name: 'Telephony',
-						value: 'telephony',
-					},
-					{
-						name: 'VOIP',
-						value: 'voip',
-					},
-				],
-				default: 'both',
-				description: 'Determine how participants can join audio portion of the meeting.',
 			},
 			{
 				displayName: 'Registration type',
@@ -742,6 +711,39 @@ export const meetingFields = [
 				default: 1,
 				description: 'Registration type. Used for recurring meetings with fixed time only',
 			},
+			{
+				displayName: 'Schedule for',
+				name: 'scheduleFor',
+				type: 'string',
+				default: '',
+				description: 'Schedule meeting for someone else from your account, provide their email id.',
+			},
+			{
+				displayName: 'Start time',
+				name: 'startTime',
+				type: 'dateTime',
+				default: '',
+				description: 'Start time should be used only for scheduled or recurring meetings with fixed time',
+			},
+			{
+				displayName: 'Timezone',
+				name: 'timeZone',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTimezones',
+				},
+				default: '',
+				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+			},
+			{
+				displayName: 'Watermark',
+				name: 'watermark',
+				type: 'boolean',
+				default: false,
+				description: 'Adds watermark when viewing a shared screen.',
+			},
+
+
 		],
 	},
 
