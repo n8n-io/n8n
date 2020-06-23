@@ -87,91 +87,11 @@ export const webinarFields = [
 		},
 		options: [
 			{
-				displayName: 'Webinar topic',
-				name: 'topic',
-				type: 'string',
-				default: '',
-				description: `Webinar topic.`,
-			},
-			{
-				displayName: 'Webinar type',
-				name: 'type',
-				type: 'options',
-				options: [
-					{
-						name: 'Webinar',
-						value: 5,
-					},
-					{
-						name: 'Recurring webinar with no fixed time',
-						value: 6,
-					},
-					{
-						name: 'Recurring webinar with  fixed time',
-						value: 9,
-					},
-				],
-				default: 5,
-				description: 'Webinar type.'
-			},
-			{
-				displayName: 'Start time',
-				name: 'startTime',
-				type: 'dateTime',
-				default: '',
-				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
-			},
-			{
-				displayName: 'Duration',
-				name: 'duration',
-				type: 'string',
-				default: '',
-				description: 'Duration.',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timeZone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
-			},
-			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				default: '',
-				description: 'Password to join the webinar with maximum 10 characters.',
-			},
-			{
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
 				default: '',
 				description: 'Webinar agenda.',
-			},
-			{
-				displayName: 'Host Video',
-				name: 'host_video',
-				type: 'boolean',
-				default: false,
-				description: 'Start video when host joins the webinar.',
-			},
-			{
-				displayName: 'Panelists Video',
-				name: 'panelists_video',
-				type: 'boolean',
-				default: false,
-				description: 'Start video when panelists joins the webinar.',
-			},
-			{
-				displayName: 'Practice Session',
-				name: 'practice_session',
-				type: 'boolean',
-				default: false,
-				description: 'Enable Practice session.',
 			},
 			{
 				displayName: 'Alternative Hosts',
@@ -202,27 +122,6 @@ export const webinarFields = [
 				description: 'Approval type.',
 			},
 			{
-				displayName: 'Auto recording',
-				name: 'auto_recording',
-				type: 'options',
-				options: [
-					{
-						name: 'Record on local',
-						value: 'local',
-					},
-					{
-						name: 'Record on cloud',
-						value: 'cloud',
-					},
-					{
-						name: 'Disabled',
-						value: 'none',
-					},
-				],
-				default: 'none',
-				description: 'Auto recording.',
-			},
-			{
 				displayName: 'Audio',
 				name: 'audio',
 				type: 'options',
@@ -245,6 +144,62 @@ export const webinarFields = [
 				description: 'Determine how participants can join audio portion of the webinar.',
 			},
 			{
+				displayName: 'Auto recording',
+				name: 'auto_recording',
+				type: 'options',
+				options: [
+					{
+						name: 'Record on local',
+						value: 'local',
+					},
+					{
+						name: 'Record on cloud',
+						value: 'cloud',
+					},
+					{
+						name: 'Disabled',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description: 'Auto recording.',
+			},
+			{
+				displayName: 'Duration',
+				name: 'duration',
+				type: 'string',
+				default: '',
+				description: 'Duration.',
+			},
+			{
+				displayName: 'Host Video',
+				name: 'host_video',
+				type: 'boolean',
+				default: false,
+				description: 'Start video when host joins the webinar.',
+			},
+			{
+				displayName: 'Panelists Video',
+				name: 'panelists_video',
+				type: 'boolean',
+				default: false,
+				description: 'Start video when panelists joins the webinar.',
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				default: '',
+				description: 'Password to join the webinar with maximum 10 characters.',
+			},
+			{
+				displayName: 'Practice Session',
+				name: 'practice_session',
+				type: 'boolean',
+				default: false,
+				description: 'Enable Practice session.',
+			},
+			{
 				displayName: 'Registration type',
 				name: 'registration_type',
 				type: 'options',
@@ -264,6 +219,51 @@ export const webinarFields = [
 				],
 				default: 1,
 				description: 'Registration type. Used for recurring webinar with fixed time only',
+			},
+			{
+				displayName: 'Start time',
+				name: 'startTime',
+				type: 'dateTime',
+				default: '',
+				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
+			},
+			{
+				displayName: 'Timezone',
+				name: 'timeZone',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTimezones',
+				},
+				default: '',
+				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+			},
+			{
+				displayName: 'Webinar topic',
+				name: 'topic',
+				type: 'string',
+				default: '',
+				description: `Webinar topic.`,
+			},
+			{
+				displayName: 'Webinar type',
+				name: 'type',
+				type: 'options',
+				options: [
+					{
+						name: 'Webinar',
+						value: 5,
+					},
+					{
+						name: 'Recurring webinar with no fixed time',
+						value: 6,
+					},
+					{
+						name: 'Recurring webinar with  fixed time',
+						value: 9,
+					},
+				],
+				default: 5,
+				description: 'Webinar type.'
 			},
 
 		],
@@ -385,25 +385,6 @@ export const webinarFields = [
 		default: 30,
 		description: 'How many results to return.',
 	},
-	{
-		displayName: 'Additional settings',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-
-				],
-				resource: [
-					'webinar',
-				],
-			},
-		},
-
-	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 webina:delete                                */
 	/* -------------------------------------------------------------------------- */
@@ -493,98 +474,11 @@ export const webinarFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence Id',
-				name: 'occurence_id',
-				type: 'string',
-				default: '',
-				description: `Webinar occurence Id.`,
-			},
-			{
-				displayName: 'Webinar topic',
-				name: 'topic',
-				type: 'string',
-				default: '',
-				description: `Webinar topic.`,
-			},
-			{
-				displayName: 'Webinar type',
-				name: 'type',
-				type: 'options',
-				options: [
-					{
-						name: 'Webinar',
-						value: 5,
-					},
-					{
-						name: 'Recurring webinar with no fixed time',
-						value: 6,
-					},
-					{
-						name: 'Recurring webinar with  fixed time',
-						value: 9,
-					},
-				],
-				default: 5,
-				description: 'Webinar type.'
-			},
-			{
-				displayName: 'Start time',
-				name: 'startTime',
-				type: 'dateTime',
-				default: '',
-				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
-			},
-			{
-				displayName: 'Duration',
-				name: 'duration',
-				type: 'string',
-				default: '',
-				description: 'Duration.',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timeZone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
-			},
-			{
-				displayName: 'Password',
-				name: 'password',
-				type: 'string',
-				default: '',
-				description: 'Password to join the webinar with maximum 10 characters.',
-			},
-			{
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
 				default: '',
 				description: 'Webinar agenda.',
-			},
-			{
-				displayName: 'Host Video',
-				name: 'host_video',
-				type: 'boolean',
-				default: false,
-				description: 'Start video when host joins the webinar.',
-			},
-			{
-				displayName: 'Panelists Video',
-				name: 'panelists_video',
-				type: 'boolean',
-				default: false,
-				description: 'Start video when panelists joins the webinar.',
-			},
-			{
-				displayName: 'Practice Session',
-				name: 'practice_session',
-				type: 'boolean',
-				default: false,
-				description: 'Enable Practice session.',
 			},
 			{
 				displayName: 'Alternative Hosts',
@@ -658,6 +552,48 @@ export const webinarFields = [
 				description: 'Determine how participants can join audio portion of the webinar.',
 			},
 			{
+				displayName: 'Duration',
+				name: 'duration',
+				type: 'string',
+				default: '',
+				description: 'Duration.',
+			},
+			{
+				displayName: 'Host Video',
+				name: 'host_video',
+				type: 'boolean',
+				default: false,
+				description: 'Start video when host joins the webinar.',
+			},
+			{
+				displayName: 'Occurence Id',
+				name: 'occurence_id',
+				type: 'string',
+				default: '',
+				description: `Webinar occurence Id.`,
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				default: '',
+				description: 'Password to join the webinar with maximum 10 characters.',
+			},
+			{
+				displayName: 'Panelists Video',
+				name: 'panelists_video',
+				type: 'boolean',
+				default: false,
+				description: 'Start video when panelists joins the webinar.',
+			},
+			{
+				displayName: 'Practice Session',
+				name: 'practice_session',
+				type: 'boolean',
+				default: false,
+				description: 'Enable Practice session.',
+			},
+			{
 				displayName: 'Registration type',
 				name: 'registration_type',
 				type: 'options',
@@ -678,7 +614,51 @@ export const webinarFields = [
 				default: 1,
 				description: 'Registration type. Used for recurring webinars with fixed time only',
 			},
-
+			{
+				displayName: 'Start time',
+				name: 'startTime',
+				type: 'dateTime',
+				default: '',
+				description: 'Start time should be used only for scheduled or recurring webinar with fixed time',
+			},
+			{
+				displayName: 'Timezone',
+				name: 'timeZone',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTimezones',
+				},
+				default: '',
+				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+			},
+			{
+				displayName: 'Webinar topic',
+				name: 'topic',
+				type: 'string',
+				default: '',
+				description: `Webinar topic.`,
+			},
+			{
+				displayName: 'Webinar type',
+				name: 'type',
+				type: 'options',
+				options: [
+					{
+						name: 'Webinar',
+						value: 5,
+					},
+					{
+						name: 'Recurring webinar with no fixed time',
+						value: 6,
+					},
+					{
+						name: 'Recurring webinar with  fixed time',
+						value: 9,
+					},
+				],
+				default: 5,
+				description: 'Webinar type.'
+			},
 		],
 	},
 
