@@ -155,7 +155,7 @@ export const meetingRegistrantFields = [
 				description: 'Last Name.',
 			},
 			{
-				displayName: 'Occurrence Ids',
+				displayName: 'Occurrence IDs',
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',
@@ -251,7 +251,7 @@ export const meetingRegistrantFields = [
 	/*                                 meetingRegistrants:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -328,11 +328,11 @@ export const meetingRegistrantFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurrence Id',
+				displayName: 'Occurrence ID',
 				name: 'occurrence_id',
 				type: 'string',
 				default: '',
-				description: `Occurrence Id.`,
+				description: `Occurrence ID.`,
 			},
 			{
 				displayName: 'Status',
@@ -362,7 +362,7 @@ export const meetingRegistrantFields = [
 	/*                                 meetingRegistrants:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting Id',
+		displayName: 'Meeting ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -429,7 +429,7 @@ export const meetingRegistrantFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurrence Id',
+				displayName: 'Occurrence ID',
 				name: 'occurrenceId',
 				type: 'string',
 				default: '',

@@ -163,13 +163,13 @@ export class Zoom implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = (items.length as unknown) as number;
-		let qs: IDataObject;
+		let qs: IDataObject = {};
+		let body: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let body: IDataObject = {};
-		for (let i = 0; i < length; i++) {
+
+		for (let i = 0; i < items.length; i++) {
 			qs = {};
 			//https://marketplace.zoom.us/docs/api-reference/zoom-api/
 			if (resource === 'meeting') {
