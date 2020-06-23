@@ -14,22 +14,22 @@ export class HarvestOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
-			type: 'string' as NodePropertyTypes,
-			default: 'https://SUBDOMAIN_HERE.harvestapp.com/oauth2/authorize',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'https://id.getharvest.com/oauth2/authorize',
 			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
-			type: 'string' as NodePropertyTypes,
-			default: 'https://SUBDOMAIN_HERE.harvestapp.com/oauth2/token',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'https://id.getharvest.com/api/v2/oauth2/token',
 			required: true,
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
-			default: '',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'all',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
@@ -40,20 +40,8 @@ export class HarvestOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'options' as NodePropertyTypes,
-			options: [
-				{
-					name: 'Body',
-					value: 'body',
-					description: 'Send credentials in body',
-				},
-				{
-					name: 'Header',
-					value: 'header',
-					description: 'Send credentials as Basic Auth header',
-				},
-			],
-			default: 'header',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'body',
 			description: 'Resource to consume.',
 		},
 	];

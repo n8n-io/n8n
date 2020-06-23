@@ -7,15 +7,18 @@ import {
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 
-export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, qs: IDataObject = {}, uri: string, body: IDataObject = {}, option: IDataObject = {}, ): Promise<any> { // tslint:disable-line:no-any
+export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, qs: IDataObject = {}, path: string, body: IDataObject = {}, option: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	let options: OptionsWithUri = {
+		headers: {
+			'Harvest-Account-Id': `${this.getNodeParameter('accountId', 0)}`,
+			'User-Agent': 'Harvest App',
+			'Authorization': '',
+		},
 		method,
 		body,
-		uri: `https://api.harvestapp.com/v2/${uri}?`,
+		uri: uri || `https://api.harvestapp.com/v2/${path}`,
+		qs,
 		json: true,
-		headers: {
-			"User-Agent": "Harvest API"
-		}
 	};
 
 	options = Object.assign({}, options, option);
@@ -32,18 +35,11 @@ export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions
 				throw new Error('No credentials got returned!');
 			}
 
-			options.qs.access_token = credentials.accessToken;
-			options.qs.account_id = credentials.accountId;
-
-
-			const queryStringElements = convertToQueryString(qs);
-			options.uri = options.uri + queryStringElements.join('&');
+			//@ts-ignore
+			options.headers['Authorization'] = `Bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);
 		} else {
-			const queryStringElements = convertToQueryString(qs);
-			options.uri = options.uri + queryStringElements.join('&');
-
 			return await this.helpers.requestOAuth2!.call(this, 'harvestOAuth2Api', options);
 		}
 	} catch (error) {
@@ -90,20 +86,4 @@ export async function harvestApiRequestAllItems(
 		} catch(error) {
 		throw error;
 	}
-}
-
-// tslint:disable-next-line: no-any
-function convertToQueryString(qs : any) {
-	// Convert to query string into a format the API can read
-	const queryStringElements: string[] = [];
-	for (const key of Object.keys(qs)) {
-		if (Array.isArray(qs[key])) {
-			(qs[key] as string[]).forEach(value => {
-				queryStringElements.push(`${key}=${value}`);
-			});
-		} else {
-			queryStringElements.push(`${key}=${qs[key]}`);
-		}
-	}
-	return queryStringElements;
 }

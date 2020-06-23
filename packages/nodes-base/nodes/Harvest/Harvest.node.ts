@@ -1,11 +1,12 @@
 import {
-	IExecuteFunctions,
+	IExecuteFunctions, ILoadOptionsFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import { clientOperations, clientFields } from './ClientDescription';
@@ -23,7 +24,7 @@ import { userOperations, userFields } from './UserDescription';
 /**
  * fetch All resource using paginated calls
  */
-async function getAllResource(this: IExecuteFunctions, resource: string, i: number) {
+async function getAllResource(this: IExecuteFunctions | ILoadOptionsFunctions, resource: string, i: number) {
 	const endpoint = resource;
 	const qs: IDataObject = {};
 	const requestMethod = 'GET';
@@ -32,6 +33,7 @@ async function getAllResource(this: IExecuteFunctions, resource: string, i: numb
 
 	const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
 	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
 	Object.assign(qs, additionalFields);
 
 	let responseData: IDataObject = {};
@@ -155,6 +157,17 @@ export class Harvest implements INodeType {
 				description: 'The resource to operate on.',
 			},
 
+			{
+				displayName: 'Account ID',
+				name: 'accountId',
+				type: 'options',
+				required: true,
+				typeOptions: {
+					loadOptionsMethod: 'getAccounts',
+				},
+				default: '',
+			},
+
 			// operations
 			...clientOperations,
 			...companyOperations,
@@ -178,6 +191,26 @@ export class Harvest implements INodeType {
 			...timeEntryFields,
 			...userFields
 		]
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the available accounts to display them to user so that he can
+			// select them easily
+			async getAccounts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { accounts } = await harvestApiRequest.call(this, 'GET', {}, '', {}, {}, 'https://id.getharvest.com/api/v2/accounts');
+				for (const account of accounts) {
+					const accountName = account.name;
+					const accountId = account.id;
+					returnData.push({
+						name: accountName,
+						value: accountId,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
