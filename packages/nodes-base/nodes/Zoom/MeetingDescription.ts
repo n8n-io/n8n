@@ -66,7 +66,7 @@ export const meetingFields = [
 				],
 			},
 		},
-		description: 'User ID or email address of user.',
+		description: 'User ID or Email Address.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -95,22 +95,22 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Alternative Hosts',
-				name: 'alternative_hosts',
+				name: 'alternativeHosts',
 				type: 'string',
 				default: '',
 				description: 'Alternative hosts email IDs.',
 			},
 			{
 				displayName: 'Auto Recording',
-				name: 'auto_recording',
+				name: 'autoRecording',
 				type: 'options',
 				options: [
 					{
-						name: 'Record on local',
+						name: 'Record on Local',
 						value: 'local',
 					},
 					{
-						name: 'Record on cloud',
+						name: 'Record on Cloud',
 						value: 'cloud',
 					},
 					{
@@ -152,28 +152,28 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Host Meeting in China',
-				name: 'cn_meeting',
+				name: 'cnMeeting',
 				type: 'boolean',
 				default: false,
 				description: 'Host Meeting in China.',
 			},
 			{
 				displayName: 'Host Meeting in India',
-				name: 'in_meeting',
+				name: 'inMeeting',
 				type: 'boolean',
 				default: false,
 				description: 'Host Meeting in India.',
 			},
 			{
 				displayName: 'Host Video',
-				name: 'host_video',
+				name: 'hostVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Start video when host joins the meeting.',
 			},
 			{
-				displayName: 'Join before Host',
-				name: 'join_before_host',
+				displayName: 'Join Before Host',
+				name: 'joinBeforeHost',
 				type: 'boolean',
 				default: false,
 				description: 'Allow participants to join the meeting before host starts it.',
@@ -213,14 +213,14 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Muting before entry',
-				name: 'mute_upon_entry',
+				name: 'muteUponEntry',
 				type: 'boolean',
 				default: false,
 				description: 'Mute participants upon entry.',
 			},
 			{
 				displayName: 'Participant Video',
-				name: 'participant_video',
+				name: 'participantVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Start video when participant joins the meeting.',
@@ -234,7 +234,7 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Registration Type',
-				name: 'registration_type',
+				name: 'registrationType',
 				type: 'options',
 				options: [
 					{
@@ -546,14 +546,14 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Alternative Hosts',
-				name: 'alternative_hosts',
+				name: 'alternativeHosts',
 				type: 'string',
 				default: '',
 				description: 'Alternative hosts email IDs.',
 			},
 			{
 				displayName: 'Audio',
-				name: 'auto_recording',
+				name: 'audio',
 				type: 'options',
 				options: [
 					{
@@ -574,7 +574,7 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Auto Recording',
-				name: 'auto_recording',
+				name: 'autoRecording',
 				type: 'options',
 				options: [
 					{
@@ -603,28 +603,28 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Join Before Host',
-				name: 'join_before_host',
+				name: 'joinBeforeHost',
 				type: 'boolean',
 				default: false,
 				description: 'Allow participants to join the meeting before host starts it.',
 			},
 			{
 				displayName: 'Host Meeting in China',
-				name: 'cn_meeting',
+				name: 'cnMeeting',
 				type: 'boolean',
 				default: false,
 				description: 'Host Meeting in China.',
 			},
 			{
 				displayName: 'Host Meeting in India',
-				name: 'in_meeting',
+				name: 'inMeeting',
 				type: 'boolean',
 				default: false,
 				description: 'Host Meeting in India.',
 			},
 			{
 				displayName: 'Host Video',
-				name: 'host_video',
+				name: 'hostVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Start video when host joins the meeting.',
@@ -671,7 +671,7 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Muting Before Entry',
-				name: 'mute_upon_entry',
+				name: 'muteUponEntry',
 				type: 'boolean',
 				default: false,
 				description: 'Mute participants upon entry.',
@@ -685,14 +685,14 @@ export const meetingFields = [
 			},
 			{
 				displayName: 'Participant Video',
-				name: 'participant_video',
+				name: 'participantVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Start video when participant joins the meeting.',
 			},
 			{
 				displayName: 'Registration Type',
-				name: 'registration_type',
+				name: 'registrationType',
 				type: 'options',
 				options: [
 					{
