@@ -65,6 +65,9 @@ export class Zoom implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
+				// create a JWT app on Zoom Marketplace
+				//https://marketplace.zoom.us/develop/create
+				//get the JWT token as access token
 				name: 'zoomApi',
 				required: true,
 				displayOptions: {
@@ -76,6 +79,8 @@ export class Zoom implements INodeType {
 				},
 			},
 			{
+				//create a account level OAuth app
+				//https://marketplace.zoom.us/develop/create
 				name: 'zoomOAuth2Api',
 				required: true,
 				displayOptions: {
