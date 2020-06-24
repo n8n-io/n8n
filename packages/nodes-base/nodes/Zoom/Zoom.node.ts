@@ -603,30 +603,34 @@ export class Zoom implements INodeType {
 
 					}
 
-					if (additionalFields.alternative_hosts) {
-						settings.alternative_hosts = additionalFields.alternative_hosts as string;
+					if (additionalFields.alternativeHosts) {
+						settings.alternative_hosts = additionalFields.alternativeHosts as string;
 
 					}
 
-					if (additionalFields.panelists_video) {
-						settings.panelists_video = additionalFields.panelists_video as boolean;
+					if (additionalFields.panelistsVideo) {
+						settings.panelists_video = additionalFields.panelistsVideo as boolean;
 
 					}
-					if (additionalFields.practice_session) {
-						settings.practice_session = additionalFields.practice_session as boolean;
+					if (additionalFields.hostVideo) {
+						settings.host_video = additionalFields.hostVideo as boolean;
 
 					}
-					if (additionalFields.auto_recording) {
-						settings.auto_recording = additionalFields.auto_recording as string;
+					if (additionalFields.practiceSession) {
+						settings.practice_session = additionalFields.practiceSession as boolean;
+
+					}
+					if (additionalFields.autoRecording) {
+						settings.auto_recording = additionalFields.autoRecording as string;
 
 					}
 
-					if (additionalFields.registration_type) {
-						settings.registration_type = additionalFields.registration_type as number;
+					if (additionalFields.registrationType) {
+						settings.registration_type = additionalFields.registrationType as number;
 
 					}
-					if (additionalFields.approval_type) {
-						settings.approval_type = additionalFields.approval_type as number;
+					if (additionalFields.approvalType) {
+						settings.approval_type = additionalFields.approvalType as number;
 
 					}
 
@@ -823,7 +827,7 @@ export class Zoom implements INodeType {
 					responseData = await zoomApiRequest.call(
 						this,
 						'PATCH',
-						`/users/${webinarId}/webinars`,
+						`webinars/${webinarId}`,
 						body,
 						qs
 					);

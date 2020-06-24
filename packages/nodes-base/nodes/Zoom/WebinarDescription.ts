@@ -66,7 +66,7 @@ export const webinarFields = [
 				],
 			},
 		},
-		description: 'User ID or email address of user.',
+		description: 'User ID or email ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -95,14 +95,14 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Alternative Hosts',
-				name: 'alternative_hosts',
+				name: 'alternativeHosts',
 				type: 'string',
 				default: '',
 				description: 'Alternative hosts email IDs.',
 			},
 			{
 				displayName: 'Approval Type',
-				name: 'approval_type',
+				name: 'approvalType',
 				type: 'options',
 				options: [
 					{
@@ -145,7 +145,7 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Auto Recording',
-				name: 'auto_recording',
+				name: 'autoRecording',
 				type: 'options',
 				options: [
 					{
@@ -173,14 +173,14 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Host Video',
-				name: 'host_video',
+				name: 'hostVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Start video when host joins the webinar.',
 			},
 			{
 				displayName: 'Panelists Video',
-				name: 'panelists_video',
+				name: 'panelistsVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Start video when panelists joins the webinar.',
@@ -194,14 +194,14 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Practice Session',
-				name: 'practice_session',
+				name: 'practiceSession',
 				type: 'boolean',
 				default: false,
 				description: 'Enable Practice session.',
 			},
 			{
 				displayName: 'Registration Type',
-				name: 'registration_type',
+				name: 'registrationType',
 				type: 'options',
 				options: [
 					{
@@ -438,8 +438,8 @@ export const webinarFields = [
 	/*                                 webinar:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
-		name: 'userId',
+		displayName: 'Webinar ID',
+		name: 'webinarId',
 		type: 'string',
 		default: '',
 		required: true,
