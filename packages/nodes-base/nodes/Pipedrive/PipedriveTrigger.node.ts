@@ -55,7 +55,7 @@ export class PipedriveTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
-							'accessToken',
+							'basicAuth',
 						],
 					},
 				},
@@ -72,6 +72,7 @@ export class PipedriveTrigger implements INodeType {
 				},
 			},
 		],
+		],
 		webhooks: [
 			{
 				name: 'default',
@@ -87,17 +88,20 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
-						value: 'accessToken'
+						name: 'Basic Auth',
+						value: 'basicAuth'
 					},
 					{
 						name: 'OAuth2',
-						value: 'oAuth2'
+						value: 'oAuth2',
 					},
-
+					{
+						name: 'None',
+						value: 'none',
+					},
 				],
-				default: 'accessToken',
-				description: 'If authentication should be activated for the webhook (makes it more scure).',
+				default: 'basicAuth',
+				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Action',
