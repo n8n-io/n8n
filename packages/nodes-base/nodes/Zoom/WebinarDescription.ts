@@ -482,14 +482,14 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Alternative Hosts',
-				name: 'alternative_hosts',
+				name: 'alternativeHosts',
 				type: 'string',
 				default: '',
 				description: 'Alternative hosts email IDs.',
 			},
 			{
 				displayName: 'Approval Type',
-				name: 'approval_type',
+				name: 'approvalType',
 				type: 'options',
 				options: [
 					{
@@ -510,7 +510,7 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Auto Recording',
-				name: 'auto_recording',
+				name: 'autoRecording',
 				type: 'options',
 				options: [
 					{
@@ -560,14 +560,14 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Host Video',
-				name: 'host_video',
+				name: 'hostVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Start video when host joins the webinar.',
 			},
 			{
 				displayName: 'Occurrence ID',
-				name: 'occurrence_id',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
 				description: `Webinar occurrence ID.`,
@@ -581,21 +581,21 @@ export const webinarFields = [
 			},
 			{
 				displayName: 'Panelists Video',
-				name: 'panelists_video',
+				name: 'panelistsVideo',
 				type: 'boolean',
 				default: false,
 				description: 'Start video when panelists joins the webinar.',
 			},
 			{
 				displayName: 'Practice Session',
-				name: 'practice_session',
+				name: 'practiceSession',
 				type: 'boolean',
 				default: false,
 				description: 'Enable Practice session.',
 			},
 			{
 				displayName: 'Registration Type',
-				name: 'registration_type',
+				name: 'registrationType',
 				type: 'options',
 				options: [
 					{
