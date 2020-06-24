@@ -203,13 +203,21 @@ export class Zoom implements INodeType {
 					//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetings
 					const userId = this.getNodeParameter('userId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const additionalFields = this.getNodeParameter(
+						'additionalFields',
+						i
+					) as IDataObject;
+					if (additionalFields.type) {
+						qs.type = additionalFields.type as string;
+
+					}
 					if (returnAll) {
-						responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/users/${userId}/meetings`, {}, qs);
+						responseData = await zoomApiRequestAllItems.call(this, 'meetings', 'GET', `/users/${userId}/meetings`, {}, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.page_size = limit;
+						qs.page_size = this.getNodeParameter('limit', i) as number;;
 						responseData = await zoomApiRequest.call(this, 'GET', `/users/${userId}/meetings`, {}, qs);
-						responseData = responseData.results;
+
 					}
 
 				}

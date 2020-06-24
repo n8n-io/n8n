@@ -69,7 +69,7 @@ export const webinarFields = [
 		description: 'User ID or email address of user.',
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -263,7 +263,7 @@ export const webinarFields = [
 					},
 				],
 				default: 5,
-				description: 'Webinar type.'
+				description: 'Webinar type.',
 			},
 
 		],
@@ -290,7 +290,7 @@ export const webinarFields = [
 		description: 'Webinar ID.',
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -380,7 +380,7 @@ export const webinarFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 300
+			maxValue: 300,
 		},
 		default: 30,
 		description: 'How many results to return.',
@@ -397,7 +397,7 @@ export const webinarFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'delete'
+					'delete',
 				],
 				resource: [
 					'webinarId',
@@ -456,7 +456,7 @@ export const webinarFields = [
 		description: 'User ID or email address of user.',
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -470,7 +470,7 @@ export const webinarFields = [
 				resource: [
 					'webinar',
 				],
-			}
+			},
 		},
 		options: [
 			{
