@@ -215,7 +215,7 @@ export class Zoom implements INodeType {
 					if (returnAll) {
 						responseData = await zoomApiRequestAllItems.call(this, 'meetings', 'GET', `/users/${userId}/meetings`, {}, qs);
 					} else {
-						qs.page_size = this.getNodeParameter('limit', i) as number;;
+						qs.page_size = this.getNodeParameter('limit', i) as number;
 						responseData = await zoomApiRequest.call(this, 'GET', `/users/${userId}/meetings`, {}, qs);
 
 					}
@@ -559,10 +559,9 @@ export class Zoom implements INodeType {
 					if (returnAll) {
 						responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/meetings/${meetingId}/registrants`, {}, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.page_size = limit;
+						qs.page_size = this.getNodeParameter('limit', i) as number;
 						responseData = await zoomApiRequest.call(this, 'GET', `/meetings/${meetingId}/registrants`, {}, qs);
-						responseData = responseData.results;
+
 					}
 
 				}
@@ -708,10 +707,9 @@ export class Zoom implements INodeType {
 					if (returnAll) {
 						responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/users/${userId}/webinars`, {}, qs);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						qs.page_size = limit;
+						qs.page_size = this.getNodeParameter('limit', i) as number;
 						responseData = await zoomApiRequest.call(this, 'GET', `/users/${userId}/webinars`, {}, qs);
-						responseData = responseData.results;
+
 					}
 				}
 				if (operation === 'delete') {
