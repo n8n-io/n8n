@@ -12,13 +12,6 @@ export class DropboxOAuth2Api implements ICredentialType {
 	displayName = 'Dropbox OAuth2 API';
 	properties = [
 		{
-			displayName: 'Dropbox Server',
-			name: 'server',
-			type: 'string' as NodePropertyTypes,
-			default: 'https://api.dropboxapi.com',
-			description: 'The server to connect to. Does only have to get changed if Dropbox Enterprise gets used.',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
