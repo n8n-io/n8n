@@ -41,6 +41,7 @@ interface Settings {
 	join_before_host?: boolean;
 	mute_upon_entry?: boolean;
 	watermark?: boolean;
+	waiting_room?: boolean;
 	audio?: string;
 	alternative_hosts?: string;
 	auto_recording?: string;
@@ -277,6 +278,10 @@ export class Zoom implements INodeType {
 
 					if (additionalFields.muteUponEntry) {
 						settings.mute_upon_entry = additionalFields.muteUponEntry as boolean;
+
+					}
+					if (additionalFields.waitingRoom) {
+						settings.waiting_room = additionalFields.waitingRoom as boolean;
 
 					}
 
