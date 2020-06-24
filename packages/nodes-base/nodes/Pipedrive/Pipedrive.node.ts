@@ -64,7 +64,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
-							'accessToken',
+							'basicAuth',
 						],
 					},
 				},
@@ -88,16 +88,20 @@ export class Pipedrive implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
-						value: 'accessToken',
+						name: 'Basic Auth',
+						value: 'basicAuth'
 					},
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
 					},
+					{
+						name: 'None',
+						value: 'none',
+					},
 				],
-				default: 'accessToken',
-				description: 'The resource to operate on.',
+				default: 'basicAuth',
+				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Resource',
