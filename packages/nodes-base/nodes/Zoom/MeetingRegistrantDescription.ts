@@ -74,7 +74,7 @@ export const meetingRegistrantFields = [
 				],
 			},
 		},
-		description: 'Valid email-id of registrant.',
+		description: 'Valid Email-ID.',
 	},
 	{
 		displayName: 'First Name',
@@ -142,7 +142,7 @@ export const meetingRegistrantFields = [
 			},
 			{
 				displayName: 'Job Title',
-				name: 'job_title',
+				name: 'jobTitle',
 				type: 'string',
 				default: '',
 				description: 'Job title of registrant.',
@@ -177,7 +177,7 @@ export const meetingRegistrantFields = [
 			},
 			{
 				displayName: 'Purchasing Time Frame',
-				name: 'purchasing_time_frame',
+				name: 'purchasingTimeFrame',
 				type: 'options',
 				options: [
 					{
@@ -206,7 +206,7 @@ export const meetingRegistrantFields = [
 			},
 			{
 				displayName: 'Role in Purchase Process',
-				name: 'role_in_purchase_process',
+				name: 'roleInPurchaseProcess',
 				type: 'options',
 				options: [
 					{
@@ -329,7 +329,7 @@ export const meetingRegistrantFields = [
 		options: [
 			{
 				displayName: 'Occurrence ID',
-				name: 'occurrence_id',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
 				description: `Occurrence ID.`,

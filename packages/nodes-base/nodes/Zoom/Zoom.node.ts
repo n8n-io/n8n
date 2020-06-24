@@ -255,23 +255,23 @@ export class Zoom implements INodeType {
 						i
 					) as IDataObject;
 					const settings: Settings = {};
-					if (additionalFields.cn_meeting) {
-						settings.cn_meeting = additionalFields.cn_meeting as boolean;
+					if (additionalFields.cnMeeting) {
+						settings.cn_meeting = additionalFields.cnMeeting as boolean;
 
 					}
 
-					if (additionalFields.in_meeting) {
-						settings.in_meeting = additionalFields.in_meeting as boolean;
+					if (additionalFields.inMeeting) {
+						settings.in_meeting = additionalFields.inMeeting as boolean;
 
 					}
 
-					if (additionalFields.join_before_host) {
-						settings.join_before_host = additionalFields.join_before_host as boolean;
+					if (additionalFields.joinBeforeHost) {
+						settings.join_before_host = additionalFields.joinBeforeHost as boolean;
 
 					}
 
-					if (additionalFields.mute_upon_entry) {
-						settings.mute_upon_entry = additionalFields.mute_upon_entry as boolean;
+					if (additionalFields.muteUponEntry) {
+						settings.mute_upon_entry = additionalFields.muteUponEntry as boolean;
 
 					}
 
@@ -285,28 +285,28 @@ export class Zoom implements INodeType {
 
 					}
 
-					if (additionalFields.alternative_hosts) {
-						settings.alternative_hosts = additionalFields.alternative_hosts as string;
+					if (additionalFields.alternativeHosts) {
+						settings.alternative_hosts = additionalFields.alternativeHosts as string;
 
 					}
 
-					if (additionalFields.participant_video) {
-						settings.participant_video = additionalFields.participant_video as boolean;
+					if (additionalFields.participantVideo) {
+						settings.participant_video = additionalFields.participantVideo as boolean;
 
 					}
 
-					if (additionalFields.host_video) {
-						settings.host_video = additionalFields.host_video as boolean;
+					if (additionalFields.hostVideo) {
+						settings.host_video = additionalFields.hostVideo as boolean;
 
 					}
 
-					if (additionalFields.auto_recording) {
-						settings.auto_recording = additionalFields.auto_recording as string;
+					if (additionalFields.autoRecording) {
+						settings.auto_recording = additionalFields.autoRecording as string;
 
 					}
 
-					if (additionalFields.registration_type) {
-						settings.registration_type = additionalFields.registration_type as number;
+					if (additionalFields.registrationType) {
+						settings.registration_type = additionalFields.registrationType as number;
 
 					}
 
@@ -374,23 +374,23 @@ export class Zoom implements INodeType {
 						qs.occurrence_id = additionalFields.occurrenceId as string;
 					}
 
-					if (additionalFields.cn_meeting) {
-						settings.cn_meeting = additionalFields.cn_meeting as boolean;
+					if (additionalFields.cnMeeting) {
+						settings.cn_meeting = additionalFields.cnMeeting as boolean;
 
 					}
 
-					if (additionalFields.in_meeting) {
-						settings.in_meeting = additionalFields.in_meeting as boolean;
+					if (additionalFields.inMeeting) {
+						settings.in_meeting = additionalFields.inMeeting as boolean;
 
 					}
 
-					if (additionalFields.join_before_host) {
-						settings.join_before_host = additionalFields.join_before_host as boolean;
+					if (additionalFields.joinBeforeHost) {
+						settings.join_before_host = additionalFields.joinBeforeHost as boolean;
 
 					}
 
-					if (additionalFields.mute_upon_entry) {
-						settings.mute_upon_entry = additionalFields.mute_upon_entry as boolean;
+					if (additionalFields.muteUponEntry) {
+						settings.mute_upon_entry = additionalFields.muteUponEntry as boolean;
 
 					}
 
@@ -404,28 +404,28 @@ export class Zoom implements INodeType {
 
 					}
 
-					if (additionalFields.alternative_hosts) {
-						settings.alternative_hosts = additionalFields.alternative_hosts as string;
+					if (additionalFields.alternativeHosts) {
+						settings.alternative_hosts = additionalFields.alternativeHosts as string;
 
 					}
 
-					if (additionalFields.participant_video) {
-						settings.participant_video = additionalFields.participant_video as boolean;
+					if (additionalFields.participantVideo) {
+						settings.participant_video = additionalFields.participantVideo as boolean;
 
 					}
 
-					if (additionalFields.host_video) {
-						settings.host_video = additionalFields.host_video as boolean;
+					if (additionalFields.hostVideo) {
+						settings.host_video = additionalFields.hostVideo as boolean;
 
 					}
 
-					if (additionalFields.auto_recording) {
-						settings.auto_recording = additionalFields.auto_recording as string;
+					if (additionalFields.autoRecording) {
+						settings.auto_recording = additionalFields.autoRecording as string;
 
 					}
 
-					if (additionalFields.registration_type) {
-						settings.registration_type = additionalFields.registration_type as number;
+					if (additionalFields.registrationType) {
+						settings.registration_type = additionalFields.registrationType as number;
 
 					}
 
@@ -525,14 +525,14 @@ export class Zoom implements INodeType {
 					if (additionalFields.org) {
 						body.org = additionalFields.org as string;
 					}
-					if (additionalFields.job_title) {
-						body.job_title = additionalFields.job_title as string;
+					if (additionalFields.jobTitle) {
+						body.job_title = additionalFields.jobTitle as string;
 					}
-					if (additionalFields.purchasing_time_frame) {
-						body.purchasing_time_frame = additionalFields.purchasing_time_frame as string;
+					if (additionalFields.purchasingTimeFrame) {
+						body.purchasing_time_frame = additionalFields.purchasingTimeFrame as string;
 					}
-					if (additionalFields.role_in_purchase_process) {
-						body.role_in_purchase_process = additionalFields.role_in_purchase_process as string;
+					if (additionalFields.roleInPurchaseProcess) {
+						body.role_in_purchase_process = additionalFields.roleInPurchaseProcess as string;
 					}
 					responseData = await zoomApiRequest.call(
 						this,
@@ -574,6 +574,9 @@ export class Zoom implements INodeType {
 					) as IDataObject;
 					if (additionalFields.occurenceId) {
 						qs.occurrence_id = additionalFields.occurrenceId as string;
+					}
+					if (additionalFields.action) {
+						body.action = additionalFields.action as string;
 					}
 					responseData = await zoomApiRequest.call(
 						this,
