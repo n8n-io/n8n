@@ -22,12 +22,12 @@ export const meetingRegistrantOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update Meeting Registrant status',
+				description: 'Update Meeting Registrant Status',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Retrieve all meeting registrants',
+				description: 'Retrieve all Meeting Registrants',
 			},
 
 		],
@@ -77,7 +77,7 @@ export const meetingRegistrantFields = [
 		description: 'Valid email-id of registrant.',
 	},
 	{
-		displayName: 'First name',
+		displayName: 'First Name',
 		name: 'firstName',
 		required: true,
 		type: 'string',
@@ -95,7 +95,7 @@ export const meetingRegistrantFields = [
 		description: 'First Name.',
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -141,7 +141,7 @@ export const meetingRegistrantFields = [
 				description: 'Valid country of registrant.',
 			},
 			{
-				displayName: 'Job title',
+				displayName: 'Job Title',
 				name: 'job_title',
 				type: 'string',
 				default: '',
@@ -176,7 +176,7 @@ export const meetingRegistrantFields = [
 				description: 'Valid phone number of registrant.',
 			},
 			{
-				displayName: 'Purchasing time frame',
+				displayName: 'Purchasing Time Frame',
 				name: 'purchasing_time_frame',
 				type: 'options',
 				options: [
@@ -205,7 +205,7 @@ export const meetingRegistrantFields = [
 				description: 'Meeting type.',
 			},
 			{
-				displayName: 'Role in purchase process',
+				displayName: 'Role in Purchase Process',
 				name: 'role_in_purchase_process',
 				type: 'options',
 				options: [
@@ -238,7 +238,7 @@ export const meetingRegistrantFields = [
 				description: 'Valid state of registrant.',
 			},
 			{
-				displayName: 'Zip code',
+				displayName: 'Zip Code',
 				name: 'zip',
 				type: 'string',
 				default: '',
@@ -310,7 +310,7 @@ export const meetingRegistrantFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -412,7 +412,7 @@ export const meetingRegistrantFields = [
 		description: `Registrant Status.`,
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
