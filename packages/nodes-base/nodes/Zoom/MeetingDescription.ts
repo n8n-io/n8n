@@ -39,7 +39,7 @@ export const meetingOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a meeting',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -69,7 +69,7 @@ export const meetingFields = [
 		description: 'User ID or email address of user.',
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -83,7 +83,7 @@ export const meetingFields = [
 				resource: [
 					'meeting',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -209,7 +209,7 @@ export const meetingFields = [
 
 				],
 				default: 2,
-				description: 'Meeting type.'
+				description: 'Meeting type.',
 			},
 			{
 				displayName: 'Muting before entry',
@@ -219,7 +219,7 @@ export const meetingFields = [
 				description: 'Mute participants upon entry.',
 			},
 			{
-				displayName: 'Participant Video',
+				displayName: 'Participant video',
 				name: 'participant_video',
 				type: 'boolean',
 				default: false,
@@ -308,7 +308,7 @@ export const meetingFields = [
 		description: 'Meeting ID.',
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -398,13 +398,13 @@ export const meetingFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 300
+			maxValue: 300,
 		},
 		default: 30,
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -456,7 +456,7 @@ export const meetingFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'delete'
+					'delete',
 				],
 				resource: [
 					'meeting',
@@ -521,7 +521,7 @@ export const meetingFields = [
 		description: 'Meeting ID.',
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -667,7 +667,7 @@ export const meetingFields = [
 
 				],
 				default: 2,
-				description: 'Meeting type.'
+				description: 'Meeting type.',
 			},
 			{
 				displayName: 'Muting before entry',

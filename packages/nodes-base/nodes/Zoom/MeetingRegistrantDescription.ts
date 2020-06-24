@@ -95,7 +95,7 @@ export const meetingRegistrantFields = [
 		description: 'First Name.',
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -109,7 +109,7 @@ export const meetingRegistrantFields = [
 				resource: [
 					'meetingRegistrants',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -202,7 +202,7 @@ export const meetingRegistrantFields = [
 					},
 				],
 				default: '',
-				description: 'Meeting type.'
+				description: 'Meeting type.',
 			},
 			{
 				displayName: 'Role in purchase process',
@@ -228,7 +228,7 @@ export const meetingRegistrantFields = [
 
 				],
 				default: '',
-				description: 'Role in purchase process.'
+				description: 'Role in purchase process.',
 			},
 			{
 				displayName: 'State',
@@ -304,13 +304,13 @@ export const meetingRegistrantFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 300
+			maxValue: 300,
 		},
 		default: 30,
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -324,7 +324,7 @@ export const meetingRegistrantFields = [
 				resource: [
 					'meetingRegistrants',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -412,7 +412,7 @@ export const meetingRegistrantFields = [
 		description: `Registrant Status.`,
 	},
 	{
-		displayName: 'Additional settings',
+		displayName: 'Additional fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
