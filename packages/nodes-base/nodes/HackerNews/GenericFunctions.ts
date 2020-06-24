@@ -4,11 +4,12 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, ILoadOptionsFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 import {
-	OptionsWithUri
+	OptionsWithUri,
 } from 'request';
 
 
@@ -23,13 +24,23 @@ import {
  */
 export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, qs: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
-		method: method,
+		method,
 		qs,
 		uri: `http://hn.algolia.com/api/v1/${endpoint}`,
 		json: true,
 	};
 
-	return await this.helpers.request!(options);
+	try {
+		return await this.helpers.request!(options);
+	} catch (error) {
+
+		if (error.response && error.response.body && error.response.body.error) {
+			// Try to return the error prettier
+			throw new Error(`Hacker News error response [${error.statusCode}]: ${error.response.body.error}`);
+		}
+
+		throw error;
+	}
 }
 
 
