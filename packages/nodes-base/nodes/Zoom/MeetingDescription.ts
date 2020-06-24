@@ -278,6 +278,13 @@ export const meetingFields = [
 				description: `Time zone used in the response. The default is the time zone of the calendar.`,
 			},
 			{
+				displayName: 'Waiting Room',
+				name: 'waitingRoom',
+				type: 'boolean',
+				default: false,
+				description: 'Enable waiting room.',
+			},
+			{
 				displayName: 'Watermark',
 				name: 'watermark',
 				type: 'boolean',
