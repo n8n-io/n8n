@@ -62,7 +62,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 	let responseData;
 
 	try {
-		if (authenticationMethod === 'accessToken') {
+		if (authenticationMethod === 'basicAuth') {
 
 			const credentials = this.getCredentials('pipedriveApi');
 			if (credentials === undefined) {
