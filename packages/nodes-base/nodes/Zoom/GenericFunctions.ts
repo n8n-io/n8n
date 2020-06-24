@@ -75,6 +75,7 @@ export async function zoomApiRequestAllItems(
 	// tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
 	let responseData;
+	query.page_number = 0;
 	do {
 		responseData = await zoomApiRequest.call(
 			this,
@@ -83,14 +84,21 @@ export async function zoomApiRequestAllItems(
 			body,
 			query
 		);
-		query.page_number = responseData['page_number'];
+		query.page_number++;
 		returnData.push.apply(returnData, responseData[propertyName]);
+		// zoom free plan rate limit is 1 request/second
+		// TODO just wait when the plan is free
+		await wait();
 	} while (
-		responseData['page_number'] !== undefined &&
-		responseData['page_number'] !== ''
+		responseData.page_count !== responseData.page_number
 	);
 
 	return returnData;
 }
-
-
+function wait() {
+	return new Promise((resolve, reject) => {
+		setTimeout(() => {
+			resolve(true);
+		}, 1000);
+	});
+}

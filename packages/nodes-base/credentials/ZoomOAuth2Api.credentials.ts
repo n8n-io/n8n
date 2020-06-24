@@ -1,14 +1,7 @@
-import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
-
-const userScopes = [
-	'meeting:read',
-	'meeting:write',
-	'user:read',
-	'user:write',
-	'user_profile',
-	'webinar:read',
-	'webinar:write'
-];
+import {
+	ICredentialType,
+	NodePropertyTypes,
+} from 'n8n-workflow';
 
 export class ZoomOAuth2Api implements ICredentialType {
 	name = 'zoomOAuth2Api';
@@ -27,7 +20,6 @@ export class ZoomOAuth2Api implements ICredentialType {
 			type: 'hidden' as NodePropertyTypes,
 			default: 'https://zoom.us/oauth/token'
 		},
-
 		{
 			displayName: 'Scope',
 			name: 'scope',
