@@ -1,5 +1,5 @@
 import {
-	IExecuteFunctions
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
@@ -11,7 +11,7 @@ import {
 
 import {
 	hackerNewsApiRequest,
-	hackerNewsApiRequestAllItems
+	hackerNewsApiRequestAllItems,
 } from './GenericFunctions';
 
 export class HackerNews implements INodeType {
@@ -40,12 +40,12 @@ export class HackerNews implements INodeType {
 				options: [
 					{
 						name: 'Article',
-						value: 'article'
+						value: 'article',
 					},
 					{
 						name: 'User',
-						value: 'user'
-					}
+						value: 'user',
+					},
 				],
 				default: 'article',
 				description: 'Resource to consume.',
@@ -60,7 +60,7 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'article'
+							'article',
 						],
 					},
 				},
@@ -74,7 +74,7 @@ export class HackerNews implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all Hacker News articles',
-					}
+					},
 				],
 				default: 'get',
 				description: 'Operation to perform.',
@@ -86,7 +86,7 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'user'
+							'user',
 						],
 					},
 				},
@@ -95,7 +95,7 @@ export class HackerNews implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get a Hacker News user',
-					}
+					},
 				],
 				default: 'get',
 				description: 'Operation to perform.',
@@ -113,10 +113,10 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'article'
+							'article',
 						],
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -131,10 +131,10 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'user'
+							'user',
 						],
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -148,10 +148,10 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'article'
+							'article',
 						],
 						operation: [
-							'getAll'
+							'getAll',
 						],
 					},
 				},
@@ -165,13 +165,13 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'article'
+							'article',
 						],
 						operation: [
-							'getAll'
+							'getAll',
 						],
 						returnAll: [
-							false
+							false,
 						],
 					},
 				},
@@ -185,10 +185,10 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'article'
+							'article',
 						],
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -198,9 +198,9 @@ export class HackerNews implements INodeType {
 						name: 'includeComments',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to include all the comments in a Hacker News article.'
+						description: 'Whether to include all the comments in a Hacker News article.',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Additional Fields',
@@ -211,10 +211,10 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'article'
+							'article',
 						],
 						operation: [
-							'getAll'
+							'getAll',
 						],
 					},
 				},
@@ -260,14 +260,14 @@ export class HackerNews implements INodeType {
 								name: 'Front Page',
 								value: 'front_page', // snake case per HN tags
 								description: 'Returns query results filtered by Front Page tag',
-							}
+							},
 						],
 						default: '',
 						description: 'Tags for filtering the results of the query.',
-					}
-				]
-			}
-		]
+					},
+				],
+			},
+		],
 	};
 
 
@@ -335,8 +335,9 @@ export class HackerNews implements INodeType {
 				responseData = await hackerNewsApiRequestAllItems.call(this, 'GET', endpoint, qs);
 			} else {
 				responseData = await hackerNewsApiRequest.call(this, 'GET', endpoint, qs);
-				if (resource === 'article' && operation === 'getAll')
-				responseData = responseData.hits;
+				if (resource === 'article' && operation === 'getAll') {
+					responseData = responseData.hits;
+				}
 			}
 
 			if (resource === 'article' && operation === 'get' && !includeComments) {
