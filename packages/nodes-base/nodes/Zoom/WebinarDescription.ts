@@ -69,7 +69,7 @@ export const webinarFields = [
 		description: 'User ID or email address of user.',
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -101,20 +101,20 @@ export const webinarFields = [
 				description: 'Alternative hosts email IDs.',
 			},
 			{
-				displayName: 'Approval type',
+				displayName: 'Approval Type',
 				name: 'approval_type',
 				type: 'options',
 				options: [
 					{
-						name: 'Automatically approve',
+						name: 'Automatically Approve',
 						value: 0,
 					},
 					{
-						name: 'Manually approve',
+						name: 'Manually Approve',
 						value: 1,
 					},
 					{
-						name: 'No registration required',
+						name: 'No Registration Required',
 						value: 2,
 					},
 				],
@@ -144,16 +144,16 @@ export const webinarFields = [
 				description: 'Determine how participants can join audio portion of the webinar.',
 			},
 			{
-				displayName: 'Auto recording',
+				displayName: 'Auto Recording',
 				name: 'auto_recording',
 				type: 'options',
 				options: [
 					{
-						name: 'Record on local',
+						name: 'Record on Local',
 						value: 'local',
 					},
 					{
-						name: 'Record on cloud',
+						name: 'Record on Cloud',
 						value: 'cloud',
 					},
 					{
@@ -200,7 +200,7 @@ export const webinarFields = [
 				description: 'Enable Practice session.',
 			},
 			{
-				displayName: 'Registration type',
+				displayName: 'Registration Type',
 				name: 'registration_type',
 				type: 'options',
 				options: [
@@ -221,7 +221,7 @@ export const webinarFields = [
 				description: 'Registration type. Used for recurring webinar with fixed time only',
 			},
 			{
-				displayName: 'Start time',
+				displayName: 'Start Time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
@@ -238,14 +238,14 @@ export const webinarFields = [
 				description: `Time zone used in the response. The default is the time zone of the calendar.`,
 			},
 			{
-				displayName: 'Webinar topic',
+				displayName: 'Webinar Topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
 				description: `Webinar topic.`,
 			},
 			{
-				displayName: 'Webinar type',
+				displayName: 'Webinar Type',
 				name: 'type',
 				type: 'options',
 				options: [
@@ -258,7 +258,7 @@ export const webinarFields = [
 						value: 6,
 					},
 					{
-						name: 'Recurring webinar with  fixed time',
+						name: 'Recurring webinar with fixed time',
 						value: 9,
 					},
 				],
@@ -290,7 +290,7 @@ export const webinarFields = [
 		description: 'Webinar ID.',
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -456,7 +456,7 @@ export const webinarFields = [
 		description: 'User ID or email address of user.',
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -488,20 +488,20 @@ export const webinarFields = [
 				description: 'Alternative hosts email IDs.',
 			},
 			{
-				displayName: 'Approval type',
+				displayName: 'Approval Type',
 				name: 'approval_type',
 				type: 'options',
 				options: [
 					{
-						name: 'Automatically approve',
+						name: 'Automatically Approve',
 						value: 0,
 					},
 					{
-						name: 'Manually approve',
+						name: 'Manually Approve',
 						value: 1,
 					},
 					{
-						name: 'No registration required',
+						name: 'No Registration Required',
 						value: 2,
 					},
 				],
@@ -509,16 +509,16 @@ export const webinarFields = [
 				description: 'Approval type.',
 			},
 			{
-				displayName: 'Auto recording',
+				displayName: 'Auto Recording',
 				name: 'auto_recording',
 				type: 'options',
 				options: [
 					{
-						name: 'Record on local',
+						name: 'Record on Local',
 						value: 'local',
 					},
 					{
-						name: 'Record on cloud',
+						name: 'Record on Cloud',
 						value: 'cloud',
 					},
 					{
@@ -594,7 +594,7 @@ export const webinarFields = [
 				description: 'Enable Practice session.',
 			},
 			{
-				displayName: 'Registration type',
+				displayName: 'Registration Type',
 				name: 'registration_type',
 				type: 'options',
 				options: [
@@ -615,7 +615,7 @@ export const webinarFields = [
 				description: 'Registration type. Used for recurring webinars with fixed time only.',
 			},
 			{
-				displayName: 'Start time',
+				displayName: 'Start Time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
@@ -632,14 +632,14 @@ export const webinarFields = [
 				description: `Time zone used in the response. The default is the time zone of the calendar.`,
 			},
 			{
-				displayName: 'Webinar topic',
+				displayName: 'Webinar Topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
 				description: `Webinar topic.`,
 			},
 			{
-				displayName: 'Webinar type',
+				displayName: 'Webinar Type',
 				name: 'type',
 				type: 'options',
 				options: [
@@ -652,7 +652,7 @@ export const webinarFields = [
 						value: 6,
 					},
 					{
-						name: 'Recurring webinar with  fixed time',
+						name: 'Recurring webinar with fixed time',
 						value: 9,
 					},
 				],

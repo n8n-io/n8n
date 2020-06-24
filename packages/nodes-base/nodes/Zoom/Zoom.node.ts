@@ -483,7 +483,7 @@ export class Zoom implements INodeType {
 
 				}
 			}
-			if (resource === 'meetingRegistrant') {
+			if (resource === 'meetingRegistrants') {
 				if (operation === 'create') {
 					//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingregistrantcreate
 					const meetingId = this.getNodeParameter('meetingId', i) as string;

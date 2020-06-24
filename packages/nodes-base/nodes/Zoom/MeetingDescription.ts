@@ -69,7 +69,7 @@ export const meetingFields = [
 		description: 'User ID or email address of user.',
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -101,7 +101,7 @@ export const meetingFields = [
 				description: 'Alternative hosts email IDs.',
 			},
 			{
-				displayName: 'Auto recording',
+				displayName: 'Auto Recording',
 				name: 'auto_recording',
 				type: 'options',
 				options: [
@@ -179,14 +179,14 @@ export const meetingFields = [
 				description: 'Allow participants to join the meeting before host starts it.',
 			},
 			{
-				displayName: 'Meeting topic',
+				displayName: 'Meeting Topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
 				description: `Meeting topic.`,
 			},
 			{
-				displayName: 'Meeting type',
+				displayName: 'Meeting Type',
 				name: 'type',
 				type: 'options',
 				options: [
@@ -199,11 +199,11 @@ export const meetingFields = [
 						value: 2,
 					},
 					{
-						name: 'Recurring meeting with no fixed time',
+						name: 'Recurring Meeting with no fixed time',
 						value: 3,
 					},
 					{
-						name: 'Recurring meeting with no fixed time',
+						name: 'Recurring Meeting with fixed time',
 						value: 8,
 					},
 
@@ -219,7 +219,7 @@ export const meetingFields = [
 				description: 'Mute participants upon entry.',
 			},
 			{
-				displayName: 'Participant video',
+				displayName: 'Participant Video',
 				name: 'participant_video',
 				type: 'boolean',
 				default: false,
@@ -233,7 +233,7 @@ export const meetingFields = [
 				description: 'Password to join the meeting with maximum 10 characters.',
 			},
 			{
-				displayName: 'Registration type',
+				displayName: 'Registration Type',
 				name: 'registration_type',
 				type: 'options',
 				options: [
@@ -254,14 +254,14 @@ export const meetingFields = [
 				description: 'Registration type. Used for recurring meetings with fixed time only',
 			},
 			{
-				displayName: 'Schedule for',
+				displayName: 'Schedule For',
 				name: 'scheduleFor',
 				type: 'string',
 				default: '',
 				description: 'Schedule meeting for someone else from your account, provide their email ID.',
 			},
 			{
-				displayName: 'Start time',
+				displayName: 'Start Time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
@@ -308,7 +308,7 @@ export const meetingFields = [
 		description: 'Meeting ID.',
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -404,7 +404,7 @@ export const meetingFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -490,7 +490,7 @@ export const meetingFields = [
 				description: 'Meeting occurrence ID.',
 			},
 			{
-				displayName: 'Schedule a reminder',
+				displayName: 'Schedule Reminder',
 				name: 'scheduleForReminder',
 				type: 'boolean',
 				default: false,
@@ -521,7 +521,7 @@ export const meetingFields = [
 		description: 'Meeting ID.',
 	},
 	{
-		displayName: 'Additional fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
@@ -573,16 +573,16 @@ export const meetingFields = [
 				description: 'Determine how participants can join audio portion of the meeting.',
 			},
 			{
-				displayName: 'Auto recording',
+				displayName: 'Auto Recording',
 				name: 'auto_recording',
 				type: 'options',
 				options: [
 					{
-						name: 'Record on local',
+						name: 'Record on Local',
 						value: 'local',
 					},
 					{
-						name: 'Record on cloud',
+						name: 'Record on Cloud',
 						value: 'cloud',
 					},
 					{
@@ -602,7 +602,7 @@ export const meetingFields = [
 				description: 'Duration.',
 			},
 			{
-				displayName: 'Join before Host',
+				displayName: 'Join Before Host',
 				name: 'join_before_host',
 				type: 'boolean',
 				default: false,
@@ -637,14 +637,14 @@ export const meetingFields = [
 				description: 'Occurrence ID.',
 			},
 			{
-				displayName: 'Meeting topic',
+				displayName: 'Meeting Topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
 				description: `Meeting topic.`,
 			},
 			{
-				displayName: 'Meeting type',
+				displayName: 'Meeting Type',
 				name: 'type',
 				type: 'options',
 				options: [
@@ -657,11 +657,11 @@ export const meetingFields = [
 						value: 2,
 					},
 					{
-						name: 'Recurring meeting with no fixed time',
+						name: 'Recurring Meeting with no fixed time',
 						value: 3,
 					},
 					{
-						name: 'Recurring meeting with no fixed time',
+						name: 'Recurring Meeting with fixed time',
 						value: 8,
 					},
 
@@ -670,7 +670,7 @@ export const meetingFields = [
 				description: 'Meeting type.',
 			},
 			{
-				displayName: 'Muting before entry',
+				displayName: 'Muting Before Entry',
 				name: 'mute_upon_entry',
 				type: 'boolean',
 				default: false,
@@ -691,7 +691,7 @@ export const meetingFields = [
 				description: 'Start video when participant joins the meeting.',
 			},
 			{
-				displayName: 'Registration type',
+				displayName: 'Registration Type',
 				name: 'registration_type',
 				type: 'options',
 				options: [
@@ -712,14 +712,14 @@ export const meetingFields = [
 				description: 'Registration type. Used for recurring meetings with fixed time only',
 			},
 			{
-				displayName: 'Schedule for',
+				displayName: 'Schedule For',
 				name: 'scheduleFor',
 				type: 'string',
 				default: '',
 				description: 'Schedule meeting for someone else from your account, provide their email ID.',
 			},
 			{
-				displayName: 'Start time',
+				displayName: 'Start Time',
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
