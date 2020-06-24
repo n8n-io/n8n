@@ -1,6 +1,7 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
+
 export const meetingRegistrantOperations = [
 	{
 		displayName: 'Operation',
@@ -9,7 +10,7 @@ export const meetingRegistrantOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -38,7 +39,7 @@ export const meetingRegistrantOperations = [
 
 export const meetingRegistrantFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 meetingRegistrants:create                                */
+	/*                                 meetingRegistrant:create                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Meeting Id',
@@ -52,7 +53,7 @@ export const meetingRegistrantFields = [
 					'create',
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -70,7 +71,7 @@ export const meetingRegistrantFields = [
 					'create',
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -88,7 +89,7 @@ export const meetingRegistrantFields = [
 					'create',
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -107,7 +108,7 @@ export const meetingRegistrantFields = [
 
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -248,7 +249,7 @@ export const meetingRegistrantFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 meetingRegistrants:getAll                                */
+	/*                                 meetingRegistrant:getAll                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Meeting ID',
@@ -262,7 +263,7 @@ export const meetingRegistrantFields = [
 					'getAll',
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -278,7 +279,7 @@ export const meetingRegistrantFields = [
 					'getAll',
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -295,7 +296,7 @@ export const meetingRegistrantFields = [
 					'getAll',
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 				returnAll: [
 					false,
@@ -322,7 +323,7 @@ export const meetingRegistrantFields = [
 
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -359,7 +360,7 @@ export const meetingRegistrantFields = [
 		]
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 meetingRegistrants:update                                */
+	/*                                 meetingRegistrant:update                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Meeting ID',
@@ -373,7 +374,7 @@ export const meetingRegistrantFields = [
 					'update',
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -390,7 +391,7 @@ export const meetingRegistrantFields = [
 					'update',
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
@@ -423,7 +424,7 @@ export const meetingRegistrantFields = [
 					'update',
 				],
 				resource: [
-					'meetingRegistrants',
+					'meetingRegistrant',
 				],
 			},
 		},
