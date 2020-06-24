@@ -36,8 +36,6 @@ export async function SIGNL4ApiRequest(this: IHookFunctions | IExecuteFunctions,
 	}
 	catch (error) {
 		
-		throw new Error(`I am behind. Status: ${JSON.stringify(teamsecret)}`);
-
 		if (error && error.message) {
 			throw new Error(`Error sending the SIGNL4 request. Error: ${JSON.stringify(error.message)}`);
 		}
