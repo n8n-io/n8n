@@ -1,4 +1,5 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -209,7 +210,7 @@ export class Nasa implements INodeType {
 						description: 'Browse the overall asteroid dataset',
 					},
 				],
-				default: 'get',
+				default: 'getAll',
 				description: 'The operation to perform',
 			},
 			{
@@ -345,7 +346,7 @@ export class Nasa implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'radiationBeltEnhancement',
+							'donkiRadiationBeltEnhancement',
 						],
 					},
 				},
@@ -366,7 +367,7 @@ export class Nasa implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'highSpeedStream',
+							'donkiHighSpeedStream',
 						],
 					},
 				},
@@ -804,26 +805,7 @@ export class Nasa implements INodeType {
 				],
 			},
 
-			/* date, latitude, longitude and degrees for earthImagery and earthAssets*/
-			{
-				displayName: 'Date',
-				name: 'date',
-				type: 'string',
-				default: '',
-				placeholder: 'YYYY-MM-DD',
-				description: 'Date of the image',
-				displayOptions: {
-					show: {
-						resource: [
-							'earthImagery',
-							'earthAssets',
-						],
-						operation: [
-							'get',
-						],
-					},
-				},
-			},
+			/* latitude, longitude and additionaFields (date, degrees) for earthImagery and earthAssets*/
 			{
 				displayName: 'Latitude',
 				name: 'lat',
@@ -863,12 +845,11 @@ export class Nasa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Degrees',
-				name: 'dim',
-				type: 'number',
-				default: '',
-				placeholder: '0.025',
-				description: 'Width and height of the image in degrees',
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add field',
 				displayOptions: {
 					show: {
 						resource: [
@@ -880,6 +861,24 @@ export class Nasa implements INodeType {
 						],
 					},
 				},
+				options: [
+					{
+						displayName: 'Date',
+						name: 'date',
+						type: 'string',
+						default: '',
+						placeholder: 'YYYY-MM-DD',
+						description: 'Date of the image',
+					},
+					{
+						displayName: 'Degrees',
+						name: 'dim',
+						type: 'number',
+						default: '',
+						placeholder: '0.025',
+						description: 'Width and height of the image in degrees',
+					},
+				],
 			},
 
 			/* sol and additional fields (camera and page) for marsRoverPhotos */
@@ -1002,12 +1001,23 @@ export class Nasa implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
+		let responseData;
+
 		for (let i = 0; i < items.length; i++) {
 
 			let endpoint = '';
 			let qs: IDataObject = {};
 			let includeCloseApproachData = false;
-			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+			// additionalFields are brought up here to prevent repetition on most endpoints.
+			// The few endpoints like asteroidNeoBrowse that do not have additionalFields
+			// trigger an error in getNodeParameter dealt with in the catch block.
+			let additionalFields;
+			try {
+				additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+			} catch (error) {
+				additionalFields = {} as IDataObject;
+			}
 
 			if (resource === 'astronomyPictureOfTheDay') {
 
@@ -1015,9 +1025,7 @@ export class Nasa implements INodeType {
 
 					endpoint = '/planetary/apod';
 
-					qs = {
-						date: additionalFields.date as string,
-					};
+					qs.date = additionalFields.date as string || formatDate(new Date());
 
 				} else {
 					throw new Error(`The operation '${operation}' is unknown!`);
@@ -1031,19 +1039,8 @@ export class Nasa implements INodeType {
 
 					// The range defaults to the current date to reduce the number of results.
 					const currentDate = formatDate(new Date());
-
-					qs = {
-						start_date: currentDate,
-						end_date: currentDate
-					};
-
-					if (additionalFields.startDate) {
-						qs.start_date = additionalFields.startDate as string;
-					}
-
-					if (additionalFields.endDate) {
-						qs.end_date = additionalFields.endDate as string;
-					}
+					qs.start_date = additionalFields.startDate as string || currentDate;
+					qs.end_date = additionalFields.endDate as string || currentDate;
 
 				} else {
 					throw new Error(`The operation '${operation}' is unknown!`);
@@ -1053,7 +1050,7 @@ export class Nasa implements INodeType {
 
 				if (operation === 'get') {
 
-					const asteroidId = this.getNodeParameter('asteroidId', i) as IDataObject
+					const asteroidId = this.getNodeParameter('asteroidId', i) as IDataObject;
 
 					includeCloseApproachData = additionalFields.includeCloseApproachData as boolean;
 
@@ -1076,22 +1073,17 @@ export class Nasa implements INodeType {
 
 			} else if (resource.startsWith("donki")) {
 
-				// All `donki-` resources accept start date and end date.
-
-				// The range defaults to the current date to reduce the number of results.
-				const currentDate = formatDate(new Date());
-
-				qs = {
-					start_date: currentDate,
-					end_date: currentDate,
-				}
-
 				if (additionalFields.startDate) {
-					qs.start_date = additionalFields.startDate as string;
+					qs.startDate = additionalFields.startDate as string;
+				} else {
+					const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate()-30));
+					qs.startDate = formatDate(thirtyDaysAgo); // default per API
 				}
 
 				if (additionalFields.endDate) {
-					qs.end_date = additionalFields.endDate as string;
+					qs.endDate = additionalFields.endDate as string;
+				} else {
+					qs.endDate = formatDate(new Date()); // default per API
 				}
 
 				if (resource === 'donkiCoronalMassEjection') {
@@ -1120,13 +1112,8 @@ export class Nasa implements INodeType {
 
 						endpoint = '/DONKI/IPS';
 
-						if (additionalFields.location) {
-							qs.location = additionalFields.location as string;
-						}
-
-						if (additionalFields.catalog) {
-							qs.catalog = additionalFields.catalog as string;
-						}
+						qs.location = additionalFields.location as string || "ALL"; // default per API
+						qs.catalog = additionalFields.catalog as string || "ALL"; // default per API
 
 					} else {
 						throw new Error(`The operation '${operation}' is unknown!`);
@@ -1142,7 +1129,7 @@ export class Nasa implements INodeType {
 						throw new Error(`The operation '${operation}' is unknown!`);
 					}
 
-				} else if (resource === 'donkiEnergeticParticle') {
+				} else if (resource === 'donkiSolarEnergeticParticle') {
 
 					if (operation === 'get') {
 
@@ -1196,11 +1183,9 @@ export class Nasa implements INodeType {
 
 					if (operation === 'get') {
 
-						endpoint = '/DONKI/Notifications';
+						endpoint = '/DONKI/notifications';
 
-						if (additionalFields.type) {
-							qs.type = additionalFields.type as string;
-						}
+						qs.type = additionalFields.type as string || "all"; // default per API
 
 					} else {
 						throw new Error(`The operation '${operation}' is unknown!`);
@@ -1214,17 +1199,10 @@ export class Nasa implements INodeType {
 
 					endpoint = '/planetary/earth/imagery';
 
-					if (additionalFields.lat) {
-						qs.lat = additionalFields.lat as string;
-					}
+					qs.lat = this.getNodeParameter('lat', i) as IDataObject;
+					qs.lon = this.getNodeParameter('lon', i) as IDataObject;
 
-					if (additionalFields.lon) {
-						qs.lon = additionalFields.lon as string;
-					}
-
-					if (additionalFields.dim) {
-						qs.dim = additionalFields.dim as string;
-					}
+					qs.dim = additionalFields.dim as string || 0.025; // default per API
 
 					if (additionalFields.date) {
 						qs.date = additionalFields.date as string;
@@ -1240,17 +1218,10 @@ export class Nasa implements INodeType {
 
 					endpoint = '/planetary/earth/assets';
 
-					if (additionalFields.lat) {
-						qs.lat = additionalFields.lat as string;
-					}
+					qs.lat = this.getNodeParameter('lat', i) as IDataObject;
+					qs.lon = this.getNodeParameter('lon', i) as IDataObject;
 
-					if (additionalFields.lon) {
-						qs.lon = additionalFields.lon as string;
-					}
-
-					if (additionalFields.dim) {
-						qs.dim = additionalFields.dim as string;
-					}
+					qs.dim = additionalFields.dim as string || 0.025; // default per API
 
 					if (additionalFields.date) {
 						qs.date = additionalFields.date as string;
@@ -1315,11 +1286,28 @@ export class Nasa implements INodeType {
 			} else {
 				throw new Error(`The resource '${resource}' is unknown!`);
 			}
-
-				const responseData = await nasaApiRequest.call(this, 'GET', endpoint, qs);
+				responseData = await nasaApiRequest.call(this, 'GET', endpoint, qs);
+				// console.log("RESPONSE DATA");
+				// console.log(responseData);
 
 				if (resource === 'asteroidNeoLookup' && operation === 'get' && !includeCloseApproachData) {
 					delete responseData.close_approach_data;
+				}
+
+				if (resource === 'earthImagery') {
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
+
+					if (items[i].binary !== undefined) {
+						Object.assign(newItem.binary, items[i].binary);
+					}
+
+					items[i] = newItem;
+
+					const binaryDataBuffer = Buffer.from(responseData, BINARY_ENCODING);
+					items[i].binary!["Earth Satellite Imagery"] = await this.helpers.prepareBinaryData(binaryDataBuffer);
 				}
 
 				if (Array.isArray(responseData)) {
@@ -1330,6 +1318,11 @@ export class Nasa implements INodeType {
 
 			}
 
-			return [this.helpers.returnJsonArray(returnData)];
+			if (resource === 'earthImagery' && operation === 'get') {
+				return this.prepareOutputData(items);
+			} else {
+				return [this.helpers.returnJsonArray(returnData)];
+			}
+
 		}
 	}

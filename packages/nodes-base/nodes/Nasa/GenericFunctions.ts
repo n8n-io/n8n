@@ -63,7 +63,9 @@ export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, m
 			const baseUrl = 'https://api.nasa.gov';
 			options.uri = `${baseUrl}${endpoint}`;
 
-			console.log(options.uri); // TODO: DELETE
+			console.log("URL:\n" + options.uri);
+			console.log("QUERY STRINGS:")
+			console.log(options.qs);
 
 			return await this.helpers.request(options);
 
