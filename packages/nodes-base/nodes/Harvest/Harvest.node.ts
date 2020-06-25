@@ -58,7 +58,7 @@ export class Harvest implements INodeType {
 		description: 'Access data on Harvest',
 		defaults: {
 			name: 'Harvest',
-			color: '#22BB44',
+			color: '#e7863f',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
