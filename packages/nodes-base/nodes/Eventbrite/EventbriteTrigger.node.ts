@@ -38,7 +38,7 @@ export class EventbriteTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
-							'accessToken',
+							'privateKey',
 						],
 					},
 				},
@@ -70,15 +70,15 @@ export class EventbriteTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
-						value: 'accessToken',
+						name: 'Private Key',
+						value: 'privateKey',
 					},
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
 					},
 				],
-				default: 'accessToken',
+				default: 'privateKey',
 				description: 'The resource to operate on.',
 			},
 			{
@@ -184,7 +184,6 @@ export class EventbriteTrigger implements INodeType {
 				description: 'By default does the webhook-data only contain the URL to receive<br />the object data manually. If this option gets activated it<br />will resolve the data automatically.',
 			},
 		],
-
 	};
 
 	methods = {
@@ -227,18 +226,31 @@ export class EventbriteTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const organisation = this.getNodeParameter('organization') as string;
+				const actions = this.getNodeParameter('actions') as string[];
 
-				if (webhookData.webhookId === undefined) {
-					return false;
-				}
 				const endpoint = `/organizations/${organisation}/webhooks/`;
-				try {
-					await eventbriteApiRequest.call(this, 'GET', endpoint);
-				} catch (e) {
-					return false;
+
+				const { webhooks } = await eventbriteApiRequest.call(this, 'GET', endpoint);
+
+				const check = (currentActions: string[], webhookActions: string[]) => {
+					for (const currentAction of currentActions) {
+						if (!webhookActions.includes(currentAction)) {
+							return false;
+						}
+					}
+					return true;
+				};
+
+				for (const webhook of webhooks) {
+					if (webhook.endpoint_url === webhookUrl && check(actions, webhook.actions)) {
+						webhookData.webhookId = webhook.id;
+						return true;
+					}
 				}
-				return true;
+
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');

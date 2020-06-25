@@ -1,4 +1,7 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -6,7 +9,10 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	let options: OptionsWithUri = {
@@ -25,7 +31,7 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	try {
-		if (authenticationMethod === 'accessToken') {
+		if (authenticationMethod === 'privateKey') {
 			const credentials = this.getCredentials('eventbriteApi');
 			if (credentials === undefined) {
 				throw new Error('No credentials got returned!');
