@@ -595,13 +595,14 @@ export class Nasa implements INodeType {
 			//            fields
 			// ----------------------------------
 
-			/* asteroidId for asteroidNeoLookup */
+			/* asteroidId and additionalFields (includeCloseApproachData) for asteroidNeoLookup */
 			{
 				displayName: 'Asteroid ID',
 				name: 'asteroidId',
 				type: 'string',
 				required: true,
 				default: '',
+				placeholder: '3542519',
 				description: 'The ID of the asteroid to be returned',
 				displayOptions: {
 					show: {
@@ -614,6 +615,61 @@ export class Nasa implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'asteroidNeoLookup',
+						],
+						operation: [
+							'get',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Include close approach data',
+						name: 'includeCloseApproachData',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to include all the close approach data in the asteroid lookup',
+					},
+				],
+			},
+
+			/* date for astronomyPictureOfTheDay */
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add field',
+				displayOptions: {
+					show: {
+						resource: [
+							'astronomyPictureOfTheDay',
+						],
+						operation: [
+							'get',
+						]
+					},
+				},
+				options: [
+					{
+						displayName: 'Date',
+						name: 'date',
+						type: 'string',
+						default: '',
+						placeholder: 'YYYY-MM-DD',
+					},
+				],
+			},
+
 
 			/* startDate and endDate for various resources */
 			{
@@ -625,7 +681,6 @@ export class Nasa implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'astronomyPictureOfTheDay',
 							'asteroidNeoFeed',
 							'donkiCoronalMassEjection',
 							'donkiGeomagneticStorm',
@@ -656,11 +711,15 @@ export class Nasa implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
-					}
-				]
+					},
+				],
 			},
 
 			/* startDate, endDate, location and catalog for donkiInterplanetaryShock */
+			// Note: If I move startDate and endDate to the Additional Fields above,
+			// then this resource gets _two_ Additional Fields with two fields each,
+			// instead of _one_ Additional Fields with four fields. So I cannot avoid
+			// duplication without cluttering up the UI. Ideas?
 			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
@@ -674,7 +733,7 @@ export class Nasa implements INodeType {
 						],
 						operation: [
 							'get',
-						]
+						],
 					},
 				},
 				options: [
@@ -718,8 +777,8 @@ export class Nasa implements INodeType {
 							{
 								name: 'Stereo B',
 								value: 'STEREO B',
-							}
-						]
+							},
+						],
 					},
 					{
 						displayName: 'Catalog',
@@ -753,6 +812,17 @@ export class Nasa implements INodeType {
 				default: '',
 				placeholder: 'YYYY-MM-DD',
 				description: 'Date of the image',
+				displayOptions: {
+					show: {
+						resource: [
+							'earthImagery',
+							'earthAssets',
+						],
+						operation: [
+							'get',
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Latitude',
@@ -761,6 +831,17 @@ export class Nasa implements INodeType {
 				default: '',
 				placeholder: '47.751076',
 				description: 'Latitude for the location of the image',
+				displayOptions: {
+					show: {
+						resource: [
+							'earthImagery',
+							'earthAssets',
+						],
+						operation: [
+							'get',
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Longitude',
@@ -769,6 +850,17 @@ export class Nasa implements INodeType {
 				default: '',
 				placeholder: '-120.740135',
 				description: 'Longitude for the location of the image',
+				displayOptions: {
+					show: {
+						resource: [
+							'earthImagery',
+							'earthAssets',
+						],
+						operation: [
+							'get',
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Degrees',
@@ -777,6 +869,17 @@ export class Nasa implements INodeType {
 				default: '',
 				placeholder: '0.025',
 				description: 'Width and height of the image in degrees',
+				displayOptions: {
+					show: {
+						resource: [
+							'earthImagery',
+							'earthAssets',
+						],
+						operation: [
+							'get',
+						],
+					},
+				},
 			},
 
 			/* sol and additional fields (camera and page) for marsRoverPhotos */
@@ -794,7 +897,7 @@ export class Nasa implements INodeType {
 						],
 						operation: [
 							'get',
-						]
+						],
 					},
 				},
 			},
@@ -811,7 +914,7 @@ export class Nasa implements INodeType {
 						],
 						operation: [
 							'get',
-						]
+						],
 					},
 				},
 				options: [
@@ -903,7 +1006,7 @@ export class Nasa implements INodeType {
 
 			let endpoint = '';
 			let qs: IDataObject = {};
-
+			let includeCloseApproachData = false;
 			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 			if (resource === 'astronomyPictureOfTheDay') {
@@ -911,8 +1014,6 @@ export class Nasa implements INodeType {
 				if (operation === 'get') {
 
 					endpoint = '/planetary/apod';
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					qs = {
 						date: additionalFields.date as string,
@@ -934,9 +1035,7 @@ export class Nasa implements INodeType {
 					qs = {
 						start_date: currentDate,
 						end_date: currentDate
-					}
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					};
 
 					if (additionalFields.startDate) {
 						qs.start_date = additionalFields.startDate as string;
@@ -955,6 +1054,8 @@ export class Nasa implements INodeType {
 				if (operation === 'get') {
 
 					const asteroidId = this.getNodeParameter('asteroidId', i) as IDataObject
+
+					includeCloseApproachData = additionalFields.includeCloseApproachData as boolean;
 
 					endpoint = `/neo/rest/v1/neo/${asteroidId}`;
 
@@ -1181,6 +1282,8 @@ export class Nasa implements INodeType {
 
 					endpoint = '/mars-photos/api/v1/rovers/curiosity/photos';
 
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
 					if (additionalFields.camera) {
 						qs.camera = additionalFields.camera as string;
 					}
@@ -1214,6 +1317,10 @@ export class Nasa implements INodeType {
 			}
 
 				const responseData = await nasaApiRequest.call(this, 'GET', endpoint, qs);
+
+				if (resource === 'asteroidNeoLookup' && operation === 'get' && !includeCloseApproachData) {
+					delete responseData.close_approach_data;
+				}
 
 				if (Array.isArray(responseData)) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
