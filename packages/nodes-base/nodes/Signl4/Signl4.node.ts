@@ -268,7 +268,7 @@ export class Signl4 implements INodeType {
 					if (attachments) {
 						if (attachments.attachmentsBinary && items[i].binary) {
 
-							const propertyName = (attachments.attachmentsBinary as IDataObject).property as string
+							const propertyName = (attachments.attachmentsBinary as IDataObject).property as string;
 
 							const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
 
@@ -287,7 +287,7 @@ export class Signl4 implements INodeType {
 										filename: binaryProperty.fileName,
 										contentType: binaryProperty.mimeType,
 									},
-								}
+								};
 
 							} else {
 								throw new Error(`Binary property ${propertyName} does not exist on input`);
