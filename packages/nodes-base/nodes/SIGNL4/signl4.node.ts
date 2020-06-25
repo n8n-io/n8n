@@ -1,27 +1,40 @@
-import {IExecuteFunctions,} from 'n8n-core';
-import {IDataObject, INodeExecutionData, INodeType, INodeTypeDescription,} from 'n8n-workflow';
-import {SIGNL4ApiRequest} from './GenericFunctions';
+import {
+	IExecuteFunctions,
+	BINARY_ENCODING,
+} from 'n8n-core';
 
-export class SIGNL4 implements INodeType {
+import {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	IBinaryKeyData,
+} from 'n8n-workflow';
+
+import {
+	SIGNL4ApiRequest,
+} from './GenericFunctions';
+
+export class Signl4 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SIGNL4',
-		name: 'SIGNL4',
+		name: 'signl4',
 		icon: 'file:signl4.png',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Send SIGNL4 alert. Find our more at https://www.signl4.com.',
+		description: 'Consume SIGNL4 API.',
 		defaults: {
 			name: 'SIGNL4',
-			color: '#0000FF',
+			color: '#53afe8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'SIGNL4Api',
+				name: 'signl4Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -50,39 +63,22 @@ export class SIGNL4 implements INodeType {
 				},
 				options: [
 					{
-						name: 'Send Alert',
+						name: 'Send',
 						value: 'send',
-						description: 'Send SIGNL4 alert.',
+						description: 'Send an alert.',
 					},
 				],
 				default: 'send',
 				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Subject',
-				name: 'subject',
+				displayName: 'Message',
+				name: 'message',
 				type: 'string',
-				default: 'SIGNL4 Alert',
-				placeholder: 'SIGNL4 Alert',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'alert',
-						],
-					},
+				typeOptions: {
+					alwaysOpenEditWindow: true,
 				},
-				description: 'The subject of the SIGNL4 alert.',
-			},
-			{
-				displayName: 'Body',
-				name: 'body',
-				type: 'string',
 				default: '',
-				placeholder: 'Alert description.',
 				required: false,
 				displayOptions: {
 					show: {
@@ -97,11 +93,10 @@ export class SIGNL4 implements INodeType {
 				description: 'A more detailed description for the alert.',
 			},
 			{
-				displayName: 'S4-Service',
-				name: 'xS4Service',
-				type: 'string',
-				default: '',
-				required: false,
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: [
@@ -112,121 +107,218 @@ export class SIGNL4 implements INodeType {
 						],
 					},
 				},
-				description: 'Assigns the alert to the service/system category with the specified name.',
-			},
-			{
-				displayName: 'S4-Location',
-				name: 'xS4Location',
-				type: 'string',
-				default: '',
-				required: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'alert',
-						],
-					},
-				},
-				description: 'Transmit location information (\'latitude, longitude\') with your event and display a map in the mobile app.',
-			},
-			{
-				displayName: 'S4-AlertingScenario',
-				name: 'xS4AlertingScenario',
-				type: 'options',
+				default: {},
 				options: [
 					{
-						name: 'single_ack',
-						value: 'single_ack',
+						displayName: 'Alerting Scenario',
+						name: 'alertingScenario',
+						type: 'options',
+						options: [
+							{
+								name: 'Single ACK',
+								value: 'single_ack',
+								description: 'In case only one person needs to confirm this Signl.'
+							},
+							{
+								name: 'Multi ACK',
+								value: 'multi_ack',
+								description: 'in case this alert must be confirmed by the number of people who are on duty at the time this Singl is raised',
+							},
+						],
+						default: 'single_ack',
+						required: false,
 					},
 					{
-						name: 'multi_ack',
-						value: 'multi_ack',
+						displayName: 'Attachments',
+						name: 'attachmentsUi',
+						placeholder: 'Add Attachments',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: false,
+						},
+						options: [
+							{
+								name: 'attachmentsBinary',
+								displayName: 'Attachments Binary',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'property',
+										type: 'string',
+										placeholder: 'data',
+										default: '',
+										description: 'Name of the binary properties which contain data which should be added as attachment',
+									},
+								],
+							},
+						],
+						default: {},
+					},
+					{
+						displayName: 'External ID',
+						name: 'externalId',
+						type: 'string',
+						default: '',
+						description: `If the event originates from a record in a 3rd party system, use this parameter to pass <br/>
+						the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4,<br/>
+						which is great for correlation/synchronization of that record with the alert.`,
+					},
+					{
+						displayName: 'Filtering',
+						name: 'filtering',
+						type: 'boolean',
+						default: 'false',
+						description: `Specify a boolean value of true or false to apply event filtering for this event, or not. <br/>
+						If set to true, the event will only trigger a notification to the team, if it contains at least one keyword <br/>
+						from one of your services and system categories (i.e. it is whitelisted)`,
+					},
+					{
+						displayName: 'Location',
+						name: 'locationFieldsUi',
+						type: 'fixedCollection',
+						placeholder: 'Add Location',
+						default: {},
+						description: 'Transmit location information (\'latitude, longitude\') with your event and display a map in the mobile app.',
+						options: [
+							{
+								name: 'locationFieldsValues',
+								displayName: 'Location',
+								values: [
+									{
+										displayName: 'Latitude',
+										name: 'latitude',
+										type: 'string',
+										required: true,
+										description: 'The location latitude.',
+										default: '',
+									},
+									{
+										displayName: 'Longitude',
+										name: 'longitude',
+										type: 'string',
+										required: true,
+										description: 'The location longitude.',
+										default: '',
+									},
+								],
+							}
+						],
+					},
+					{
+						displayName: 'Service',
+						name: 'service',
+						type: 'string',
+						default: '',
+						description: 'Assigns the alert to the service/system category with the specified name.',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
 					},
 				],
-				default: 'single_ack',
-				required: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'alert',
-						],
-					},
-				},
-				description: 'Pass \'single_ack\' if only one person needs to confirm this Signl. Pass \'multi_ack\' in case this alert must be confirmed by the number of people who are on duty at the time this Singl is raised.',
 			},
-			{
-				displayName: 'S4-ExternalID',
-				name: 'xS4ExternalId',
-				type: 'string',
-				default: '',
-				required: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'alert',
-						],
-					},
-				},
-				description: 'If the event originates from a record in a 3rd party system, use this parameter to pass the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4, which is great for correlation/synchronization of that record with the alert.',
-			},
-			{
-				displayName: 'S4-Filtering',
-				name: 'xS4Filtering',
-				type: 'boolean',
-				default: 'false',
-				required: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'alert',
-						],
-					},
-				},
-				description: 'Specify a boolean value of true or false to apply event filtering for this event, or not. If set to true, the event will only trigger a notification to the team, if it contains at least one keyword from one of your services and system categories (i.e. it is whitelisted)',
-			}			
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
+		const length = (items.length as unknown) as number;
+		const qs: IDataObject = {};
+		let responseData;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+		for (let i = 0; i < length; i++) {
+			if (resource === 'alert') {
+				//https://connect.signl4.com/webhook/docs/index.html
+				if (operation === 'send') {
+					const message = this.getNodeParameter('message', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields',i) as IDataObject;
 
-		for (let i = 0; i < this.getInputData().length; i++) {
-			const resource = this.getNodeParameter('resource', i);
-			if ('alert' !== resource) {
-				throw new Error(`The resource "${resource}" is not known!`);
+					const data: IDataObject = {
+						message,
+					};
+
+					if (additionalFields.alertingScenario) {
+						data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
+					}
+					if (additionalFields.externalId) {
+						data['X-S4-ExternalID'] = additionalFields.externalId as string;
+					}
+					if (additionalFields.filtering) {
+						data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
+					}
+					if (additionalFields.locationFieldsUi) {
+						const locationUi = (additionalFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
+						if (locationUi) {
+							data['X-S4-Location'] = `${locationUi.latitude},${locationUi.longitude}`;
+						}
+					}
+					if (additionalFields.service) {
+						data['X-S4-Service'] = additionalFields.service as string;
+					}
+					if (additionalFields.title) {
+						data['title'] = additionalFields.title as string;
+					}
+
+					const attachments = additionalFields.attachmentsUi as IDataObject;
+
+					if (attachments) {
+						if (attachments.attachmentsBinary && items[i].binary) {
+
+							const propertyName = (attachments.attachmentsBinary as IDataObject).property as string
+
+							const binaryProperty = (items[i].binary as IBinaryKeyData)[propertyName];
+
+							if (binaryProperty) {
+
+								const supportedFileExtension = ['png', 'jpg', 'txt'];
+
+								if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
+
+									throw new Error(`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
+								}
+
+								data['file'] = {
+									value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
+									options: {
+										filename: binaryProperty.fileName,
+										contentType: binaryProperty.mimeType,
+									},
+								}
+
+							} else {
+								throw new Error(`Binary property ${propertyName} does not exist on input`);
+							}
+						}
+					}
+
+					const credentials = this.getCredentials('signl4Api');
+
+					const endpoint = `https://connect.signl4.com/webhook/${credentials?.teamSecret}`;
+
+					responseData = await SIGNL4ApiRequest.call(
+						this,
+						'POST',
+						'',
+						{},
+						{},
+						endpoint,
+						{
+							formData: {
+								...data,
+							},
+						},
+					);
+				}
 			}
-
-			const operation = this.getNodeParameter('operation', i);
-			if ('send' !== operation) {
-				throw new Error(`The operation "${operation}" is not known!`);
-			}
-			
-			// Assemble JSON data
-			var message = {
-				Subject: this.getNodeParameter('subject', i),
-				Body: this.getNodeParameter('body', i)
-			} as IDataObject;
-			message['X-S4-Service'] = this.getNodeParameter('xS4Service', i);
-			message['X-S4-Location'] = this.getNodeParameter('xS4Location', i);
-			message['X-S4-AlertingScenario'] = this.getNodeParameter('xS4AlertingScenario', i);
-			message['X-S4-ExternalID'] = this.getNodeParameter('xS4ExternalId', i);
-			message['X-S4-Filtering'] = this.getNodeParameter('xS4Filtering', i);
-
-			const responseData = await SIGNL4ApiRequest.call(this, message);
-
-			returnData.push(responseData);
+		}
+		if (Array.isArray(responseData)) {
+			returnData.push.apply(returnData, responseData as IDataObject[]);
+		} else if (responseData !== undefined) {
+			returnData.push(responseData as IDataObject);
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

@@ -3,8 +3,8 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class SIGNL4Api implements ICredentialType {
-	name = 'SIGNL4Api';
+export class Signl4Api implements ICredentialType {
+	name = 'signl4Api';
 	displayName = 'SIGNL4 Webhook';
 	properties = [
 		{
