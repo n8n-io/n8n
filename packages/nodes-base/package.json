@@ -49,6 +49,7 @@
       "dist/credentials/DriftApi.credentials.js",
       "dist/credentials/DropboxApi.credentials.js",
       "dist/credentials/EventbriteApi.credentials.js",
+      "dist/credentials/EventbriteOAuth2Api.credentials.js",
       "dist/credentials/FacebookGraphApi.credentials.js",
       "dist/credentials/FreshdeskApi.credentials.js",
       "dist/credentials/FileMaker.credentials.js",
