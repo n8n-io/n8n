@@ -40,17 +40,18 @@ export function formatDate(date: Date): string {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, qs: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, qs: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		method,
-		headers: {
-			'User-Agent': 'n8n',
-		},
 		qs,
 		uri: '',
-		json: true
+		json: true,
 	};
+
+	if (Object.keys(option)) {
+		Object.assign(options, option);
+	}
 
 	try {
 			const credentials = this.getCredentials('nasaApi');
@@ -66,6 +67,8 @@ export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, m
 			console.log("URL:\n" + options.uri);
 			console.log("QUERY STRINGS:")
 			console.log(options.qs);
+
+			console.log(options);
 
 			return await this.helpers.request(options);
 

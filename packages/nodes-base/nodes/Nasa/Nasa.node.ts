@@ -1286,7 +1286,11 @@ export class Nasa implements INodeType {
 			} else {
 				throw new Error(`The resource '${resource}' is unknown!`);
 			}
-				responseData = await nasaApiRequest.call(this, 'GET', endpoint, qs);
+				// responseData = await nasaApiRequest.call(this, 'GET', endpoint, qs);
+
+
+				console.log(responseData);
+
 				// console.log("RESPONSE DATA");
 				// console.log(responseData);
 
@@ -1295,6 +1299,9 @@ export class Nasa implements INodeType {
 				}
 
 				if (resource === 'earthImagery') {
+
+					responseData = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null });
+
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
 						binary: {},
@@ -1306,8 +1313,7 @@ export class Nasa implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryDataBuffer = Buffer.from(responseData, BINARY_ENCODING);
-					items[i].binary!["Earth Satellite Imagery"] = await this.helpers.prepareBinaryData(binaryDataBuffer);
+					items[i].binary!["Earth Satellite Imagery"] = await this.helpers.prepareBinaryData(responseData);
 				}
 
 				if (Array.isArray(responseData)) {
