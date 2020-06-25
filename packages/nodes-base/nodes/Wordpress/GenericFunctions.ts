@@ -53,12 +53,7 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 			return await this.helpers.requestOAuth2!.call(this, 'wordpressOAuth2Api', options);
 		}
 	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response.body) {
-			errorMessage = error.response.body.message || error.response.body.Message || error.message;
-		}
-
-		throw new Error('Wordpress Error: ' + errorMessage);
+		throw new Error('Wordpress Error: ' + error);
 	}
 }
 

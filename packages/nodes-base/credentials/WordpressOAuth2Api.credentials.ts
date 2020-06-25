@@ -35,33 +35,20 @@ export class WordpressOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
-			default: 'global',
+			type: 'hidden' as NodePropertyTypes,
+			default: '',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
-			type: 'string' as NodePropertyTypes,
-			default: 'grant_type=authorization_code',
+			type: 'hidden' as NodePropertyTypes,
+			default: '',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'options' as NodePropertyTypes,
-			options: [
-				{
-					name: 'Body',
-					value: 'body',
-					description: 'Send credentials in body',
-				},
-				{
-					name: 'Header',
-					value: 'header',
-					description: 'Send credentials as Basic Auth header',
-				},
-			],
-			default: 'header',
-			description: 'Resource to consume.',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'body'
 		},
 	];
 }
