@@ -63,6 +63,34 @@ const config = convict({
 				default: 'public',
 				env: 'DB_POSTGRESDB_SCHEMA'
 			},
+
+			ssl: {
+				ca: {
+					doc: 'SSL certificate authority',
+					format: String,
+					default: '',
+					env: 'DB_POSTGRESDB_SSL_CA',
+				},
+				cert: {
+					doc: 'SSL certificate',
+					format: String,
+					default: '',
+					env: 'DB_POSTGRESDB_SSL_CERT',
+				},
+				key: {
+					doc: 'SSL key',
+					format: String,
+					default: '',
+					env: 'DB_POSTGRESDB_SSL_KEY',
+				},
+				rejectUnauthorized: {
+					doc: 'If unauthorized SSL connections should be rejected',
+					format: 'Boolean',
+					default: true,
+					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
+				},
+			}
+
 		},
 		mysqldb: {
 			database: {
