@@ -33,6 +33,7 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
+
 	try {
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('zoomApi');
