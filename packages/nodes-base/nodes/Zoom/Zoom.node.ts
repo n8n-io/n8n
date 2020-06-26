@@ -319,7 +319,12 @@ export class Zoom implements INodeType {
 					}
 
 					if (additionalFields.startTime) {
-						body.start_time = additionalFields.startTime as string;
+						if (additionalFields.timeZone) {
+							body.start_time = moment(additionalFields.startTime as string).format('YYYY-MM-DDTHH:mm:ss');
+						} else {
+							// if none timezone it's defined used n8n timezone
+							body.start_time = moment.tz(additionalFields.startTime as string, this.getTimezone()).format();
+						}
 					}
 
 					if (additionalFields.duration) {
@@ -341,6 +346,8 @@ export class Zoom implements INodeType {
 					if (additionalFields.agenda) {
 						body.agenda = additionalFields.agenda as string;
 					}
+
+					console.log(body);
 
 					responseData = await zoomApiRequest.call(
 						this,
