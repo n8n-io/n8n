@@ -10,7 +10,9 @@ import {
 } from 'n8n-workflow';
 
 import {
-	postmarkApiRequest,
+	convertTriggerObjectToStringArray,
+	eventExists,
+	postmarkApiRequest
 } from './GenericFunctions';
 
 export class PostmarkTrigger implements INodeType {
@@ -43,88 +45,54 @@ export class PostmarkTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Open',
-				name: 'open',
-				type: 'boolean',
-				default: false,
-				description: 'Listing for if the Open webhook is enabled/disabled.',
-			},
-			{
-				displayName: 'First Open Only',
-				name: 'postFirstOpenOnly',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						open: [
-							true
-						],
+				displayName: 'Events',
+				name: 'events',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'Open',
+						value: 'open',
+						description: 'Trigger webhook on open.'
 					},
-				},
-				description: 'Webhook will only post on first open if enabled.',
-			},
-			{
-				displayName: 'Click',
-				name: 'click',
-				type: 'boolean',
-				default: false,
-				description: 'Listing for if the Click webhook is enabled/disabled.',
-			},
-			{
-				displayName: 'Delivery',
-				name: 'delivery',
-				type: 'boolean',
-				default: false,
-				description: 'Listing for if the Delivery webhook is enabled/disabled.',
-			},
-			{
-				displayName: 'Bounce',
-				name: 'bounce',
-				type: 'boolean',
-				default: false,
-				description: 'Listing for if the Bounce webhook is enabled/disabled.',
-			},
-			{
-				displayName: 'Bounce Include Content',
-				name: 'bounceIncludeContent',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						bounce: [
-							true
-						],
+					{
+						name: 'First Open',
+						value: 'firstOpen',
+						description: 'Trigger on first open only.'
 					},
-				},
-				description: 'Webhook will send full bounce content if IncludeContent is enabled.',
-			},
-			{
-				displayName: 'Spam Complaint',
-				name: 'spamComplaint',
-				type: 'boolean',
-				default: false,
-				description: 'Listing for if the Spam webhook is enabled/disabled.',
-			},
-			{
-				displayName: 'Spam Complaint Include Content',
-				name: 'spamComplaintIncludeContent',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						spamComplaint: [
-							true
-						],
+					{
+						name: 'Click',
+						value: 'click',
 					},
-				},
-				description: 'Webhook will send full spam content if IncludeContent is enabled.',
-			},
-			{
-				displayName: 'Subscription Change',
-				name: 'subscriptionChange',
-				type: 'boolean',
-				default: false,
-				description: 'Listing for if the Subscription Change webhook is enabled/disabled.',
+					{
+						name: 'Delivery',
+						value: 'delivery',
+					},
+					{
+						name: 'Bounce',
+						value: 'bounce',
+					},
+					{
+						name: 'Bounce Content',
+						value: 'bounceContent',
+						description: 'Webhook will send full bounce content.'
+					},
+					{
+						name: 'Spam Complaint',
+						value: 'spamComplaint',
+					},
+					{
+						name: 'Spam Complaint Content',
+						value: 'spamComplaintContent',
+						description: 'Webhook will send full bounce content.'
+					},
+					{
+						name: 'Subscription Change',
+						value: 'subscriptionChange',
+					},
+				],
+				default: [],
+				required: true,
+				description: 'Webhook events that will be enabled for that endpoint.',
 			},
 		],
 
@@ -135,23 +103,28 @@ export class PostmarkTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const events = this.getNodeParameter('events') as string[];
 
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
-
-				// Webhook got created before so check if it still exists
-				const endpoint = `/webhooks/${webhookData.webhookId}`;
+				// Get all webhooks
+				const endpoint = `/webhooks`;
 
 				const responseData = await postmarkApiRequest.call(this, 'GET', endpoint, {});
 
-				if (responseData.ID === undefined) {
+				// No webhooks exist
+				if (responseData.Webhooks.length === 0) {
 					return false;
 				}
-				else if (responseData.ID === webhookData.id) {
-					return true;
+
+				// If webhooks exist, check if any match current settings
+				for (const webhook of responseData.Webhooks) {
+					if (webhook.Url === webhookUrl && eventExists(events, convertTriggerObjectToStringArray(webhook))) {
+						webhookData.webhookId = webhook.ID;
+						// webhook identical to current settings. re-assign webhook id to found webhook.
+						return true;
+					}
 				}
+
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
@@ -187,44 +160,34 @@ export class PostmarkTrigger implements INodeType {
 					}
 				};
 
-				const open = this.getNodeParameter('open', 0);
-				const postFirstOpenOnly = this.getNodeParameter('postFirstOpenOnly', 0);
-				const click = this.getNodeParameter('click', 0);
-				const delivery = this.getNodeParameter('delivery', 0);
-				const bounce = this.getNodeParameter('bounce', 0);
-				const bounceIncludeContent = this.getNodeParameter('bounceIncludeContent', 0);
-				const spamComplaint = this.getNodeParameter('spamComplaint', 0);
-				const spamComplaintIncludeContent = this.getNodeParameter('spamComplaintIncludeContent', 0);
-				const subscriptionChange = this.getNodeParameter('subscriptionChange', 0);
+				const events = this.getNodeParameter('events') as string[];
 
-				if (open) {
+				if (events.includes('open')) {
 					body.Triggers.Open.Enabled = true;
-
-					if (postFirstOpenOnly) {
-						body.Triggers.Open.PostFirstOpenOnly = true;
-					}
 				}
-				if (click) {
+				if (events.includes('firstOpen')) {
+					body.Triggers.Open.Enabled = true;
+					body.Triggers.Open.PostFirstOpenOnly = true;
+				}
+				if (events.includes('click')) {
 					body.Triggers.Click.Enabled = true;
 				}
-				if (delivery) {
+				if (events.includes('delivery')) {
 					body.Triggers.Delivery.Enabled = true;
 				}
-				if (bounce) {
+				if (events.includes('bounce')) {
 					body.Triggers.Bounce.Enabled = true;
-
-					if (bounceIncludeContent) {
-						body.Triggers.Bounce.IncludeContent = true;
-					}
 				}
-				if (spamComplaint) {
+				if (events.includes('bounceContent')) {
+					body.Triggers.Bounce.IncludeContent = true;
+				}
+				if (events.includes('spamComplaint')) {
 					body.Triggers.SpamComplaint.Enabled = true;
-
-					if (spamComplaintIncludeContent) {
-						body.Triggers.SpamComplaint.IncludeContent = true;
-					}
 				}
-				if (subscriptionChange) {
+				if (events.includes('spamComplaintContent')) {
+					body.Triggers.SpamComplaint.IncludeContent = true;
+				}
+				if (events.includes('subscriptionChange')) {
 					body.Triggers.SubscriptionChange.Enabled = true;
 				}
 
