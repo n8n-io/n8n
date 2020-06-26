@@ -25,7 +25,7 @@ export async function zohoApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	};
 	try {
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'zohoOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'zohoOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
