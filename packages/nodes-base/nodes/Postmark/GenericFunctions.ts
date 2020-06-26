@@ -37,11 +37,59 @@ export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunct
 	}
 	options = Object.assign({}, options, option);
 
+	console.log(options);
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
 		throw new Error(`Postmark: ${error.statusCode} Message: ${error.message}`);
 	}
+}
+
+// tslint:disable-next-line: no-any
+export function convertTriggerObjectToStringArray (webhookObject : any) : string[] {
+	const triggers = webhookObject.Triggers;
+	const webhookEvents : string[] = [];
+
+	// Translate Webhook trigger settings to string array
+	if (triggers.Open.Enabled) {
+		webhookEvents.push('open');
+	}
+	if (triggers.Open.PostFirstOpenOnly) {
+		webhookEvents.push('firstOpen');
+	}
+	if (triggers.Click.Enabled) {
+		webhookEvents.push('click');
+	}
+	if (triggers.Delivery.Enabled) {
+		webhookEvents.push('delivery');
+	}
+	if (triggers.Bounce.Enabled) {
+		webhookEvents.push('bounce');
+	}
+	if (triggers.Bounce.IncludeContent) {
+		webhookEvents.push('bounceContent');
+	}
+	if (triggers.SpamComplaint.Enabled) {
+		webhookEvents.push('spamComplaint');
+	}
+	if (triggers.SpamComplaint.IncludeContent) {
+		webhookEvents.push('spamComplaintContent');
+	}
+	if (triggers.SubscriptionChange.Enabled) {
+		webhookEvents.push('subscriptionChange');
+	}
+
+	return webhookEvents;
+}
+
+export function eventExists (currentEvents : string[], webhookEvents: string[]) {
+	for (const currentEvent of currentEvents) {
+		if (!webhookEvents.includes(currentEvent)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 
