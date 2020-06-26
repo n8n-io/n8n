@@ -35,7 +35,7 @@ export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions
 		if (authenticationMethod === 'accessToken') {
 			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth.call(this, 'dropboxOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'dropboxOAuth2Api', options);
 		}
 	} catch (error) {
 		if (error.statusCode === 401) {
