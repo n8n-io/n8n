@@ -35,7 +35,25 @@ export class EventbriteTrigger implements INodeType {
 			{
 				name: 'eventbriteApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'privateKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'eventbriteOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -46,6 +64,23 @@ export class EventbriteTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Private Key',
+						value: 'privateKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'privateKey',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Organization',
 				name: 'organization',
@@ -149,7 +184,6 @@ export class EventbriteTrigger implements INodeType {
 				description: 'By default does the webhook-data only contain the URL to receive<br />the object data manually. If this option gets activated it<br />will resolve the data automatically.',
 			},
 		],
-
 	};
 
 	methods = {
@@ -192,23 +226,39 @@ export class EventbriteTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId === undefined) {
-					return false;
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const organisation = this.getNodeParameter('organization') as string;
+				const actions = this.getNodeParameter('actions') as string[];
+
+				const endpoint = `/organizations/${organisation}/webhooks/`;
+
+				const { webhooks } = await eventbriteApiRequest.call(this, 'GET', endpoint);
+
+				const check = (currentActions: string[], webhookActions: string[]) => {
+					for (const currentAction of currentActions) {
+						if (!webhookActions.includes(currentAction)) {
+							return false;
+						}
+					}
+					return true;
+				};
+
+				for (const webhook of webhooks) {
+					if (webhook.endpoint_url === webhookUrl && check(actions, webhook.actions)) {
+						webhookData.webhookId = webhook.id;
+						return true;
+					}
 				}
-				const endpoint = `/webhooks/${webhookData.webhookId}/`;
-				try {
-					await eventbriteApiRequest.call(this, 'GET', endpoint);
-				} catch (e) {
-					return false;
-				}
-				return true;
+
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
+				const organisation = this.getNodeParameter('organization') as string;
 				const event = this.getNodeParameter('event') as string;
 				const actions = this.getNodeParameter('actions') as string[];
-				const endpoint = `/webhooks/`;
+				const endpoint = `/organizations/${organisation}/webhooks/`;
 				const body: IDataObject = {
 					endpoint_url: webhookUrl,
 					actions: actions.join(','),

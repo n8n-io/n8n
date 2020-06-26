@@ -37,7 +37,7 @@ export async function keapApiRequest(this: IWebhookFunctions | IHookFunctions | 
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'keapOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'keapOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier

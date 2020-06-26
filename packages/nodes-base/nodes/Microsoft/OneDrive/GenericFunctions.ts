@@ -35,7 +35,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		}
 
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'microsoftOneDriveOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'microsoftOneDriveOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error && error.response.body.error.message) {
 			// Try to return the error prettier
