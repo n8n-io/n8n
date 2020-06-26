@@ -37,8 +37,6 @@ export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunct
 	}
 	options = Object.assign({}, options, option);
 
-	console.log(options);
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
