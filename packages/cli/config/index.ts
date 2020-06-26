@@ -63,6 +63,34 @@ const config = convict({
 				default: 'public',
 				env: 'DB_POSTGRESDB_SCHEMA'
 			},
+
+			ssl: {
+				ca: {
+					doc: 'SSL certificate authority',
+					format: String,
+					default: '',
+					env: 'DB_POSTGRESDB_SSL_CA',
+				},
+				cert: {
+					doc: 'SSL certificate',
+					format: String,
+					default: '',
+					env: 'DB_POSTGRESDB_SSL_CERT',
+				},
+				key: {
+					doc: 'SSL key',
+					format: String,
+					default: '',
+					env: 'DB_POSTGRESDB_SSL_KEY',
+				},
+				rejectUnauthorized: {
+					doc: 'If unauthorized SSL connections should be rejected',
+					format: 'Boolean',
+					default: true,
+					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
+				},
+			}
+
 		},
 		mysqldb: {
 			database: {
@@ -182,6 +210,12 @@ const config = convict({
 		env: 'N8N_PORT',
 		doc: 'HTTP port n8n can be reached'
 	},
+	listen_address: {
+		format: String,
+		default: '0.0.0.0',
+		env: 'N8N_LISTEN_ADDRESS',
+		doc: 'IP address n8n should listen on'
+	},
 	protocol: {
 		format: ['http', 'https'],
 		default: 'http',
@@ -263,6 +297,13 @@ const config = convict({
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
 			doc: 'Path for test-webhook endpoint'
 		},
+	},
+
+	externalHookFiles: {
+		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
+		format: String,
+		default: '',
+		env: 'EXTERNAL_HOOK_FILES'
 	},
 
 	nodes: {

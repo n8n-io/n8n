@@ -50,7 +50,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			return await this.helpers.request(options);
 		} else {
 			//@ts-ignore
-			return await this.helpers.requestOAuth.call(this, 'googleSheetsOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'googleSheetsOAuth2Api', options);
 		}
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {

@@ -29,8 +29,6 @@ import {
 	XYPositon,
 } from './Interface';
 
-import { get } from 'lodash';
-
 Vue.use(Vuex);
 
 export const store = new Vuex.Store({

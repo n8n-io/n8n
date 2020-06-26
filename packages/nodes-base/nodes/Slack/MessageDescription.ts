@@ -111,7 +111,7 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'Set the bot\'s user name.',
+		description: 'Set the bot\'s user name. This field will be ignored if you are using a user token.',
 	},
 	{
 		displayName: 'JSON parameters',
@@ -485,26 +485,6 @@ export const messageFields = [
 			},
 		},
 		description: `Timestamp of the message to be updated.`,
-	},
-	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'update'
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Pass true to update the message as the authed user. Bot users in this context are considered authed users.',
 	},
 	{
 		displayName: 'Update Fields',

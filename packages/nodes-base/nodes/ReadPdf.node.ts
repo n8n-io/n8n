@@ -51,6 +51,7 @@ export class ReadPdf implements INodeType {
 		const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
 
 		return {
+			binary: item.binary,
 			json: await pdf(binaryData)
 		};
 	}

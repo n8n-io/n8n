@@ -31,11 +31,17 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'googleCalendarOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'googleCalendarOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
+		if (error.response && error.response.body && error.response.body.error) {
+
+			let errors = error.response.body.error.errors;
+
+			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
-			throw new Error(`Google Calendar error response [${error.statusCode}]: ${error.response.body.message}`);
+			throw new Error(
+				`Google Calendar error response [${error.statusCode}]: ${errors.join('|')}`
+			);
 		}
 		throw error;
 	}
