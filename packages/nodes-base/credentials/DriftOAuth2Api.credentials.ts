@@ -15,7 +15,7 @@ export class DriftOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'ttps://dev.drift.com/authorize',
+			default: 'https://dev.drift.com/authorize',
 			required: true,
 		},
 		{
@@ -28,6 +28,12 @@ export class DriftOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
+			type: 'hidden' as NodePropertyTypes,
+			default: '',
+		},
+		{
+			displayName: 'Scope',
+			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
 			default: '',
 		},

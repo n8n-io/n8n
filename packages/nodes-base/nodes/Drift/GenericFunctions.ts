@@ -46,8 +46,9 @@ export async function driftApiRequest(this: IExecuteFunctions | IWebhookFunction
 			return await this.helpers.requestOAuth2!.call(this, 'driftOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response) {
-			const errorMessage = error.message || (error.response.body && error.response.body.message );
+
+		if (error.response && error.response.body && error.response.body.error) {
+			const errorMessage = error.response.body.error.message;
 			throw new Error(`Drift error response [${error.statusCode}]: ${errorMessage}`);
 		}
 		throw error;
