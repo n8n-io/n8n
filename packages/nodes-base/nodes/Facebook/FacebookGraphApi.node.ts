@@ -138,6 +138,13 @@ export class FacebookGraphApi implements INodeType {
 				required: false,
 			},
 			{
+				displayName: 'Ignore SSL Issues',
+				name: 'allowUnauthorizedCerts',
+				type: 'boolean',
+				default: false,
+				description: 'Still download the response even if SSL certificate validation is not possible. (Not recommended)',
+			},
+			{
 				displayName: 'Send Binary Data',
 				name: 'sendBinaryData',
 				type: 'boolean',
@@ -301,6 +308,7 @@ export class FacebookGraphApi implements INodeType {
 				qs: {
 					access_token: graphApiCredentials!.accessToken,
 				},
+				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 			};
 
 			if (options !== undefined) {
