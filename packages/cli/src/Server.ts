@@ -58,6 +58,9 @@ import {
 	WorkflowExecuteAdditionalData,
 	WorkflowRunner,
 	GenericHelpers,
+	CredentialsOverwrites,
+	ICredentialsOverwrite,
+	LoadNodesAndCredentials,
 } from './';
 
 import {
@@ -105,6 +108,7 @@ class App {
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
@@ -118,6 +122,8 @@ class App {
 	protocol: string;
 	sslKey:  string;
 	sslCert: string;
+
+	presetCredentialsLoaded: boolean;
 
 	constructor() {
 		this.app = express();
@@ -141,6 +147,9 @@ class App {
 		this.sslCert = config.get('ssl_cert');
 
 		this.externalHooks = ExternalHooks();
+
+		this.presetCredentialsLoaded = false;
+		this.endpointPresetCredentials = config.get('credentials.overwrite.url') as string;
 	}
 
 
@@ -1647,6 +1656,34 @@ class App {
 			}
 
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// POST endpoint to set preset credentials
+		this.app.post(`/${this.endpointPresetCredentials}`, async (req: express.Request, res: express.Response) => {
+
+			if (this.presetCredentialsLoaded === false) {
+
+				const body = req.body as ICredentialsOverwrite;
+
+				const loadNodesAndCredentials = LoadNodesAndCredentials();
+
+				const credentialsOverwrites = CredentialsOverwrites();
+
+				await credentialsOverwrites.init(body);
+
+				const credentialTypes = CredentialTypes();
+
+				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+				this.presetCredentialsLoaded = true;
+
+				ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+
+			} else {
+
+				ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
+			}
+
 		});
 
 
