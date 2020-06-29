@@ -14,7 +14,6 @@ import {
 	getFileSha,
 } from './GenericFunctions';
 
-
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Github',
@@ -91,6 +90,10 @@ export class Github implements INodeType {
 					{
 						name: 'Release',
 						value: 'release',
+					},
+					{
+						name: 'Pull Request',
+						value: 'pullRequest',
 					},
 					{
 						name: 'User',
@@ -273,6 +276,33 @@ export class Github implements INodeType {
 					},
 				],
 				default: 'create',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'pullRequest',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get reviews',
+						value: 'getReviews',
+						description: 'Gets all reviews for a pull request',
+					},
+					{
+						name: 'Create',
+						value: 'createReview',
+						description: 'Creates a new review',
+					},
+				],
+				default: 'createReview',
 				description: 'The operation to perform.',
 			},
 
@@ -1115,6 +1145,123 @@ export class Github implements INodeType {
 				],
 			},
 
+
+			// ----------------------------------
+			//         pullRequest
+			// ----------------------------------
+			// ----------------------------------
+			//         pullRequest:getReviews
+			// ----------------------------------
+			{
+				displayName: 'Pull Request Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getReviews',
+						],
+						resource: [
+							'pullRequest',
+						],
+					},
+				},
+				description: 'The number of the pull request.',
+			},
+			// ----------------------------------
+			//         pullRequest:createReview
+			// ----------------------------------
+			{
+				displayName: 'Pull Request Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'createReview',
+						],
+						resource: [
+							'pullRequest',
+						],
+					},
+				},
+				description: 'The number of the pull request to review.',
+			},
+			{
+				displayName: 'Event',
+				name: 'event',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: [
+							'createReview',
+						],
+						resource: [
+							'pullRequest',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Approve',
+						value: 'APPROVE',
+						description: 'Approve the pull request',
+					},
+					{
+						name: 'Request Change',
+						value: 'REQUEST_CHANGES',
+						description: 'Request code changes',
+					},
+					{
+						name: 'Comment',
+						value: 'COMMENT',
+						description: 'Add a comment without approval or change requests',
+					},
+				],
+				default: 'APPROVE',
+				description: 'The review action you want to perform.',
+			},
+			{
+				displayName: 'Commit ID',
+				name: 'commitId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: [
+							'createReview',
+						],
+						resource: [
+							'pullRequest',
+						],
+					},
+				},
+				default: '',
+				description: 'The number of the issue on which to create the comment on.',
+			},
+			{
+				displayName: 'Body',
+				name: 'body',
+				type: 'string',
+				typeOptions: {
+					rows: 5,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'createReview',
+						],
+						resource: [
+							'pullRequest',
+						],
+					},
+				},
+				default: '',
+				description: 'The body of the review (required for events Request Changes or Comment).',
+			},
 		],
 	};
 
@@ -1137,6 +1284,8 @@ export class Github implements INodeType {
 			'repository:get',
 			'repository:getLicense',
 			'repository:getProfile',
+			'pullRequest:getReviews',
+			'pullRequest:createReview',
 		];
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
@@ -1386,6 +1535,33 @@ export class Github implements INodeType {
 					qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
 
 					endpoint = `/repos/${owner}/${repository}/issues`;
+				}
+			} else if (resource === 'pullRequest') {
+				if (operation === 'getReviews') {
+					// ----------------------------------
+					//         getReviews
+					// ----------------------------------
+					requestMethod = 'GET';
+
+					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
+				} else if (operation === 'createReview') {
+					// ----------------------------------
+					//         createReview
+					// ----------------------------------
+					requestMethod = 'POST';
+
+					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+					const commitId = this.getNodeParameter('commitId', i) as string;
+
+					if (commitId !== '') {
+						body.commit_id = commitId;
+					}
+					body.event = this.getNodeParameter('event', i) as string;
+					body.body = this.getNodeParameter('body', i) as string;
+
+					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
 				}
 			} else if (resource === 'user') {
 				if (operation === 'getRepositories') {
