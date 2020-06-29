@@ -5,10 +5,12 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
+import {
+	OptionsWithUri,
+} from 'request';
 
 export interface ICustomInterface {
 	name: string;
@@ -33,7 +35,7 @@ export interface ICustomProperties {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
+export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('pipedriveApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -66,6 +68,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 	}
 
 	try {
+		//@ts-ignore
 		const responseData = await this.helpers.request(options);
 
 		if (downloadFile === true) {
