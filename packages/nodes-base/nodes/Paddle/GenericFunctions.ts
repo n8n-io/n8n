@@ -16,26 +16,24 @@ import {
 export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('paddleApi');
 
-	const options = {
+	if (credentials === undefined) {
+		throw new Error('Could not retrieve credentials!');
+	}
+
+	const options : OptionsWithUri = {
 		method,
-		qs: query || {},
-		uri: uri || `${env}/v1${endpoint}`,
+		uri: `https://vendors.paddle.com/api${endpoint}` ,
 		body,
 		json: true
 	};
 
+	body.vendor_id = credentials.vendorId;
+	body.vendor_auth_code = credentials.vendorAuthCode;
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		if (error.response.body) {
-			let errorMessage = error.response.body.message;
-			if (error.response.body.details) {
-				errorMessage += ` - Details: ${JSON.stringify(error.response.body.details)}`;
-			}
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		console.log(error);
+		throw new Error(error);
 	}
 }

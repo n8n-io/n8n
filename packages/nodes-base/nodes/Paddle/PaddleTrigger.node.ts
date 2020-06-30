@@ -11,6 +11,7 @@ import {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
   } from 'n8n-workflow';
+import { paddleApiRequest } from './GenericFunctions';
 
   export class PaddleTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -69,7 +70,7 @@ import {
 				}
 				const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 				try {
-					await payPalApiRequest.call(this, endpoint, 'GET');
+					await paddleApiRequest.call(this, endpoint, 'GET');
 				} catch (err) {
 					if (err.response && err.response.name === 'INVALID_RESOURCE_ID') {
 						// Webhook does not exist
@@ -93,7 +94,7 @@ import {
 				};
 				const endpoint = '/notifications/webhooks';
 				try {
-					webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
+					webhook = await paddleApiRequest.call(this, endpoint, 'POST', body);
 				} catch (e) {
 					throw e;
 				}
@@ -111,7 +112,7 @@ import {
 				if (webhookData.webhookId !== undefined) {
 					const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
 					try {
-						await payPalApiRequest.call(this, endpoint, 'DELETE', {});
+						await paddleApiRequest.call(this, endpoint, 'DELETE', {});
 					} catch (e) {
 						return false;
 					}
@@ -145,7 +146,7 @@ import {
 				webhook_event: bodyData,
 			};
 			try {
-				webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
+				webhook = await paddleApiRequest.call(this, endpoint, 'POST', body);
 			} catch (e) {
 				throw e;
 			}
