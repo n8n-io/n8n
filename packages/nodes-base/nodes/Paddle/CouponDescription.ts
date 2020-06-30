@@ -37,7 +37,6 @@ export const couponOperations = [
 ] as INodeProperties[];
 
 export const couponFields = [
-
 /* -------------------------------------------------------------------------- */
 /*                                 coupon:create	                          */
 /* -------------------------------------------------------------------------- */
@@ -55,7 +54,7 @@ export const couponFields = [
 				]
 			},
 		},
-		default: '',
+		default: 'checkout',
 		description: 'Either product (valid for specified products or subscription plans) or checkout (valid for any checkout).',
 		options: [
 			{
@@ -277,6 +276,26 @@ export const couponFields = [
 		],
 	},
 /* -------------------------------------------------------------------------- */
+/*                                 coupon:getAll	                          */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Product ID',
+		name: 'productId',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'coupon',
+				],
+				operation: [
+					`getAll`
+				]
+			},
+		},
+		default: '',
+		description: 'The specific product/subscription ID.',
+	},
+/* -------------------------------------------------------------------------- */
 /*                                 coupon:update	                          */
 /* -------------------------------------------------------------------------- */
 	{
@@ -391,7 +410,6 @@ export const couponFields = [
 					},
 				],
 			},
-
 			{
 				displayName: 'Discount Amount',
 				name: 'discountAmount',

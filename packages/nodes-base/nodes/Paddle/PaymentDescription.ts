@@ -32,7 +32,6 @@ export const paymentOperations = [
 ] as INodeProperties[];
 
 export const paymentFields = [
-
 /* -------------------------------------------------------------------------- */
 /*                                 payment:getAll                                */
 /* -------------------------------------------------------------------------- */
@@ -71,28 +70,6 @@ export const paymentFields = [
 			},
 		},
 		description: 'Filter: The product/plan ID (single or comma-separated values).',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 1,
-		required: true,
-		typeOptions: {
-			minValue: 1,
-			maxValue: 200
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		description: 'Number of subscription records to return per page.',
 	},
 	{
 		displayName: 'Additional Fields',
