@@ -22,7 +22,7 @@ export class CustomerIoTrigger implements INodeType {
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Customer.io update.',
 		defaults: {
-			name: 'Customer.io Trigger',
+			name: 'CustomerDotIO Trigger',
 			color: '#00FF00',
 		},
 		inputs: [],
