@@ -135,7 +135,7 @@ When a node can perform multiple operations like edit and delete some kind of en
 Some nodes may need a lot of options. Add only the very important ones to the top level and for all others, create an "Options" parameter where they can be added if needed. This ensures that the interface stays clean and does not unnecessarily confuse people. A good example of that would be the XML node.
 
 
-### Follow exiting parameter naming guideline
+### Follow existing parameter naming guideline
 
 There is not much of a guideline yet but if your node can do multiple things, call the parameter which sets the behavior either "mode" (like "Merge" and "XML" node) or "operation" like the most other ones. If these operations can be done on different resources (like "User" or "Order) create a "resource" parameter (like "Pipedrive" and "Trello" node)
 
