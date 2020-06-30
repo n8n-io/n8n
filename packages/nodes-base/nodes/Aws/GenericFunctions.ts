@@ -19,8 +19,8 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	const endpoint = `${service}.${credentials.region}.amazonaws.com`;
 
 	// Sign AWS API request with the user credentials
-	const signOpts = {headers: headers || {}, host: endpoint, method, path, body};
-	sign(signOpts, {accessKeyId: `${credentials.accessKeyId}`, secretAccessKey: `${credentials.secretAccessKey}`});
+	const signOpts = { headers: headers || {}, host: endpoint, method, path, body };
+	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`, secretAccessKey: `${credentials.secretAccessKey}` });
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
