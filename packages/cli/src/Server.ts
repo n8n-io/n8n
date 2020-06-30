@@ -149,7 +149,7 @@ class App {
 		this.externalHooks = ExternalHooks();
 
 		this.presetCredentialsLoaded = false;
-		this.endpointPresetCredentials = config.get('credentials.overwrite.url') as string;
+		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
 	}
 
 
@@ -1658,34 +1658,35 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
-		// POST endpoint to set preset credentials
-		this.app.post(`/${this.endpointPresetCredentials}`, async (req: express.Request, res: express.Response) => {
 
-			if (this.presetCredentialsLoaded === false) {
+		if (this.endpointPresetCredentials !== '') {
 
-				const body = req.body as ICredentialsOverwrite;
+			// POST endpoint to set preset credentials
+			this.app.post(`/${this.endpointPresetCredentials}`, async (req: express.Request, res: express.Response) => {
 
-				const loadNodesAndCredentials = LoadNodesAndCredentials();
+				if (this.presetCredentialsLoaded === false) {
 
-				const credentialsOverwrites = CredentialsOverwrites();
+					const body = req.body as ICredentialsOverwrite;
 
-				await credentialsOverwrites.init(body);
+					const loadNodesAndCredentials = LoadNodesAndCredentials();
 
-				const credentialTypes = CredentialTypes();
+					const credentialsOverwrites = CredentialsOverwrites();
 
-				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+					await credentialsOverwrites.init(body);
 
-				this.presetCredentialsLoaded = true;
+					const credentialTypes = CredentialTypes();
 
-				ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+					await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
-			} else {
+					this.presetCredentialsLoaded = true;
 
-				ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
-			}
+					ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 
-		});
-
+				} else {
+					ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
+				}
+			});
+		}
 
 		// Serve the website
 		const startTime = (new Date()).toUTCString();

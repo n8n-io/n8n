@@ -138,11 +138,11 @@ const config = convict({
 				default: '{}',
 				env: 'CREDENTIALS_OVERWRITE_DATA'
 			},
-			url: {
+			endpoint: {
 				doc: 'Fetch credentials from API',
 				format: String,
 				default: '',
-				env: 'CREDENTIALS_OVERWRITE_URL',
+				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
 			},
 		},
 	},
