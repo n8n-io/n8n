@@ -316,14 +316,14 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// Does not get used so set it simply to empty string
 	const executionId = '';
 
-	// Create new additionalData to have different workflow loaded and to call
-	// different webooks
-	const additionalDataIntegrated = await getBase(additionalData.credentials);
-	additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(mode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
-
 	// Get the needed credentials for the current workflow as they will differ to the ones of the
 	// calling workflow.
-	additionalDataIntegrated.credentials = await WorkflowCredentials(workflowData!.nodes);
+	const credentials = await WorkflowCredentials(workflowData!.nodes);
+
+	// Create new additionalData to have different workflow loaded and to call
+	// different webooks
+	const additionalDataIntegrated = await getBase(credentials);
+	additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(mode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
 
 	// Find Start-Node
 	const requiredNodeTypes = ['n8n-nodes-base.start'];
