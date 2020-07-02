@@ -34,6 +34,7 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 	try {
 		const response = await this.helpers.request!(options);
+		console.log(response);
 		// Order endpoint is from V1 of API and doesn't return the same object as V2 unless error
 		if (response.checkout) {
 			return response;
@@ -61,7 +62,7 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 		return response.response;
 	} catch (error) {
-		throw new Error(error);
+		throw new Error(`ERROR: Code: ${error.statusCode}. Message: ${error.statusMessage}`);
 	}
 }
 
