@@ -202,7 +202,7 @@
       "dist/nodes/Google/Calendar/GoogleCalendar.node.js",
       "dist/nodes/Google/Drive/GoogleDrive.node.js",
       "dist/nodes/Google/Sheet/GoogleSheets.node.js",
-       "dist/nodes/Google/Task/GoogleTasks.node.js",
+      "dist/nodes/Google/Task/GoogleTasks.node.js",
       "dist/nodes/GraphQL/GraphQL.node.js",
       "dist/nodes/Gumroad/GumroadTrigger.node.js",
       "dist/nodes/Harvest/Harvest.node.js",
@@ -326,7 +326,7 @@
     "n8n-workflow": "~0.32.0",
     "ts-jest": "^24.0.2",
     "tslint": "^5.17.0",
-    "typescript": "~3.7.4"
+    "typescript": "~3.9.6"
   },
   "dependencies": {
     "aws4": "^1.8.0",
