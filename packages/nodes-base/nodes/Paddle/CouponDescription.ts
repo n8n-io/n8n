@@ -51,6 +51,9 @@ export const couponFields = [
 				],
 				operation: [
 					`create`
+				],
+				jsonParameters: [
+					false
 				]
 			},
 		},
@@ -82,6 +85,9 @@ export const couponFields = [
 				couponType: [
 					'product',
 				],
+				jsonParameters: [
+					false
+				]
 			},
 		},
 		default: '',
@@ -100,6 +106,9 @@ export const couponFields = [
 				operation: [
 					`create`
 				],
+				jsonParameters: [
+					false
+				]
 			},
 		},
 		default: 'flat',
@@ -122,7 +131,7 @@ export const couponFields = [
 		default: '',
 		description: 'Discount amount in currency.',
 		typeOptions: {
-			minValue: 0
+			minValue: 1
 		},
 		displayOptions: {
 			show: {
@@ -134,6 +143,9 @@ export const couponFields = [
 				],
 				discountType: [
 					'flat',
+				],
+				jsonParameters: [
+					false
 				]
 			},
 		},
@@ -145,7 +157,7 @@ export const couponFields = [
 		default: '',
 		description: 'Discount amount in percentage.',
 		typeOptions: {
-			minValue: 0,
+			minValue: 1,
 			maxValue: 100
 		},
 		displayOptions: {
@@ -158,6 +170,9 @@ export const couponFields = [
 				],
 				discountType: [
 					'percentage',
+				],
+				jsonParameters: [
+					false
 				]
 			},
 		},
@@ -166,20 +181,20 @@ export const couponFields = [
 		displayName: 'Currency',
 		name: 'currency',
 		type: 'options',
-		default: 'eur',
+		default: 'EUR',
 		description: 'The currency must match the balance currency specified in your account.',
 		options: [
 			{
 				name: 'EUR',
-				value: 'eur'
+				value: 'EUR'
 			},
 			{
 				name: 'GBP',
-				value: 'gbp'
+				value: 'GBP'
 			},
 			{
 				name: 'USD',
-				value: 'usd'
+				value: 'USD'
 			},
 		],
 		displayOptions: {
@@ -192,9 +207,52 @@ export const couponFields = [
 				],
 				discountType: [
 					'flat',
+				],
+				jsonParameters: [
+					false
 				]
 			},
 		},
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coupon',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: ' Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coupon',
+				],
+				operation: [
+					'create',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: `Attributes in JSON form.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -209,6 +267,9 @@ export const couponFields = [
 				operation: [
 					'create',
 				],
+				jsonParameters: [
+					false
+				]
 			},
 		},
 		default: {},
@@ -237,7 +298,7 @@ export const couponFields = [
 			{
 				displayName: 'Expires',
 				name: 'expires',
-				type: 'DateTime',
+				type: 'dateTime',
 				default: '',
 				description: 'The coupon will expire on the date at 00:00:00 UTC.',
 			},
@@ -310,6 +371,9 @@ export const couponFields = [
 				operation: [
 					`update`
 				],
+				jsonParameters: [
+					false,
+				],
 			},
 		},
 		default: 'couponCode',
@@ -339,7 +403,10 @@ export const couponFields = [
 				],
 				updateBy: [
 					'couponCode'
-				]
+				],
+				jsonParameters: [
+					false,
+				],
 			},
 		},
 		default: '',
@@ -359,11 +426,54 @@ export const couponFields = [
 				],
 				updateBy: [
 					'group'
-				]
+				],
+				jsonParameters: [
+					false,
+				],
 			},
 		},
 		default: '',
 		description: 'The name of the group of coupons you want to update.',
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coupon',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: ' Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'coupon',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: `Attributes in JSON form.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -378,6 +488,9 @@ export const couponFields = [
 				operation: [
 					'update',
 				],
+				jsonParameters: [
+					false
+				]
 			},
 		},
 		default: {},
@@ -393,20 +506,20 @@ export const couponFields = [
 				displayName: 'Currency',
 				name: 'currency',
 				type: 'options',
-				default: 'eur',
+				default: 'EUR',
 				description: 'The currency must match the balance currency specified in your account.',
 				options: [
 					{
 						name: 'EUR',
-						value: 'eur'
+						value: 'EUR'
 					},
 					{
 						name: 'GBP',
-						value: 'gbp'
+						value: 'GBP'
 					},
 					{
 						name: 'USD',
-						value: 'usd'
+						value: 'USD'
 					},
 				],
 			},
@@ -423,7 +536,7 @@ export const couponFields = [
 			{
 				displayName: 'Expires',
 				name: 'expires',
-				type: 'DateTime',
+				type: 'dateTime',
 				default: '',
 				description: 'The coupon will expire on the date at 00:00:00 UTC.',
 			},
@@ -450,7 +563,7 @@ export const couponFields = [
 				name: 'productIds',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of product IDs. Required if coupon_type is product.',
+				description: 'Comma-separated list of products e.g. 499531,1234,123546. If blank then remove associated products.',
 			},
 			{
 				displayName: 'Recurring',

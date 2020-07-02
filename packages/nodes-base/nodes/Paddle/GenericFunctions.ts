@@ -22,18 +22,41 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 	const options : OptionsWithUri = {
 		method,
+		headers: {
+			'content-type': 'application/json'
+		},
 		uri: `https://vendors.paddle.com/api${endpoint}` ,
 		body,
 		json: true
 	};
 
-	body.vendor_id = credentials.vendorId;
-	body.vendor_auth_code = credentials.vendorAuthCode;
+	body['vendor_id'] = credentials.vendorId;
+	body['vendor_auth_code'] = credentials.vendorAuthCode;
+
+	console.log(options.body);
+	console.log(options);
 
 	try {
-		return await this.helpers.request!(options);
+		const response = await this.helpers.request!(options);
+		console.log(response);
+
+		if (!response.success) {
+			throw new Error(`Code: ${response.error.code}. Message: ${response.error.message}`);
+		}
+
+		return response.response;
 	} catch (error) {
 		console.log(error);
 		throw new Error(error);
 	}
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }

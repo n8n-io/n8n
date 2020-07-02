@@ -27,16 +27,13 @@ export const userOperations = [
 ] as INodeProperties[];
 
 export const userFields = [
-
 /* -------------------------------------------------------------------------- */
 /*                                 user:getAll                                */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Subscription ID',
-		name: 'subscriptionId',
-		type: 'string',
-		default: '',
-		required: true,
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
 		displayOptions: {
 			show: {
 				resource: [
@@ -47,25 +44,8 @@ export const userFields = [
 				],
 			},
 		},
-		description: 'A specific user subscription ID.',
-	},
-	{
-		displayName: 'Plan ID',
-		name: 'planId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		description: 'Filter: The subscription plan ID.',
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -85,9 +65,52 @@ export const userFields = [
 				operation: [
 					'getAll',
 				],
+				returnAll: [
+					false
+				]
 			},
 		},
 		description: 'Number of subscription records to return per page.',
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+	},
+	{
+		displayName: ' Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: `Attributes in JSON form.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -96,16 +119,33 @@ export const userFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
 				resource: [
 					'user',
 				],
+				operation: [
+					'getAll',
+				],
+				jsonParameters: [
+					false
+				]
 			},
 		},
 		default: {},
 		options: [
+			{
+				displayName: 'Plan ID',
+				name: 'planId',
+				type: 'string',
+				default: '',
+				description: 'Filter: The subscription plan ID.',
+			},
+			{
+				displayName: 'Subscription ID',
+				name: 'subscriptionId',
+				type: 'string',
+				default: '',
+				description: 'A specific user subscription ID.',
+			},
 			{
 				displayName: 'State',
 				name: 'state',
