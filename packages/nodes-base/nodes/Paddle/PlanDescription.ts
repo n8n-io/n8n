@@ -26,7 +26,7 @@ export const planOperations = [
 				description: 'Get all plans.',
 			}
 		],
-		default: 'getAll',
+		default: 'get',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];

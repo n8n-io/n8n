@@ -3,7 +3,9 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	ILoadOptionsFunctions,
+	INodePropertyOptions
 } from 'n8n-workflow';
 
 import { couponFields, couponOperations } from './CouponDescription';
@@ -92,6 +94,61 @@ export class Paddle implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			/* -------------------------------------------------------------------------- */
+			/*                                 PAYMENT                                    */
+			/* -------------------------------------------------------------------------- */
+
+			// Get all Payments so they can be selected in payment rescheduling 
+			async getPayments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/2.0/subscription/payments';
+				const paymentResponse = await paddleApiRequest.call(this, endpoint, 'POST', {});
+				
+				// Alert user if there's no payments present to be loaded into payments property
+				if (paymentResponse.response === undefined || paymentResponse.response.length == 0) {
+					throw Error('No payments on account.');
+				}
+
+				for (const payment of paymentResponse.response) {
+					const id = payment.id;
+					returnData.push({
+						name: id,
+						value: id,
+					});
+				}
+				return returnData;
+			},
+
+			/* -------------------------------------------------------------------------- */
+			/*                                 PRODUCTS                                   */
+			/* -------------------------------------------------------------------------- */
+
+			// Get all Products so they can be selected in coupon creation when assigning products
+			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/2.0/product/get_products';
+				const products = await paddleApiRequest.call(this, endpoint, 'POST', {});
+
+				// Alert user if there's no products present to be loaded into payments property
+				if ( products.length == 0) {
+					throw Error('No products on account.');
+				}
+
+				for (const product of products) {
+					const name = product.name;
+					const id = product.id;
+					returnData.push({
+						name: name,
+						value: id,
+					});
+				}
+				return returnData;
+			},
+		}
+	}
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
@@ -117,20 +174,21 @@ export class Paddle implements INodeType {
 						}
 
 					} else {
-
 						const discountType = this.getNodeParameter('discountType', i) as string;
 						const couponType = this.getNodeParameter('couponType', i) as string;
 						const discountAmount = this.getNodeParameter('discountAmount', i) as number;
-						const currency = this.getNodeParameter('currency', i) as string;
 
 						if (couponType === 'product') {
-							body.product_ids = this.getNodeParameter('productIds', i) as string;
+							body.product_ids = (this.getNodeParameter('productIds', i) as string[]).join();
+						}
+
+						if (discountType === 'flat') {
+							body.currency = this.getNodeParameter('currency', i) as string;
 						}
 
 						body.coupon_type = couponType;
 						body.discount_type = discountType;
 						body.discount_amount = discountAmount;
-						body.currency = currency;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -235,7 +293,7 @@ export class Paddle implements INodeType {
 					responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 				}
 			}
-			if (resource === 'payment') {
+			if (resource === 'payments') {
 				if (operation === 'getAll') {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
@@ -368,8 +426,6 @@ export class Paddle implements INodeType {
 					responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 				}
 			}
-
-			console.log(responseData);
 
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);

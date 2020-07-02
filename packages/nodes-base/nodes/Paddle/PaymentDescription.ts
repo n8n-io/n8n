@@ -167,9 +167,12 @@ export const paymentsFields = [
 /*                                 payments:reschedule                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'payments ID',
-		name: 'paymentsId',
-		type: 'number',
+		displayName: 'Payment ID',
+		name: 'paymentId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getPayments',
+		},
 		default: '',
 		required: true,
 		displayOptions: {
@@ -182,7 +185,7 @@ export const paymentsFields = [
 				],
 			},
 		},
-		description: 'The upcoming subscription payments ID.', // Use loadoptions to select payments
+		description: 'The upcoming subscription payment ID.',
 	},
 	{
 		displayName: 'Date',

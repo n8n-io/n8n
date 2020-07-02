@@ -6,7 +6,6 @@ import {
 	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
 	IWebhookFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {
@@ -33,20 +32,35 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 	body['vendor_id'] = credentials.vendorId;
 	body['vendor_auth_code'] = credentials.vendorAuthCode;
 
-	console.log(options.body);
-	console.log(options);
-
 	try {
 		const response = await this.helpers.request!(options);
-		console.log(response);
+		// Order endpoint is from V1 of API and doesn't return the same object as V2 unless error
+		if (response.checkout) {
+			return response;
+		}
 
 		if (!response.success) {
 			throw new Error(`Code: ${response.error.code}. Message: ${response.error.message}`);
 		}
 
+		// Return only products due to changing return object structure
+		if (response.response.products) {
+			return response.response.products;
+		}
+
+		// Transform data display to suit table
+		if (response.response.coupon_codes) {
+			const couponCodes = response.response.coupon_codes;
+			let newResponse = [];
+			for (const code of couponCodes) {
+				newResponse.push({code: code})
+			}
+
+			return newResponse;
+		}
+
 		return response.response;
 	} catch (error) {
-		console.log(error);
 		throw new Error(error);
 	}
 }

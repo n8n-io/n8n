@@ -73,7 +73,10 @@ export const couponFields = [
 	{
 		displayName: 'Product ID(s)',
 		name: 'productIds',
-		type: 'string',
+		type: 'multiOptions',
+		typeOptions: {
+			loadOptionsMethod: 'getProducts',
+		},
 		displayOptions: {
 			show: {
 				resource: [
