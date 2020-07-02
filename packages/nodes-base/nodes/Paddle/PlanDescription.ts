@@ -16,6 +16,11 @@ export const planOperations = [
 		},
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a plan.',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all plans.',
@@ -29,7 +34,7 @@ export const planOperations = [
 export const planFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                 plan:getAll                                */
+/*                                 plan:get                                */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Plan ID',
@@ -43,7 +48,7 @@ export const planFields = [
 					'plan',
 				],
 				operation: [
-					'getAll',
+					'get',
 				],
 			},
 		},

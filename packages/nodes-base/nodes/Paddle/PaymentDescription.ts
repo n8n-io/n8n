@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const paymentOperations = [
+export const paymentsOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const paymentOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payment',
+					'payments',
 				],
 			},
 		},
@@ -31,45 +31,49 @@ export const paymentOperations = [
 	},
 ] as INodeProperties[];
 
-export const paymentFields = [
+export const paymentsFields = [
 /* -------------------------------------------------------------------------- */
-/*                                 payment:getAll                                */
+/*                                 payments:getAll                                */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Subscription ID',
-		name: 'subscriptionId',
-		type: 'number',
-		default: '',
-		required: true,
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
 		displayOptions: {
 			show: {
 				resource: [
-					'user',
+					'payments',
 				],
 				operation: [
 					'getAll',
 				],
 			},
 		},
-		description: 'A specific user subscription ID.',
 	},
 	{
-		displayName: 'Plan',
-		name: 'planId',
-		type: 'string',
+		displayName: ' Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
 		default: '',
-		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'user',
+					'payments',
 				],
 				operation: [
 					'getAll',
 				],
+				jsonParameters: [
+					true,
+				],
 			},
 		},
-		description: 'Filter: The product/plan ID (single or comma-separated values).',
+		description: `Attributes in JSON form.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -78,16 +82,54 @@ export const paymentFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
+				resource: [
+					'payments',
+				],
 				operation: [
 					'getAll',
 				],
-				resource: [
-					'user',
-				],
+				jsonParameters: [
+					false
+				]
 			},
 		},
 		default: {},
 		options: [
+			{
+				displayName: 'Date From',
+				name: 'from',
+				type: 'dateTime',
+				default: '',
+				description: 'payments starting from date.',
+			},
+			{
+				displayName: 'Date To',
+				name: 'to',
+				type: 'dateTime',
+				default: '',
+				description: 'payments up until date.',
+			},
+			{
+				displayName: 'Is Paid',
+				name: 'isPaid',
+				type: 'boolean',
+				default: false,
+				description: 'payment is paid.',
+			},
+			{
+				displayName: 'Plan',
+				name: 'plan',
+				type: 'string',
+				default: '',
+				description: 'Filter: The product/plan ID (single or comma-separated values).',
+			},
+			{
+				displayName: 'Subscription ID',
+				name: 'subscriptionId',
+				type: 'number',
+				default: '',
+				description: 'A specific user subscription ID.',
+			},
 			{
 				displayName: 'State',
 				name: 'state',
@@ -114,61 +156,49 @@ export const paymentFields = [
 				]
 			},
 			{
-				displayName: 'Is Paid',
-				name: 'isPaid',
-				type: 'boolean',
-				default: false,
-				description: 'Payment is paid.',
-			},
-			{
-				displayName: 'From',
-				name: 'from',
-				type: 'DateTime',
-				default: '',
-				description: 'Payments starting from date.',
-			},
-			{
-				displayName: 'To',
-				name: 'to',
-				type: 'DateTime',
-				default: '',
-				description: 'Payments up until date.',
-			},
-			{
 				displayName: 'One off charge',
 				name: 'isOneOffCharge',
 				type: 'boolean',
 				default: false,
-				description: 'Payment is paid.',
 			},
 		],
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 payment:reschedule                         */
+/*                                 payments:reschedule                         */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Payment ID',
-		name: 'paymentId',
+		displayName: 'payments ID',
+		name: 'paymentsId',
 		type: 'number',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'user',
+					'payments',
 				],
 				operation: [
-					'getAll',
+					'reschedule',
 				],
 			},
 		},
-		description: 'The upcoming subscription payment ID.', // Use loadoptions to select payment
+		description: 'The upcoming subscription payments ID.', // Use loadoptions to select payments
 	},
 	{
 		displayName: 'Date',
 		name: 'date',
-		type: 'DateTime',
+		type: 'dateTime',
 		default: '',
-		description: 'Date you want to move the payment to.',
+		displayOptions: {
+			show: {
+				resource: [
+					'payments',
+				],
+				operation: [
+					'reschedule',
+				],
+			},
+		},
+		description: 'Date you want to move the payments to.',
 	},
 ] as INodeProperties[];
