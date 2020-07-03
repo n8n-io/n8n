@@ -218,6 +218,23 @@ export const couponFields = [
 		},
 	},
 	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'coupon',
+				],
+				operation: [
+					`create`
+				],
+			},
+		},
+		default: false,
+		description: 'Return coupon creation metadata and not only coupon codes.',
+	},
+	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
@@ -358,6 +375,23 @@ export const couponFields = [
 		},
 		default: '',
 		description: 'The specific product/subscription ID.',
+	},
+	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'coupon',
+				],
+				operation: [
+					`getAll`
+				]
+			},
+		},
+		default: false,
+		description: 'Return original API response instead of filtered.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 coupon:update	                          */

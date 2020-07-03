@@ -17,6 +17,7 @@ import { userFields, userOperations } from './UserDescription';
 
 import moment = require('moment');
 import { orderOperations, orderFields } from './OrderDescription';
+import { response } from 'express';
 
 export class Paddle implements INodeType {
 	description: INodeTypeDescription = {
@@ -161,6 +162,7 @@ export class Paddle implements INodeType {
 			if (resource === 'coupon') {
 				if (operation === 'create') {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i) as boolean;
 
 					if (jsonParameters) {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
@@ -222,16 +224,32 @@ export class Paddle implements INodeType {
 						const endpoint = '/2.1/product/create_coupon';
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
+
+						if (!rawData) {
+							const couponCodes = responseData.response.coupon_codes;
+							let newResponse = [];
+							for (const code of couponCodes) {
+								newResponse.push({code: code})
+							}
+							responseData = newResponse;
+						}
+
 					}
 				}
 
 				if (operation === 'getAll') {
 					const productIds = this.getNodeParameter('productId', i) as string;
+					const rawData = this.getNodeParameter('rawData', i) as boolean;
 					const endpoint = '/2.0/product/list_coupons';
 
 					body.product_id = productIds as string;
 
 					responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
+					
+					// Remove metadata
+					if (!rawData) {
+						responseData = responseData.response;
+					}
 				}
 
 				if (operation === 'update') {
@@ -335,10 +353,15 @@ export class Paddle implements INodeType {
 							body.is_one_off_charge = additionalFields.isOneOffCharge as boolean;
 						}
 					}
-
+					const rawData = this.getNodeParameter('rawData', i) as boolean;
 					const endpoint = '/2.0/subscription/payments';
 
 					responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
+
+					// Remove metadata
+					if (!rawData) {
+						responseData = responseData.response;
+					}
 				}
 				if (operation === 'reschedule') {
 					const paymentId = this.getNodeParameter('paymentId', i) as number;
@@ -354,25 +377,43 @@ export class Paddle implements INodeType {
 			}
 			if (resource === 'plan') {
 				if (operation === 'getAll') {
+					const rawData = this.getNodeParameter('rawData', i) as boolean;
 					const endpoint = '/2.0/subscription/plans';
 
 					responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
+
+					// Remove metadata
+					if (!rawData) {
+						responseData = responseData.response;
+					}
 				}
 				if (operation === 'get') {
 					const planId = this.getNodeParameter('planId', i) as string;
+					const rawData = this.getNodeParameter('rawData', i) as boolean;
 
 					body.plan = planId;
 
 					const endpoint = '/2.0/subscription/plans';
 
 					responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
+
+					// Remove metadata
+					if (!rawData) {
+						responseData = responseData.response;
+					}
 				}
 			}
 			if (resource === 'product') {
 				if (operation === 'getAll') {
+					const rawData = this.getNodeParameter('rawData', i) as boolean;
 					const endpoint = '/2.0/product/get_products';
 
 					responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
+
+					// Remove metadata
+					if (!rawData) {
+						responseData = responseData.response.products;
+					}
 				}
 			}
 			if (resource === 'order') {
@@ -387,7 +428,7 @@ export class Paddle implements INodeType {
 			}
 			if (resource === 'user') {
 				if (operation === 'getAll') {
-
+					const rawData = this.getNodeParameter('rawData', i) as boolean;
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 					if (jsonParameters) {
@@ -419,11 +460,16 @@ export class Paddle implements INodeType {
 						if (additionalFields.subscriptionId) {
 							body.subscription_id = additionalFields.subscriptionId as string;
 						}
-
 					}
+					
 					const endpoint = '/2.0/subscription/users';
 
 					responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
+
+					// Remove metadata
+					if (!rawData) {
+						responseData = responseData.response;
+					}
 				}
 			}
 

@@ -27,5 +27,21 @@ export const productOperations = [
 ] as INodeProperties[];
 
 export const productFields = [
-
+	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'product',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Return original API response instead of filtered.',
+	},
 ] as INodeProperties[];

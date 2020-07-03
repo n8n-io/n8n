@@ -54,4 +54,21 @@ export const planFields = [
 		},
 		description: 'Filter: The subscription plan ID.',
 	},
+	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'plan',
+				],
+				operation: [
+					'get', 'getAll'
+				],
+			},
+		},
+		default: false,
+		description: 'Return original API response instead of filtered.',
+	},
 ] as INodeProperties[];

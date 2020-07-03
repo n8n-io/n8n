@@ -33,7 +33,7 @@ export const paymentsOperations = [
 
 export const paymentsFields = [
 /* -------------------------------------------------------------------------- */
-/*                                 payments:getAll                                */
+/*                                 payments:getAll                             */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'JSON Parameters',
@@ -74,6 +74,23 @@ export const paymentsFields = [
 			},
 		},
 		description: `Attributes in JSON form.`,
+	},
+	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'payments',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: false,
+		description: 'Return original API response instead of filtered.',
 	},
 	{
 		displayName: 'Additional Fields',
