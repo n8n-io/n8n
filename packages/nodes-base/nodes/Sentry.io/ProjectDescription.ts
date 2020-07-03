@@ -45,10 +45,10 @@ export const projectFields = [
         default: '',
         displayOptions: {
             show: {
-                operation: [
+                resource: [
                     'project',
                 ],
-                resource: [
+                operation: [
                     'create', 'get', 'update', 'delete'
                 ],
             },
@@ -63,10 +63,10 @@ export const projectFields = [
         default: '',
         displayOptions: {
             show: {
-                operation: [
+                resource: [
                     'project',
                 ],
-                resource: [
+                operation: [
                     'create', 'get', 'update', 'delete'
                 ],
             },
@@ -81,10 +81,10 @@ export const projectFields = [
         default: '',
         displayOptions: {
             show: {
-                operation: [
+                resource: [
                     'project',
                 ],
-                resource: [
+                operation: [
                     'create',
                 ],
             },

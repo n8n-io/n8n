@@ -40,10 +40,10 @@ export const teamFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'team',
 				],
-				resource: [
+				operation: [
 					'getAll',
 				],
 			},
@@ -61,10 +61,10 @@ export const teamFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'team',
 				],
-				resource: [
+				operation: [
 					'get',
 				],
 			},
@@ -79,10 +79,10 @@ export const teamFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'team',
 				],
-				resource: [
+				operation: [
 					'get',
 				],
 			},
@@ -100,10 +100,10 @@ export const teamFields = [
         default: '',
         displayOptions: {
             show: {
-                operation: [
+                resource: [
                     'team',
                 ],
-                resource: [
+                operation: [
                     'create',
                 ],
             },
@@ -118,10 +118,10 @@ export const teamFields = [
         default: '',
         displayOptions: {
             show: {
-                operation: [
+                resource: [
                     'team',
                 ],
-                resource: [
+                operation: [
                     'create',
                 ],
             },
@@ -137,12 +137,12 @@ export const teamFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+                resource: [
+                    'team',
+                ],
+                operation: [
+                    'create',
+                ],
 			},
 		},
 		options: [
@@ -165,10 +165,10 @@ export const teamFields = [
         default: '',
         displayOptions: {
             show: {
-                operation: [
+                resource: [
                     'team',
                 ],
-                resource: [
+                operation: [
                     'update', 'delete'
                 ],
             },
@@ -183,10 +183,10 @@ export const teamFields = [
         default: '',
         displayOptions: {
             show: {
-                operation: [
+                resource: [
                     'team',
                 ],
-                resource: [
+                operation: [
                     'update', 'delete'
                 ],
             },

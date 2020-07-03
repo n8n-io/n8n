@@ -40,10 +40,10 @@ export const eventFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'event',
 				],
-				resource: [
+				operation: [
 					'getAll',
 				],
 			},
@@ -58,10 +58,10 @@ export const eventFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'event',
 				],
-				resource: [
+				operation: [
 					'getAll',
 				],
 			},
@@ -76,10 +76,10 @@ export const eventFields = [
 		default: true,
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'event',
 				],
-				resource: [
+				operation: [
 					'getAll',
 				],
 			},
@@ -96,10 +96,10 @@ export const eventFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'event',
 				],
-				resource: [
+				operation: [
 					'get',
 				],
 			},
@@ -114,10 +114,10 @@ export const eventFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'event',
 				],
-				resource: [
+				operation: [
 					'get',
 				],
 			},
@@ -132,10 +132,10 @@ export const eventFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'event',
 				],
-				resource: [
+				operation: [
 					'get',
 				],
 			},

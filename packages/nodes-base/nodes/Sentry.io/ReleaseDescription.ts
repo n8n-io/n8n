@@ -40,10 +40,10 @@ export const releaseFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'release',
 				],
-				resource: [
+				operation: [
 					'getAll',
 				],
 			},
@@ -87,10 +87,10 @@ export const releaseFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'release',
 				],
-				resource: [
+				operation: [
 					'get',
 				],
 			},
@@ -105,10 +105,10 @@ export const releaseFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'release',
 				],
-				resource: [
+				operation: [
 					'get',
 				],
 			},

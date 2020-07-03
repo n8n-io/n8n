@@ -48,11 +48,11 @@ export class Sentryio implements INodeType {
 				options: [
 					{
 						name: 'Events',
-						value: 'events',
+						value: 'event',
 					},
 					{
 						name: 'Issues',
-						value: 'issues',
+						value: 'issue',
 					},
 					{
 						name: 'Project',
@@ -71,7 +71,7 @@ export class Sentryio implements INodeType {
 						value: 'team',
 					},
 				],
-				default: 'events',
+				default: 'event',
 				description: 'Resource to consume.',
 			},
 		],

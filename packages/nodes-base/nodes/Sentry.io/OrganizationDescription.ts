@@ -76,10 +76,10 @@ export const organizationFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'organization',
 				],
-				resource: [
+				operation: [
 					'get',
 				],
 			},

@@ -51,10 +51,10 @@ export const issueFields = [
 		placeholder: '1234',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'issue',
 				],
-				resource: [
+				operation: [
 					'get', 'delete'
 				],
 			},
@@ -72,10 +72,10 @@ export const issueFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'issue',
 				],
-				resource: [
+				operation: [
 					'getAll',
 				],
 			},
@@ -90,10 +90,10 @@ export const issueFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'issue',
 				],
-				resource: [
+				operation: [
 					'getAll',
 				],
 			},
@@ -155,10 +155,10 @@ export const issueFields = [
 		placeholder: '1234',
 		displayOptions: {
 			show: {
-				operation: [
+				resource: [
 					'issue',
 				],
-				resource: [
+				operation: [
 					'update',
 				],
 			},
