@@ -6,40 +6,18 @@ import {
 	INodeTypeDescription
 } from 'n8n-workflow';
 
+import { flatten } from 'lodash';
+
 import * as mssql from 'mssql';
 
-/**
- * Returns of copy of the items which only contains the json data and
- * of that only the define properties
- *
- * @param {INodeExecutionData[]} items The items to copy
- * @param {string[]} properties The properties it should include
- * @returns
- */
-function getItemCopy(
-	items: INodeExecutionData[],
-	properties: string[]
-): IDataObject[] {
-	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject;
-	return items.map(item => {
-		newItem = {};
-		for (const property of properties) {
-			if (item.json[property] === undefined) {
-				newItem[property] = null;
-			} else {
-				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
-			}
-		}
-		return newItem;
-	});
-}
+import { copyInputItems } from './GenericFunctions';
+import { query } from 'express';
 
 export class MicrosoftSqlServer implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft SQL Server',
 		name: 'microsoftSqlServer',
-		icon: 'file:postgres.png',
+		icon: 'file:mssql.png',
 		group: ['input'],
 		version: 1,
 		description: 'Gets, add and update data in Microsoft SQL Server.',
@@ -65,6 +43,11 @@ export class MicrosoftSqlServer implements INodeType {
 						name: 'Execute Query',
 						value: 'executeQuery',
 						description: 'Executes a SQL query.'
+					},
+					{
+						name: 'Insert',
+						value: 'insert',
+						description: 'Insert rows in database.'
 					}
 				],
 				default: 'executeQuery',
@@ -90,6 +73,37 @@ export class MicrosoftSqlServer implements INodeType {
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
 				description: 'The SQL query to execute.'
+			},
+
+			// ----------------------------------
+			//         insert
+			// ----------------------------------
+			{
+				displayName: 'Table',
+				name: 'table',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['insert']
+					}
+				},
+				default: '',
+				required: true,
+				description: 'Name of the table in which to insert data to.'
+			},
+			{
+				displayName: 'Columns',
+				name: 'columns',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['insert']
+					}
+				},
+				default: '',
+				placeholder: 'id,name,description',
+				description:
+					'Comma separated list of the properties which should used as columns for the new rows.'
 			}
 		]
 	};
@@ -110,7 +124,7 @@ export class MicrosoftSqlServer implements INodeType {
 			domain: credentials.domain ? (credentials.domain as string) : undefined
 		};
 
-		let pool = new mssql.ConnectionPool(config);
+		const pool = new mssql.ConnectionPool(config);
 		await pool.connect();
 
 		let returnItems: any = [];
@@ -123,16 +137,44 @@ export class MicrosoftSqlServer implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryQueue = items.map((item, index) => {
-				const rawQuery = this.getNodeParameter('query', index) as string;
+			const rawQuery = this.getNodeParameter('query', 0) as string;
 
-				return pool.request().query(rawQuery);
-			});
-			let queryResult = await Promise.all(queryQueue);
+			const queryResult = await pool.request().query(rawQuery);
 
-			console.log(queryResult);
+			const result =
+				queryResult.recordsets.length > 1
+					? flatten(queryResult.recordsets)
+					: queryResult.recordsets[0];
 
-			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(result as IDataObject[]);
+		} else if (operation === 'insert') {
+			// ----------------------------------
+			//         insert
+			// ----------------------------------
+
+			const table = this.getNodeParameter('table', 0) as string;
+			const columnString = this.getNodeParameter('columns', 0) as string;
+			const columns = columnString.split(',').map(column => column.trim());
+
+			const insertItems = copyInputItems(items, columns);
+			// const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
+
+			console.log(insertItems);
+			const queryItems = insertItems
+				.reduce((acc, item) => {
+					acc.push(`(${Object.values(item as any)})`);
+					return acc;
+				}, [])
+				.join(','); // tslint:disable-line:no-any
+			console.log(queryItems);
+
+			const insertSQL = `INSERT INTO ${table}(${columnString}) VALUES ${queryItems};`;
+			console.log(insertSQL);
+			const queryResult = await pool.request().query(insertSQL);
+
+			returnItems = this.helpers.returnJsonArray(
+				queryResult.recordset as IDataObject[]
+			);
 		}
 		// Close the connection
 		await pool.close();
