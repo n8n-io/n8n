@@ -95,6 +95,7 @@
       "dist/credentials/MicrosoftExcelOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftOAuth2Api.credentials.js",
       "dist/credentials/MicrosoftOneDriveOAuth2Api.credentials.js",
+      "dist/credentials/MicrosoftSqlServer.credentials.js",
       "dist/credentials/MoceanApi.credentials.js",
       "dist/credentials/MondayComApi.credentials.js",
       "dist/credentials/MongoDb.credentials.js",
@@ -236,6 +237,7 @@
       "dist/nodes/MessageBird/MessageBird.node.js",
       "dist/nodes/Microsoft/Excel/MicrosoftExcel.node.js",
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.js",
+      "dist/nodes/Microsoft/SqlServer/MicrosoftSqlServer.node.js",
       "dist/nodes/MoveBinaryData.node.js",
       "dist/nodes/Mocean/Mocean.node.js",
       "dist/nodes/MondayCom/MondayCom.node.js",
@@ -329,6 +331,7 @@
     "typescript": "~3.7.4"
   },
   "dependencies": {
+    "@types/mssql": "^6.0.2",
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
     "change-case": "^4.1.1",
