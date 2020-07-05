@@ -152,7 +152,7 @@ export class Asana implements INodeType {
 			},
 
 			// ----------------------------------
-			//         delete
+			//         task:delete
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
@@ -174,7 +174,7 @@ export class Asana implements INodeType {
 			},
 
 			// ----------------------------------
-			//         get
+			//         task:get
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
@@ -196,7 +196,7 @@ export class Asana implements INodeType {
 			},
 
 			// ----------------------------------
-			//         update
+			//         task:update
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
@@ -219,7 +219,7 @@ export class Asana implements INodeType {
 
 
 			// ----------------------------------
-			//         search
+			//         task:search
 			// ----------------------------------
 			{
 				displayName: 'Workspace',
@@ -284,7 +284,7 @@ export class Asana implements INodeType {
 			},
 
 			// ----------------------------------
-			//         create/update
+			//         task:create/update properties
 			// ----------------------------------
 			{
 				displayName: 'Other Properties',
@@ -713,7 +713,7 @@ export class Asana implements INodeType {
 
 				} else if (operation === 'search') {
 					// ----------------------------------
-					//         search
+					//         task:search
 					// ----------------------------------
 
 					const workspaceId = this.getNodeParameter('workspace', i) as string;
@@ -734,7 +734,7 @@ export class Asana implements INodeType {
 			} else if (resource === 'user') {
 				if (operation === 'get') {
 					// ----------------------------------
-					//         get
+					//         user:get
 					// ----------------------------------
 
 					const userId = this.getNodeParameter('userId', i) as string;
@@ -747,7 +747,7 @@ export class Asana implements INodeType {
 
 				} else if (operation === 'getAll') {
 					// ----------------------------------
-					//         getAll
+					//         user:getAll
 					// ----------------------------------
 
 					const workspaceId = this.getNodeParameter('workspace', i) as string;
