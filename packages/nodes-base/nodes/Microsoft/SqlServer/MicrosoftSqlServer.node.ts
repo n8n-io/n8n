@@ -6,7 +6,7 @@ import {
 	INodeTypeDescription
 } from 'n8n-workflow';
 
-import { flatten } from 'lodash';
+import { chunk, flatten, sum } from 'lodash';
 
 import * as mssql from 'mssql';
 
@@ -205,16 +205,23 @@ export class MicrosoftSqlServer implements INodeType {
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map(column => column.trim());
 
-			const insertValues = copyInputItems(items, columns)
-				.map(item => extractValues(item))
-				.join(',');
+			const insertValuesList = chunk(copyInputItems(items, columns), 1000);
+			const queryQueue = insertValuesList.map(insertValues => {
+				let values = insertValues.map(item => extractValues(item)).join(',');
 
-			const insertSQL = `INSERT INTO ${table}(${columnString}) VALUES ${insertValues};`; // bulk insert instead
-			const queryResult = await pool.request().query(insertSQL);
-
-			returnItems = this.helpers.returnJsonArray(
-				queryResult.recordset as IDataObject[]
+				return pool
+					.request()
+					.query(`INSERT INTO ${table}(${columnString}) VALUES ${values};`);
+			});
+			let queryResult = await Promise.all(queryQueue);
+			const result = queryResult.reduce(
+				(acc, item): number => (acc += sum(item.rowsAffected)),
+				0
 			);
+
+			returnItems = this.helpers.returnJsonArray({
+				rowsAffected: result
+			} as IDataObject);
 		} else if (operation === 'update') {
 			// ----------------------------------
 			//         update
@@ -229,7 +236,7 @@ export class MicrosoftSqlServer implements INodeType {
 				columns.unshift(updateKey);
 			}
 
-			// const updateItems = copyInputItems(items, columns);
+			const updateItems = copyInputItems(items, columns);
 			// const updateSQL = `UPDATE ${table} SET ${columns
 			// 	.map(column => `${column} = ?`)
 			// 	.join(',')} WHERE ${updateKey} = ?;`;
