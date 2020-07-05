@@ -452,11 +452,8 @@ export class Slack implements INodeType {
 					}
 					if (body.as_user === false) {
 						body.username = this.getNodeParameter('username', i) as string;
+						delete body.as_user;
 					}
-
-					// ignore body.as_user as it's deprecated
-
-					delete body.as_user;
 
 					if (!jsonParameters) {
 						const attachments = this.getNodeParameter('attachments', i, []) as unknown as Attachment[];
