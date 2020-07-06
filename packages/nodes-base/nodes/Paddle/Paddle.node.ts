@@ -62,10 +62,10 @@ export class Paddle implements INodeType {
 						name: 'Product',
 						value: 'product',
 					},
-					{
-						name: 'Order',
-						value: 'order',
-					},
+					// {
+					// 	name: 'Order',
+					// 	value: 'order',
+					// },
 					{
 						name: 'User',
 						value: 'user',
@@ -87,8 +87,8 @@ export class Paddle implements INodeType {
 			...productOperations,
 			...productFields,
 			// ORDER
-			...orderOperations,
-			...orderFields,
+			// ...orderOperations,
+			// ...orderFields,
 			// USER
 			...userOperations,
 			...userFields
