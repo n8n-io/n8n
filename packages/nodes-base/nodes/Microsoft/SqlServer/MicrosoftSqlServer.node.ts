@@ -6,16 +6,17 @@ import {
 	INodeTypeDescription
 } from 'n8n-workflow';
 
-import { chunk, flatten, sum } from 'lodash';
+import { chunk, flatten, flattenDeep, sum } from 'lodash';
 
 import * as mssql from 'mssql';
 
 import {
 	copyInputItems,
-	extractValues,
-	extractUpdateSet,
+	createTableStruct,
+	extractDeleteValues,
 	extractUpdateCondition,
-	extractDeleteValues
+	extractUpdateSet,
+	extractValues
 } from './GenericFunctions';
 
 export class MicrosoftSqlServer implements INodeType {
@@ -223,10 +224,6 @@ export class MicrosoftSqlServer implements INodeType {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		// asdf = {
-		// 	tableName: [{ values, columns }]
-		// };
-
 		if (operation === 'executeQuery') {
 			// ----------------------------------
 			//         executeQuery
@@ -247,26 +244,45 @@ export class MicrosoftSqlServer implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const table = this.getNodeParameter('table', 0) as string;
-			const columnString = this.getNodeParameter('columns', 0) as string;
-			const columns = columnString.split(',').map(column => column.trim());
+			const tables = createTableStruct(items, this.getNodeParameter);
 
-			const insertValuesList = chunk(copyInputItems(items, columns), 1000);
-			const queryQueue = insertValuesList.map(insertValues => {
-				const values = insertValues.map(item => extractValues(item)).join(',');
+			const result = await Promise.all(
+				Object.keys(tables).map(table => {
+					const columnsResults = Object.keys(tables[table]).map(
+						columnString => {
+							const columns = columnString
+								.split(',')
+								.map(column => column.trim());
 
-				return pool
-					.request()
-					.query(`INSERT INTO ${table}(${columnString}) VALUES ${values};`);
-			});
-			const queryResult = await Promise.all(queryQueue);
-			const result = queryResult.reduce(
-				(acc, item): number => (acc += sum(item.rowsAffected)),
+							const insertValuesList = chunk(
+								copyInputItems(tables[table][columnString], columns),
+								1000
+							);
+
+							const queryQueue = insertValuesList.map(insertValues => {
+								const values = insertValues
+									.map(item => extractValues(item))
+									.join(',');
+
+								return pool
+									.request()
+									.query(
+										`INSERT INTO ${table}(${columnString}) VALUES ${values};`
+									);
+							});
+							return Promise.all(queryQueue);
+						}
+					);
+					return Promise.all(columnsResults);
+				})
+			);
+			const rowsAffected = flattenDeep(result).reduce(
+				(acc, resp): number => (acc += sum(resp.rowsAffected)),
 				0
 			);
 
 			returnItems = this.helpers.returnJsonArray({
-				rowsAffected: result
+				rowsAffected
 			} as IDataObject);
 		} else if (operation === 'update') {
 			// ----------------------------------
@@ -307,7 +323,6 @@ export class MicrosoftSqlServer implements INodeType {
 			const deleteItemsList = chunk(copyInputItems(items, [deleteKey]), 1000);
 
 			const queryQueue = deleteItemsList.map(deleteValues => {
-				console.log(extractDeleteValues(deleteValues, deleteKey));
 				return pool
 					.request()
 					.query(

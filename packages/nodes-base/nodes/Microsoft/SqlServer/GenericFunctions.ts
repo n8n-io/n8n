@@ -28,6 +28,31 @@ export function copyInputItems(
 }
 
 /**
+ * Creates a table object with the columns for the operations
+ *
+ * @param {IDataObject} items The items to extract the tables/columns for
+ * @param {function} getNodeParam getter for the Node's Parameters
+ * @returns {object} {tableName: {colNames: [items]}};
+ */
+export function createTableStruct(
+	items: IDataObject[],
+	getNodeParam: Function
+): object {
+	return items.reduce((tables, item, index) => {
+		const table = getNodeParam('table', index) as string;
+		const columnString = getNodeParam('columns', index) as string;
+		if (tables[table] === undefined) {
+			tables[table] = {};
+		}
+		if (tables[table][columnString] === undefined) {
+			tables[table][columnString] = [];
+		}
+		tables[table][columnString].push(item);
+		return tables;
+	}, {});
+}
+
+/**
  * Extracts the values from the item for INSERT
  *
  * @param {IDataObject} item The item to extract
@@ -43,6 +68,7 @@ export function extractValues(item: IDataObject): string {
  * Extracts the SET from the item for UPDATE
  *
  * @param {IDataObject} item The item to extract from
+ * @param {string[]} columns The columns to update
  * @returns {string} col1 = val1, col2 = val2
  */
 export function extractUpdateSet(item: IDataObject, columns: string[]): string {
@@ -60,6 +86,7 @@ export function extractUpdateSet(item: IDataObject, columns: string[]): string {
  * Extracts the WHERE condition from the item for UPDATE
  *
  * @param {IDataObject} item The item to extract from
+ * @param {string} key The column name to build the condition with
  * @returns {string} id = '123'
  */
 export function extractUpdateCondition(item: IDataObject, key: string): string {
@@ -71,7 +98,8 @@ export function extractUpdateCondition(item: IDataObject, key: string): string {
 /**
  * Extracts the WHERE condition from the items for DELETE
  *
- * @param {IDataObject} item The item to extract
+ * @param {IDataObject[]} items The items to extract the values from
+ * @param {string} key The column name to extract the value from for the delete condition
  * @returns {string} (Val1, Val2, ...)
  */
 export function extractDeleteValues(items: IDataObject[], key: string): string {
