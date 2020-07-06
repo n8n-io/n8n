@@ -216,6 +216,21 @@ export class Sentryio implements INodeType {
 
 					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
 				}
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const agreeTerms = this.getNodeParameter('agreeTerms', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const endpoint = `/api/0/organizations/`;
+
+					qs.name = name;
+					qs.agreeTerms = agreeTerms;
+
+					if (additionalFields.slug) {
+						qs.slug = additionalFields.slug as string;
+					}
+
+					responseData = await sentryioApiRequest.call(this, 'POST', endpoint, qs);
+				}
 			}
 			if (resource === 'project') {
 				if (operation === 'create') {
@@ -280,6 +295,23 @@ export class Sentryio implements INodeType {
 					
 
 					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+				}
+
+				if (operation === 'create') {
+					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+					const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.name) {
+						qs.name = additionalFields.name;
+					}
+
+					if (additionalFields.slug) {
+						qs.slug = additionalFields.slug;
+					}
+					
+					responseData = await sentryioApiRequest.call(this, 'POST', endpoint, qs);
 				}
 			}
 			

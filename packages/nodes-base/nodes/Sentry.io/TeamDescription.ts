@@ -14,6 +14,11 @@ export const teamOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new team.',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get team by ID.',
@@ -112,24 +117,6 @@ export const teamFields = [
 		description: 'The slug of the organization the team belongs to.',
 	},
 	{
-		displayName: 'Name',
-		name: 'name',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		required: true,
-		description: 'The name of the team.',
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -146,6 +133,13 @@ export const teamFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'The name of the team.',
+			},
 			{
 				displayName: 'Slug',
 				name: 'slug',

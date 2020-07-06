@@ -25,6 +25,7 @@ export async function sentryioApiRequest(this: IHookFunctions | IExecuteFunction
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
+
 	
 	try {
 		return await this.helpers.requestOAuth2!.call(this, 'sentryioOAuth2Api', options);

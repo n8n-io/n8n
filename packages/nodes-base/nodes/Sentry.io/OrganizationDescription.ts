@@ -14,6 +14,11 @@ export const organizationOperations = [
 		},
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create an organization.',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get organization by ID.',
@@ -33,39 +38,39 @@ export const organizationFields = [
 /* -------------------------------------------------------------------------- */
 /*                                organization:getAll                                */
 /* -------------------------------------------------------------------------- */
-{
-    displayName: 'Additional Fields',
-    name: 'additionalFields',
-    type: 'collection',
-    placeholder: 'Add Field',
-    default: {},
-    displayOptions: {
-        show: {
-            resource: [
-                'organization',
-            ],
-            operation: [
-                'getAll',
-            ],
-        },
-    },
-    options: [
-        {
-            displayName: 'Member',
-            name: 'member',
-            type: 'boolean',
-            default: true,
-            description: 'Restrict results to organizations which you have membership.',
-        },
-        {
-            displayName: 'Owner',
-            name: 'owner',
-            type: 'boolean',
-            default: true,
-            description: 'Restrict results to organizations which you are the owner.',
-        },
-    ]
-},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Member',
+				name: 'member',
+				type: 'boolean',
+				default: true,
+				description: 'Restrict results to organizations which you have membership.',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'boolean',
+				default: true,
+				description: 'Restrict results to organizations which you are the owner.',
+			},
+		]
+	},
 /* -------------------------------------------------------------------------- */
 /*                                organization:get                                   */
 /* -------------------------------------------------------------------------- */
@@ -86,5 +91,69 @@ export const organizationFields = [
 		},
 		required: true,
 		description: 'The slug of the organization the team should be created for.',
-	}
+	},
+/* -------------------------------------------------------------------------- */
+/*                                organization:create                         */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization the team should be created for.',
+	},
+	{
+		displayName: 'Agree to Terms',
+		name: 'agreeTerms',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'Signaling you agree to the applicable terms of service and privacy policy of Sentry.io.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'organization',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+				description: 'The unique URL slug for this organization. If this is not provided a slug is automatically generated based on the name.',
+			},
+		]
+	},
 ] as INodeProperties[];
