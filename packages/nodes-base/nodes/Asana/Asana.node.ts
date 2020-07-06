@@ -102,6 +102,11 @@ export class Asana implements INodeType {
 						value: 'search',
 						description: 'Search for tasks',
 					},
+					{
+						name: 'Move',
+						value: 'moveToSection',
+						description: 'Move task to section',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -281,6 +286,75 @@ export class Asana implements INodeType {
 						description: 'If the task is marked completed.',
 					},
 				],
+			},
+
+			// ----------------------------------
+			//         task:move to section
+			// ----------------------------------
+			{
+				displayName: 'Task ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'moveToSection',
+						],
+						resource: [
+							'task',
+						],
+					},
+				},
+				description: 'The ID of the task to be moved.',
+			},
+			{
+				displayName: 'Project',
+				name: 'projectId',
+				type: "options",
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'moveToSection',
+						],
+						resource: [
+							'task',
+						],
+					},
+				},
+				description: 'Project to show the sections of.',
+			},
+			{
+				displayName: 'Section',
+				name: 'section',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getSections',
+					loadOptionsDependsOn: [
+						'projectId',
+					],
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'moveToSection',
+						],
+						resource: [
+							'task',
+						],
+					},
+				},
+				description: 'The Section to move the task to',
 			},
 
 			// ----------------------------------
