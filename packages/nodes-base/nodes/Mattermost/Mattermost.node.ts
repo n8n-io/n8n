@@ -95,7 +95,7 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Soft-deletes a channel',
+						description: 'Soft-delete a channel',
 					},
 					{
 						name: 'Member',
@@ -131,7 +131,7 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Soft deletes a post, by marking the post as deleted in the database.',
+						description: 'Soft delete a post, by marking the post as deleted in the database.',
 					},
 					{
 						name: 'Post',
