@@ -51,6 +51,27 @@ export const meetingFields = [
 	/*                                 meeting:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Topic',
+		name: 'topic',
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+
+				],
+				resource: [
+					'meeting',
+				],
+			},
+		},
+		description: `Topic of the meeting.`,
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -87,42 +108,6 @@ export const meetingFields = [
 				},
 				default: 0,
 				description: 'Meeting duration (minutes).',
-			},
-			{
-				displayName: 'Meeting Topic',
-				name: 'topic',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: `Meeting topic.`,
-			},
-			{
-				displayName: 'Meeting Type',
-				name: 'type',
-				type: 'options',
-				options: [
-					{
-						name: 'Instant Meeting',
-						value: 1,
-					},
-					{
-						name: 'Scheduled Meeting',
-						value: 2,
-					},
-					{
-						name: 'Recurring Meeting with no fixed time',
-						value: 3,
-					},
-					{
-						name: 'Recurring Meeting with fixed time',
-						value: 8,
-					},
-
-				],
-				default: 2,
-				description: 'Meeting type.',
 			},
 			{
 				displayName: 'Password',
@@ -284,13 +269,39 @@ export const meetingFields = [
 				default: '',
 				description: `Time zone used in the response. The default is the time zone of the calendar.`,
 			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				options: [
+					{
+						name: 'Instant Meeting',
+						value: 1,
+					},
+					{
+						name: 'Scheduled Meeting',
+						value: 2,
+					},
+					{
+						name: 'Recurring Meeting with no fixed time',
+						value: 3,
+					},
+					{
+						name: 'Recurring Meeting with fixed time',
+						value: 8,
+					},
+
+				],
+				default: 2,
+				description: 'Meeting type.',
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 meeting:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting ID',
+		displayName: 'ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -433,7 +444,7 @@ export const meetingFields = [
 	/*                                 meeting:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting ID',
+		displayName: 'ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -488,7 +499,7 @@ export const meetingFields = [
 	/*                                 meeting:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Meeting ID',
+		displayName: 'ID',
 		name: 'meetingId',
 		type: 'string',
 		default: '',
@@ -541,39 +552,6 @@ export const meetingFields = [
 				},
 				default: 0,
 				description: 'Meeting duration (minutes).',
-			},
-			{
-				displayName: 'Meeting Topic',
-				name: 'topic',
-				type: 'string',
-				default: '',
-				description: `Meeting topic.`,
-			},
-			{
-				displayName: 'Meeting Type',
-				name: 'type',
-				type: 'options',
-				options: [
-					{
-						name: 'Instant Meeting',
-						value: 1,
-					},
-					{
-						name: 'Scheduled Meeting',
-						value: 2,
-					},
-					{
-						name: 'Recurring Meeting with no fixed time',
-						value: 3,
-					},
-					{
-						name: 'Recurring Meeting with fixed time',
-						value: 8,
-					},
-
-				],
-				default: 2,
-				description: 'Meeting type.',
 			},
 			{
 				displayName: 'Password',
@@ -734,6 +712,39 @@ export const meetingFields = [
 				},
 				default: '',
 				description: `Time zone used in the response. The default is the time zone of the calendar.`,
+			},
+			{
+				displayName: 'Topic',
+				name: 'topic',
+				type: 'string',
+				default: '',
+				description: `Meeting topic.`,
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				options: [
+					{
+						name: 'Instant Meeting',
+						value: 1,
+					},
+					{
+						name: 'Scheduled Meeting',
+						value: 2,
+					},
+					{
+						name: 'Recurring Meeting with no fixed time',
+						value: 3,
+					},
+					{
+						name: 'Recurring Meeting with fixed time',
+						value: 8,
+					},
+
+				],
+				default: 2,
+				description: 'Meeting type.',
 			},
 		],
 	},

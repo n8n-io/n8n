@@ -252,10 +252,7 @@ export class Zoom implements INodeType {
 				}
 				if (operation === 'create') {
 					//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingcreate
-					const additionalFields = this.getNodeParameter(
-						'additionalFields',
-						i
-					) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const body: IDataObject = {};
 
@@ -310,9 +307,7 @@ export class Zoom implements INodeType {
 						body.settings = settingValues;
 					}
 
-					if (additionalFields.topic) {
-						body.topic = additionalFields.topic as string;
-					}
+					body.topic = this.getNodeParameter('topic', i) as string;
 
 					if (additionalFields.type) {
 						body.type = additionalFields.type as string;
@@ -346,8 +341,6 @@ export class Zoom implements INodeType {
 					if (additionalFields.agenda) {
 						body.agenda = additionalFields.agenda as string;
 					}
-
-					console.log(body);
 
 					responseData = await zoomApiRequest.call(
 						this,
