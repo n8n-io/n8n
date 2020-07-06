@@ -73,8 +73,8 @@ export const teamFields = [
 		description: 'The slug of the organization the team belongs to.',
 	},
 	{
-		displayName: 'Project Slug',
-		name: 'projectSlug',
+		displayName: 'Team Slug',
+		name: 'teamSlug',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -89,47 +89,47 @@ export const teamFields = [
 		},
 		required: true,
 		description: 'The slug of the team to get.',
-    },
+	},
 /* -------------------------------------------------------------------------- */
 /*                                team:create                                 */
 /* -------------------------------------------------------------------------- */
-    {
-        displayName: 'Organization Slug',
-        name: 'organizationSlug',
-        type: 'string',
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'team',
-                ],
-                operation: [
-                    'create',
-                ],
-            },
-        },
-        required: true,
-        description: 'The slug of the organization the team belongs to.',
-    },
-    {
-        displayName: 'Name',
-        name: 'name',
-        type: 'string',
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'team',
-                ],
-                operation: [
-                    'create',
-                ],
-            },
-        },
-        required: true,
-        description: 'The name of the team.',
-    },
-    {
+	{
+		displayName: 'Organization Slug',
+		name: 'organizationSlug',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization the team belongs to.',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		required: true,
+		description: 'The name of the team.',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -137,12 +137,12 @@ export const teamFields = [
 		default: {},
 		displayOptions: {
 			show: {
-                resource: [
-                    'team',
-                ],
-                operation: [
-                    'create',
-                ],
+				resource: [
+					'team',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		options: [
@@ -154,78 +154,77 @@ export const teamFields = [
 				description: 'The optional slug for this team. If not provided it will be auto generated from the name..',
 			},
 		]
-    },
+	},
 /* -------------------------------------------------------------------------- */
 /*                                team:update                                 */
 /* -------------------------------------------------------------------------- */
-    {
-        displayName: 'Organization Slug',
-        name: 'organizationSlug',
-        type: 'string',
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'team',
-                ],
-                operation: [
-                    'update', 'delete'
-                ],
-            },
-        },
-        required: true,
-        description: 'The slug of the organization the team belongs to.',
-    },
-    {
-        displayName: 'Team Slug',
-        name: 'teamSlug',
-        type: 'string',
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'team',
-                ],
-                operation: [
-                    'update', 'delete'
-                ],
-            },
-        },
-        required: true,
-        description: 'The slug of the team to get.',
-    },
-    {
-        displayName: 'Additional Fields',
-        name: 'additionalFields',
-        type: 'collection',
-        placeholder: 'Add Field',
-        default: {},
-        displayOptions: {
-            show: {
-                resource: [
-                    'team',
-                ],
-                operation: [
-                    'update',
-                ],
-            },
-        },
-        options: [
-            {
-                displayName: 'Slug',
-                name: 'slug',
-                type: 'string',
-                default: '',
-                description: 'The new slug of the team. Must be unique and available.',
-            },
-            {
-                displayName: 'Name',
-                name: 'name',
-                type: 'string',
-                default: '',
-                required: true,
-                description: 'The new name of the team.',
-            },
-        ]
-    },
+	{
+		displayName: 'Organization Slug',
+		name: 'organizationSlug',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'update', 'delete'
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization the team belongs to.',
+	},
+	{
+		displayName: 'Team Slug',
+		name: 'teamSlug',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'update', 'delete'
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the team to get.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+				description: 'The new slug of the team. Must be unique and available.',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'The new name of the team.',
+			},
+		]
+	},
 ] as INodeProperties[];

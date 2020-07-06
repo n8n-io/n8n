@@ -47,11 +47,11 @@ export class Sentryio implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Events',
+						name: 'Event',
 						value: 'event',
 					},
 					{
-						name: 'Issues',
+						name: 'Issue',
 						value: 'issue',
 					},
 					{
@@ -74,8 +74,8 @@ export class Sentryio implements INodeType {
 				default: 'event',
 				description: 'Resource to consume.',
 			},
-		],
-		
+
+					
 		// EVENT
 		...eventOperations,
 		...eventFields,
@@ -99,6 +99,8 @@ export class Sentryio implements INodeType {
 		// TEAM
 		...teamOperations,
 		...teamFields
+		],
+
 	};
 
 
@@ -218,8 +220,8 @@ export class Sentryio implements INodeType {
 			if (resource === 'project') {
 				if (operation === 'create') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
-					const endpoint = `/api/0/teams/${organizationSlug}/${projectSlug}/projects/`;
+					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/projects/`;
 					const name = this.getNodeParameter('name', i) as string;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -267,14 +269,15 @@ export class Sentryio implements INodeType {
 			if (resource === 'team') {
 				if (operation === 'get') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
+					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
 
 					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
 				}
 				if (operation === 'getAll') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
-					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
+					const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
+					
 
 					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
 				}

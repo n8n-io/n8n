@@ -149,7 +149,7 @@ export const issueFields = [
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue ID',
-		name: 'issueID',
+		name: 'issueId',
 		type: 'string',
 		default: '',
 		placeholder: '1234',

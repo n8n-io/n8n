@@ -13,7 +13,7 @@ export const projectOperations = [
 			},
 		},
 		options: [
-            {
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new project.',
@@ -38,61 +38,79 @@ export const projectFields = [
 /* -------------------------------------------------------------------------- */
 /*                                project:create/get                          */
 /* -------------------------------------------------------------------------- */
-    {
-        displayName: 'Organization Slug',
-        name: 'organizationSlug',
-        type: 'string',
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'project',
-                ],
-                operation: [
-                    'create', 'get', 'update', 'delete'
-                ],
-            },
-        },
-        required: true,
-        description: 'The slug of the organization the events belong to.',
-    },
-    {
-        displayName: 'Project Slug',
-        name: 'projectSlug',
-        type: 'string',
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'project',
-                ],
-                operation: [
-                    'create', 'get', 'update', 'delete'
-                ],
-            },
-        },
-        required: true,
-        description: 'The slug of the project the events belong to.',
-    },
-    {
-        displayName: 'Name',
-        name: 'name',
-        type: 'string',
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'project',
-                ],
-                operation: [
-                    'create',
-                ],
-            },
-        },
-        required: true,
-        description: 'The name for the new project.',
-    },
-    {
+	{
+		displayName: 'Organization Slug',
+		name: 'organizationSlug',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'create', 'get', 'update', 'delete'
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization the events belong to.',
+	},
+	{
+		displayName: 'Project Slug',
+		name: 'projectSlug',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'get'
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the project to retrieve.',
+	},
+	{
+		displayName: 'Team Slug',
+		name: 'teamSlug',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'create', 'update', 'delete'
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the team to create a new project for.',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		required: true,
+		description: 'The name for the new project.',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -121,56 +139,56 @@ export const projectFields = [
 /* -------------------------------------------------------------------------- */
 /*                                project:update                              */
 /* -------------------------------------------------------------------------- */
-    {
-        displayName: 'Additional Fields',
-        name: 'additionalFields',
-        type: 'collection',
-        placeholder: 'Add Field',
-        default: {},
-        displayOptions: {
-            show: {
-                resource: [
-                    'organization',
-                ],
-                operation: [
-                    'getAll',
-                ],
-            },
-        },
-        options: [
-            {
-                displayName: 'New Name',
-                name: 'newName',
-                type: 'string',
-                default: '',
-                description: 'The new name for the project.',
-            },
-            {
-                displayName: 'New Slug',
-                name: 'newSlug',
-                type: 'string',
-                default: '',
-                description: 'The new slug for the project.',
-            },
-            {
-                displayName: 'New Platform',
-                name: 'newPlatform',
-                type: 'string',
-                default: '',
-                description: 'The new platform for the project.',
-            },
-            {
-                displayName: 'Digest min. Delay',
-                name: 'digestMinDelay',
-                type: 'number',
-                default: 0
-            },
-            {
-                displayName: 'Digest max. Delay',
-                name: 'digestMaxDelay',
-                type: 'number',
-                default: 0
-            },
-        ]
-    },
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'project',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'New Name',
+				name: 'newName',
+				type: 'string',
+				default: '',
+				description: 'The new name for the project.',
+			},
+			{
+				displayName: 'New Slug',
+				name: 'newSlug',
+				type: 'string',
+				default: '',
+				description: 'The new slug for the project.',
+			},
+			{
+				displayName: 'New Platform',
+				name: 'newPlatform',
+				type: 'string',
+				default: '',
+				description: 'The new platform for the project.',
+			},
+			{
+				displayName: 'Digest min. Delay',
+				name: 'digestMinDelay',
+				type: 'number',
+				default: 0
+			},
+			{
+				displayName: 'Digest max. Delay',
+				name: 'digestMaxDelay',
+				type: 'number',
+				default: 0
+			},
+		]
+	},
 ] as INodeProperties[];

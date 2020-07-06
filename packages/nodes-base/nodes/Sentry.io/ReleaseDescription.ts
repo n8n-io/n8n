@@ -16,7 +16,7 @@ export const releaseOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get release by ID.',
+				description: 'Get release by version identifier.',
 			},
 			{
 				name: 'Get All',
