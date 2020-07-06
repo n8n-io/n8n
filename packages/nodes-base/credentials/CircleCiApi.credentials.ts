@@ -8,7 +8,7 @@ export class CircleCiApi implements ICredentialType {
 	displayName = 'CircleCI API';
 	properties = [
 		{
-			displayName: 'API Key',
+			displayName: 'Personal API Token',
 			name: 'apiKey',
 			type: 'string' as NodePropertyTypes,
 			default: '',

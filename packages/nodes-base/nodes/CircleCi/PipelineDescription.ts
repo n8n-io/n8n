@@ -42,6 +42,33 @@ export const pipelineFields = [
 /*                                 pipeline:get                               */
 /* -------------------------------------------------------------------------- */
 	{
+		displayName: 'VCS',
+		name: 'vcs',
+		type: 'options',
+		options: [
+			{
+				name: 'Github',
+				value: 'github',
+			},
+			{
+				name: 'Bitbucket',
+				value: 'bitbucket',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'pipeline',
+				],
+			},
+		},
+		default: '',
+		description: 'Version control system',
+	},
+	{
 		displayName: 'Project Slug',
 		name: 'projectSlug',
 		type: 'string',
@@ -56,12 +83,15 @@ export const pipelineFields = [
 			},
 		},
 		default: '',
-		description: 'Project slug in the form vcs-slug/org-name/repo-name',
+		description: 'Project slug in the form org-name/repo-name',
 	},
 	{
 		displayName: 'Pipeline Number',
 		name: 'pipelineNumber',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		displayOptions: {
 			show: {
 				operation: [
@@ -72,12 +102,39 @@ export const pipelineFields = [
 				],
 			},
 		},
-		default: 0,
+		default: 1,
 		description: 'The number of the pipeline',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 pipeline:getAll                            */
 /* -------------------------------------------------------------------------- */
+	{
+		displayName: 'VCS',
+		name: 'vcs',
+		type: 'options',
+		options: [
+			{
+				name: 'Github',
+				value: 'github',
+			},
+			{
+				name: 'Bitbucket',
+				value: 'bitbucket',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'pipeline',
+				],
+			},
+		},
+		default: '',
+		description: 'Version control system',
+	},
 	{
 		displayName: 'Project Slug',
 		name: 'projectSlug',
@@ -93,7 +150,7 @@ export const pipelineFields = [
 			},
 		},
 		default: '',
-		description: 'Project slug in the form vcs-slug/org-name/repo-name',
+		description: 'Project slug in the form org-name/repo-name',
 	},
 	{
 		displayName: 'Return All',
@@ -166,6 +223,33 @@ export const pipelineFields = [
 /*                                 pipeline:trigger                           */
 /* -------------------------------------------------------------------------- */
 	{
+		displayName: 'VCS',
+		name: 'vcs',
+		type: 'options',
+		options: [
+			{
+				name: 'Github',
+				value: 'github',
+			},
+			{
+				name: 'Bitbucket',
+				value: 'bitbucket',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'trigger',
+				],
+				resource: [
+					'pipeline',
+				],
+			},
+		},
+		default: '',
+		description: 'Version control system',
+	},
+	{
 		displayName: 'Project Slug',
 		name: 'projectSlug',
 		type: 'string',
@@ -180,7 +264,7 @@ export const pipelineFields = [
 			},
 		},
 		default: '',
-		description: 'Project slug in the form vcs-slug/org-name/repo-name',
+		description: 'Project slug in the form org-name/repo-name',
 	},
 	{
 		displayName: 'Additional Fields',
