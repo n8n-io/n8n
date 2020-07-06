@@ -55,7 +55,7 @@ export const issueFields = [
 					'issue',
 				],
 				operation: [
-					'get', 'delete'
+					'get', 'remove'
 				],
 			},
 		},
