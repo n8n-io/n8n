@@ -826,9 +826,28 @@ export class Asana implements INodeType {
 					requestMethod = 'GET';
 					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
 
+				} else if (operation === 'move') {
+					// ----------------------------------
+					//         task:move
+					// ----------------------------------
+
+					const sectionId = this.getNodeParameter('section', i) as string;
+
+					requestMethod = 'POST';
+
+					endpoint = `/sections/${sectionId}/addTask`;
+
+					body.task = this.getNodeParameter('id', i) as string;
+
+					Object.assign(body);
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
+
 				} else if (operation === 'update') {
 					// ----------------------------------
-					//         update
+					//         task:update
 					// ----------------------------------
 
 					requestMethod = 'PUT';
