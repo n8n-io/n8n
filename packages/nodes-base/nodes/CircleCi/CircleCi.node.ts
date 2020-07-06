@@ -71,16 +71,18 @@ export class CircleCi implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'pipeline') {
 				if (operation === 'get') {
+					const vcs = this.getNodeParameter('vcs', i) as string;
 					let slug = this.getNodeParameter('projectSlug', i) as string;
 					const pipelineNumber = this.getNodeParameter('pipelineNumber', i) as number;
 
 					slug = slug.replace(new RegExp(/\//g), '%2F');
 
-					const endpoint = `/project/${slug}/pipeline/${pipelineNumber}`;
+					const endpoint = `/project/${vcs}/${slug}/pipeline/${pipelineNumber}`;
 
 					responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);
 				}
 				if (operation === 'getAll') {
+					const vcs = this.getNodeParameter('vcs', i) as string;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					let slug = this.getNodeParameter('projectSlug', i) as string;
@@ -91,7 +93,7 @@ export class CircleCi implements INodeType {
 						qs.branch = filters.branch;
 					}
 
-					const endpoint = `/project/${slug}/pipeline`;
+					const endpoint = `/project/${vcs}/${slug}/pipeline`;
 
 					if (returnAll === true) {
 						responseData = await circleciApiRequestAllItems.call(this, 'items', 'GET', endpoint, {}, qs);
@@ -105,13 +107,14 @@ export class CircleCi implements INodeType {
 				}
 
 				if (operation === 'trigger') {
+					const vcs = this.getNodeParameter('vcs', i) as string;
 					let slug = this.getNodeParameter('projectSlug', i) as string;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					slug = slug.replace(new RegExp(/\//g), '%2F');
 
-					const endpoint = `/project/${slug}/pipeline`;
+					const endpoint = `/project/${vcs}/${slug}/pipeline`;
 
 					const body: IDataObject = {};
 
