@@ -10,7 +10,12 @@ import { chunk, flatten, sum } from 'lodash';
 
 import * as mssql from 'mssql';
 
-import { copyInputItems, extractValues } from './GenericFunctions';
+import {
+	copyInputItems,
+	extractValues,
+	extractUpdateSet,
+	extractUpdateCondition
+} from './GenericFunctions';
 
 export class MicrosoftSqlServer implements INodeType {
 	description: INodeTypeDescription = {
@@ -207,13 +212,13 @@ export class MicrosoftSqlServer implements INodeType {
 
 			const insertValuesList = chunk(copyInputItems(items, columns), 1000);
 			const queryQueue = insertValuesList.map(insertValues => {
-				let values = insertValues.map(item => extractValues(item)).join(',');
+				const values = insertValues.map(item => extractValues(item)).join(',');
 
 				return pool
 					.request()
 					.query(`INSERT INTO ${table}(${columnString}) VALUES ${values};`);
 			});
-			let queryResult = await Promise.all(queryQueue);
+			const queryResult = await Promise.all(queryQueue);
 			const result = queryResult.reduce(
 				(acc, item): number => (acc += sum(item.rowsAffected)),
 				0
@@ -232,23 +237,24 @@ export class MicrosoftSqlServer implements INodeType {
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map(column => column.trim());
 
-			if (!columns.includes(updateKey)) {
-				columns.unshift(updateKey);
-			}
+			const updateItems = copyInputItems(items, [updateKey].concat(columns));
+			const queryQueue = updateItems.map(item => {
+				const setValues = extractUpdateSet(item, columns);
+				const condition = extractUpdateCondition(item, updateKey);
 
-			const updateItems = copyInputItems(items, columns);
-			// const updateSQL = `UPDATE ${table} SET ${columns
-			// 	.map(column => `${column} = ?`)
-			// 	.join(',')} WHERE ${updateKey} = ?;`;
-			// const queryQueue = updateItems.map(item =>
-			// 	connection.query(updateSQL, Object.values(item).concat(item[updateKey]))
-			// );
-			// let queryResult = await Promise.all(queryQueue);
+				return pool
+					.request()
+					.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
+			});
+			const queryResult = await Promise.all(queryQueue);
+			const result = queryResult.reduce(
+				(acc, item): number => (acc += sum(item.rowsAffected)),
+				0
+			);
 
-			// queryResult = queryResult.map(result => result[0]);
-			// returnItems = this.helpers.returnJsonArray(
-			// 	queryResult.recordset as IDataObject[]
-			// );
+			returnItems = this.helpers.returnJsonArray({
+				rowsAffected: result
+			} as IDataObject);
 		} else {
 			await pool.close();
 			throw new Error(`The operation "${operation}" is not supported!`);

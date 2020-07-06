@@ -28,7 +28,7 @@ export function copyInputItems(
 }
 
 /**
- * Extracts the values from the item for INSERT, UPDATE
+ * Extracts the values from the item for INSERT
  *
  * @param {IDataObject} item The item to extract
  * @returns {string} (Val1, Val2, ...)
@@ -37,4 +37,33 @@ export function extractValues(item: IDataObject): string {
 	return `(${Object.values(item as any)
 		.map(val => (typeof val === 'string' ? `'${val}'` : val)) // maybe other types such as dates have to be handled as well
 		.join(',')})`;
+}
+
+/**
+ * Extracts the SET from the item for UPDATE
+ *
+ * @param {IDataObject} item The item to extract from
+ * @returns {string} col1 = val1, col2 = val2
+ */
+export function extractUpdateSet(item: IDataObject, columns: string[]): string {
+	return columns
+		.map(
+			column =>
+				`${column} = ${
+					typeof item[column] === 'string' ? `'${item[column]}'` : item[column]
+				}`
+		)
+		.join(',');
+}
+
+/**
+ * Extracts the WHERE condition from the item for UPDATE
+ *
+ * @param {IDataObject} item The item to extract from
+ * @returns {string} id = '123'
+ */
+export function extractUpdateCondition(item: IDataObject, key: string): string {
+	return `${key} = ${
+		typeof item[key] === 'string' ? `'${item[key]}'` : item[key]
+	}`;
 }
