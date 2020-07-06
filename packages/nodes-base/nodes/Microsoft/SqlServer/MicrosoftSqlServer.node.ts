@@ -14,7 +14,8 @@ import {
 	copyInputItems,
 	extractValues,
 	extractUpdateSet,
-	extractUpdateCondition
+	extractUpdateCondition,
+	extractDeleteValues
 } from './GenericFunctions';
 
 export class MicrosoftSqlServer implements INodeType {
@@ -27,7 +28,7 @@ export class MicrosoftSqlServer implements INodeType {
 		description: 'Gets, add and update data in Microsoft SQL Server.',
 		defaults: {
 			name: 'Microsoft SQL Server',
-			color: '#336791'
+			color: '#1d4bab'
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -57,6 +58,11 @@ export class MicrosoftSqlServer implements INodeType {
 						name: 'Update',
 						value: 'update',
 						description: 'Updates rows in database.'
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Deletes rows in database.'
 					}
 				],
 				default: 'insert',
@@ -158,6 +164,37 @@ export class MicrosoftSqlServer implements INodeType {
 				placeholder: 'name,description',
 				description:
 					'Comma separated list of the properties which should used as columns for rows to update.'
+			},
+
+			// ----------------------------------
+			//         delete
+			// ----------------------------------
+			{
+				displayName: 'Table',
+				name: 'table',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['delete']
+					}
+				},
+				default: '',
+				required: true,
+				description: 'Name of the table in which to delete data.'
+			},
+			{
+				displayName: 'Delete Key',
+				name: 'deleteKey',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['delete']
+					}
+				},
+				default: 'id',
+				required: true,
+				description:
+					'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".'
 			}
 		]
 	};
@@ -185,6 +222,10 @@ export class MicrosoftSqlServer implements INodeType {
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
+
+		// asdf = {
+		// 	tableName: [{ values, columns }]
+		// };
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -247,6 +288,37 @@ export class MicrosoftSqlServer implements INodeType {
 					.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
 			});
 			const queryResult = await Promise.all(queryQueue);
+			const result = queryResult.reduce(
+				(acc, item): number => (acc += sum(item.rowsAffected)),
+				0
+			);
+
+			returnItems = this.helpers.returnJsonArray({
+				rowsAffected: result
+			} as IDataObject);
+		} else if (operation === 'delete') {
+			// ----------------------------------
+			//         delete
+			// ----------------------------------
+
+			const table = this.getNodeParameter('table', 0) as string;
+			const deleteKey = this.getNodeParameter('deleteKey', 0) as string;
+
+			const deleteItemsList = chunk(copyInputItems(items, [deleteKey]), 1000);
+
+			const queryQueue = deleteItemsList.map(deleteValues => {
+				console.log(extractDeleteValues(deleteValues, deleteKey));
+				return pool
+					.request()
+					.query(
+						`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
+							deleteValues,
+							deleteKey
+						)};`
+					);
+			});
+			const queryResult = await Promise.all(queryQueue);
+
 			const result = queryResult.reduce(
 				(acc, item): number => (acc += sum(item.rowsAffected)),
 				0

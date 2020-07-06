@@ -67,3 +67,15 @@ export function extractUpdateCondition(item: IDataObject, key: string): string {
 		typeof item[key] === 'string' ? `'${item[key]}'` : item[key]
 	}`;
 }
+
+/**
+ * Extracts the WHERE condition from the items for DELETE
+ *
+ * @param {IDataObject} item The item to extract
+ * @returns {string} (Val1, Val2, ...)
+ */
+export function extractDeleteValues(items: IDataObject[], key: string): string {
+	return `(${items
+		.map(item => (typeof item[key] === 'string' ? `'${item[key]}'` : item[key]))
+		.join(',')})`;
+}
