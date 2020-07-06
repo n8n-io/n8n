@@ -241,7 +241,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace to create the task in',
+				description: 'The workspace in which the task is searched',
 			},
 			{
 				displayName: 'Search Properties',
