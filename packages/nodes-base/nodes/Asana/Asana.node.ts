@@ -576,7 +576,11 @@ export class Asana implements INodeType {
 			// select them easily
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const endpoint = '/workspaces';
-				const responseData = await asanaApiRequestAllItems.call(this, 'GET', endpoint, {});
+				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
+
+				if (responseData.data === undefined) {
+					throw new Error('No data got returned');
+				}
 
 				const returnData: INodePropertyOptions[] = [];
 				for (const workspaceData of responseData) {
@@ -599,10 +603,9 @@ export class Asana implements INodeType {
 			// select them easily
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workspaceId = this.getCurrentNodeParameter('workspace');
-
 				const workspace = await asanaApiRequest.call(this, 'GET', `/workspaces/${workspaceId}`, {});
 
-				// if the workspace selected it's not an organization then error as they endpoint
+				// if the workspace selected is not an organization then error as the endpoint
 				// to retrieve the teams from an organization just work with workspaces that are an organization
 
 				if (workspace.is_organization === false) {
@@ -610,7 +613,6 @@ export class Asana implements INodeType {
 				}
 
 				const endpoint = `/organizations/${workspaceId}/teams`;
-
 				const responseData = await asanaApiRequestAllItems.call(this, 'GET', endpoint, {});
 
 				const returnData: INodePropertyOptions[] = [];
@@ -624,6 +626,33 @@ export class Asana implements INodeType {
 					returnData.push({
 						name: teamData.name,
 						value: teamData.gid,
+					});
+				}
+
+				return returnData;
+			},
+
+			// Get all the available projects to display them to user so that they can be
+			// selected easily
+			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const endpoint = '/projects';
+				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
+
+				if (responseData.data === undefined) {
+					throw new Error('No data got returned');
+				}
+
+				const returnData: INodePropertyOptions[] = [];
+				for (const projectData of responseData) {
+					if (projectData.resource_type !== 'project') {
+						// Not sure if for some reason also ever other resources
+						// get returned but just in case filter them out
+						continue;
+					}
+
+					returnData.push({
+						name: projectData.name,
+						value: projectData.gid,
 					});
 				}
 
