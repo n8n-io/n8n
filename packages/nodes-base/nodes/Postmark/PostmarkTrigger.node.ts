@@ -87,7 +87,7 @@ export class PostmarkTrigger implements INodeType {
 					{
 						name: 'Spam Complaint Content',
 						value: 'spamComplaintContent',
-						description: 'Webhook will send full bounce content.'
+						description: 'Webhook will send full spam complaint content.'
 					},
 					{
 						name: 'Subscription Change',
