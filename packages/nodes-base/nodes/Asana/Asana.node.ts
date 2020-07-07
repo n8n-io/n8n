@@ -935,36 +935,51 @@ export class Asana implements INodeType {
 				}
 			} else if (resource === 'project') {
 
-					if (operation === 'getAll') {
+				if (operation === 'get') {
+					// ----------------------------------
+					//         project:get
+				 	// ----------------------------------
+
+				 	const projectId = this.getNodeParameter('projectId', i) as string;
+
+					requestMethod = 'GET';
+
+					endpoint = `projects/${projectId}`;
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = responseData.data;
+
+				} else if (operation === 'getAll') {
+
 					// ----------------------------------
 					//         getAll
 					// ----------------------------------
-						const workspaceId = this.getNodeParameter('workspace', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const workspaceId = this.getNodeParameter('workspace', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						requestMethod = 'GET';
-						endpoint = `/projects`;
+					requestMethod = 'GET';
+					endpoint = `/projects`;
 
-						if (additionalFields.team) {
-							qs.team = additionalFields.team;
-						} else {
-							qs.workspace = workspaceId;
-						}
-
-						if (additionalFields.archived) {
-							qs.archived = additionalFields.archived as boolean;
-						}
-
-						if (returnAll) {
-							responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-						} else {
-							 qs.limit = this.getNodeParameter('limit', i) as boolean;
-							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-							responseData = responseData.data;
-						}
+					if (additionalFields.team) {
+						qs.team = additionalFields.team;
+					} else {
+						qs.workspace = workspaceId;
 					}
 
+					if (additionalFields.archived) {
+						qs.archived = additionalFields.archived as boolean;
+					}
+
+					if (returnAll) {
+						responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as boolean;
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						responseData = responseData.data;
+					}
+				}
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
