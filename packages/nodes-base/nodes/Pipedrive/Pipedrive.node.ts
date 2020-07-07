@@ -1,12 +1,14 @@
 import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -2047,7 +2049,66 @@ export class Pipedrive implements INodeType {
 				description: 'How many results to return.',
 			},
 
+			// ----------------------------------
+			//         person:getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Filter ID',
+						name: 'filterId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getFilters',
+						},
+						default: '',
+						description: 'ID of the filter to use.',
+					},
+					{
+						displayName: 'First Char',
+						name: 'firstChar',
+						type: 'string',
+						default: '',
+						description: 'If supplied, only persons whose name starts with the specified letter will be returned ',
+					},
+				],
+			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the filters to display them to user so that he can
+			// select them easily
+			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: 'people' });
+				for (const filter of data) {
+					const filterName = filter.name;
+					const filterId = filter.id;
+					returnData.push({
+						name: filterName,
+						value: filterId,
+					});
+				}
+				return returnData;
+			},
+		}
 	};
 
 
@@ -2453,6 +2514,16 @@ export class Pipedrive implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.filterId) {
+						qs.filter_id = additionalFields.filterId as string;
+					}
+
+					if (additionalFields.firstChar) {
+						qs.first_char = additionalFields.firstChar as string;
+					}
+
 					endpoint = `/persons`;
 
 				} else if (operation === 'update') {
@@ -2499,6 +2570,7 @@ export class Pipedrive implements INodeType {
 				}
 
 				responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
+
 			}
 
 			if (resource === 'file' && operation === 'download') {
@@ -2520,6 +2592,11 @@ export class Pipedrive implements INodeType {
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData.data);
 			} else {
+
+				if (responseData.data === null) {
+					responseData.data = [];
+				}
+
 				if (Array.isArray(responseData.data)) {
 					returnData.push.apply(returnData, responseData.data as IDataObject[]);
 				} else {
