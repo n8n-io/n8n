@@ -62,14 +62,17 @@ export class PostmarkTrigger implements INodeType {
 					{
 						name: 'Click',
 						value: 'click',
+						description: 'Trigger on click.'
 					},
 					{
 						name: 'Delivery',
 						value: 'delivery',
+						description: 'Trigger on delivery.'
 					},
 					{
 						name: 'Bounce',
 						value: 'bounce',
+						description: 'Trigger on bounce.'
 					},
 					{
 						name: 'Bounce Content',
@@ -79,6 +82,7 @@ export class PostmarkTrigger implements INodeType {
 					{
 						name: 'Spam Complaint',
 						value: 'spamComplaint',
+						description: 'Trigger on spam complaint.'
 					},
 					{
 						name: 'Spam Complaint Content',
@@ -88,6 +92,7 @@ export class PostmarkTrigger implements INodeType {
 					{
 						name: 'Subscription Change',
 						value: 'subscriptionChange',
+						description: 'Trigger on subscription change.'
 					},
 				],
 				default: [],
