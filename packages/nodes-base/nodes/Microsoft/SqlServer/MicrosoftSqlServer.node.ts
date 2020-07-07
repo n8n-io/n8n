@@ -10,9 +10,12 @@ import { chunk, flatten, flattenDeep, sum } from 'lodash';
 
 import * as mssql from 'mssql';
 
+import { ITable } from './TableInterface';
+
 import {
 	copyInputItems,
 	createTableStruct,
+	executeQueryQueue,
 	extractDeleteValues,
 	extractUpdateCondition,
 	extractUpdateSet,
@@ -245,38 +248,34 @@ export class MicrosoftSqlServer implements INodeType {
 			// ----------------------------------
 
 			const tables = createTableStruct(items, this.getNodeParameter);
+			const queriesResults = await executeQueryQueue(
+				tables,
+				({
+					table,
+					columnString,
+					columns,
+					items
+				}: {
+					table: string;
+					columnString: string;
+					columns: string[];
+					items: INodeExecutionData[];
+				}): Promise<any>[] => {
+					const insertValuesList = chunk(copyInputItems(items, columns), 1000);
 
-			const result = await Promise.all(
-				Object.keys(tables).map(table => {
-					const columnsResults = Object.keys(tables[table]).map(
-						columnString => {
-							const columns = columnString
-								.split(',')
-								.map(column => column.trim());
+					return insertValuesList.map(insertValues => {
+						const values = insertValues
+							.map(item => extractValues(item))
+							.join(',');
 
-							const insertValuesList = chunk(
-								copyInputItems(tables[table][columnString], columns),
-								1000
-							);
-
-							const queryQueue = insertValuesList.map(insertValues => {
-								const values = insertValues
-									.map(item => extractValues(item))
-									.join(',');
-
-								return pool
-									.request()
-									.query(
-										`INSERT INTO ${table}(${columnString}) VALUES ${values};`
-									);
-							});
-							return Promise.all(queryQueue);
-						}
-					);
-					return Promise.all(columnsResults);
-				})
+						return pool
+							.request()
+							.query(`INSERT INTO ${table}(${columnString}) VALUES ${values};`);
+					});
+				}
 			);
-			const rowsAffected = flattenDeep(result).reduce(
+
+			const rowsAffected = flattenDeep(queriesResults).reduce(
 				(acc, resp): number => (acc += sum(resp.rowsAffected)),
 				0
 			);
@@ -289,58 +288,100 @@ export class MicrosoftSqlServer implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const table = this.getNodeParameter('table', 0) as string;
-			const updateKey = this.getNodeParameter('updateKey', 0) as string;
-			const columnString = this.getNodeParameter('columns', 0) as string;
-			const columns = columnString.split(',').map(column => column.trim());
+			const updateKeys = items.map(
+				(item, index) => this.getNodeParameter('updateKey', index) as string
+			);
+			const tables = createTableStruct(
+				items,
+				this.getNodeParameter,
+				'updateKey'
+			);
+			const queriesResults = await executeQueryQueue(
+				tables,
+				({
+					table,
+					columns,
+					items
+				}: {
+					table: string;
+					columns: string[];
+					items: INodeExecutionData[];
+				}): Promise<any>[] => {
+					const updateItems = copyInputItems(
+						items,
+						['updateKey'].concat(updateKeys).concat(columns)
+					);
+					return updateItems.map(item => {
+						const setValues = extractUpdateSet(item, columns);
+						const condition = extractUpdateCondition(
+							item,
+							item.updateKey as string
+						);
 
-			const updateItems = copyInputItems(items, [updateKey].concat(columns));
-			const queryQueue = updateItems.map(item => {
-				const setValues = extractUpdateSet(item, columns);
-				const condition = extractUpdateCondition(item, updateKey);
+						return pool
+							.request()
+							.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
+					});
+				}
+			);
 
-				return pool
-					.request()
-					.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
-			});
-			const queryResult = await Promise.all(queryQueue);
-			const result = queryResult.reduce(
-				(acc, item): number => (acc += sum(item.rowsAffected)),
+			const rowsAffected = flattenDeep(queriesResults).reduce(
+				(acc, resp): number => (acc += sum(resp.rowsAffected)),
 				0
 			);
 
 			returnItems = this.helpers.returnJsonArray({
-				rowsAffected: result
+				rowsAffected
 			} as IDataObject);
 		} else if (operation === 'delete') {
 			// ----------------------------------
 			//         delete
 			// ----------------------------------
 
-			const table = this.getNodeParameter('table', 0) as string;
-			const deleteKey = this.getNodeParameter('deleteKey', 0) as string;
+			const tables = items.reduce((tables, item, index) => {
+				const table = this.getNodeParameter('table', index) as string;
+				const deleteKey = this.getNodeParameter('deleteKey', index) as string;
+				if (tables[table] === undefined) {
+					tables[table] = {};
+				}
+				if (tables[table][deleteKey] === undefined) {
+					tables[table][deleteKey] = [];
+				}
+				tables[table][deleteKey].push(item);
+				return tables;
+			}, {} as ITable);
 
-			const deleteItemsList = chunk(copyInputItems(items, [deleteKey]), 1000);
+			const queriesResults = await Promise.all(
+				Object.keys(tables).map(table => {
+					const deleteKeyResults = Object.keys(tables[table]).map(deleteKey => {
+						const deleteItemsList = chunk(
+							copyInputItems(tables[table][deleteKey], [deleteKey]),
+							1000
+						);
+						const queryQueue = deleteItemsList.map(deleteValues => {
+							return pool
+								.request()
+								.query(
+									`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
+										deleteValues,
+										deleteKey
+									)};`
+								);
+						});
+						return Promise.all(queryQueue);
+					});
+					return Promise.all(deleteKeyResults);
+				})
+			);
 
-			const queryQueue = deleteItemsList.map(deleteValues => {
-				return pool
-					.request()
-					.query(
-						`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
-							deleteValues,
-							deleteKey
-						)};`
-					);
-			});
-			const queryResult = await Promise.all(queryQueue);
-
-			const result = queryResult.reduce(
-				(acc, item): number => (acc += sum(item.rowsAffected)),
+			const rowsAffected = flattenDeep(queriesResults).reduce(
+				(acc, resp: mssql.IResult<object>): number =>
+					(acc += sum(resp.rowsAffected)),
 				0
 			);
 
 			returnItems = this.helpers.returnJsonArray({
-				rowsAffected: result
+				rowsAffected
 			} as IDataObject);
 		} else {
 			await pool.close();

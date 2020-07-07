@@ -1,4 +1,5 @@
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { ITable } from './TableInterface';
 
 /**
  * Returns of copy of the items which only contains the json data and
@@ -30,26 +31,62 @@ export function copyInputItems(
 /**
  * Creates a table object with the columns for the operations
  *
- * @param {IDataObject} items The items to extract the tables/columns for
+ * @param {INodeExecutionData[]} items The items to extract the tables/columns for
  * @param {function} getNodeParam getter for the Node's Parameters
  * @returns {object} {tableName: {colNames: [items]}};
  */
 export function createTableStruct(
-	items: IDataObject[],
-	getNodeParam: Function
-): object {
+	items: INodeExecutionData[],
+	getNodeParam: Function,
+	keyName?: string
+): ITable {
 	return items.reduce((tables, item, index) => {
 		const table = getNodeParam('table', index) as string;
 		const columnString = getNodeParam('columns', index) as string;
+		const keyParam = keyName
+			? (getNodeParam(keyName, index) as string)
+			: undefined;
 		if (tables[table] === undefined) {
 			tables[table] = {};
 		}
 		if (tables[table][columnString] === undefined) {
 			tables[table][columnString] = [];
 		}
+		if (keyName) {
+			item.json[keyName] = keyParam;
+		}
 		tables[table][columnString].push(item);
 		return tables;
-	}, {});
+	}, {} as ITable);
+}
+
+/**
+ * Creates a table object with the columns for the operations
+ *
+ * @param {INodeExecutionData[]} items The items to extract the tables/columns for
+ * @param {function} getNodeParam getter for the Node's Parameters
+ * @returns {object} {tableName: {colNames: [items]}};
+ */
+export function executeQueryQueue(
+	tables: ITable,
+	buildQueryQueue: Function
+): Promise<any[]> {
+	return Promise.all(
+		Object.keys(tables).map(table => {
+			const columnsResults = Object.keys(tables[table]).map(columnString => {
+				const columns = columnString.split(',').map(column => column.trim());
+				return Promise.all(
+					buildQueryQueue({
+						table: table,
+						columnString: columnString,
+						columns: columns,
+						items: tables[table][columnString]
+					})
+				);
+			});
+			return Promise.all(columnsResults);
+		})
+	);
 }
 
 /**
