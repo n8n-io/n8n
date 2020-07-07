@@ -430,7 +430,6 @@ export class Asana implements INodeType {
 			},
 
 
-
 			// ----------------------------------
 			//         user
 			// ----------------------------------
@@ -509,10 +508,10 @@ export class Asana implements INodeType {
 				description: 'The workspace in which to get users.',
 			},
 
-			// ----------------------------------
-			//         Project
-			// ----------------------------------
 
+			// ----------------------------------
+			//         project
+			// ----------------------------------
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -526,13 +525,40 @@ export class Asana implements INodeType {
 				},
 				options: [
 					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a project',
+					},
+					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all tasks',
+						description: 'Get all projects',
 					},
 				],
-				default: 'getAll',
-				description: 'The operation to perform.',
+				default: 'get',
+				description: 'The operation to perform',
+			},
+
+			// ----------------------------------
+			//         project:get
+			// ----------------------------------
+			{
+				displayName: 'Project Id',
+				name: 'projectId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'project',
+						],
+					},
+				},
+				description: 'Globally unique identifier for the project',
 			},
 
 			// ----------------------------------
@@ -558,7 +584,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The workspace in which to get users.',
+				description: 'The workspace to filter projects on.',
 			},
 			{
 				displayName: 'Return All',
@@ -637,7 +663,7 @@ export class Asana implements INodeType {
 							loadOptionsMethod: 'getTeams',
 						},
 						default: '',
-						description: 'The new name of the task',
+						description: 'The team to filter projects on',
 					},
 				],
 			},
@@ -672,11 +698,10 @@ export class Asana implements INodeType {
 
 				return returnData;
 			},
-
-			// Get all the available teams to display them to user so that he can
-			// select them easily
+			// Get all available teams to display them to user so that they can be selected easily
+			// See: https://developers.asana.com/docs/get-teams-in-an-organization
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const workspaceId = this.getCurrentNodeParameter('workspace');
+				const workspaceId = this.getCurrentNodeParameter('workspace') as string;
 				const workspace = await asanaApiRequest.call(this, 'GET', `/workspaces/${workspaceId}`, {});
 
 				// if the workspace selected is not an organization then error as the endpoint
@@ -735,7 +760,7 @@ export class Asana implements INodeType {
 			// Get all the available sections in a project to display them to user so that they
 			// can be selected easily
 			async getSections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const projectId = this.getNodeParameter('projectId') as string;
+				const projectId = this.getCurrentNodeParameter('projectId') as string;
 				const endpoint = `projects/${projectId}/sections`;
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
@@ -754,33 +779,6 @@ export class Asana implements INodeType {
 					returnData.push({
 						name: sectionData.name,
 						value: sectionData.gid,
-					});
-				}
-
-				return returnData;
-			},
-			// Get all available teams to display them to user so that they can be selected easily
-			// See: https://developers.asana.com/docs/get-teams-in-an-organization
-			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const workspaceId = this.getNodeParameter('workspace') as string;
-				const endpoint = `organizations/${workspaceId}/teams`;
-				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
-
-				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
-				}
-
-				const returnData: INodePropertyOptions[] = [];
-				for (const teamData of responseData.data) {
-					if (teamData.resource_type !== 'team') {
-						// Not sure if for some reason also ever other resources
-						// get returned but just in case filter them out
-						continue;
-					}
-
-					returnData.push({
-						name: teamData.name,
-						value: teamData.gid,
 					});
 				}
 
