@@ -66,13 +66,15 @@ export function convertTriggerObjectToStringArray (webhookObject : any) : string
 		webhookEvents.push('bounce');
 	}
 	if (triggers.Bounce.IncludeContent) {
-		webhookEvents.push('bounceContent');
+		webhookEvents.push('includeContent');
 	}
 	if (triggers.SpamComplaint.Enabled) {
 		webhookEvents.push('spamComplaint');
 	}
 	if (triggers.SpamComplaint.IncludeContent) {
-		webhookEvents.push('spamComplaintContent');
+		if (!webhookEvents.includes('IncludeContent')) {
+			webhookEvents.push('includeContent');
+		}
 	}
 	if (triggers.SubscriptionChange.Enabled) {
 		webhookEvents.push('subscriptionChange');
@@ -89,5 +91,3 @@ export function eventExists (currentEvents : string[], webhookEvents: string[]) 
 	}
 	return true;
 }
-
-
