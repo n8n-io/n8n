@@ -1328,6 +1328,10 @@ export default mixins(
 
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
+				window.onbeforeunload = this.confirmSave;
+			},
+			async confirmSave(e: Event) {
+				window.confirm();
 			},
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection === true) {
