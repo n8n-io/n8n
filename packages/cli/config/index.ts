@@ -128,15 +128,23 @@ const config = convict({
 
 	credentials: {
 		overwrite: {
-			// Allows to set default values for credentials which
-			// get automatically prefilled and the user does not get
-			// displayed and can not change.
-			// Format: { CREDENTIAL_NAME: { PARAMTER: VALUE }}
-			doc: 'Overwrites for credentials',
-			format: '*',
-			default: '{}',
-			env: 'CREDENTIALS_OVERWRITE'
-		}
+			data: {
+				// Allows to set default values for credentials which
+				// get automatically prefilled and the user does not get
+				// displayed and can not change.
+				// Format: { CREDENTIAL_NAME: { PARAMTER: VALUE }}
+				doc: 'Overwrites for credentials',
+				format: '*',
+				default: '{}',
+				env: 'CREDENTIALS_OVERWRITE_DATA'
+			},
+			endpoint: {
+				doc: 'Fetch credentials from API',
+				format: String,
+				default: '',
+				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
+			},
+		},
 	},
 
 	executions: {
