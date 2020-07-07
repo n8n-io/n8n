@@ -264,7 +264,7 @@ export class Mattermost implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the channel to soft-delete',
+				description: 'The ID of the channel to soft delete',
 			},
 
 			// ----------------------------------
