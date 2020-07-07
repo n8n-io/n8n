@@ -50,54 +50,68 @@ export class PostmarkTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Open',
-						value: 'open',
-						description: 'Trigger webhook on open.'
-					},
-					{
-						name: 'First Open',
-						value: 'firstOpen',
-						description: 'Trigger on first open only.'
+						name: 'Bounce',
+						value: 'bounce',
+						description: 'Trigger on bounce.',
 					},
 					{
 						name: 'Click',
 						value: 'click',
-						description: 'Trigger on click.'
+						description: 'Trigger on click.',
 					},
 					{
 						name: 'Delivery',
 						value: 'delivery',
-						description: 'Trigger on delivery.'
+						description: 'Trigger on delivery.',
 					},
 					{
-						name: 'Bounce',
-						value: 'bounce',
-						description: 'Trigger on bounce.'
-					},
-					{
-						name: 'Bounce Content',
-						value: 'bounceContent',
-						description: 'Webhook will send full bounce content.'
+						name: 'Open',
+						value: 'open',
+						description: 'Trigger webhook on open.',
 					},
 					{
 						name: 'Spam Complaint',
 						value: 'spamComplaint',
-						description: 'Trigger on spam complaint.'
-					},
-					{
-						name: 'Spam Complaint Content',
-						value: 'spamComplaintContent',
-						description: 'Webhook will send full spam complaint content.'
+						description: 'Trigger on spam complaint.',
 					},
 					{
 						name: 'Subscription Change',
 						value: 'subscriptionChange',
-						description: 'Trigger on subscription change.'
+						description: 'Trigger on subscription change.',
 					},
 				],
 				default: [],
 				required: true,
 				description: 'Webhook events that will be enabled for that endpoint.',
+			},
+			{
+				displayName: 'First Open',
+				name: 'firstOpen',
+				description: 'Only fires on first open for event "Open".',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						events: [
+							'open',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Include Content',
+				name: 'includeContent',
+				description: 'Includes message content for events "Bounce" and "Spam Complaint".',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						events: [
+							'bounce',
+							'spamComplaint',
+						],
+					},
+				},
 			},
 		],
 
@@ -110,6 +124,12 @@ export class PostmarkTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events') as string[];
+				if (this.getNodeParameter('includeContent') as boolean) {
+					events.push('includeContent');
+				}
+				if (this.getNodeParameter('firstOpen') as boolean) {
+					events.push('firstOpen');
+				}
 
 				// Get all webhooks
 				const endpoint = `/webhooks`;
@@ -169,10 +189,7 @@ export class PostmarkTrigger implements INodeType {
 
 				if (events.includes('open')) {
 					body.Triggers.Open.Enabled = true;
-				}
-				if (events.includes('firstOpen')) {
-					body.Triggers.Open.Enabled = true;
-					body.Triggers.Open.PostFirstOpenOnly = true;
+					body.Triggers.Open.PostFirstOpenOnly = this.getNodeParameter('firstOpen') as boolean;
 				}
 				if (events.includes('click')) {
 					body.Triggers.Click.Enabled = true;
@@ -182,15 +199,11 @@ export class PostmarkTrigger implements INodeType {
 				}
 				if (events.includes('bounce')) {
 					body.Triggers.Bounce.Enabled = true;
-				}
-				if (events.includes('bounceContent')) {
-					body.Triggers.Bounce.IncludeContent = true;
+					body.Triggers.Bounce.IncludeContent = this.getNodeParameter('includeContent') as boolean;
 				}
 				if (events.includes('spamComplaint')) {
 					body.Triggers.SpamComplaint.Enabled = true;
-				}
-				if (events.includes('spamComplaintContent')) {
-					body.Triggers.SpamComplaint.IncludeContent = true;
+					body.Triggers.SpamComplaint.IncludeContent = this.getNodeParameter('includeContent') as boolean;
 				}
 				if (events.includes('subscriptionChange')) {
 					body.Triggers.SubscriptionChange.Enabled = true;
