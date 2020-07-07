@@ -758,6 +758,33 @@ export class Asana implements INodeType {
 				}
 
 				return returnData;
+			},
+			// Get all available teams to display them to user so that they can be selected easily
+			// See: https://developers.asana.com/docs/get-teams-in-an-organization
+			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const workspaceId = this.getNodeParameter('workspace') as string;
+				const endpoint = `organizations/${workspaceId}/teams`;
+				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
+
+				if (responseData.data === undefined) {
+					throw new Error('No data got returned');
+				}
+
+				const returnData: INodePropertyOptions[] = [];
+				for (const teamData of responseData.data) {
+					if (teamData.resource_type !== 'team') {
+						// Not sure if for some reason also ever other resources
+						// get returned but just in case filter them out
+						continue;
+					}
+
+					returnData.push({
+						name: teamData.name,
+						value: teamData.gid,
+					});
+				}
+
+				return returnData;
 			}
 		},
 	};
