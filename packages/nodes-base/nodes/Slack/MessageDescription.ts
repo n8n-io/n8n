@@ -91,7 +91,7 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'Post the message as authenticated user instead of bot.',
+		description: 'Post the message as authenticated user instead of bot. Works only with user token.',
 	},
 	{
 		displayName: 'User Name',
@@ -485,6 +485,26 @@ export const messageFields = [
 			},
 		},
 		description: `Timestamp of the message to be updated.`,
+	},
+	{
+		displayName: 'As User',
+		name: 'as_user',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				authentication: [
+					'accessToken',
+				],
+				operation: [
+					'update'
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		description: 'Pass true to update the message as the authed user. Works only with user token.',
 	},
 	{
 		displayName: 'Update Fields',
