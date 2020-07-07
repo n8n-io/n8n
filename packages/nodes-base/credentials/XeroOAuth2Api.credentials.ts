@@ -7,6 +7,7 @@ const scopes = [
 	'offline_access',
 	'accounting.transactions',
 	'accounting.settings',
+	'accounting.contacts',
 ];
 
 export class XeroOAuth2Api implements ICredentialType {

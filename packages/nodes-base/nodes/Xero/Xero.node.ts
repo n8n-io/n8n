@@ -22,10 +22,20 @@ import {
 } from './InvoiceDescription';
 
 import {
+	contactFields,
+	contactOperations,
+} from './ContactDescription';
+
+import {
 	IInvoice,
 	ILineItem,
 } from './InvoiceInterface';
-import { resolve } from 'dns';
+
+import {
+	IContact,
+	IPhone,
+	IAddress,
+} from './IContactInterface';
 
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,6 +65,10 @@ export class Xero implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Contact',
+						value: 'contact',
+					},
+					{
 						name: 'Invoice',
 						value: 'invoice',
 					},
@@ -62,6 +76,9 @@ export class Xero implements INodeType {
 				default: 'invoice',
 				description: 'Resource to consume.',
 			},
+			// CONTACT
+			...contactOperations,
+			...contactFields,
 			// INVOICE
 			...invoiceOperations,
 			...invoiceFields,
@@ -93,7 +110,6 @@ export class Xero implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const { Accounts: accounts } = await xeroApiRequest.call(this, 'GET', '/Accounts', { organizationId });
 				for (const account of accounts) {
-					console.log(account);
 					const accountName = account.Name;
 					const accountId = account.Code;
 					returnData.push({
@@ -382,8 +398,6 @@ export class Xero implements INodeType {
 						body.Url = updateFields.url as string;
 					}
 
-					console.log(updateFields);
-
 					responseData = await xeroApiRequest.call(this, 'POST', `/Invoices/${invoiceId}`, body);
 					responseData = responseData.Invoices;
 				}
@@ -419,6 +433,243 @@ export class Xero implements INodeType {
 					}
 				}
 			}
+			if (resource === 'contact') {
+			}
+				if (operation === 'create') {
+					const organizationId = this.getNodeParameter('organizationId', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					// const addressesUi = additionalFields.addressesUi as IDataObject;
+					// const phonesUi = additionalFields.phonesUi as IDataObject;
+
+					const body: IContact = {
+							Name: name,
+					};
+
+					if (additionalFields.accountNumber) {
+						body.AccountNumber = additionalFields.accountNumber as string;
+					}
+
+					if (additionalFields.bankAccountDetails) {
+						body.BankAccountDetails = additionalFields.bankAccountDetails as string;
+					}
+
+					if (additionalFields.contactNumber) {
+						body.ContactNumber = additionalFields.contactNumber as string;
+					}
+
+					if (additionalFields.contactStatus) {
+						body.ContactStatus = additionalFields.contactStatus as string;
+					}
+
+					if (additionalFields.defaultCurrency) {
+						body.DefaultCurrency = additionalFields.defaultCurrency as string;
+					}
+
+					if (additionalFields.emailAddress) {
+						body.EmailAddress = additionalFields.emailAddress as string;
+					}
+
+					if (additionalFields.firstName) {
+						body.FirstName = additionalFields.firstName as string;
+					}
+
+					if (additionalFields.lastName) {
+						body.LastName = additionalFields.lastName as string;
+					}
+
+					if (additionalFields.purchasesDefaultAccountCode) {
+						body.PurchasesDefaultAccountCode = additionalFields.purchasesDefaultAccountCode as string;
+					}
+
+					if (additionalFields.salesDefaultAccountCode) {
+						body.SalesDefaultAccountCode = additionalFields.salesDefaultAccountCode as string;
+					}
+
+					if (additionalFields.skypeUserName) {
+						body.SkypeUserName = additionalFields.skypeUserName as string;
+					}
+
+					if (additionalFields.taxNumber) {
+						body.taxNumber = additionalFields.taxNumber as string;
+					}
+
+					if (additionalFields.xeroNetworkKey) {
+						body.xeroNetworkKey = additionalFields.xeroNetworkKey as string;
+					}
+
+					// if (phonesUi) {
+					// 	const phoneValues = phonesUi?.phonesValues as IDataObject[];
+					// 	if (phoneValues) {
+					// 		const phones: IPhone[] = [];
+					// 		for (const phoneValue of phoneValues) {
+					// 			const phone: IPhone = {};
+					// 			phone.Type = phoneValue.type as string;
+					// 			phone.PhoneNumber = phoneValue.PhoneNumber as string;
+					// 			phone.PhoneAreaCode = phoneValue.phoneAreaCode as string;
+					// 			phone.PhoneCountryCode = phoneValue.phoneCountryCode as string;
+					// 			phones.push(phone);
+					// 		}
+					// 		body.Phones = phones;
+					// 	}
+					// }
+
+					// if (addressesUi) {
+					// 	const addressValues = addressesUi?.addressesValues as IDataObject[];
+					// 	if (addressValues) {
+					// 		const addresses: IAddress[] = [];
+					// 		for (const addressValue of addressValues) {
+					// 			const address: IAddress = {};
+					// 			address.Type = addressValue.type as string;
+					// 			address.AddressLine1 = addressValue.line1 as string;
+					// 			address.AddressLine2 = addressValue.line2 as string;
+					// 			address.City = addressValue.city as string;
+					// 			address.Region = addressValue.region as string;
+					// 			address.PostalCode = addressValue.postalCode as string;
+					// 			address.Country = addressValue.country as string;
+					// 			address.AttentionTo = addressValue.attentionTo as string;
+					// 			addresses.push(address);
+					// 		}
+					// 		body.Addresses = addresses;
+					// 	}
+					// }
+
+					responseData = await xeroApiRequest.call(this, 'POST', '/Contacts', { organizationId, Contacts: [body] });
+					responseData = responseData.Contacts;
+				}
+				if (operation === 'get') {
+					const organizationId = this.getNodeParameter('organizationId', i) as string;
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					responseData = await xeroApiRequest.call(this, 'GET', `/Contacts/${contactId}`, { organizationId });
+					responseData = responseData.Contacts;
+				}
+				if (operation === 'getAll') {
+					const organizationId = this.getNodeParameter('organizationId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					if (options.includeArchived) {
+						qs.includeArchived = options.includeArchived as boolean;
+					}
+					if (options.orderBy) {
+						qs.order = `${options.orderBy} ${(options.sortOrder === undefined) ? 'DESC' : options.sortOrder}`;
+					}
+					if (options.where) {
+						qs.where = options.where;
+					}
+					if (returnAll) {
+						responseData = await xeroApiRequestAllItems.call(this, 'Contacts', 'GET', '/Contacts', { organizationId }, qs);
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = await xeroApiRequest.call(this, 'GET', `/Contacts`, { organizationId }, qs);
+						responseData = responseData.Contacts;
+						responseData = responseData.splice(0, limit);
+					}
+
+				}
+				if (operation === 'update') {
+					const organizationId = this.getNodeParameter('organizationId', i) as string;
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					// const addressesUi = updateFields.addressesUi as IDataObject;
+					// const phonesUi = updateFields.phonesUi as IDataObject;
+
+					const body: IContact = {};
+
+					if (updateFields.accountNumber) {
+						body.AccountNumber = updateFields.accountNumber as string;
+					}
+
+					if (updateFields.name) {
+						body.Name = updateFields.name as string;
+					}
+
+					if (updateFields.bankAccountDetails) {
+						body.BankAccountDetails = updateFields.bankAccountDetails as string;
+					}
+
+					if (updateFields.contactNumber) {
+						body.ContactNumber = updateFields.contactNumber as string;
+					}
+
+					if (updateFields.contactStatus) {
+						body.ContactStatus = updateFields.contactStatus as string;
+					}
+
+					if (updateFields.defaultCurrency) {
+						body.DefaultCurrency = updateFields.defaultCurrency as string;
+					}
+
+					if (updateFields.emailAddress) {
+						body.EmailAddress = updateFields.emailAddress as string;
+					}
+
+					if (updateFields.firstName) {
+						body.FirstName = updateFields.firstName as string;
+					}
+
+					if (updateFields.lastName) {
+						body.LastName = updateFields.lastName as string;
+					}
+
+					if (updateFields.purchasesDefaultAccountCode) {
+						body.PurchasesDefaultAccountCode = updateFields.purchasesDefaultAccountCode as string;
+					}
+
+					if (updateFields.salesDefaultAccountCode) {
+						body.SalesDefaultAccountCode = updateFields.salesDefaultAccountCode as string;
+					}
+
+					if (updateFields.skypeUserName) {
+						body.SkypeUserName = updateFields.skypeUserName as string;
+					}
+
+					if (updateFields.taxNumber) {
+						body.taxNumber = updateFields.taxNumber as string;
+					}
+
+					if (updateFields.xeroNetworkKey) {
+						body.xeroNetworkKey = updateFields.xeroNetworkKey as string;
+					}
+
+					// if (phonesUi) {
+					// 	const phoneValues = phonesUi?.phonesValues as IDataObject[];
+					// 	if (phoneValues) {
+					// 		const phones: IPhone[] = [];
+					// 		for (const phoneValue of phoneValues) {
+					// 			const phone: IPhone = {};
+					// 			phone.Type = phoneValue.type as string;
+					// 			phone.PhoneNumber = phoneValue.PhoneNumber as string;
+					// 			phone.PhoneAreaCode = phoneValue.phoneAreaCode as string;
+					// 			phone.PhoneCountryCode = phoneValue.phoneCountryCode as string;
+					// 			phones.push(phone);
+					// 		}
+					// 		body.Phones = phones;
+					// 	}
+					// }
+
+					// if (addressesUi) {
+					// 	const addressValues = addressesUi?.addressesValues as IDataObject[];
+					// 	if (addressValues) {
+					// 		const addresses: IAddress[] = [];
+					// 		for (const addressValue of addressValues) {
+					// 			const address: IAddress = {};
+					// 			address.Type = addressValue.type as string;
+					// 			address.AddressLine1 = addressValue.line1 as string;
+					// 			address.AddressLine2 = addressValue.line2 as string;
+					// 			address.City = addressValue.city as string;
+					// 			address.Region = addressValue.region as string;
+					// 			address.PostalCode = addressValue.postalCode as string;
+					// 			address.Country = addressValue.country as string;
+					// 			address.AttentionTo = addressValue.attentionTo as string;
+					// 			addresses.push(address);
+					// 		}
+					// 		body.Addresses = addresses;
+					// 	}
+					// }
+
+					responseData = await xeroApiRequest.call(this, 'POST', `/Contacts/${contactId}`, { organizationId, Contacts: [body] });
+					responseData = responseData.Contacts;
+				}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
