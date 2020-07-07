@@ -10,10 +10,10 @@ import { chunk, flatten } from '../../utils/utilities';
 
 import * as mssql from 'mssql';
 
-import { ITable } from './TableInterface';
+import { ITables } from './TableInterface';
 
 import {
-	copyInputItems,
+	copyInputItem,
 	createTableStruct,
 	executeQueryQueue,
 	extractDeleteValues,
@@ -248,26 +248,19 @@ export class MicrosoftSqlServer implements INodeType {
 				//         insert
 				// ----------------------------------
 
-				const tables = createTableStruct(items, this.getNodeParameter);
+				const tables = createTableStruct(this.getNodeParameter, items);
 				const queriesResults = await executeQueryQueue(
 					tables,
 					({
 						table,
 						columnString,
-						columns,
 						items
 					}: {
 						table: string;
 						columnString: string;
-						columns: string[];
-						items: INodeExecutionData[];
+						items: IDataObject[];
 					}): Promise<any>[] => {
-						const insertValuesList = chunk(
-							copyInputItems(items, columns),
-							1000
-						);
-
-						return insertValuesList.map(insertValues => {
+						return chunk(items, 1000).map(insertValues => {
 							const values = insertValues
 								.map((item: IDataObject) => extractValues(item))
 								.join(',');
@@ -299,26 +292,27 @@ export class MicrosoftSqlServer implements INodeType {
 					(item, index) => this.getNodeParameter('updateKey', index) as string
 				);
 				const tables = createTableStruct(
-					items,
 					this.getNodeParameter,
+					items,
+					['updateKey'],
 					'updateKey'
 				);
 				const queriesResults = await executeQueryQueue(
 					tables,
 					({
 						table,
-						columns,
+						columnString,
 						items
 					}: {
 						table: string;
-						columns: string[];
-						items: INodeExecutionData[];
+						columnString: string;
+						items: IDataObject[];
 					}): Promise<any>[] => {
-						const updateItems = copyInputItems(
-							items,
-							['updateKey'].concat(updateKeys).concat(columns)
-						);
-						return updateItems.map(item => {
+						return items.map(item => {
+							const columns = columnString
+								.split(',')
+								.map(column => column.trim());
+
 							const setValues = extractUpdateSet(item, columns);
 							const condition = extractUpdateCondition(
 								item,
@@ -357,14 +351,16 @@ export class MicrosoftSqlServer implements INodeType {
 					}
 					tables[table][deleteKey].push(item);
 					return tables;
-				}, {} as ITable);
+				}, {} as ITables);
 
 				const queriesResults = await Promise.all(
 					Object.keys(tables).map(table => {
 						const deleteKeyResults = Object.keys(tables[table]).map(
 							deleteKey => {
 								const deleteItemsList = chunk(
-									copyInputItems(tables[table][deleteKey], [deleteKey]),
+									tables[table][deleteKey].map(item =>
+										copyInputItem(item as INodeExecutionData, [deleteKey])
+									),
 									1000
 								);
 								const queryQueue = deleteItemsList.map(deleteValues => {
@@ -399,9 +395,7 @@ export class MicrosoftSqlServer implements INodeType {
 			}
 		} catch (err) {
 			if (this.continueOnFail() === true) {
-				returnItems = this.helpers.returnJsonArray({
-					error: err
-				} as IDataObject);
+				returnItems = items;
 			} else {
 				await pool.close();
 				throw err;

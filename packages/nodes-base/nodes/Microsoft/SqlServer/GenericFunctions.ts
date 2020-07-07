@@ -1,48 +1,48 @@
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { ITable } from './TableInterface';
+import { ITables } from './TableInterface';
 
 /**
- * Returns of copy of the items which only contains the json data and
- * of that only the define properties
+ * Returns a copy of the item which only contains the json data and
+ * of that only the defined properties
  *
- * @param {INodeExecutionData[]} items The items to copy
+ * @param {INodeExecutionData} item The item to copy
  * @param {string[]} properties The properties it should include
  * @returns
  */
-export function copyInputItems(
-	items: INodeExecutionData[],
+export function copyInputItem(
+	item: INodeExecutionData,
 	properties: string[]
-): IDataObject[] {
+): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject;
-	return items.map(item => {
-		newItem = {};
-		for (const property of properties) {
-			if (item.json[property] === undefined) {
-				newItem[property] = null;
-			} else {
-				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
-			}
+	let newItem: IDataObject = {};
+	for (const property of properties) {
+		if (item.json[property] === undefined) {
+			newItem[property] = null;
+		} else {
+			newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
 		}
-		return newItem;
-	});
+	}
+	return newItem;
 }
 
 /**
- * Creates a table object with the columns for the operations
+ * Creates an ITables with the columns for the operations
  *
  * @param {INodeExecutionData[]} items The items to extract the tables/columns for
  * @param {function} getNodeParam getter for the Node's Parameters
- * @returns {object} {tableName: {colNames: [items]}};
+ * @returns {ITables} {tableName: {colNames: [items]}};
  */
 export function createTableStruct(
-	items: INodeExecutionData[],
 	getNodeParam: Function,
+	items: INodeExecutionData[],
+	additionalProperties: string[] = [],
 	keyName?: string
-): ITable {
+): ITables {
 	return items.reduce((tables, item, index) => {
 		const table = getNodeParam('table', index) as string;
 		const columnString = getNodeParam('columns', index) as string;
+		const columns = columnString.split(',').map(column => column.trim());
+		const itemCopy = copyInputItem(item, columns.concat(additionalProperties));
 		const keyParam = keyName
 			? (getNodeParam(keyName, index) as string)
 			: undefined;
@@ -53,33 +53,31 @@ export function createTableStruct(
 			tables[table][columnString] = [];
 		}
 		if (keyName) {
-			item.json[keyName] = keyParam;
+			itemCopy[keyName] = keyParam;
 		}
-		tables[table][columnString].push(item);
+		tables[table][columnString].push(itemCopy);
 		return tables;
-	}, {} as ITable);
+	}, {} as ITables);
 }
 
 /**
- * Creates a table object with the columns for the operations
+ * Executes a queue of queries on given ITables.
  *
- * @param {INodeExecutionData[]} items The items to extract the tables/columns for
- * @param {function} getNodeParam getter for the Node's Parameters
- * @returns {object} {tableName: {colNames: [items]}};
+ * @param {ITables} tables The ITables to be processed.
+ * @param {function} buildQueryQueue function that builds the queue of promises
+ * @returns {Promise}
  */
 export function executeQueryQueue(
-	tables: ITable,
+	tables: ITables,
 	buildQueryQueue: Function
 ): Promise<any[]> {
 	return Promise.all(
 		Object.keys(tables).map(table => {
 			const columnsResults = Object.keys(tables[table]).map(columnString => {
-				const columns = columnString.split(',').map(column => column.trim());
 				return Promise.all(
 					buildQueryQueue({
 						table: table,
 						columnString: columnString,
-						columns: columns,
 						items: tables[table][columnString]
 					})
 				);

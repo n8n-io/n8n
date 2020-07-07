@@ -1,7 +1,7 @@
-import { INodeExecutionData } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
-export interface ITable {
+export interface ITables {
 	[key: string]: {
-		[key: string]: Array<INodeExecutionData>;
+		[key: string]: Array<IDataObject>;
 	};
 }
