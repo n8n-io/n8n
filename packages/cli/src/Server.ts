@@ -1668,6 +1668,10 @@ class App {
 
 					const body = req.body as ICredentialsOverwrite;
 
+					if (typeof body === 'string') {
+						ResponseHelper.sendErrorResponse(res, new Error('Body must be a valid JSON, make sure the content-type is application/json'));
+					}
+
 					const loadNodesAndCredentials = LoadNodesAndCredentials();
 
 					const credentialsOverwrites = CredentialsOverwrites();
