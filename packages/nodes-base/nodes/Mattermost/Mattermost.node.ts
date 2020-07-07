@@ -62,7 +62,7 @@ export class Mattermost implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 
 
@@ -95,22 +95,22 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Soft-deletes a channel',
+						description: 'Soft delete a channel',
 					},
 					{
 						name: 'Member',
 						value: 'members',
-						description: 'Get a page of members for a channel.',
+						description: 'Get a page of members for a channel',
 					},
 					{
 						name: 'Restore',
 						value: 'restore',
-						description: 'Restores a soft-deleted channel',
+						description: 'Restores a soft deleted channel',
 					},
 					{
 						name: 'Statistics',
 						value: 'statistics',
-						description: 'Get statistics for a channel.',
+						description: 'Get statistics for a channel',
 					},
 				],
 				default: 'create',
@@ -131,7 +131,7 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Soft deletes a post, by marking the post as deleted in the database.',
+						description: 'Soft delete a post, by marking the post as deleted in the database',
 					},
 					{
 						name: 'Post',
@@ -140,7 +140,7 @@ export class Mattermost implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The operation to perform.',
+				description: 'The operation to perform',
 			},
 
 
@@ -191,7 +191,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The non-unique UI name for the channel.',
+				description: 'The non-unique UI name for the channel',
 			},
 			{
 				displayName: 'Name',
@@ -210,7 +210,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The unique handle for the channel, will be present in the channel URL.',
+				description: 'The unique handle for the channel, will be present in the channel URL',
 			},
 			{
 				displayName: 'Type',
@@ -264,7 +264,7 @@ export class Mattermost implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the channel to soft-delete.',
+				description: 'The ID of the channel to soft delete',
 			},
 
 			// ----------------------------------
