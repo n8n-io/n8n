@@ -227,167 +227,185 @@ export class MicrosoftSqlServer implements INodeType {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		if (operation === 'executeQuery') {
-			// ----------------------------------
-			//         executeQuery
-			// ----------------------------------
+		try {
+			if (operation === 'executeQuery') {
+				// ----------------------------------
+				//         executeQuery
+				// ----------------------------------
 
-			const rawQuery = this.getNodeParameter('query', 0) as string;
+				const rawQuery = this.getNodeParameter('query', 0) as string;
 
-			const queryResult = await pool.request().query(rawQuery);
+				const queryResult = await pool.request().query(rawQuery);
 
-			const result =
-				queryResult.recordsets.length > 1
-					? flatten(queryResult.recordsets)
-					: queryResult.recordsets[0];
+				const result =
+					queryResult.recordsets.length > 1
+						? flatten(queryResult.recordsets)
+						: queryResult.recordsets[0];
 
-			returnItems = this.helpers.returnJsonArray(result as IDataObject[]);
-		} else if (operation === 'insert') {
-			// ----------------------------------
-			//         insert
-			// ----------------------------------
+				returnItems = this.helpers.returnJsonArray(result as IDataObject[]);
+			} else if (operation === 'insert') {
+				// ----------------------------------
+				//         insert
+				// ----------------------------------
 
-			const tables = createTableStruct(items, this.getNodeParameter);
-			const queriesResults = await executeQueryQueue(
-				tables,
-				({
-					table,
-					columnString,
-					columns,
-					items
-				}: {
-					table: string;
-					columnString: string;
-					columns: string[];
-					items: INodeExecutionData[];
-				}): Promise<any>[] => {
-					const insertValuesList = chunk(copyInputItems(items, columns), 1000);
-
-					return insertValuesList.map(insertValues => {
-						const values = insertValues
-							.map((item: IDataObject) => extractValues(item))
-							.join(',');
-
-						return pool
-							.request()
-							.query(`INSERT INTO ${table}(${columnString}) VALUES ${values};`);
-					});
-				}
-			);
-
-			const rowsAffected = flatten(queriesResults).reduce(
-				(acc: number, resp: mssql.IResult<object>): number =>
-					(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-				0
-			);
-
-			returnItems = this.helpers.returnJsonArray({
-				rowsAffected
-			} as IDataObject);
-		} else if (operation === 'update') {
-			// ----------------------------------
-			//         update
-			// ----------------------------------
-
-			const updateKeys = items.map(
-				(item, index) => this.getNodeParameter('updateKey', index) as string
-			);
-			const tables = createTableStruct(
-				items,
-				this.getNodeParameter,
-				'updateKey'
-			);
-			const queriesResults = await executeQueryQueue(
-				tables,
-				({
-					table,
-					columns,
-					items
-				}: {
-					table: string;
-					columns: string[];
-					items: INodeExecutionData[];
-				}): Promise<any>[] => {
-					const updateItems = copyInputItems(
-						items,
-						['updateKey'].concat(updateKeys).concat(columns)
-					);
-					return updateItems.map(item => {
-						const setValues = extractUpdateSet(item, columns);
-						const condition = extractUpdateCondition(
-							item,
-							item.updateKey as string
-						);
-
-						return pool
-							.request()
-							.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
-					});
-				}
-			);
-
-			const rowsAffected = flatten(queriesResults).reduce(
-				(acc: number, resp: mssql.IResult<object>): number =>
-					(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-				0
-			);
-
-			returnItems = this.helpers.returnJsonArray({
-				rowsAffected
-			} as IDataObject);
-		} else if (operation === 'delete') {
-			// ----------------------------------
-			//         delete
-			// ----------------------------------
-
-			const tables = items.reduce((tables, item, index) => {
-				const table = this.getNodeParameter('table', index) as string;
-				const deleteKey = this.getNodeParameter('deleteKey', index) as string;
-				if (tables[table] === undefined) {
-					tables[table] = {};
-				}
-				if (tables[table][deleteKey] === undefined) {
-					tables[table][deleteKey] = [];
-				}
-				tables[table][deleteKey].push(item);
-				return tables;
-			}, {} as ITable);
-
-			const queriesResults = await Promise.all(
-				Object.keys(tables).map(table => {
-					const deleteKeyResults = Object.keys(tables[table]).map(deleteKey => {
-						const deleteItemsList = chunk(
-							copyInputItems(tables[table][deleteKey], [deleteKey]),
+				const tables = createTableStruct(items, this.getNodeParameter);
+				const queriesResults = await executeQueryQueue(
+					tables,
+					({
+						table,
+						columnString,
+						columns,
+						items
+					}: {
+						table: string;
+						columnString: string;
+						columns: string[];
+						items: INodeExecutionData[];
+					}): Promise<any>[] => {
+						const insertValuesList = chunk(
+							copyInputItems(items, columns),
 							1000
 						);
-						const queryQueue = deleteItemsList.map(deleteValues => {
+
+						return insertValuesList.map(insertValues => {
+							const values = insertValues
+								.map((item: IDataObject) => extractValues(item))
+								.join(',');
+
 							return pool
 								.request()
 								.query(
-									`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
-										deleteValues,
-										deleteKey
-									)};`
+									`INSERT INTO ${table}(${columnString}) VALUES ${values};`
 								);
 						});
-						return Promise.all(queryQueue);
-					});
-					return Promise.all(deleteKeyResults);
-				})
-			);
+					}
+				);
 
-			const rowsAffected = flatten(queriesResults).reduce(
-				(acc: number, resp: mssql.IResult<object>): number =>
-					(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-				0
-			);
+				const rowsAffected = flatten(queriesResults).reduce(
+					(acc: number, resp: mssql.IResult<object>): number =>
+						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
+					0
+				);
 
-			returnItems = this.helpers.returnJsonArray({
-				rowsAffected
-			} as IDataObject);
-		} else {
-			await pool.close();
-			throw new Error(`The operation "${operation}" is not supported!`);
+				returnItems = this.helpers.returnJsonArray({
+					rowsAffected
+				} as IDataObject);
+			} else if (operation === 'update') {
+				// ----------------------------------
+				//         update
+				// ----------------------------------
+
+				const updateKeys = items.map(
+					(item, index) => this.getNodeParameter('updateKey', index) as string
+				);
+				const tables = createTableStruct(
+					items,
+					this.getNodeParameter,
+					'updateKey'
+				);
+				const queriesResults = await executeQueryQueue(
+					tables,
+					({
+						table,
+						columns,
+						items
+					}: {
+						table: string;
+						columns: string[];
+						items: INodeExecutionData[];
+					}): Promise<any>[] => {
+						const updateItems = copyInputItems(
+							items,
+							['updateKey'].concat(updateKeys).concat(columns)
+						);
+						return updateItems.map(item => {
+							const setValues = extractUpdateSet(item, columns);
+							const condition = extractUpdateCondition(
+								item,
+								item.updateKey as string
+							);
+
+							return pool
+								.request()
+								.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
+						});
+					}
+				);
+
+				const rowsAffected = flatten(queriesResults).reduce(
+					(acc: number, resp: mssql.IResult<object>): number =>
+						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
+					0
+				);
+
+				returnItems = this.helpers.returnJsonArray({
+					rowsAffected
+				} as IDataObject);
+			} else if (operation === 'delete') {
+				// ----------------------------------
+				//         delete
+				// ----------------------------------
+
+				const tables = items.reduce((tables, item, index) => {
+					const table = this.getNodeParameter('table', index) as string;
+					const deleteKey = this.getNodeParameter('deleteKey', index) as string;
+					if (tables[table] === undefined) {
+						tables[table] = {};
+					}
+					if (tables[table][deleteKey] === undefined) {
+						tables[table][deleteKey] = [];
+					}
+					tables[table][deleteKey].push(item);
+					return tables;
+				}, {} as ITable);
+
+				const queriesResults = await Promise.all(
+					Object.keys(tables).map(table => {
+						const deleteKeyResults = Object.keys(tables[table]).map(
+							deleteKey => {
+								const deleteItemsList = chunk(
+									copyInputItems(tables[table][deleteKey], [deleteKey]),
+									1000
+								);
+								const queryQueue = deleteItemsList.map(deleteValues => {
+									return pool
+										.request()
+										.query(
+											`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
+												deleteValues,
+												deleteKey
+											)};`
+										);
+								});
+								return Promise.all(queryQueue);
+							}
+						);
+						return Promise.all(deleteKeyResults);
+					})
+				);
+
+				const rowsAffected = flatten(queriesResults).reduce(
+					(acc: number, resp: mssql.IResult<object>): number =>
+						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
+					0
+				);
+
+				returnItems = this.helpers.returnJsonArray({
+					rowsAffected
+				} as IDataObject);
+			} else {
+				await pool.close();
+				throw new Error(`The operation "${operation}" is not supported!`);
+			}
+		} catch (err) {
+			if (this.continueOnFail() === true) {
+				returnItems = this.helpers.returnJsonArray({
+					error: err
+				} as IDataObject);
+			} else {
+				await pool.close();
+				throw err;
+			}
 		}
 
 		// Close the connection
