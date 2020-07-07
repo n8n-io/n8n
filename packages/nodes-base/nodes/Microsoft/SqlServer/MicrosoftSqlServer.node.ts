@@ -6,7 +6,7 @@ import {
 	INodeTypeDescription
 } from 'n8n-workflow';
 
-import { chunk, flatten, flattenDeep, sum } from 'lodash';
+import { chunk, flatten } from '../../utils/utilities';
 
 import * as mssql from 'mssql';
 
@@ -265,7 +265,7 @@ export class MicrosoftSqlServer implements INodeType {
 
 					return insertValuesList.map(insertValues => {
 						const values = insertValues
-							.map(item => extractValues(item))
+							.map((item: IDataObject) => extractValues(item))
 							.join(',');
 
 						return pool
@@ -275,8 +275,9 @@ export class MicrosoftSqlServer implements INodeType {
 				}
 			);
 
-			const rowsAffected = flattenDeep(queriesResults).reduce(
-				(acc, resp): number => (acc += sum(resp.rowsAffected)),
+			const rowsAffected = flatten(queriesResults).reduce(
+				(acc: number, resp: mssql.IResult<object>): number =>
+					(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
 				0
 			);
 
@@ -325,8 +326,9 @@ export class MicrosoftSqlServer implements INodeType {
 				}
 			);
 
-			const rowsAffected = flattenDeep(queriesResults).reduce(
-				(acc, resp): number => (acc += sum(resp.rowsAffected)),
+			const rowsAffected = flatten(queriesResults).reduce(
+				(acc: number, resp: mssql.IResult<object>): number =>
+					(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
 				0
 			);
 
@@ -374,9 +376,9 @@ export class MicrosoftSqlServer implements INodeType {
 				})
 			);
 
-			const rowsAffected = flattenDeep(queriesResults).reduce(
-				(acc, resp: mssql.IResult<object>): number =>
-					(acc += sum(resp.rowsAffected)),
+			const rowsAffected = flatten(queriesResults).reduce(
+				(acc: number, resp: mssql.IResult<object>): number =>
+					(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
 				0
 			);
 
