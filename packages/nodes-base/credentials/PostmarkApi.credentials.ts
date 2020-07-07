@@ -9,7 +9,7 @@ export class PostmarkApi implements ICredentialType {
 	displayName = 'Postmark API';
 	properties = [
 		{
-			displayName: 'Server Token',
+			displayName: 'Server API Token',
 			name: 'serverToken',
 			type: 'string' as NodePropertyTypes,
 			default: '',
