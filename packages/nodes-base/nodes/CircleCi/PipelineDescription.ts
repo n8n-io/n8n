@@ -51,7 +51,7 @@ export const pipelineFields = [
 				value: 'bitbucket',
 			},
 			{
-				name: 'Github',
+				name: 'GitHub',
 				value: 'github',
 			},
 		],
