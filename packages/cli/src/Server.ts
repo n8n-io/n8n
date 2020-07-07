@@ -1668,8 +1668,9 @@ class App {
 
 					const body = req.body as ICredentialsOverwrite;
 
-					if (typeof body === 'string') {
+					if (req.headers['content-type'] !== 'application/json') {
 						ResponseHelper.sendErrorResponse(res, new Error('Body must be a valid JSON, make sure the content-type is application/json'));
+						return;
 					}
 
 					const loadNodesAndCredentials = LoadNodesAndCredentials();
