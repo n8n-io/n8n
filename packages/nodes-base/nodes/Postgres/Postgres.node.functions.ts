@@ -32,7 +32,7 @@ function getItemCopy(
 /**
  * Executes the given SQL query on the database.
  *
- * @param {Function} getNodeParam The getter of the Node
+ * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
  * @param {input[]} input The Node's input data
@@ -55,7 +55,7 @@ export function pgQuery(
 /**
  * Inserts the given items into the database.
  *
- * @param {Function} getNodeParam The getter of the Node
+ * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be inserted
@@ -99,7 +99,7 @@ export async function pgInsert(
 /**
  * Updates the given items in the database.
  *
- * @param {Function} getNodeParam The getter of the Node
+ * @param {Function} getNodeParam The getter for the Node's parameters
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
  * @param {INodeExecutionData[]} items The items to be updated
