@@ -222,7 +222,7 @@ export class MicrosoftSqlServer implements INodeType {
 		const pool = new mssql.ConnectionPool(config);
 		await pool.connect();
 
-		let returnItems: any = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -259,7 +259,7 @@ export class MicrosoftSqlServer implements INodeType {
 						table: string;
 						columnString: string;
 						items: IDataObject[];
-					}): Promise<any>[] => {
+					}): Array<Promise<object>> => {
 						return chunk(items, 1000).map(insertValues => {
 							const values = insertValues
 								.map((item: IDataObject) => extractValues(item))
@@ -307,7 +307,7 @@ export class MicrosoftSqlServer implements INodeType {
 						table: string;
 						columnString: string;
 						items: IDataObject[];
-					}): Promise<any>[] => {
+					}): Array<Promise<object>> => {
 						return items.map(item => {
 							const columns = columnString
 								.split(',')
