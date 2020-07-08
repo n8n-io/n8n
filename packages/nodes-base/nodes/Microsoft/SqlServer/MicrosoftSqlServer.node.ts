@@ -3,7 +3,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { chunk, flatten } from '../../utils/utilities';
@@ -19,7 +19,7 @@ import {
 	extractDeleteValues,
 	extractUpdateCondition,
 	extractUpdateSet,
-	extractValues
+	extractValues,
 } from './GenericFunctions';
 
 export class MicrosoftSqlServer implements INodeType {
@@ -32,15 +32,15 @@ export class MicrosoftSqlServer implements INodeType {
 		description: 'Gets, add and update data in Microsoft SQL Server.',
 		defaults: {
 			name: 'Microsoft SQL Server',
-			color: '#1d4bab'
+			color: '#1d4bab',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
 				name: 'microsoftSqlServer',
-				required: true
-			}
+				required: true,
+			},
 		],
 		properties: [
 			{
@@ -51,26 +51,26 @@ export class MicrosoftSqlServer implements INodeType {
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
-						description: 'Executes a SQL query.'
+						description: 'Executes a SQL query.',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
-						description: 'Insert rows in database.'
+						description: 'Insert rows in database.',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Updates rows in database.'
+						description: 'Updates rows in database.',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Deletes rows in database.'
-					}
+						description: 'Deletes rows in database.',
+					},
 				],
 				default: 'insert',
-				description: 'The operation to perform.'
+				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -81,17 +81,17 @@ export class MicrosoftSqlServer implements INodeType {
 				name: 'query',
 				type: 'string',
 				typeOptions: {
-					rows: 5
+					rows: 5,
 				},
 				displayOptions: {
 					show: {
-						operation: ['executeQuery']
-					}
+						operation: ['executeQuery'],
+					},
 				},
 				default: '',
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
-				description: 'The SQL query to execute.'
+				description: 'The SQL query to execute.',
 			},
 
 			// ----------------------------------
@@ -103,12 +103,12 @@ export class MicrosoftSqlServer implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert']
-					}
+						operation: ['insert'],
+					},
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to insert data to.'
+				description: 'Name of the table in which to insert data to.',
 			},
 			{
 				displayName: 'Columns',
@@ -116,13 +116,13 @@ export class MicrosoftSqlServer implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert']
-					}
+						operation: ['insert'],
+					},
 				},
 				default: '',
 				placeholder: 'id,name,description',
 				description:
-					'Comma separated list of the properties which should used as columns for the new rows.'
+					'Comma separated list of the properties which should used as columns for the new rows.',
 			},
 
 			// ----------------------------------
@@ -134,12 +134,12 @@ export class MicrosoftSqlServer implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['update']
-					}
+						operation: ['update'],
+					},
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to update data in'
+				description: 'Name of the table in which to update data in',
 			},
 			{
 				displayName: 'Update Key',
@@ -147,13 +147,13 @@ export class MicrosoftSqlServer implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['update']
-					}
+						operation: ['update'],
+					},
 				},
 				default: 'id',
 				required: true,
 				description:
-					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".'
+					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -161,13 +161,13 @@ export class MicrosoftSqlServer implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['update']
-					}
+						operation: ['update'],
+					},
 				},
 				default: '',
 				placeholder: 'name,description',
 				description:
-					'Comma separated list of the properties which should used as columns for rows to update.'
+					'Comma separated list of the properties which should used as columns for rows to update.',
 			},
 
 			// ----------------------------------
@@ -179,12 +179,12 @@ export class MicrosoftSqlServer implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['delete']
-					}
+						operation: ['delete'],
+					},
 				},
 				default: '',
 				required: true,
-				description: 'Name of the table in which to delete data.'
+				description: 'Name of the table in which to delete data.',
 			},
 			{
 				displayName: 'Delete Key',
@@ -192,15 +192,15 @@ export class MicrosoftSqlServer implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['delete']
-					}
+						operation: ['delete'],
+					},
 				},
 				default: 'id',
 				required: true,
 				description:
-					'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".'
-			}
-		]
+					'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".',
+			},
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -216,7 +216,7 @@ export class MicrosoftSqlServer implements INodeType {
 			database: credentials.database as string,
 			user: credentials.user as string,
 			password: credentials.password as string,
-			domain: credentials.domain ? (credentials.domain as string) : undefined
+			domain: credentials.domain ? (credentials.domain as string) : undefined,
 		};
 
 		const pool = new mssql.ConnectionPool(config);
@@ -254,7 +254,7 @@ export class MicrosoftSqlServer implements INodeType {
 					({
 						table,
 						columnString,
-						items
+						items,
 					}: {
 						table: string;
 						columnString: string;
@@ -268,20 +268,20 @@ export class MicrosoftSqlServer implements INodeType {
 							return pool
 								.request()
 								.query(
-									`INSERT INTO ${table}(${columnString}) VALUES ${values};`
+									`INSERT INTO ${table}(${columnString}) VALUES ${values};`,
 								);
 						});
-					}
+					},
 				);
 
 				const rowsAffected = flatten(queriesResults).reduce(
 					(acc: number, resp: mssql.IResult<object>): number =>
 						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-					0
+					0,
 				);
 
 				returnItems = this.helpers.returnJsonArray({
-					rowsAffected
+					rowsAffected,
 				} as IDataObject);
 			} else if (operation === 'update') {
 				// ----------------------------------
@@ -289,20 +289,20 @@ export class MicrosoftSqlServer implements INodeType {
 				// ----------------------------------
 
 				const updateKeys = items.map(
-					(item, index) => this.getNodeParameter('updateKey', index) as string
+					(item, index) => this.getNodeParameter('updateKey', index) as string,
 				);
 				const tables = createTableStruct(
 					this.getNodeParameter,
 					items,
 					['updateKey'],
-					'updateKey'
+					'updateKey',
 				);
 				const queriesResults = await executeQueryQueue(
 					tables,
 					({
 						table,
 						columnString,
-						items
+						items,
 					}: {
 						table: string;
 						columnString: string;
@@ -316,24 +316,24 @@ export class MicrosoftSqlServer implements INodeType {
 							const setValues = extractUpdateSet(item, columns);
 							const condition = extractUpdateCondition(
 								item,
-								item.updateKey as string
+								item.updateKey as string,
 							);
 
 							return pool
 								.request()
 								.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
 						});
-					}
+					},
 				);
 
 				const rowsAffected = flatten(queriesResults).reduce(
 					(acc: number, resp: mssql.IResult<object>): number =>
 						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-					0
+					0,
 				);
 
 				returnItems = this.helpers.returnJsonArray({
-					rowsAffected
+					rowsAffected,
 				} as IDataObject);
 			} else if (operation === 'delete') {
 				// ----------------------------------
@@ -359,9 +359,9 @@ export class MicrosoftSqlServer implements INodeType {
 							deleteKey => {
 								const deleteItemsList = chunk(
 									tables[table][deleteKey].map(item =>
-										copyInputItem(item as INodeExecutionData, [deleteKey])
+										copyInputItem(item as INodeExecutionData, [deleteKey]),
 									),
-									1000
+									1000,
 								);
 								const queryQueue = deleteItemsList.map(deleteValues => {
 									return pool
@@ -369,25 +369,25 @@ export class MicrosoftSqlServer implements INodeType {
 										.query(
 											`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
 												deleteValues,
-												deleteKey
-											)};`
+												deleteKey,
+											)};`,
 										);
 								});
 								return Promise.all(queryQueue);
-							}
+							},
 						);
 						return Promise.all(deleteKeyResults);
-					})
+					}),
 				);
 
 				const rowsAffected = flatten(queriesResults).reduce(
 					(acc: number, resp: mssql.IResult<object>): number =>
 						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-					0
+					0,
 				);
 
 				returnItems = this.helpers.returnJsonArray({
-					rowsAffected
+					rowsAffected,
 				} as IDataObject);
 			} else {
 				await pool.close();
