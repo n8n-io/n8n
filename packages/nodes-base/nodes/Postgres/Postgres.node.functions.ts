@@ -38,7 +38,7 @@ function getItemCopy(
  * @param {input[]} input The Node's input data
  * @returns Promise<Array<object>>
  */
-export function executeQuery(
+export function pgQuery(
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -53,16 +53,15 @@ export function executeQuery(
 }
 
 /**
- * Returns of copy of the items which only contains the json data and
- * of that only the define properties
+ * Inserts the given items into the database.
  *
  * @param {Function} getNodeParam The getter of the Node
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
  * @param {input[]} input The Node's input data
- * @returns Promise<object>
+ * @returns Promise<Array<IDataObject>>
  */
-export async function executeInsert(
+export async function pgInsert(
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -95,4 +94,47 @@ export async function executeInsert(
 	const insertData = await db.manyOrNone(query);
 
 	return [insertData, insertItems];
+}
+
+/**
+ * Updates the given items in the database.
+ *
+ * @param {Function} getNodeParam The getter of the Node
+ * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
+ * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
+ * @param {input[]} input The Node's input data
+ * @returns Promise<Array<IDataObject>>
+ */
+export async function pgUpdate(
+	getNodeParam: Function,
+	pgp: pgPromise.IMain<{}, pg.IClient>,
+	db: pgPromise.IDatabase<{}, pg.IClient>,
+	items: INodeExecutionData[],
+): Promise<Array<IDataObject>> {
+	const table = getNodeParam('table', 0) as string;
+	const updateKey = getNodeParam('updateKey', 0) as string;
+	const columnString = getNodeParam('columns', 0) as string;
+
+	const columns = columnString.split(',').map(column => column.trim());
+
+	// Make sure that the updateKey does also get queried
+	if (!columns.includes(updateKey)) {
+		columns.unshift(updateKey);
+	}
+
+	// Prepare the data to update and copy it to be returned
+	const updateItems = getItemCopy(items, columns);
+
+	// Generate the multi-row update query
+	const query =
+		pgp.helpers.update(updateItems, columns, table) +
+		' WHERE v.' +
+		updateKey +
+		' = t.' +
+		updateKey;
+
+	// Executing the query to update the data
+	await db.none(query);
+
+	return updateItems;
 }
