@@ -222,7 +222,7 @@ export class MicrosoftSql implements INodeType {
 		const pool = new mssql.ConnectionPool(config);
 		await pool.connect();
 
-		let returnItems: INodeExecutionData[] = [];
+		let returnItems = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -249,7 +249,7 @@ export class MicrosoftSql implements INodeType {
 				// ----------------------------------
 
 				const tables = createTableStruct(this.getNodeParameter, items);
-				const queriesResults = await executeQueryQueue(
+				await executeQueryQueue(
 					tables,
 					({
 						table,
@@ -274,15 +274,7 @@ export class MicrosoftSql implements INodeType {
 					},
 				);
 
-				const rowsAffected = flatten(queriesResults).reduce(
-					(acc: number, resp: mssql.IResult<object>): number =>
-						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-					0,
-				);
-
-				returnItems = this.helpers.returnJsonArray({
-					rowsAffected,
-				} as IDataObject);
+				returnItems = items;
 			} else if (operation === 'update') {
 				// ----------------------------------
 				//         update
@@ -297,7 +289,7 @@ export class MicrosoftSql implements INodeType {
 					['updateKey'].concat(updateKeys),
 					'updateKey',
 				);
-				const queriesResults = await executeQueryQueue(
+				await executeQueryQueue(
 					tables,
 					({
 						table,
@@ -326,15 +318,7 @@ export class MicrosoftSql implements INodeType {
 					},
 				);
 
-				const rowsAffected = flatten(queriesResults).reduce(
-					(acc: number, resp: mssql.IResult<object>): number =>
-						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-					0,
-				);
-
-				returnItems = this.helpers.returnJsonArray({
-					rowsAffected,
-				} as IDataObject);
+				returnItems = items;
 			} else if (operation === 'delete') {
 				// ----------------------------------
 				//         delete
@@ -380,14 +364,14 @@ export class MicrosoftSql implements INodeType {
 					}),
 				);
 
-				const rowsAffected = flatten(queriesResults).reduce(
+				const rowsDeleted = flatten(queriesResults).reduce(
 					(acc: number, resp: mssql.IResult<object>): number =>
 						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
 					0,
 				);
 
 				returnItems = this.helpers.returnJsonArray({
-					rowsAffected,
+					rowsDeleted,
 				} as IDataObject);
 			} else {
 				await pool.close();
