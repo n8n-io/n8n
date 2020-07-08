@@ -1,8 +1,8 @@
 import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
 
-export class MicrosoftSqlServer implements ICredentialType {
-	name = 'microsoftSqlServer';
-	displayName = 'Microsoft SQL Server';
+export class MicrosoftSql implements ICredentialType {
+	name = 'microsoftSql';
+	displayName = 'Microsoft SQL';
 	properties = [
 		{
 			displayName: 'Server',

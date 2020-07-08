@@ -22,23 +22,23 @@ import {
 	extractValues,
 } from './GenericFunctions';
 
-export class MicrosoftSqlServer implements INodeType {
+export class MicrosoftSql implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft SQL Server',
-		name: 'microsoftSqlServer',
+		displayName: 'Microsoft SQL',
+		name: 'microsoftSql',
 		icon: 'file:mssql.png',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in Microsoft SQL Server.',
+		description: 'Gets, add and update data in Microsoft SQL.',
 		defaults: {
-			name: 'Microsoft SQL Server',
+			name: 'Microsoft SQL',
 			color: '#1d4bab',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'microsoftSqlServer',
+				name: 'microsoftSql',
 				required: true,
 			},
 		],
@@ -204,7 +204,7 @@ export class MicrosoftSqlServer implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('microsoftSqlServer');
+		const credentials = this.getCredentials('microsoftSql');
 
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
@@ -222,7 +222,7 @@ export class MicrosoftSqlServer implements INodeType {
 		const pool = new mssql.ConnectionPool(config);
 		await pool.connect();
 
-		let returnItems: any = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -259,7 +259,7 @@ export class MicrosoftSqlServer implements INodeType {
 						table: string;
 						columnString: string;
 						items: IDataObject[];
-					}): Promise<any>[] => {
+					}): Array<Promise<object>> => {
 						return chunk(items, 1000).map(insertValues => {
 							const values = insertValues
 								.map((item: IDataObject) => extractValues(item))
@@ -307,7 +307,7 @@ export class MicrosoftSqlServer implements INodeType {
 						table: string;
 						columnString: string;
 						items: IDataObject[];
-					}): Promise<any>[] => {
+					}): Array<Promise<object>> => {
 						return items.map(item => {
 							const columns = columnString
 								.split(',')
