@@ -8,7 +8,7 @@ import {
 
 import * as pgPromise from 'pg-promise';
 
-import { executeInsert, executeQuery } from './Postgres.node.functions';
+import { pgInsert, pgQuery, pgUpdate } from './Postgres.node.functions';
 
 export class Postgres implements INodeType {
 	description: INodeTypeDescription = {
@@ -214,12 +214,7 @@ export class Postgres implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await executeQuery(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-			);
+			const queryResult = await pgQuery(this.getNodeParameter, pgp, db, items);
 
 			returnItems = this.helpers.returnJsonArray(queryResult as IDataObject[]);
 		} else if (operation === 'insert') {
@@ -227,7 +222,7 @@ export class Postgres implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const [insertData, insertItems] = await executeInsert(
+			const [insertData, insertItems] = await pgInsert(
 				this.getNodeParameter,
 				pgp,
 				db,
@@ -248,32 +243,9 @@ export class Postgres implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const table = this.getNodeParameter('table', 0) as string;
-			const updateKey = this.getNodeParameter('updateKey', 0) as string;
-			const columnString = this.getNodeParameter('columns', 0) as string;
+			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items);
 
-			const columns = columnString.split(',').map(column => column.trim());
-
-			// // Make sure that the updateKey does also get queried
-			// if (!columns.includes(updateKey)) {
-			// 	columns.unshift(updateKey);
-			// }
-
-			// // Prepare the data to update and copy it to be returned
-			// const updateItems = getItemCopy(items, columns);
-
-			// // Generate the multi-row update query
-			// const query =
-			// 	pgp.helpers.update(updateItems, columns, table) +
-			// 	' WHERE v.' +
-			// 	updateKey +
-			// 	' = t.' +
-			// 	updateKey;
-
-			// // Executing the query to update the data
-			// await db.none(query);
-
-			// returnItems = this.helpers.returnJsonArray(updateItems as IDataObject[]);
+			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {
 			await pgp.end();
 			throw new Error(`The operation "${operation}" is not supported!`);
