@@ -783,6 +783,32 @@ export class Asana implements INodeType {
 				}
 
 				return returnData;
+			},
+			// Get all users to display them to user so that they can be selected easily
+			// See: https://developers.asana.com/docs/get-multiple-users
+			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const endpoint = `users`;
+				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
+
+				if (responseData.data === undefined) {
+					throw new Error('No data got returned');
+				}
+
+				const returnData: INodePropertyOptions[] = [];
+				for (const userData of responseData.data) {
+					if (userData.resource_type !== 'user') {
+						// Not sure if for some reason also ever other resources
+						// get returned but just in case filter them out
+						continue;
+					}
+
+					returnData.push({
+						name: userData.name,
+						value: userData.gid,
+					});
+				}
+
+				return returnData;
 			}
 		},
 	};
