@@ -1194,6 +1194,15 @@ class App {
 
 			let options = {};
 
+			const oAuth2Parameters = {
+				clientId: _.get(oauthCredentials, 'clientId') as string,
+				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
+				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
+				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
+				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
+				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
+			};
+
 			if (_.get(oauthCredentials, 'authentication', 'header') as string === 'body') {
 				options = {
 					body: {
@@ -1201,16 +1210,10 @@ class App {
 						client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
 					},
 				};
+				delete oAuth2Parameters.clientSecret;
 			}
 
-			const oAuthObj = new clientOAuth2({
-				clientId: _.get(oauthCredentials, 'clientId') as string,
-				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
-				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
-				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
-			});
+			const oAuthObj = new clientOAuth2(oAuth2Parameters);
 
 			const oauthToken = await oAuthObj.code.getToken(req.originalUrl, options);
 
