@@ -15,7 +15,7 @@ export function executeQuery(
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
-	input: INodeExecutionData[]
+	input: INodeExecutionData[],
 ): Promise<any> {
 	const queries: string[] = [];
 	for (let i = 0; i < input.length; i++) {
