@@ -58,7 +58,7 @@ export function pgQuery(
  * @param {Function} getNodeParam The getter of the Node
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
- * @param {input[]} input The Node's input data
+ * @param {INodeExecutionData[]} items The items to be inserted
  * @returns Promise<Array<IDataObject>>
  */
 export async function pgInsert(
@@ -102,7 +102,7 @@ export async function pgInsert(
  * @param {Function} getNodeParam The getter of the Node
  * @param {pgPromise.IMain<{}, pg.IClient>} pgp The pgPromise instance
  * @param {pgPromise.IDatabase<{}, pg.IClient>} db The pgPromise database connection
- * @param {input[]} input The Node's input data
+ * @param {INodeExecutionData[]} items The items to be updated
  * @returns Promise<Array<IDataObject>>
  */
 export async function pgUpdate(
