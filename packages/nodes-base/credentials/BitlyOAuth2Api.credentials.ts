@@ -7,7 +7,7 @@ import {
 export class BitlyOAuth2Api implements ICredentialType {
 	name = 'bitlyOAuth2Api';
     displayName = 'Bitly OAuth2 API';
-    
+
     extends = [
 		'oAuth2Api',
 	];
@@ -55,25 +55,13 @@ export class BitlyOAuth2Api implements ICredentialType {
 			type: 'hidden' as NodePropertyTypes,
 			default: '',
 			description: 'For some services additional query parameters have to be set which can be defined here.',
-			placeholder: 'access_type=offline',
+			placeholder: '',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'options' as NodePropertyTypes,
-			options: [
-				{
-					name: 'Body',
-					value: 'body',
-					description: 'Send credentials in body',
-				},
-				{
-					name: 'Header',
-					value: 'header',
-					description: 'Send credentials as Basic Auth header',
-				},
-			],
-			default: 'header',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'body',
 			description: 'Resource to consume.',
 		},
 	];

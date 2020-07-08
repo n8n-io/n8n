@@ -33,7 +33,8 @@ export async function bitlyApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 			return await this.helpers.request!(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'bitlyOAuth2Api', options);
+			//@ts-ignore
+			return await this.helpers.requestOAuth2!.call(this, 'bitlyOAuth2Api', options, 'Bearer');
 		}
 	} catch(error) {
 		throw new Error(error);
