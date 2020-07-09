@@ -63,17 +63,17 @@ export class Postgres implements INodeType {
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
-						description: 'Executes a SQL query.',
+						description: 'Execute an SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
-						description: 'Insert rows in database.',
+						description: 'Insert rows in database',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Updates rows in database.',
+						description: 'Update rows in database',
 					},
 				],
 				default: 'insert',
