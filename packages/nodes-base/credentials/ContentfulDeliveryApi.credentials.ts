@@ -10,7 +10,7 @@ export class ContentfulDeliveryApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 			required: true,
-			description: 'The id for the Cotentful space.'
+			description: 'The id for the Contentful space.'
 		},
 		{
 			displayName: 'Content Delivery API - access token',
