@@ -1,8 +1,4 @@
-import {
-	ICredentialType,
-	NodePropertyTypes,
-} from 'n8n-workflow';
-
+import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
 
 export class QuestDB implements ICredentialType {
 	name = 'questdb';
@@ -59,7 +55,7 @@ export class QuestDB implements ICredentialType {
 				{
 					name: 'verify-full (not implemented)',
 					value: 'verify-full',
-				}
+				},
 			],
 			default: 'disable',
 		},
