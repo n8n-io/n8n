@@ -48,15 +48,15 @@ interface IPostMessageBody {
 
 export class Rocketchat implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Rocketchat',
+		displayName: 'RocketChat',
 		name: 'rocketchat',
 		icon: 'file:rocketchat.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
-		description: 'Consume Rocketchat API',
+		description: 'Consume RocketChat API',
 		defaults: {
-			name: 'Rocketchat',
+			name: 'RocketChat',
 			color: '#c02428',
 		},
 		inputs: ['main'],
