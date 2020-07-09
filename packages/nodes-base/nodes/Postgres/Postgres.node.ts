@@ -1,10 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import * as pgPromise from 'pg-promise';
 
@@ -130,8 +125,7 @@ export class Postgres implements INodeType {
 					},
 				},
 				default: '*',
-				description:
-					'Comma separated list of the fields that the operation will return',
+				description: 'Comma separated list of the fields that the operation will return',
 			},
 
 			// ----------------------------------
@@ -196,9 +190,7 @@ export class Postgres implements INodeType {
 			database: credentials.database as string,
 			user: credentials.user as string,
 			password: credentials.password as string,
-			ssl: !['disable', undefined].includes(
-				credentials.ssl as string | undefined,
-			),
+			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
 			sslmode: (credentials.ssl as string) || 'disable',
 		};
 
@@ -222,12 +214,7 @@ export class Postgres implements INodeType {
 			//         insert
 			// ----------------------------------
 
-			const [insertData, insertItems] = await pgInsert(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-			);
+			const [insertData, insertItems] = await pgInsert(this.getNodeParameter, pgp, db, items);
 
 			// Add the id to the data
 			for (let i = 0; i < insertData.length; i++) {

@@ -10,10 +10,7 @@ import pg = require('pg-promise/typescript/pg-subset');
  * @param {string[]} properties The properties it should include
  * @returns
  */
-function getItemCopy(
-	items: INodeExecutionData[],
-	properties: string[],
-): IDataObject[] {
+function getItemCopy(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
 	return items.map(item => {
@@ -69,9 +66,7 @@ export async function pgInsert(
 ): Promise<Array<IDataObject[]>> {
 	const table = getNodeParam('table', 0) as string;
 	const schema = getNodeParam('schema', 0) as string;
-	let returnFields = (getNodeParam('returnFields', 0) as string).split(
-		',',
-	) as string[];
+	let returnFields = (getNodeParam('returnFields', 0) as string).split(',') as string[];
 	const columnString = getNodeParam('columns', 0) as string;
 	const columns = columnString.split(',').map(column => column.trim());
 
@@ -83,9 +78,7 @@ export async function pgInsert(
 	const insertItems = getItemCopy(items, columns);
 
 	// Generate the multi-row insert query and return the id of new row
-	returnFields = returnFields
-		.map(value => value.trim())
-		.filter(value => !!value);
+	returnFields = returnFields.map(value => value.trim()).filter(value => !!value);
 	const query =
 		pgp.helpers.insert(insertItems, cs, te) +
 		(returnFields.length ? ` RETURNING ${returnFields.join(',')}` : '');
@@ -127,11 +120,7 @@ export async function pgUpdate(
 
 	// Generate the multi-row update query
 	const query =
-		pgp.helpers.update(updateItems, columns, table) +
-		' WHERE v.' +
-		updateKey +
-		' = t.' +
-		updateKey;
+		pgp.helpers.update(updateItems, columns, table) + ' WHERE v.' + updateKey + ' = t.' + updateKey;
 
 	// Executing the query to update the data
 	await db.none(query);
