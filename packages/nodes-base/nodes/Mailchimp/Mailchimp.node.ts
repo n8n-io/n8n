@@ -47,6 +47,7 @@ interface ICreateMemberBody {
 	timestamp_opt?: string;
 	tags?: string[];
 	merge_fields?: IDataObject;
+	interests?: IDataObject;
 }
 
 export class Mailchimp implements INodeType {
@@ -112,6 +113,10 @@ export class Mailchimp implements INodeType {
 				name: 'resource',
 				type: 'options',
 				options: [
+					{
+						name: 'List Group',
+						value: 'listGroup',
+					},
 					{
 						name: 'Member',
 						value: 'member',
@@ -192,6 +197,28 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'create',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all groups',
+					},
+				],
+				default: 'getAll',
 				description: 'The operation to perform.',
 			},
 /* -------------------------------------------------------------------------- */
@@ -514,6 +541,89 @@ export class Mailchimp implements INodeType {
 			{
 				displayName: 'Location',
 				name: 'locationJson',
+				type: 'json',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: '',
+				displayOptions: {
+					show: {
+						resource:[
+							'member',
+						],
+						operation: [
+							'create',
+						],
+						jsonParameters: [
+							true,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Interest Groups',
+				name: 'groupsUi',
+				placeholder: 'Add Interest Group',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				displayOptions: {
+					show: {
+						resource:[
+							'member'
+						],
+						operation: [
+							'create',
+						],
+						jsonParameters: [
+							false,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'groupsValues',
+						displayName: 'Group',
+						typeOptions: {
+							multipleValueButtonText: 'Add Interest Group',
+						},
+						values: [
+							{
+								displayName: 'Category ID',
+								name: 'categoryId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getGroupCategories',
+									loadOptionsDependsOn: [
+										'list',
+									],
+								},
+								default: '',
+							},
+							{
+								displayName: 'Category Field ID',
+								name: 'categoryFieldId',
+								type: 'string',
+								default: '',
+								description: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'boolean',
+								default: false,
+								description: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Interest Groups',
+				name: 'groupJson',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -923,6 +1033,66 @@ export class Mailchimp implements INodeType {
 						description: 'Type of email this member asked to get',
 					},
 					{
+						displayName: 'Interest Groups',
+						name: 'groupsUi',
+						placeholder: 'Add Interest Group',
+						type: 'fixedCollection',
+						default: {},
+						typeOptions: {
+							multipleValues: true,
+						},
+						displayOptions: {
+							show: {
+								'/resource':[
+									'member'
+								],
+								'/operation':[
+									'update',
+								],
+								'/jsonParameters': [
+									false,
+								],
+							},
+						},
+						options: [
+							{
+								name: 'groupsValues',
+								displayName: 'Group',
+								typeOptions: {
+									multipleValueButtonText: 'Add Interest Group',
+								},
+								values: [
+									{
+										displayName: 'Category ID',
+										name: 'categoryId',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getGroupCategories',
+											loadOptionsDependsOn: [
+												'list',
+											],
+										},
+										default: '',
+									},
+									{
+										displayName: 'Category Field ID',
+										name: 'categoryFieldId',
+										type: 'string',
+										default: '',
+										description: '',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'boolean',
+										default: false,
+										description: '',
+									},
+								],
+							},
+						],
+					},
+					{
 						displayName: 'Language',
 						name: 'language',
 						type: 'string',
@@ -1157,6 +1327,29 @@ export class Mailchimp implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Interest Groups',
+				name: 'groupJson',
+				type: 'json',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: '',
+				displayOptions: {
+					show: {
+						resource:[
+							'member',
+						],
+						operation: [
+							'update',
+						],
+						jsonParameters: [
+							true,
+						],
+					},
+				},
+			},
 /* -------------------------------------------------------------------------- */
 /*                                 memberTag:create                           */
 /* -------------------------------------------------------------------------- */
@@ -1250,6 +1443,96 @@ export class Mailchimp implements INodeType {
 					},
 				],
 			},
+/* -------------------------------------------------------------------------- */
+/*                                 member:getAll                              */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLists',
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: '',
+				options: [],
+				required: true,
+				description: 'List of lists',
+			},
+			{
+				displayName: 'Group Category',
+				name: 'groupCategory',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getGroupCategories',
+					loadOptionsDependsOn: [
+						'list',
+					],
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: '',
+				options: [],
+				required: true,
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'listGroup',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 500,
+				description: 'How many results to return.',
+			},
 		],
 	};
 
@@ -1261,7 +1544,7 @@ export class Mailchimp implements INodeType {
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { lists } = await mailchimpApiRequest.call(this, '/lists', 'GET');
+				const lists = await mailchimpApiRequestAllItems.call(this, '/lists', 'GET', 'lists');
 				for (const list of lists) {
 					const listName = list.name;
 					const listId = list.id;
@@ -1289,6 +1572,23 @@ export class Mailchimp implements INodeType {
 				}
 				return returnData;
 			},
+
+			// Get all the interest fields to display them to user so that he can
+			// select them easily
+			async getGroupCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const listId = this.getCurrentNodeParameter('list');
+				const { categories } = await mailchimpApiRequest.call(this, `/lists/${listId}/interest-categories`, 'GET');
+				for (const category of categories) {
+					const categoryName = category.title;
+					const categoryId = category.id;
+					returnData.push({
+						name: categoryName,
+						value: categoryId,
+					});
+				}
+				return returnData;
+			},
 		}
 	};
 
@@ -1302,6 +1602,22 @@ export class Mailchimp implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
+			if (resource === 'listGroup') {
+				//https://mailchimp.com/developer/reference/lists/interest-categories/#get_/lists/-list_id-/interest-categories/-interest_category_id-
+				if (operation === 'getAll') {
+					const listId = this.getNodeParameter('list', i) as string;
+					const categoryId = this.getNodeParameter('groupCategory', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					if (returnAll === true) {
+						responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', 'interests', {}, qs);
+					} else {
+						qs.count = this.getNodeParameter('limit', i) as number;
+						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', {}, qs);
+						responseData = responseData.interests;
+					}
+				}
+			}
 			if (resource === 'member') {
 				//https://mailchimp.com/developer/reference/lists/list-members/#post_/lists/-list_id-/members
 				if (operation === 'create') {
@@ -1363,14 +1679,28 @@ export class Mailchimp implements INodeType {
 							}
 							body.merge_fields = mergeFields;
 						}
+
+						const groupsValues = (this.getNodeParameter('groupsUi', i) as IDataObject).groupsValues as IDataObject[];
+						if (groupsValues) {
+							const groups = {};
+							for (let i = 0; i < groupsValues.length; i++) {
+								// @ts-ignore
+								groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+							}
+							body.interests = groups;
+						}
 					} else {
 						const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
 						const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
+						const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
 						if (locationJson) {
 							body.location = locationJson;
 						}
 						if (mergeFieldsJson) {
 							body.merge_fields = mergeFieldsJson;
+						}
+						if (groupJson) {
+							body.interests = groupJson;
 						}
 					}
 					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members`, 'POST', body);
@@ -1504,14 +1834,30 @@ export class Mailchimp implements INodeType {
 								body.merge_fields = mergeFields;
 							}
 						}
+						if (updateFields.groupsUi) {
+							const groupsValues = (updateFields.groupsUi  as IDataObject).groupsValues as IDataObject[];
+							if (groupsValues) {
+								const groups = {};
+								for (let i = 0; i < groupsValues.length; i++) {
+									// @ts-ignore
+									groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+								}
+								body.interests = groups;
+							}
+						}
 					} else {
 						const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
 						const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
+						const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
+
 						if (locationJson) {
 							body.location = locationJson;
 						}
 						if (mergeFieldsJson) {
 							body.merge_fields = mergeFieldsJson;
+						}
+						if (groupJson) {
+							body.interests = groupJson;
 						}
 					}
 					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}`, 'PUT', body);

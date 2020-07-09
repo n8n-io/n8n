@@ -49,7 +49,6 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			const datacenter = (credentials.apiKey as string).split('-').pop();
 			options.url = `https://${datacenter}.${host}${endpoint}`;
-
 			return await this.helpers.request!(options);
 		} else {
 			const credentials = this.getCredentials('mailchimpOAuth2Api') as IDataObject;
