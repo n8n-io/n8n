@@ -34,10 +34,27 @@ export class Contentful implements INodeType {
 		properties: [
 			// Common fields:
 			{
+				displayName: 'Source',
+				name: 'source',
+				type: 'options' as NodePropertyTypes,
+				default: 'Delivery API',
+				description: 'Pick where your data comes from, delivery or preview API',
+				options: [
+					{
+						name: 'Delivery API',
+						value: 'delivery_api'
+					},
+					{
+						name: 'Preview API',
+						value: 'preview_api'
+					}
+				]
+			},
+			{
 				displayName: 'Environment Id',
 				name: 'environment_id',
 				type: 'string' as NodePropertyTypes,
-				default: 'master',
+				default: '',
 				description:
 					'The id for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".'
 			},
