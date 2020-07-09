@@ -1,7 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription, NodePropertyTypes } from 'n8n-workflow';
 
-import { contentfulApiRequest } from './ GenericFunctions';
+import { contentfulApiRequest } from './GenericFunctions';
 import resolveResponse from './resolveResponse';
 
 import * as SpaceDescription from './SpaceDescription';
