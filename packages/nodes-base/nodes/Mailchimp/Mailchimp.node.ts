@@ -283,27 +283,22 @@ export class Mailchimp implements INodeType {
 					{
 						name: 'Subscribed',
 						value: 'subscribed',
-						description: '',
 					},
 					{
 						name: 'Unsubscribed',
 						value: 'unsubscribed',
-						description: '',
 					},
 					{
 						name: 'Cleaned',
 						value: 'cleaned',
-						description: '',
 					},
 					{
 						name: 'Pending',
 						value: 'pending',
-						description: '',
 					},
 					{
 						name: 'Transactional',
 						value: 'transactional',
-						description: '',
 					},
 				],
 				default: '',
@@ -314,7 +309,6 @@ export class Mailchimp implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -351,12 +345,10 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'HTML',
 								value: 'html',
-								description: '',
 							},
 							{
 								name: 'Text',
 								value: 'text',
-								description: '',
 							},
 						],
 						default: '',
@@ -523,7 +515,6 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -546,7 +537,6 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -608,14 +598,12 @@ export class Mailchimp implements INodeType {
 								name: 'categoryFieldId',
 								type: 'string',
 								default: '',
-								description: '',
 							},
 							{
 								displayName: 'Value',
 								name: 'value',
 								type: 'boolean',
 								default: false,
-								description: '',
 							},
 						],
 					},
@@ -629,7 +617,6 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -882,12 +869,10 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'HTML',
 								value: 'html',
-								description: '',
 							},
 							{
 								name: 'Text',
 								value: 'text',
-								description: '',
 							},
 						],
 						default: '',
@@ -901,27 +886,22 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'Subscribed',
 								value: 'subscribed',
-								description: '',
 							},
 							{
 								name: 'Unsubscribed',
 								value: 'unsubscribed',
-								description: '',
 							},
 							{
 								name: 'Cleaned',
 								value: 'cleaned',
-								description: '',
 							},
 							{
 								name: 'Pending',
 								value: 'pending',
-								description: '',
 							},
 							{
 								name: 'Transactional',
 								value: 'transactional',
-								description: '',
 							},
 						],
 						default: '',
@@ -984,7 +964,6 @@ export class Mailchimp implements INodeType {
 				name: 'jsonParameters',
 				type: 'boolean',
 				default: false,
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -1021,12 +1000,10 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'HTML',
 								value: 'html',
-								description: '',
 							},
 							{
 								name: 'Text',
 								value: 'text',
-								description: '',
 							},
 						],
 						default: '',
@@ -1079,14 +1056,12 @@ export class Mailchimp implements INodeType {
 										name: 'categoryFieldId',
 										type: 'string',
 										default: '',
-										description: '',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'boolean',
 										default: false,
-										description: '',
 									},
 								],
 							},
@@ -1194,27 +1169,22 @@ export class Mailchimp implements INodeType {
 							{
 								name: 'Subscribed',
 								value: 'subscribed',
-								description: '',
 							},
 							{
 								name: 'Unsubscribed',
 								value: 'unsubscribed',
-								description: '',
 							},
 							{
 								name: 'Cleaned',
 								value: 'cleaned',
-								description: '',
 							},
 							{
 								name: 'Pending',
 								value: 'pending',
-								description: '',
 							},
 							{
 								name: 'Transactional',
 								value: 'transactional',
-								description: '',
 							},
 						],
 						default: '',
@@ -1289,7 +1259,6 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -1312,7 +1281,6 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
@@ -1335,7 +1303,6 @@ export class Mailchimp implements INodeType {
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: '',
 				displayOptions: {
 					show: {
 						resource:[
