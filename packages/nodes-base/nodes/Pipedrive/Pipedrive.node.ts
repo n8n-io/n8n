@@ -2160,6 +2160,13 @@ export class Pipedrive implements INodeType {
 						default: '',
 						description: 'Will filter Deals by the provided Organization ID.',
 					},
+					{
+						displayName: 'RAW Data',
+						name: 'rawData',
+						type: 'boolean',
+						default: false,
+						description: `Returns the data exactly in the way it got received from the API.`,
+					},
 				],
 			},
 		],
@@ -2708,6 +2715,15 @@ export class Pipedrive implements INodeType {
 
 				if (operation === 'search' && responseData.data && responseData.data.items) {
 					responseData.data = responseData.data.items;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (additionalFields.rawData !== true) {
+						responseData.data = responseData.data.map((item: { result_score: number, item: object }) => {
+							return {
+								result_score: item.result_score,
+								...item.item,
+							};
+						});
+					}
 				}
 
 				if (Array.isArray(responseData.data)) {
