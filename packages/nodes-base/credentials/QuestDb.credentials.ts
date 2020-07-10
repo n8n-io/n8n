@@ -1,7 +1,7 @@
 import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
 
-export class QuestDB implements ICredentialType {
-	name = 'questdb';
+export class QuestDb implements ICredentialType {
+	name = 'questDb';
 	displayName = 'QuestDB';
 	properties = [
 		{
