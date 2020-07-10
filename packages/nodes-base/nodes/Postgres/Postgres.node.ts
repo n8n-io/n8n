@@ -1,5 +1,10 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription
+} from 'n8n-workflow';
 
 import * as pgPromise from 'pg-promise';
 
@@ -63,7 +68,9 @@ export class Postgres implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: ['executeQuery'],
+						operation: [
+							'executeQuery'
+						],
 					},
 				},
 				default: '',
@@ -81,7 +88,9 @@ export class Postgres implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert'
+						],
 					},
 				},
 				default: 'public',
@@ -94,7 +103,9 @@ export class Postgres implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert'
+						],
 					},
 				},
 				default: '',
@@ -112,8 +123,7 @@ export class Postgres implements INodeType {
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for the new rows.',
+				description: 'Comma separated list of the properties which should used as columns for the new rows.',
 			},
 			{
 				displayName: 'Return Fields',
@@ -121,7 +131,9 @@ export class Postgres implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert'
+						],
 					},
 				},
 				default: '*',
@@ -137,7 +149,9 @@ export class Postgres implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [
+							'update'
+						],
 					},
 				},
 				default: '',
@@ -150,13 +164,14 @@ export class Postgres implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [
+							'update'
+						],
 					},
 				},
 				default: 'id',
 				required: true,
-				description:
-					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+				description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -164,13 +179,14 @@ export class Postgres implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [
+							'update'
+						],
 					},
 				},
 				default: '',
 				placeholder: 'name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for rows to update.',
+				description: 'Comma separated list of the properties which should used as columns for rows to update.',
 			},
 		],
 	};
@@ -191,7 +207,7 @@ export class Postgres implements INodeType {
 			user: credentials.user as string,
 			password: credentials.password as string,
 			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
-			sslmode: (credentials.ssl as string) || 'disable',
+			sslmode: credentials.ssl as string || 'disable',
 		};
 
 		const db = pgp(config);
