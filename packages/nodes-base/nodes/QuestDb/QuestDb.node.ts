@@ -5,10 +5,10 @@ import * as pgPromise from 'pg-promise';
 
 import { pgInsert, pgQuery, pgUpdate } from '../Postgres/Postgres.node.functions';
 
-export class QuestDB implements INodeType {
+export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'QuestDB',
-		name: 'questdb',
+		name: 'questDb',
 		icon: 'file:questdb.png',
 		group: ['input'],
 		version: 1,
@@ -21,7 +21,7 @@ export class QuestDB implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'questdb',
+				name: 'questDb',
 				required: true,
 			},
 		],
@@ -176,7 +176,7 @@ export class QuestDB implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('questdb');
+		const credentials = this.getCredentials('questDb');
 
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
