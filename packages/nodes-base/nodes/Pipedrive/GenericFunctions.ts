@@ -49,7 +49,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 
 	const options: OptionsWithUri = {
 		headers: {
-			"Accept": "application/json",
+			Accept: 'application/json',
 		},
 		method,
 		qs: query,
