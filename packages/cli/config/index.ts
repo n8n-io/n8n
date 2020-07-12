@@ -205,8 +205,8 @@ const config = convict({
 			env: 'EXECUTIONS_DATA_MAX_AGE'
 		},
 		pruneDataTimeout: {
-			doc: 'Timeout (ms) after execution data has been pruned',
-			default: 3600000,
+			doc: 'Timeout (seconds) after execution data has been pruned',
+			default: 3600,
 			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT'
 		},
 	},

@@ -86,22 +86,22 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
  * Throttled to be executed just once in configured timeframe.
  *
  */
-let throttling: boolean;
+let throttling = false;
 function pruneExecutionData(): void {
 	if (!throttling) {
 		throttling = true;
-		const timeout = config.get('executions.pruneDataTimeout') as number; // in ms
+		const timeout = config.get('executions.pruneDataTimeout') as number; // in seconds
 		const maxAge = config.get('executions.pruneDataMaxAge') as number; // in h
 		const date = new Date(); // today
 		date.setHours(date.getHours() - maxAge);
 
 		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution!.delete({ startedAt: LessThanOrEqual(date.toISOString()) })
+		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(date.toISOString()) })
 		.then(data =>
 			setTimeout(() => {
 				throttling = false;
-			}, timeout)
-		).catch(err => throttling = false)
+			}, timeout * 1000)
+		).catch(err => throttling = false);
 	}
 }
 
@@ -215,6 +215,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
 
+				// Prune old execution data
+				if (config.get('executions.pruneData')) {
+					pruneExecutionData();
+				}
+
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 
 				try {
@@ -282,11 +287,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						// If the retry was successful save the reference it on the original execution
 						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
 						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: executionResult.id });
-					}
-
-					// Prune old execution data
-					if (config.get('executions.pruneData')) {
-						pruneExecutionData()
 					}
 
 					if (!isManualMode) {
