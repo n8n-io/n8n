@@ -33,8 +33,8 @@ import {
 
 import {
 	IContact,
-	IPhone,
-	IAddress,
+	// IPhone,
+	// IAddress,
 } from './IContactInterface';
 
 export class Xero implements INodeType {
