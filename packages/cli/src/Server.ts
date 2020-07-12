@@ -931,7 +931,8 @@ class App {
 		// Authorize OAuth Data
 		this.app.get(`/${this.restEndpoint}/oauth1-credential/auth`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
 			if (req.query.id === undefined) {
-				throw new Error('Required credential id is missing!');
+				res.status(500).send('Required credential id is missing!');
+				return '';
 			}
 
 			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
@@ -943,7 +944,8 @@ class App {
 			let encryptionKey = undefined;
 			encryptionKey = await UserSettings.getEncryptionKey();
 			if (encryptionKey === undefined) {
-				throw new Error('No encryption key got found to decrypt the credentials!');
+				res.status(500).send('No encryption key got found to decrypt the credentials!');
+				return '';
 			}
 
 			// Decrypt the currently saved credentials
@@ -1015,7 +1017,8 @@ class App {
 			const { oauth_verifier, oauth_token, cid } = req.query;
 
 			if (oauth_verifier === undefined || oauth_token === undefined) {
-				throw new Error('Insufficient parameters for OAuth1 callback');
+				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth1 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			const result = await Db.collections.Credentials!.findOne(cid as any); // tslint:disable-line:no-any
@@ -1085,7 +1088,8 @@ class App {
 		// Authorize OAuth Data
 		this.app.get(`/${this.restEndpoint}/oauth2-credential/auth`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
 			if (req.query.id === undefined) {
-				throw new Error('Required credential id is missing!');
+				res.status(500).send('Required credential id is missing.');
+				return '';
 			}
 
 			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
@@ -1097,7 +1101,8 @@ class App {
 			let encryptionKey = undefined;
 			encryptionKey = await UserSettings.getEncryptionKey();
 			if (encryptionKey === undefined) {
-				throw new Error('No encryption key got found to decrypt the credentials!');
+				res.status(500).send('No encryption key got found to decrypt the credentials!');
+				return '';
 			}
 
 			// Decrypt the currently saved credentials
@@ -1161,7 +1166,8 @@ class App {
 			const {code, state: stateEncoded } = req.query;
 
 			if (code === undefined || stateEncoded === undefined) {
-				throw new Error('Insufficient parameters for OAuth2 callback');
+				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth2 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			let state;
@@ -1211,17 +1217,20 @@ class App {
 					},
 				};
 			}
+			const redirectUri = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`;
 
 			const oAuthObj = new clientOAuth2({
 				clientId: _.get(oauthCredentials, 'clientId') as string,
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
+				redirectUri,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
 			});
 
-			const oauthToken = await oAuthObj.code.getToken(req.originalUrl, options);
+			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
+
+			const oauthToken = await oAuthObj.code.getToken(`${redirectUri}?${queryParameters}`, options);
 
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
@@ -1693,9 +1702,21 @@ class App {
 			});
 		}
 
+
+		// Read the index file and replace the path placeholder
+		const editorUiPath = require.resolve('n8n-editor-ui');
+		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
+		let readIndexFile = readFileSync(filePath, 'utf8');
+		const n8nPath = config.get('path');
+		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+
+		// Serve the altered index.html file separately
+		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+			res.send(readIndexFile);
+		});
+
 		// Serve the website
 		const startTime = (new Date()).toUTCString();
-		const editorUiPath = require.resolve('n8n-editor-ui');
 		this.app.use('/', express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
 			index: 'index.html',
 			setHeaders: (res, path) => {

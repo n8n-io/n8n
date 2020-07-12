@@ -12,3 +12,4 @@ _START_PACKAGE
 .env
 .vscode
 .idea
+.prettierrc.js
