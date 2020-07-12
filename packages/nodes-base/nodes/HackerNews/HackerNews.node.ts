@@ -39,6 +39,10 @@ export class HackerNews implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'All',
+						value: 'all',
+					},
+					{
 						name: 'Article',
 						value: 'article',
 					},
@@ -50,9 +54,32 @@ export class HackerNews implements INodeType {
 				default: 'article',
 				description: 'Resource to consume.',
 			},
+
+
 			// ----------------------------------
 			//         Operations
 			// ----------------------------------
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'all',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all items',
+					},
+				],
+				default: 'getAll',
+				description: 'Operation to perform.',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -69,11 +96,6 @@ export class HackerNews implements INodeType {
 						name: 'Get',
 						value: 'get',
 						description: 'Get a Hacker News article',
-					},
-					{
-						name: 'Get All',
-						value: 'getAll',
-						description: 'Get all Hacker News articles',
 					},
 				],
 				default: 'get',
@@ -148,7 +170,7 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'article',
+							'all',
 						],
 						operation: [
 							'getAll',
@@ -160,12 +182,12 @@ export class HackerNews implements INodeType {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				default: 5,
+				default: 100,
 				description: 'Limit of Hacker News articles to be returned for the query.',
 				displayOptions: {
 					show: {
 						resource: [
-							'article',
+							'all',
 						],
 						operation: [
 							'getAll',
@@ -211,7 +233,7 @@ export class HackerNews implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'article',
+							'all',
 						],
 						operation: [
 							'getAll',
@@ -285,15 +307,8 @@ export class HackerNews implements INodeType {
 			let endpoint = '';
 			let includeComments = false;
 
-			if (resource === 'article') {
-
-				if (operation === 'get') {
-
-					endpoint = `items/${this.getNodeParameter('articleId', i)}`;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					includeComments = additionalFields.includeComments as boolean;
-
-				} else if (operation === 'getAll') {
+			if (resource === 'all') {
+				if (operation === 'getAll') {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const keyword = additionalFields.keyword as string;
@@ -301,7 +316,7 @@ export class HackerNews implements INodeType {
 
 					qs = {
 						query: keyword,
-						tags: tags ?  tags.join() : '',
+						tags: tags ? tags.join() : '',
 					};
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -311,6 +326,17 @@ export class HackerNews implements INodeType {
 					}
 
 					endpoint = 'search?';
+
+				} else {
+					throw new Error(`The operation '${operation}' is unknown!`);
+				}
+			} else if (resource === 'article') {
+
+				if (operation === 'get') {
+
+					endpoint = `items/${this.getNodeParameter('articleId', i)}`;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					includeComments = additionalFields.includeComments as boolean;
 
 				} else {
 					throw new Error(`The operation '${operation}' is unknown!`);
@@ -335,7 +361,7 @@ export class HackerNews implements INodeType {
 				responseData = await hackerNewsApiRequestAllItems.call(this, 'GET', endpoint, qs);
 			} else {
 				responseData = await hackerNewsApiRequest.call(this, 'GET', endpoint, qs);
-				if (resource === 'article' && operation === 'getAll') {
+				if (resource === 'all' && operation === 'getAll') {
 					responseData = responseData.hits;
 				}
 			}
