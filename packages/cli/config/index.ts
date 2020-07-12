@@ -204,6 +204,13 @@ const config = convict({
 	},
 
 	// How n8n can be reached (Editor & REST-API)
+	path: {
+		format: String,
+		default: '/',
+		arg: 'path',
+		env: 'N8N_PATH',
+		doc: 'Path n8n is deployed to'
+	},
 	host: {
 		format: String,
 		default: 'localhost',
