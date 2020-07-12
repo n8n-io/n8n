@@ -5,7 +5,7 @@ export class ZoomApi implements ICredentialType {
 	displayName = 'Zoom API';
 	properties = [
 		{
-			displayName: 'JTW Token',
+			displayName: 'JWT Token',
 			name: 'accessToken',
 			type: 'string' as NodePropertyTypes,
 			default: ''
