@@ -1693,9 +1693,21 @@ class App {
 			});
 		}
 
+
+		// Read the index file and replace the path placeholder
+		const editorUiPath = require.resolve('n8n-editor-ui');
+		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
+		let readIndexFile = readFileSync(filePath, 'utf8');
+		const n8nPath = config.get('path');
+		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+
+		// Serve the altered index.html file separately
+		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+			res.send(readIndexFile);
+		});
+
 		// Serve the website
 		const startTime = (new Date()).toUTCString();
-		const editorUiPath = require.resolve('n8n-editor-ui');
 		this.app.use('/', express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
 			index: 'index.html',
 			setHeaders: (res, path) => {
