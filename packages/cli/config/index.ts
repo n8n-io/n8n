@@ -161,7 +161,7 @@ const config = convict({
 
 		timeout: {
 			doc: 'Max run time (seconds) before stopping the execution',
-			default: 2,
+			default: 300,
 			env: 'EXECUTIONS_TIMEOUT'
 		},
 
