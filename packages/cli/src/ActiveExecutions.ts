@@ -112,7 +112,7 @@ export class ActiveExecutions {
 			}, 1);
 		} else {
 			// Workflow is running in current process
-			this.activeExecutions[executionId].workflowExecution!.cancel('Canceled by user');
+			this.activeExecutions[executionId].workflowExecution!.cancel(timeout ? 'Workflow execution timed out!' : 'Canceled by user');
 		}
 
 		return this.getPostExecutePromise(executionId);
