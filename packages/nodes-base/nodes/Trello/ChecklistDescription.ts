@@ -44,17 +44,17 @@ export const checklistOperations = [
 			{
 				name: 'Get Checklist Items',
 				value: 'getCheckItem',
-				description: 'Get a specific Checklist on a card',
+				description: 'Get a specific checklist on a card',
 			},
 			{
 				name: 'Get Completed Checklist Items',
 				value: 'completedCheckItems',
-				description: 'Get the completed Checklist items on a card',
+				description: 'Get the completed checklist items on a card',
 			},
 			{
 				name: 'Update Checklist Item',
 				value: 'updateCheckItem',
-				description: 'Update an item in a checklist on a card.',
+				description: 'Update an item in a checklist on a card',
 			},
 		],
 		default: 'getAll',

@@ -29,7 +29,7 @@ export const attachmentOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get the data of an attachments',
+				description: 'Get the data of an attachment',
 			},
 			{
 				name: 'Get All',
