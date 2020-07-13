@@ -237,10 +237,7 @@ export class WorkflowRunner {
 				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
 			} else if (message.type === 'timeout') {
 				// Execution timed out and its process has been terminated
-				console.log(message.data.runData.data)
-				const timeoutError = {
-					message: 'Workflow execution timed out!',
-				} as IExecutionError;
+				const timeoutError = { message: 'Workflow execution timed out!' } as IExecutionError;
 
 				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			}
@@ -248,7 +245,6 @@ export class WorkflowRunner {
 
 		// Also get informed when the processes does exit especially when it did crash or timed out
 		subprocess.on('exit', (code, signal) => {
-			console.log(code, signal, data);
 			if (signal === 'SIGTERM'){
 				// Execution timed out and its process has been terminated
 				const timeoutError = {
