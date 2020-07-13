@@ -190,7 +190,7 @@ process.on('message', async (message: IProcessMessage) => {
 
 			// Once the workflow got executed make sure the process gets killed again
 			process.exit();
-		} else if (message.type === 'stopExecution') {
+		} else if (message.type === 'stopExecution' || message.type === 'timeout') {
 			// The workflow execution should be stopped
 			let runData: IRun;
 
@@ -209,7 +209,7 @@ process.on('message', async (message: IProcessMessage) => {
 							runData: {},
 						},
 					},
-					finished: true,
+					finished: message.type !== 'timeout',
 					mode: workflowRunner.data!.executionMode,
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
@@ -218,7 +218,7 @@ process.on('message', async (message: IProcessMessage) => {
 				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
 			}
 
-			await sendToParentProcess('end', {
+			await sendToParentProcess(message.type === 'timeout' ? message.type : 'end', {
 				runData,
 			});
 

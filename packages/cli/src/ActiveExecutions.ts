@@ -88,10 +88,11 @@ export class ActiveExecutions {
 	 * Forces an execution to stop
 	 *
 	 * @param {string} executionId The id of the execution to stop
+	 * @param {string} timeout String 'timeout' given if stop due to timeout
 	 * @returns {(Promise<IRun | undefined>)}
 	 * @memberof ActiveExecutions
 	 */
-	async stopExecution(executionId: string): Promise<IRun | undefined> {
+	async stopExecution(executionId: string, timeout?: string): Promise<IRun | undefined> {
 		if (this.activeExecutions[executionId] === undefined) {
 			// There is no execution running with that id
 			return;
@@ -104,7 +105,7 @@ export class ActiveExecutions {
 			setTimeout(() => {
 				if (this.activeExecutions[executionId].process!.connected) {
 					this.activeExecutions[executionId].process!.send({
-						type: 'stopExecution'
+						type: timeout ? timeout : 'stopExecution',
 					});
 				}
 
