@@ -9,8 +9,10 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, IOAuth2Options
+	IDataObject,
+	IOAuth2Options,
 } from 'n8n-workflow';
+
 import * as _ from 'lodash';
 
 export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any

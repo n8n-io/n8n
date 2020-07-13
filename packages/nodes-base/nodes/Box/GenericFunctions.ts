@@ -10,7 +10,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, IOAuth2Options,
+	IDataObject,
+	IOAuth2Options,
 } from 'n8n-workflow';
 
 export async function boxApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
