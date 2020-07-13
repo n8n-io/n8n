@@ -23,35 +23,16 @@ export async function erpNextApiRequest(this: IExecuteFunctions | IWebhookFuncti
 
 	options = Object.assign({}, options, option);
 
-	const authenticationMethod = this.getNodeParameter('authentication', 0);
+	const credentials = this.getCredentials('erpNextApi');
 
-	try {
-		if (authenticationMethod === 'accessToken') {
-			const credentials = this.getCredentials('erpNextApi');
-
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
-
-			options.headers!['Authorization'] = `token ${credentials.apiKey}:${credentials.apiSecret}`;
-			options.uri = `https://${credentials.subdomain}.erpnext.com${resource}`;
-
-			console.log(options);
-
-			return await this.helpers.request!(options);
-		} else {
-			const credentials = this.getCredentials('erpNextOAuth2Api');
-
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
-
-			options.uri = `https://${credentials.subdomain}.erpnext.com${resource}`;
-			return await this.helpers.requestOAuth2!.call(this, 'erpNextOAuth2Api', options);
-		}
-	} catch (error) {
-		throw error;
+	if (credentials === undefined) {
+		throw new Error('No credentials got returned!');
 	}
+
+	options.headers!['Authorization'] = `token ${credentials.apiKey}:${credentials.apiSecret}`;
+	options.uri = `https://${credentials.subdomain}.erpnext.com${resource}`;
+
+	return await this.helpers.request!(options);
 }
 
 export async function erpNextApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any

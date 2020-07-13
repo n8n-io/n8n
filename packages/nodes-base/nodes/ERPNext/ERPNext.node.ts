@@ -30,44 +30,37 @@ export class ERPNext implements INodeType {
 			{
 				name: 'erpNextApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'accessToken',
-						],
-					},
-				},
 			},
-			{
-				name: 'erpNextOAuth2Api',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'oAuth2',
-						],
-					},
-				},
-			},
+			// {
+			// 	name: 'erpNextOAuth2Api',
+			// 	required: true,
+			// 	displayOptions: {
+			// 		show: {
+			// 			authentication: [
+			// 				'oAuth2',
+			// 			],
+			// 		},
+			// 	},
+			// },
 		],
 		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Access Token',
-						value: 'accessToken',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2',
-					},
-				],
-				default: 'accessToken',
-				description: 'The resource to operate on.',
-			},
+			// {
+			// 	displayName: 'Authentication',
+			// 	name: 'authentication',
+			// 	type: 'options',
+			// 	options: [
+			// 		{
+			// 			name: 'Access Token',
+			// 			value: 'accessToken',
+			// 		},
+			// 		{
+			// 			name: 'OAuth2',
+			// 			value: 'oAuth2',
+			// 		},
+			// 	],
+			// 	default: 'accessToken',
+			// 	description: 'The resource to operate on.',
+			// },
 			{
 				displayName: 'Resource',
 				name: 'resource',
