@@ -180,7 +180,6 @@ export interface IExecuteData {
 	node: INode;
 }
 
-
 export type IContextObject = {
 	[key: string]: any; // tslint:disable-line:no-any
 };

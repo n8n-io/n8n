@@ -10,7 +10,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, IOAuth2Options,
 } from 'n8n-workflow';
 
 export async function boxApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -31,10 +31,16 @@ export async function boxApiRequest(this: IExecuteFunctions | IExecuteSingleFunc
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
+
+		const oAuth2Options: IOAuth2Options = {
+			includeCredentialsOnRefreshOnBody: true,
+		};
+
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'boxOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'boxOAuth2Api', options, oAuth2Options);
 
 	} catch (error) {
+		console.log(error);
 
 		let errorMessage;
 
