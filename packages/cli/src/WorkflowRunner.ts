@@ -91,17 +91,6 @@ export class WorkflowRunner {
 	}
 
 	/**
-	 * Clears all set timeouts.
-	 *
-	 * @param {NodeJS.Timeout} timeouts
-	 * @memberof WorkflowRunner
-	 */
-	clearTimeouts(timeouts: NodeJS.Timeout[]) {
-		timeouts.forEach((timeout) => clearTimeout(timeout));
-	}
-
-
-	/**
 	 * Run the workflow
 	 *
 	 * @param {IWorkflowExecutionDataProcess} data
@@ -165,9 +154,18 @@ export class WorkflowRunner {
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
+		// Soft timeout to stop workflow execution after current running node
+		const executionTimeout = setTimeout(() => {
+			this.activeExecutions.stopExecution(executionId, 'timeout')
+		}, config.get('executions.timeout') as number * 1000) // in seconds
+
 		workflowExecution.then((fullRunData) => {
+			clearTimeout(executionTimeout);
+			if (workflowExecution.isCanceled) {
+				fullRunData.finished = false;
+			}
 			this.activeExecutions.remove(executionId, fullRunData);
-		});
+		})
 
 		return executionId;
 	}
@@ -228,23 +226,22 @@ export class WorkflowRunner {
 		// Send all data to subprocess it needs to run the workflow
 		subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
 
-		// Start a soft and a hard timeout for the execution
-		const timeouts: NodeJS.Timeout[] = []
-
-		timeouts.push(setTimeout(() => {
+		// Start timeout for the execution
+		const timeout = config.get('executions.timeout') as number * 1000; // in seconds
+		let executionTimeout = setTimeout(() => {
 			this.activeExecutions.stopExecution(executionId, 'timeout')
-		}, config.get('executions.softTimeout') as number * 1000)) // in seconds
+			executionTimeout = setTimeout(() => subprocess.kill(), timeout * 0.3)
+		}, timeout)
 
-		timeouts.push(setTimeout(() => subprocess.kill(), config.get('executions.hardTimeout') as number * 1000)) // in seconds
 
 		// Listen to data from the subprocess
 		subprocess.on('message', (message: IProcessMessage) => {
 			if (message.type === 'end') {
-				this.clearTimeouts(timeouts);
+				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId!, message.data.runData);
 
 			} else if (message.type === 'processError') {
-				this.clearTimeouts(timeouts);
+				clearTimeout(executionTimeout);
 				const executionError = message.data.executionError as IExecutionError;
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 
@@ -275,7 +272,7 @@ export class WorkflowRunner {
 
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 			}
-			this.clearTimeouts(timeouts);
+			clearTimeout(executionTimeout);
 		});
 
 		return executionId;

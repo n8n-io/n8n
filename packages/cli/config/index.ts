@@ -159,6 +159,12 @@ const config = convict({
 			env: 'EXECUTIONS_PROCESS'
 		},
 
+		timeout: {
+			doc: 'Max run time (seconds) before stopping the execution',
+			default: 2,
+			env: 'EXECUTIONS_TIMEOUT'
+		},
+
 		// If a workflow executes all the data gets saved by default. This
 		// could be a problem when a workflow gets executed a lot and processes
 		// a lot of data. To not exceed the database's capacity it is possible to

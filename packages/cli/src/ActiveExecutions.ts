@@ -102,17 +102,17 @@ export class ActiveExecutions {
 		// returned that it gets then also resolved correctly.
 		if (this.activeExecutions[executionId].process !== undefined) {
 			// Workflow is running in subprocess
-			setTimeout(() => {
-				if (this.activeExecutions[executionId].process!.connected) {
+			if (this.activeExecutions[executionId].process!.connected) {
+				setTimeout(() => {
+				// execute on next event loop tick;
 					this.activeExecutions[executionId].process!.send({
 						type: timeout ? timeout : 'stopExecution',
 					});
-				}
-
-			}, 1);
+				}, 1)
+			}
 		} else {
 			// Workflow is running in current process
-			this.activeExecutions[executionId].workflowExecution!.cancel(timeout ? 'Workflow execution timed out!' : 'Canceled by user');
+			this.activeExecutions[executionId].workflowExecution!.cancel();
 		}
 
 		return this.getPostExecutePromise(executionId);
