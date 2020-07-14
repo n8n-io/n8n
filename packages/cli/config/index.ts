@@ -175,6 +175,11 @@ const config = convict({
 			default: -1,
 			env: 'EXECUTIONS_TIMEOUT'
 		},
+		maxTimeout: {
+			doc: 'Max execution time (seconds) that can be set for a workflow individually',
+			default: 3600,
+			env: 'EXECUTIONS_TIMEOUT_MAX'
+		},
 
 		// If a workflow executes all the data gets saved by default. This
 		// could be a problem when a workflow gets executed a lot and processes

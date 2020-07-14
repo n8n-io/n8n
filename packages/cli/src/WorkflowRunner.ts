@@ -155,9 +155,15 @@ export class WorkflowRunner {
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
 		// Soft timeout to stop workflow execution after current running node
-		const executionTimeout = setTimeout(() => {
-			this.activeExecutions.stopExecution(executionId, 'timeout')
-		}, config.get('executions.timeout') as number * 1000) // in seconds
+		let executionTimeout: NodeJS.Timeout;
+		if (config.get('executions.timeout') as number > 0) {
+			const workflow = { timeout: 1000 }; // DELETE ME!!!
+			const workflowTimeout = workflow.timeout ? workflow.timeout : config.get('executions.timeout') as number
+			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
+			executionTimeout = setTimeout(() => {
+				this.activeExecutions.stopExecution(executionId, 'timeout')
+			}, timeout)
+		}
 
 		workflowExecution.then((fullRunData) => {
 			clearTimeout(executionTimeout);
@@ -228,15 +234,14 @@ export class WorkflowRunner {
 
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
-		const timeout =
-			config.get('executions.timeout') as number > 0
-			? config.get('executions.timeout') as number * 1000 // in seconds
-			: undefined;
-
-		if (timeout) {
+		if (config.get('executions.timeout') as number > 0) {
+			const workflow = { timeout: 1000 }; // DELETE ME!!!
+			const workflowTimeout = workflow.timeout ? workflow.timeout : config.get('executions.timeout') as number
+			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
 			executionTimeout = setTimeout(() => {
 				this.activeExecutions.stopExecution(executionId, 'timeout')
-				executionTimeout = setTimeout(() => subprocess.kill(), timeout * 0.3)
+
+				executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)) // minimum 5 seconds
 			}, timeout)
 		}
 
