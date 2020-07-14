@@ -29,5 +29,5 @@ module.exports = {
 			},
 		},
 	},
-	publicPath: process.env.VUE_APP_PUBLIC_PATH ? process.env.VUE_APP_PUBLIC_PATH : '/%BASE_PATH%/',
+	publicPath: process.env.VUE_APP_PUBLIC_PATH ? process.env.VUE_APP_PUBLIC_PATH : '/',
 };
