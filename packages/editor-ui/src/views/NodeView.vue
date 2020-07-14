@@ -126,6 +126,8 @@ import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
 
+import { v4 as uuidv4 } from 'uuid';
+
 import { debounce } from 'lodash';
 import axios from 'axios';
 import {
@@ -946,6 +948,10 @@ export default mixins(
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
 
+				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
+					newNodeData.webhookId = uuidv4();
+				}
+
 				await this.addNodes([newNodeData]);
 
 				// Automatically deselect all nodes and select the current one and also active
@@ -1579,6 +1585,11 @@ export default mixins(
 							console.error(e); // eslint-disable-line no-console
 						}
 						node.parameters = nodeParameters !== null ? nodeParameters : {};
+
+						// if it's a webhook and the path is empty set the UUID as the default path
+						if (node.type === 'n8n-nodes-base.webhook' && node.parameters.path === '') {
+							node.parameters.path = node.webhookId as string;
+						}
 					}
 
 					foundNodeIssues = this.getNodeIssues(nodeType, node);
