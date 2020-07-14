@@ -336,6 +336,7 @@ export interface INode {
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
+	webhookId?: string;
 }
 
 
@@ -558,8 +559,9 @@ export interface IWebhookData {
 }
 
 export interface IWebhookDescription {
-	[key: string]: WebhookHttpMethod | WebhookResponseMode | string | undefined;
+	[key: string]: WebhookHttpMethod | WebhookResponseMode | boolean | string | undefined;
 	httpMethod: WebhookHttpMethod | string;
+	isFullPath?: boolean;
 	name: string;
 	path: string;
 	responseBinaryPropertyName?: string;
