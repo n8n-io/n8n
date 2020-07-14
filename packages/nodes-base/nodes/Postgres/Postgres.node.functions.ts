@@ -40,7 +40,7 @@ export function pgQuery(
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	input: INodeExecutionData[],
-): Promise<Array<object>> {
+): Promise<object[]> {
 	const queries: string[] = [];
 	for (let i = 0; i < input.length; i++) {
 		queries.push(getNodeParam('query', i) as string);
@@ -63,7 +63,7 @@ export async function pgInsert(
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	items: INodeExecutionData[],
-): Promise<Array<IDataObject[]>> {
+): Promise<IDataObject[][]> {
 	const table = getNodeParam('table', 0) as string;
 	const schema = getNodeParam('schema', 0) as string;
 	let returnFields = (getNodeParam('returnFields', 0) as string).split(',') as string[];
@@ -103,7 +103,7 @@ export async function pgUpdate(
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	items: INodeExecutionData[],
-): Promise<Array<IDataObject>> {
+): Promise<IDataObject[]> {
 	const table = getNodeParam('table', 0) as string;
 	const updateKey = getNodeParam('updateKey', 0) as string;
 	const columnString = getNodeParam('columns', 0) as string;
