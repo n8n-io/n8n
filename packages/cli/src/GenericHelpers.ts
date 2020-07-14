@@ -40,11 +40,12 @@ export function getBaseUrl(): string {
 	const protocol = config.get('protocol') as string;
 	const host = config.get('host') as string;
 	const port = config.get('port') as number;
+	const path = config.get('path') as string;
 
 	if (protocol === 'http' && port === 80 || protocol === 'https' && port === 443) {
-		return `${protocol}://${host}/`;
+		return `${protocol}://${host}${path}`;
 	}
-	return `${protocol}://${host}:${port}/`;
+	return `${protocol}://${host}:${port}${path}`;
 }
 
 
