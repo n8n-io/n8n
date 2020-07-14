@@ -18,7 +18,7 @@ import * as clientOAuth2 from 'client-oauth2';
 import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
-import * as requestPromise  from 'request-promise-native';
+import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 
 import {
@@ -120,7 +120,7 @@ class App {
 	restEndpoint: string;
 
 	protocol: string;
-	sslKey:  string;
+	sslKey: string;
 	sslCert: string;
 
 	presetCredentialsLoaded: boolean;
@@ -143,7 +143,7 @@ class App {
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 
 		this.protocol = config.get('protocol');
-		this.sslKey  = config.get('ssl_key');
+		this.sslKey = config.get('ssl_key');
 		this.sslCert = config.get('ssl_cert');
 
 		this.externalHooks = ExternalHooks();
@@ -204,7 +204,7 @@ class App {
 		}
 
 		// Check for and validate JWT if configured
-		const jwtAuthActive  = config.get('security.jwtAuth.active') as boolean;
+		const jwtAuthActive = config.get('security.jwtAuth.active') as boolean;
 		if (jwtAuthActive === true) {
 			const jwtAuthHeader = await GenericHelpers.getConfigValue('security.jwtAuth.jwtHeader') as string;
 			if (jwtAuthHeader === '') {
@@ -282,7 +282,7 @@ class App {
 			normalize: true,     // Trim whitespace inside text nodes
 			normalizeTags: true, // Transform tags to lowercase
 			explicitArray: false, // Only put properties in array if length > 1
-		  } }));
+		} }));
 
 		this.app.use(bodyParser.text({
 			limit: '16mb', verify: (req, res, buf) => {
@@ -981,7 +981,7 @@ class App {
 
 			const callback = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`;
 
-			const options: RequestOptions  = {
+			const options: RequestOptions = {
 				method: 'POST',
 				url: (_.get(oauthCredentials, 'requestTokenUrl') as string),
 				data: {
@@ -1049,7 +1049,7 @@ class App {
 			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
 
-			const options: OptionsWithUrl  = {
+			const options: OptionsWithUrl = {
 				method: 'POST',
 				url: _.get(oauthCredentials, 'accessTokenUrl') as string,
 				qs: {
