@@ -165,9 +165,14 @@ const config = convict({
 		// If a workflow is running in its own process is a soft timeout
 		// tried first, before killing the process after waiting for an
 		// additional third of the given timeout duration.
+		//
+		// To deactivate timeout set it to -1
+		//
+		// Timeout is currently not activated by default which will change
+		// in a future version.
 		timeout: {
 			doc: 'Max run time (seconds) before stopping the workflow execution',
-			default: 300,
+			default: -1,
 			env: 'EXECUTIONS_TIMEOUT'
 		},
 

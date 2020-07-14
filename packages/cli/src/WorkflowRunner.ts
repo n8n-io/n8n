@@ -227,11 +227,18 @@ export class WorkflowRunner {
 		subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
 
 		// Start timeout for the execution
-		const timeout = config.get('executions.timeout') as number * 1000; // in seconds
-		let executionTimeout = setTimeout(() => {
-			this.activeExecutions.stopExecution(executionId, 'timeout')
-			executionTimeout = setTimeout(() => subprocess.kill(), timeout * 0.3)
-		}, timeout)
+		let executionTimeout: NodeJS.Timeout;
+		const timeout =
+			config.get('executions.timeout') as number > 0
+			? config.get('executions.timeout') as number * 1000 // in seconds
+			: undefined;
+
+		if (timeout) {
+			executionTimeout = setTimeout(() => {
+				this.activeExecutions.stopExecution(executionId, 'timeout')
+				executionTimeout = setTimeout(() => subprocess.kill(), timeout * 0.3)
+			}, timeout)
+		}
 
 
 		// Listen to data from the subprocess
