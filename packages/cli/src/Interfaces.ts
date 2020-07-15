@@ -49,8 +49,15 @@ export interface IDatabaseCollections {
 	Credentials: Repository<ICredentialsDb> | null;
 	Execution: Repository<IExecutionFlattedDb> | null;
 	Workflow: Repository<IWorkflowDb> | null;
+	Webhook: Repository<IWebhookDb> | null;
 }
 
+export interface IWebhookDb {
+	workflowId: number | string | ObjectID;
+	webhookPath: string;
+	method: string;
+	node: string;
+}
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 	id?: number | string | ObjectID;
