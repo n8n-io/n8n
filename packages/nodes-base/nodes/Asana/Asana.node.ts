@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -12,6 +13,7 @@ import {
 
 import {
 	asanaApiRequest,
+	asanaApiRequestAllItems,
 } from './GenericFunctions';
 
 export class Asana implements INodeType {
@@ -22,10 +24,10 @@ export class Asana implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Access and edit Asana tasks',
+		description: 'Consume Asana REST API',
 		defaults: {
 			name: 'Asana',
-			color: '#339922',
+			color: '#FC636B',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -48,6 +50,10 @@ export class Asana implements INodeType {
 					{
 						name: 'User',
 						value: 'user',
+					},
+					{
+						name: 'Project',
+						value: 'project',
 					},
 				],
 				default: 'task',
@@ -385,7 +391,7 @@ export class Asana implements INodeType {
 			//         user:get
 			// ----------------------------------
 			{
-				displayName: 'Id',
+				displayName: 'ID',
 				name: 'userId',
 				type: 'string',
 				default: '',
@@ -428,6 +434,139 @@ export class Asana implements INodeType {
 				},
 				description: 'The workspace in which to get users.',
 			},
+
+			// ----------------------------------
+			//         Project
+			// ----------------------------------
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'project',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all tasks',
+					},
+				],
+				default: 'getAll',
+				description: 'The operation to perform.',
+			},
+
+			// ----------------------------------
+			//         project:getAll
+			// ----------------------------------
+			{
+				displayName: 'Workspace',
+				name: 'workspace',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'project',
+						],
+					},
+				},
+				description: 'The workspace in which to get users.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'project',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'project',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						resource: [
+							'project',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: {},
+				description: 'Other properties to set',
+				placeholder: 'Add Property',
+				options: [
+					{
+						displayName: 'Archived',
+						name: 'archived',
+						type: 'boolean',
+						default: false,
+						description: 'Only return projects whose archived field takes on the value of this parameter.',
+					},
+					{
+						displayName: 'Teams',
+						name: 'team',
+						type: 'options',
+						typeOptions: {
+							loadOptionsDependsOn: [
+								'workspace',
+							],
+							loadOptionsMethod: 'getTeams',
+						},
+						default: '',
+						description: 'The new name of the task',
+					},
+				],
+			},
 		],
 	};
 
@@ -436,15 +575,11 @@ export class Asana implements INodeType {
 			// Get all the available workspaces to display them to user so that he can
 			// select them easily
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = 'workspaces';
-				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
-
-				if (responseData.data === undefined) {
-					throw new Error('No data got returned');
-				}
+				const endpoint = '/workspaces';
+				const responseData = await asanaApiRequestAllItems.call(this, 'GET', endpoint, {});
 
 				const returnData: INodePropertyOptions[] = [];
-				for (const workspaceData of responseData.data) {
+				for (const workspaceData of responseData) {
 					if (workspaceData.resource_type !== 'workspace') {
 						// Not sure if for some reason also ever other resources
 						// get returned but just in case filter them out
@@ -454,6 +589,41 @@ export class Asana implements INodeType {
 					returnData.push({
 						name: workspaceData.name,
 						value: workspaceData.gid,
+					});
+				}
+
+				return returnData;
+			},
+
+			// Get all the available teams to display them to user so that he can
+			// select them easily
+			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const workspaceId = this.getCurrentNodeParameter('workspace');
+
+				const workspace = await asanaApiRequest.call(this, 'GET', `/workspaces/${workspaceId}`, {});
+
+				// if the workspace selected it's not an organization then error as they endpoint
+				// to retrieve the teams from an organization just work with workspaces that are an organization
+
+				if (workspace.is_organization === false) {
+					throw Error('To filter by team, the workspace selected has to be an organization');
+				}
+
+				const endpoint = `/organizations/${workspaceId}/teams`;
+
+				const responseData = await asanaApiRequestAllItems.call(this, 'GET', endpoint, {});
+
+				const returnData: INodePropertyOptions[] = [];
+				for (const teamData of responseData) {
+					if (teamData.resource_type !== 'team') {
+						// Not sure if for some reason also ever other resources
+						// get returned but just in case filter them out
+						continue;
+					}
+
+					returnData.push({
+						name: teamData.name,
+						value: teamData.gid,
 					});
 				}
 
@@ -481,6 +651,7 @@ export class Asana implements INodeType {
 
 		let body: IDataObject;
 		let qs: IDataObject;
+		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
 			body = {};
@@ -493,7 +664,7 @@ export class Asana implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'POST';
-					endpoint = 'tasks';
+					endpoint = '/tasks';
 
 					body.name = this.getNodeParameter('name', i) as string;
 					// body.notes = this.getNodeParameter('taskNotes', 0) as string;
@@ -502,13 +673,20 @@ export class Asana implements INodeType {
 					const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 					Object.assign(body, otherProperties);
 
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+					responseData = responseData.data;
+
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
 					// ----------------------------------
 
 					requestMethod = 'DELETE';
-					endpoint = 'tasks/' + this.getNodeParameter('id', i) as string;
+					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = responseData.data;
 
 				} else if (operation === 'get') {
 					// ----------------------------------
@@ -516,7 +694,7 @@ export class Asana implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'GET';
-					endpoint = 'tasks/' + this.getNodeParameter('id', i) as string;
+					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
 
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -524,10 +702,14 @@ export class Asana implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'PUT';
-					endpoint = 'tasks/' + this.getNodeParameter('id', i) as string;
+					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
 
 					const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 					Object.assign(body, otherProperties);
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = responseData.data;
 
 				} else if (operation === 'search') {
 					// ----------------------------------
@@ -537,10 +719,14 @@ export class Asana implements INodeType {
 					const workspaceId = this.getNodeParameter('workspace', i) as string;
 
 					requestMethod = 'GET';
-					endpoint = `workspaces/${workspaceId}/tasks/search`;
+					endpoint = `/workspaces/${workspaceId}/tasks/search`;
 
 					const searchTaskProperties = this.getNodeParameter('searchTaskProperties', i) as IDataObject;
 					Object.assign(qs, searchTaskProperties);
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = responseData.data;
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
@@ -554,7 +740,10 @@ export class Asana implements INodeType {
 					const userId = this.getNodeParameter('userId', i) as string;
 
 					requestMethod = 'GET';
-					endpoint = `users/${userId}`;
+					endpoint = `/users/${userId}`;
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+					responseData = responseData.data;
 
 				} else if (operation === 'getAll') {
 					// ----------------------------------
@@ -564,17 +753,53 @@ export class Asana implements INodeType {
 					const workspaceId = this.getNodeParameter('workspace', i) as string;
 
 					requestMethod = 'GET';
-					endpoint = `workspaces/${workspaceId}/users`;
+					endpoint = `/workspaces/${workspaceId}/users`;
 
-				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+					responseData = responseData.data;
+
 				}
+			} else if (resource === 'project') {
+
+					if (operation === 'getAll') {
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+						const workspaceId = this.getNodeParameter('workspace', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+						requestMethod = 'GET';
+						endpoint = `/projects`;
+
+						if (additionalFields.team) {
+							qs.team = additionalFields.team;
+						} else {
+							qs.workspace = workspaceId;
+						}
+
+						if (additionalFields.archived) {
+							qs.archived = additionalFields.archived as boolean;
+						}
+
+						if (returnAll) {
+							responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+						} else {
+							 qs.limit = this.getNodeParameter('limit', i) as boolean;
+							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+							responseData = responseData.data;
+						}
+					}
+
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
-			const responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body);
 
-			returnData.push(responseData.data as IDataObject);
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData);
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
