@@ -125,6 +125,7 @@
       "dist/credentials/StripeApi.credentials.js",
       "dist/credentials/SalesmateApi.credentials.js",
       "dist/credentials/SegmentApi.credentials.js",
+      "dist/credentials/Sftp.credentials.js",
       "dist/credentials/Signl4Api.credentials.js",
       "dist/credentials/SpotifyOAuth2Api.credentials.js",
       "dist/credentials/SurveyMonkeyApi.credentials.js",
@@ -198,6 +199,7 @@
       "dist/nodes/ExecuteWorkflow.node.js",
       "dist/nodes/Facebook/FacebookGraphApi.node.js",
       "dist/nodes/FileMaker/FileMaker.node.js",
+      "dist/nodes/FileTransfer.node.js",
       "dist/nodes/Freshdesk/Freshdesk.node.js",
       "dist/nodes/Flow/Flow.node.js",
       "dist/nodes/Flow/FlowTrigger.node.js",
@@ -344,6 +346,7 @@
     "typescript": "~3.7.4"
   },
   "dependencies": {
+    "@types/ssh2-sftp-client": "^5.1.0",
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
     "change-case": "^4.1.1",
@@ -372,6 +375,7 @@
     "request": "^2.88.2",
     "rhea": "^1.0.11",
     "rss-parser": "^3.7.0",
+    "ssh2-sftp-client": "^5.2.1",
     "uuid": "^3.4.0",
     "vm2": "^3.6.10",
     "xlsx": "^0.14.3",
