@@ -66,7 +66,7 @@
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
-    "n8n-workflow": "~0.34.0",
+    "n8n-workflow": "~0.35.0",
     "node-sass": "^4.12.0",
     "prismjs": "^1.17.1",
     "quill": "^2.0.0-dev.3",
