@@ -44,7 +44,7 @@ module.exports = [
         "logging": false,
         "host": "localhost",
         "username": "postgres",
-        "password": "docker",
+        "password": "",
         "port": 5432,
         "database": "postgres",
         "schema": "public",

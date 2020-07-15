@@ -50,6 +50,7 @@ import {
 import {
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
+	CreateIndexStoppedAt1594825041918,
 } from './databases/sqlite/migrations';
 
 import * as path from 'path';
@@ -135,7 +136,11 @@ export async function init(): Promise<IDatabaseCollections> {
 				type: 'sqlite',
 				database:  path.join(n8nFolder, 'database.sqlite'),
 				entityPrefix,
-				migrations: [InitialMigration1588102412422, WebhookModel1592445003908],
+				migrations: [
+					InitialMigration1588102412422,
+					WebhookModel1592445003908,
+					CreateIndexStoppedAt1594825041918
+				],
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
