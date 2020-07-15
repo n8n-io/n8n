@@ -113,8 +113,8 @@ class App {
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
-	timeoutWorkflow: number;
-	maxTimeout: number;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
 	timezone: string;
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 	push: Push.Push;
@@ -135,8 +135,8 @@ class App {
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
-		this.timeoutWorkflow = config.get('executions.timeout') as number;
-		this.maxTimeout = config.get('executions.maxTimeout') as number;
+		this.executionTimeout = config.get('executions.timeout') as number;
+		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
 
@@ -484,9 +484,9 @@ class App {
 					// Do not save when default got set
 					delete newWorkflowData.settings.saveManualExecutions;
 				}
-				if (newWorkflowData.settings.timeoutWorkflow == this.timeoutWorkflow) { // cast compare due to timeoutWorkflow being a string
+				if (newWorkflowData.settings.executionTimeout == this.executionTimeout) { // cast compare due to executionTimeout being a string
 					// Do not save when default got set
-					delete newWorkflowData.settings.timeoutWorkflow
+					delete newWorkflowData.settings.executionTimeout
 				}
 			}
 
@@ -1536,8 +1536,8 @@ class App {
 				saveDataErrorExecution: this.saveDataErrorExecution,
 				saveDataSuccessExecution: this.saveDataSuccessExecution,
 				saveManualExecutions: this.saveManualExecutions,
-				timeoutWorkflow: this.timeoutWorkflow,
-				maxTimeout: this.maxTimeout,
+				executionTimeout: this.executionTimeout,
+				maxExecutionTimeout: this.maxExecutionTimeout,
 				timezone: this.timezone,
 				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
 				versionCli: this.versions!.cli,

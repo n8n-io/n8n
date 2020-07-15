@@ -52,8 +52,8 @@ export const store = new Vuex.Store({
 		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
 		timezone: 'America/New_York',
-		timeoutWorkflow: -1,
-		maxTimeout: Number.MAX_SAFE_INTEGER,
+		executionTimeout: -1,
+		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
 		versionCli: '0.0.0',
 		workflowExecutionData: null as IExecutionResponse | null,
 		lastSelectedNode: null as string | null,
@@ -481,11 +481,11 @@ export const store = new Vuex.Store({
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
-		setTimeoutWorkflow (state, timeoutWorkflow: number) {
-			Vue.set(state, 'timeoutWorkflow', timeoutWorkflow);
+		setExecutionTimeout (state, executionTimeout: number) {
+			Vue.set(state, 'executionTimeout', executionTimeout);
 		},
-		setMaxTimeout (state, maxTimeout: number) {
-			Vue.set(state, 'maxTimeout', maxTimeout);
+		setMaxExecutionTimeout (state, maxExecutionTimeout: number) {
+			Vue.set(state, 'maxExecutionTimeout', maxExecutionTimeout);
 		},
 		setVersionCli (state, version: string) {
 			Vue.set(state, 'versionCli', version);
@@ -600,11 +600,11 @@ export const store = new Vuex.Store({
 		timezone: (state): string => {
 			return state.timezone;
 		},
-		timeoutWorkflow: (state): number => {
-			return state.timeoutWorkflow;
+		executionTimeout: (state): number => {
+			return state.executionTimeout;
 		},
-		maxTimeout: (state): number => {
-			return state.maxTimeout;
+		maxExecutionTimeout: (state): number => {
+			return state.maxExecutionTimeout;
 		},
 		versionCli: (state): string => {
 			return state.versionCli;

@@ -397,8 +397,8 @@ export interface IN8nUISettings {
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
 	timezone: string;
-	timeoutWorkflow: number;
-	maxTimeout: number;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
 	urlBaseWebhook: string;
 	versionCli: string;
 }
@@ -409,5 +409,5 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveDataSuccessExecution?: string;
 	saveManualExecutions?: boolean;
 	timezone?: string;
-	timeoutWorkflow?: number;
+	executionTimeout?: number;
 }

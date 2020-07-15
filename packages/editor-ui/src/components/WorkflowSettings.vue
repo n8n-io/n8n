@@ -101,12 +101,12 @@
 					<el-col :span="10" class="setting-name">
 						Timeout Workflow:
 						<el-tooltip class="setting-info" placement="top" effect="light">
-							<div slot="content" v-html="helpTexts.timeoutWorkflow"></div>
+							<div slot="content" v-html="helpTexts.executionTimeout"></div>
 							<font-awesome-icon icon="question-circle" />
 						</el-tooltip>
 					</el-col>
 					<el-col :span="14">
-						<el-input-number size="small" v-model="workflowSettings.timeoutWorkflow" :max="workflowSettings.maxTimeout" :min="-1" placeholder="timeout in seconds (-1 to deactivate)" type="number" class="el-input_inner"></el-input-number>
+						<el-input-number size="small" v-model="workflowSettings.executionTimeout" :max="workflowSettings.maxExecutionTimeout" :min="-1" placeholder="timeout in seconds (-1 to deactivate)" type="number" class="el-input_inner"></el-input-number>
 					</el-col>
 				</el-row>
 
@@ -152,7 +152,7 @@ export default mixins(
 				saveDataErrorExecution: 'If data data of executions should be saved in case they failed.',
 				saveDataSuccessExecution: 'If data data of executions should be saved in case they succeed.',
 				saveManualExecutions: 'If data data of executions should be saved when started manually from the editor.',
-				timeoutWorkflow: 'After what time (seconds) the workflow should timeout. (-1 to deactivate)',
+				executionTimeout: 'After what time (seconds) the workflow should timeout. (-1 to deactivate)',
 			},
 			defaultValues: {
 				timezone: 'America/New_York',
@@ -166,8 +166,8 @@ export default mixins(
 			timezones: [] as Array<{ key: string, value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
 			workflows: [] as IWorkflowShortResponse[],
-			timeoutWorkflow: this.$store.getters.timeoutWorkflow,
-			maxTimeout: this.$store.getters.maxTimeout,
+			executionTimeout: this.$store.getters.executionTimeout,
+			maxExecutionTimeout: this.$store.getters.maxExecutionTimeout,
 		};
 	},
 	watch: {
@@ -328,11 +328,11 @@ export default mixins(
 			if (workflowSettings.saveManualExecutions === undefined) {
 				workflowSettings.saveManualExecutions = 'DEFAULT';
 			}
-			if (workflowSettings.timeoutWorkflow === undefined) {
-				workflowSettings.timeoutWorkflow = this.$store.getters.timeoutWorkflow;
+			if (workflowSettings.executionTimeout === undefined) {
+				workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
 			}
-			if (workflowSettings.maxTimeout === undefined) {
-				workflowSettings.maxTimeout = this.$store.getters.maxTimeout;
+			if (workflowSettings.maxExecutionTimeout === undefined) {
+				workflowSettings.maxExecutionTimeout = this.$store.getters.maxExecutionTimeout;
 			}
 
 			Vue.set(this, 'workflowSettings', workflowSettings);
@@ -343,7 +343,7 @@ export default mixins(
 			const data: IWorkflowDataUpdate = {
 				settings: this.workflowSettings,
 			};
-			delete data.settings.maxTimeout;
+			delete data.settings.maxExecutionTimeout;
 
 			this.isLoading = true;
 

@@ -157,8 +157,8 @@ export class WorkflowRunner {
 		// Soft timeout to stop workflow execution after current running node
 		let executionTimeout: NodeJS.Timeout;
 		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
-		if (data.workflowData.settings && data.workflowData.settings.timeoutWorkflow) {
-			workflowTimeout = data.workflowData.settings!.timeoutWorkflow as number > 0 && data.workflowData.settings!.timeoutWorkflow as number // preference on workflow setting
+		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number // preference on workflow setting
 		}
 
 		if (workflowTimeout) {
@@ -238,8 +238,8 @@ export class WorkflowRunner {
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
 		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
-		if (data.workflowData.settings && data.workflowData.settings.timeoutWorkflow) {
-			workflowTimeout = data.workflowData.settings!.timeoutWorkflow as number > 0 && data.workflowData.settings!.timeoutWorkflow as number // preference on workflow setting
+		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number // preference on workflow setting
 		}
 
 		if (workflowTimeout) {
