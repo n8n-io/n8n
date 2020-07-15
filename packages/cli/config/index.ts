@@ -172,11 +172,13 @@ const config = convict({
 		// in a future version.
 		timeout: {
 			doc: 'Max run time (seconds) before stopping the workflow execution',
+			format: Number,
 			default: -1,
 			env: 'EXECUTIONS_TIMEOUT'
 		},
 		maxTimeout: {
 			doc: 'Max execution time (seconds) that can be set for a workflow individually',
+			format: Number,
 			default: 3600,
 			env: 'EXECUTIONS_TIMEOUT_MAX'
 		},
