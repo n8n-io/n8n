@@ -35,6 +35,7 @@ export let collections: IDatabaseCollections = {
 import {
 	InitialMigration1587669153312,
 	WebhookModel1589476000887,
+	CreateIndexStoppedAt1594828256133,
 } from './databases/postgresdb/migrations';
 
 import {
@@ -105,7 +106,11 @@ export async function init(): Promise<IDatabaseCollections> {
 				port: await GenericHelpers.getConfigValue('database.postgresdb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.postgresdb.user') as string,
 				schema: config.get('database.postgresdb.schema'),
-				migrations: [InitialMigration1587669153312, WebhookModel1589476000887],
+				migrations: [
+					InitialMigration1587669153312,
+					WebhookModel1589476000887,
+					CreateIndexStoppedAt1594828256133,
+				],
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 				ssl,

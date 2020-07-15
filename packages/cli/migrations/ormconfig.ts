@@ -46,7 +46,7 @@ module.exports = [
         "username": "postgres",
         "password": "",
         "port": 5432,
-        "database": "postgres",
+        "database": "n8n",
         "schema": "public",
         "entities": Object.values(PostgresDb),
         "migrations": [
