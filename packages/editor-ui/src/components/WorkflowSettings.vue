@@ -343,7 +343,7 @@ export default mixins(
 			const data: IWorkflowDataUpdate = {
 				settings: this.workflowSettings,
 			};
-			delete data.settings.maxExecutionTimeout;
+			delete data.settings!.maxExecutionTimeout;
 
 			this.isLoading = true;
 
