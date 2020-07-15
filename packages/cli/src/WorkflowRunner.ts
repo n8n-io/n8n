@@ -156,9 +156,12 @@ export class WorkflowRunner {
 
 		// Soft timeout to stop workflow execution after current running node
 		let executionTimeout: NodeJS.Timeout;
-		if (config.get('executions.timeout') as number > 0) {
-			const workflow = { timeout: 1000 }; // DELETE ME!!!
-			const workflowTimeout = workflow.timeout ? workflow.timeout : config.get('executions.timeout') as number
+		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		if (data.workflowData.settings && data.workflowData.settings.timeoutWorkflow) {
+			workflowTimeout = data.workflowData.settings!.timeoutWorkflow as number > 0 && data.workflowData.settings!.timeoutWorkflow as number // preference on workflow setting
+		}
+
+		if (workflowTimeout) {
 			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
 			executionTimeout = setTimeout(() => {
 				this.activeExecutions.stopExecution(executionId, 'timeout')
@@ -234,9 +237,12 @@ export class WorkflowRunner {
 
 		// Start timeout for the execution
 		let executionTimeout: NodeJS.Timeout;
-		if (config.get('executions.timeout') as number > 0) {
-			const workflow = { timeout: 1000 }; // DELETE ME!!!
-			const workflowTimeout = workflow.timeout ? workflow.timeout : config.get('executions.timeout') as number
+		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		if (data.workflowData.settings && data.workflowData.settings.timeoutWorkflow) {
+			workflowTimeout = data.workflowData.settings!.timeoutWorkflow as number > 0 && data.workflowData.settings!.timeoutWorkflow as number // preference on workflow setting
+		}
+
+		if (workflowTimeout) {
 			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
 			executionTimeout = setTimeout(() => {
 				this.activeExecutions.stopExecution(executionId, 'timeout')

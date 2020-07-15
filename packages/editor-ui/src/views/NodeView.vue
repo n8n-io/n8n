@@ -1854,6 +1854,8 @@ export default mixins(
 				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
 				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
+				this.$store.commit('setTimeoutWorkflow', settings.timeoutWorkflow);
+				this.$store.commit('setMaxTimeout', settings.maxTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
 			},
 			async loadNodeTypes (): Promise<void> {

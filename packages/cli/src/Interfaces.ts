@@ -279,6 +279,8 @@ export interface IN8nUISettings {
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	timeoutWorkflow: number;
+	maxTimeout: number;
 	timezone: string;
 	urlBaseWebhook: string;
 	versionCli: string;

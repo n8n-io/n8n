@@ -113,6 +113,8 @@ class App {
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	timeoutWorkflow: number;
+	maxTimeout: number;
 	timezone: string;
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 	push: Push.Push;
@@ -133,6 +135,8 @@ class App {
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+		this.timeoutWorkflow = config.get('executions.timeout') as number;
+		this.maxTimeout = config.get('executions.maxTimeout') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
 
@@ -480,8 +484,11 @@ class App {
 					// Do not save when default got set
 					delete newWorkflowData.settings.saveManualExecutions;
 				}
+				if (newWorkflowData.settings.timeoutWorkflow == this.timeoutWorkflow) { // cast compare due to timeoutWorkflow being a string
+					// Do not save when default got set
+					delete newWorkflowData.settings.timeoutWorkflow
+				}
 			}
-
 
 			newWorkflowData.updatedAt = this.getCurrentDate();
 
@@ -1529,6 +1536,8 @@ class App {
 				saveDataErrorExecution: this.saveDataErrorExecution,
 				saveDataSuccessExecution: this.saveDataSuccessExecution,
 				saveManualExecutions: this.saveManualExecutions,
+				timeoutWorkflow: this.timeoutWorkflow,
+				maxTimeout: this.maxTimeout,
 				timezone: this.timezone,
 				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
 				versionCli: this.versions!.cli,
