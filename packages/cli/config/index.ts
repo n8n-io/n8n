@@ -164,7 +164,7 @@ const config = convict({
 		// is executed (takes effect after the current node finishes).
 		// If a workflow is running in its own process is a soft timeout
 		// tried first, before killing the process after waiting for an
-		// additional third of the given timeout duration.
+		// additional fifth of the given timeout duration.
 		//
 		// To deactivate timeout set it to -1
 		//
