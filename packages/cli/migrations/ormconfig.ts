@@ -68,7 +68,7 @@ module.exports = [
         "username": "root",
         "password": "password",
         "host": "localhost",
-        "port": "3308",
+        "port": "3306",
         "logging": false,
         "entities": Object.values(MySQLDb),
         "migrations": [
@@ -90,7 +90,7 @@ module.exports = [
         "username": "root",
         "password": "password",
         "host": "localhost",
-        "port": "3308",
+        "port": "3306",
         "logging": false,
         "entities": Object.values(MySQLDb),
         "migrations": [
