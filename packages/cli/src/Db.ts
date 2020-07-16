@@ -41,6 +41,7 @@ import {
 import {
 	InitialMigration1587563438936,
 	WebhookModel1592679094242,
+	CreateIndexStoppedAt1594910478695,
 } from './databases/mongodb/migrations';
 
 import {
@@ -74,7 +75,11 @@ export async function init(): Promise<IDatabaseCollections> {
 				entityPrefix,
 				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
 				useNewUrlParser: true,
-				migrations: [InitialMigration1587563438936, WebhookModel1592679094242],
+				migrations: [
+					InitialMigration1587563438936,
+					WebhookModel1592679094242,
+					CreateIndexStoppedAt1594910478695,
+				],
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
