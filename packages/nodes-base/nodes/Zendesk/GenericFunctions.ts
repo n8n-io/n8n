@@ -43,6 +43,8 @@ export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions
 			options.uri = `https://${credentials.subdomain}.zendesk.com/api/v2${resource}.json`;
 			options.headers!['Authorization'] = `Basic ${base64Key}`;
 
+			//console.log(options);
+
 			return await this.helpers.request!(options);
 		} else {
 			const credentials = this.getCredentials('zendeskOAuth2Api');
