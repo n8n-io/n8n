@@ -185,6 +185,7 @@ const config = convict({
 		// in the editor.
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
+			format: 'Boolean',
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS'
 		},
@@ -196,16 +197,19 @@ const config = convict({
 		// a future version.
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
+			format: 'Boolean',
 			default: false,
 			env: 'EXECUTIONS_DATA_PRUNE'
 		},
 		pruneDataMaxAge: {
 			doc: 'How old (hours) the execution data has to be to get deleted',
+			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE'
 		},
 		pruneDataTimeout: {
 			doc: 'Timeout (seconds) after execution data has been pruned',
+			format: Number,
 			default: 3600,
 			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT'
 		},
