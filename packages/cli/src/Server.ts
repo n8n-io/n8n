@@ -486,7 +486,7 @@ class App {
 					// Do not save when default got set
 					delete newWorkflowData.settings.saveManualExecutions;
 				}
-				if (newWorkflowData.settings.executionTimeout == this.executionTimeout) { // cast compare due to executionTimeout being a string
+				if (parseInt(newWorkflowData.settings.executionTimeout as string) === this.executionTimeout) {
 					// Do not save when default got set
 					delete newWorkflowData.settings.executionTimeout
 				}
