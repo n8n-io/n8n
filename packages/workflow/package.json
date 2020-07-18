@@ -32,7 +32,7 @@
         "jest": "^24.9.0",
         "ts-jest": "^24.0.2",
         "tslint": "^6.1.2",
-        "typescript": "~3.7.4"
+        "typescript": "~3.9.7"
     },
     "dependencies": {
         "lodash.get": "^4.4.2",
