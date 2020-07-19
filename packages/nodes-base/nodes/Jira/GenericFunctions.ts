@@ -46,7 +46,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		},
 		method,
 		qs: query,
-		uri: uri || `${domain}/rest/api/2${endpoint}`,
+		uri: uri || `${domain}/rest${endpoint}`,
 		body,
 		json: true
 	};
@@ -54,6 +54,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+
 		let errorMessage = error.message;
 
 		if (error.response.body) {
@@ -103,4 +104,17 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = '';
 	}
 	return result;
+}
+
+export function eventExists (currentEvents : string[], webhookEvents: string[]) {
+	for (const currentEvent of currentEvents) {
+		if (!webhookEvents.includes(currentEvent)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+export function getId (url: string) {
+	return url.split('/').pop();
 }
