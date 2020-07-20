@@ -1,34 +1,46 @@
 import {
 	BINARY_ENCODING,
-	IExecuteFunctions,
+	IExecuteFunctions
 } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription,
-	IBinaryData,
+	INodeTypeDescription
 } from 'n8n-workflow';
+import { basename } from 'path';
 
 let sftpClient = require('ssh2-sftp-client');
-import {basename} from 'path';
+let ftpClient = require('@softbrains/promise-ftp');
+
 
 export class FileTransfer implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'File Transfer',
-		name: 'sftp',
-		icon: 'fa:at',
+		name: 'fileTransfer',
+		icon: 'fa:server',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["protocol"] + ": " + $parameter["operation"]}}',
 		description: 'Transfers files via FTP or SFTP.',
 		defaults: {
 			name: 'FileTransfer',
-			color: '#2200DD',
+			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
+			{
+				name: 'ftp',
+                required: true,
+				displayOptions: {
+					show: {
+						protocol: [
+							'ftp',
+						],
+					},
+				},
+			},
 			{
 				name: 'sftp',
                 required: true,
@@ -98,6 +110,7 @@ export class FileTransfer implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '',
+				placeholder: '/documents/invoice.txt',
 				description: 'The file path of the file to download. Has to contain the full path.',
 				required: true
 			},
@@ -145,7 +158,7 @@ export class FileTransfer implements INodeType {
 				},
 				name: 'binaryData',
 				type: 'boolean',
-				default: '',
+				default: true,
 				description: 'The text content of the file to upload.',
 			},
 			{
@@ -303,7 +316,91 @@ export class FileTransfer implements INodeType {
                     throw new Error(error);
                 }
 
-            }
+			}
+			
+			if (protocol === 'ftp') {
+				let ftp = new ftpClient();
+
+				const credentials = this.getCredentials('ftp');
+				const path = this.getNodeParameter('path', i) as string;
+
+				if (credentials === undefined) {
+					throw new Error('Failed to get credentials!');
+				}
+
+				try {
+					await ftp.connect({host: credentials.host,
+								port: credentials.port,
+								username: credentials.username,
+								password: credentials.password})					
+
+					if (operation === 'list') {
+						responseData = await ftp.list(path);
+					}
+
+					if (operation === 'download') {
+						responseData = await ftp.get(path);
+
+						// Convert readable stream to buffer so that can be displayed properly
+						const chunks = []
+						for await (let chunk of responseData) {
+						chunks.push(chunk)
+						}
+
+						responseData = Buffer.concat(chunks)
+
+						const newItem: INodeExecutionData = {
+							json: items[i].json,
+							binary: {},
+						};
+		
+						if (items[i].binary !== undefined) {
+							// Create a shallow copy of the binary data so that the old
+							// data references which do not get changed still stay behind
+							// but the incoming data does not get changed.
+							Object.assign(newItem.binary, items[i].binary);
+						}
+		
+						items[i] = newItem;
+		
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+		
+						const filePathDownload = this.getNodeParameter('path', i) as string;
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
+		
+						return this.prepareOutputData(items);
+					}
+
+					if (operation === 'upload') {
+						const remotePath = this.getNodeParameter('path', i) as string;
+
+						if (this.getNodeParameter('binaryData', i) === true) {
+							// Is binary file to upload
+							const item = items[i];
+
+							if (item.binary === undefined) {
+								throw new Error('No binary data exists on item!');
+							}
+
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+							if (item.binary[propertyNameUpload] === undefined) {
+								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+							}
+
+							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
+							responseData = await ftp.put(buffer, remotePath);
+					} else {
+						// Is text file
+						const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
+						responseData = await ftp.put(buffer, remotePath);
+					}
+				}
+
+				} catch (error) {
+					throw new Error(error);
+				}
+			}
 		}
 
         if (Array.isArray(responseData)) {
