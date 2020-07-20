@@ -186,6 +186,38 @@ export default mixins(
 				// When a node gets set as active deactivate the create-menu
 				this.createNodeActive = false;
 			},
+			nodes: {
+				handler: async function (val, oldVal) {
+					// Load a workflow
+					let workflowId = null as string | null;
+					if (this.$route && this.$route.params.name) {
+						workflowId = this.$route.params.name;
+					}
+					if(workflowId !== null) {
+						this.isDirty = await this.dataHasChanged(workflowId);
+					} else {
+						this.isDirty = true;
+					}
+					console.log(this.isDirty);
+				},
+				deep: true
+			},
+			connections: {
+				handler: async function (val, oldVal) {
+					// Load a workflow
+					let workflowId = null as string | null;
+					if (this.$route && this.$route.params.name) {
+						workflowId = this.$route.params.name;
+					}
+					if(workflowId !== null) {
+						this.isDirty = await this.dataHasChanged(workflowId);
+					} else {
+						this.isDirty = true;
+					}
+					console.log(this.isDirty);
+				},
+				deep: true
+			},
 		},
 		computed: {
 			activeNode (): INodeUi | null {
@@ -259,6 +291,7 @@ export default mixins(
 				ctrlKeyPressed: false,
 				debouncedFunctions: [] as any[], // tslint:disable-line:no-any
 				stopExecutionInProgress: false,
+				isDirty: false,
 			};
 		},
 		beforeDestroy () {
@@ -432,6 +465,8 @@ export default mixins(
 					// Save workflow
 					e.stopPropagation();
 					e.preventDefault();
+
+					this.isDirty = false;
 
 					this.callDebounced('saveCurrentWorkflow', 1000);
 				} else if (e.key === 'Enter') {
@@ -1305,6 +1340,7 @@ export default mixins(
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
+					this.isDirty = false;
 					return Promise.resolve();
 				}
 
@@ -1331,20 +1367,13 @@ export default mixins(
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
 
-				window.addEventListener("beforeunload", (e) => {
-					let workflowId = null as string | null;
-					if (this.$route.params.name) {
-						workflowId = this.$route.params.name;
+				window.addEventListener("beforeunload",  (e) => {
+					if(this.isDirty === true) {
+						const confirmationMessage = 'It looks like you have been editing something. '
+								+ 'If you leave before saving, your changes will be lost.';
+						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
+						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
 					}
-					if(workflowId !== null) {
-						//const dataHasChanged = await this.dataHasChanged(workflowId);
-					}
-
-					const confirmationMessage = 'It looks like you have been editing something. '
-											+ 'If you leave before saving, your changes will be lost.';
-
-					(e || window.event).returnValue = confirmationMessage; //Gecko + IE
-					return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
 				});
 			},
 			__addConnection (connection: [IConnection, IConnection], addVisualConnection = false) {
