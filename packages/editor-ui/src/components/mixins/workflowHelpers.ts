@@ -488,8 +488,6 @@ export const workflowHelpers = mixins(
 				data = await this.restApi().getWorkflow(id);
 
 				if(data !== undefined) {
-					console.log(currentData);
-					console.log(data);
 					const x = {
 						nodes: data.nodes,
 						connections: data.connections,
