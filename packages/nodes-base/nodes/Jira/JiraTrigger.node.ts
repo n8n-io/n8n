@@ -14,6 +14,7 @@ import {
 	jiraSoftwareCloudApiRequest,
 	eventExists,
 	getId,
+	allEvents,
 } from './GenericFunctions';
 
 import * as queryString from 'querystring';
@@ -86,6 +87,10 @@ export class JiraTrigger implements INodeType {
 				name: 'events',
 				type: 'multiOptions',
 				options: [
+					{
+						name: '*',
+						value: '*',
+					},
 					{
 						name: 'Board Created',
 						value: 'board_created',
@@ -223,16 +228,8 @@ export class JiraTrigger implements INodeType {
 						value: 'jira:version_deleted',
 					},
 					{
-						name: 'Worklog Updated',
-						value: 'jira:worklog_updated',
-					},
-					{
 						name: 'Issue Link Created',
 						value: 'issuelink_created',
-					},
-					{
-						name: 'Issue Link Deleted',
-						value: 'issuelink_deleted',
 					},
 					{
 						name: 'Issue Link Deleted',
@@ -375,13 +372,17 @@ export class JiraTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
-				const events = this.getNodeParameter('events', []);
+				let events = this.getNodeParameter('events', []) as string[];
 
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
 				const endpoint = `/webhooks/1.0/webhook`;
 
 				const webhookData = this.getWorkflowStaticData('node');
+
+				if (events.includes('*')) {
+					events = allEvents;
+				}
 
 				const body = {
 					name: `n8n-webhook:${webhookUrl}`,
