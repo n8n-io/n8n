@@ -209,7 +209,7 @@ export default mixins(
 			return {
 				aboutDialogVisible: false,
 				// @ts-ignore
-				basePath: window.BASE_PATH,
+				basePath: this.$store.getters.getBaseUrl,
 				isCollapsed: true,
 				credentialNewDialogVisible: false,
 				credentialOpenDialogVisible: false,
