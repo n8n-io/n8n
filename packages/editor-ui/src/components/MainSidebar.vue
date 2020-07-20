@@ -435,8 +435,10 @@ export default mixins(
 
 					saveAs(blob, workflowName + '.json');
 				} else if (key === 'workflow-save') {
+					console.log("saving......");
 					this.saveCurrentWorkflow();
 				} else if (key === 'workflow-save-as') {
+					console.log("saving......");
 					this.saveCurrentWorkflow(true);
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
