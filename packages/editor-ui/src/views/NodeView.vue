@@ -187,7 +187,7 @@ export default mixins(
 				this.createNodeActive = false;
 			},
 			nodes: {
-				handler: async function (val, oldVal) {
+				async handler (val, oldVal) {
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route && this.$route.params.name) {
@@ -198,12 +198,11 @@ export default mixins(
 					} else {
 						this.isDirty = true;
 					}
-					console.log(this.isDirty);
 				},
 				deep: true
 			},
 			connections: {
-				handler: async function (val, oldVal) {
+				async handler (val, oldVal) {
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route && this.$route.params.name) {
@@ -214,7 +213,6 @@ export default mixins(
 					} else {
 						this.isDirty = true;
 					}
-					console.log(this.isDirty);
 				},
 				deep: true
 			},
@@ -1373,6 +1371,8 @@ export default mixins(
 								+ 'If you leave before saving, your changes will be lost.';
 						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
 						return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
+					} else {
+						return;
 					}
 				});
 			},
