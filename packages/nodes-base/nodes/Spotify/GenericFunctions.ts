@@ -6,7 +6,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
+	IDataObject, IPollFunctions,
 } from 'n8n-workflow';
 
 /**
@@ -18,7 +18,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions,
+export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions | IPollFunctions,
 	method: string, endpoint: string, body: object, query?: object, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
@@ -62,7 +62,7 @@ export async function spotifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	}
 }
 
-export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions,
+export async function spotifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions,
 	propertyName: string, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];

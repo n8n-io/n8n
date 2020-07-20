@@ -283,6 +283,7 @@
       "dist/nodes/Sms77/Sms77.node.js",
       "dist/nodes/SplitInBatches.node.js",
       "dist/nodes/Spotify/Spotify.node.js",
+      "dist/nodes/Spotify/SpotifyTrigger.node.js",
       "dist/nodes/SpreadsheetFile.node.js",
       "dist/nodes/SseTrigger.node.js",
       "dist/nodes/Start.node.js",
