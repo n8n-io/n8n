@@ -18,17 +18,17 @@ export const draftOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new email draft.',
+				description: 'Create a new email draft',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a draft.',
+				description: 'Delete a draft',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a draft by message ID.',
+				description: 'Get a draft',
 			}
 		],
 		default: 'create',
@@ -157,36 +157,6 @@ export const draftFields = [
 					multipleValues: true,
 				},
 				options: [
-					{
-						name: 'attachmentsValues',
-						displayName: 'Attachments Values',
-						values: [
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'string',
-								default: '',
-								placeholder: 'text/plain',
-								description: 'The MIME type of the attachment.',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								placeholder: 'myfile.txt',
-								description: 'The file name of the attachment.',
-							},
-							{
-								displayName: 'Content',
-								name: 'content',
-								type: 'string',
-								default: '',
-								placeholder: 'ZXhhbXBsZSBmaWxl',
-								description: 'The content of the attachment as a base64-encoded string.',
-							},
-						],
-					},
 					{
 						name: 'attachmentsBinary',
 						displayName: 'Attachments Binary',

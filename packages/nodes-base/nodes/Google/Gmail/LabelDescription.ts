@@ -16,34 +16,29 @@ export const labelOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
-				value: 'add',
-				description: 'Add a label.',
-			},
-			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new label.',
+				description: 'Create a new label',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a label.',
+				description: 'Delete a label',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a label by id.',
+				description: 'Get a label',
 			}
 		],
-		default: 'add',
-		description: 'The operation to perform.',
+		default: 'create',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
 export const labelFields = [
 	{
-		displayName: 'Label Name',
+		displayName: 'Name',
 		name: 'name',
 		type: 'string',
 		default: '',
@@ -62,26 +57,6 @@ export const labelFields = [
 		description: 'Label Name',
 	},
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'label',
-				],
-				operation: [
-					'add',
-					'delete',
-				]
-			},
-		},
-		placeholder: '172ce2c4a72cc243',
-		description: 'The message ID of your email.',
-	},
-	{
 		displayName: 'Label ID',
 		name: 'labelId',
 		type: 'string',
@@ -93,13 +68,71 @@ export const labelFields = [
 					'label',
 				],
 				operation: [
-					'add',
-					'delete',
 					'get',
-				]
+					'delete',
+				],
 			},
 		},
-		placeholder: 'Label_14',
-		description: 'The ID of the email.',
+		description: 'The ID of the label',
+	},
+	{
+		displayName: 'Label List Visibility',
+		name: 'labelListVisibility',
+		type: 'options',
+		options: [
+			{
+				name: 'Hide',
+				value: 'labelHide',
+			},
+			{
+				name: 'Show',
+				value: 'labelShow',
+			},
+			{
+				name: 'Show If Unread',
+				value: 'labelShowIfUnread',
+			},
+		],
+		default: 'labelShow',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'label',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The visibility of the label in the label list in the Gmail web interface.',
+	},
+	{
+		displayName: 'Message List Visibility',
+		name: 'messageListVisibility',
+		type: 'options',
+		options: [
+			{
+				name: 'Hide',
+				value: 'hide',
+			},
+			{
+				name: 'show',
+				value: 'show',
+			},
+		],
+		default: 'show',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'label',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The visibility of messages with this label in the message list in the Gmail web interface.',
 	},
 ] as INodeProperties[];

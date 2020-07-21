@@ -16,19 +16,24 @@ export const messageOperations = [
 		},
 		options: [
 			{
-				name: 'Create and Send',
-				value: 'create',
-				description: 'Create and send an email',
+				name: 'Send',
+				value: 'send',
+				description: 'Send an email',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a message.',
+				description: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a message by message ID.',
+				description: 'Get a message',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all messages',
 			},
 			{
 				name: 'Reply',
@@ -36,7 +41,7 @@ export const messageOperations = [
 				description: 'Reply to an email',
 			},
 		],
-		default: 'create',
+		default: 'send',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -113,7 +118,7 @@ export const messageFields = [
 				],
 				operation: [
 					'reply',
-					'create',
+					'send',
 				]
 			},
 		},
@@ -133,7 +138,7 @@ export const messageFields = [
 				],
 				operation: [
 					'reply',
-					'create',
+					'send',
 				]
 			},
 		},
@@ -157,7 +162,7 @@ export const messageFields = [
 				],
 				operation: [
 					'reply',
-					'create',
+					'send',
 				]
             },
         },
@@ -175,7 +180,7 @@ export const messageFields = [
 					'message',
 				],
 				operation: [
-					'create',
+					'send',
 					'reply',
 				]
 			},
@@ -216,36 +221,6 @@ export const messageFields = [
 				},
 				options: [
 					{
-						name: 'attachmentsValues',
-						displayName: 'Attachments Values',
-						values: [
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'string',
-								default: '',
-								placeholder: 'text/plain',
-								description: 'The MIME type of the attachment.',
-							},
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								placeholder: 'myfile.txt',
-								description: 'The file name of the attachment.',
-							},
-							{
-								displayName: 'Content',
-								name: 'content',
-								type: 'string',
-								default: '',
-								placeholder: 'ZXhhbXBsZSBmaWxl',
-								description: 'The content of the attachment as a base64-encoded string.',
-							},
-						],
-					},
-					{
 						name: 'attachmentsBinary',
 						displayName: 'Attachments Binary',
 						values: [
@@ -263,5 +238,239 @@ export const messageFields = [
 				description: 'Array of supported attachments to add to the message.',
 			},
 		]
-	}
+	},
+	{
+		displayName: 'Format',
+		name: 'format',
+		type: 'options',
+		options: [
+			{
+				name: 'Full',
+				value: 'full',
+				description: 'Returns the full email message data with body content parsed in the payload field',
+			},
+			{
+				name: 'Metadata',
+				value: 'metadata',
+				description: 'Returns only email message ID, labels, and email headers.',
+			},
+			{
+				name: 'Minimal',
+				value: 'minimal',
+				description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+				description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		default: 'full',
+		description: 'The format to return the message in',
+	},
+	{
+		displayName: 'Download Attachments',
+		name: 'downloadAttachments',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'message',
+				],
+				format: [
+					'full',
+				],
+			},
+		},
+		default: false,
+		description: 'Weather to download the attachments from the email',
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryPropertyName',
+		type: 'string',
+		required: true,
+		default: 'data',
+		displayOptions: {
+			show: {
+				operation: [
+					'get'
+				],
+				resource: [
+					'message',
+				],
+				downloadAttachments: [
+					true,
+				],
+			},
+		},
+		description: 'Name of the binary property to which to<br />write the data of the attachments.',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 message:getAll                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'message',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Resolve Data',
+		name: 'resolveData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		default: true,
+		description: 'By default the response only contain the IDs. If this option gets activated it<br />will resolve the data automatically.',
+	},
+	{
+		displayName: 'Resolve Format',
+		name: 'resolveFormat',
+		type: 'options',
+		options: [
+			{
+				name: 'Full',
+				value: 'full',
+				description: 'Returns the full email message data with body content parsed in the payload field',
+			},
+			{
+				name: 'Metadata',
+				value: 'metadata',
+				description: 'Returns only email message ID, labels, and email headers.',
+			},
+			{
+				name: 'Minimal',
+				value: 'minimal',
+				description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+				description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'message',
+				],
+				resolveData: [
+					true,
+				],
+			},
+		},
+		default: 'full',
+		description: 'The format use to return the message',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Spam Trash',
+				name: 'includeSpamTrash',
+				type: 'boolean',
+				default: false,
+				description: 'Include messages from SPAM and TRASH in the results.',
+			},
+			{
+				displayName: 'Label IDs',
+				name: 'labelIds',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getLabels',
+				},
+				default: '',
+				description: 'Only return messages with labels that match all of the specified label IDs.',
+			},
+			{
+				displayName: 'Query',
+				name: 'q',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: `Only return messages matching the specified query.</br>
+				Supports the same query format as the Gmail search box.</br>
+				For example, "from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread".</br>
+				Parameter cannot be used when accessing the api using the gmail.metadata scope.`,
+			},
+		],
+	},
+
 ] as INodeProperties[];

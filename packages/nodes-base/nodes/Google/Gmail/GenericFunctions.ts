@@ -123,6 +123,24 @@ export function encodeEmail(email: IEmail) {
 		].join('');
 	}
 
+	return Buffer.from(mimeEmail).toString("base64").replace(/\+/g, '-').replace(/\//g, '_');
+}
 
-    return new Buffer(mimeEmail).toString("base64").replace(/\+/g, '-').replace(/\//g, '_');
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.maxResults = 100;
+
+	do {
+		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
+		query.pageToken = responseData['nextPageToken'];
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		responseData['nextPageToken'] !== undefined &&
+		responseData['nextPageToken'] !== ''
+	);
+
+	return returnData;
 }
