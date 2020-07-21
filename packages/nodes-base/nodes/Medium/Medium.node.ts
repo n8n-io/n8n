@@ -1,8 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
+	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -29,45 +34,25 @@ export class Medium implements INodeType {
 			{
 				name: 'mediumApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'accessToken',
-						],
-					},
-				},
-			},
-			{
-				name: 'mediumOAuth2Api',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'oAuth2',
-
-						],
-					},
-				},
-			},
+			}
 		],
 		properties: [
-
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
 				options: [
-
-					{
-						name: 'OAuth2',
-						value: 'oAuth2',
-					},
 					{
 						name: 'Access Token',
 						value: 'accessToken',
 					},
+					// {
+					// 	name: 'OAuth2',
+					// 	value: 'oAuth2',
+					// },
+
 				],
-				default: '',
+				default: 'accessToken',
 				description: 'The method of authentication.',
 			},
 			{
@@ -101,41 +86,39 @@ export class Medium implements INodeType {
 						value: 'create',
 						description: 'Create a post on the user authenticated profile',
 					},
-					{
-						name: 'Create a post under a publication',
-						value: 'createPublication',
-						description: 'Create a post under a publication',
-					},
+
 				],
 				default: 'create',
 				description: 'The operation to perform.',
 			},
-			// ----------------------------------
-			//         post under publication:create
-			// ----------------------------------
-			{
-				displayName: 'Publication ID',
-				name: 'publicationId',
-				type: 'string',
-				default: '',
-				placeholder: '@n8n',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'createPublication',
-						],
-						resource: [
-							'post',
-						],
-					},
-				},
-				description: 'The user ID.',
-			},
+
 			// ----------------------------------
 			//         post:create
 			// ----------------------------------
-
+			{
+				displayName: 'Publication',
+				name: 'publication',
+				type: 'boolean',
+				default: false,
+				description: 'Are you publishing under a publication?'
+			},
+			{
+				displayName: 'Publication ID',
+				name: 'publicationId',
+				type: 'options',
+				displayOptions: {
+					show: {
+						publication: [
+							true,
+						],
+					},
+				},
+				typeOptions: {
+					loadOptionsMethod: 'getPublications',
+				},
+				default: '',
+				description: 'Publication ids',
+			},
 			{
 				displayName: 'Title',
 				name: 'title',
@@ -147,7 +130,6 @@ export class Medium implements INodeType {
 					show: {
 						operation: [
 							'create',
-							'createPublication',
 						],
 						resource: [
 							'post',
@@ -166,7 +148,6 @@ export class Medium implements INodeType {
 					show: {
 						operation: [
 							'create',
-							'createPublication',
 						],
 						resource: [
 							'post',
@@ -199,7 +180,6 @@ export class Medium implements INodeType {
 					show: {
 						operation: [
 							'create',
-							'createPublication',
 						],
 						resource: [
 							'post',
@@ -217,7 +197,6 @@ export class Medium implements INodeType {
 					show: {
 						operation: [
 							'create',
-							'createPublication',
 						],
 						resource: [
 							'post',
@@ -226,6 +205,7 @@ export class Medium implements INodeType {
 				},
 				default: {},
 				options: [
+
 					{
 						displayName: 'Tags',
 						name: 'tags',
@@ -317,7 +297,43 @@ export class Medium implements INodeType {
 		]
 
 	};
+	methods = {
+		loadOptions: {
+			// Get all the available publications to display them to user so that he can
+			// select them easily
+			async getPublications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				//Get the User Id
+				const user = await mediumApiRequest.call(
+					this,
+					'GET',
+					`/me`,
+					{},
+					{}
+				);
+				const userId = user.data.id;
+				//Get all publications of that user
+				const publications = await mediumApiRequest.call(
+					this,
+					'GET',
+					`/users/${userId}/publications`,
+					{},
+					{}
+				);
+				const publications_list = publications.data;
+				for (const publication of publications_list) {
+					const publicationName = publication.name;
+					const publicationId = publication.id;
+					returnData.push({
+						name: publicationName,
+						value: publicationId,
+					});
+				}
+				return returnData;
+			},
 
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
@@ -331,7 +347,6 @@ export class Medium implements INodeType {
 		let bodyRequest: IDataObject;
 		// For Query string
 		let qs: IDataObject;
-		let requestMethod;
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
@@ -347,21 +362,9 @@ export class Medium implements INodeType {
 					//         post:create
 					// ----------------------------------
 
-					requestMethod = 'POST';
-					// get authorId
-					let responseAuthorId = await mediumApiRequest.call(
-						this,
-						'GET',
-						'/me',
-						{},
-						qs
-					);
-
-					const authorId = responseAuthorId.data.id;
 					const title = this.getNodeParameter('title', i) as string;
 					const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 					const content = this.getNodeParameter('content', i) as string;
-
 					bodyRequest = {
 						tags: [],
 						title,
@@ -381,7 +384,6 @@ export class Medium implements INodeType {
 					}
 
 
-
 					if (additionalFields.publishStatus) {
 						bodyRequest.publishStatus = additionalFields.publishStatus as string;
 					}
@@ -391,65 +393,42 @@ export class Medium implements INodeType {
 					if (additionalFields.notifyFollowers) {
 						bodyRequest.notifyFollowers = additionalFields.notifyFollowers as string;
 					}
-					responseData = await mediumApiRequest.call(
-						this,
-						'POST',
-						`/users/${authorId}/posts`,
-						bodyRequest,
-						qs
-					);
+					const underPublication = this.getNodeParameter('publication', i) as boolean;
+
+					// if user wants to publish it under a specific publication
+					if (underPublication == true) {
+						const publicationId = this.getNodeParameter('publicationId', i) as number;
+
+						responseData = await mediumApiRequest.call(
+							this,
+							'POST',
+							`/publications/${publicationId}/posts`,
+							bodyRequest,
+							qs
+						);
+					}
+					else {
+						let responseAuthorId = await mediumApiRequest.call(
+							this,
+							'GET',
+							'/me',
+							{},
+							qs
+						);
+
+						const authorId = responseAuthorId.data.id;
+						responseData = await mediumApiRequest.call(
+							this,
+							'POST',
+							`/users/${authorId}/posts`,
+							bodyRequest,
+							qs
+						);
+					}
+
 
 				}
-				//https://github.com/Medium/medium-api-docs
-				if (operation === 'createPublication') {
-					// ----------------------------------
-					//         post:create
-					// ----------------------------------
 
-					requestMethod = 'POST';
-					const publicationId = this.getNodeParameter('publicationId', i) as string;
-					const title = this.getNodeParameter('title', i) as string;
-					const contentFormat = this.getNodeParameter('contentFormat', i) as string;
-					const content = this.getNodeParameter('content', i) as string;
-
-					bodyRequest = {
-						tags: [],
-						title,
-						contentFormat,
-						content,
-
-					};
-					const additionalFields = this.getNodeParameter(
-						'additionalFields',
-						i
-					) as IDataObject;
-					if (additionalFields.tags) {
-						const tags = additionalFields.tags as string;
-						bodyRequest.tags = tags.split(',').map(item => {
-							return parseInt(item, 10);
-						});
-					}
-
-
-
-					if (additionalFields.publishStatus) {
-						bodyRequest.publishStatus = additionalFields.publishStatus as string;
-					}
-					if (additionalFields.license) {
-						bodyRequest.license = additionalFields.license as string;
-					}
-					if (additionalFields.notifyFollowers) {
-						bodyRequest.notifyFollowers = additionalFields.notifyFollowers as string;
-					}
-					responseData = await mediumApiRequest.call(
-						this,
-						'POST',
-						`/publications/${publicationId}/posts`,
-						bodyRequest,
-						qs
-					);
-
-				}
 
 			}
 			if (Array.isArray(responseData.data)) {
