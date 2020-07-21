@@ -817,7 +817,7 @@ export class HttpRequest implements INodeType {
 				// Now that the options are all set make the actual http request
 				if (oAuth1Api !== undefined) {
 					//@ts-ignore
-					response = await this.helpers.requestOAuth2.call(this, 'oAuth1Api', requestOptions);
+					response = await this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
 				}
 				else if (oAuth2Api !== undefined) {
 					//@ts-ignore
