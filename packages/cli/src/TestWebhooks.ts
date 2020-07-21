@@ -110,6 +110,19 @@ export class TestWebhooks {
 		});
 	}
 
+	/**
+	 * Gets all methods associated with a single test webhook
+	 * @param path webhook path
+	 */
+	async getWebhookMethods(path : string) : Promise<string[]> {
+		const webhookData: IWebhookData | undefined = this.activeWebhooks!.get(path);
+
+		if (webhookData === undefined) {
+			// The requested webhook is not registered
+			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+		}
+	}
+
 
 	/**
 	 * Checks if it has to wait for webhook data to execute the workflow. If yes it waits
