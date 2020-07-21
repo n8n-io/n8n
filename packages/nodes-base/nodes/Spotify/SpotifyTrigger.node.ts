@@ -3,6 +3,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IDataObject,
 } from 'n8n-workflow';
 
 import { spotifyApiRequestAllItems } from './GenericFunctions';
@@ -14,7 +15,7 @@ export class SpotifyTrigger implements INodeType {
 		icon: 'file:spotify.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Spotify events occure',
+		description: 'Starts the workflow when Spotify events occur',
 		defaults: {
 			name: 'Spotify',
 			color: '#1DB954',
@@ -55,8 +56,8 @@ export class SpotifyTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: [
-							'newSongAdded'
-						]
+							'newSongAdded',
+						],
 					},
 				},
 				placeholder: 'spotify:playlist:37i9dQZF1DWUhI3iC1khPH',
@@ -79,31 +80,32 @@ export class SpotifyTrigger implements INodeType {
 		} else if(event === 'newLikedSong') {
 			endpoint = '/me/tracks';
 		} else {
-			throw new Error(`The defined event "${event}" is not supported`);
+			throw new Error(`The requested event "${event}" is not supported`);
 		}
 
-		let songs = [];
-		const newSongs = [];
-		const start= webhookData.lastTimeChecked as string;
+		let allTracks = [];
+		const newTracks: IDataObject[] = [];
+		const start = webhookData.lastTimeChecked as string;
 		const endDate = new Date();
 
 		const startDate = new Date(start);
 
 		try {
-			songs = await spotifyApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
+			allTracks = await spotifyApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 			webhookData.lastTimeChecked = endDate;
 
-			for(let i = 0; i < songs.length; i++) {
-				const songDate = new Date(songs[i].added_at);
-				if(startDate && songDate > startDate && songDate < endDate) {
-					newSongs.push(songs[i].track);
+			// tslint:disable-next-line: no-any
+			allTracks.forEach((track: any) => {
+				const trackDate = new Date(track.added_at);
+				if(startDate && trackDate > startDate && trackDate < endDate) {
+					newTracks.push(track.track);
 				}
-			}
+			});
 		} catch (err) {
 			throw new Error(`Spotify Trigger Error: ${err}`);
 		}
-		if (Array.isArray(newSongs) && newSongs.length !== 0) {
-			return [this.helpers.returnJsonArray(newSongs)];
+		if (Array.isArray(newTracks) && newTracks.length) {
+			return [this.helpers.returnJsonArray(newTracks)];
 		}
 
 		return null;
