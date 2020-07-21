@@ -32,7 +32,7 @@ export class FileTransfer implements INodeType {
 		credentials: [
 			{
 				name: 'ftp',
-                required: true,
+				required: true,
 				displayOptions: {
 					show: {
 						protocol: [
@@ -43,7 +43,7 @@ export class FileTransfer implements INodeType {
 			},
 			{
 				name: 'sftp',
-                required: true,
+				required: true,
 				displayOptions: {
 					show: {
 						protocol: [
@@ -62,35 +62,35 @@ export class FileTransfer implements INodeType {
 					{
 						name: 'FTP',
 						value: 'ftp'
-                    },
-                    {
+					},
+					{
 						name: 'SFTP',
 						value: 'sftp'
 					},
 				],
 				default: 'ftp',
 				description: 'File transfer protocol.',
-            },
-            {
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				options: [
 					{
 						name: 'Download',
-                        value: 'download',
-                        description: 'Download a file.'
-                    },
-                    {
-						name: 'List',
-                        value: 'list',
-                        description: 'List folder content.'
+						value: 'download',
+						description: 'Download a file.'
 					},
-                    {
+					{
+						name: 'List',
+						value: 'list',
+						description: 'List folder content.'
+					},
+					{
 						name: 'Upload',
-                        value: 'upload',
-                        description: 'Upload a file.'
-                    },
+						value: 'upload',
+						description: 'Upload a file.'
+					},
 				],
 				default: 'download',
 				description: 'Operation to perform.',
@@ -98,9 +98,9 @@ export class FileTransfer implements INodeType {
 			// ----------------------------------
 			//         download
 			// ----------------------------------
-            {
-                displayName: 'Path',
-                displayOptions: {
+			{
+				displayName: 'Path',
+				displayOptions: {
 					show: {
 						operation: [
 							'download',
@@ -115,8 +115,8 @@ export class FileTransfer implements INodeType {
 				required: true
 			},
 			{
-                displayName: 'Binary Property',
-                displayOptions: {
+				displayName: 'Binary Property',
+				displayOptions: {
 					show: {
 						operation: [
 							'download',
@@ -132,9 +132,9 @@ export class FileTransfer implements INodeType {
 			// ----------------------------------
 			//         upload
 			// ----------------------------------
-            {
-                displayName: 'Path',
-                displayOptions: {
+			{
+				displayName: 'Path',
+				displayOptions: {
 					show: {
 						operation: [
 							'upload',
@@ -146,10 +146,10 @@ export class FileTransfer implements INodeType {
 				default: '',
 				description: 'The file path of the file to upload. Has to contain the full path.',
 				required: true
-            },
-            {
-                displayName: 'Binary Data',
-                displayOptions: {
+			},
+			{
+				displayName: 'Binary Data',
+				displayOptions: {
 					show: {
 						operation: [
 							'upload',
@@ -162,8 +162,8 @@ export class FileTransfer implements INodeType {
 				description: 'The text content of the file to upload.',
 			},
 			{
-                displayName: 'Binary Property',
-                displayOptions: {
+				displayName: 'Binary Property',
+				displayOptions: {
 					show: {
 						operation: [
 							'upload',
@@ -179,9 +179,9 @@ export class FileTransfer implements INodeType {
 				description: 'Object property name which holds binary data.',
 				required: true
 			},
-            {
-                displayName: 'File Content',
-                displayOptions: {
+			{
+				displayName: 'File Content',
+				displayOptions: {
 					show: {
 						operation: [
 							'upload',
@@ -200,8 +200,8 @@ export class FileTransfer implements INodeType {
 			//         list
 			// ----------------------------------
 			{
-                displayName: 'Path',
-                displayOptions: {
+				displayName: 'Path',
+				displayOptions: {
 					show: {
 						operation: [
 							'list',
@@ -213,23 +213,23 @@ export class FileTransfer implements INodeType {
 				default: '',
 				description: 'Path of directory to list contents of.',
 				required: true
-            },
+			},
 		]
 	};
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-        const items = this.getInputData();
+		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let qs: IDataObject = {};
 		let responseData;
-        const operation = this.getNodeParameter('operation', 0) as string;
-        let sftp = new sftpClient();
+		const operation = this.getNodeParameter('operation', 0) as string;
+		let sftp = new sftpClient();
 
 		for (let i = 0; i < items.length; i++) {
 			const protocol = this.getNodeParameter('protocol', 0) as string;
 			
-            if (protocol === 'sftp') {
+			if (protocol === 'sftp') {
 				const credentials = this.getCredentials('sftp');
 				const path = this.getNodeParameter('path', i) as string;
 
@@ -237,12 +237,12 @@ export class FileTransfer implements INodeType {
 					throw new Error('Failed to get credentials!');
 				}
 
-                try {
-                    await sftp.connect({
-                        host: credentials.host,
-                        port: credentials.port,
-                        username: credentials.username,
-                        password: credentials.password
+				try {
+					await sftp.connect({
+						host: credentials.host,
+						port: credentials.port,
+						username: credentials.username,
+						password: credentials.password
 					  });
 
 					  if (operation === 'list') {
@@ -312,9 +312,9 @@ export class FileTransfer implements INodeType {
 						}
 					  }
 					  
-                } catch (error) {
-                    throw new Error(error);
-                }
+				} catch (error) {
+					throw new Error(error);
+				}
 
 			}
 			
@@ -403,7 +403,7 @@ export class FileTransfer implements INodeType {
 			}
 		}
 
-        if (Array.isArray(responseData)) {
+		if (Array.isArray(responseData)) {
 			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} else {
 			returnData.push(responseData as unknown as IDataObject);
