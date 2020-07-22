@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const documentOperations = [
 	{
@@ -51,7 +53,10 @@ export const documentFields = [
 	{
 		displayName: 'DocType',
 		name: 'docType',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDocTypes',
+		},
 		default: '',
 		description: 'The DocType of which the documents you want to get.',
 		placeholder: 'Customer',
@@ -98,8 +103,8 @@ export const documentFields = [
 					'getAll',
 				],
 				returnAll: [
-					false
-				]
+					false,
+				],
 			},
 		},
 	},
@@ -123,7 +128,13 @@ export const documentFields = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				type: 'string',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getDocFields',
+					loadOptionsDependsOn: [
+						'docType',
+					],
+				},
 				default: '',
 				description: 'Comma separated fields you wish returned.',
 				placeholder: 'name,country'
@@ -141,14 +152,6 @@ export const documentFields = [
 						displayName: 'Property',
 						name: 'customProperty',
 						values: [
-							{
-								displayName: 'DocType',
-								name: 'docType',
-								type: 'string',
-								default: '',
-								description: 'The DocType you would like to receive.',
-								placeholder: 'Customer'
-							},
 							{
 								displayName: 'Field',
 								name: 'field',
@@ -210,8 +213,11 @@ export const documentFields = [
 	{
 		displayName: 'DocType',
 		name: 'docType',
-		type: 'string',
+		type: 'options',
 		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getDocTypes',
+		},
 		description: 'DocType you would like to create.',
 		placeholder: 'Customer',
 		displayOptions: {
@@ -220,7 +226,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'create'
+					'create',
 				],
 			},
 		},
@@ -252,7 +258,13 @@ export const documentFields = [
 					{
 						displayName: 'Field',
 						name: 'field',
-						type: 'string',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getDocFields',
+							loadOptionsDependsOn: [
+								'docType',
+							],
+						},
 						default: '',
 						description: 'Name of field.',
 						placeholder: 'Name'
@@ -275,7 +287,10 @@ export const documentFields = [
 	{
 		displayName: 'DocType',
 		name: 'docType',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDocTypes',
+		},
 		default: '',
 		description: 'The type of document you would like to get.',
 		displayOptions: {
@@ -314,7 +329,10 @@ export const documentFields = [
 	{
 		displayName: 'DocType',
 		name: 'docType',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDocTypes',
+		},
 		default: '',
 		description: 'The type of document you would like to delete.',
 		displayOptions: {
@@ -353,7 +371,10 @@ export const documentFields = [
 	{
 		displayName: 'DocType',
 		name: 'docType',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDocTypes',
+		},
 		default: '',
 		description: 'The type of document you would like to update',
 		displayOptions: {
@@ -413,7 +434,13 @@ export const documentFields = [
 					{
 						displayName: 'Field',
 						name: 'field',
-						type: 'string',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getDocFields',
+							loadOptionsDependsOn: [
+								'docType',
+							],
+						},
 						default: '',
 						description: 'Name of field.',
 						placeholder: 'Name'

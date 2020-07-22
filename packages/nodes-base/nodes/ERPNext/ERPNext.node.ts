@@ -1,15 +1,26 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
+	ILoadOptionsFunctions,
 	INodeTypeDescription,
 	INodeType,
 	INodeExecutionData,
 	IDataObject,
+	INodePropertyOptions,
 } from 'n8n-workflow';
-import { documentOperations, documentFields } from './DocumentDescription';
-import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions';
 
+import {
+	documentOperations,
+	documentFields
+} from './DocumentDescription';
+
+import {
+	erpNextApiRequest,
+	erpNextApiRequestAllItems
+} from './GenericFunctions';
+import { filter } from 'rhea';
 
 export class ERPNext implements INodeType {
 	description: INodeTypeDescription = {
@@ -74,11 +85,63 @@ export class ERPNext implements INodeType {
 				default: 'document',
 				description: 'Resource to consume.',
 			},
-			
+
 			// DOCUMENT
 			...documentOperations,
 			...documentFields
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the doc types to display them to user so that he can
+			// select them easily
+			async getDocTypes(
+				this: ILoadOptionsFunctions
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const types = await erpNextApiRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					'/api/resource/DocType',
+					{},
+				);
+				for (const type of types) {
+					const typeName = type.name;
+					const typeId = type.name;
+					returnData.push({
+						name: typeName,
+						value: typeId
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the doc fields to display them to user so that he can
+			// select them easily
+			async getDocFields(
+				this: ILoadOptionsFunctions
+			): Promise<INodePropertyOptions[]> {
+				const docId = this.getCurrentNodeParameter('docType') as string;
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await erpNextApiRequest.call(
+					this,
+					'GET',
+					`/api/resource/DocType/${docId}`,
+					{},
+				);
+				for (const field of data.fields) {
+					const fieldName = field.label;
+					const fieldId = field.fieldname;
+					returnData.push({
+						name: fieldName,
+						value: fieldId
+					});
+				}
+				return returnData;
+			},
+		}
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -91,6 +154,8 @@ export class ERPNext implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			//https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
+			//https://frappeframework.com/docs/user/en/guides/integration/rest_api/manipulating_documents
 			if (resource === 'document') {
 				if (operation === 'get') {
 					const docType = this.getNodeParameter('docType', i) as string;
@@ -99,6 +164,8 @@ export class ERPNext implements INodeType {
 					const endpoint = `/api/resource/${docType}/${documentName}`;
 
 					responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {});
+
+					responseData = responseData.data;
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -106,79 +173,49 @@ export class ERPNext implements INodeType {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					let endpoint = `/api/resource/${docType}`;
+					const endpoint = `/api/resource/${docType}`;
 
 					// Add field options for query. FORMAT: fields=["test", "example", "hi"]
-					if (additionalFields.fields as string) {
-						let newString : string = '';
-						let fields = (additionalFields.fields as string).split(',');
-						console.log(fields.length);
-
-						fields.map((field, idx) => {
-								newString = newString + `"${field}",`
-						});
-						// Remove excessive comma at end 
-						newString = newString.substring(0, newString.length - 1);
-
-						endpoint = `${endpoint}/?fields=[${newString}]`;
+					if (additionalFields.fields) {
+						qs.fields = JSON.stringify(additionalFields.fields as string[]);
 					}
 
 					// Add filter options for query. FORMAT: filters=[["Person","first_name","=","Jane"]]
 					if (additionalFields.filters) {
-						let newString : string = '';
-						const filters = (additionalFields.filters as IDataObject).customProperty as IDataObject[];
 
-						filters.map(filter => {
-							let operator : string = '';
-							// Operators cannot be used as options in Document description, so must use words and then convert here
-							switch(filter.operator) {
-								case 'is':
-									operator = '=';
-									break;
-								case 'isNot':
-									operator = '!=';
-									break;
-								case 'greater':
-									operator = '>';
-									break;
-								case 'less':
-									operator = '<';
-									break;
-								case 'equalsGreater':
-									operator = '>=';
-									break;
-								case 'equalsLess':
-									operator = '<=';
-									break;
-							}
-							newString = newString + `["${filter.docType}","${filter.field}","${operator}","${filter.value}"],`
-						});
-						// Remove excessive comma at end 
-						newString = newString.substring(0, newString.length - 1);
+						const operators: { [key: string]: string } = {
+							'is': '=',
+							'isNot': '!=',
+							'greater': '>',
+							'less': '<',
+							'equalsGreater': '>=',
+							'equalsLess': '<=',
+						};
 
-						// Ensure correct URL based on which queries active
-						if (additionalFields.fields) {
-							endpoint = `${endpoint}&filters=[${newString}]`;
-						} else {
-							endpoint = `${endpoint}/?filters=[${newString}]`;
+						const filterValues = (additionalFields.filters as IDataObject).customProperty as IDataObject[];
+						const filters: string[][] = [];
+						for (const filter of filterValues) {
+							const data = [
+								docType,
+								filter.field as string,
+								operators[filter.operator as string],
+								filter.value as string,
+							];
+							filters.push(data);
 						}
+						qs.filters = filters;
 					}
 
 					if (!returnAll) {
+
 						const limit = this.getNodeParameter('limit', i) as number;
-						if (additionalFields.fields || additionalFields.filters) {
-							endpoint = `${endpoint}&limit_page_length=${limit}`
-						} else {
-							endpoint = `${endpoint}/?limit_page_length=${limit}`
-						}
-						responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {});
+						qs.limit_page_lengt = limit;
+						qs.limit_start = 1;
+						responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.data;
+
 					} else {
-						if (additionalFields.fields || additionalFields.filters) {
-							endpoint = `${endpoint}&limit_start=`
-						} else {
-							endpoint = `${endpoint}/?limit_start=`
-						}
-						responseData = await erpNextApiRequestAllItems.call(this, 'GET', endpoint, {});
+						responseData = await erpNextApiRequestAllItems.call(this, 'data', 'GET', endpoint, {}, qs);
 					}
 				}
 				if (operation === 'create') {
@@ -186,17 +223,16 @@ export class ERPNext implements INodeType {
 					const endpoint = `/api/resource/${docType}`;
 
 					const properties = this.getNodeParameter('properties', i) as IDataObject;
-					
+
 					if (properties) {
 						const fieldsValues = (properties as IDataObject).customProperty as IDataObject[];
-
-						fieldsValues.map(item => {
-							//@ts-ignore
-							body[item.field] = item.value;	
-						});
+						for (const fieldValue of fieldsValues) {
+							body[fieldValue.field as string] = fieldValue.value;
+						}
 					}
 
 					responseData = await erpNextApiRequest.call(this, 'POST', endpoint, body);
+					responseData = responseData.data;
 				}
 				if (operation === 'delete') {
 					const docType = this.getNodeParameter('docType', i) as string;
@@ -212,21 +248,18 @@ export class ERPNext implements INodeType {
 					const endpoint = `/api/resource/${docType}/${documentName}`;
 
 					const properties = this.getNodeParameter('properties', i) as IDataObject;
-					
 
 					if (properties) {
 						const fieldsValues = (properties as IDataObject).customProperty as IDataObject[];
-
-						fieldsValues.map(item => {
-							//@ts-ignore
-							body[item.field] = item.value;	
-						});
+						for (const fieldValue of fieldsValues) {
+							body[fieldValue.field as string] = fieldValue.value;
+						}
 					}
 
 					responseData = await erpNextApiRequest.call(this, 'PUT', endpoint, body);
+					responseData = responseData.data;
 				}
 			}
-
 
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
