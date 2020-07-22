@@ -258,13 +258,6 @@ export const contactFields = [
 						displayName: 'Email',
 						values: [
 							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'The email address.',
-							},
-							{
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
@@ -284,6 +277,13 @@ export const contactFields = [
 								],
 								default: '',
 								description: `The type of the email address. The type can be custom or one of these predefined values`,
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The email address.',
 							},
 						],
 					},
@@ -736,6 +736,10 @@ export const contactFields = [
 		name: 'fields',
 		type: 'multiOptions',
 		options: [
+			{
+				name: '*',
+				value: '*',
+			},
 			{
 				name: 'Addresses',
 				value: 'addresses',

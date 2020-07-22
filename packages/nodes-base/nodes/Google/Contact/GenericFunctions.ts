@@ -75,3 +75,30 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 	return returnData;
 }
+
+export	const allFields = [
+	'addresses',
+	'biographies',
+	'birthdays',
+	'coverPhotos',
+	'emailAddresses',
+	'events',
+	'genders',
+	'imClients',
+	'interests',
+	'locales',
+	'memberships',
+	'metadata',
+	'names',
+	'nicknames',
+	'occupations',
+	'organizations',
+	'phoneNumbers',
+	'photos',
+	'relations',
+	'residences',
+	'sipAddresses',
+	'skills',
+	'urls',
+	'userDefined',
+];

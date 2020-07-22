@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	allFields,
 	googleApiRequest,
 	googleApiRequestAllItems,
 } from './GenericFunctions';
@@ -246,7 +247,11 @@ export class GoogleContact implements INodeType {
 						qs.sortOrder = options.sortOrder as number;
 					}
 
-					qs.personFields = (fields as string[]).join(',');
+					if (fields.includes('*')) {
+						qs.personFields = allFields.join(',');
+					} else {
+						qs.personFields = (fields as string[]).join(',');
+					}
 
 					if (returnAll) {
 						responseData = await googleApiRequestAllItems.call(
