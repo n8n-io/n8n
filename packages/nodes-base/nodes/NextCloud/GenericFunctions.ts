@@ -4,9 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
-} from 'n8n-workflow';
-import { OptionsWithUri } from 'request';
+	OptionsWithUri,
+} from 'request';
 
 /**
  * Make an API request to NextCloud
