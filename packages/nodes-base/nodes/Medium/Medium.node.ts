@@ -235,7 +235,7 @@ export class Medium implements INodeType {
 						name: 'notifyFollowers',
 						type: 'boolean',
 						default: false,
-						description: `Whether to notify followers that the user has published.`,
+						description: 'Whether to notify followers that the user has published.',
 					},
 					{
 						displayName: 'License',
@@ -280,7 +280,7 @@ export class Medium implements INodeType {
 								value: 'public-domain',
 							},
 						],
-						description: 'Tags separated by comma to classify the post. Only the first three will be used. Tags longer than 25 characters will be ignored.',
+						description: 'License of the post.',
 					},
 				],
 			},
