@@ -67,7 +67,7 @@ export class Medium implements INodeType {
 
 				],
 				default: 'post',
-				description: 'Resource to consume.',
+				description: 'Resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -163,7 +163,6 @@ export class Medium implements INodeType {
 						name: 'Markdown',
 						value: 'markdown',
 					},
-
 				],
 				description: 'The format of the content to be posted.',
 			},
@@ -202,7 +201,6 @@ export class Medium implements INodeType {
 				},
 				default: {},
 				options: [
-
 					{
 						displayName: 'Tags',
 						name: 'tags',
@@ -229,7 +227,6 @@ export class Medium implements INodeType {
 								name: 'Unlisted',
 								value: 'unlisted',
 							},
-
 						],
 						description: 'The status of the post.',
 					},
@@ -370,59 +367,61 @@ export class Medium implements INodeType {
 					) as IDataObject;
 					if (additionalFields.tags) {
 						const tags = additionalFields.tags as string;
-						bodyRequest.tags = tags.split(',').map(item => parseInt(item, 10));
+						bodyRequest.tags = tags.split(',').map(item => {
+							return parseInt(item, 10);
+						});
+					}
 
 
+					if (additionalFields.publishStatus) {
+						bodyRequest.publishStatus = additionalFields.publishStatus as string;
+					}
+					if (additionalFields.license) {
+						bodyRequest.license = additionalFields.license as string;
+					}
+					if (additionalFields.notifyFollowers) {
+						bodyRequest.notifyFollowers = additionalFields.notifyFollowers as string;
+					}
+					const underPublication = this.getNodeParameter('publication', i) as boolean;
 
-						if (additionalFields.publishStatus) {
-							bodyRequest.publishStatus = additionalFields.publishStatus as string;
-						}
-						if (additionalFields.license) {
-							bodyRequest.license = additionalFields.license as string;
-						}
-						if (additionalFields.notifyFollowers) {
-							bodyRequest.notifyFollowers = additionalFields.notifyFollowers as string;
-						}
-						const underPublication = this.getNodeParameter('publication', i) as boolean;
+					// if user wants to publish it under a specific publication
+					if (underPublication) {
+						const publicationId = this.getNodeParameter('publicationId', i) as number;
 
-						// if user wants to publish it under a specific publication
-						if (underPublication) {
-							const publicationId = this.getNodeParameter('publicationId', i) as number;
+						responseData = await mediumApiRequest.call(
+							this,
+							'POST',
+							`/publications/${publicationId}/posts`,
+							bodyRequest,
+							qs
+						);
+					}
+					else {
+						let responseAuthorId = await mediumApiRequest.call(
+							this,
+							'GET',
+							'/me',
+							{},
+							qs
+						);
 
-							responseData = await mediumApiRequest.call(
-								this,
-								'POST',
-								`/publications/${publicationId}/posts`,
-								bodyRequest,
-								qs
-							);
-						}
-						else {
-							let responseAuthorId = await mediumApiRequest.call(
-								this,
-								'GET',
-								'/me',
-								{},
-								qs
-							);
-
-							const authorId = responseAuthorId.data.id;
-							responseData = await mediumApiRequest.call(
-								this,
-								'POST',
-								`/users/${authorId}/posts`,
-								bodyRequest,
-								qs
-							);
-						}
+						const authorId = responseAuthorId.data.id;
+						responseData = await mediumApiRequest.call(
+							this,
+							'POST',
+							`/users/${authorId}/posts`,
+							bodyRequest,
+							qs
+						);
 					}
 				}
-				if (Array.isArray(responseData.data)) {
-					returnData.push.apply(returnData, responseData.data as IDataObject[]);
-				} else {
-					returnData.push(responseData.data as IDataObject);
-				}
 			}
-			return [this.helpers.returnJsonArray(returnData)];
+			if (Array.isArray(responseData.data)) {
+				returnData.push.apply(returnData, responseData.data as IDataObject[]);
+			} else {
+				returnData.push(responseData.data as IDataObject);
+			}
 		}
+		return [this.helpers.returnJsonArray(returnData)];
 	}
+}
