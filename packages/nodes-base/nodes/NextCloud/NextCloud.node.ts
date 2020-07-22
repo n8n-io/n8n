@@ -2,6 +2,7 @@ import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
@@ -9,10 +10,13 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 
-import { parseString } from 'xml2js';
-import { OptionsWithUri } from 'request';
-import { nextCloudApiRequest } from './GenericFunctions';
+import {
+	parseString,
+} from 'xml2js';
 
+import {
+	nextCloudApiRequest,
+} from './GenericFunctions';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +29,7 @@ export class NextCloud implements INodeType {
 		description: 'Access data on NextCloud',
 		defaults: {
 			name: 'NextCloud',
-			color: '#22BB44',
+			color: '#1cafff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
