@@ -15,7 +15,7 @@ export class NextCloudOAuth2Api implements ICredentialType {
 			displayName: 'Web DAV URL',
 			name: 'webDavUrl',
 			type: 'string' as NodePropertyTypes,
-			placeholder: 'https://nextcloud.example.com/remote.php/webdav/',
+			placeholder: 'https://nextcloud.example.com/remote.php/webdav',
 			default: '',
 		},
 		{
