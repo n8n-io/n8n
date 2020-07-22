@@ -1,4 +1,7 @@
-import { IPollFunctions } from 'n8n-core';
+import {
+	IPollFunctions
+} from 'n8n-core';
+
 import {
 	INodeExecutionData,
 	INodeType,
@@ -6,7 +9,9 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-import { spotifyApiRequestAllItems } from './GenericFunctions';
+import {
+	spotifyApiRequestAllItems
+} from './GenericFunctions';
 
 export class SpotifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
