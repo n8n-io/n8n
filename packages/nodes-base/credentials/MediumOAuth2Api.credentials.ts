@@ -56,7 +56,6 @@ export class MediumOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'header',
-			description: 'Resource to consume.',
 		},
 	];
 }

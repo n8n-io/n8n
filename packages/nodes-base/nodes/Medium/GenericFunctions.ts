@@ -49,9 +49,6 @@ export async function mediumApiRequest(this: IHookFunctions | IExecuteFunctions 
 		if (error.statusCode === 401) {
 			throw new Error('The Medium credentials are not valid!');
 		}
-
-
 		throw error;
 	}
 }
-

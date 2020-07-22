@@ -84,7 +84,7 @@ export class Medium implements INodeType {
 					{
 						name: 'Create a post',
 						value: 'create',
-						description: 'Create a post on the user authenticated profile',
+						description: 'Create a post.',
 					},
 
 				],
@@ -100,7 +100,7 @@ export class Medium implements INodeType {
 				name: 'publication',
 				type: 'boolean',
 				default: false,
-				description: 'Are you publishing under a publication?'
+				description: 'Are you posting for a publication?'
 			},
 			{
 				displayName: 'Publication ID',
@@ -124,7 +124,7 @@ export class Medium implements INodeType {
 				name: 'title',
 				type: 'string',
 				default: '',
-				placeholder: 'My open source contribution',
+				placeholder: 'My Open Source Contribution',
 				required: true,
 				displayOptions: {
 					show: {
@@ -136,13 +136,12 @@ export class Medium implements INodeType {
 						],
 					},
 				},
-				description: 'Title of the post. It should be less than 100 characters',
+				description: 'Title of the post. Max Length : 100 characters',
 			},
 			{
 				displayName: 'Content format',
 				name: 'contentFormat',
 				default: '',
-				placeholder: 'My open source contribution',
 				required: true,
 				displayOptions: {
 					show: {
@@ -166,7 +165,6 @@ export class Medium implements INodeType {
 					},
 
 				],
-
 				description: 'The format of the content to be posted.',
 			},
 			{
@@ -186,13 +184,12 @@ export class Medium implements INodeType {
 						],
 					},
 				},
-				description: 'The body of the post, in a valid, semantic, HTML fragment, or Markdown.',
+				description: 'The body of the post, in a valid semantic HTML fragment, or Markdown.',
 			},
 			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
-				placeholder: 'Add Fields',
 				displayOptions: {
 					show: {
 						operation: [
@@ -212,7 +209,7 @@ export class Medium implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'open-source,mlh,fellowship',
-						description: 'Tags separated by comma to classify the post. Only the first three will be used. Tags longer than 25 characters will be ignored.',
+						description: 'Comma-separated strings to be used as tags for post classification. Max allowed tags: 3. Max tag length: 25 characters.',
 					},
 					{
 						displayName: 'Publish Status',
@@ -234,7 +231,6 @@ export class Medium implements INodeType {
 							},
 
 						],
-
 						description: 'The status of the post.',
 					},
 					{
@@ -255,8 +251,8 @@ export class Medium implements INodeType {
 								value: 'all-rights-reserved',
 							},
 							{
-								name: '“cc-40-by',
-								value: '“cc-40-by',
+								name: 'cc-40-by',
+								value: 'cc-40-by',
 							},
 							{
 								name: 'cc-40-by-sa',
@@ -271,8 +267,8 @@ export class Medium implements INodeType {
 								value: 'cc-40-by-nc',
 							},
 							{
-								name: '“cc-40-by-nc-nd',
-								value: '“cc-40-by-nc-nd',
+								name: 'cc-40-by-nc-nd',
+								value: 'cc-40-by-nc-nd',
 							},
 							{
 								name: 'cc-40-by-nc-sa',
@@ -286,16 +282,12 @@ export class Medium implements INodeType {
 								name: 'public-domain',
 								value: 'public-domain',
 							},
-
-
 						],
 						description: 'Tags separated by comma to classify the post. Only the first three will be used. Tags longer than 25 characters will be ignored.',
 					},
 				],
 			},
-
 		]
-
 	};
 	methods = {
 		loadOptions: {
@@ -320,8 +312,8 @@ export class Medium implements INodeType {
 					{},
 					{}
 				);
-				const publications_list = publications.data;
-				for (const publication of publications_list) {
+				const publicationsList = publications.data;
+				for (const publication of publicationsList) {
 					const publicationName = publication.name;
 					const publicationId = publication.id;
 					returnData.push({
@@ -378,71 +370,59 @@ export class Medium implements INodeType {
 					) as IDataObject;
 					if (additionalFields.tags) {
 						const tags = additionalFields.tags as string;
-						bodyRequest.tags = tags.split(',').map(item => {
-							return parseInt(item, 10);
-						});
+						bodyRequest.tags = tags.split(',').map(item => parseInt(item, 10));
+
+
+
+						if (additionalFields.publishStatus) {
+							bodyRequest.publishStatus = additionalFields.publishStatus as string;
+						}
+						if (additionalFields.license) {
+							bodyRequest.license = additionalFields.license as string;
+						}
+						if (additionalFields.notifyFollowers) {
+							bodyRequest.notifyFollowers = additionalFields.notifyFollowers as string;
+						}
+						const underPublication = this.getNodeParameter('publication', i) as boolean;
+
+						// if user wants to publish it under a specific publication
+						if (underPublication) {
+							const publicationId = this.getNodeParameter('publicationId', i) as number;
+
+							responseData = await mediumApiRequest.call(
+								this,
+								'POST',
+								`/publications/${publicationId}/posts`,
+								bodyRequest,
+								qs
+							);
+						}
+						else {
+							let responseAuthorId = await mediumApiRequest.call(
+								this,
+								'GET',
+								'/me',
+								{},
+								qs
+							);
+
+							const authorId = responseAuthorId.data.id;
+							responseData = await mediumApiRequest.call(
+								this,
+								'POST',
+								`/users/${authorId}/posts`,
+								bodyRequest,
+								qs
+							);
+						}
 					}
-
-
-					if (additionalFields.publishStatus) {
-						bodyRequest.publishStatus = additionalFields.publishStatus as string;
-					}
-					if (additionalFields.license) {
-						bodyRequest.license = additionalFields.license as string;
-					}
-					if (additionalFields.notifyFollowers) {
-						bodyRequest.notifyFollowers = additionalFields.notifyFollowers as string;
-					}
-					const underPublication = this.getNodeParameter('publication', i) as boolean;
-
-					// if user wants to publish it under a specific publication
-					if (underPublication == true) {
-						const publicationId = this.getNodeParameter('publicationId', i) as number;
-
-						responseData = await mediumApiRequest.call(
-							this,
-							'POST',
-							`/publications/${publicationId}/posts`,
-							bodyRequest,
-							qs
-						);
-					}
-					else {
-						let responseAuthorId = await mediumApiRequest.call(
-							this,
-							'GET',
-							'/me',
-							{},
-							qs
-						);
-
-						const authorId = responseAuthorId.data.id;
-						responseData = await mediumApiRequest.call(
-							this,
-							'POST',
-							`/users/${authorId}/posts`,
-							bodyRequest,
-							qs
-						);
-					}
-
-
 				}
-
-
+				if (Array.isArray(responseData.data)) {
+					returnData.push.apply(returnData, responseData.data as IDataObject[]);
+				} else {
+					returnData.push(responseData.data as IDataObject);
+				}
 			}
-			if (Array.isArray(responseData.data)) {
-				returnData.push.apply(returnData, responseData.data as IDataObject[]);
-			} else {
-				returnData.push(responseData.data as IDataObject);
-			}
-
-
-
-
+			return [this.helpers.returnJsonArray(returnData)];
 		}
-
-		return [this.helpers.returnJsonArray(returnData)];
-
 	}
-}
