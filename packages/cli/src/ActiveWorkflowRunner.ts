@@ -162,7 +162,7 @@ export class ActiveWorkflowRunner {
 	}
 
 /**
- * Gets all methods associated with a single webhook
+ * Gets all request methods associated with a single webhook
  * @param path webhook path
  */
 	async getWebhookMethods(path: string) : Promise<string[]> {
@@ -170,7 +170,7 @@ export class ActiveWorkflowRunner {
 
 		// check if something exist
 		if (webhooks === undefined) {
-			// The requested webhook is not registered
+			// The requested webhooks are not registered
 			throw new ResponseHelper.ResponseError(`The requested webhook "${path}" is not registered.`, 404, 404);
 		}
 

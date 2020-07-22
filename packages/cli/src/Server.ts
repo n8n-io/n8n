@@ -1650,24 +1650,22 @@ class App {
 		});
 
 		// HEAD webhook requests (test for UI)
-		this.app.head(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
+		this.app.options(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
 			// Cut away the "/webhook-test/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookTest.length + 2);
 
-			let response;
+			let allowedMethods;
 			try {
-				response = await this.testWebhooks.callTestWebhook('HEAD', requestUrl, req, res);
+				allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
+
+				// Add custom "Allow" header to satisfy OPTIONS response.
+				res.append('Allow', allowedMethods);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
 				return;
 			}
 
-			if (response.noWebhookResponse === true) {
-				// Nothing else to do as the response got already sent
-				return;
-			}
-
-			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+			ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		});
 
 		// GET webhook requests (test for UI)

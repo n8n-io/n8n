@@ -111,16 +111,18 @@ export class TestWebhooks {
 	}
 
 	/**
-	 * Gets all methods associated with a single test webhook
+	 * Gets all request methods associated with a single test webhook
 	 * @param path webhook path
 	 */
 	async getWebhookMethods(path : string) : Promise<string[]> {
-		const webhookData: IWebhookData | undefined = this.activeWebhooks!.get(path);
+		const webhookMethods: string[] = this.activeWebhooks!.getWebhookMethods(path);
 
-		if (webhookData === undefined) {
+		if (webhookMethods === undefined) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			throw new ResponseHelper.ResponseError(`The requested webhook "${path}" is not registered.`, 404, 404);
 		}
+
+		return webhookMethods;
 	}
 
 
