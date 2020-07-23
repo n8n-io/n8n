@@ -34,7 +34,7 @@ export class GitlabOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
+			type: 'hidden' as NodePropertyTypes,
 			default: 'api',
 		},
 		{
