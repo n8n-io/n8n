@@ -68,7 +68,7 @@ export class Msg91 implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'From',
+				displayName: 'Sender ID',
 				name: 'from',
 				type: 'string',
 				default: '',
