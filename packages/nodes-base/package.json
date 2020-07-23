@@ -60,6 +60,7 @@
       "dist/credentials/GithubApi.credentials.js",
       "dist/credentials/GithubOAuth2Api.credentials.js",
       "dist/credentials/GitlabApi.credentials.js",
+      "dist/credentials/GitlabOAuth2Api.credentials.js",
       "dist/credentials/GoogleApi.credentials.js",
       "dist/credentials/GoogleCalendarOAuth2Api.credentials.js",
       "dist/credentials/GoogleDriveOAuth2Api.credentials.js",
