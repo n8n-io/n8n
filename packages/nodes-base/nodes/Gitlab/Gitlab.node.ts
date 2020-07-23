@@ -13,7 +13,6 @@ import {
 	gitlabApiRequest,
 } from './GenericFunctions';
 
-
 export class Gitlab implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gitlab',
@@ -33,9 +32,44 @@ export class Gitlab implements INodeType {
 			{
 				name: 'gitlabApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'gitlabOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -793,10 +827,26 @@ export class Gitlab implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const credentials = this.getCredentials('gitlabApi');
+		let credentials;
 
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
+		const authenticationMethod = this.getNodeParameter('authentication', 0);
+
+		try {
+			if (authenticationMethod === 'accessToken') {
+				credentials = this.getCredentials('gitlabApi');
+
+				if (credentials === undefined) {
+					throw new Error('No credentials got returned!');
+				}
+			} else {
+				credentials = this.getCredentials('gitlabOAuth2Api');
+
+				if (credentials === undefined) {
+					throw new Error('No credentials got returned!');
+				}
+			}
+		} catch (error) {
+			throw new Error(error);
 		}
 
 		// Operations which overwrite the returned data

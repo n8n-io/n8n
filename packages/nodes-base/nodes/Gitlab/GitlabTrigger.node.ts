@@ -14,7 +14,6 @@ import {
 	gitlabApiRequest,
 } from './GenericFunctions';
 
-
 export class GitlabTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gitlab Trigger',
@@ -34,7 +33,25 @@ export class GitlabTrigger implements INodeType {
 			{
 				name: 'gitlabApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'gitlabOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -45,6 +62,23 @@ export class GitlabTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Repository Owner',
 				name: 'owner',
