@@ -11,7 +11,7 @@ export class GooglePubSubTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Pub/Sub',
 		name: 'googlePubSub',
-		icon: 'file:googlePubSub.png',
+		icon: 'file:googlePubSubTrigger.png',
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to Google Pub/Sub messages',
