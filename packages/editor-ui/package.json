@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.46.0",
+  "version": "0.50.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -14,7 +14,7 @@
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "scripts": {
-    "build": "vue-cli-service build",
+    "build": "cross-env VUE_APP_PUBLIC_PATH=\"/%BASE_PATH%/\" vue-cli-service build",
     "dev": "npm run serve",
     "lint": "vue-cli-service lint",
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vue-cli-service serve",
@@ -23,7 +23,9 @@
     "test:e2e": "vue-cli-service test:e2e",
     "test:unit": "vue-cli-service test:unit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "uuid": "^8.1.0"
+  },
   "devDependencies": {
     "@beyonk/google-fonts-webpack-plugin": "^1.2.3",
     "@fortawesome/fontawesome-svg-core": "^1.2.19",
@@ -64,7 +66,7 @@
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
-    "n8n-workflow": "~0.32.0",
+    "n8n-workflow": "~0.35.0",
     "node-sass": "^4.12.0",
     "prismjs": "^1.17.1",
     "quill": "^2.0.0-dev.3",

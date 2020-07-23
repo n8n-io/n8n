@@ -39,7 +39,7 @@ export const labelOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Returns all label for the board',
+				description: 'Returns all labels for the board',
 			},
 			{
 				name: 'Remove From Card',
