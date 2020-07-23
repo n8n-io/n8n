@@ -213,6 +213,7 @@
       "dist/nodes/Google/Calendar/GoogleCalendar.node.js",
       "dist/nodes/Google/Drive/GoogleDrive.node.js",
       "dist/nodes/Google/Sheet/GoogleSheets.node.js",
+      "dist/nodes/Google/PubSub/GooglePubSubTrigger.node.js",
       "dist/nodes/Google/Task/GoogleTasks.node.js",
       "dist/nodes/GraphQL/GraphQL.node.js",
       "dist/nodes/Gumroad/GumroadTrigger.node.js",
@@ -347,6 +348,7 @@
     "typescript": "~3.7.4"
   },
   "dependencies": {
+    "@google-cloud/pubsub": "^2.3.0",
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
     "change-case": "^4.1.1",
