@@ -1,11 +1,13 @@
 import {
 	IExecuteFunctions,
 	IHookFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
 } from 'n8n-workflow';
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Gitlab
@@ -17,24 +19,43 @@ import {
  * @returns {Promise<any>}
  */
 export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('gitlabApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	const options = {
+	const options : OptionsWithUri = {
 		method,
-		headers: {
-			'Private-Token': `${credentials.accessToken}`,
-		},
+		headers: {},
 		body,
 		qs: query,
-		uri: `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`,
+		uri: '',
 		json: true
 	};
 
+	if (query === undefined) {
+		delete options.qs;
+	}
+
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+
 	try {
-		return await this.helpers.request(options);
+		if (authenticationMethod === 'accessToken') {
+			const credentials = this.getCredentials('gitlabApi');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.headers!['Private-Token'] = `${credentials.accessToken}`;
+
+			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
+
+			return await this.helpers.request(options);
+		} else {
+			const credentials = this.getCredentials('gitlabOAuth2Api');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
+
+			return await this.helpers.requestOAuth2!.call(this, 'gitlabOAuth2Api', options);
+		}
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error

@@ -19,3 +19,5 @@ WORKDIR /data
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
+
+EXPOSE 5678/tcp

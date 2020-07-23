@@ -1,5 +1,5 @@
 import {
-	OptionsWithUri,
+	OptionsWithUrl,
  } from 'request';
 
 import {
@@ -14,37 +14,53 @@ import {
  } from 'n8n-workflow';
 
 export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('mailchimpApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	const headerWithAuthentication = Object.assign({}, headers, { Authorization: `apikey ${credentials.apiKey}` });
-
-	if (!(credentials.apiKey as string).includes('-')) {
-		throw new Error('The API key is not valid!');
-	}
-
-	const datacenter = (credentials.apiKey as string).split('-').pop();
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	const host = 'api.mailchimp.com/3.0';
 
-	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+	const options: OptionsWithUrl = {
+		headers: {
+			'Accept': 'application/json'
+		},
 		method,
 		qs,
-		uri: `https://${datacenter}.${host}${endpoint}`,
+		body,
+		url: ``,
 		json: true,
 	};
 
-	if (Object.keys(body).length !== 0) {
-		options.body = body;
+	if (Object.keys(body).length === 0) {
+		delete options.body;
 	}
+
 	try {
-		return await this.helpers.request!(options);
+		if (authenticationMethod === 'apiKey') {
+			const credentials = this.getCredentials('mailchimpApi');
+
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			options.headers = Object.assign({}, headers, { Authorization: `apikey ${credentials.apiKey}` });
+
+			if (!(credentials.apiKey as string).includes('-')) {
+				throw new Error('The API key is not valid!');
+			}
+
+			const datacenter = (credentials.apiKey as string).split('-').pop();
+			options.url = `https://${datacenter}.${host}${endpoint}`;
+			return await this.helpers.request!(options);
+		} else {
+			const credentials = this.getCredentials('mailchimpOAuth2Api') as IDataObject;
+
+			const { api_endpoint } = await getMetadata.call(this, credentials.oauthTokenData as IDataObject);
+
+			options.url = `${api_endpoint}/3.0${endpoint}`;
+			//@ts-ignore
+			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, 'Bearer');
+		}
 	} catch (error) {
-		if (error.response.body && error.response.body.detail) {
+		if (error.respose && error.response.body && error.response.body.detail) {
 			throw new Error(`Mailchimp Error response [${error.statusCode}]: ${error.response.body.detail}`);
 		}
 		throw error;
@@ -79,4 +95,18 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 		result = '';
 	}
 	return result;
+}
+
+function getMetadata(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, oauthTokenData: IDataObject) {
+	const credentials = this.getCredentials('mailchimpOAuth2Api') as IDataObject;
+	const options: OptionsWithUrl = {
+		headers: {
+			'Accept': 'application/json',
+			'Authorization': `OAuth ${oauthTokenData.access_token}`,
+		},
+		method: 'GET',
+		url: credentials.metadataUrl as string,
+		json: true,
+	};
+	return this.helpers.request!(options);
 }

@@ -1,30 +1,28 @@
 # n8n - Workflow Automation
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-logo.png)
+![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
 
 n8n is a free and open [fair-code](http://faircode.io) licensed node based Workflow Automation Tool. It can be self-hosted, easily extended, and so also used with internal tools.
 
-<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
-
+<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
 ## Contents
 
-- [Demo](#demo)
-- [Available integrations](#available-integrations)
-- [Documentation](#documentation)
-- [Start n8n in Docker](#start-n8n-in-docker)
-- [Start with tunnel](#start-with-tunnel)
-- [Securing n8n](#securing-n8n)
-- [Persist data](#persist-data)
-- [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
-- [Updating a Running docker-compose Instance](#updating-a-running-docker-compose-instance)
-- [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
-- [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
-- [Support](#support)
-- [Jobs](#jobs)
-- [Upgrading](#upgrading)
-- [License](#license)
-
+  - [Demo](#demo)
+  - [Available integrations](#available-integrations)
+  - [Documentation](#documentation)
+  - [Start n8n in Docker](#start-n8n-in-docker)
+  - [Start with tunnel](#start-with-tunnel)
+  - [Securing n8n](#securing-n8n)
+  - [Persist data](#persist-data)
+  - [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
+  - [Updating a Running docker-compose Instance](#updating-a-running-docker-compose-instance)
+  - [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
+  - [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
+  - [Support](#support)
+  - [Jobs](#jobs)
+  - [Upgrading](#upgrading)
+  - [License](#license)
 
 ## Demo
 
@@ -49,9 +47,9 @@ Additional information and example workflows on the n8n.io website: [https://n8n
 
 ```
 docker run -it --rm \
-  --name n8n \
-  -p 5678:5678 \
-  n8nio/n8n
+	--name n8n \
+	-p 5678:5678 \
+	n8nio/n8n
 ```
 
 You can then access n8n by opening:
@@ -71,13 +69,12 @@ To use it simply start n8n with `--tunnel`
 
 ```
 docker run -it --rm \
-  --name n8n \
-  -p 5678:5678 \
-  -v ~/.n8n:/root/.n8n \
-  n8nio/n8n \
-  n8n start --tunnel
+	--name n8n \
+	-p 5678:5678 \
+	-v ~/.n8n:/root/.n8n \
+	n8nio/n8n \
+	n8n start --tunnel
 ```
-
 
 ## Securing n8n
 
@@ -93,7 +90,6 @@ N8N_BASIC_AUTH_USER=<USER>
 N8N_BASIC_AUTH_PASSWORD=<PASSWORD>
 ```
 
-
 ## Persist data
 
 The workflow data gets by default saved in an SQLite database in the user
@@ -102,10 +98,10 @@ settings like webhook URL and encryption key.
 
 ```
 docker run -it --rm \
-  --name n8n \
-  -p 5678:5678 \
-  -v ~/.n8n:/root/.n8n \
-  n8nio/n8n
+	--name n8n \
+	-p 5678:5678 \
+	-v ~/.n8n:/root/.n8n \
+	n8nio/n8n
 ```
 
 ### Start with other Database
@@ -121,7 +117,6 @@ for the credentials. If none gets found n8n creates automatically one on
 startup. In case credentials are already saved with a different encryption key
 it can not be used anymore as encrypting it is not possible anymore.
 
-
 #### Use with MongoDB
 
 > **WARNING**: Use Postgres if possible! Mongo has problems with saving large
@@ -129,40 +124,39 @@ it can not be used anymore as encrypting it is not possible anymore.
 > may be dropped in the future.
 
 Replace the following placeholders with the actual data:
- - <MONGO_DATABASE>
- - <MONGO_HOST>
- - <MONGO_PORT>
- - <MONGO_USER>
- - <MONGO_PASSWORD>
+  - MONGO_DATABASE
+  - MONGO_HOST
+  - MONGO_PORT
+  - MONGO_USER
+  - MONGO_PASSWORD
 
 ```
 docker run -it --rm \
-  --name n8n \
-  -p 5678:5678 \
+	--name n8n \
+	-p 5678:5678 \
 	-e DB_TYPE=mongodb \
 	-e DB_MONGODB_CONNECTION_URL="mongodb://<MONGO_USER>:<MONGO_PASSWORD>@<MONGO_SERVER>:<MONGO_PORT>/<MONGO_DATABASE>" \
-  -v ~/.n8n:/root/.n8n \
-  n8nio/n8n \
-  n8n start
+	-v ~/.n8n:/root/.n8n \
+	n8nio/n8n \
+	n8n start
 ```
 
 A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withMongo/README.md)
 
-
 #### Use with PostgresDB
 
 Replace the following placeholders with the actual data:
- - <POSTGRES_DATABASE>
- - <POSTGRES_HOST>
- - <POSTGRES_PASSWORD>
- - <POSTGRES_PORT>
- - <POSTGRES_USER>
- - <POSTGRES_SCHEMA>
+  - POSTGRES_DATABASE
+  - POSTGRES_HOST
+  - POSTGRES_PASSWORD
+  - POSTGRES_PORT
+  - POSTGRES_USER
+  - POSTGRES_SCHEMA
 
 ```
 docker run -it --rm \
-  --name n8n \
-  -p 5678:5678 \
+	--name n8n \
+	-p 5678:5678 \
 	-e DB_TYPE=postgresdb \
 	-e DB_POSTGRESDB_DATABASE=<POSTGRES_DATABASE> \
 	-e DB_POSTGRESDB_HOST=<POSTGRES_HOST> \
@@ -170,38 +164,36 @@ docker run -it --rm \
 	-e DB_POSTGRESDB_USER=<POSTGRES_USER> \
 	-e DB_POSTGRESDB_SCHEMA=<POSTGRES_SCHEMA> \
 	-e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
-  -v ~/.n8n:/root/.n8n \
-  n8nio/n8n \
-  n8n start
+	-v ~/.n8n:/root/.n8n \
+	n8nio/n8n \
+	n8n start
 ```
 
 A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withPostgres/README.md)
 
-
 #### Use with MySQL
 
 Replace the following placeholders with the actual data:
- - <MYSQLDB_DATABASE>
- - <MYSQLDB_HOST>
- - <MYSQLDB_PASSWORD>
- - <MYSQLDB_PORT>
- - <MYSQLDB_USER>
+  - MYSQLDB_DATABASE
+  - MYSQLDB_HOST
+  - MYSQLDB_PASSWORD
+  - MYSQLDB_PORT
+  - MYSQLDB_USER
 
 ```
 docker run -it --rm \
-  --name n8n \
-  -p 5678:5678 \
+	--name n8n \
+	-p 5678:5678 \
 	-e DB_TYPE=mysqldb \
 	-e DB_MYSQLDB_DATABASE=<MYSQLDB_DATABASE> \
 	-e DB_MYSQLDB_HOST=<MYSQLDB_HOST> \
 	-e DB_MYSQLDB_PORT=<MYSQLDB_PORT> \
 	-e DB_MYSQLDB_USER=<MYSQLDB_USER> \
 	-e DB_MYSQLDB_PASSWORD=<MYSQLDB_PASSWORD> \
-  -v ~/.n8n:/root/.n8n \
-  n8nio/n8n \
-  n8n start
+	-v ~/.n8n:/root/.n8n \
+	n8nio/n8n \
+	n8n start
 ```
-
 
 ## Passing Sensitive Data via File
 
@@ -211,16 +203,15 @@ with the given name. That makes it possible to load data easily from
 Docker- and Kubernetes-Secrets.
 
 The following environment variables support file input:
- - DB_MONGODB_CONNECTION_URL_FILE
- - DB_POSTGRESDB_DATABASE_FILE
- - DB_POSTGRESDB_HOST_FILE
- - DB_POSTGRESDB_PASSWORD_FILE
- - DB_POSTGRESDB_PORT_FILE
- - DB_POSTGRESDB_USER_FILE
- - DB_POSTGRESDB_SCHEMA_FILE
- - N8N_BASIC_AUTH_PASSWORD_FILE
- - N8N_BASIC_AUTH_USER_FILE
-
+  - DB_MONGODB_CONNECTION_URL_FILE
+  - DB_POSTGRESDB_DATABASE_FILE
+  - DB_POSTGRESDB_HOST_FILE
+  - DB_POSTGRESDB_PASSWORD_FILE
+  - DB_POSTGRESDB_PORT_FILE
+  - DB_POSTGRESDB_USER_FILE
+  - DB_POSTGRESDB_SCHEMA_FILE
+  - N8N_BASIC_AUTH_PASSWORD_FILE
+  - N8N_BASIC_AUTH_USER_FILE
 
 ## Example Setup with Lets Encrypt
 
@@ -235,7 +226,7 @@ docker pull n8nio/n8n
 # Stop current setup
 sudo docker-compose stop
 # Delete it (will only delete the docker-containers, data is stored separately)
-sudo docker-compose rm 
+sudo docker-compose rm
 # Then start it again
 sudo docker-compose up -d
 ```
@@ -251,11 +242,11 @@ the environment variable `TZ`.
 Example to use the same timezone for both:
 ```
 docker run -it --rm \
-  --name n8n \
-  -p 5678:5678 \
+	--name n8n \
+	-p 5678:5678 \
 	-e GENERIC_TIMEZONE="Europe/Berlin" \
 	-e TZ="Europe/Berlin" \
-  n8nio/n8n
+	n8nio/n8n
 ```
 
 
