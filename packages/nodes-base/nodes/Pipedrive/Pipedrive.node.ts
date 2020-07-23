@@ -62,9 +62,44 @@ export class Pipedrive implements INodeType {
 			{
 				name: 'pipedriveApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'pipedriveOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken'
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiToken',
+				description: 'Method of authentication.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -2102,6 +2137,7 @@ export class Pipedrive implements INodeType {
 				displayName: 'Term',
 				name: 'term',
 				type: 'string',
+				required: true,
 				displayOptions: {
 					show: {
 						operation: [

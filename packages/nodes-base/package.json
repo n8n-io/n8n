@@ -113,6 +113,7 @@
       "dist/credentials/PagerDutyOAuth2Api.credentials.js",
       "dist/credentials/PayPalApi.credentials.js",
       "dist/credentials/PipedriveApi.credentials.js",
+      "dist/credentials/PipedriveOAuth2Api.credentials.js",
       "dist/credentials/Postgres.credentials.js",
       "dist/credentials/PostmarkApi.credentials.js",
       "dist/credentials/QuestDb.credentials.js",
