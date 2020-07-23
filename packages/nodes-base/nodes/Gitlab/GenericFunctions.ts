@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 	IHookFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {

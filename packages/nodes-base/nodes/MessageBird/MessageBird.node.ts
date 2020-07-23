@@ -11,7 +11,7 @@ import {
 
 import {
 	messageBirdApiRequest,
- } from './GenericFunctions';
+} from './GenericFunctions';
 
 export class MessageBird implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,15 +24,15 @@ export class MessageBird implements INodeType {
 		description: 'Sending SMS',
 		defaults: {
 			name: 'MessageBird',
-			color: '#2481d7'
+			color: '#2481d7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
 				name: 'messageBirdApi',
-				required: true
-			}
+				required: true,
+			},
 		],
 		properties: [
 			{
@@ -42,13 +42,12 @@ export class MessageBird implements INodeType {
 				options: [
 					{
 						name: 'SMS',
-						value: 'sms'
-					}
+						value: 'sms',
+					},
 				],
 				default: 'sms',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
-
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -102,13 +101,16 @@ export class MessageBird implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: ['send'],
-						resource: ['sms'],
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
 					},
 				},
 				description: 'All recipients separated by commas.',
 			},
-
 			{
 				displayName: 'Message',
 				name: 'message',
@@ -223,15 +225,15 @@ export class MessageBird implements INodeType {
 						options: [
 							{
 								name: 'Binary',
-								value: 'binary'
+								value: 'binary',
 							},
 							{
 								name: 'Flash',
-								value: 'flash'
+								value: 'flash',
 							},
 							{
 								name: 'SMS',
-								value: 'sms'
+								value: 'sms',
 							},
 						],
 						default: '',

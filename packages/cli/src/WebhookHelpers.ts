@@ -69,6 +69,33 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	return returnData;
 }
 
+/**
+ * Returns all the webhooks which should be created for the give workflow
+ *
+ * @export
+ * @param {string} workflowId
+ * @param {Workflow} workflow
+ * @returns {IWebhookData[]}
+ */
+export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
+	// Check all the nodes in the workflow if they have webhooks
+
+	const returnData: IWebhookData[] = [];
+
+	let parentNodes: string[] | undefined;
+
+	for (const node of Object.values(workflow.nodes)) {
+		if (parentNodes !== undefined && !parentNodes.includes(node.name)) {
+			// If parentNodes are given check only them if they have webhooks
+			// and no other ones
+			continue;
+		}
+		returnData.push.apply(returnData, NodeHelpers.getNodeWebhooksBasic(workflow, node));
+	}
+
+	return returnData;
+}
+
 
  /**
   * Executes a webhook
@@ -148,6 +175,9 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				workflowData: [[{json: {}}]],
 			};
 		}
+
+		// Save static data if it changed
+		await WorkflowHelpers.saveStaticData(workflow);
 
 		if (webhookData.webhookDescription['responseHeaders'] !== undefined) {
 			const responseHeaders = workflow.getComplexParameterValue(workflowStartNode, webhookData.webhookDescription['responseHeaders'], undefined) as {
