@@ -3,7 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class PipedriveOAuth2Api implements ICredentialType {
 	name = 'pipedriveOAuth2Api';
 	extends = [
@@ -28,7 +27,7 @@ export class PipedriveOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
+			type: 'hidden' as NodePropertyTypes,
 			default: '',
 		},
 		{

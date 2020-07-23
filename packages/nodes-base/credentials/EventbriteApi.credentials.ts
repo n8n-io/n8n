@@ -8,7 +8,7 @@ export class EventbriteApi implements ICredentialType {
 	displayName = 'Eventbrite API';
 	properties = [
 		{
-			displayName: 'API Key',
+			displayName: 'Private Key',
 			name: 'apiKey',
 			type: 'string' as NodePropertyTypes,
 			default: '',

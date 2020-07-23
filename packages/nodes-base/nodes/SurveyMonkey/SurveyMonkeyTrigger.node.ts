@@ -49,6 +49,24 @@ export class SurveyMonkeyTrigger implements INodeType {
 			{
 				name: 'surveyMonkeyApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'surveyMonkeyOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -66,6 +84,23 @@ export class SurveyMonkeyTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'Method of authentication.',
+			},
 			{
 				displayName: 'Type',
 				name: 'objectType',
@@ -453,10 +488,17 @@ export class SurveyMonkeyTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const event = this.getNodeParameter('event') as string;
 		const objectType = this.getNodeParameter('objectType') as string;
-		const credentials = this.getCredentials('surveyMonkeyApi') as IDataObject;
+		const authenticationMethod = this.getNodeParameter('authentication') as string;
+		let credentials : IDataObject;
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 		const webhookName = this.getWebhookName();
+
+		if (authenticationMethod === 'accessToken') {
+			credentials = this.getCredentials('surveyMonkeyApi') as IDataObject;
+		} else {
+			credentials = this.getCredentials('surveyMonkeyOAuth2Api') as IDataObject;
+		}
 
 		if (webhookName === 'setup') {
 			// It is a create webhook confirmation request
