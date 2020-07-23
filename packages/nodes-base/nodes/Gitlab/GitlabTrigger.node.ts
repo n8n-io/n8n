@@ -14,7 +14,6 @@ import {
 	gitlabApiRequest,
 } from './GenericFunctions';
 
-
 export class GitlabTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gitlab Trigger',

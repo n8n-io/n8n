@@ -13,7 +13,6 @@ import {
 	gitlabApiRequest,
 } from './GenericFunctions';
 
-
 export class Gitlab implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gitlab',
