@@ -51,7 +51,7 @@ export class MicrosoftSql implements INodeType {
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
-						description: 'Executes a SQL query.',
+						description: 'Execute an SQL query.',
 					},
 					{
 						name: 'Insert',
@@ -61,12 +61,12 @@ export class MicrosoftSql implements INodeType {
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Updates rows in database.',
+						description: 'Update rows in database.',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Deletes rows in database.',
+						description: 'Delete rows in database.',
 					},
 				],
 				default: 'insert',

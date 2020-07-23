@@ -26,7 +26,7 @@ export const collectionOperations = [
 			{
 				name: 'Update an Entry',
 				value: 'update',
-				description: 'Update a collection entries',
+				description: 'Update a collection entry',
 			},
 		],
 		default: 'getAll',

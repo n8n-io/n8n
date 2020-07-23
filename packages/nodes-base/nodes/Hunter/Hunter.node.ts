@@ -42,12 +42,12 @@ export class Hunter implements INodeType {
 					{
 						name: ' Domain Search',
 						value: 'domainSearch',
-						description: 'Get every email address found on the internet using a given domain name, with sources.',
+						description: 'Get every email address found on the internet for a given domain name, with sources.',
 					},
 					{
 						name: ' Email Finder',
 						value: 'emailFinder',
-						description: 'Generates or retrieves the most likely email address from a domain name, a first name and a last name.',
+						description: 'Generates or retrieves the most likely email address using a domain name, a first name and a last name.',
 					},
 					{
 						name: 'Email Verifier',

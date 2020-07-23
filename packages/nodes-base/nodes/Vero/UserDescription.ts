@@ -22,32 +22,32 @@ export const userOperations = [
 			{
 				name: 'Alias',
 				value: 'alias',
-				description: 'Changes a user’s identifier.',
+				description: 'Changes an user’s identifier.',
 			},
 			{
 				name: 'Unsubscribe',
 				value: 'unsubscribe',
-				description: 'Unsubscribes a single user.',
+				description: 'Unsubscribe an user.',
 			},
 			{
 				name: 'Re-subscribe',
 				value: 'resubscribe',
-				description: 'Resubscribe a single user.',
+				description: 'Resubscribe an user.',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a single user.',
+				description: 'Delete an user.',
 			},
 			{
 				name: 'Add Tags',
 				value: 'addTags',
-				description: 'Adds a tag to a user’s profile.',
+				description: 'Adds a tag to an user profile.',
 			},
 			{
 				name: 'Remove Tags',
 				value: 'removeTags',
-				description: 'Removes a tag from a user’s profile.',
+				description: 'Removes a tag from an user profile.',
 			},
 		],
 		default: 'create',
