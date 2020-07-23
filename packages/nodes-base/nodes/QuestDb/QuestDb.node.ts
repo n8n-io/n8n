@@ -4,6 +4,7 @@ import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from
 import * as pgPromise from 'pg-promise';
 
 import { pgInsert, pgQuery, pgUpdate } from '../Postgres/Postgres.node.functions';
+import { table } from 'console';
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,12 +41,7 @@ export class QuestDb implements INodeType {
 						name: 'Insert',
 						value: 'insert',
 						description: 'Insert rows in database.',
-					},
-					{
-						name: 'Update',
-						value: 'update',
-						description: 'Updates rows in database.',
-					},
+					}
 				],
 				default: 'insert',
 				description: 'The operation to perform.',
@@ -131,47 +127,47 @@ export class QuestDb implements INodeType {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
-			{
-				displayName: 'Table',
-				name: 'table',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['update'],
-					},
-				},
-				default: '',
-				required: true,
-				description: 'Name of the table in which to update data in',
-			},
-			{
-				displayName: 'Update Key',
-				name: 'updateKey',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['update'],
-					},
-				},
-				default: 'id',
-				required: true,
-				description:
-					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
-			},
-			{
-				displayName: 'Columns',
-				name: 'columns',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['update'],
-					},
-				},
-				default: '',
-				placeholder: 'name,description',
-				description:
-					'Comma separated list of the properties which should used as columns for rows to update.',
-			},
+			// {
+			// 	displayName: 'Table',
+			// 	name: 'table',
+			// 	type: 'string',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: ['update'],
+			// 		},
+			// 	},
+			// 	default: '',
+			// 	required: true,
+			// 	description: 'Name of the table in which to update data in',
+			// },
+			// {
+			// 	displayName: 'Update Key',
+			// 	name: 'updateKey',
+			// 	type: 'string',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: ['update'],
+			// 		},
+			// 	},
+			// 	default: 'id',
+			// 	required: true,
+			// 	description:
+			// 		'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+			// },
+			// {
+			// 	displayName: 'Columns',
+			// 	name: 'columns',
+			// 	type: 'string',
+			// 	displayOptions: {
+			// 		show: {
+			// 			operation: ['update'],
+			// 		},
+			// 	},
+			// 	default: '',
+			// 	placeholder: 'name,description',
+			// 	description:
+			// 		'Comma separated list of the properties which should used as columns for rows to update.',
+			// },
 		],
 	};
 
@@ -213,26 +209,30 @@ export class QuestDb implements INodeType {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
+			const tableName = this.getNodeParameter('table', 0) as string;
+			const returnFields = this.getNodeParameter('returnFields', 0) as string;
+			
+			let queries : string[] = [];
+			items.map(item => {
+				let columns = Object.keys(item.json);
 
-			const [insertData, insertItems] = await pgInsert(this.getNodeParameter, pgp, db, items);
+				let values : string = columns.map((col : string) => {
+					if (typeof item.json[col] === 'string') {
+						return `\'${item.json[col]}\'`;
+					} else {
+						return item.json[col];
+					}
+				}).join(',');
 
-			// Add the id to the data
-			for (let i = 0; i < insertData.length; i++) {
-				returnItems.push({
-					json: {
-						...insertData[i],
-						...insertItems[i],
-					},
-				});
-			}
-		} else if (operation === 'update') {
-			// ----------------------------------
-			//         update
-			// ----------------------------------
+				let query = `INSERT INTO ${tableName} (${columns.join(',')}) VALUES (${values});`;
+				queries.push(query);
+			});
+			
+			await db.any(pgp.helpers.concat(queries));
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items);
+			let returnedItems = await db.any(`SELECT ${returnFields} from ${tableName}`);
 
-			returnItems = this.helpers.returnJsonArray(updateItems);
+			returnItems = this.helpers.returnJsonArray(returnedItems as IDataObject[]);
 		} else {
 			await pgp.end();
 			throw new Error(`The operation "${operation}" is not supported!`);
