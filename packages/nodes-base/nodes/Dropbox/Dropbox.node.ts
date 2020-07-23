@@ -2,6 +2,7 @@ import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
@@ -9,8 +10,9 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
+import {
+	OptionsWithUri
+} from 'request';
 
 export class Dropbox implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +25,7 @@ export class Dropbox implements INodeType {
 		description: 'Access data on Dropbox',
 		defaults: {
 			name: 'Dropbox',
-			color: '#22BB44',
+			color: '#0061FF',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -454,6 +456,7 @@ export class Dropbox implements INodeType {
 		let requestMethod = '';
 		let body: IDataObject | Buffer;
 		let isJson = false;
+		let query: IDataObject = {};
 
 		let headers: IDataObject;
 
@@ -470,8 +473,9 @@ export class Dropbox implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'POST';
-					headers['Dropbox-API-Arg'] = JSON.stringify({
-						path: this.getNodeParameter('path', i) as string,
+
+					query.arg = JSON.stringify({
+						path: this.getNodeParameter('path', i) as string
 					});
 
 					endpoint = 'https://content.dropboxapi.com/2/files/download';
@@ -483,9 +487,10 @@ export class Dropbox implements INodeType {
 
 					requestMethod = 'POST';
 					headers['Content-Type'] = 'application/octet-stream';
-					headers['Dropbox-API-Arg'] = JSON.stringify({
+
+					query.arg = JSON.stringify({
 						mode: 'overwrite',
-						path: this.getNodeParameter('path', i) as string,
+						path: this.getNodeParameter('path', i) as string
 					});
 
 					endpoint = 'https://content.dropboxapi.com/2/files/upload';
@@ -594,8 +599,8 @@ export class Dropbox implements INodeType {
 			const options: OptionsWithUri = {
 				headers,
 				method: requestMethod,
-				qs: {},
 				uri: endpoint,
+				qs: query,
 				json: isJson,
 			};
 
