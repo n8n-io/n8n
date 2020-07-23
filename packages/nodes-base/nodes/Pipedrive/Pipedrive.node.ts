@@ -2137,6 +2137,7 @@ export class Pipedrive implements INodeType {
 				displayName: 'Term',
 				name: 'term',
 				type: 'string',
+				required: true,
 				displayOptions: {
 					show: {
 						operation: [
@@ -2722,12 +2723,6 @@ export class Pipedrive implements INodeType {
 
 				responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
 
-<<<<<<< HEAD
-				if (responseData.data === null) {
-					responseData.data = [];
-				}
-=======
->>>>>>> master
 			}
 
 			if (resource === 'file' && operation === 'download') {
