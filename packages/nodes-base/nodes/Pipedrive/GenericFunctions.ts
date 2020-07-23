@@ -11,10 +11,6 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
-<<<<<<< HEAD
-
-=======
->>>>>>> master
 
 export interface ICustomInterface {
 	name: string;
@@ -38,22 +34,8 @@ export interface ICustomProperties {
  * @param {object} body
  * @returns {Promise<any>}
  */
-<<<<<<< HEAD
-export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
-	const authenticationMethod = this.getNodeParameter('authentication', 0);
-=======
 export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('pipedriveApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	if (query === undefined) {
-		query = {};
-	}
-
-	query.api_token = credentials.apiToken;
->>>>>>> master
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -85,7 +67,6 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 	let responseData;
 
 	try {
-<<<<<<< HEAD
 		if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken') {
 
 			const credentials = this.getCredentials('pipedriveApi');
@@ -95,15 +76,12 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			query.api_token = credentials.apiToken;
 
+			//@ts-ignore
 			responseData = await this.helpers.request(options);
 
 		} else {
 			responseData = await this.helpers.requestOAuth2!.call(this, 'pipedriveOAuth2Api', options);
 		}
-=======
-		//@ts-ignore
-		const responseData = await this.helpers.request(options);
->>>>>>> master
 
 		if (downloadFile === true) {
 			return {
