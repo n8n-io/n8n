@@ -578,6 +578,10 @@ export const contactFields = [
 		type: 'multiOptions',
 		options: [
 			{
+				name: '*',
+				value: '*',
+			},
+			{
 				name: 'Addresses',
 				value: 'addresses',
 			},
@@ -686,6 +690,23 @@ export const contactFields = [
 		},
 		default: '',
 		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
+	},
+	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: false,
+		description: `Returns the data exactly in the way it got received from the API.`,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:getAll                             */
@@ -849,6 +870,23 @@ export const contactFields = [
 		},
 		default: '',
 		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
+	},
+	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: false,
+		description: `Returns the data exactly in the way it got received from the API.`,
 	},
 	{
 		displayName: 'Options',
