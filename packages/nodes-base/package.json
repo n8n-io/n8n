@@ -29,6 +29,7 @@
       "dist/credentials/ActiveCampaignApi.credentials.js",
       "dist/credentials/AgileCrmApi.credentials.js",
       "dist/credentials/AcuitySchedulingApi.credentials.js",
+      "dist/credentials/AcuitySchedulingOAuth2Api.credentials.js",
       "dist/credentials/AirtableApi.credentials.js",
       "dist/credentials/Amqp.credentials.js",
       "dist/credentials/AsanaApi.credentials.js",
