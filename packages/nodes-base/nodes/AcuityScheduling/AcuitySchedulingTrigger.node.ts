@@ -35,7 +35,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: [
-							'accessToken',
+							'apiKey',
 						],
 					},
 				},
@@ -67,15 +67,15 @@ export class AcuitySchedulingTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Access Token',
-						value: 'accessToken',
+						name: 'API Key',
+						value: 'apiKey',
 					},
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
 					},
 				],
-				default: 'accessToken',
+				default: 'apiKey',
 				description: 'Method of authentication.',
 			},
 			{
