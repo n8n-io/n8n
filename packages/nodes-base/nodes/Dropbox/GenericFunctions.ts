@@ -1,5 +1,15 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-import { OptionsWithUri } from 'request';
+import {
+	IExecuteFunctions,
+	IHookFunctions,
+} from 'n8n-core';
+
+import {
+	OptionsWithUri,
+} from 'request';
+
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 /**
  * Make an API request to Dropbox
@@ -10,7 +20,7 @@ import { OptionsWithUri } from 'request';
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, headers?: object, encoding?: string | null): Promise<any> {// tslint:disable-line:no-any
+export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, headers?: object, option: IDataObject = {}): Promise<any> {// tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		headers,
@@ -18,21 +28,23 @@ export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions
 		body,
 		uri: endpoint,
 		json: true,
-		encoding
 	};
 
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
 
-	if (encoding !== null) {
-		delete options.encoding;
-  }
+	Object.assign(options, option);
 
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	try {
 		if (authenticationMethod === 'accessToken') {
+
+			const credentials = this.getCredentials('dropboxApi') as IDataObject;
+
+			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+
 			return await this.helpers.request(options);
 		} else {
 			return await this.helpers.requestOAuth2.call(this, 'dropboxOAuth2Api', options);
