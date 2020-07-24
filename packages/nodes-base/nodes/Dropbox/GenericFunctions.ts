@@ -20,11 +20,12 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, headers?: object, option: IDataObject = {}): Promise<any> {// tslint:disable-line:no-any
+export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query: IDataObject = {}, headers?: object, option: IDataObject = {}): Promise<any> {// tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		headers,
 		method,
+		qs: query,
 		body,
 		uri: endpoint,
 		json: true,
