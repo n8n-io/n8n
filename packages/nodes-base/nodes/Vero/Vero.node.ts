@@ -50,12 +50,12 @@ export class Vero implements INodeType {
 					{
 						name: 'User',
 						value: 'user',
-						description: `Lets you create, update and manage the subscription status of your users.`,
+						description: `Create, update and manage the subscription status of your users.`,
 					},
 					{
 						name: 'Event',
 						value: 'event',
-						description: `Lets you track events based on actions your customers take in real time.`,
+						description: `Track events based on actions your customers take in real time.`,
 					},
 				],
 				default: 'user',

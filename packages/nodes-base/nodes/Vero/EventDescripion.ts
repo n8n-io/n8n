@@ -16,8 +16,7 @@ export const eventOperations = [
 			{
 				name: 'Track',
 				value: 'track',
-				description: `This endpoint tracks an event for a specific customer.
-				If the customer profile doesn’t exist, Vero will create it.`,
+				description: `Track an event for a specific customer`,
 			},
 		],
 		default: 'track',

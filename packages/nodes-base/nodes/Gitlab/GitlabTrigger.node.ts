@@ -16,13 +16,13 @@ import {
 
 export class GitlabTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Gitlab Trigger',
+		displayName: 'GitLab Trigger',
 		name: 'gitlabTrigger',
 		icon: 'file:gitlab.png',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
-		description: 'Starts the workflow when a Gitlab events occurs.',
+		description: 'Starts the workflow when a GitLab event occurs.',
 		defaults: {
 			name: 'Gitlab Trigger',
 			color: '#FC6D27',
@@ -237,7 +237,7 @@ export class GitlabTrigger implements INodeType {
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
-					throw new Error('Gitlab webhook creation response did not contain the expected data.');
+					throw new Error('GitLab webhook creation response did not contain the expected data.');
 				}
 
 				const webhookData = this.getWorkflowStaticData('node');
