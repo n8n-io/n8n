@@ -85,6 +85,21 @@ export class ActiveWebhooks {
 		return this.webhookUrls[webhookKey];
 	}
 
+	/**
+	 * Gets all request methods associated with a single webhook
+	 * @param path 
+	 */
+	getWebhookMethods(path: string): string[] {
+		let methods : string[] = [];
+
+		Object.keys(this.webhookUrls)
+		.filter(key => key.includes(path))
+		.map(key => {
+			methods.push(key.split('|')[0]);
+		});
+
+		return methods;
+	}
 
 	/**
 	 * Returns the ids of all the workflows which have active webhooks

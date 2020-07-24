@@ -1567,6 +1567,25 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
+		// OPTIONS webhook requests
+		this.app.options(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
+
+			let allowedMethods;
+			try {
+				allowedMethods = await this.activeWorkflowRunner.getWebhookMethods(requestUrl);
+				
+				// Add custom "Allow" header to satisfy OPTIONS response.
+				res.append('Allow', allowedMethods);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+		});
+
 		// GET webhook requests
 		this.app.get(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
 			// Cut away the "/webhook/" to get the registred part of the url
@@ -1628,6 +1647,25 @@ class App {
 			}
 
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// HEAD webhook requests (test for UI)
+		this.app.options(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-test/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookTest.length + 2);
+
+			let allowedMethods;
+			try {
+				allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
+
+				// Add custom "Allow" header to satisfy OPTIONS response.
+				res.append('Allow', allowedMethods);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		});
 
 		// GET webhook requests (test for UI)
