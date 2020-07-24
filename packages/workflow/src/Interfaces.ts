@@ -590,7 +590,7 @@ export interface IWorkflowMetadata {
 	active: boolean;
 }
 
-export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD';
+export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
