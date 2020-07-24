@@ -16,7 +16,7 @@
 
 				<el-menu-item index="logo" class="logo-item">
 					<a href="https://n8n.io" target="_blank" class="logo">
-						<img src="/n8n-icon-small.png" class="icon" alt="n8n.io"/>
+						<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
 						<span class="logo-text" slot="title">n8n.io</span>
 					</a>
 				</el-menu-item>
@@ -208,6 +208,8 @@ export default mixins(
 		data () {
 			return {
 				aboutDialogVisible: false,
+				// @ts-ignore
+				basePath: this.$store.getters.getBaseUrl,
 				isCollapsed: true,
 				credentialNewDialogVisible: false,
 				credentialOpenDialogVisible: false,

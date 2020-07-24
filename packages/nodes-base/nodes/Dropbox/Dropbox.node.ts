@@ -485,7 +485,7 @@ export class Dropbox implements INodeType {
 		let endpoint = '';
 		let requestMethod = '';
 		let body: IDataObject | Buffer;
-		let options;
+		let isJson = false;
 
 		const headers: IDataObject = {};
 
@@ -499,8 +499,9 @@ export class Dropbox implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'POST';
-					headers['Dropbox-API-Arg'] = JSON.stringify({
-						path: this.getNodeParameter('path', i) as string,
+
+					query.arg = JSON.stringify({
+						path: this.getNodeParameter('path', i) as string
 					});
 
 					endpoint = 'https://content.dropboxapi.com/2/files/download';
@@ -512,9 +513,10 @@ export class Dropbox implements INodeType {
 
 					requestMethod = 'POST';
 					headers['Content-Type'] = 'application/octet-stream';
-					headers['Dropbox-API-Arg'] = JSON.stringify({
+
+					query.arg = JSON.stringify({
 						mode: 'overwrite',
-						path: this.getNodeParameter('path', i) as string,
+						path: this.getNodeParameter('path', i) as string
 					});
 
 					endpoint = 'https://content.dropboxapi.com/2/files/upload';

@@ -38,7 +38,8 @@ export const store = new Vuex.Store({
 		activeWorkflows: [] as string[],
 		activeActions: [] as string[],
 		activeNode: null as string | null,
-		baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : '/',
+		// @ts-ignore
+		baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
 		credentials: null as ICredentialsResponse[] | null,
 		credentialTypes: null as ICredentialType[] | null,
 		endpointWebhook: 'webhook',

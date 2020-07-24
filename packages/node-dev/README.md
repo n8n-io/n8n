@@ -1,6 +1,6 @@
 # n8n-node-dev
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-logo.png)
+![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
 
 Currently very simple and not very sophisticated CLI which makes it easier
 to create credentials and nodes in TypeScript for n8n.
@@ -127,7 +127,7 @@ export class MyNode implements INodeType {
 
 The "description" property has to be set on all nodes because it contains all
 the base information. Additionally do all nodes have to have exactly one of the
-following methods defined which contains the the actual logic:
+following methods defined which contains the actual logic:
 
 **Regular node**
 
@@ -138,8 +138,8 @@ Method get called when the workflow gets executed
 By default always `execute` should be used especially when creating a
 third-party integration. The reason for that is that it is way more flexible
 and allows to, for example, return a different amount of items than it received
-as input. This is very important when a node should query data like return
-all users. In that case, does the node normally just receive one input-item
+as input. This is very important when a node should query data like *return
+all users*. In that case, does the node normally just receive one input-item
 but returns as many as users exist. So in doubt always `execute` should be
 used!
 
@@ -188,10 +188,10 @@ The following properties can be set in the node description:
  - **outputs** [required]: Types of outputs the node has (currently only "main" exists) and the amount
  - **outputNames** [optional]: In case a node has multiple outputs names can be set that users know what data to expect
  - **maxNodes** [optional]: If not an unlimited amount of nodes of that type can exist in a workflow the max-amount can be specified
- - **name** [required]: Nme of the node (for n8n to use internally in camelCase)
+ - **name** [required]: Name of the node (for n8n to use internally, in camelCase)
  - **properties** [required]: Properties which get displayed in the Editor UI and can be set by the user
  - **subtitle** [optional]: Text which should be displayed underneath the name of the node in the Editor UI (can be an expression)
- - **version** [required]: Version of the node. Currently always "1" (integer). For future usage does not get used yet.
+ - **version** [required]: Version of the node. Currently always "1" (integer). For future usage, does not get used yet.
  - **webhooks** [optional]: Webhooks the node should listen to
 
 
@@ -200,12 +200,12 @@ The following properties can be set in the node description:
 The following properties can be set in the node properties:
 
  - **default** [required]: Default value of the property
- - **description** [required]: Description to display users in Editor UI
- - **displayName** [required]: Name to display users in Editor UI
+ - **description** [required]: Description that is displayed to users in the Editor UI
+ - **displayName** [required]: Name that is displayed to users in the Editor UI
  - **displayOptions**  [optional]: Defines logic to decide if a property should be displayed or not
- - **name** [required]: Name of the property (for n8n to use internally in camelCase)
+ - **name** [required]: Name of the property (for n8n to use internally, in camelCase)
  - **options** [optional]: The options the user can select when type of property is "collection", "fixedCollection" or "options"
- - **placeholder** [optional]: Placeholder text to display users in Editor UI
+ - **placeholder** [optional]: Placeholder text that is displayed to users in the Editor UI
  - **type** [required]: Type of the property. If it is for example a "string", "number", ...
  - **typeOptions** [optional]: Additional options for type. Like for example the min or max value of a number
  - **required** [optional]: Defines if the value has to be set or if it can stay empty
@@ -215,11 +215,11 @@ The following properties can be set in the node properties:
 
 The following properties can be set in the node property options.
 
-All properties are optional. The most, however, work only work when the node-property is of a specfic type.
+All properties are optional. However, most only work when the node-property is of a specfic type.
 
- - **alwaysOpenEditWindow** [type: string]: If set then the "Editor Window" will always open when the user tries to edit the field. Is helpful when long texts normally get used in the property
+ - **alwaysOpenEditWindow** [type: string]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property.
  - **loadOptionsMethod** [type: options]: Method to use to load options from an external service
- - **maxValue** [type: number]: Maximal value of the number
+ - **maxValue** [type: number]: Maximum value of the number
  - **minValue** [type: number]: Minimum value of the number
  - **multipleValues** [type: all]: If set the property gets turned into an Array and the user can add multiple values
  - **multipleValueButtonText** [type: all]: Custom text for add button in case "multipleValues" got set
