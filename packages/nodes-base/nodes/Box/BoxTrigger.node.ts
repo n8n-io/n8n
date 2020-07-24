@@ -21,7 +21,7 @@ export class BoxTrigger implements INodeType {
 		icon: 'file:box.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a Github events occurs.',
+		description: 'Starts the workflow when a Box events occurs.',
 		defaults: {
 			name: 'Box Trigger',
 			color: '#00aeef',
@@ -274,8 +274,6 @@ export class BoxTrigger implements INodeType {
 				// one that is supposed to get created.
 				const endpoint = '/webhooks';
 				const webhooks = await boxApiRequestAllItems.call(this, 'entries', 'GET', endpoint, {});
-
-				console.log(webhooks);
 
 				for (const webhook of webhooks) {
 					if (webhook.address === webhookUrl &&

@@ -41,8 +41,6 @@ export async function boxApiRequest(this: IExecuteFunctions | IExecuteSingleFunc
 		return await this.helpers.requestOAuth2.call(this, 'boxOAuth2Api', options, oAuth2Options);
 
 	} catch (error) {
-		console.log(error);
-
 		let errorMessage;
 
 		if (error.response && error.response.body) {
