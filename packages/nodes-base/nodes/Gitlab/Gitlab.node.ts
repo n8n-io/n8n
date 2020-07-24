@@ -131,7 +131,7 @@ export class Gitlab implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of single issue',
+						description: 'Get the data of a single issue',
 					},
 					{
 						name: 'Lock',
@@ -207,7 +207,7 @@ export class Gitlab implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Creates a new release',
+						description: 'Create a new release',
 					},
 				],
 				default: 'create',

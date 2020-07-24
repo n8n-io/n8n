@@ -28,7 +28,7 @@ export const bucketOperations = [
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Search a bucket',
+				description: 'Search within a bucket',
 			},
 		],
 		default: 'create',

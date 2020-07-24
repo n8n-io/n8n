@@ -122,7 +122,7 @@ export class GoogleDrive implements INodeType {
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Get list of files and folders',
+						description: 'List files and folders',
 					},
 					{
 						name: 'Upload',

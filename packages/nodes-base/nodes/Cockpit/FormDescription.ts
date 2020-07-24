@@ -16,7 +16,7 @@ export const formOperations = [
 			{
 				name: 'Submit a Form',
 				value: 'submit',
-				description: 'Store data from a form',
+				description: 'Store data from a form submission',
 			},
 
 		],

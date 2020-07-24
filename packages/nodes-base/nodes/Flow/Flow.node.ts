@@ -49,7 +49,7 @@ export class Flow implements INodeType {
 					{
 						name: 'Task',
 						value: 'task',
-						description: `Tasks track units of work and can be assigned, sorted, nested, and tagged. Through this endpoint you are able to create, update and read your tasks in Flow.`,
+						description: `Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones`,
 					},
 				],
 				default: 'task',

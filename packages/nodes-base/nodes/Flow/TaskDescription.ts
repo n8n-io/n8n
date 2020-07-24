@@ -31,7 +31,7 @@ export const taskOpeations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all tasks',
+				description: 'Get all the tasks',
 			},
 		],
 		default: 'create',

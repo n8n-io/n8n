@@ -16,7 +16,7 @@ export const singletonOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a Singleton',
+				description: 'Get a singleton',
 			},
 		],
 		default: 'get',
