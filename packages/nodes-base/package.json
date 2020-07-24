@@ -52,6 +52,7 @@
       "dist/credentials/DriftApi.credentials.js",
       "dist/credentials/DriftOAuth2Api.credentials.js",
       "dist/credentials/DropboxApi.credentials.js",
+      "dist/credentials/DropboxOAuth2Api.credentials.js",
       "dist/credentials/EventbriteApi.credentials.js",
       "dist/credentials/EventbriteOAuth2Api.credentials.js",
       "dist/credentials/FacebookGraphApi.credentials.js",
