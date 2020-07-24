@@ -1323,7 +1323,7 @@ class App {
 					retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
 					startedAt: result.startedAt,
 					stoppedAt: result.stoppedAt,
-					workflowId: result.workflowData!.id!.toString(),
+					workflowId: result.workflowData!.id ? result.workflowData!.id!.toString() : '',
 					workflowName: result.workflowData!.name,
 				});
 			}
