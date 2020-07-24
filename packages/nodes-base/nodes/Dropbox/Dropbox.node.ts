@@ -485,7 +485,8 @@ export class Dropbox implements INodeType {
 		let endpoint = '';
 		let requestMethod = '';
 		let body: IDataObject | Buffer;
-		let isJson = false;
+		let options;
+		const query: IDataObject = {};
 
 		const headers: IDataObject = {};
 
@@ -624,7 +625,7 @@ export class Dropbox implements INodeType {
 				options = { encoding: null };
 			}
 
-			let responseData = await dropboxApiRequest.call(this, requestMethod, endpoint, body, headers, options);
+			let responseData = await dropboxApiRequest.call(this, requestMethod, endpoint, body, query, headers, options);
 
 			if (resource === 'file' && operation === 'upload') {
 				responseData = JSON.parse(responseData);
