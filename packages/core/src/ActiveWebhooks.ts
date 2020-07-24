@@ -87,10 +87,10 @@ export class ActiveWebhooks {
 
 	/**
 	 * Gets all request methods associated with a single webhook
-	 * @param path 
+	 * @param path
 	 */
 	getWebhookMethods(path: string): string[] {
-		let methods : string[] = [];
+		const methods : string[] = [];
 
 		Object.keys(this.webhookUrls)
 		.filter(key => key.includes(path))
