@@ -161,6 +161,24 @@ export class ActiveWorkflowRunner {
 		});
 	}
 
+/**
+ * Gets all request methods associated with a single webhook
+ * @param path webhook path
+ */
+	async getWebhookMethods(path: string) : Promise<string[]> {
+		const webhooks = await Db.collections.Webhook?.find({ webhookPath: path}) as IWebhookDb[];
+
+		// check if something exist
+		if (webhooks === undefined) {
+			// The requested webhooks are not registered
+			throw new ResponseHelper.ResponseError(`The requested webhook "${path}" is not registered.`, 404, 404);
+		}
+
+		// Gather all request methods in string array
+		let webhookMethods : string[] = webhooks.map(webhook => webhook.method);
+		return webhookMethods;
+	}
+
 	/**
 	 * Returns the ids of the currently active workflows
 	 *
