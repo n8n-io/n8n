@@ -1572,10 +1572,11 @@ class App {
 			// Cut away the "/webhook/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
 
-			let allowedMethods;
+			let allowedMethods: string[];
 			try {
 				allowedMethods = await this.activeWorkflowRunner.getWebhookMethods(requestUrl);
-				
+				allowedMethods.push('OPTIONS');
+
 				// Add custom "Allow" header to satisfy OPTIONS response.
 				res.append('Allow', allowedMethods);
 			} catch (error) {
@@ -1654,9 +1655,10 @@ class App {
 			// Cut away the "/webhook-test/" to get the registred part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookTest.length + 2);
 
-			let allowedMethods;
+			let allowedMethods: string[];
 			try {
 				allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
+				allowedMethods.push('OPTIONS');
 
 				// Add custom "Allow" header to satisfy OPTIONS response.
 				res.append('Allow', allowedMethods);
