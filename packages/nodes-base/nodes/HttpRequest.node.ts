@@ -802,7 +802,7 @@ export class HttpRequest implements INodeType {
 
 				if (oAuth2Api !== undefined) {
 					//@ts-ignore
-					response = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions);
+					response = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, 'Bearer');
 				} else {
 					response = await this.helpers.request(requestOptions);
 				}

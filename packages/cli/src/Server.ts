@@ -18,7 +18,7 @@ import * as clientOAuth2 from 'client-oauth2';
 import * as clientOAuth1 from 'oauth-1.0a';
 import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
-import * as requestPromise  from 'request-promise-native';
+import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 
 import {
@@ -58,6 +58,9 @@ import {
 	WorkflowExecuteAdditionalData,
 	WorkflowRunner,
 	GenericHelpers,
+	CredentialsOverwrites,
+	ICredentialsOverwrite,
+	LoadNodesAndCredentials,
 } from './';
 
 import {
@@ -105,6 +108,7 @@ class App {
 	testWebhooks: TestWebhooks.TestWebhooks;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
+	endpointPresetCredentials: string;
 	externalHooks: IExternalHooksClass;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
@@ -116,8 +120,10 @@ class App {
 	restEndpoint: string;
 
 	protocol: string;
-	sslKey:  string;
+	sslKey: string;
 	sslCert: string;
+
+	presetCredentialsLoaded: boolean;
 
 	constructor() {
 		this.app = express();
@@ -137,10 +143,13 @@ class App {
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 
 		this.protocol = config.get('protocol');
-		this.sslKey  = config.get('ssl_key');
+		this.sslKey = config.get('ssl_key');
 		this.sslCert = config.get('ssl_cert');
 
 		this.externalHooks = ExternalHooks();
+
+		this.presetCredentialsLoaded = false;
+		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
 	}
 
 
@@ -195,7 +204,7 @@ class App {
 		}
 
 		// Check for and validate JWT if configured
-		const jwtAuthActive  = config.get('security.jwtAuth.active') as boolean;
+		const jwtAuthActive = config.get('security.jwtAuth.active') as boolean;
 		if (jwtAuthActive === true) {
 			const jwtAuthHeader = await GenericHelpers.getConfigValue('security.jwtAuth.jwtHeader') as string;
 			if (jwtAuthHeader === '') {
@@ -273,7 +282,7 @@ class App {
 			normalize: true,     // Trim whitespace inside text nodes
 			normalizeTags: true, // Transform tags to lowercase
 			explicitArray: false, // Only put properties in array if length > 1
-		  } }));
+		} }));
 
 		this.app.use(bodyParser.text({
 			limit: '16mb', verify: (req, res, buf) => {
@@ -448,7 +457,9 @@ class App {
 
 			await this.externalHooks.run('workflow.update', [newWorkflowData]);
 
-			if (this.activeWorkflowRunner.isActive(id)) {
+			const isActive = await this.activeWorkflowRunner.isActive(id);
+
+			if (isActive) {
 				// When workflow gets saved always remove it as the triggers could have been
 				// changed and so the changes would not take effect
 				await this.activeWorkflowRunner.remove(id);
@@ -517,7 +528,9 @@ class App {
 
 			await this.externalHooks.run('workflow.delete', [id]);
 
-			if (this.activeWorkflowRunner.isActive(id)) {
+			const isActive = await this.activeWorkflowRunner.isActive(id);
+
+			if (isActive) {
 				// Before deleting a workflow deactivate it
 				await this.activeWorkflowRunner.remove(id);
 			}
@@ -657,7 +670,8 @@ class App {
 
 		// Returns the active workflow ids
 		this.app.get(`/${this.restEndpoint}/active`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string[]> => {
-			return this.activeWorkflowRunner.getActiveWorkflows();
+			const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows();
+			return activeWorkflows.map(workflow => workflow.id.toString()) as string[];
 		}));
 
 
@@ -922,7 +936,8 @@ class App {
 		// Authorize OAuth Data
 		this.app.get(`/${this.restEndpoint}/oauth1-credential/auth`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
 			if (req.query.id === undefined) {
-				throw new Error('Required credential id is missing!');
+				res.status(500).send('Required credential id is missing!');
+				return '';
 			}
 
 			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
@@ -934,7 +949,8 @@ class App {
 			let encryptionKey = undefined;
 			encryptionKey = await UserSettings.getEncryptionKey();
 			if (encryptionKey === undefined) {
-				throw new Error('No encryption key got found to decrypt the credentials!');
+				res.status(500).send('No encryption key got found to decrypt the credentials!');
+				return '';
 			}
 
 			// Decrypt the currently saved credentials
@@ -965,7 +981,7 @@ class App {
 
 			const callback = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`;
 
-			const options: RequestOptions  = {
+			const options: RequestOptions = {
 				method: 'POST',
 				url: (_.get(oauthCredentials, 'requestTokenUrl') as string),
 				data: {
@@ -1006,7 +1022,8 @@ class App {
 			const { oauth_verifier, oauth_token, cid } = req.query;
 
 			if (oauth_verifier === undefined || oauth_token === undefined) {
-				throw new Error('Insufficient parameters for OAuth1 callback');
+				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth1 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			const result = await Db.collections.Credentials!.findOne(cid as any); // tslint:disable-line:no-any
@@ -1032,7 +1049,7 @@ class App {
 			const decryptedDataOriginal = credentialsHelper.getDecrypted(result.name, result.type, true);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(decryptedDataOriginal, result.type);
 
-			const options: OptionsWithUrl  = {
+			const options: OptionsWithUrl = {
 				method: 'POST',
 				url: _.get(oauthCredentials, 'accessTokenUrl') as string,
 				qs: {
@@ -1076,7 +1093,8 @@ class App {
 		// Authorize OAuth Data
 		this.app.get(`/${this.restEndpoint}/oauth2-credential/auth`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
 			if (req.query.id === undefined) {
-				throw new Error('Required credential id is missing!');
+				res.status(500).send('Required credential id is missing.');
+				return '';
 			}
 
 			const result = await Db.collections.Credentials!.findOne(req.query.id as string);
@@ -1088,7 +1106,8 @@ class App {
 			let encryptionKey = undefined;
 			encryptionKey = await UserSettings.getEncryptionKey();
 			if (encryptionKey === undefined) {
-				throw new Error('No encryption key got found to decrypt the credentials!');
+				res.status(500).send('No encryption key got found to decrypt the credentials!');
+				return '';
 			}
 
 			// Decrypt the currently saved credentials
@@ -1152,7 +1171,8 @@ class App {
 			const {code, state: stateEncoded } = req.query;
 
 			if (code === undefined || stateEncoded === undefined) {
-				throw new Error('Insufficient parameters for OAuth2 callback');
+				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth2 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
+				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 
 			let state;
@@ -1202,17 +1222,20 @@ class App {
 					},
 				};
 			}
+			const redirectUri = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`;
 
 			const oAuthObj = new clientOAuth2({
 				clientId: _.get(oauthCredentials, 'clientId') as string,
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
+				redirectUri,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
 			});
 
-			const oauthToken = await oAuthObj.code.getToken(req.originalUrl, options);
+			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
+
+			const oauthToken = await oAuthObj.code.getToken(`${redirectUri}?${queryParameters}`, options);
 
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
@@ -1650,9 +1673,57 @@ class App {
 		});
 
 
+		if (this.endpointPresetCredentials !== '') {
+
+			// POST endpoint to set preset credentials
+			this.app.post(`/${this.endpointPresetCredentials}`, async (req: express.Request, res: express.Response) => {
+
+				if (this.presetCredentialsLoaded === false) {
+
+					const body = req.body as ICredentialsOverwrite;
+
+					if (req.headers['content-type'] !== 'application/json') {
+						ResponseHelper.sendErrorResponse(res, new Error('Body must be a valid JSON, make sure the content-type is application/json'));
+						return;
+					}
+
+					const loadNodesAndCredentials = LoadNodesAndCredentials();
+
+					const credentialsOverwrites = CredentialsOverwrites();
+
+					await credentialsOverwrites.init(body);
+
+					const credentialTypes = CredentialTypes();
+
+					await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+					this.presetCredentialsLoaded = true;
+
+					ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+
+				} else {
+					ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
+				}
+			});
+		}
+
+
+		// Read the index file and replace the path placeholder
+		const editorUiPath = require.resolve('n8n-editor-ui');
+		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
+		const n8nPath = config.get('path');
+
+		let readIndexFile = readFileSync(filePath, 'utf8');
+		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}/favicon.ico`);
+
+		// Serve the altered index.html file separately
+		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
+			res.send(readIndexFile);
+		});
+
 		// Serve the website
 		const startTime = (new Date()).toUTCString();
-		const editorUiPath = require.resolve('n8n-editor-ui');
 		this.app.use('/', express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
 			index: 'index.html',
 			setHeaders: (res, path) => {
