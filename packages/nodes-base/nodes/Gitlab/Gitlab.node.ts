@@ -15,13 +15,13 @@ import {
 
 export class Gitlab implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Gitlab',
+		displayName: 'GitLab',
 		name: 'gitlab',
 		icon: 'file:gitlab.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Retrieve data from Gitlab API.',
+		description: 'Retrieve data from GitLab API.',
 		defaults: {
 			name: 'Gitlab',
 			color: '#FC6D27',
@@ -131,7 +131,7 @@ export class Gitlab implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issues',
+						description: 'Get the data of a single issue',
 					},
 					{
 						name: 'Lock',
@@ -207,7 +207,7 @@ export class Gitlab implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Creates a new release',
+						description: 'Create a new release',
 					},
 				],
 				default: 'create',

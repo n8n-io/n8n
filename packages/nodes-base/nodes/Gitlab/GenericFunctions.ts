@@ -59,7 +59,7 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
-			throw new Error('The Gitlab credentials are not valid!');
+			throw new Error('The GitLab credentials are not valid!');
 		}
 
 		if (error.response && error.response.body && error.response.body.message) {
