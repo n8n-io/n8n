@@ -2,6 +2,7 @@ import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
@@ -9,9 +10,9 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-import { dropboxApiRequest } from './GenericFunctions';
-
+import {
+	dropboxApiRequest
+} from './GenericFunctions';
 
 export class Dropbox implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,9 +37,9 @@ export class Dropbox implements INodeType {
 					show: {
 						authentication: [
 							'accessToken',
-						]
-					}
-				}
+						],
+					},
+				},
 			},
 			{
 				name: 'dropboxOAuth2Api',
@@ -47,10 +48,10 @@ export class Dropbox implements INodeType {
 					show: {
 						authentication: [
 							'oAuth2',
-						]
-					}
-				}
-			}
+						],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -60,15 +61,15 @@ export class Dropbox implements INodeType {
 				options: [
 					{
 						name: 'Access Token',
-						value: 'accessToken'
+						value: 'accessToken',
 					},
 					{
 						name: 'OAuth2',
-						value: 'oAuth2'
+						value: 'oAuth2',
 					}
 				],
 				default: 'accessToken',
-				description: 'Means of authenticating with the serivce.'
+				description: 'Means of authenticating with the service.',
 			},
 			{
 				displayName: 'Resource',
@@ -484,6 +485,7 @@ export class Dropbox implements INodeType {
 		let endpoint = '';
 		let requestMethod = '';
 		let body: IDataObject | Buffer;
+		let options;
 
 		const headers: IDataObject = {};
 
@@ -518,6 +520,9 @@ export class Dropbox implements INodeType {
 					endpoint = 'https://content.dropboxapi.com/2/files/upload';
 
 					if (this.getNodeParameter('binaryData', i) === true) {
+
+						options = { json: false };
+
 						// Is binary file to upload
 						const item = items[i];
 
@@ -612,13 +617,16 @@ export class Dropbox implements INodeType {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
-			let encoding: string | null = '';
 			if (resource === 'file' && operation === 'download') {
 				// Return the data as a buffer
-				encoding = null;
+				options = { encoding: null };
 			}
 
-			const responseData = await dropboxApiRequest.call(this, requestMethod, endpoint, body, headers, encoding);
+			let responseData = await dropboxApiRequest.call(this, requestMethod, endpoint, body, headers, options);
+
+			if (resource === 'file' && operation === 'upload') {
+				responseData = JSON.parse(responseData);
+			}
 
 			if (resource === 'file' && operation === 'download') {
 
