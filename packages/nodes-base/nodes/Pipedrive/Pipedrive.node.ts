@@ -309,7 +309,7 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get data of all note',
+						description: 'Get data of all notes',
 					},
 					{
 						name: 'Update',
@@ -341,7 +341,7 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete anorganization',
+						description: 'Delete an organization',
 					},
 					{
 						name: 'Get',
