@@ -706,7 +706,6 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, tokenType, property);
 				},
 				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
-					console.log(requestOptions);
 					return requestOAuth1.call(this, credentialsType, requestOptions);
 				},
 				returnJsonArray,
