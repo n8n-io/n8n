@@ -10,9 +10,9 @@ import {
 } from 'n8n-workflow';
 import { basename } from 'path';
 
-let sftpClient = require('ssh2-sftp-client');
-let ftpClient = require('@softbrains/promise-ftp');
 
+import * as sftpClient from 'ssh2-sftp-client';
+const ftpClient = require('@softbrains/promise-ftp');
 
 export class FileTransfer implements INodeType {
 	description: INodeTypeDescription = {
@@ -221,14 +221,14 @@ export class FileTransfer implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		let qs: IDataObject = {};
+		const qs: IDataObject = {};
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let sftp = new sftpClient();
+		const sftp = new sftpClient();
 
 		for (let i = 0; i < items.length; i++) {
 			const protocol = this.getNodeParameter('protocol', 0) as string;
-			
+
 			if (protocol === 'sftp') {
 				const credentials = this.getCredentials('sftp');
 				const path = this.getNodeParameter('path', i) as string;
@@ -239,42 +239,42 @@ export class FileTransfer implements INodeType {
 
 				try {
 					await sftp.connect({
-						host: credentials.host,
-						port: credentials.port,
-						username: credentials.username,
-						password: credentials.password
-					  });
+						host: credentials.host as string,
+						port: credentials.port as number,
+						username: credentials.username as string,
+						password: credentials.password as string,
+					});
 
-					  if (operation === 'list') {
+					if (operation === 'list') {
 						responseData = await sftp.list(path);
-					  }
+					}
 
-					  if (operation === 'download') {
+					if (operation === 'download') {
 						responseData = await sftp.get(path);
 
 						const newItem: INodeExecutionData = {
 							json: items[i].json,
 							binary: {},
 						};
-		
+
 						if (items[i].binary !== undefined) {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
 							Object.assign(newItem.binary, items[i].binary);
 						}
-		
-						items[i] = newItem;
-		
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
-		
-						const filePathDownload = this.getNodeParameter('path', i) as string;
-						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
-		
-						return this.prepareOutputData(items);
-					  }
 
-					  if (operation === 'upload') {
+						items[i] = newItem;
+
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+						const filePathDownload = this.getNodeParameter('path', i) as string;
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData as Buffer, filePathDownload);
+
+						return this.prepareOutputData(items);
+					}
+
+					if (operation === 'upload') {
 						const remotePath = this.getNodeParameter('path', i) as string;
 
 						// Check if dir path exists
@@ -283,8 +283,8 @@ export class FileTransfer implements INodeType {
 						// If dir does not exist, create all recursively in path
 						if (!dirExists) {
 							// Separate filename from dir path
-							let fileName = basename(remotePath);
-							let dirPath = remotePath.replace(fileName,'');
+							const fileName = basename(remotePath);
+							const dirPath = remotePath.replace(fileName, '');
 							// Create directory
 							await sftp.mkdir(dirPath, true);
 						}
@@ -292,34 +292,34 @@ export class FileTransfer implements INodeType {
 						if (this.getNodeParameter('binaryData', i) === true) {
 							// Is binary file to upload
 							const item = items[i];
-	
+
 							if (item.binary === undefined) {
 								throw new Error('No binary data exists on item!');
 							}
-	
+
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-	
+
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
 							}
 
 							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
-							responseData = await sftp.put(buffer, remotePath, {encoding: null});
+							responseData = await sftp.put(buffer, remotePath, { encoding: null });
 						} else {
 							// Is text file
 							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
 							responseData = await sftp.put(buffer, remotePath);
 						}
-					  }
-					  
+					}
+
 				} catch (error) {
 					throw new Error(error);
 				}
 
 			}
-			
+
 			if (protocol === 'ftp') {
-				let ftp = new ftpClient();
+				const ftp = new ftpClient();
 
 				const credentials = this.getCredentials('ftp');
 				const path = this.getNodeParameter('path', i) as string;
@@ -329,10 +329,12 @@ export class FileTransfer implements INodeType {
 				}
 
 				try {
-					await ftp.connect({host: credentials.host,
-								port: credentials.port,
-								username: credentials.username,
-								password: credentials.password})					
+					await ftp.connect({
+						host: credentials.host,
+						port: credentials.port,
+						username: credentials.username,
+						password: credentials.password
+					});
 
 					if (operation === 'list') {
 						responseData = await ftp.list(path);
@@ -342,32 +344,32 @@ export class FileTransfer implements INodeType {
 						responseData = await ftp.get(path);
 
 						// Convert readable stream to buffer so that can be displayed properly
-						const chunks = []
-						for await (let chunk of responseData) {
-						chunks.push(chunk)
+						const chunks = [];
+						for await (const chunk of responseData) {
+							chunks.push(chunk);
 						}
 
-						responseData = Buffer.concat(chunks)
+						responseData = Buffer.concat(chunks);
 
 						const newItem: INodeExecutionData = {
 							json: items[i].json,
 							binary: {},
 						};
-		
+
 						if (items[i].binary !== undefined) {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
 							Object.assign(newItem.binary, items[i].binary);
 						}
-		
+
 						items[i] = newItem;
-		
+
 						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
-		
+
 						const filePathDownload = this.getNodeParameter('path', i) as string;
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(responseData, filePathDownload);
-		
+
 						return this.prepareOutputData(items);
 					}
 
@@ -390,12 +392,12 @@ export class FileTransfer implements INodeType {
 
 							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
 							responseData = await ftp.put(buffer, remotePath);
-					} else {
-						// Is text file
-						const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
-						responseData = await ftp.put(buffer, remotePath);
+						} else {
+							// Is text file
+							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
+							responseData = await ftp.put(buffer, remotePath);
+						}
 					}
-				}
 
 				} catch (error) {
 					throw new Error(error);
