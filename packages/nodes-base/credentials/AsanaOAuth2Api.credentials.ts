@@ -3,7 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class AsanaOAuth2Api implements ICredentialType {
 	name = 'asanaOAuth2Api';
 	extends = [
@@ -40,20 +39,8 @@ export class AsanaOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
-			type: 'options' as NodePropertyTypes,
-			options: [
-				{
-					name: 'Body',
-					value: 'body',
-					description: 'Send credentials in body',
-				},
-				{
-					name: 'Header',
-					value: 'header',
-					description: 'Send credentials as Basic Auth header',
-				},
-			],
-			default: 'header',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'body',
 			description: 'Resource to consume.',
 		},
 	];

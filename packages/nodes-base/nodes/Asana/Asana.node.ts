@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -22,10 +23,10 @@ export class Asana implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Access and edit Asana tasks',
+		description: 'Consume Asana REST API',
 		defaults: {
 			name: 'Asana',
-			color: '#339922',
+			color: '#FC636B',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

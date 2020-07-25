@@ -14,7 +14,9 @@ import {
 	asanaApiRequest,
 } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+import {
+	createHmac,
+} from 'crypto';
 
 export class AsanaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +28,7 @@ export class AsanaTrigger implements INodeType {
 		description: 'Starts the workflow when Asana events occure.',
 		defaults: {
 			name: 'Asana-Trigger',
-			color: '#559922',
+			color: '#FC636B',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -34,7 +36,25 @@ export class AsanaTrigger implements INodeType {
 			{
 				name: 'asanaApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'asanaOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -45,6 +65,23 @@ export class AsanaTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -62,7 +99,6 @@ export class AsanaTrigger implements INodeType {
 				description: 'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks.',
 			},
 		],
-
 	};
 
 	// @ts-ignore (because of request)
@@ -165,15 +201,12 @@ export class AsanaTrigger implements INodeType {
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData() as IDataObject;
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 
 		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
-
 
 		if (headerData['x-hook-secret'] !== undefined) {
 			// Is a create webhook confirmation request
@@ -198,7 +231,7 @@ export class AsanaTrigger implements INodeType {
 
 		// Check if the request is valid
 		// (if the signature matches to data and hookSecret)
-		const computedSignature = createHmac("sha256", webhookData.hookSecret as string).update(JSON.stringify(req.body)).digest("hex");
+		const computedSignature = createHmac('sha256', webhookData.hookSecret as string).update(JSON.stringify(req.body)).digest('hex');
 		if (headerData['x-hook-signature'] !== computedSignature) {
 			// Signature is not valid so ignore call
 			return {};

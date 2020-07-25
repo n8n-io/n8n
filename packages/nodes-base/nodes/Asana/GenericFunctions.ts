@@ -4,8 +4,9 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-
+import {
+	OptionsWithUri,
+} from 'request';
 
 /**
  * Make an API request to Asana
