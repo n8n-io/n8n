@@ -92,140 +92,40 @@ export class JiraTrigger implements INodeType {
 						value: '*',
 					},
 					{
-						name: 'Board Created',
-						value: 'board_created',
+						name: 'Board Configuration Changed',
+						value: 'board_configuration_changed',
 					},
 					{
-						name: 'Board Updated',
-						value: 'board_updated',
+						name: 'Board Created',
+						value: 'board_created',
 					},
 					{
 						name: 'Board Deleted',
 						value: 'board_deleted',
 					},
 					{
-						name: 'Board Configuration Changed',
-						value: 'board_configuration_changed',
+						name: 'Board Updated',
+						value: 'board_updated',
 					},
 					{
 						name: 'Comment Created',
 						value: 'comment_created',
 					},
 					{
-						name: 'Comment Updated',
-						value: 'comment_updated',
-					},
-					{
 						name: 'Comment Deleted',
 						value: 'comment_deleted',
+					},
+					{
+						name: 'Comment Updated',
+						value: 'comment_updated',
 					},
 					{
 						name: 'Issue Created',
 						value: 'jira:issue_created',
 					},
 					{
-						name: 'Issue Updated',
-						value: 'jira:issue_updated',
-					},
-					{
 						name: 'Issue Deleted',
 						value: 'jira:issue_deleted',
-					},
-					{
-						name: 'Option Voting Changed',
-						value: 'option_voting_changed',
-					},
-					{
-						name: 'Option Watching Changed',
-						value: 'option_watching_changed',
-					},
-					{
-						name: 'Option Unassigned Issues Changed',
-						value: 'option_unassigned_issues_changed',
-					},
-					{
-						name: 'Option Subtasks Changed',
-						value: 'option_subtasks_changed',
-					},
-					{
-						name: 'Option Attachments Changed',
-						value: 'option_attachments_changed',
-					},
-					{
-						name: 'Option Issue Links Changed',
-						value: 'option_issuelinks_changed',
-					},
-					{
-						name: 'Option Timetracking Changed',
-						value: 'option_timetracking_changed',
-					},
-					{
-						name: 'Project Created',
-						value: 'project_created',
-					},
-					{
-						name: 'Project Updated',
-						value: 'project_updated',
-					},
-					{
-						name: 'Project Deleted',
-						value: 'project_deleted',
-					},
-					{
-						name: 'Sprint Created',
-						value: 'sprint_created',
-					},
-					{
-						name: 'Sprint Deleted',
-						value: 'sprint_deleted',
-					},
-					{
-						name: 'Sprint Updated',
-						value: 'sprint_updated',
-					},
-					{
-						name: 'Sprint Started',
-						value: 'sprint_started',
-					},
-					{
-						name: 'Sprint Closed',
-						value: 'sprint_closed',
-					},
-					{
-						name: 'User Created',
-						value: 'user_created',
-					},
-					{
-						name: 'User Updated',
-						value: 'user_updated',
-					},
-					{
-						name: 'User Deleted',
-						value: 'user_deleted',
-					},
-					{
-						name: 'Version Released',
-						value: 'jira:version_released',
-					},
-					{
-						name: 'Version Unreleased',
-						value: 'jira:version_unreleased',
-					},
-					{
-						name: 'Version Created',
-						value: 'jira:version_created',
-					},
-					{
-						name: 'Version Moved',
-						value: 'jira:version_moved',
-					},
-					{
-						name: 'Version Updated',
-						value: 'jira:version_updated',
-					},
-					{
-						name: 'Version Deleted',
-						value: 'jira:version_deleted',
 					},
 					{
 						name: 'Issue Link Created',
@@ -236,16 +136,116 @@ export class JiraTrigger implements INodeType {
 						value: 'issuelink_deleted',
 					},
 					{
+						name: 'Issue Updated',
+						value: 'jira:issue_updated',
+					},
+					{
+						name: 'Option Attachments Changed',
+						value: 'option_attachments_changed',
+					},
+					{
+						name: 'Option Issue Links Changed',
+						value: 'option_issuelinks_changed',
+					},
+					{
+						name: 'Option Subtasks Changed',
+						value: 'option_subtasks_changed',
+					},
+					{
+						name: 'Option Timetracking Changed',
+						value: 'option_timetracking_changed',
+					},
+					{
+						name: 'Option Unassigned Issues Changed',
+						value: 'option_unassigned_issues_changed',
+					},
+					{
+						name: 'Option Voting Changed',
+						value: 'option_voting_changed',
+					},
+					{
+						name: 'Option Watching Changed',
+						value: 'option_watching_changed',
+					},
+					{
+						name: 'Project Created',
+						value: 'project_created',
+					},
+					{
+						name: 'Project Deleted',
+						value: 'project_deleted',
+					},
+					{
+						name: 'Project Updated',
+						value: 'project_updated',
+					},
+					{
+						name: 'Sprint Closed',
+						value: 'sprint_closed',
+					},
+					{
+						name: 'Sprint Created',
+						value: 'sprint_created',
+					},
+					{
+						name: 'Sprint Deleted',
+						value: 'sprint_deleted',
+					},
+					{
+						name: 'Sprint Started',
+						value: 'sprint_started',
+					},
+					{
+						name: 'Sprint Updated',
+						value: 'sprint_updated',
+					},
+					{
+						name: 'User Created',
+						value: 'user_created',
+					},
+					{
+						name: 'User Deleted',
+						value: 'user_deleted',
+					},
+					{
+						name: 'User Updated',
+						value: 'user_updated',
+					},
+					{
+						name: 'Version Created',
+						value: 'jira:version_created',
+					},
+					{
+						name: 'Version Deleted',
+						value: 'jira:version_deleted',
+					},
+					{
+						name: 'Version Moved',
+						value: 'jira:version_moved',
+					},
+					{
+						name: 'Version Released',
+						value: 'jira:version_released',
+					},
+					{
+						name: 'Version Unreleased',
+						value: 'jira:version_unreleased',
+					},
+					{
+						name: 'Version Updated',
+						value: 'jira:version_updated',
+					},
+					{
 						name: 'Worklog Created',
 						value: 'worklog_created',
 					},
 					{
-						name: 'Worklog Updated',
-						value: 'worklog_updated',
-					},
-					{
 						name: 'Worklog Deleted',
 						value: 'worklog_deleted',
+					},
+					{
+						name: 'Worklog Updated',
+						value: 'worklog_updated',
 					},
 				],
 				required: true,
