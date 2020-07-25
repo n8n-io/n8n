@@ -16,12 +16,12 @@ export const trackOperations = [
 			{
 				name: 'Event',
 				value: 'event',
-				description: 'lets you record the actions your users perform.Every action triggers what we call an “event”, which can also have associated properties.',
+				description: 'Record the actions your users perform. Every action triggers an event, which can also have associated properties.',
 			},
 			{
 				name: 'Page',
 				value: 'page',
-				description: ' lets you record page views on your website, along with optional extra information about the page being viewed.',
+				description: 'Record page views on your website, along with optional extra information about the page being viewed.',
 			},
 		],
 		default: 'event',

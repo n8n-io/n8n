@@ -459,7 +459,7 @@ export class WorkflowExecute {
 		let executionData: IExecuteData;
 		let executionError: IExecutionError | undefined;
 		let executionNode: INode;
-		let nodeSuccessData: INodeExecutionData[][] | null;
+		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
 		let startTime: number;
 		let taskData: ITaskData;
@@ -593,8 +593,14 @@ export class WorkflowExecute {
 								}
 							}
 
-							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
 							nodeSuccessData = await workflow.runNode(executionData.node, executionData.data, this.runExecutionData, runIndex, this.additionalData, NodeExecuteFunctions, this.mode);
+
+							if (nodeSuccessData === undefined) {
+								// Node did not get executed
+								nodeSuccessData = null;
+							} else {
+								this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
+							}
 
 							if (nodeSuccessData === null || nodeSuccessData[0][0] === undefined) {
 								if (executionData.node.alwaysOutputData === true) {

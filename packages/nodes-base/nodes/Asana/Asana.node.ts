@@ -120,7 +120,7 @@ export class Asana implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get data of task',
+						description: 'Get data of a task',
 					},
 					{
 						name: 'Update',
@@ -405,12 +405,12 @@ export class Asana implements INodeType {
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Data of all users',
+						description: 'Get data of all users',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get data of user',
+						description: 'Get data of a user',
 					},
 				],
 				default: 'get',

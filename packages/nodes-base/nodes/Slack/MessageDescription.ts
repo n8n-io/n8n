@@ -91,7 +91,7 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'Post the message as authenticated user instead of bot.',
+		description: 'Post the message as authenticated user instead of bot. Works only with user token.',
 	},
 	{
 		displayName: 'User Name',
@@ -111,7 +111,7 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'Set the bot\'s user name.',
+		description: 'Set the bot\'s user name. This field will be ignored if you are using a user token.',
 	},
 	{
 		displayName: 'JSON parameters',
@@ -504,7 +504,7 @@ export const messageFields = [
 				],
 			},
 		},
-		description: 'Pass true to update the message as the authed user. Bot users in this context are considered authed users.',
+		description: 'Pass true to update the message as the authed user. Works only with user token.',
 	},
 	{
 		displayName: 'Update Fields',

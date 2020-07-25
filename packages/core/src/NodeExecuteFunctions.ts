@@ -44,14 +44,9 @@ import * as express from 'express';
 import * as path from 'path';
 import { OptionsWithUrl, OptionsWithUri } from 'request';
 import * as requestPromise from 'request-promise-native';
-
-import { Magic, MAGIC_MIME_TYPE } from 'mmmagic';
-
 import { createHmac } from 'crypto';
-
-
-const magic = new Magic(MAGIC_MIME_TYPE);
-
+import { fromBuffer } from 'file-type';
+import { lookup } from 'mime-types';
 
 
 /**
@@ -66,18 +61,28 @@ const magic = new Magic(MAGIC_MIME_TYPE);
  */
 export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData> {
 	if (!mimeType) {
-		// If not mime type is given figure it out
-		mimeType = await new Promise<string>(
-			(resolve, reject) => {
-				magic.detect(binaryData, (err: Error, mimeType: string) => {
-					if (err) {
-						return reject(err);
-					}
+		// If no mime type is given figure it out
 
-					return resolve(mimeType);
-				});
+		if (filePath) {
+			// Use file path to guess mime type
+			const mimeTypeLookup = lookup(filePath);
+			if (mimeTypeLookup) {
+				mimeType = mimeTypeLookup;
 			}
-		);
+		}
+
+		if (!mimeType) {
+			// Use buffer to guess mime type
+			const fileTypeData = await fromBuffer(binaryData);
+			if (fileTypeData) {
+				mimeType = fileTypeData.mime;
+			}
+		}
+
+		if (!mimeType) {
+			// Fall back to text
+			mimeType = 'text/plain';
+		}
 	}
 
 	const returnData: IBinaryData = {
@@ -183,7 +188,7 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
 * @returns
 */
-export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions) {
+export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions) {
 	const credentials = this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
@@ -216,14 +221,22 @@ export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: strin
 	};
 
 	const newRequestOptions = {
-		//@ts-ignore
-		url: requestOptions.url,
 		method: requestOptions.method,
 		data: { ...requestOptions.qs, ...requestOptions.body },
 		json: requestOptions.json,
 	};
 
-	if (Object.keys(requestOptions.qs).length !== 0) {
+	// Some RequestOptions have a URI and some have a URL
+	//@ts-ignores
+	if (requestOptions.url !== undefined) {
+		//@ts-ignore
+		newRequestOptions.url = requestOptions.url;
+	} else {
+		//@ts-ignore
+		newRequestOptions.url = requestOptions.uri;
+	}
+
+	if (requestOptions.qs !== undefined) {
 		//@ts-ignore
 		newRequestOptions.qs = oauth.authorize(newRequestOptions as RequestOptions, token);
 	} else {
@@ -413,7 +426,8 @@ export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode,
 		return undefined;
 	}
 
-	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString());
+	const isFullPath: boolean = workflow.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
+	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
 }
 
 
