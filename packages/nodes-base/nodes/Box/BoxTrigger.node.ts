@@ -49,14 +49,14 @@ export class BoxTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Collaboration Created',
-						value: 'COLLABORATION.CREATED',
-						description: 'A collaboration is created',
-					},
-					{
 						name: 'Collaboration Accepted',
 						value: 'COLLABORATION.ACCEPTED',
 						description: 'A collaboration has been accepted',
+					},
+					{
+						name: 'Collaboration Created',
+						value: 'COLLABORATION.CREATED',
+						description: 'A collaboration is created',
 					},
 					{
 						name: 'Collaboration Rejected',
@@ -79,44 +79,14 @@ export class BoxTrigger implements INodeType {
 						description: 'A comment object is created',
 					},
 					{
-						name: 'Comment Updated',
-						value: 'COMMENT.UPDATED',
-						description: 'A comment object is edited',
-					},
-					{
 						name: 'Comment Deleted',
 						value: 'COMMENT.DELETED',
 						description: 'A comment object is removed',
 					},
 					{
-						name: 'File Uploaded',
-						value: 'FILE.UPLOADED',
-						description: 'A file is uploaded to or moved to this folder',
-					},
-					{
-						name: 'File Previewed',
-						value: 'FILE.PREVIEWED',
-						description: 'A file is previewed',
-					},
-					{
-						name: 'File Downloaded',
-						value: 'FILE.DOWNLOADED',
-						description: 'A file is downloaded',
-					},
-					{
-						name: 'File Trashed',
-						value: 'FILE.TRASHED',
-						description: 'A file is moved to the trash',
-					},
-					{
-						name: 'File Deleted',
-						value: 'FILE.DELETED',
-						description: 'A file is moved to the trash',
-					},
-					{
-						name: 'File Restored',
-						value: 'FILE.RESTORED',
-						description: 'A file is restored from the trash',
+						name: 'Comment Updated',
+						value: 'COMMENT.UPDATED',
+						description: 'A comment object is edited',
 					},
 					{
 						name: 'File Copied',
@@ -124,9 +94,14 @@ export class BoxTrigger implements INodeType {
 						description: 'A file is copied',
 					},
 					{
-						name: 'File Moved',
-						value: 'FILE.MOVED',
-						description: 'A file is moved from one folder to another',
+						name: 'File Deleted',
+						value: 'FILE.DELETED',
+						description: 'A file is moved to the trash',
+					},
+					{
+						name: 'File Downloaded',
+						value: 'FILE.DOWNLOADED',
+						description: 'A file is downloaded',
 					},
 					{
 						name: 'File Locked',
@@ -134,9 +109,14 @@ export class BoxTrigger implements INodeType {
 						description: 'A file is locked',
 					},
 					{
-						name: 'File Unlocked',
-						value: 'FILE.UNLOCKED',
-						description: 'A file is unlocked',
+						name: 'File Moved',
+						value: 'FILE.MOVED',
+						description: 'A file is moved from one folder to another',
+					},
+					{
+						name: 'File Previewed',
+						value: 'FILE.PREVIEWED',
+						description: 'A file is previewed',
 					},
 					{
 						name: 'File Renamed',
@@ -144,29 +124,24 @@ export class BoxTrigger implements INodeType {
 						description: 'A file was renamed.',
 					},
 					{
-						name: 'Folder Created',
-						value: 'FOLDER.CREATED',
-						description: 'A folder is created',
+						name: 'File Restored',
+						value: 'FILE.RESTORED',
+						description: 'A file is restored from the trash',
 					},
 					{
-						name: 'Folder Renamed',
-						value: 'FOLDER.RENAMED',
-						description: 'A folder was renamed.',
+						name: 'File Trashed',
+						value: 'FILE.TRASHED',
+						description: 'A file is moved to the trash',
 					},
 					{
-						name: 'Folder Downloaded',
-						value: 'FOLDER.DOWNLOADED',
-						description: 'A folder is downloaded',
+						name: 'File Unlocked',
+						value: 'FILE.UNLOCKED',
+						description: 'A file is unlocked',
 					},
 					{
-						name: 'Folder Restored',
-						value: 'FOLDER.RESTORED',
-						description: 'A folder is restored from the trash',
-					},
-					{
-						name: 'Folder Deleted',
-						value: 'FOLDER.DELETED',
-						description: 'A folder is permanently removed',
+						name: 'File Uploaded',
+						value: 'FILE.UPLOADED',
+						description: 'A file is uploaded to or moved to this folder',
 					},
 					{
 						name: 'Folder Copied',
@@ -174,9 +149,34 @@ export class BoxTrigger implements INodeType {
 						description: 'A copy of a folder is made',
 					},
 					{
+						name: 'Folder Created',
+						value: 'FOLDER.CREATED',
+						description: 'A folder is created',
+					},
+					{
+						name: 'Folder Deleted',
+						value: 'FOLDER.DELETED',
+						description: 'A folder is permanently removed',
+					},
+					{
+						name: 'Folder Downloaded',
+						value: 'FOLDER.DOWNLOADED',
+						description: 'A folder is downloaded',
+					},
+					{
 						name: 'Folder Moved',
 						value: 'FOLDER.MOVED',
 						description: 'A folder is moved to a different folder',
+					},
+					{
+						name: 'Folder Renamed',
+						value: 'FOLDER.RENAMED',
+						description: 'A folder was renamed.',
+					},
+					{
+						name: 'Folder Restored',
+						value: 'FOLDER.RESTORED',
+						description: 'A folder is restored from the trash',
 					},
 					{
 						name: 'Folder Trashed',
@@ -189,19 +189,14 @@ export class BoxTrigger implements INodeType {
 						description: 'A new metadata template instance is associated with a file or folder',
 					},
 					{
-						name: 'Metadata Instance Updated',
-						value: 'METADATA_INSTANCE.UPDATED',
-						description: 'An attribute (value) is updated/deleted for an existing metadata template instance associated with a file or folder',
-					},
-					{
 						name: 'Metadata Instance Deleted',
 						value: 'METADATA_INSTANCE.DELETED',
 						description: 'An existing metadata template instance associated with a file or folder is deleted',
 					},
 					{
-						name: 'Sharedlink Deleted',
-						value: 'SHARED_LINK.DELETED',
-						description: 'A shared link was deleted',
+						name: 'Metadata Instance Updated',
+						value: 'METADATA_INSTANCE.UPDATED',
+						description: 'An attribute (value) is updated/deleted for an existing metadata template instance associated with a file or folder',
 					},
 					{
 						name: 'Sharedlink Created',
@@ -209,7 +204,12 @@ export class BoxTrigger implements INodeType {
 						description: 'A shared link was created',
 					},
 					{
-						name: 'Sharedlink UPDATED',
+						name: 'Sharedlink Deleted',
+						value: 'SHARED_LINK.DELETED',
+						description: 'A shared link was deleted',
+					},
+					{
+						name: 'Sharedlink Updated',
 						value: 'SHARED_LINK.UPDATED',
 						description: 'A shared link was updated',
 					},

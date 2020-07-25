@@ -47,17 +47,11 @@ export async function boxApiRequest(this: IExecuteFunctions | IExecuteSingleFunc
 		if (error.response && error.response.body) {
 
 			if (error.response.body.context_info && error.response.body.context_info.errors) {
-
 				const errors = error.response.body.context_info.errors;
-
 				errorMessage = errors.map((e: IDataObject) => e.message);
-
 				errorMessage = errorMessage.join('|');
-
 			} else if (error.response.body.message) {
-
 				errorMessage = error.response.body.message;
-
 			}
 
 			throw new Error(`Box error response [${error.statusCode}]: ${errorMessage}`);
