@@ -107,32 +107,29 @@ export class AsanaTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
-				// Webhook got created before so check if it still exists
-				const endpoint = `webhooks/${webhookData.webhookId}`;
+				const resource = this.getNodeParameter('resource') as string;
 
-				try {
-					await asanaApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
-					if (e.statusCode === 404) {
-						// Webhook does not exist
-						delete webhookData.webhookId;
+				const workspace = this.getNodeParameter('workspace') as string;
 
-						return false;
+				const endpoint = 'webhooks';
+
+				const { data } = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
+
+				for (const webhook of data) {
+					if (webhook.resource.gid === resource && webhook.target === webhookUrl) {
+						webhookData.webhookId = webhook.gid;
+						return true;
 					}
-
-					// Some error occured
-					throw e;
 				}
 
 				// If it did not error then the webhook exists
-				return true;
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('%20')) {
@@ -140,8 +137,6 @@ export class AsanaTrigger implements INodeType {
 				}
 
 				const resource = this.getNodeParameter('resource') as string;
-
-				const workspace = this.getNodeParameter('workspace') as string;
 
 				const endpoint = `webhooks`;
 
@@ -151,28 +146,14 @@ export class AsanaTrigger implements INodeType {
 				};
 
 				let responseData;
-				try {
-					 responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
-				} catch(error) {
-					// delete webhook if it already exists
-					if (error.statusCode === 403) {
-						const webhookData = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
-						const webhook = webhookData.data.find((webhook: any) => { // tslint:disable-line:no-any
-							return webhook.target === webhookUrl && webhook.resource.gid === resource;
-						});
-						await asanaApiRequest.call(this, 'DELETE', `${endpoint}/${webhook.gid}`, {});
-						responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
-					} else {
-						throw error;
-					}
-				}
+
+				responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.data === undefined || responseData.data.id === undefined) {
 					// Required data is missing so was not successful
 					return false;
 				}
 
-				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = responseData.data.id as string;
 
 				return true;
@@ -206,7 +187,7 @@ export class AsanaTrigger implements INodeType {
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 
-		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+		const webhookData = this.getWorkflowStaticData('node');
 
 		if (headerData['x-hook-secret'] !== undefined) {
 			// Is a create webhook confirmation request
@@ -215,6 +196,7 @@ export class AsanaTrigger implements INodeType {
 			const res = this.getResponseObject();
 			res.set('X-Hook-Secret', webhookData.hookSecret as string);
 			res.status(200).end();
+
 			return {
 				noWebhookResponse: true,
 			};

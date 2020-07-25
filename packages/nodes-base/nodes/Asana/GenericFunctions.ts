@@ -17,7 +17,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
+export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query: object = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
@@ -48,6 +48,10 @@ export async function asanaApiRequest(this: IHookFunctions | IExecuteFunctions |
 		if (error.statusCode === 401) {
 			// Return a clear error
 			throw new Error('The Asana credentials are not valid!');
+		}
+
+		if (error.statusCode === 403) {
+			throw error;
 		}
 
 		if (error.response && error.response.body && error.response.body.errors) {
