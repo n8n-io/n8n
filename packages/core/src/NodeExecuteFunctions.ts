@@ -188,7 +188,7 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
 * @returns
 */
-export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions) {
+export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions) {
 	const credentials = this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
@@ -221,14 +221,22 @@ export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: strin
 	};
 
 	const newRequestOptions = {
-		//@ts-ignore
-		url: requestOptions.url,
 		method: requestOptions.method,
 		data: { ...requestOptions.qs, ...requestOptions.body },
 		json: requestOptions.json,
 	};
 
-	if (Object.keys(requestOptions.qs).length !== 0) {
+	// Some RequestOptions have a URI and some have a URL
+	//@ts-ignores
+	if (requestOptions.url !== undefined) {
+		//@ts-ignore
+		newRequestOptions.url = requestOptions.url;
+	} else {
+		//@ts-ignore
+		newRequestOptions.url = requestOptions.uri;
+	}
+
+	if (requestOptions.qs !== undefined) {
 		//@ts-ignore
 		newRequestOptions.qs = oauth.authorize(newRequestOptions as RequestOptions, token);
 	} else {
@@ -418,7 +426,8 @@ export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode,
 		return undefined;
 	}
 
-	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString());
+	const isFullPath: boolean = workflow.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
+	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
 }
 
 
