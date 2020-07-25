@@ -84,7 +84,7 @@ export class Box implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
 			if (resource === 'file') {
-				//https://developer.box.com/reference/post-files-id-copy
+				// https://developer.box.com/reference/post-files-id-copy
 				if (operation === 'copy') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
 					const parentId = this.getNodeParameter('parentId', i) as string;
@@ -108,14 +108,14 @@ export class Box implements INodeType {
 
 					returnData.push(responseData as IDataObject);
 				}
-				//https://developer.box.com/reference/delete-files-id
+				// https://developer.box.com/reference/delete-files-id
 				if (operation === 'delete') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
 					responseData = await boxApiRequest.call(this, 'DELETE', `/files/${fileId}`);
 					responseData = { success: true };
 					returnData.push(responseData as IDataObject);
 				}
-				//https://developer.box.com/reference/get-files-id-content
+				// https://developer.box.com/reference/get-files-id-content
 				if (operation === 'download') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
 					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -149,7 +149,7 @@ export class Box implements INodeType {
 
 					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
 				}
-				//https://developer.box.com/reference/get-files-id
+				// https://developer.box.com/reference/get-files-id
 				if (operation === 'get') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -159,7 +159,7 @@ export class Box implements INodeType {
 					responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`, {}, qs);
 					returnData.push(responseData as IDataObject);
 				}
-				//https://developer.box.com/reference/get-search/
+				// https://developer.box.com/reference/get-search/
 				if (operation === 'search') {
 					const query = this.getNodeParameter('query', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -198,7 +198,7 @@ export class Box implements INodeType {
 					}
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
-				//https://developer.box.com/reference/post-files-content
+				// https://developer.box.com/reference/post-files-content
 				if (operation === 'upload') {
 					const parentId = this.getNodeParameter('parentId', i) as string;
 					const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
@@ -207,7 +207,7 @@ export class Box implements INodeType {
 					const attributes: IDataObject = {};
 
 					if (parentId !== '') {
-						attributes['parent'] =  { id: parentId };
+						attributes['parent'] = { id: parentId };
 					} else {
 						// if not parent defined save it on the root directory
 						attributes['parent'] = { id: 0 };
@@ -264,14 +264,14 @@ export class Box implements INodeType {
 								contentType: 'text/plain',
 							},
 						};
-						responseData = await boxApiRequest.call(this, 'POST', '', {} , {}, 'https://upload.box.com/api/2.0/files/content', { formData: body });
+						responseData = await boxApiRequest.call(this, 'POST', '', {}, {}, 'https://upload.box.com/api/2.0/files/content', { formData: body });
 
 						returnData.push.apply(returnData, responseData.entries as IDataObject[]);
 					}
 				}
 			}
 			if (resource === 'folder') {
-				//https://developer.box.com/reference/post-folders
+				// https://developer.box.com/reference/post-folders
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
 					const parentId = this.getNodeParameter('parentId', i) as string;
@@ -300,7 +300,7 @@ export class Box implements INodeType {
 
 					returnData.push(responseData);
 				}
-				//https://developer.box.com/reference/delete-folders-id
+				// https://developer.box.com/reference/delete-folders-id
 				if (operation === 'delete') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
 					const recursive = this.getNodeParameter('recursive', i) as boolean;
@@ -310,7 +310,7 @@ export class Box implements INodeType {
 					responseData = { success: true };
 					returnData.push(responseData as IDataObject);
 				}
-				//https://developer.box.com/reference/get-search/
+				// https://developer.box.com/reference/get-search/
 				if (operation === 'search') {
 					const query = this.getNodeParameter('query', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
