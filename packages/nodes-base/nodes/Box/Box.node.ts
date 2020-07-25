@@ -13,6 +13,7 @@ import {
 
 import {
 	boxApiRequest,
+	boxApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -24,6 +25,8 @@ import {
 	folderFields,
 	folderOperations,
 } from './FolderDescription';
+
+import * as moment from 'moment-timezone';
 
 export class Box implements INodeType {
 	description: INodeTypeDescription = {
@@ -156,6 +159,45 @@ export class Box implements INodeType {
 					responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`, {}, qs);
 					returnData.push(responseData as IDataObject);
 				}
+				//https://developer.box.com/reference/get-search/
+				if (operation === 'search') {
+					const query = this.getNodeParameter('query', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const timezone = this.getTimezone();
+					qs.type = 'file';
+					qs.query = query;
+					Object.assign(qs, additionalFields);
+
+					if (qs.content_types) {
+						qs.content_types = (qs.content_types as string).split(',');
+					}
+
+					if (additionalFields.createdRangeUi) {
+						const createdRangeValues = (additionalFields.createdRangeUi as IDataObject).createdRangeValuesUi as IDataObject;
+						if (createdRangeValues) {
+							qs.created_at_range = `${moment.tz(createdRangeValues.from, timezone).format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
+						}
+						delete qs.createdRangeUi;
+					}
+
+					if (additionalFields.updatedRangeUi) {
+						const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject).updatedRangeValuesUi as IDataObject;
+						if (updateRangeValues) {
+							qs.updated_at_range = `${moment.tz(updateRangeValues.from, timezone).format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
+						}
+						delete qs.updatedRangeUi;
+					}
+
+					if (returnAll) {
+						responseData = await boxApiRequestAllItems.call(this, 'entries', 'GET', `/search`, {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
+						responseData = responseData.entries;
+					}
+					returnData.push.apply(returnData, responseData as IDataObject[]);
+				}
 				//https://developer.box.com/reference/post-files-content
 				if (operation === 'upload') {
 					const parentId = this.getNodeParameter('parentId', i) as string;
@@ -267,7 +309,45 @@ export class Box implements INodeType {
 					responseData = await boxApiRequest.call(this, 'DELETE', `/folders/${folderId}`, qs);
 					responseData = { success: true };
 					returnData.push(responseData as IDataObject);
+				}
+				//https://developer.box.com/reference/get-search/
+				if (operation === 'search') {
+					const query = this.getNodeParameter('query', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const timezone = this.getTimezone();
+					qs.type = 'folder';
+					qs.query = query;
+					Object.assign(qs, additionalFields);
 
+					if (qs.content_types) {
+						qs.content_types = (qs.content_types as string).split(',');
+					}
+
+					if (additionalFields.createdRangeUi) {
+						const createdRangeValues = (additionalFields.createdRangeUi as IDataObject).createdRangeValuesUi as IDataObject;
+						if (createdRangeValues) {
+							qs.created_at_range = `${moment.tz(createdRangeValues.from, timezone).format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
+						}
+						delete qs.createdRangeUi;
+					}
+
+					if (additionalFields.updatedRangeUi) {
+						const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject).updatedRangeValuesUi as IDataObject;
+						if (updateRangeValues) {
+							qs.updated_at_range = `${moment.tz(updateRangeValues.from, timezone).format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
+						}
+						delete qs.updatedRangeUi;
+					}
+
+					if (returnAll) {
+						responseData = await boxApiRequestAllItems.call(this, 'entries', 'GET', `/search`, {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
+						responseData = responseData.entries;
+					}
+					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
 			}
 		}

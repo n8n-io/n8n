@@ -41,7 +41,6 @@ export async function boxApiRequest(this: IExecuteFunctions | IExecuteSingleFunc
 		return await this.helpers.requestOAuth2.call(this, 'boxOAuth2Api', options, oAuth2Options);
 
 	} catch (error) {
-		console.log(error);
 
 		let errorMessage;
 
@@ -73,14 +72,13 @@ export async function boxApiRequestAllItems(this: IExecuteFunctions | ILoadOptio
 
 	let responseData;
 	query.limit = 100;
-
+	query.offset = 0;
 	do {
 		responseData = await boxApiRequest.call(this, method, endpoint, body, query);
-		query.marker = responseData['next_marker'];
+		query.offset = responseData['offset'] + query.limit;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		responseData['next_marker'] !== undefined &&
-		responseData['next_marker'] !== ''
+		responseData[propertyName].length !== 0
 	);
 
 	return returnData;
