@@ -235,6 +235,7 @@
       "dist/nodes/InvoiceNinja/InvoiceNinja.node.js",
       "dist/nodes/InvoiceNinja/InvoiceNinjaTrigger.node.js",
       "dist/nodes/Jira/Jira.node.js",
+      "dist/nodes/Jira/JiraTrigger.node.js",
       "dist/nodes/JotForm/JotFormTrigger.node.js",
       "dist/nodes/Keap/Keap.node.js",
       "dist/nodes/Keap/KeapTrigger.node.js",
