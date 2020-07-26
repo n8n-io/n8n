@@ -211,12 +211,12 @@ export class QuestDb implements INodeType {
 			// ----------------------------------
 			const tableName = this.getNodeParameter('table', 0) as string;
 			const returnFields = this.getNodeParameter('returnFields', 0) as string;
-			
-			let queries : string[] = [];
-			items.map(item => {
-				let columns = Object.keys(item.json);
 
-				let values : string = columns.map((col : string) => {
+			const queries : string[] = [];
+			items.map(item => {
+				const columns = Object.keys(item.json);
+
+				const values : string = columns.map((col : string) => {
 					if (typeof item.json[col] === 'string') {
 						return `\'${item.json[col]}\'`;
 					} else {
@@ -224,13 +224,13 @@ export class QuestDb implements INodeType {
 					}
 				}).join(',');
 
-				let query = `INSERT INTO ${tableName} (${columns.join(',')}) VALUES (${values});`;
+				const query = `INSERT INTO ${tableName} (${columns.join(',')}) VALUES (${values});`;
 				queries.push(query);
 			});
-			
+
 			await db.any(pgp.helpers.concat(queries));
 
-			let returnedItems = await db.any(`SELECT ${returnFields} from ${tableName}`);
+			const returnedItems = await db.any(`SELECT ${returnFields} from ${tableName}`);
 
 			returnItems = this.helpers.returnJsonArray(returnedItems as IDataObject[]);
 		} else {
