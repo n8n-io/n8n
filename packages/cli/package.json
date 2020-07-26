@@ -106,7 +106,7 @@
         "n8n-workflow": "~0.35.0",
         "oauth-1.0a": "^2.2.6",
         "open": "^7.0.0",
-        "pg": "^7.11.0",
+        "pg": "^8.3.0",
         "request-promise-native": "^1.0.7",
         "sqlite3": "^4.2.0",
         "sse-channel": "^3.1.1",
