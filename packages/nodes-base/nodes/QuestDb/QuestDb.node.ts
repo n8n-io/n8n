@@ -1,10 +1,14 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import * as pgPromise from 'pg-promise';
 
-import { pgInsert, pgQuery, pgUpdate } from '../Postgres/Postgres.node.functions';
-import { table } from 'console';
+import { pgQuery } from '../Postgres/Postgres.node.functions';
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -59,7 +63,9 @@ export class QuestDb implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: ['executeQuery'],
+						operation: [
+							'executeQuery',
+						],
 					},
 				},
 				default: '',
@@ -77,7 +83,9 @@ export class QuestDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert',
+						],
 					},
 				},
 				default: 'public',
@@ -90,7 +98,9 @@ export class QuestDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert',
+						],
 					},
 				},
 				default: '',
@@ -103,7 +113,9 @@ export class QuestDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert',
+						],
 					},
 				},
 				default: '',
@@ -117,57 +129,14 @@ export class QuestDb implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [
+							'insert',
+						],
 					},
 				},
 				default: '*',
 				description: 'Comma separated list of the fields that the operation will return',
 			},
-
-			// ----------------------------------
-			//         update
-			// ----------------------------------
-			// {
-			// 	displayName: 'Table',
-			// 	name: 'table',
-			// 	type: 'string',
-			// 	displayOptions: {
-			// 		show: {
-			// 			operation: ['update'],
-			// 		},
-			// 	},
-			// 	default: '',
-			// 	required: true,
-			// 	description: 'Name of the table in which to update data in',
-			// },
-			// {
-			// 	displayName: 'Update Key',
-			// 	name: 'updateKey',
-			// 	type: 'string',
-			// 	displayOptions: {
-			// 		show: {
-			// 			operation: ['update'],
-			// 		},
-			// 	},
-			// 	default: 'id',
-			// 	required: true,
-			// 	description:
-			// 		'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
-			// },
-			// {
-			// 	displayName: 'Columns',
-			// 	name: 'columns',
-			// 	type: 'string',
-			// 	displayOptions: {
-			// 		show: {
-			// 			operation: ['update'],
-			// 		},
-			// 	},
-			// 	default: '',
-			// 	placeholder: 'name,description',
-			// 	description:
-			// 		'Comma separated list of the properties which should used as columns for rows to update.',
-			// },
 		],
 	};
 
