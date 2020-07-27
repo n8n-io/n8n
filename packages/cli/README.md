@@ -89,8 +89,7 @@ If you have problems or questions go to our forum, we will then try to help you 
 If you are interested in working for n8n and so shape the future of the project
 check out our job posts:
 
-[https://jobs.n8n.io](https://jobs.n8n.io)
-
+[https://n8n.join.com](https://n8n.join.com)
 
 
 ## Upgrading
