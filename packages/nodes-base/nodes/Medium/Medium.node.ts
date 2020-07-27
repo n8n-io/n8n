@@ -26,7 +26,7 @@ export class Medium implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Medium',
-			color: '#772244',
+			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -50,7 +50,6 @@ export class Medium implements INodeType {
 					// 	name: 'OAuth2',
 					// 	value: 'oAuth2',
 					// },
-
 				],
 				default: 'accessToken',
 				description: 'The method of authentication.',
@@ -64,7 +63,6 @@ export class Medium implements INodeType {
 						name: 'Post',
 						value: 'post',
 					},
-
 				],
 				default: 'post',
 				description: 'Resource to operate on.',
@@ -82,7 +80,7 @@ export class Medium implements INodeType {
 				},
 				options: [
 					{
-						name: 'Create a post',
+						name: 'create',
 						value: 'create',
 						description: 'Create a post.',
 					},
@@ -139,7 +137,7 @@ export class Medium implements INodeType {
 				description: 'Title of the post. Max Length : 100 characters',
 			},
 			{
-				displayName: 'Content format',
+				displayName: 'Content Format',
 				name: 'contentFormat',
 				default: '',
 				required: true,
@@ -397,7 +395,7 @@ export class Medium implements INodeType {
 						);
 					}
 					else {
-						let responseAuthorId = await mediumApiRequest.call(
+						const responseAuthorId = await mediumApiRequest.call(
 							this,
 							'GET',
 							'/me',
