@@ -106,6 +106,21 @@
 						</el-tooltip>
 					</el-col>
 					<el-col :span="14">
+						<div>
+							<el-switch ref="inputField" :value="displayValue" @change="valueChanged" active-color="#13ce66" :disabled="isValueExpression || isReadOnly"></el-switch>
+							<div class="expression-info clickable" @click="expressionEditDialogVisible = true">Edit Expression</div>
+						</div>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						Timeout After:
+						<el-tooltip class="setting-info" placement="top" effect="light">
+							<div slot="content" v-html="helpTexts.executionTimeout"></div>
+							<font-awesome-icon icon="question-circle" />
+						</el-tooltip>
+					</el-col>
+					<el-col :span="14">
 						<el-input-number size="small" v-model="workflowSettings.executionTimeout" :max="workflowSettings.maxExecutionTimeout" :min="-1" placeholder="timeout in seconds (-1 to deactivate)" type="number" class="el-input_inner"></el-input-number>
 					</el-col>
 				</el-row>
