@@ -73,23 +73,6 @@ export const userFields = [
 		description: 'Number of subscription records to return per page.',
 	},
 	{
-		displayName: 'RAW Data',
-		name: 'rawData',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-			},
-		},
-		default: false,
-		description: 'Return original API response instead of filtered.',
-	},
-	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',

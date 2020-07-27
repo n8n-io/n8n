@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -43,6 +45,25 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 	} catch (error) {
 		throw new Error(`ERROR: Code: ${error.code}. Message: ${error.message}`);
 	}
+}
+
+export async function paddleApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	body.results_per_page = 200;
+	body.page = 1;
+
+	do {
+		responseData = await paddleApiRequest.call(this, endpoint, method, body, query);
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		responseData[propertyName].length !== 0
+	);
+
+	return returnData;
 }
 
 export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any

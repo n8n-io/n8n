@@ -218,23 +218,6 @@ export const couponFields = [
 		},
 	},
 	{
-		displayName: 'RAW Data',
-		name: 'rawData',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'coupon',
-				],
-				operation: [
-					`create`
-				],
-			},
-		},
-		default: false,
-		description: 'Return coupon creation metadata and not only coupon codes.',
-	},
-	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
@@ -377,21 +360,45 @@ export const couponFields = [
 		description: 'The specific product/subscription ID.',
 	},
 	{
-		displayName: 'RAW Data',
-		name: 'rawData',
+		displayName: 'Return All',
+		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
+				operation: [
+					'getAll',
+				],
 				resource: [
 					'coupon',
 				],
-				operation: [
-					`getAll`
-				]
 			},
 		},
 		default: false,
-		description: 'Return original API response instead of filtered.',
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'coupon',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 coupon:update	                          */

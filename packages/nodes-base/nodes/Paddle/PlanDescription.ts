@@ -34,7 +34,7 @@ export const planOperations = [
 export const planFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                 plan:get                                */
+/*                                 plan:get                                   */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Plan ID',
@@ -55,20 +55,44 @@ export const planFields = [
 		description: 'Filter: The subscription plan ID.',
 	},
 	{
-		displayName: 'RAW Data',
-		name: 'rawData',
+		displayName: 'Return All',
+		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
+				operation: [
+					'getAll',
+				],
 				resource: [
 					'plan',
-				],
-				operation: [
-					'get', 'getAll'
 				],
 			},
 		},
 		default: false,
-		description: 'Return original API response instead of filtered.',
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'plan',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 ] as INodeProperties[];
