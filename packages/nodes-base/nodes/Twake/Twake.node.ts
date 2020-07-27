@@ -1,6 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, IDataObject, INodeType, INodeTypeDescription, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { twakeApiRequest, unid, loadChannels } from './GenericFunctions';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
+import {
+	INodeExecutionData,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+} from 'n8n-workflow';
+
+import {
+	twakeApiRequest,
+} from './GenericFunctions';
 
 export class Twake implements INodeType {
 	description: INodeTypeDescription = {
@@ -9,23 +22,58 @@ export class Twake implements INodeType {
 		group: ['transform'],
 		version: 1,
 		icon: 'file:twake.png',
-		description: 'Twake node for n8n',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume Twake API',
 		defaults: {
 			name: 'Twake',
-			color: '#772244',
+			color: '#7168ee',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'twakeApi',
+				name: 'twakeCloudApi',
 				required: true,
+				displayOptions: {
+					show: {
+						twakeVersion: [
+							'cloud',
+						],
+					},
+				},
+			},
+			{
+				name: 'twakeServerApi',
+				required: true,
+				displayOptions: {
+					show: {
+						twakeVersion: [
+							'server',
+						],
+					},
+				},
 			},
 		],
 		properties: [
 			{
-				displayName: 'Application',
-				name: 'application',
+				displayName: 'Twake Version',
+				name: 'twakeVersion',
+				type: 'options',
+				options: [
+					{
+						name: 'Cloud',
+						value: 'cloud',
+					},
+					{
+						name: 'Server (Self Hosted)',
+						value: 'server',
+					},
+				],
+				default: 'cloud',
+			},
+			{
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
 				options: [
 					{
@@ -37,28 +85,29 @@ export class Twake implements INodeType {
 				default: 'message',
 				description: 'The operation to perform.',
 			},
-			// messgage
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
 				displayOptions: {
 					show: {
-						application: ['message'],
+						resource: [
+							'message',
+						],
 					},
 				},
 				options: [
 					{
-						name: 'Send Message',
-						value: 'sendMessage',
-						description: 'Send message',
+						name: 'Send',
+						value: 'send',
+						description: 'Send a message',
 					},
 				],
-				default: 'sendMessage',
+				default: 'send',
 				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'Channel',
+				displayName: 'Channel ID',
 				name: 'channelId',
 				type: 'options',
 				typeOptions: {
@@ -66,55 +115,66 @@ export class Twake implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: ['sendMessage'],
+						operation: [
+							'send',
+						],
 					},
 				},
 				default: '',
-				description: 'Channel name',
+				description: `Channel's ID`,
 			},
 			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
+				required: true,
 				displayOptions: {
 					show: {
-						operation: ['sendMessage'],
+						operation: [
+							'send',
+						],
 					},
 				},
 				default: '',
 				description: 'Message content',
 			},
 			{
-				displayName: 'Sender name',
-				name: 'senderName',
-				type: 'string',
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: ['sendMessage'],
+						operation: [
+							'send',
+						],
 					},
 				},
-				default: '',
-				description: 'Sender name',
+				default: {},
+				options: [
+					{
+						displayName: 'Sender Icon',
+						name: 'senderIcon',
+						type: 'string',
+						default: '',
+						description: 'Sender icon',
+					},
+					{
+						displayName: 'Sender Name',
+						name: 'senderName',
+						type: 'string',
+						default: '',
+						description: 'Sender name',
+					},
+				],
 			},
-			{
-				displayName: 'Sender icon',
-				name: 'senderIcon',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['sendMessage'],
-					},
-				},
-				default: '',
-				description: 'Sender icon',
-			}
 		],
 	};
 
 	methods = {
 		loadOptions: {
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = 'channel';
+				const endpoint = '/channels';
 				const responseData = await twakeApiRequest.call(this, 'POST', endpoint, {});
 				if (responseData === undefined) {
 					throw new Error('No data got returned');
@@ -134,59 +194,53 @@ export class Twake implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const returnData: IDataObject[] = [];
+		const length = (items.length as unknown) as number;
+		const qs: IDataObject = {};
+		let responseData;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+		for (let i = 0; i < length; i++) {
+			if (resource === 'message') {
+				if (operation === 'send') {
 
-		let item: INodeExecutionData;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-		const credentials = this.getCredentials('twakeApi');
-		let body: IDataObject;
-		let qs: IDataObject;
-		let application: string;
-		let requestMethod: string;
-		let endpoint: string;
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
-
-		// Itterates over all input items and add the key "myString" with the
-		// value the parameter "myString" resolves to.
-		// (This could be a different value for each item in case it contains an expression)
-		for (let i = 0; i < items.length; i++) {
-			requestMethod = 'POST';
-			endpoint = '';
-			body = {};
-			qs = {};
-			item = items[i];
-			application = this.getNodeParameter('application', i) as string;
-			let operation = this.getNodeParameter('operation', i) as string;
-			if (application == 'message') {
-				let message = {};
-				if (operation == 'sendMessage') {
-					endpoint = 'actions/message/save';
-					message = {
+					const message: IDataObject = {
 						channel_id: this.getNodeParameter('channelId', i),
 						content: {
 							formatted: this.getNodeParameter('content', i) as string,
 						},
 						hidden_data: {
 							allow_delete: 'everyone',
-							custom_icon: this.getNodeParameter('senderIcon', i) as string,
-							custom_title: this.getNodeParameter('senderName', i) as string,
 						},
 					};
-					body = {
+
+					if (additionalFields.senderName) {
+						//@ts-ignore
+						message.hidden_data!.custom_title = additionalFields.senderName as string;
+					}
+
+					if (additionalFields.senderIcon) {
+						//@ts-ignore
+						message.hidden_data!.custom_icon = additionalFields.senderIcon as string;
+					}
+
+					const body = {
 						object: message,
 					};
+
+					const endpoint = 'actions/message/save';
+
+					responseData = await twakeApiRequest.call(this, 'POST', endpoint, body);
 				}
 			}
-			let route = endpoint;
-			const responseData = await twakeApiRequest.call(this, 'POST', endpoint, body);
-
-			if (!responseData.object) {
-				throw new Error('error: ' + JSON.stringify(responseData));
-			}
 		}
-
-		return this.prepareOutputData(items);
+		if (Array.isArray(responseData)) {
+			returnData.push.apply(returnData, responseData as IDataObject[]);
+		} else if (responseData !== undefined) {
+			returnData.push(responseData as IDataObject);
+		}
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

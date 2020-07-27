@@ -1,7 +1,12 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { INodePropertyOptions } from 'n8n-workflow';
+import {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+} from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 /**
  * Make an API request to Twake
  *
@@ -11,32 +16,38 @@ import { OptionsWithUri } from 'request';
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> {
-	const credentials = this.getCredentials('twakeApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	let hostUrl = "";
-	if(credentials.useInSaas == true){
-		hostUrl = "https://connectors.albatros.twakeapp.com/n8n/";
-	}
-	else{
-		hostUrl = credentials.host+(credentials.host.toString().substr(credentials.host.toString().length-1)=="/"?"n8n/":"/n8n/");
-	}
+export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object, query?: object): Promise<any>  {  // tslint:disable-line:no-any
+
+	const authenticationMethod = this.getNodeParameter('twakeVersion', 0, 'twakeCloudApi') as string;
+
 	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Bearer ${credentials.key}`,
-		},
+		headers: {},
 		method,
-		body: body,
+		body,
 		qs: query,
-		uri: hostUrl+endpoint,
+		uri: `https://api.twake.app/api/v1${resource}`,
 		json: true,
 	};
+
+	if (authenticationMethod === 'cloud') {
+		const credentials = this.getCredentials('twakeCloudApi');
+		if (credentials!.standarPlan) {
+			options.headers!.Authorization = `Bearer ${credentials!.workspaceKey}`;
+		} else {
+			options.auth = { user: credentials!.publicId as string, pass: credentials!.privateApiKey as string };
+		}
+
+	} else {
+
+		const credentials = this.getCredentials('twakeServerApi');
+		options.auth = { user: credentials!.publicId as string, pass: credentials!.privateApiKey as string };
+		options.uri = `${credentials!.hostUrl}/api/v1${resource}`;
+	}
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if( error.error.code == "ECONNREFUSED"){
+		if( error.error.code === "ECONNREFUSED"){
 			throw new Error('Twake host is not accessible!');
 
 		}
@@ -56,30 +67,4 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 		// If that data does not exist for some reason return the actual error
 		throw error;
 	}
-}
-
-export async function unid(): Promise<string> {
-	function s4() {
-		return Math.floor((1 + Math.random()) * 0x10000)
-			.toString(16)
-			.substring(1);
-	}
-	return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
-}
-
-export async function loadChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const endpoint = 'channel';
-	const responseData = await twakeApiRequest.call(this, 'POST', endpoint, {});
-	if (responseData === undefined) {
-		throw new Error('No data got returned');
-	}
-
-	const returnData: INodePropertyOptions[] = [];
-	for (const channel of responseData) {
-		returnData.push({
-			name: channel.name,
-			value: channel.id,
-		});
-	}
-	return returnData;
 }
