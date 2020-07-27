@@ -82,14 +82,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 
 	const returnData: IWebhookData[] = [];
 
-	let parentNodes: string[] | undefined;
-
 	for (const node of Object.values(workflow.nodes)) {
-		if (parentNodes !== undefined && !parentNodes.includes(node.name)) {
-			// If parentNodes are given check only them if they have webhooks
-			// and no other ones
-			continue;
-		}
 		returnData.push.apply(returnData, NodeHelpers.getNodeWebhooksBasic(workflow, node));
 	}
 

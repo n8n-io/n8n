@@ -9,8 +9,10 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject
+	IDataObject,
+	IOAuth2Options,
 } from 'n8n-workflow';
+
 import * as _ from 'lodash';
 
 export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
@@ -42,8 +44,13 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
+
+			const oAuth2Options: IOAuth2Options = {
+				tokenType: 'Bearer',
+				property: 'authed_user.access_token',
+			};
 			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'slackOAuth2Api', options, 'bearer', 'authed_user.access_token');
+			return await this.helpers.requestOAuth2.call(this, 'slackOAuth2Api', options, oAuth2Options);
 		}
 	} catch (error) {
 		if (error.statusCode === 401) {

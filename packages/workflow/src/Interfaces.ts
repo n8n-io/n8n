@@ -12,6 +12,11 @@ export interface IBinaryData {
 	fileExtension?: string;
 }
 
+export interface IOAuth2Options {
+	includeCredentialsOnRefreshOnBody?: boolean;
+	property?: string;
+	tokenType?: string;
+}
 
 export interface IConnection {
 	// The node the connection is to
@@ -179,7 +184,6 @@ export interface IExecuteData {
 	data: ITaskDataConnections;
 	node: INode;
 }
-
 
 export type IContextObject = {
 	[key: string]: any; // tslint:disable-line:no-any
@@ -590,7 +594,7 @@ export interface IWorkflowMetadata {
 	active: boolean;
 }
 
-export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD';
+export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];

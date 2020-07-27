@@ -16,7 +16,7 @@ export const estimateOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: `Create a estimate`,
+				description: `Create an estimate`,
 			},
 			{
 				name: 'Delete',
@@ -36,7 +36,7 @@ export const estimateOperations = [
 			{
 				name: 'Update',
 				value: 'update',
-				description: `Update a estimate`,
+				description: `Update an estimate`,
 			},
 		],
 		default: 'getAll',

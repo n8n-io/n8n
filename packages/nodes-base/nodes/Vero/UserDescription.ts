@@ -16,38 +16,37 @@ export const userOperations = [
 			{
 				name: 'Create/Update',
 				value: 'create',
-				description: `Creates a new user profile if the user doesn’t exist yet.
-				Otherwise, the user profile is updated based on the properties provided.`,
+				description: `Create or update a user profile`,
 			},
 			{
 				name: 'Alias',
 				value: 'alias',
-				description: 'Changes a user’s identifier.',
+				description: 'Change a users identifier',
 			},
 			{
 				name: 'Unsubscribe',
 				value: 'unsubscribe',
-				description: 'Unsubscribes a single user.',
+				description: 'Unsubscribe a user.',
 			},
 			{
 				name: 'Re-subscribe',
 				value: 'resubscribe',
-				description: 'Resubscribe a single user.',
+				description: 'Resubscribe a user.',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a single user.',
+				description: 'Delete a user.',
 			},
 			{
 				name: 'Add Tags',
 				value: 'addTags',
-				description: 'Adds a tag to a user’s profile.',
+				description: 'Adds a tag to a users profile.',
 			},
 			{
 				name: 'Remove Tags',
 				value: 'removeTags',
-				description: 'Removes a tag from a user’s profile.',
+				description: 'Removes a tag from a users profile.',
 			},
 		],
 		default: 'create',
