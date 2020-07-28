@@ -258,11 +258,11 @@ export class Paddle implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const productIds = this.getNodeParameter('productId', i) as string;
+					const productId = this.getNodeParameter('productId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const endpoint = '/2.0/product/list_coupons';
 
-					body.product_id = productIds as string;
+					body.product_id = productId as string;
 
 					responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 
@@ -315,9 +315,9 @@ export class Paddle implements INodeType {
 						if (additionalFields.newGroup) {
 							body.new_group = additionalFields.newGroup as string;
 						}
-						if (additionalFields.recurring) {
+						if (additionalFields.recurring === true) {
 							body.recurring = 1;
-						} else {
+						} else if (additionalFields.recurring === false) {
 							body.recurring = 0;
 						}
 						if (additionalFields.productIds) {
@@ -362,10 +362,10 @@ export class Paddle implements INodeType {
 						if (additionalFields.state) {
 							body.state = additionalFields.state as string;
 						}
-						if (additionalFields.recurring) {
-							body.recurring = 1;
+						if (additionalFields.isPaid) {
+							body.is_paid = 1;
 						} else {
-							body.recurring = 0;
+							body.is_paid = 0;
 						}
 						if (additionalFields.from) {
 							body.from = moment(additionalFields.from as Date).format('YYYY-MM-DD') as string;

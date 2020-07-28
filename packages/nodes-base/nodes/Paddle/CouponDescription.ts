@@ -71,7 +71,7 @@ export const couponFields = [
 		]
 	},
 	{
-		displayName: 'Product ID(s)',
+		displayName: 'Product IDs',
 		name: 'productIds',
 		type: 'multiOptions',
 		typeOptions: {
@@ -345,7 +345,7 @@ export const couponFields = [
 	{
 		displayName: 'Product ID',
 		name: 'productId',
-		type: 'number',
+		type: 'string',
 		displayOptions: {
 			show: {
 				resource: [
@@ -357,6 +357,7 @@ export const couponFields = [
 			},
 		},
 		default: '',
+		required: true,
 		description: 'The specific product/subscription ID.',
 	},
 	{
@@ -603,7 +604,7 @@ export const couponFields = [
 				description: 'New group name to move coupon to.',
 			},
 			{
-				displayName: 'Product ID(s)',
+				displayName: 'Product IDs',
 				name: 'productIds',
 				type: 'string',
 				default: '',
