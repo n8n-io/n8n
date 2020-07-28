@@ -411,3 +411,9 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	timezone?: string;
 	executionTimeout?: number;
 }
+
+export interface ITimeoutHMS {
+	hours: number;
+	minutes: number;
+	seconds: number;
+}

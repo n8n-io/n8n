@@ -293,11 +293,9 @@ export interface IN8nUISettings {
 	versionCli: string;
 }
 
-
 export interface IPackageVersions {
 	cli: string;
 }
-
 
 export interface IPushData {
 	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook;
@@ -305,7 +303,6 @@ export interface IPushData {
 }
 
 export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'testWebhookDeleted' | 'testWebhookReceived';
-
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
