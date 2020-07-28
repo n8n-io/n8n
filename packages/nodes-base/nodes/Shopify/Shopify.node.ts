@@ -23,11 +23,22 @@ import {
 } from './OrderDescription';
 
 import {
+	productFields,
+	productOperations,
+} from './ProductDescription';
+
+import {
 	IOrder,
 	IDiscountCode,
 	IAddress,
 	ILineItem,
 } from './OrderInterface';
+
+import {
+	IProduct,
+	IImage,
+	IVariant,
+} from './ProductInterface';
 
 export class Shopify implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,6 +71,10 @@ export class Shopify implements INodeType {
 						name: 'Order',
 						value: 'order',
 					},
+					{
+						name: 'Product',
+						value: 'product',
+					},
 				],
 				default: 'order',
 				description: 'Resource to consume.',
@@ -67,6 +82,9 @@ export class Shopify implements INodeType {
 			// ORDER
 			...orderOperations,
 			...orderFields,
+			// PRODUCTS
+			...productOperations,
+			...productFields,
 		],
 	};
 
@@ -110,7 +128,7 @@ export class Shopify implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length as unknown as number;
 		let responseData;
-		const qs: IDataObject = {};
+		let qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
@@ -269,7 +287,77 @@ export class Shopify implements INodeType {
 					responseData = await shopifyApiRequest.call(this, 'PUT', `/orders/${orderId}.json`, { order: body });
 					responseData = responseData.order;
 				}
+			} else if (resource === 'product') {
+				const productId = this.getNodeParameter('productId', i, '') as string;
+				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const fields = this.getNodeParameter('fields', i, {}) as IDataObject;
+				const images = this.getNodeParameter('images', i, false) as IImage[];
+				const productOptions = this.getNodeParameter('productOptions.option', i, false) as IDataObject[];
+				const variants = this.getNodeParameter('variants', i, false) as IVariant[];
+				let body: IProduct = {};
+
+				switch (operation) {
+					//https://shopify.dev/docs/admin-api/rest/reference/products/product#create-2020-04
+					case 'create':
+						const title = this.getNodeParameter('title', i) as string;
+						body = fields;
+						body.title = title;
+						if (images && images.length > 0) {
+							body.images = images;
+						}
+						if (productOptions && productOptions.length > 0) {
+							body.options = productOptions;
+						}
+						if (variants && variants.length > 0) {
+							body.variants = variants;
+						}
+						responseData = await shopifyApiRequest.call(this, 'POST', '/products.json', { product: body });
+						responseData = responseData.product;
+						break;
+					//https://shopify.dev/docs/admin-api/rest/reference/products/product#destroy-2020-04
+					case 'delete':
+						responseData = await shopifyApiRequest.call(this, 'DELETE', `/products/${productId}.json`);
+						responseData = { success: true };
+						break;
+					//https://shopify.dev/docs/admin-api/rest/reference/products/product#show-2020-04
+					case 'get':
+						qs = options;
+						responseData = await shopifyApiRequest.call(this, 'GET', `/products/${productId}.json`, {}, qs);
+						responseData = responseData.product;
+						break;
+					//https://shopify.dev/docs/admin-api/rest/reference/products/product#index-2020-04
+					case 'getAll':
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						qs = options;
+
+						if (returnAll === true) {
+							responseData = await shopifyApiRequestAllItems.call(this, 'products', 'GET', '/products.json', {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+							responseData = await shopifyApiRequest.call(this, 'GET', '/products.json', {}, qs);
+							responseData = responseData.products;
+						}
+						break;
+					//https://shopify.dev/docs/admin-api/rest/reference/products/product#update-2019-10
+					case 'update':
+						body = fields;
+						if (images && images.length > 0) {
+							body.images = images;
+						}
+						if (productOptions && productOptions.length > 0) {
+							body.options = productOptions;
+						}
+						if (variants && variants.length > 0) {
+							body.variants = variants;
+						}
+						responseData = await shopifyApiRequest.call(this, 'PUT', `/products/${productId}.json`, { product: body });
+						responseData = responseData.order;
+						break;
+					default:
+						throw new Error('Unknown product operation.');
+				}
 			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
