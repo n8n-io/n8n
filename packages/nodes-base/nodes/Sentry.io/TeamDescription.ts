@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const teamOperations = [
 	{
@@ -36,7 +38,7 @@ export const teamOperations = [
 
 export const teamFields = [
 /* -------------------------------------------------------------------------- */
-/*                                team:getAll                                */
+/*                                team:getAll                                 */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
@@ -55,6 +57,47 @@ export const teamFields = [
 		},
 		required: true,
 		description: 'The slug of the organization for which the teams should be listed.',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'team',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'team',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                team:get                                   */

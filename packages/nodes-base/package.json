@@ -114,6 +114,7 @@
       "dist/credentials/RundeckApi.credentials.js",
       "dist/credentials/ShopifyApi.credentials.js",
       "dist/credentials/SalesforceOAuth2Api.credentials.js",
+      "dist/credentials/SentryioApi.credentials.js",
       "dist/credentials/SentryioOAuth2Api.credentials.js",
       "dist/credentials/SlackApi.credentials.js",
       "dist/credentials/SlackOAuth2Api.credentials.js",

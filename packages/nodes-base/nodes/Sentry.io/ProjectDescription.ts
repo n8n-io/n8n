@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const projectOperations = [
 	{
@@ -13,11 +15,6 @@ export const projectOperations = [
 			},
 		},
 		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new project.',
-			},
 			{
 				name: 'Get',
 				value: 'get',
@@ -49,7 +46,10 @@ export const projectFields = [
 					'project',
 				],
 				operation: [
-					'create', 'get', 'update', 'delete'
+					'create',
+					'get',
+					'update',
+					'delete',
 				],
 			},
 		},
@@ -67,7 +67,7 @@ export const projectFields = [
 					'project',
 				],
 				operation: [
-					'get'
+					'get',
 				],
 			},
 		},
@@ -85,7 +85,9 @@ export const projectFields = [
 					'project',
 				],
 				operation: [
-					'create', 'update', 'delete'
+					'create',
+					'update',
+					'delete',
 				],
 			},
 		},
@@ -137,58 +139,47 @@ export const projectFields = [
 		]
 	},
 /* -------------------------------------------------------------------------- */
-/*                                project:update                              */
+/*                                project:getAll                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
 				operation: [
 					'getAll',
 				],
+				resource: [
+					'project',
+				],
 			},
 		},
-		options: [
-			{
-				displayName: 'New Name',
-				name: 'newName',
-				type: 'string',
-				default: '',
-				description: 'The new name for the project.',
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'project',
+				],
+				returnAll: [
+					false,
+				],
 			},
-			{
-				displayName: 'New Slug',
-				name: 'newSlug',
-				type: 'string',
-				default: '',
-				description: 'The new slug for the project.',
-			},
-			{
-				displayName: 'New Platform',
-				name: 'newPlatform',
-				type: 'string',
-				default: '',
-				description: 'The new platform for the project.',
-			},
-			{
-				displayName: 'Digest min. Delay',
-				name: 'digestMinDelay',
-				type: 'number',
-				default: 0
-			},
-			{
-				displayName: 'Digest max. Delay',
-				name: 'digestMaxDelay',
-				type: 'number',
-				default: 0
-			},
-		]
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 ] as INodeProperties[];

@@ -3,7 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class SentryioOAuth2Api implements ICredentialType {
 	name = 'sentryioOAuth2Api';
 	extends = [

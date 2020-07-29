@@ -1,4 +1,7 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri
+ } from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -6,14 +9,14 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 export async function sentryioApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('sentryioOAuth2Api');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	
+	const authentication = this.getNodeParameter('authentication', 0);
+
 	const options: OptionsWithUri = {
 		headers: {},
 		method,
@@ -26,10 +29,76 @@ export async function sentryioApiRequest(this: IHookFunctions | IExecuteFunction
 		delete options.body;
 	}
 
-	
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
+	}
+
+	if (options.qs.limit) {
+		delete options.qs.limit;
+	}
+
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'sentryioOAuth2Api', options);
+		if (authentication === 'accessToken') {
+
+			const credentials = this.getCredentials('sentryioApi');
+
+			options.headers = {
+				Authorization: `Bearer ${credentials?.token}`,
+			};
+
+			//@ts-ignore
+			return this.helpers.request(options);
+
+		} else {
+			return await this.helpers.requestOAuth2!.call(this, 'sentryioOAuth2Api', options);
+		}
+
 	} catch (error) {
-		throw new Error('Sentry.io Error: ' + error);
+		throw new Error(`Sentry.io Error: ${error}`);
+	}
+}
+
+export async function sentryApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	let link;
+
+	let uri: string | undefined;
+
+	do {
+		responseData = await sentryioApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+		link = responseData.headers.link;
+		uri = getNext(link);
+		returnData.push.apply(returnData, responseData.body);
+		if (query.limit && (query.limit >= returnData.length)) {
+			return;
+		}
+	} while (
+		hasMore(link)
+	);
+
+	return returnData;
+}
+
+function getNext(link: string) {
+	if (link  === undefined) {
+		return;
+	}
+	const next = link.split(',')[1];
+	if (next.includes('rel="next"')) {
+		return next.split(';')[0].replace('<', '').replace('>','').trim();
+	}
+}
+
+function hasMore(link: string) {
+	if (link  === undefined) {
+		return;
+	}
+	const next = link.split(',')[1];
+	if (next.includes('rel="next"')) {
+		return next.includes('results="true"');
 	}
 }

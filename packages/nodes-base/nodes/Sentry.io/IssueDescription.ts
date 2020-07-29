@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const issueOperations = [
 	{
@@ -14,6 +16,11 @@ export const issueOperations = [
 		},
 		options: [
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete an issue.',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get issue by ID.',
@@ -22,11 +29,6 @@ export const issueOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all issues.',
-			},
-			{
-				name: 'Remove',
-				value: 'remove',
-				description: 'Remove an issue.',
 			},
 			{
 				name: 'Update',
@@ -55,7 +57,8 @@ export const issueFields = [
 					'issue',
 				],
 				operation: [
-					'get', 'remove'
+					'get',
+					'delete',
 				],
 			},
 		},
@@ -100,6 +103,47 @@ export const issueFields = [
 		},
 		required: true,
 		description: 'The slug of the project the issues belong to.',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'issue',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'issue',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Additional Fields',

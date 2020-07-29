@@ -4,20 +4,45 @@ import {
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { eventOperations, eventFields } from './EventDescription';
-import { issueOperations, issueFields } from './IssueDescription';
-import { organizationFields, organizationOperations } from './OrganizationDescription';
-import { projectOperations, projectFields } from './ProjectDescription';
-import { releaseOperations, releaseFields } from './ReleaseDescription';
-import { teamOperations, teamFields } from './TeamDescription';
-import { sentryioApiRequest } from './GenericFunctions';
+import {
+	eventOperations,
+	eventFields,
+} from './EventDescription';
+
+import {
+	issueOperations,
+	issueFields,
+} from './IssueDescription';
+
+import {
+	organizationFields,
+	organizationOperations,
+} from './OrganizationDescription';
+
+import {
+	projectOperations,
+	projectFields,
+} from './ProjectDescription';
+
+import {
+	releaseOperations,
+	releaseFields,
+} from './ReleaseDescription';
+
+import {
+	teamOperations,
+	teamFields,
+} from './TeamDescription';
+
+import {
+	sentryioApiRequest,
+	sentryApiRequestAllItems,
+} from './GenericFunctions';
 
 export class Sentryio implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,7 +54,7 @@ export class Sentryio implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Sentry.io API',
 		defaults: {
-			name: 'sentryio',
+			name: 'Sentry.io',
 			color: '#000000',
 		},
 		inputs: ['main'],
@@ -38,9 +63,44 @@ export class Sentryio implements INodeType {
 			{
 				name: 'sentryioOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
+			{
+				name: 'sentryioApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -75,7 +135,6 @@ export class Sentryio implements INodeType {
 				description: 'Resource to consume.',
 			},
 
-					
 		// EVENT
 		...eventOperations,
 		...eventFields,
@@ -100,7 +159,6 @@ export class Sentryio implements INodeType {
 		...teamOperations,
 		...teamFields
 		],
-
 	};
 
 
@@ -112,19 +170,30 @@ export class Sentryio implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		
+
 		for (let i = 0; i < length; i++) {
 			if (resource === 'event') {
 				if (operation === 'getAll') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
 					const full = this.getNodeParameter('full', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/`;
 
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+					}
+
 					qs.full = full;
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
 				}
 				if (operation === 'get') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
@@ -140,6 +209,8 @@ export class Sentryio implements INodeType {
 				if (operation === 'getAll') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
 					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/issues/`;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -154,7 +225,17 @@ export class Sentryio implements INodeType {
 						qs.query   = additionalFields.query   as string;
 					}
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+					}
+
+					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
 
 				}
 				if (operation === 'get') {
@@ -163,11 +244,13 @@ export class Sentryio implements INodeType {
 
 					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
 				}
-				if (operation === 'remove') {
+				if (operation === 'delete') {
 					const issueId = this.getNodeParameter('issueId', i) as string;
 					const endpoint = `/api/0/issues/${issueId}/`;
 
 					responseData = await sentryioApiRequest.call(this, 'DELETE', endpoint, qs);
+
+					responseData = { success: true };
 				}
 				if (operation === 'update') {
 					const issueId = this.getNodeParameter('issueId', i) as string;
@@ -204,6 +287,7 @@ export class Sentryio implements INodeType {
 					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
 				}
 				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const endpoint = `/api/0/organizations/`;
 
@@ -214,7 +298,21 @@ export class Sentryio implements INodeType {
 						qs.owner = additionalFields.owner as boolean;
 					}
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+					}
+
+					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+					if (responseData === undefined) {
+						responseData = [];
+					}
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
 				}
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
@@ -233,21 +331,6 @@ export class Sentryio implements INodeType {
 				}
 			}
 			if (resource === 'project') {
-				if (operation === 'create') {
-					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
-					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/projects/`;
-					const name = this.getNodeParameter('name', i) as string;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (additionalFields.slug) {
-						qs.slug = additionalFields.slug as string;
-					}
-					qs.name = name;
-
-					responseData = await sentryioApiRequest.call(this, 'POST', endpoint, qs);
-				}
 				if (operation === 'get') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
@@ -256,9 +339,20 @@ export class Sentryio implements INodeType {
 					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
 				}
 				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const endpoint = `/api/0/projects/`;
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+					}
+
+					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
 				}
 			}
 			if (resource === 'release') {
@@ -273,12 +367,23 @@ export class Sentryio implements INodeType {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 					const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					if (additionalFields.query) {
 						qs.query = additionalFields.query as string;
 					}
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+					}
+
+					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
 				}
 			}
 			if (resource === 'team') {
@@ -292,9 +397,19 @@ export class Sentryio implements INodeType {
 				if (operation === 'getAll') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 					const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
-					
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = limit;
+					}
+
+					responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
 				}
 
 				if (operation === 'create') {
@@ -310,11 +425,11 @@ export class Sentryio implements INodeType {
 					if (additionalFields.slug) {
 						qs.slug = additionalFields.slug;
 					}
-					
+
 					responseData = await sentryioApiRequest.call(this, 'POST', endpoint, qs);
 				}
 			}
-			
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
