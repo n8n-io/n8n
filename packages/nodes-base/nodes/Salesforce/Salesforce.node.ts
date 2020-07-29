@@ -713,7 +713,7 @@ export class Salesforce implements INodeType {
 					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Lead`,
+							qs.q = `SELECT ${fields.join(',')} FROM Lead`;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -988,7 +988,7 @@ export class Salesforce implements INodeType {
 					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Contact`,
+							qs.q = `SELECT ${fields.join(',')} FROM Contact`;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -1159,7 +1159,7 @@ export class Salesforce implements INodeType {
 					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Opportunity`,
+							qs.q = `SELECT ${fields.join(',')} FROM Opportunity`;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -1384,7 +1384,7 @@ export class Salesforce implements INodeType {
 					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Account`,
+							qs.q = `SELECT ${fields.join(',')} FROM Account`;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -1549,7 +1549,7 @@ export class Salesforce implements INodeType {
 					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Case`,
+							qs.q = `SELECT ${fields.join(',')} FROM Case`;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -1763,7 +1763,7 @@ export class Salesforce implements INodeType {
 					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Task`,
+							qs.q = `SELECT ${fields.join(',')} FROM Task`;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -1860,7 +1860,7 @@ export class Salesforce implements INodeType {
 					}
 					try {
 						if (returnAll) {
-							qs.q = `SELECT ${fields.join(',')} FROM Attachment`,
+							qs.q = `SELECT ${fields.join(',')} FROM Attachment`;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;

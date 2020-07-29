@@ -288,8 +288,8 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/conversations.info
 				if (operation === 'get') {
 					const channel = this.getNodeParameter('channelId', i) as string;
-					qs.channel = channel,
-						responseData = await slackApiRequest.call(this, 'POST', '/conversations.info', {}, qs);
+					qs.channel = channel;
+					responseData = await slackApiRequest.call(this, 'POST', '/conversations.info', {}, qs);
 					responseData = responseData.channel;
 				}
 				//https://api.slack.com/methods/conversations.list
