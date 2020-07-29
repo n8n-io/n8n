@@ -122,15 +122,15 @@
 							</el-tooltip>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></el-input-number></br>
+							<el-input-number size="small" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></el-input-number><br />
 							<div class="timeout-setting-name">hours</div>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></el-input-number></br>
+							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></el-input-number><br />
 							<div class="timeout-setting-name">minutes</div>
 						</el-col>
 						<el-col :span="4">
-							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></el-input-number></br>
+							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></el-input-number><br />
 							<div class="timeout-setting-name">seconds</div>
 						</el-col>
 					</el-row>
