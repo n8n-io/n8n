@@ -108,7 +108,7 @@ export class ActiveExecutions {
 					this.activeExecutions[executionId].process!.send({
 						type: timeout ? timeout : 'stopExecution',
 					});
-				}, 1)
+				}, 1);
 			}
 		} else {
 			// Workflow is running in current process

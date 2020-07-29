@@ -486,9 +486,9 @@ class App {
 					// Do not save when default got set
 					delete newWorkflowData.settings.saveManualExecutions;
 				}
-				if (parseInt(newWorkflowData.settings.executionTimeout as string) === this.executionTimeout) {
+				if (parseInt(newWorkflowData.settings.executionTimeout as string, 10) === this.executionTimeout) {
 					// Do not save when default got set
-					delete newWorkflowData.settings.executionTimeout
+					delete newWorkflowData.settings.executionTimeout;
 				}
 			}
 

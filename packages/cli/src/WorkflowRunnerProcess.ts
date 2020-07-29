@@ -198,7 +198,7 @@ process.on('message', async (message: IProcessMessage) => {
 				// Workflow started already executing
 				runData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
 
-				const timeOutError = message.type === 'timeout' ? { message: 'Workflow execution timed out!' } as IExecutionError : undefined
+				const timeOutError = message.type === 'timeout' ? { message: 'Workflow execution timed out!' } as IExecutionError : undefined;
 
 				// If there is any data send it to parent process, if execution timedout add the error
 				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!, timeOutError);

@@ -158,14 +158,14 @@ export class WorkflowRunner {
 		let executionTimeout: NodeJS.Timeout;
 		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
 		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number // preference on workflow setting
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
 		}
 
 		if (workflowTimeout) {
 			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
 			executionTimeout = setTimeout(() => {
-				this.activeExecutions.stopExecution(executionId, 'timeout')
-			}, timeout)
+				this.activeExecutions.stopExecution(executionId, 'timeout');
+			}, timeout);
 		}
 
 		workflowExecution.then((fullRunData) => {
@@ -174,7 +174,7 @@ export class WorkflowRunner {
 				fullRunData.finished = false;
 			}
 			this.activeExecutions.remove(executionId, fullRunData);
-		})
+		});
 
 		return executionId;
 	}
@@ -239,16 +239,16 @@ export class WorkflowRunner {
 		let executionTimeout: NodeJS.Timeout;
 		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
 		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
-			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number // preference on workflow setting
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
 		}
 
 		if (workflowTimeout) {
 			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
 			executionTimeout = setTimeout(() => {
-				this.activeExecutions.stopExecution(executionId, 'timeout')
+				this.activeExecutions.stopExecution(executionId, 'timeout');
 
-				executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)) // minimum 5 seconds
-			}, timeout)
+				executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)); // minimum 5 seconds
+			}, timeout);
 		}
 
 
