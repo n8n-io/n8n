@@ -24,8 +24,9 @@
 										</g>
 									</g>
 								</svg>
+								
 							<div v-if="showDocumentHelp && nodeType" class="text"> 
-								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name" target="_blank">Open {{node.name}} documentation</a>
+								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + nodeType.displayName" target="_blank">Open {{nodeType.displayName}} documentation</a>
 							</div>
 					</div>
 				</transition>
@@ -69,11 +70,10 @@ export default Vue.extend({
 		},
 		nodeType (): INodeTypeDescription | null {
 			const activeNode = this.node;
-
 			if (this.node) {
 				return this.$store.getters.nodeType(this.node.type);
 			}
-
+			
 			return null;
 		},
 	},
@@ -93,6 +93,7 @@ export default Vue.extend({
 		},
 	},
 });
+
 </script>
 
 <style lang="scss">
