@@ -12,7 +12,7 @@ import { basename } from 'path';
 
 
 import * as sftpClient from 'ssh2-sftp-client';
-const ftpClient = require('@softbrains/promise-ftp');
+import * as ftpClient from 'promise-ftp'
 
 export class FileTransfer implements INodeType {
 	description: INodeTypeDescription = {
@@ -304,7 +304,7 @@ export class FileTransfer implements INodeType {
 							}
 
 							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
-							responseData = await sftp.put(buffer, remotePath, { encoding: null });
+							responseData = await sftp.put(buffer, remotePath);
 						} else {
 							// Is text file
 							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
@@ -330,10 +330,10 @@ export class FileTransfer implements INodeType {
 
 				try {
 					await ftp.connect({
-						host: credentials.host,
-						port: credentials.port,
-						username: credentials.username,
-						password: credentials.password
+						host: credentials.host as string,
+						port: credentials.port as number,
+						user: credentials.username as string,
+						password: credentials.password as string
 					});
 
 					if (operation === 'list') {
@@ -349,6 +349,7 @@ export class FileTransfer implements INodeType {
 							chunks.push(chunk);
 						}
 
+						// @ts-ignore
 						responseData = Buffer.concat(chunks);
 
 						const newItem: INodeExecutionData = {
@@ -406,7 +407,7 @@ export class FileTransfer implements INodeType {
 		}
 
 		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
+			returnData.push.apply(returnData, responseData as unknown as IDataObject[]);
 		} else {
 			returnData.push(responseData as unknown as IDataObject);
 		}
