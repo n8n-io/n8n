@@ -12,7 +12,7 @@ import { basename } from 'path';
 
 
 import * as sftpClient from 'ssh2-sftp-client';
-import * as ftpClient from 'promise-ftp'
+import * as ftpClient from 'promise-ftp';
 
 export class FileTransfer implements INodeType {
 	description: INodeTypeDescription = {
