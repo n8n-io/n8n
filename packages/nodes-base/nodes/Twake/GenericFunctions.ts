@@ -16,7 +16,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object, query?: object): Promise<any>  {  // tslint:disable-line:no-any
+export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object, query?: object, uri?: string): Promise<any>  {  // tslint:disable-line:no-any
 
 	const authenticationMethod = this.getNodeParameter('twakeVersion', 0, 'twakeCloudApi') as string;
 
@@ -25,17 +25,14 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 		method,
 		body,
 		qs: query,
-		uri: `https://api.twake.app/api/v1${resource}`,
+		uri: uri || `https://connectors.albatros.twakeapp.com/n8n${resource}`,
 		json: true,
 	};
 
+
 	if (authenticationMethod === 'cloud') {
 		const credentials = this.getCredentials('twakeCloudApi');
-		if (credentials!.standarPlan) {
-			options.headers!.Authorization = `Bearer ${credentials!.workspaceKey}`;
-		} else {
-			options.auth = { user: credentials!.publicId as string, pass: credentials!.privateApiKey as string };
-		}
+		options.headers!.Authorization = `Bearer ${credentials!.workspaceKey}`;
 
 	} else {
 

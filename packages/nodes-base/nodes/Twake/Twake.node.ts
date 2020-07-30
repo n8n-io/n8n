@@ -64,10 +64,10 @@ export class Twake implements INodeType {
 						name: 'Cloud',
 						value: 'cloud',
 					},
-					{
-						name: 'Server (Self Hosted)',
-						value: 'server',
-					},
+					// {
+					// 	name: 'Server (Self Hosted)',
+					// 	value: 'server',
+					// },
 				],
 				default: 'cloud',
 			},
@@ -174,8 +174,7 @@ export class Twake implements INodeType {
 	methods = {
 		loadOptions: {
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = '/channels';
-				const responseData = await twakeApiRequest.call(this, 'POST', endpoint, {});
+				const responseData = await twakeApiRequest.call(this, 'POST', '/channel', {});
 				if (responseData === undefined) {
 					throw new Error('No data got returned');
 				}
@@ -230,9 +229,11 @@ export class Twake implements INodeType {
 						object: message,
 					};
 
-					const endpoint = 'actions/message/save';
+					const endpoint = '/actions/message/save';
 
 					responseData = await twakeApiRequest.call(this, 'POST', endpoint, body);
+
+					responseData = responseData.object;
 				}
 			}
 		}
