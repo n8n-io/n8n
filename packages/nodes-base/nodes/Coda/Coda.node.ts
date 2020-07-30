@@ -623,7 +623,7 @@ export class Coda implements INodeType {
 					}
 					body.row = {
 						cells
-					},
+					};
 					await codaApiRequest.call(this, 'PUT', endpoint, body, qs);
 				}
 				return [items];
