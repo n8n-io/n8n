@@ -84,7 +84,7 @@ export class CrateDb implements INodeType {
 						operation: ['insert'],
 					},
 				},
-				default: 'public',
+				default: 'doc',
 				required: true,
 				description: 'Name of the schema the table belongs to',
 			},

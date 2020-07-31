@@ -57,7 +57,7 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			options.url = `${api_endpoint}/3.0${endpoint}`;
 			//@ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, 'Bearer');
+			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, { tokenType: 'Bearer' });
 		}
 	} catch (error) {
 		if (error.respose && error.response.body && error.response.body.detail) {

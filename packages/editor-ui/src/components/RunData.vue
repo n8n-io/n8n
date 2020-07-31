@@ -19,7 +19,7 @@
 
 		<div class="header">
 			<div class="title-text">
-				<strong v-if="dataCount < maxDisplayItems && dataSize < MAX_DISPLAY_DATA_SIZE">
+				<strong v-if="dataCount < maxDisplayItems">
 					Results: {{ dataCount }}
 				</strong>
 				<strong v-else>Results:
