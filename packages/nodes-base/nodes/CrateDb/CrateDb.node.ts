@@ -229,10 +229,41 @@ export class CrateDb implements INodeType {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
+			const tableName = this.getNodeParameter('table', 0) as string;
+			const updateKey = this.getNodeParameter('updateKey', 0) as string;
 
-			const updateItems = await pgUpdate(this.getNodeParameter, pgp, db, items);
+			const queries : string[] = [];
+			let updateKeyValue : string | number;
+			let columns : string[] = [];
 
-			returnItems = this.helpers.returnJsonArray(updateItems);
+			items.map(item => {
+				const setOperations : string[] = [];
+				columns = Object.keys(item.json);
+				columns.map((col : string) => {
+					if (col !== updateKey) {
+						if (typeof item.json[col] === 'string') {
+							setOperations.push(`${col} = \'${item.json[col]}\'`);
+						} else {
+							setOperations.push(`${col} = ${item.json[col]}`);
+						}
+					}
+				});
+
+				updateKeyValue = item.json[updateKey] as string | number;
+
+				if (updateKeyValue === undefined) {
+					throw new Error('No value found for update key!');
+				} 
+
+				const query = `UPDATE "${tableName}" SET ${setOperations.join(',')} WHERE ${updateKey} = ${updateKeyValue};`;
+				queries.push(query);
+			});
+
+			await db.any(pgp.helpers.concat(queries));
+
+			const returnedItems = await db.any(`SELECT ${columns.join(',')} from ${tableName}`);
+
+			returnItems = this.helpers.returnJsonArray(returnedItems as IDataObject[]);
 		} else {
 			await pgp.end();
 			throw new Error(`The operation "${operation}" is not supported!`);
