@@ -12,16 +12,15 @@ export class Ftp implements ICredentialType {
 			name: 'host',
 			required: true,
 			type: 'string' as NodePropertyTypes,
-            default: '',
-            placeholder: 'localhost'
+			default: '',
+			placeholder: 'localhost'
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
 			required: true,
-			type: 'string' as NodePropertyTypes,
-            default: '',
-            placeholder: '22'
+			type: 'number' as NodePropertyTypes,
+			default: 21,
 		},
 		{
 			displayName: 'Username',
@@ -33,6 +32,9 @@ export class Ftp implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 	];

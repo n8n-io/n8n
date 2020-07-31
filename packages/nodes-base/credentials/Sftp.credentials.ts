@@ -18,8 +18,8 @@ export class Sftp implements ICredentialType {
 			displayName: 'Port',
 			name: 'port',
 			required: true,
-			type: 'string' as NodePropertyTypes,
-			default: '',
+			type: 'number' as NodePropertyTypes,
+			default: 22,
 		},
 		{
 			displayName: 'Username',
@@ -32,6 +32,9 @@ export class Sftp implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 	];
