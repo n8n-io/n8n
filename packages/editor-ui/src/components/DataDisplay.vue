@@ -24,16 +24,16 @@
 										</g>
 									</g>
 								</svg>
-								
-							<div v-if="showDocumentHelp && nodeType" class="text"> 
-								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + nodeType.displayName" target="_blank">Open {{nodeType.displayName}} documentation</a>
+
+							<div v-if="showDocumentHelp && nodeType" class="text">
+								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + nodeType.name" target="_blank">Open {{nodeType.displayName}} documentation</a>
 							</div>
 					</div>
 				</transition>
 			</div>
 		</div>
 	</transition>
-	
+
 </template>
 
 <script lang="ts">
@@ -73,7 +73,7 @@ export default Vue.extend({
 			if (this.node) {
 				return this.$store.getters.nodeType(this.node.type);
 			}
-			
+
 			return null;
 		},
 	},
