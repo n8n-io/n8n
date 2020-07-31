@@ -1,5 +1,5 @@
 <template>
-	<transition name="el-fade-in">
+	<transition name="el-fade-in" @after-enter="showDocumentHelp = true">
 		<div class="data-display-wrapper close-on-click" v-show="node" @click="close">
 			<div class="data-display" >
 				<NodeSettings @valueChanged="valueChanged" />
@@ -7,9 +7,33 @@
 				<div class="close-button clickable close-on-click" title="Close">
 					<i class="el-icon-close close-on-click"></i>
 				</div>
+				<transition name="fade">
+					<div v-if="showDocumentHelp && nodeType" class="doc-help-wrapper">
+								<svg id="help-logo"  v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+									<title>Node Documentation</title>
+									<g id="MVP-Onboard-proposal" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+										<g id="Node-modal-(docs-link)" transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
+											<g id="Group" transform="translate(1117.000000, 825.000000)">
+												<g id="mdi-help-box" transform="translate(10.000000, 11.000000)">
+													<g id="Icon" transform="translate(2.250000, 2.250000)" fill="#FF6150">
+														<path d="M6,11.25 L7.5,11.25 L7.5,9.75 L6,9.75 L6,11.25 M6.75,2.25 C5.09314575,2.25 3.75,3.59314575 3.75,5.25 L5.25,5.25 C5.25,4.42157288 5.92157288,3.75 6.75,3.75 C7.57842712,3.75 8.25,4.42157288 8.25,5.25 C8.25,6.75 6,6.5625 6,9 L7.5,9 C7.5,7.3125 9.75,7.125 9.75,5.25 C9.75,3.59314575 8.40685425,2.25 6.75,2.25 M1.5,0 L12,0 C12.8284271,0 13.5,0.671572875 13.5,1.5 L13.5,12 C13.5,12.8284271 12.8284271,13.5 12,13.5 L1.5,13.5 C0.671572875,13.5 0,12.8284271 0,12 L0,1.5 C0,0.671572875 0.671572875,0 1.5,0 Z" id="Icon-Shape"></path>
+													</g>
+													<rect id="ViewBox" x="0" y="0" width="18" height="18"></rect>
+												</g>
+											</g>
+										</g>
+									</g>
+								</svg>
+								
+							<div v-if="showDocumentHelp && nodeType" class="text"> 
+								Need help? <a id="doc-hyperlink" v-if="showDocumentHelp && nodeType" :href="'https://docs.n8n.io/nodes/' + nodeType.name + '?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=' + nodeType.displayName" target="_blank">Open {{nodeType.displayName}} documentation</a>
+							</div>
+					</div>
+				</transition>
 			</div>
 		</div>
 	</transition>
+	
 </template>
 
 <script lang="ts">
@@ -18,6 +42,7 @@ import Vue from 'vue';
 
 import {
 	IRunData,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	INodeUi,
@@ -33,9 +58,23 @@ export default Vue.extend({
 		NodeSettings,
 		RunData,
 	},
+	data () {
+		return {
+			basePath: this.$store.getters.getBaseUrl,
+			showDocumentHelp: false,
+		};
+	},
 	computed: {
 		node (): INodeUi {
 			return this.$store.getters.activeNode;
+		},
+		nodeType (): INodeTypeDescription | null {
+			const activeNode = this.node;
+			if (this.node) {
+				return this.$store.getters.nodeType(this.node.type);
+			}
+			
+			return null;
 		},
 	},
 	methods: {
@@ -48,14 +87,17 @@ export default Vue.extend({
 		close (e: MouseEvent) {
 			// @ts-ignore
 			if (e.target.className && e.target.className.includes && e.target.className.includes('close-on-click')) {
+				this.showDocumentHelp = false;
 				this.$store.commit('setActiveNode', null);
 			}
 		},
 	},
 });
+
 </script>
 
 <style lang="scss">
+
 
 .data-display-wrapper {
 	position: fixed;
@@ -101,7 +143,59 @@ export default Vue.extend({
 			margin: 1em auto;
 			height: 95%;
 		}
+
+		.fade-enter-active, .fade-enter-to, .fade-leave-active {
+			transition: all .75s ease;
+		}
+
+		.fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+			opacity: 0;
+		}
+
+		.doc-help-wrapper {
+			transition-delay: 2s;
+			background-color: #fff;
+			margin-top: 1%;
+			box-sizing: border-box;
+			border: 1px solid #DCDFE6;
+			border-radius: 4px;
+			background-color: #FFFFFF;
+			box-shadow: 0 2px 7px 0 rgba(0,0,0,0.15);
+			min-width: 319px;
+			height: 40px;
+			float: right;
+			padding: 5px;
+			display: flex;
+			flex-direction: row;
+			padding-top: 10px;
+			padding-right: 12px;
+
+			#help-logo {
+				flex: 1;
+			}
+
+			.text {
+				margin-left: 5px;
+				flex: 9;
+				font-family: "Open Sans";
+				color: #666666;
+				font-size: 12px;
+				font-weight: 600;
+				letter-spacing: 0;
+				line-height: 17px;
+				white-space: nowrap;
+			}
+
+			#doc-hyperlink, #doc-hyperlink:visited, #doc-hyperlink:focus, #doc-hyperlink:active {
+				text-decoration: none;
+				color: #FF6150;
+			}
+		}
 	}
+
+
 }
+
+
 
 </style>
