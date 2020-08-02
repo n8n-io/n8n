@@ -10,7 +10,7 @@ import pg = require('pg-promise/typescript/pg-subset');
  * @param {string[]} properties The properties it should include
  * @returns
  */
-function getItemCopy(items: INodeExecutionData[], properties: string[]): IDataObject[] {
+export function getItemCopy(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned
 	let newItem: IDataObject;
 	return items.map(item => {
