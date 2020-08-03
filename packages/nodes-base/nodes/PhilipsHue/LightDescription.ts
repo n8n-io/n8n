@@ -42,6 +42,7 @@ export const lightOperations = [
 ] as INodeProperties[];
 
 export const lightFields = [
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 light:delete                               */
 	/* -------------------------------------------------------------------------- */
@@ -62,6 +63,7 @@ export const lightFields = [
 		},
 		default: '',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 light:getAll                               */
 	/* -------------------------------------------------------------------------- */
@@ -106,6 +108,7 @@ export const lightFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 light:get                                  */
 	/* -------------------------------------------------------------------------- */
@@ -126,6 +129,7 @@ export const lightFields = [
 		},
 		default: '',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 light:update                               */
 	/* -------------------------------------------------------------------------- */
@@ -164,8 +168,8 @@ export const lightFields = [
 				],
 			},
 		},
-		default: '',
-		description: 'On/Off state of the light. On=true, Off=false',
+		default: true,
+		description: 'On/Off state of the light.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -206,7 +210,7 @@ export const lightFields = [
 					},
 				],
 				default: '',
-				description: 'The alert effect,is a temporary change to the bulb’s state',
+				description: 'The alert effect, is a temporary change to the bulb’s state',
 			},
 			{
 				displayName: 'Brightness',
@@ -228,7 +232,7 @@ export const lightFields = [
 					maxValue: 254,
 				},
 				default: 0,
-				description: 'Increments or decrements the value of the brightness.  bri_inc is ignored if the bri attribute is provided.',
+				description: 'Increments or decrements the value of the brightness. This value is ignored if the Brightness attribute is provided.',
 			},
 			{
 				displayName: 'Color Temperature',
@@ -247,6 +251,23 @@ export const lightFields = [
 				},
 				default: 0,
 				description: 'Increments or decrements the value of the ct. ct_inc is ignored if the ct attribute is provided',
+			},
+			{
+				displayName: 'Coordinates',
+				name: 'xy',
+				type: 'string',
+				default: '',
+				placeholder: '0.64394,0.33069',
+				description: `The x and y coordinates of a color in CIE color space.</br>
+				The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1`,
+			},
+			{
+				displayName: 'Coordinates Increments',
+				name: 'xy_inc',
+				type: 'string',
+				default: '',
+				placeholder: '0.5,0.5',
+				description: `Increments or decrements the value of the xy. This value is ignored if the Coordinates attribute is provided. Any ongoing color transition is stopped. Max value [0.5, 0.5]`,
 			},
 			{
 				displayName: 'Dynamic Effect',
@@ -285,7 +306,7 @@ export const lightFields = [
 					maxValue: 65534,
 				},
 				default: 0,
-				description: 'Increments or decrements the value of the hue.   hue_inc is ignored if the hue attribute is provided.',
+				description: 'Increments or decrements the value of the hue. Hue Increments is ignored if the Hue attribute is provided.',
 			},
 			{
 				displayName: 'Saturation',
@@ -307,7 +328,7 @@ export const lightFields = [
 					maxValue: 254,
 				},
 				default: 0,
-				description: 'Increments or decrements the value of the sat.  sat_inc is ignored if the sat attribute is provided.',
+				description: 'Increments or decrements the value of the sat. This value is ignored if the Saturation attribute is provided.',
 			},
 			{
 				displayName: 'Transition Time',
@@ -318,23 +339,6 @@ export const lightFields = [
 				},
 				default: 4,
 				description: 'The duration in seconds of the transition from the light’s current state to the new state',
-			},
-			{
-				displayName: 'Coordinates',
-				name: 'xy',
-				type: 'string',
-				default: '',
-				placeholder: '0.64394,0.33069',
-				description: `The x and y coordinates of a color in CIE color space.</br>
-				The first entry is the x coordinate and the second entry is the y coordinate. Both x and y are between 0 and 1`,
-			},
-			{
-				displayName: 'Coordinates Increments',
-				name: 'xy_inc',
-				type: 'string',
-				default: '',
-				placeholder: '0.5,0.5',
-				description: `Increments or decrements the value of the xy.  xy_inc is ignored if the xy attribute is provided. Any ongoing color transition is stopped. Max value [0.5, 0.5]`,
 			},
 		],
 	},
