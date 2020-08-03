@@ -56,13 +56,13 @@ import {
 
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Hubspot',
+		displayName: 'HubSpot',
 		name: 'hubspot',
 		icon: 'file:hubspot.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Hubspot API',
+		description: 'Consume HubSpot API',
 		defaults: {
 			name: 'Hubspot',
 			color: '#ff7f64',

@@ -20,7 +20,7 @@ class CredentialsOverwritesClass {
 			return;
 		}
 
-		const data = await GenericHelpers.getConfigValue('credentials.overwrite') as string;
+		const data = await GenericHelpers.getConfigValue('credentials.overwrite.data') as string;
 
 		try {
 			this.overwriteData = JSON.parse(data);
@@ -30,6 +30,7 @@ class CredentialsOverwritesClass {
 	}
 
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject) {
+
 		const overwrites = this.get(type);
 
 		if (overwrites === undefined) {

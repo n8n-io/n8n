@@ -113,9 +113,9 @@ export class Jira implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
 
-				let endpoint = '/project/search';
+				let endpoint = '/api/2/project/search';
 				if (jiraVersion === 'server') {
-					endpoint = '/project';
+					endpoint = '/api/2/project';
 				}
 				let projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
 
@@ -139,7 +139,7 @@ export class Jira implements INodeType {
 				const projectId = this.getCurrentNodeParameter('project');
 				const returnData: INodePropertyOptions[] = [];
 
-				const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/issuetype', 'GET');
+				const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issuetype', 'GET');
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
 				if (jiraVersion === 'server') {
 					for (const issueType of issueTypes) {
@@ -173,7 +173,7 @@ export class Jira implements INodeType {
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const labels = await jiraSoftwareCloudApiRequest.call(this, '/label', 'GET');
+				const labels = await jiraSoftwareCloudApiRequest.call(this, '/api/2/label', 'GET');
 
 				for (const label of labels.values) {
 					const labelName = label;
@@ -192,7 +192,7 @@ export class Jira implements INodeType {
 			async getPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const priorities = await jiraSoftwareCloudApiRequest.call(this, '/priority', 'GET');
+				const priorities = await jiraSoftwareCloudApiRequest.call(this, '/api/2/priority', 'GET');
 
 				for (const priority of priorities) {
 					const priorityName = priority.name;
@@ -213,7 +213,7 @@ export class Jira implements INodeType {
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
 				if (jiraVersion === 'server') {
 					// the interface call must bring username
-					const users = await jiraSoftwareCloudApiRequest.call(this, '/user/search', 'GET', {},
+					const users = await jiraSoftwareCloudApiRequest.call(this, '/api/2/user/search', 'GET', {},
 						{
 							username: "'",
 						}
@@ -228,7 +228,7 @@ export class Jira implements INodeType {
 						});
 					}
 				} else {
-					const users = await jiraSoftwareCloudApiRequest.call(this, '/users/search', 'GET');
+					const users = await jiraSoftwareCloudApiRequest.call(this, '/api/2/users/search', 'GET');
 
 					for (const user of users) {
 						const userName = user.displayName;
@@ -249,7 +249,7 @@ export class Jira implements INodeType {
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const groups = await jiraSoftwareCloudApiRequest.call(this, '/groups/picker', 'GET');
+				const groups = await jiraSoftwareCloudApiRequest.call(this, '/api/2/groups/picker', 'GET');
 
 				for (const group of groups.groups) {
 					const groupName = group.name;
@@ -269,7 +269,7 @@ export class Jira implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 
 				const issueKey = this.getCurrentNodeParameter('issueKey');
-				const transitions = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}/transitions`, 'GET');
+				const transitions = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}/transitions`, 'GET');
 
 				for (const transition of transitions.transitions) {
 					returnData.push({
@@ -340,7 +340,7 @@ export class Jira implements INodeType {
 					if (additionalFields.updateHistory) {
 						qs.updateHistory = additionalFields.updateHistory as boolean;
 					}
-					const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/issuetype', 'GET', body, qs);
+					const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issuetype', 'GET', body, qs);
 					const subtaskIssues = [];
 					for (const issueType of issueTypes) {
 						if (issueType.subtask) {
@@ -358,7 +358,7 @@ export class Jira implements INodeType {
 						};
 					}
 					body.fields = fields;
-					responseData = await jiraSoftwareCloudApiRequest.call(this, '/issue', 'POST', body);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issue', 'POST', body);
 				}
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-put
 				if (operation === 'update') {
@@ -399,7 +399,7 @@ export class Jira implements INodeType {
 					if (updateFields.description) {
 						fields.description = updateFields.description as string;
 					}
-					const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/issuetype', 'GET', body);
+					const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issuetype', 'GET', body);
 					const subtaskIssues = [];
 					for (const issueType of issueTypes) {
 						if (issueType.subtask) {
@@ -419,10 +419,10 @@ export class Jira implements INodeType {
 					body.fields = fields;
 
 					if (updateFields.statusId) {
-						responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}/transitions`, 'POST', { transition: { id: updateFields.statusId } });
+						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}/transitions`, 'POST', { transition: { id: updateFields.statusId } });
 					}
 
-					responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}`, 'PUT', body);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'PUT', body);
 					responseData = { success: true };
 				}
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
@@ -445,7 +445,7 @@ export class Jira implements INodeType {
 						qs.updateHistory = additionalFields.updateHistory as string;
 					}
 
-					responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}`, 'GET', {}, qs);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
 
 				}
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-search-post
@@ -463,11 +463,11 @@ export class Jira implements INodeType {
 						body.expand = options.expand as string;
 					}
 					if (returnAll) {
-						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'issues', `/search`, 'POST', body);
+						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'issues', `/api/2/search`, 'POST', body);
 					} else {
 						const limit = this.getNodeParameter('limit', i) as number;
 						body.maxResults = limit;
-						responseData = await jiraSoftwareCloudApiRequest.call(this, `/search`, 'POST', body);
+						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/search`, 'POST', body);
 						responseData = responseData.issues;
 					}
 				}
@@ -476,10 +476,10 @@ export class Jira implements INodeType {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll) {
-						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'values',`/issue/${issueKey}/changelog`, 'GET');
+						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'values',`/api/2/issue/${issueKey}/changelog`, 'GET');
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
-						responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}/changelog`, 'GET', {}, qs);
+						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}/changelog`, 'GET', {}, qs);
 						responseData = responseData.values;
 					}
 				}
@@ -563,7 +563,7 @@ export class Jira implements INodeType {
 							body.restrict = notificationRecipientsRestrictionsJson;
 						}
 					}
-					responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}/notify`, 'POST', body, qs);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}/notify`, 'POST', body, qs);
 
 				}
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-transitions-get
@@ -579,7 +579,7 @@ export class Jira implements INodeType {
 					if (additionalFields.skipRemoteOnlyCondition) {
 						qs.skipRemoteOnlyCondition = additionalFields.skipRemoteOnlyCondition as boolean;
 					}
-					responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}/transitions`, 'GET', {}, qs);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}/transitions`, 'GET', {}, qs);
 					responseData = responseData.transitions;
 
 				}
@@ -588,7 +588,7 @@ export class Jira implements INodeType {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const deleteSubtasks = this.getNodeParameter('deleteSubtasks', i) as boolean;
 					qs.deleteSubtasks = deleteSubtasks;
-					responseData = await jiraSoftwareCloudApiRequest.call(this, `/issue/${issueKey}`, 'DELETE', {}, qs);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'DELETE', {}, qs);
 				}
 			}
 			if (Array.isArray(responseData)) {
