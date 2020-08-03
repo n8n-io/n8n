@@ -373,6 +373,8 @@ export class Ftp implements INodeType {
 
 				if (operation === 'upload') {
 					const remotePath = this.getNodeParameter('path', i) as string;
+					const fileName = basename(remotePath);
+					const dirPath = remotePath.replace(fileName, '');
 
 					if (this.getNodeParameter('binaryData', i) === true) {
 						// Is binary file to upload
@@ -389,13 +391,33 @@ export class Ftp implements INodeType {
 						}
 
 						const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
-						await ftp!.put(buffer, remotePath);
+
+						try {
+							await ftp!.put(buffer, remotePath);
+						} catch (error) {
+							if (error.code === 553) {
+								// Create directory
+								await ftp!.mkdir(dirPath, true);
+								await ftp!.put(buffer, remotePath);
+							} else {
+								throw new Error(error);
+							}
+						}
 					} else {
 						// Is text file
 						const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8') as Buffer;
-						await ftp!.put(buffer, remotePath);
+						try {
+							await ftp!.put(buffer, remotePath);
+						} catch (error) {
+							if (error.code === 553) {
+								// Create directory
+								await ftp!.mkdir(dirPath, true);
+								await ftp!.put(buffer, remotePath);
+							} else {
+								throw new Error(error);
+							}
+						}
 					}
-
 					returnItems.push(items[i]);
 				}
 			}
