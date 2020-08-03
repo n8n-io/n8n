@@ -49,8 +49,15 @@ export interface IDatabaseCollections {
 	Credentials: Repository<ICredentialsDb> | null;
 	Execution: Repository<IExecutionFlattedDb> | null;
 	Workflow: Repository<IWorkflowDb> | null;
+	Webhook: Repository<IWebhookDb> | null;
 }
 
+export interface IWebhookDb {
+	workflowId: number | string | ObjectID;
+	webhookPath: string;
+	method: string;
+	node: string;
+}
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 	id?: number | string | ObjectID;
@@ -279,16 +286,16 @@ export interface IN8nUISettings {
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
 	timezone: string;
 	urlBaseWebhook: string;
 	versionCli: string;
 }
 
-
 export interface IPackageVersions {
 	cli: string;
 }
-
 
 export interface IPushData {
 	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook;
@@ -296,7 +303,6 @@ export interface IPushData {
 }
 
 export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'testWebhookDeleted' | 'testWebhookReceived';
-
 
 export interface IPushDataExecutionFinished {
 	data: IRun;

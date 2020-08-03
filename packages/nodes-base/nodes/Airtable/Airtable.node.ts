@@ -44,12 +44,12 @@ export class Airtable implements INodeType {
 					{
 						name: 'Append',
 						value: 'append',
-						description: 'Appends the data to a table',
+						description: 'Append the data to a table',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Deletes data from a table'
+						description: 'Delete data from a table'
 					},
 					{
 						name: 'List',
@@ -59,12 +59,12 @@ export class Airtable implements INodeType {
 					{
 						name: 'Read',
 						value: 'read',
-						description: 'Reads data from a table'
+						description: 'Read data from a table'
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Updates data in a table'
+						description: 'Update data in a table'
 					},
 				],
 				default: 'read',

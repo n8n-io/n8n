@@ -2,6 +2,7 @@ import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
@@ -9,9 +10,13 @@ import {
 	INodeType,
 } from 'n8n-workflow';
 
-import { parseString } from 'xml2js';
-import { OptionsWithUri } from 'request';
+import {
+	parseString,
+} from 'xml2js';
 
+import {
+	nextCloudApiRequest,
+} from './GenericFunctions';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +29,7 @@ export class NextCloud implements INodeType {
 		description: 'Access data on NextCloud',
 		defaults: {
 			name: 'NextCloud',
-			color: '#22BB44',
+			color: '#1cafff',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -32,9 +37,44 @@ export class NextCloud implements INodeType {
 			{
 				name: 'nextCloudApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'nextCloudOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -446,7 +486,14 @@ export class NextCloud implements INodeType {
 		const items = this.getInputData().slice();
 		const returnData: IDataObject[] = [];
 
-		const credentials = this.getCredentials('nextCloudApi');
+		const authenticationMethod = this.getNodeParameter('authentication', 0);
+		let credentials;
+
+		if (authenticationMethod === 'accessToken') {
+			credentials = this.getCredentials('nextCloudApi');
+		} else {
+			credentials = this.getCredentials('nextCloudOAuth2Api');
+		}
 
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
@@ -562,26 +609,14 @@ export class NextCloud implements INodeType {
 				webDavUrl = webDavUrl.slice(0, -1);
 			}
 
-			const options: OptionsWithUri = {
-				auth: {
-					user: credentials.user as string,
-					pass: credentials.password as string,
-				},
-				headers,
-				method: requestMethod,
-				body,
-				qs: {},
-				uri: `${credentials.webDavUrl}/${encodeURI(endpoint)}`,
-				json: false,
-			};
-
+			let encoding = undefined;
 			if (resource === 'file' && operation === 'download') {
 				// Return the data as a buffer
-				options.encoding = null;
+				encoding = null;
 			}
 
 			try {
-				responseData = await this.helpers.request(options);
+				responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding);
 			} catch (error) {
 				if (this.continueOnFail() === true) {
 					returnData.push({ error });
