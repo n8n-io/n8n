@@ -4,8 +4,17 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
+import {
+	OptionsWithUri,
+} from 'request';
+
+import {
+	IDataObject,
+} from 'n8n-workflow';
+
+import {
+	get,
+} from 'lodash';
 
 export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('customerIoApi');
@@ -27,7 +36,6 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		uri: `https://beta-api.customer.io/v1/api${endpoint}`,
 		json: true,
 	};
-	console.log(options);
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -45,4 +53,13 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		// Expected error data did not get returned so throw the actual error
 		throw error;
 	}
+}
+
+export function eventExists (currentEvents : string[], webhookEvents: IDataObject) {
+	for (const currentEvent of currentEvents) {
+		if  (get(webhookEvents, `${currentEvent.split('.')[0]}.${currentEvent.split('.')[1]}`) !== true) {
+			return false;
+		}
+	}
+	return true;
 }
