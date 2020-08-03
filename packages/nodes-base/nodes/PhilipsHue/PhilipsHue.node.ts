@@ -12,7 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import {
-	philiphueApiRequest,
+	philipsHueApiRequest,
 	getUser,
 } from './GenericFunctions';
 
@@ -21,24 +21,24 @@ import {
 	lightFields,
 } from './LightDescription';
 
-export class PhilipHue implements INodeType {
+export class PhilipsHue implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Philip Hue',
-		name: 'philipHue',
-		icon: 'file:philiphue.png',
+		displayName: 'Philips Hue',
+		name: 'philipsHue',
+		icon: 'file:philipshue.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Philip Hue API.',
+		description: 'Consume Philips Hue API.',
 		defaults: {
-			name: 'Philip Hue',
+			name: 'Philips Hue',
 			color: '#063c9a',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'philipHueOAuth2Api',
+				name: 'philipsHueOAuth2Api',
 				required: true,
 			},
 		],
@@ -72,7 +72,7 @@ export class PhilipHue implements INodeType {
 
 				const user = await getUser.call(this);
 
-				const lights = await philiphueApiRequest.call(
+				const lights = await philipsHueApiRequest.call(
 					this,
 					'GET',
 					`/bridge/${user}/lights`,
@@ -128,7 +128,7 @@ export class PhilipHue implements INodeType {
 
 					const user = await getUser.call(this);
 
-					const data = await philiphueApiRequest.call(
+					const data = await philipsHueApiRequest.call(
 						this,
 						'PUT',
 						`/bridge/${user}/lights/${lightId}/state`,
@@ -148,7 +148,7 @@ export class PhilipHue implements INodeType {
 
 					const user = await getUser.call(this);
 
-					responseData = await philiphueApiRequest.call(this, 'DELETE', `/bridge/${user}/lights/${lightId}`);
+					responseData = await philipsHueApiRequest.call(this, 'DELETE', `/bridge/${user}/lights/${lightId}`);
 
 				}
 				if (operation === 'getAll') {
@@ -156,7 +156,7 @@ export class PhilipHue implements INodeType {
 
 					const user = await getUser.call(this);
 
-					const lights = await philiphueApiRequest.call(this, 'GET', `/bridge/${user}/lights`);
+					const lights = await philipsHueApiRequest.call(this, 'GET', `/bridge/${user}/lights`);
 
 					responseData = Object.values(lights);
 
@@ -170,7 +170,7 @@ export class PhilipHue implements INodeType {
 
 					const user = await getUser.call(this);
 
-					responseData = await philiphueApiRequest.call(this, 'GET', `/bridge/${user}/lights/${lightId}`);
+					responseData = await philipsHueApiRequest.call(this, 'GET', `/bridge/${user}/lights/${lightId}`);
 				}
 			}
 		}
