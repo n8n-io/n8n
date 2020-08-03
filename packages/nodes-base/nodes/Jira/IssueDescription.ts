@@ -41,12 +41,12 @@ export const issueOperations = [
 			{
 				name: 'Notify',
 				value: 'notify',
-				description: 'Creates an email notification for an issue and adds it to the mail queue.',
+				description: 'Create an email notification for an issue and add it to the mail queue',
 			},
 			{
 				name: 'Status',
 				value: 'transitions',
-				description: `Returns either all transitions or a transition that can be performed by the user on an issue, based on the issue's status.`,
+				description: `Return either all transitions or a transition that can be performed by the user on an issue, based on the issue's status`,
 			},
 			{
 				name: 'Delete',

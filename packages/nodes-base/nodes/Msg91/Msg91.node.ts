@@ -13,7 +13,7 @@ import {
 
 export class Msg91 implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Msg91',
+		displayName: 'MSG91',
 		name: 'msg91',
 		icon: 'file:msg91.png',
 		group: ['transform'],
@@ -68,7 +68,7 @@ export class Msg91 implements INodeType {
 				description: 'The operation to perform.',
 			},
 			{
-				displayName: 'From',
+				displayName: 'Sender ID',
 				name: 'from',
 				type: 'string',
 				default: '',
