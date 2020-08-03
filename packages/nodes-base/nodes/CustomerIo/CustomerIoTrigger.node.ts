@@ -2,15 +2,27 @@ import {
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
+
 import {
 	INodeTypeDescription,
 	INodeType,
 	IDataObject,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+
 import {
 	apiRequest,
+	eventExists,
 } from './GenericFunctions';
+
+interface IEvent{
+	customer?: IDataObject;
+	email?: IDataObject;
+	push?: IDataObject;
+	slack?: IDataObject;
+	sms?: IDataObject;
+	webhook?: IDataObject;
+}
 
 export class CustomerIoTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,10 +31,9 @@ export class CustomerIoTrigger implements INodeType {
 		group: ['trigger'],
 		icon: 'file:customer.Io.png',
 		version: 1,
-		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
-		description: 'Starts the workflow on a Customer.io update.',
+		description: 'Starts the workflow on a Customer.io update. (Beta)',
 		defaults: {
-			name: 'CustomerDotIO Trigger',
+			name: 'Customer.io Trigger',
 			color: '#00FF00',
 		},
 		inputs: [],
@@ -31,7 +42,7 @@ export class CustomerIoTrigger implements INodeType {
 			{
 				name: 'customerIoApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -176,40 +187,39 @@ export class CustomerIoTrigger implements INodeType {
 					},
 					{
 						name: 'SMS attempted',
-						value: 'slack.attempted',
+						value: 'sms.attempted',
 						description: 'Whether the webhook is triggered when a list member unsubscribes.',
 					},
 					{
 						name: 'SMS bounced',
-						value: 'slack.bounced',
+						value: 'sms.bounced',
 						description: 'Whether the webhook is triggered when a list member unsubscribes.',
 					},
 					{
 						name: 'SMS clicked',
-						value: 'slack.clicked',
+						value: 'sms.clicked',
 						description: 'Whether the webhook is triggered when a list member unsubscribes.',
 					},
 					{
 						name: 'SMS delivered',
-						value: 'slack.delivered',
+						value: 'sms.delivered',
 						description: 'Whether the webhook is triggered when a list member unsubscribes.',
 					},
 					{
 						name: 'SMS drafted',
-						value: 'slack.drafted',
+						value: 'sms.drafted',
 						description: 'Whether the webhook is triggered when a list member unsubscribes.',
 					},
 					{
 						name: 'SMS failed',
-						value: 'slack.failed',
+						value: 'sms.failed',
 						description: 'Whether the webhook is triggered when a list member unsubscribes.',
 					},
 					{
 						name: 'SMS sent',
-						value: 'slack.sent',
+						value: 'sms.sent',
 						description: 'Whether the webhook is triggered when a list member unsubscribes.',
 					},
-
 				],
 			},
 		],
@@ -218,72 +228,77 @@ export class CustomerIoTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
+
 				const webhookData = this.getWorkflowStaticData('node');
-				console.log("in checkexists function")
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
-				const endpoint = `/reporting_webhooks/${webhookData.webhookId}`;
-				try {
-					await apiRequest.call(this, 'GET', endpoint, {});
-				} catch (err) {
-					if (err.statusCode === 404) {
-						return false;
-					}
-					throw new Error(`Customer.io Error: ${err}`);
+
+				const currentEvents = this.getNodeParameter('events', []) as string[];
+
+				const endpoint = '/reporting_webhooks';
+
+				let { reporting_webhooks: webhooks } = await apiRequest.call(this, 'GET', endpoint, {});
+
+				if (webhooks === null) {
+					webhooks = [];
 				}
 
-				return true;
+				for (const webhook of webhooks) {
+					if (webhook.endpoint === webhookUrl &&
+						eventExists(currentEvents, webhook.events)) {
+							webhookData.webhookId = webhook.id;
+							return true;
+					}
+				}
+
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				let webhook;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events', []) as string[];
 
-				const endpoint1 = '/reporting_webhooks';
+				const endpoint = '/reporting_webhooks';
+
+				const data: IEvent = {
+					customer: {},
+					email: {},
+					push: {},
+					slack: {},
+					sms: {},
+					webhook: {},
+				};
+
 				for (const event of events) {
-					var obj = event.split('.');
-
-					// var obj2 = JSON.stringify(obj);
-					// var key = obj[0]; //push
-					// var val = JSON.stringify(obj[1]); //attempted
-
-					// var obj1: { obj2: boolean; } = { obj2: true }; //{'attempted':true}
-
-
+					const option = event.split('.')[1];
+					if (event.startsWith('customer')) {
+						data.customer![option] = true;
+					}
+					if (event.startsWith('email')) {
+						data.email![option] = true;
+					}
+					if (event.startsWith('push')) {
+						data.push![option] = true;
+					}
+					if (event.startsWith('slack')) {
+						data.slack![option] = true;
+					}
+					if (event.startsWith('sms')) {
+						data.sms![option] = true;
+					}
+					if (event.startsWith('webhook')) {
+						data.webhook![option] = true;
+					}
 				}
 				const body = {
 					endpoint: webhookUrl,
-					// events: events.reduce((object, currentValue) => {
-					// 	// @ts-ignore
-					// 	var obj = currentValue.split('.');
-
-					// 	//object[currentValue] = true;
-
-					// 	return object;
-					// }, {}),
-					"events": {
-						"customer": {
-							"subscribed": false,
-							"unsubscribed": true
-						},
-					},
+					events: data,
 				};
-				console.log(body);
-				try {
-					webhook = await apiRequest.call(this, 'POST', endpoint1, body);
-				} catch (e) {
-					throw e;
-				}
-				if (webhook.id === undefined) {
-					return false;
-				}
+
+				webhook = await apiRequest.call(this, 'POST', endpoint, body);
+
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = webhook.id as string;
-				webhookData.events = events;
 				return true;
-
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
@@ -291,40 +306,23 @@ export class CustomerIoTrigger implements INodeType {
 				if (webhookData.webhookId !== undefined) {
 					const endpoint = `/reporting_webhooks/${webhookData.webhookId}`;
 					try {
-						await apiRequest.call(this, endpoint, 'DELETE', {});
+						await apiRequest.call(this, 'DELETE', endpoint, {});
 					} catch (e) {
 						return false;
 					}
 					delete webhookData.webhookId;
-					delete webhookData.events;
-
 				}
 				return true;
 			},
 		}
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
-		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
-		const req = this.getRequestObject();
-		if (req.body.id !== webhookData.id) {
-			return {};
-		}
-		// @ts-ignore
-		if (!webhookData.events.includes(req.body.type)
-			// @ts-ignore
-			&& !webhookData.sources.includes(req.body.type)) {
-			return {};
-		}
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray([bodyData])
+				this.helpers.returnJsonArray(bodyData)
 			],
 		};
 	}
-
-
 }
