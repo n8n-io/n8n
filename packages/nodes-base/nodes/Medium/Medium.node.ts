@@ -34,7 +34,25 @@ export class Medium implements INodeType {
 			{
 				name: 'mediumApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'mediumOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -46,10 +64,10 @@ export class Medium implements INodeType {
 						name: 'Access Token',
 						value: 'accessToken',
 					},
-					// {
-					// 	name: 'OAuth2',
-					// 	value: 'oAuth2',
-					// },
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
 				],
 				default: 'accessToken',
 				description: 'The method of authentication.',
@@ -62,6 +80,10 @@ export class Medium implements INodeType {
 					{
 						name: 'Post',
 						value: 'post',
+					},
+					{
+						name: 'Publication',
+						value: 'publication',
 					},
 				],
 				default: 'post',
@@ -84,7 +106,6 @@ export class Medium implements INodeType {
 						value: 'create',
 						description: 'Create a post.',
 					},
-
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -97,6 +118,16 @@ export class Medium implements INodeType {
 				displayName: 'Publication',
 				name: 'publication',
 				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'post',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
 				default: false,
 				description: 'Are you posting for a publication?'
 			},
@@ -106,6 +137,12 @@ export class Medium implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
+						resource: [
+							'post',
+						],
+						operation: [
+							'create',
+						],
 						publication: [
 							true,
 						],
@@ -171,6 +208,9 @@ export class Medium implements INodeType {
 				default: '',
 				placeholder: 'My open source contribution',
 				required: true,
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
 				displayOptions: {
 					show: {
 						operation: [
@@ -187,6 +227,7 @@ export class Medium implements INodeType {
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: [
@@ -282,7 +323,72 @@ export class Medium implements INodeType {
 					},
 				],
 			},
-		]
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'publication',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all publications.',
+					},
+				],
+				default: 'publication',
+				description: 'The operation to perform.',
+			},
+			// ----------------------------------
+			//         publication:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'publication',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'publication',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 200,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+		],
 	};
 	methods = {
 		loadOptions: {
@@ -295,17 +401,14 @@ export class Medium implements INodeType {
 					this,
 					'GET',
 					`/me`,
-					{},
-					{}
 				);
+
 				const userId = user.data.id;
 				//Get all publications of that user
 				const publications = await mediumApiRequest.call(
 					this,
 					'GET',
 					`/users/${userId}/publications`,
-					{},
-					{}
 				);
 				const publicationsList = publications.data;
 				for (const publication of publicationsList) {
@@ -380,6 +483,7 @@ export class Medium implements INodeType {
 					if (additionalFields.notifyFollowers) {
 						bodyRequest.notifyFollowers = additionalFields.notifyFollowers as string;
 					}
+
 					const underPublication = this.getNodeParameter('publication', i) as boolean;
 
 					// if user wants to publish it under a specific publication
@@ -411,13 +515,46 @@ export class Medium implements INodeType {
 							bodyRequest,
 							qs
 						);
+
+						responseData = responseData.data;
 					}
 				}
 			}
-			if (Array.isArray(responseData.data)) {
-				returnData.push.apply(returnData, responseData.data as IDataObject[]);
+			if (resource === 'publication') {
+				//https://github.com/Medium/medium-api-docs#32-publications
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         publication:getAll
+					// ----------------------------------
+
+					const returnAll = this.getNodeParameter('returnAll', i) as string;
+
+					const user = await mediumApiRequest.call(
+						this,
+						'GET',
+						`/me`,
+					);
+
+					const userId = user.data.id;
+					//Get all publications of that user
+					responseData = await mediumApiRequest.call(
+						this,
+						'GET',
+						`/users/${userId}/publications`,
+					);
+
+					responseData = responseData.data;
+
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+				}
+			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
-				returnData.push(responseData.data as IDataObject);
+				returnData.push(responseData as IDataObject);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

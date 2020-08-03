@@ -3,7 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class MediumOAuth2Api implements ICredentialType {
 	name = 'mediumOAuth2Api';
 	extends = [
@@ -19,22 +18,22 @@ export class MediumOAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
+			displayName: 'Access Token URL',
+			name: 'accessTokenUrl',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'https://medium.com/v1/tokens',
+			required: true,
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'basicProfile,publishPost',
+			default: 'basicProfile,publishPost,listPublications',
 		},
 		{
 			displayName: 'Client ID',
 			name: 'clientId',
 			type: 'string' as NodePropertyTypes,
-			default: '',
-			required: true,
-		},
-		{
-			displayName: 'Access Token URL',
-			name: 'accessTokenUrl',
-			type: 'hidden' as NodePropertyTypes,
 			default: '',
 			required: true,
 		},
@@ -55,7 +54,7 @@ export class MediumOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'header',
+			default: 'body',
 		},
 	];
 }

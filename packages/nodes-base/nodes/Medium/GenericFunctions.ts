@@ -42,9 +42,9 @@ export async function mediumApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 			return await this.helpers.request!(options);
 		}
-		// else {
-		// 	return await this.helpers.requestOAuth2!.call(this, 'mediumOAuth2Api', options);
-		// }
+		else {
+			return await this.helpers.requestOAuth2!.call(this, 'mediumOAuth2Api', options);
+		}
 	} catch (error) {
 		if (error.statusCode === 401) {
 			throw new Error('The Medium credentials are not valid!');
