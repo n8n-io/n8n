@@ -1,9 +1,18 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+
+import {
+	getItemCopy,
+	pgInsert,
+	pgQuery,
+} from '../Postgres/Postgres.node.functions';
 
 import * as pgPromise from 'pg-promise';
-
-import { pgInsert, pgQuery, pgUpdate, getItemCopy } from '../Postgres/Postgres.node.functions';
 
 export class CrateDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -254,7 +263,7 @@ export class CrateDb implements INodeType {
 
 				if (updateKeyValue === undefined) {
 					throw new Error('No value found for update key!');
-				} 
+				}
 
 				updatedKeys.push(updateKeyValue as string);
 
@@ -262,9 +271,9 @@ export class CrateDb implements INodeType {
 				queries.push(query);
 			});
 
-			
+
 			await db.any(pgp.helpers.concat(queries));
-			
+
 			returnItems = this.helpers.returnJsonArray(getItemCopy(items, columns) as IDataObject[]);
 		} else {
 			await pgp.end();
