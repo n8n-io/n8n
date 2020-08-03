@@ -11,17 +11,6 @@ import {
 	tools,
 } from './json/tools';
 
-
-function capitalizeWords(str: string): string {
-	if (!str) {
-		return "";
-	} else {
-		return str.replace(/\w\S*/g, function(txt: string){
-        return txt.charAt(0).toUpperCase() + txt.substr(1);
-    });
-	}
-}
-
 function capitalize(str: string): string {
 	if (!str) {
 		return "";
@@ -29,15 +18,6 @@ function capitalize(str: string): string {
 		return str.charAt(0).toUpperCase() + str.slice(1);
 	}
 }
-
-function getFirstDescription(str: string): string {
-	if (!str) {
-		return "";
-	} else {
-		return str.split(". ")[0];;
-	}
-}
-
 
 const operations = [];
 
