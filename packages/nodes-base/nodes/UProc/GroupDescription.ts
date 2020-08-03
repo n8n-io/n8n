@@ -1,28 +1,34 @@
-import { INodeProperties, IDataObject } from 'n8n-workflow';
+import {
+	INodeProperties,
+	IDataObject,
+} from 'n8n-workflow';
 
-//import groups from "json!https://app.uproc.io/json/en/groups.json";
-var groups = require("./json/groups.json");
+import {
+	groups,
+} from './json/groups';
 
-let finalGroups = {
- displayName: 'Group',
- name: 'group',
- type: 'options',
- default: 'communication',
- description: 'Group to consume.',
- options: <Object>[]
+const finalGroups = {
+	displayName: 'Group',
+	name: 'group',
+	type: 'options',
+	default: 'communication',
+	description: 'Group to consume.',
+	options: [],
 };
 
-let options = [];
+const options = [];
 
-for(let group of groups.groups){
-	let item = {
+for(const group of (groups as IDataObject).groups as IDataObject[]){
+	const item = {
 		name: group.translated,
 		value: group.name,
 		description: 'The ' + group.translated + ' Group allows you to get tools from this group',
 	};
 	options.push(item);
 }
+
+//@ts-ignore
 finalGroups.options = options;
-let mappedGroups = [finalGroups];
+const mappedGroups = [finalGroups];
 
 export const groupOptions = mappedGroups as INodeProperties[];

@@ -16,7 +16,7 @@ export class UProcApi implements ICredentialType {
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'password' as NodePropertyTypes,
+			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
 	];

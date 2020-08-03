@@ -1,13 +1,48 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+	IDataObject,
+} from 'n8n-workflow';
 
-//import tools from "json!https://app.uproc.io/json/en/processors.json";
-//import toolsObject from "json/processors.json";
-var groups = require("./json/groups.json");
-var tools = require("./json/processors.json");
+import {
+	groups,
+} from './json/groups';
 
-let operations = [];
-for(let group of groups.groups) {
-	let item = {
+import {
+	tools,
+} from './json/tools';
+
+
+function capitalizeWords(str: string): string {
+	if (!str) {
+		return "";
+	} else {
+		return str.replace(/\w\S*/g, function(txt: string){
+        return txt.charAt(0).toUpperCase() + txt.substr(1);
+    });
+	}
+}
+
+function capitalize(str: string): string {
+	if (!str) {
+		return "";
+	} else {
+		return str.charAt(0).toUpperCase() + str.slice(1);
+	}
+}
+
+function getFirstDescription(str: string): string {
+	if (!str) {
+		return "";
+	} else {
+		return str.split(". ")[0];;
+	}
+}
+
+
+const operations = [];
+
+for(const group of (groups as IDataObject).groups as IDataObject[]) {
+	const item = {
 		displayName: 'Tool',
 		name: 'tool',
 		type: 'options',
@@ -18,19 +53,22 @@ for(let group of groups.groups) {
 				],
 			},
 		},
-		default: 'check-email-exists',
+		default: '',
 		options: []
 	};
 
-	var options = [];
 
-	for(let tool of tools.processors){
-		if (tool.groups.indexOf(group.name) !== -1) {
-			let prefix = tool.type.charAt(0).toUpperCase() + tool.type.slice(1);
-			let option = {
-				name: prefix + " " + tool.description,
-				value: tool.key,
-				description: ''
+	const options = [];
+
+	for(const tool of (tools as IDataObject).processors as IDataObject[]){
+		//@ts-ignore
+		if (tool.g === group.name) {
+		//if (tool?.groups.indexOf(group.name) !== -1) {
+					//@ts-ignore
+			const option = {
+				name: tool.d as string,
+				value: tool.k,
+				description: tool.ed as string
 			};
 			options.push(option);
 		}
@@ -42,47 +80,52 @@ for(let group of groups.groups) {
 }
 export const toolOperations = operations as INodeProperties[];
 
-
 let parameters = [];
 //all tools
-for(let tool of tools.processors) {
+for(const tool of (tools as IDataObject).processors as IDataObject[]) {
 	//all parameters in tool
-	for (let param of tool.params) {
-		let parameter = {
-			displayName: param.name,
-			name: param.name,
-			type: 'string',
+	for (const param of (tool as IDataObject).p as IDataObject[]) {
+		const displayName = param.n as string;
+		const capitalizedDisplayName = capitalize(displayName.replace(/_/g, " "));
+		const parameter = {
+			displayName: capitalizedDisplayName,
+			name: param.n,
+			type: param.t,
 			default: '',
-			required: param.required,
+			placeholder: param.p,
+			required: param.r,
+			options: param.o,
 			displayOptions: {
 				show: {
 					group: [
-						tool.groups[0],
+						//@ts-ignore
+						tool.g,
 					],
 					tool: [
-						tool.key
+						tool.k
 					],
 				},
 			},
-			description: 'The ' + param.name + ' to complete.',
+			description: 'The ' + capitalizedDisplayName + ' to be completed.',
 		};
 		let modifiedParam = null;
 		//Check if param exists previously
-		for (let currentParam of parameters) {
+		for (const currentParam of parameters) {
 			//Get old param in parameters array
-			if (currentParam.name === param.name) {
+			if (currentParam.name === param.n) {
 				modifiedParam = currentParam;
 			}
 		}
 		//if exists
 		if (modifiedParam) {
 			//Assign new group and tool
-			modifiedParam.displayOptions.show.group.push(tool.groups[0]);
-			modifiedParam.displayOptions.show.tool.push(tool.key);
+			//@ts-ignore
+			modifiedParam.displayOptions.show.group.push(tool.g);
+			modifiedParam.displayOptions.show.tool.push(tool.k);
 
 			//build new array
-			let newParameters = [];
-			for (let currentParam of parameters) {
+			const newParameters = [];
+			for (const currentParam of parameters) {
 				//Get old param in parameters array
 				if (currentParam.name === modifiedParam.name) {
 					newParameters.push(modifiedParam);
