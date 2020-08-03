@@ -273,7 +273,7 @@ export const buildFields = [
 			},
 		},
 		default: '',
-		description: 'Same as {repository.owner.name}/{repository.name}',
+		description: 'Same as {ownerName}/{repositoryName}',
 	},
 	{
 		displayName: 'Branch',
