@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -11,7 +11,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function philiphueApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -36,7 +36,7 @@ export async function philiphueApiRequest(this: IExecuteFunctions | ILoadOptions
 		}
 
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'philipHueOAuth2Api', options, { tokenType: 'Bearer' });
+		return await this.helpers.requestOAuth2.call(this, 'philipsHueOAuth2Api', options, { tokenType: 'Bearer' });
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error) {
 
@@ -52,7 +52,7 @@ export async function philiphueApiRequest(this: IExecuteFunctions | ILoadOptions
 }
 
 export async function getUser(this: IExecuteFunctions | ILoadOptionsFunctions): Promise<any> { // tslint:disable-line:no-any
-	const { whitelist } = await philiphueApiRequest.call(this, 'GET', '/bridge/0/config', {}, {});
+	const { whitelist } = await philipsHueApiRequest.call(this, 'GET', '/bridge/0/config', {}, {});
 	//check if there is a n8n user
 	for (const user of Object.keys(whitelist)) {
 		if (whitelist[user].name === 'n8n') {
@@ -60,7 +60,7 @@ export async function getUser(this: IExecuteFunctions | ILoadOptionsFunctions): 
 		}
 	}
 	// n8n user was not fount then create the user
-	await philiphueApiRequest.call(this, 'PUT', '/bridge/0/config', { linkbutton: true });
-	const { success } =  await philiphueApiRequest.call(this, 'POST', '/bridge', { devicetype: 'n8n' });
+	await philipsHueApiRequest.call(this, 'PUT', '/bridge/0/config', { linkbutton: true });
+	const { success } = await philipsHueApiRequest.call(this, 'POST', '/bridge', { devicetype: 'n8n' });
 	return success.username;
 }

@@ -3,8 +3,8 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class PhilipHueOAuth2Api implements ICredentialType {
-	name = 'philipHueOAuth2Api';
+export class PhilipsHueOAuth2Api implements ICredentialType {
+	name = 'philipsHueOAuth2Api';
 	extends = [
 		'oAuth2Api',
 	];
