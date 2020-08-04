@@ -1,49 +1,69 @@
-import { INodeProperties, INodePropertyOptions } from "n8n-workflow";
+import {
+	INodeProperties,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 
 export const resource = {
-  name: "Content Types",
-  value: "content_type",
+	name: 'Content Type',
+	value: 'contentType',
 } as INodePropertyOptions;
 
 export const operations = [
-  {
-    displayName: "Operation",
-    name: "operation",
-    type: "options",
-    displayOptions: {
-      show: {
-        resource: [resource.value],
-      },
-    },
-    options: [
-      {
-        name: "Get Content types",
-        value: "get_content_types",
-      },
-      {
-        name: "Get Single Content Type",
-        value: "get_content_type",
-      },
-    ],
-    default: "get_content_types",
-    description: "The operation to perform.",
-  },
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					resource.value,
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Get',
+				value: 'get',
+			},
+		],
+		default: 'get',
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const fields = [
-  {
-    displayName: "Content Type Id",
-    name: "content_type_id",
-    type: "string",
-    default: "",
-    placeholder: "",
-    description: "",
-    required: true,
-    displayOptions: {
-      show: {
-        resource: [resource.value],
-        operation: ["get_content_type"],
-      },
-    },
-  },
+	{
+		displayName: 'Environment ID',
+		name: 'environmentId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					resource.value,
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: 'master',
+		description: 'The id for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".'
+	},
+	{
+		displayName: 'Content Type ID',
+		name: 'contentTypeId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					resource.value,
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
 ] as INodeProperties[];

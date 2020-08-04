@@ -1,45 +1,75 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { OptionsWithUrl } from 'request';
+import {
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+} from 'n8n-core';
 
-/**
- * @param  {IExecuteFunctions} that Reference to the system's execute functions
- * @param  {string} endpoint? Endpoint of api call
- * @param  {string} environmentId? Id of contentful environment (eg. master, staging, etc.)
- * @param  {Record<string|number>} qs? Query string, can be used for search parameters
- */
-export const contentfulApiRequest = async (
-	that: IExecuteFunctions,
-	endpoint?: string,
-	environmentId?: string,
-	qs?: Record<string, string | number | undefined>
-) => {
-	const credentials = that.getCredentials('contentfulDeliveryApi');
+import {
+	OptionsWithUri,
+} from 'request';
+
+import {
+	IDataObject,
+} from 'n8n-workflow';
+
+export async function contentfulApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const credentials = this.getCredentials('contentfulApi');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
 
-	const source = that.getNodeParameter('source', 0) as string;
-	const isPreview = source === 'preview_api';
-	let accessToken = credentials.access_token as string;
+	const source = this.getNodeParameter('source', 0) as string;
+	const isPreview = source === 'previewApi';
+
+	const options: OptionsWithUri = {
+		method,
+		qs,
+		body,
+		uri: uri ||`https://${isPreview ? 'preview' : 'cdn'}.contentful.com${resource}`,
+		json: true
+	};
+
 	if (isPreview) {
-		accessToken = credentials.access_token_preview as string;
-		console.log('accessToken', accessToken);
-		if (!accessToken) {
-			throw new Error('No access token for preview API set in credentials!');
-		}
+		qs.access_token = credentials.ContentPreviewaccessToken as string;
+	} else {
+		qs.access_token = credentials.ContentDeliveryaccessToken as string;
 	}
 
-	let url = `https://${isPreview ? 'preview' : 'cdn'}.contentful.com/spaces/${credentials.space_id}`;
-	if (environmentId) url = `${url}/environments/${environmentId}`;
-	if (endpoint) url = `${url}${endpoint}`;
-	qs = qs || {};
-	qs.access_token = accessToken;
+	try {
+		return await this.helpers.request!(options);
+	} catch (error) {
 
-	const res = await that.helpers.request!({
-		url,
-		method: 'GET',
-		qs
-	} as OptionsWithUrl);
+		let errorMessage = error;
 
-	return JSON.parse(res);
-};
+		if (error.response && error.response.body && error.response.body.details) {
+			const details = error.response.body.details;
+			errorMessage = details.errors.map((e: IDataObject) => e.details).join('|');
+		} else if (error.response && error.response.body && error.response.body.message) {
+			errorMessage = error.response.body.message;
+		}
+
+		throw new Error(`Contentful error response [${error.statusCode}]: ${errorMessage}`);
+	}
+
+}
+
+export async function contenfulApiRequestAllItems(this: ILoadOptionsFunctions | IExecuteFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.limit = 100;
+	query.skip = 0;
+
+	do {
+		responseData = await contentfulApiRequest.call(this, method, resource, body, query);
+		query.skip = (query.skip + 1) * query.limit;
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		returnData.length < responseData.total
+	);
+
+	return returnData;
+}
