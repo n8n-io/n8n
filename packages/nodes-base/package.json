@@ -43,7 +43,7 @@
       "dist/credentials/ClockifyApi.credentials.js",
       "dist/credentials/CockpitApi.credentials.js",
       "dist/credentials/CodaApi.credentials.js",
-      "dist/credentials/ContentfulDeliveryApi.credentials.js",
+      "dist/credentials/ContentfulApi.credentials.js",
       "dist/credentials/CopperApi.credentials.js",
       "dist/credentials/CalendlyApi.credentials.js",
       "dist/credentials/DisqusApi.credentials.js",

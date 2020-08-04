@@ -1,8 +1,14 @@
-import { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import {
+	INodeProperties,
+	INodePropertyOptions,
+} from 'n8n-workflow';
+import { type } from 'os';
+import { notEqual } from 'assert';
+import { exists } from 'fs';
 
 export const resource = {
 	name: 'Entry',
-	value: 'entry'
+	value: 'entry',
 } as INodePropertyOptions;
 
 export const operations = [
@@ -12,72 +18,190 @@ export const operations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [resource.value]
-			}
+				resource: [
+					resource.value,
+				],
+			},
 		},
 		options: [
 			{
-				name: 'Get Entries',
-				value: 'get_entries'
+				name: 'Get',
+				value: 'get',
 			},
 			{
-				name: 'Get Single Entry',
-				value: 'get_entry'
-			}
+				name: 'Get All',
+				value: 'getAll',
+			},
 		],
-		default: 'get_entries',
+		default: 'get',
 		description: 'The operation to perform.'
 	}
 ] as INodeProperties[];
 
 export const fields = [
 	{
-		displayName: 'Resolve',
-		name: 'resolve',
-		type: 'boolean',
-		default: false,
-		description: 'Linked entries can be automatically resolved in the results if you click activate this feature.',
+		displayName: 'Environment ID',
+		name: 'environmentId',
+		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [resource.value],
-				operation: ['get_entries']
-			}
-		}
-	},
-	{
-		displayName: 'Include',
-		name: 'include',
-		type: 'number',
-		default: 1,
-		placeholder: '',
-		description:
-			"When you have related content (e.g. entries with links to image assets) it's possible to include them in the results. Using the include parameter, you can specify the number of levels of entries to include in the results. A lower number might improve performance.",
-		typeOptions: {
-			minValue: 0,
-			maxValue: 10
+				resource: [
+					resource.value,
+				],
+				operation: [
+					'get',
+					'getAll',
+				],
+			},
 		},
+		default: 'master',
+		description: 'The id for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".'
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [resource.value],
-				operation: ['get_entries'],
-				resolve: [true]
-			}
-		}
+				operation: [
+					'getAll',
+				],
+				resource: [
+					resource.value,
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
 	},
-
 	{
-		displayName: 'Entry Id',
-		name: 'entry_id',
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					resource.value,
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					resource.value,
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Content Type ID',
+				name: 'content_type',
+				type: 'string',
+				default: '',
+				description: 'To search for entries with a specific content type',
+			},
+			{
+				displayName: 'Equal',
+				name: 'equal',
+				type: 'string',
+				default: '',
+				placeholder: 'fields.title=n8n',
+				description: 'Search for all data that matches the condition: {attribute}={value}. Attribute can use dot notation.',
+			},
+			{
+				displayName: 'Exclude',
+				name: 'exclude',
+				type: 'string',
+				default: '',
+				placeholder: 'fields.tags[nin]=accessories,flowers',
+				description: 'Search for all data that matches the condition: {attribute}[nin]={value}. Attribute can use dot notation.',
+			},
+			{
+				displayName: 'Exist',
+				name: 'exist',
+				type: 'string',
+				default: '',
+				placeholder: 'fields.tags[exists]=true',
+				description: 'Search for all data that matches the condition: {attribute}[exists]={value}. Attribute can use dot notation.',
+			},
+			{
+				displayName: 'Fields',
+				name: 'select',
+				type: 'string',
+				placeholder: 'fields.title',
+				default: '',
+				description: 'The select operator allows you to choose what fields to return from an entity. You can choose multiple values by combining comma separated operators.',
+			},
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'string',
+				default: '',
+				placeholder: 'fields.tags[in]=accessories,flowers',
+				description: 'Search for all data that matches the condition: {attribute}[in]={value}. Attribute can use dot notation.',
+			},
+			{
+				displayName: 'Not Equal',
+				name: 'notEqual',
+				type: 'string',
+				default: '',
+				placeholder: 'fields.title[ne]=n8n',
+				description: 'Search for all data that matches the condition: {attribute}[ne]={value}. Attribute can use dot notation.',
+			},
+			{
+				displayName: 'Order',
+				name: 'order',
+				type: 'string',
+				default: '',
+				placeholder: 'sys.createdAt',
+				description: 'You can order items in the response by specifying the order search parameter. You can use sys properties (such as sys.createdAt) or field values (such as fields.myCustomDateField) for ordering.',
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: ' Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
+			},
+		],
+	},
+	{
+		displayName: 'Entry ID',
+		name: 'entryId',
 		type: 'string',
 		default: '',
-		placeholder: '',
-		description: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [resource.value],
-				operation: ['get_entry']
-			}
-		}
+				resource: [
+					resource.value,
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
 	}
 ] as INodeProperties[];
