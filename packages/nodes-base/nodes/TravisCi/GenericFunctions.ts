@@ -15,9 +15,9 @@ import {
 
 import {
 	get,
- } from 'lodash';
+} from 'lodash';
 
- import * as querystring from 'querystring';
+import * as querystring from 'querystring';
 
 export async function travisciApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('travisCiApi');
@@ -34,7 +34,7 @@ export async function travisciApiRequest(this: IHookFunctions | IExecuteFunction
 		method,
 		qs,
 		body,
-		uri: uri ||`https://api.travis-ci.com${resource}`,
+		uri: uri || `https://api.travis-ci.com${resource}`,
 		json: true
 	};
 	options = Object.assign({}, options, option);
@@ -58,7 +58,7 @@ export async function travisciApiRequest(this: IHookFunctions | IExecuteFunction
  * Make an API request to paginated TravisCI endpoint
  * and return all results
  */
-export async function travisciApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function travisciApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
