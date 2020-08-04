@@ -79,7 +79,7 @@ export class Twake implements INodeType {
 					{
 						name: 'Message',
 						value: 'message',
-						description: 'Send data to message app',
+						description: 'Send data to the message app',
 					},
 				],
 				default: 'message',
@@ -157,7 +157,7 @@ export class Twake implements INodeType {
 						name: 'senderIcon',
 						type: 'string',
 						default: '',
-						description: 'Sender icon',
+						description: 'URL of the image/icon',
 					},
 					{
 						displayName: 'Sender Name',
