@@ -7,6 +7,8 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
+
+
 /**
  * Make an API request to Twake
  *
@@ -16,7 +18,7 @@ import {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object, query?: object, uri?: string): Promise<any>  {  // tslint:disable-line:no-any
+export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object, query?: object, uri?: string): Promise<any> {  // tslint:disable-line:no-any
 
 	const authenticationMethod = this.getNodeParameter('twakeVersion', 0, 'twakeCloudApi') as string;
 
@@ -30,21 +32,20 @@ export async function twakeApiRequest(this: IHookFunctions | IExecuteFunctions |
 	};
 
 
-	if (authenticationMethod === 'cloud') {
+	// if (authenticationMethod === 'cloud') {
 		const credentials = this.getCredentials('twakeCloudApi');
 		options.headers!.Authorization = `Bearer ${credentials!.workspaceKey}`;
 
-	} else {
-
-		const credentials = this.getCredentials('twakeServerApi');
-		options.auth = { user: credentials!.publicId as string, pass: credentials!.privateApiKey as string };
-		options.uri = `${credentials!.hostUrl}/api/v1${resource}`;
-	}
+	// } else {
+	// 	const credentials = this.getCredentials('twakeServerApi');
+	// 	options.auth = { user: credentials!.publicId as string, pass: credentials!.privateApiKey as string };
+	// 	options.uri = `${credentials!.hostUrl}/api/v1${resource}`;
+	// }
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if( error.error.code === "ECONNREFUSED"){
+		if (error.error.code === 'ECONNREFUSED') {
 			throw new Error('Twake host is not accessible!');
 
 		}
