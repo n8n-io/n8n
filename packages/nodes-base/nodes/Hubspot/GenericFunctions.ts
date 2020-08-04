@@ -45,7 +45,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.request!(options);
 		} else {
 			// @ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, 'Bearer');
+			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer' });
 		}
 	} catch (error) {
 		let errorMessages;

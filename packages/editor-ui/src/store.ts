@@ -38,7 +38,8 @@ export const store = new Vuex.Store({
 		activeWorkflows: [] as string[],
 		activeActions: [] as string[],
 		activeNode: null as string | null,
-		baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : '/',
+		// @ts-ignore
+		baseUrl: process.env.VUE_APP_URL_BASE_API ? process.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
 		credentials: null as ICredentialsResponse[] | null,
 		credentialTypes: null as ICredentialType[] | null,
 		endpointWebhook: 'webhook',
@@ -51,6 +52,8 @@ export const store = new Vuex.Store({
 		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
 		timezone: 'America/New_York',
+		executionTimeout: -1,
+		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
 		versionCli: '0.0.0',
 		workflowExecutionData: null as IExecutionResponse | null,
 		lastSelectedNode: null as string | null,
@@ -478,6 +481,12 @@ export const store = new Vuex.Store({
 		setTimezone (state, timezone: string) {
 			Vue.set(state, 'timezone', timezone);
 		},
+		setExecutionTimeout (state, executionTimeout: number) {
+			Vue.set(state, 'executionTimeout', executionTimeout);
+		},
+		setMaxExecutionTimeout (state, maxExecutionTimeout: number) {
+			Vue.set(state, 'maxExecutionTimeout', maxExecutionTimeout);
+		},
 		setVersionCli (state, version: string) {
 			Vue.set(state, 'versionCli', version);
 		},
@@ -590,6 +599,12 @@ export const store = new Vuex.Store({
 		},
 		timezone: (state): string => {
 			return state.timezone;
+		},
+		executionTimeout: (state): number => {
+			return state.executionTimeout;
+		},
+		maxExecutionTimeout: (state): number => {
+			return state.maxExecutionTimeout;
 		},
 		versionCli: (state): string => {
 			return state.versionCli;
