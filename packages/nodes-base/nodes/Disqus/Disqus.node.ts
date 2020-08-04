@@ -65,22 +65,22 @@ export class Disqus implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Returns forum details.',
+						description: 'Return forum details',
 					},
 					{
 						name: 'Get All Categories',
 						value: 'getCategories',
-						description: 'Returns a list of categories within a forum.',
+						description: 'Return a list of categories within a forum',
 					},
 					{
 						name: 'Get All Threads',
 						value: 'getThreads',
-						description: 'Returns a list of threads within a forum.',
+						description: 'Return a list of threads within a forum',
 					},
 					{
 						name: 'Get All Posts',
 						value: 'getPosts',
-						description: 'Returns a list of posts within a forum.',
+						description: 'Return a list of posts within a forum',
 					}
 				],
 				default: 'get',
