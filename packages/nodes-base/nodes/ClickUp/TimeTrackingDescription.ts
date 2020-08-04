@@ -28,7 +28,7 @@ export const timeTrackingOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all loggin times on task',
+				description: 'Get all logging times on task',
 			},
 			{
 				name: 'Update',

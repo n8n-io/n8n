@@ -16,11 +16,11 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {}
-): Promise<any> {
+): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json'
@@ -65,9 +65,9 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {}
-): Promise<any> {
+): Promise<any> { // tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
 
 	let responseData;
