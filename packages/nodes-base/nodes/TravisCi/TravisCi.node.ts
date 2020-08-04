@@ -23,14 +23,14 @@ export class TravisCi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TravisCI',
 		name: 'travisCi',
-		icon: 'file:travisCi.png',
+		icon: 'file:travisci.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume TravisCI API',
 		defaults: {
 			name: 'TravisCI',
-			color: '#FF0000',
+			color: '#666666',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -126,7 +126,7 @@ export class TravisCi implements INodeType {
 					slug = slug.replace(new RegExp(/\//g), '%2F');
 
 					const request: IDataObject = {
-							branch,
+						branch,
 					};
 
 					if (additionalFields.message) {
@@ -137,7 +137,7 @@ export class TravisCi implements INodeType {
 						request.merge_mode = additionalFields.mergeMode as string;
 					}
 
-					responseData = await travisciApiRequest.call(this, 'POST', `/repo/${slug}/requests`, JSON.stringify({request}));
+					responseData = await travisciApiRequest.call(this, 'POST', `/repo/${slug}/requests`, JSON.stringify({ request }));
 				}
 			}
 			if (Array.isArray(responseData)) {
