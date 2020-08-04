@@ -28,7 +28,7 @@ export class Ftp implements INodeType {
 		description: 'Transfers files via FTP or SFTP.',
 		defaults: {
 			name: 'FTP',
-			color: '#000000',
+			color: '#303050',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
