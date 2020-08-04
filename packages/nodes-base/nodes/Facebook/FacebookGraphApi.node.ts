@@ -133,7 +133,7 @@ export class FacebookGraphApi implements INodeType {
 				name: 'edge',
 				type: 'string',
 				default: '',
-				description: 'Edge of the node on which to operate. Edges represent collections of objects wich are attached to the node.',
+				description: 'Edge of the node on which to operate. Edges represent collections of objects which are attached to the node.',
 				placeholder: 'videos',
 				required: false,
 			},
