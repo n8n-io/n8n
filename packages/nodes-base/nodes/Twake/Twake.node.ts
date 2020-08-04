@@ -34,43 +34,43 @@ export class Twake implements INodeType {
 			{
 				name: 'twakeCloudApi',
 				required: true,
-				displayOptions: {
-					show: {
-						twakeVersion: [
-							'cloud',
-						],
-					},
-				},
+				// displayOptions: {
+				// 	show: {
+				// 		twakeVersion: [
+				// 			'cloud',
+				// 		],
+				// 	},
+				// },
 			},
-			{
-				name: 'twakeServerApi',
-				required: true,
-				displayOptions: {
-					show: {
-						twakeVersion: [
-							'server',
-						],
-					},
-				},
-			},
+			// {
+			// 	name: 'twakeServerApi',
+			// 	required: true,
+			// 	displayOptions: {
+			// 		show: {
+			// 			twakeVersion: [
+			// 				'server',
+			// 			],
+			// 		},
+			// 	},
+			// },
 		],
 		properties: [
-			{
-				displayName: 'Twake Version',
-				name: 'twakeVersion',
-				type: 'options',
-				options: [
-					{
-						name: 'Cloud',
-						value: 'cloud',
-					},
-					// {
-					// 	name: 'Server (Self Hosted)',
-					// 	value: 'server',
-					// },
-				],
-				default: 'cloud',
-			},
+			// {
+			// 	displayName: 'Twake Version',
+			// 	name: 'twakeVersion',
+			// 	type: 'options',
+			// 	options: [
+			// 		{
+			// 			name: 'Cloud',
+			// 			value: 'cloud',
+			// 		},
+			// 		{
+			// 			name: 'Server (Self Hosted)',
+			// 			value: 'server',
+			// 		},
+			// 	],
+			// 	default: 'cloud',
+			// },
 			{
 				displayName: 'Resource',
 				name: 'resource',
