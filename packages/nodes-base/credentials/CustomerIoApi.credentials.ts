@@ -9,7 +9,7 @@ export class CustomerIoApi implements ICredentialType {
 	displayName = 'Customer.io API';
 	properties = [
 		{
-			displayName: 'API Key',
+			displayName: 'App API Key',
 			name: 'apiKey',
 			type: 'string' as NodePropertyTypes,
 			default: '',

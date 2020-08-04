@@ -55,9 +55,9 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	}
 }
 
-export function eventExists (currentEvents : string[], webhookEvents: IDataObject) {
+export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {
 	for (const currentEvent of currentEvents) {
-		if  (get(webhookEvents, `${currentEvent.split('.')[0]}.${currentEvent.split('.')[1]}`) !== true) {
+		if (get(webhookEvents, `${currentEvent.split('.')[0]}.${currentEvent.split('.')[1]}`) !== true) {
 			return false;
 		}
 	}
