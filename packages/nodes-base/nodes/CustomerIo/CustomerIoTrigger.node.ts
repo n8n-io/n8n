@@ -15,7 +15,7 @@ import {
 	eventExists,
 } from './GenericFunctions';
 
-interface IEvent{
+interface IEvent {
 	customer?: IDataObject;
 	email?: IDataObject;
 	push?: IDataObject;
@@ -27,14 +27,14 @@ interface IEvent{
 export class CustomerIoTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Customer.io Trigger',
-		name: 'customerIo',
+		name: 'customerIoTrigger',
 		group: ['trigger'],
-		icon: 'file:customer.Io.png',
+		icon: 'file:customerio.png',
 		version: 1,
 		description: 'Starts the workflow on a Customer.io update. (Beta)',
 		defaults: {
 			name: 'Customer.io Trigger',
-			color: '#00FF00',
+			color: '#7131ff',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -57,6 +57,7 @@ export class CustomerIoTrigger implements INodeType {
 				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
+				required: true,
 				default: [],
 				description: 'The events that can trigger the webhook and whether they are enabled.',
 				options: [
@@ -245,8 +246,8 @@ export class CustomerIoTrigger implements INodeType {
 				for (const webhook of webhooks) {
 					if (webhook.endpoint === webhookUrl &&
 						eventExists(currentEvents, webhook.events)) {
-							webhookData.webhookId = webhook.id;
-							return true;
+						webhookData.webhookId = webhook.id;
+						return true;
 					}
 				}
 
