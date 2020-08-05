@@ -57,7 +57,7 @@ export class Amqp implements INodeType {
 		const applicationProperties = this.getNodeParameter('headerParametersJson', {}) as string | object;
 
 		let headerProperties = applicationProperties;
-		if(typeof applicationProperties === 'string' && applicationProperties !== '') {
+		if (typeof applicationProperties === 'string' && applicationProperties !== '') {
 			headerProperties = JSON.parse(applicationProperties);
 		}
 
@@ -71,7 +71,7 @@ export class Amqp implements INodeType {
 			host: credentials.hostname,
 			port: credentials.port,
 			reconnect: true,		// this id the default anyway
-			reconnect_limit: 50,	// try for max 50 times, based on a back-off algorithm
+			reconnect_limit: 50, 	// try for max 50 times, based on a back-off algorithm
 		};
 		if (credentials.username || credentials.password) {
 			container.options.username = credentials.username;
@@ -83,9 +83,9 @@ export class Amqp implements INodeType {
 
 				const message = {
 					application_properties: headerProperties,
-					body: JSON.stringify(item)
+					body: item.json
 				};
-
+				
 				const sendResult = context.sender.send(message);
 
 				resolve(sendResult);
