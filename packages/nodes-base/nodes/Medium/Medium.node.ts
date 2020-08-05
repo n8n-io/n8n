@@ -102,9 +102,9 @@ export class Medium implements INodeType {
 				},
 				options: [
 					{
-						name: 'create',
+						name: 'Create',
 						value: 'create',
-						description: 'Create a post.',
+						description: 'Create a post',
 					},
 				],
 				default: 'create',
@@ -241,12 +241,63 @@ export class Medium implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Tags',
-						name: 'tags',
+						displayName: 'Canonical Url',
+						name: 'canonicalUrl',
 						type: 'string',
 						default: '',
-						placeholder: 'open-source,mlh,fellowship',
-						description: 'Comma-separated strings to be used as tags for post classification. Max allowed tags: 3. Max tag length: 25 characters.',
+						description: 'The original home of this content, if it was originally published elsewhere.',
+					},
+					{
+						displayName: 'License',
+						name: 'license',
+						type: 'options',
+						default: 'all-rights-reserved',
+						options: [
+							{
+								name: 'all-rights-reserved',
+								value: 'all-rights-reserved',
+							},
+							{
+								name: 'cc-40-by',
+								value: 'cc-40-by',
+							},
+							{
+								name: 'cc-40-by-nc',
+								value: 'cc-40-by-nc',
+							},
+							{
+								name: 'cc-40-by-nc-nd',
+								value: 'cc-40-by-nc-nd',
+							},
+							{
+								name: 'cc-40-by-nc-sa',
+								value: 'cc-40-by-nc-sa',
+							},
+							{
+								name: 'cc-40-by-nd',
+								value: 'cc-40-by-nd',
+							},
+							{
+								name: 'cc-40-by-sa',
+								value: 'cc-40-by-sa',
+							},
+							{
+								name: 'cc-40-zero',
+								value: 'cc-40-zero',
+							},
+							{
+								name: 'public-domain',
+								value: 'public-domain',
+							},
+						],
+						description: 'License of the post.',
+					},
+					{
+						displayName: 'Notify Followers',
+						name: 'notifyFollowers',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to notify followers that the user has published.',
 					},
 					{
 						displayName: 'Publish Status',
@@ -270,56 +321,12 @@ export class Medium implements INodeType {
 						description: 'The status of the post.',
 					},
 					{
-						displayName: 'Notify Followers',
-						name: 'notifyFollowers',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to notify followers that the user has published.',
-					},
-					{
-						displayName: 'License',
-						name: 'license',
+						displayName: 'Tags',
+						name: 'tags',
 						type: 'string',
-						default: 'all-rights-reserved',
-						options: [
-							{
-								name: 'all-rights-reserved',
-								value: 'all-rights-reserved',
-							},
-							{
-								name: 'cc-40-by',
-								value: 'cc-40-by',
-							},
-							{
-								name: 'cc-40-by-sa',
-								value: 'cc-40-by-sa',
-							},
-							{
-								name: 'cc-40-by-nd',
-								value: 'cc-40-by-nd',
-							},
-							{
-								name: 'cc-40-by-nc',
-								value: 'cc-40-by-nc',
-							},
-							{
-								name: 'cc-40-by-nc-nd',
-								value: 'cc-40-by-nc-nd',
-							},
-							{
-								name: 'cc-40-by-nc-sa',
-								value: 'cc-40-by-nc-sa',
-							},
-							{
-								name: 'cc-40-zero',
-								value: 'cc-40-zero',
-							},
-							{
-								name: 'public-domain',
-								value: 'public-domain',
-							},
-						],
-						description: 'License of the post.',
+						default: '',
+						placeholder: 'open-source,mlh,fellowship',
+						description: 'Comma-separated strings to be used as tags for post classification. Max allowed tags: 5. Max tag length: 25 characters.',
 					},
 				],
 			},
@@ -338,7 +345,7 @@ export class Medium implements INodeType {
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all publications.',
+						description: 'Get all publications',
 					},
 				],
 				default: 'publication',
@@ -462,18 +469,26 @@ export class Medium implements INodeType {
 						content,
 
 					};
-					const additionalFields = this.getNodeParameter(
-						'additionalFields',
-						i
-					) as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					if (additionalFields.tags) {
 						const tags = additionalFields.tags as string;
-						bodyRequest.tags = tags.split(',').map(item => {
-							return parseInt(item, 10);
+						bodyRequest.tags = tags.split(',').map(name => {
+							const returnValue = name.trim();
+							if (returnValue.length > 25) {
+								throw new Error(`The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`);
+							}
+							return returnValue;
 						});
+
+						if ((bodyRequest.tags as string[]).length > 5) {
+							throw new Error('To many tags got used. Maximum 5 can be set.');
+						}
 					}
 
-
+					if (additionalFields.canonicalUrl) {
+						bodyRequest.canonicalUrl = additionalFields.canonicalUrl as string;
+					}
 					if (additionalFields.publishStatus) {
 						bodyRequest.publishStatus = additionalFields.publishStatus as string;
 					}
