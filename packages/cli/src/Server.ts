@@ -113,6 +113,8 @@ class App {
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
 	timezone: string;
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 	push: Push.Push;
@@ -133,6 +135,8 @@ class App {
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+		this.executionTimeout = config.get('executions.timeout') as number;
+		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
 
@@ -482,8 +486,11 @@ class App {
 					// Do not save when default got set
 					delete newWorkflowData.settings.saveManualExecutions;
 				}
+				if (parseInt(newWorkflowData.settings.executionTimeout as string, 10) === this.executionTimeout) {
+					// Do not save when default got set
+					delete newWorkflowData.settings.executionTimeout;
+				}
 			}
-
 
 			newWorkflowData.updatedAt = this.getCurrentDate();
 
@@ -1155,6 +1162,13 @@ class App {
 			const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
 			let returnUri = oAuthObj.code.getUri();
 
+			// if scope uses comma, change it as the library always return then with spaces
+			if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
+				const data = querystring.parse(returnUri.split('?')[1] as string);
+				data.scope = _.get(oauthCredentials, 'scope') as string;
+				returnUri = `${_.get(oauthCredentials, 'authUrl', '')}?${querystring.stringify(data)}`;
+			}
+
 			if (authQueryParameters) {
 				returnUri += '&' + authQueryParameters;
 			}
@@ -1323,7 +1337,7 @@ class App {
 					retrySuccessId: result.retrySuccessId ? result.retrySuccessId.toString() : undefined,
 					startedAt: result.startedAt,
 					stoppedAt: result.stoppedAt,
-					workflowId: result.workflowData!.id!.toString(),
+					workflowId: result.workflowData!.id ? result.workflowData!.id!.toString() : '',
 					workflowName: result.workflowData!.name,
 				});
 			}
@@ -1534,6 +1548,8 @@ class App {
 				saveDataErrorExecution: this.saveDataErrorExecution,
 				saveDataSuccessExecution: this.saveDataSuccessExecution,
 				saveManualExecutions: this.saveManualExecutions,
+				executionTimeout: this.executionTimeout,
+				maxExecutionTimeout: this.maxExecutionTimeout,
 				timezone: this.timezone,
 				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
 				versionCli: this.versions!.cli,
@@ -1565,6 +1581,26 @@ class App {
 			}
 
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// OPTIONS webhook requests
+		this.app.options(`/${this.endpointWebhook}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhook.length + 2);
+
+			let allowedMethods: string[];
+			try {
+				allowedMethods = await this.activeWorkflowRunner.getWebhookMethods(requestUrl);
+				allowedMethods.push('OPTIONS');
+
+				// Add custom "Allow" header to satisfy OPTIONS response.
+				res.append('Allow', allowedMethods);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		});
 
 		// GET webhook requests
@@ -1628,6 +1664,26 @@ class App {
 			}
 
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
+		});
+
+		// HEAD webhook requests (test for UI)
+		this.app.options(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
+			// Cut away the "/webhook-test/" to get the registred part of the url
+			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(this.endpointWebhookTest.length + 2);
+
+			let allowedMethods: string[];
+			try {
+				allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
+				allowedMethods.push('OPTIONS');
+
+				// Add custom "Allow" header to satisfy OPTIONS response.
+				res.append('Allow', allowedMethods);
+			} catch (error) {
+				ResponseHelper.sendErrorResponse(res, error);
+				return;
+			}
+
+			ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		});
 
 		// GET webhook requests (test for UI)
@@ -1711,9 +1767,11 @@ class App {
 		// Read the index file and replace the path placeholder
 		const editorUiPath = require.resolve('n8n-editor-ui');
 		const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
-		let readIndexFile = readFileSync(filePath, 'utf8');
 		const n8nPath = config.get('path');
+
+		let readIndexFile = readFileSync(filePath, 'utf8');
 		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
+		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}/favicon.ico`);
 
 		// Serve the altered index.html file separately
 		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {

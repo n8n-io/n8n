@@ -72,6 +72,17 @@ export class HttpRequest implements INodeType {
 				},
 			},
 			{
+				name: 'oAuth1Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth1',
+						],
+					},
+				},
+			},
+			{
 				name: 'oAuth2Api',
 				required: true,
 				displayOptions: {
@@ -100,6 +111,10 @@ export class HttpRequest implements INodeType {
 					{
 						name: 'Header Auth',
 						value: 'headerAuth'
+					},
+					{
+						name: 'OAuth1',
+						value: 'oAuth1'
 					},
 					{
 						name: 'OAuth2',
@@ -578,6 +593,7 @@ export class HttpRequest implements INodeType {
 		const httpBasicAuth = this.getCredentials('httpBasicAuth');
 		const httpDigestAuth = this.getCredentials('httpDigestAuth');
 		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
+		const oAuth1Api = this.getCredentials('oAuth1Api');
 		const oAuth2Api = this.getCredentials('oAuth2Api');
 
 		let requestOptions: OptionsWithUri;
@@ -799,8 +815,11 @@ export class HttpRequest implements INodeType {
 			}
 			try {
 				// Now that the options are all set make the actual http request
-
-				if (oAuth2Api !== undefined) {
+				if (oAuth1Api !== undefined) {
+					//@ts-ignore
+					response = await this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+				}
+				else if (oAuth2Api !== undefined) {
 					//@ts-ignore
 					response = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, 'Bearer');
 				} else {
