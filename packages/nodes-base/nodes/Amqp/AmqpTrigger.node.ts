@@ -5,6 +5,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	IDataObject,
 } from 'n8n-workflow';
 
 
@@ -67,12 +68,15 @@ export class AmqpTrigger implements INodeType {
 		const sink = this.getNodeParameter('sink', '') as string;
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
+		const parseJson = this.getNodeParameter('parseJson', '') as boolean;
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
 		}
+
 		let durable = false;
-		if(subscription && clientname) {
+
+		if (subscription && clientname) {
 			durable = true;
 		}
 
@@ -98,7 +102,16 @@ export class AmqpTrigger implements INodeType {
 				lastMsgId = context.message.message_id;
 				return;
 			}
-			self.emit([self.helpers.returnJsonArray([context.message])]);
+
+			// Check if the only property present in the message is body
+			// in which case we only emit the content of the body property
+			// otherwise we emit all properties and their content
+			if (Object.keys(context.message)[0] === 'body' && Object.keys(context.message).length === 1) {
+				self.emit([self.helpers.returnJsonArray([context.message.body])]);
+			} else {
+				self.emit([self.helpers.returnJsonArray([context.message])]);
+			}
+			
 		});
 
 		const connection = container.connect(connectOptions);
@@ -141,6 +154,14 @@ export class AmqpTrigger implements INodeType {
 					reject(new Error('Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.'));
 				}, 30000);
 				container.on('message', (context: any) => { // tslint:disable-line:no-any
+					// Check if the only property present in the message is body
+					// in which case we only emit the content of the body property
+					// otherwise we emit all properties and their content
+					if (Object.keys(context.message)[0] === 'body' && Object.keys(context.message).length === 1) {
+						self.emit([self.helpers.returnJsonArray([context.message.body])]);
+					} else {
+						self.emit([self.helpers.returnJsonArray([context.message])]);
+					}
 					clearTimeout(timeoutHandler);
 					resolve(true);
 				});
