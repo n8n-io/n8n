@@ -13,7 +13,9 @@
 		"moduleResolution": "node",
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
-		"sourceMap": true,
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
 		"baseUrl": ".",
 		"types": [
 			"webpack-env",

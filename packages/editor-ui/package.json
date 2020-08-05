@@ -27,6 +27,7 @@
     "uuid": "^8.1.0"
   },
   "devDependencies": {
+    "@auth0/auth0-spa-js": "^1.11.0",
     "@beyonk/google-fonts-webpack-plugin": "^1.2.3",
     "@fortawesome/fontawesome-svg-core": "^1.2.19",
     "@fortawesome/free-solid-svg-icons": "^5.9.0",
@@ -77,8 +78,10 @@
     "tslint": "^6.1.2",
     "typescript": "~3.7.4",
     "vue": "^2.6.9",
+    "vue-class-component": "^7.2.5",
     "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",
     "vue-json-tree": "^0.4.1",
+    "vue-property-decorator": "^9.0.0",
     "vue-prism-editor": "^0.3.0",
     "vue-router": "^3.0.6",
     "vue-template-compiler": "^2.5.17",

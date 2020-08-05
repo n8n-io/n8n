@@ -2,6 +2,10 @@
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
 import Vue from 'vue';
 
+// Import Auth plugin and auth configuration
+import { domain, clientId, audience, scope } from '../auth_config.json';
+import { Auth0Plugin } from './auth';
+
 import 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'vue-prism-editor/dist/VuePrismEditor.css';
@@ -165,6 +169,22 @@ library.add(faUndo);
 library.add(faUsers);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
+
+// Install the authentication plugin
+Vue.use(Auth0Plugin, {
+  domain,
+  clientId,
+  audience,
+  scope,
+  onRedirectCallback: (appState) => {
+    router.push(
+      appState && appState.targetUrl
+        ? appState.targetUrl
+        : window.location.pathname
+    );
+  }
+});
+
 
 Vue.config.productionTip = false;
 
