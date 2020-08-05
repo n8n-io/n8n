@@ -25,6 +25,8 @@ import {
 	IDataObject,
  } from 'n8n-workflow';
 
+import { URL } from 'url';
+
 export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, bucket: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 
 	let credentials;
@@ -45,22 +47,27 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 		throw new Error('No credentials got returned!');
 	}
 
-	let endpoint = endpointType === 'aws' ? `${bucket}.s3.${region || credentials.region}.amazonaws.com` : credentials.endpoint;
+	if (endpointType === "customS3Endpoint" && !(credentials.endpoint as string).startsWith('http')) {
+		throw new Error('HTTP(S) Scheme is required in endpoint definition');
+	}
 
-	// Using path-style for non-AWS services
+	const endpoint = new URL(endpointType === 'aws' ? `https://${bucket}.s3.${region || credentials.region}.amazonaws.com` : credentials.endpoint as string);
+
 	if (bucket && endpointType === 'customS3Endpoint') {
 		if (credentials.forcePathStyle) {
 			path = `/${bucket}${path}`;
 		} else {
-			endpoint = `${bucket}.${endpoint}`;
+			endpoint.host = `${bucket}.${endpoint.host}`;
 		}
 	}
+
+	endpoint.pathname = path;
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {
 		headers: headers || {},
 		region: region || credentials.region,
-		host: endpoint,
+		host: endpoint.host,
 		method,
 		path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`,
 		service: 's3',
@@ -73,7 +80,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 		headers: signOpts.headers,
 		method,
 		qs: query,
-		uri: `https://${endpoint}${path}`,
+		uri: endpoint,
 		body: signOpts.body,
 	};
 
