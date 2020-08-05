@@ -13,10 +13,7 @@ import {
 
 import {
 	todoistApiRequest,
-	// todoistApiRequestAllItems,
-	// filterAndExecuteForEachTask,
 } from './GenericFunctions';
-import { response } from 'express';
 
 interface IBodyCreateTask {
 	content: string;
@@ -142,6 +139,11 @@ export class Todoist implements INodeType {
 						value: 'getAll',
 						description: 'Get all tasks',
 					},
+					{
+						name: 'Reopen',
+						value: 'reopen',
+						description: 'Reopen a task',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -223,6 +225,7 @@ export class Todoist implements INodeType {
 							'delete',
 							'close',
 							'get',
+							'reopen',
 						],
 					},
 				},
@@ -469,6 +472,9 @@ export class Todoist implements INodeType {
 					const id = this.getNodeParameter('taskId', i) as string;
 
 					responseData =  await todoistApiRequest.call(this, 'DELETE', `/tasks/${id}`);
+
+					responseData = { success: true };
+
 				}
 				if (operation === 'get') {
 					//https://developer.todoist.com/rest/v1/#get-an-active-task
@@ -502,6 +508,14 @@ export class Todoist implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
 					}
+				}
+				if (operation === 'reopen') {
+					//https://developer.todoist.com/rest/v1/#get-an-active-task
+					const id = this.getNodeParameter('taskId', i) as string;
+
+					responseData =  await todoistApiRequest.call(this, 'POST', `/tasks/${id}/reopen`);
+
+					responseData = { success: true };
 				}
 			}
 			if (Array.isArray(responseData)) {
