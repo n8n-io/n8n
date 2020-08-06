@@ -18,17 +18,17 @@ export const formOperations = [
 			{
 				name: 'Add Subscriber',
 				value: 'addSubscriber',
-				description: 'Add a subscriber.',
+				description: 'Add a subscriber',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get a list of all the forms for your account.',
+				description: 'Get all forms',
 			},
 			{
 				name: 'Get Subscriptions',
 				value: 'getSubscriptions',
-				description: 'List subscriptions to a form including subscriber data.',
+				description: 'List subscriptions to a form including subscriber data',
 			},
 		],
 		default: 'addSubscriber',
@@ -38,7 +38,7 @@ export const formOperations = [
 
 export const formFields = [
 	{
-		displayName: 'Email Address',
+		displayName: 'Email',
 		name: 'email',
 		type: 'string',
 		required: true,
@@ -58,7 +58,10 @@ export const formFields = [
 	{
 		displayName: 'Form ID',
 		name: 'id',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getForms',
+		},
 		required: true,
 		displayOptions: {
 			show: {
@@ -92,15 +95,8 @@ export const formFields = [
 		},
 		options: [
 			{
-				displayName: 'First Name',
-				name: 'firstName',
-				type: 'string',
-				default: '',
-				description: `The subscriber's first name.`,
-			},
-			{
 				displayName: 'Custom Fields',
-				name: 'fields',
+				name: 'fieldsUi',
 				placeholder: 'Add Custom Field',
 				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here).',
 				type: 'fixedCollection',
@@ -110,7 +106,7 @@ export const formFields = [
 				default: {},
 				options: [
 					{
-						name: 'field',
+						name: 'fieldsValues',
 						displayName: 'Custom Field',
 						values: [
 							{
@@ -133,7 +129,57 @@ export const formFields = [
 					},
 				],
 			},
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				default: '',
+				description: `The subscriber's first name.`,
+			},
 		],
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+					'getSubscriptions',
+				],
+				resource: [
+					'form',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+					'getSubscriptions',
+				],
+				resource: [
+					'form',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Additional Fields',
