@@ -99,7 +99,7 @@ export class FlowTrigger implements INodeType {
 						]
 					}
 				},
-				description: `Taks ids separated by ,`,
+				description: `Task ids separated by ,`,
 			},
 		],
 

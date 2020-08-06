@@ -1162,6 +1162,13 @@ class App {
 			const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
 			let returnUri = oAuthObj.code.getUri();
 
+			// if scope uses comma, change it as the library always return then with spaces
+			if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
+				const data = querystring.parse(returnUri.split('?')[1] as string);
+				data.scope = _.get(oauthCredentials, 'scope') as string;
+				returnUri = `${_.get(oauthCredentials, 'authUrl', '')}?${querystring.stringify(data)}`;
+			}
+
 			if (authQueryParameters) {
 				returnUri += '&' + authQueryParameters;
 			}
