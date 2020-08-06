@@ -2,6 +2,7 @@ import { ContainerOptions, Delivery } from 'rhea';
 
 import { IExecuteSingleFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -41,7 +42,23 @@ export class Amqp implements INodeType {
 				type: 'json',
 				default: '',
 				description: 'Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info.',
-			}
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Data as Object',
+						name: 'dataAsObject',
+						type: 'boolean',
+						default: false,
+						description: 'Send the data as an object.',
+					},
+				],
+			},
 		]
 	};
 
@@ -55,6 +72,7 @@ export class Amqp implements INodeType {
 
 		const sink = this.getNodeParameter('sink', '') as string;
 		const applicationProperties = this.getNodeParameter('headerParametersJson', {}) as string | object;
+		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		let headerProperties = applicationProperties;
 		if (typeof applicationProperties === 'string' && applicationProperties !== '') {
@@ -81,11 +99,17 @@ export class Amqp implements INodeType {
 		const allSent = new Promise(( resolve ) => {
 			container.on('sendable', (context: any) => { // tslint:disable-line:no-any
 
+				let body: IDataObject | string = item.json;
+
+				if (options.dataAsObject !== true) {
+					body = JSON.stringify(body);
+				}
+
 				const message = {
 					application_properties: headerProperties,
-					body: item.json
+					body
 				};
-				
+
 				const sendResult = context.sender.send(message);
 
 				resolve(sendResult);

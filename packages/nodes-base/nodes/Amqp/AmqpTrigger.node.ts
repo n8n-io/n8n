@@ -2,10 +2,10 @@ import { ContainerOptions } from 'rhea';
 
 import { ITriggerFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	IDataObject,
 } from 'n8n-workflow';
 
 
@@ -54,6 +54,29 @@ export class AmqpTrigger implements INodeType {
 				placeholder: 'for durable/persistent topic subscriptions, example: "order-worker"',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Only Body',
+						name: 'onlyBody',
+						type: 'boolean',
+						default: false,
+						description: 'Returns only the body property.',
+					},
+					{
+						displayName: 'JSON Parse Body',
+						name: 'jsonParseBody',
+						type: 'boolean',
+						default: false,
+						description: 'Parse the body to an object.',
+					},
+				],
+			},
 		]
 	};
 
@@ -68,7 +91,7 @@ export class AmqpTrigger implements INodeType {
 		const sink = this.getNodeParameter('sink', '') as string;
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
-		const parseJson = this.getNodeParameter('parseJson', '') as boolean;
+		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
@@ -103,15 +126,16 @@ export class AmqpTrigger implements INodeType {
 				return;
 			}
 
-			// Check if the only property present in the message is body
-			// in which case we only emit the content of the body property
-			// otherwise we emit all properties and their content
-			if (Object.keys(context.message)[0] === 'body' && Object.keys(context.message).length === 1) {
-				self.emit([self.helpers.returnJsonArray([context.message.body])]);
-			} else {
-				self.emit([self.helpers.returnJsonArray([context.message])]);
+			let data = context.message;
+
+			if (options.jsonParseBody === true) {
+				data.body = JSON.parse(data.body);
 			}
-			
+			if (options.onlyBody === true) {
+				data = data.body;
+			}
+
+			self.emit([self.helpers.returnJsonArray([data])]);
 		});
 
 		const connection = container.connect(connectOptions);
