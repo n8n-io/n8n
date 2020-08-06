@@ -1,5 +1,3 @@
-import { get } from 'lodash';
-
 import {
 	IDataObject,
 } from 'n8n-workflow';
@@ -455,8 +453,8 @@ export class GoogleSheet {
 		inputData.forEach((item) => {
 			rowData = [];
 			keyColumnOrder.forEach((key) => {
-				if (get(item, key)) {
-					rowData.push(get(item, key)!.toString());
+				if (item.hasOwnProperty(key) && item[key]) {
+					rowData.push(item[key]!.toString());
 				} else {
 					rowData.push('');
 				}
