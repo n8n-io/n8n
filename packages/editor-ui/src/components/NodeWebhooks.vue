@@ -110,8 +110,9 @@ export default mixins(
 
 				const workflowId = this.$store.getters.workflowId;
 				const path = this.getValue(webhookData, 'path');
+				const isFullPath = this.getValue(webhookData, 'isFullPath') as unknown as boolean || false;
 
-				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path);
+				return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, this.node, path, isFullPath);
 			},
 		},
 		watch: {
