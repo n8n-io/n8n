@@ -15,7 +15,9 @@ import {
 
 export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('convertKitApi');
+
+		const credentials = this.getCredentials('convertKitApi');
+
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
@@ -30,15 +32,29 @@ export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSin
 		uri: uri ||`https://api.convertkit.com/v3${endpoint}`,
 		json: true,
 	};
+
 	options = Object.assign({}, options, option);
+
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
+
+	console.log(options);
+
 	try {
+
 		qs.api_secret = credentials.apiSecret;
 
 		return await this.helpers.request!(options);
+
 	} catch (error) {
-		throw new Error(`ConvertKit error response: ${error.message}`);
+
+		let errorMessage = error;
+
+		if (error.response && error.response.body && error.response.body.message) {
+			errorMessage = error.response.body.message;
+		}
+
+		throw new Error(`ConvertKit error response: ${errorMessage}`);
 	}
 }
