@@ -8,12 +8,17 @@ import {
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
 	convertKitApiRequest,
 } from './GenericFunctions';
 
+import {
+	snakeCase,
+} from 'change-case';
 
 export class ConvertKitTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,7 +39,7 @@ export class ConvertKitTrigger implements INodeType {
 			{
 				name: 'convertKitApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -50,20 +55,85 @@ export class ConvertKitTrigger implements INodeType {
 				name: 'event',
 				type: 'options',
 				required: true,
-				default: 'subscriberActivated',
+				default: '',
 				description: 'The events that can trigger the webhook and whether they are enabled.',
 				options: [
 					{
-						name: 'Subscriber Activated',
-						value: 'subscriberActivated',
-						description: 'Whether the webhook is triggered when a subscriber is activated.',
+						name: 'Form Subscribe',
+						value: 'formSubscribe',
 					},
 					{
-						name: 'Link Clicked',
-						value: 'linkClicked',
-						description: 'Whether the webhook is triggered when a link is clicked.',
+						name: 'Link Click',
+						value: 'linkClick',
+					},
+					{
+						name: 'Product Purchase',
+						value: 'productPurchase',
+					},
+					{
+						name: 'Purchase Created',
+						value: 'purchaseCreate',
+					},
+					{
+						name: 'Sequence Complete',
+						value: 'courseComplete',
+					},
+					{
+						name: 'Sequence Subscribe',
+						value: 'courseSubscribe',
+					},
+					{
+						name: 'Subscriber Activated',
+						value: 'subscriberActivate',
+					},
+					{
+						name: 'Subscriber Unsubscribe',
+						value: 'subscriberUnsubscribe',
+					},
+					{
+						name: 'Tag Add',
+						value: 'tagAdd',
+					},
+					{
+						name: 'Tag Remove',
+						value: 'tagRemove',
 					},
 				],
+			},
+			{
+				displayName: 'Form ID',
+				name: 'formId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getForms',
+				},
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						event: [
+							'formSubscribe',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Sequence ID',
+				name: 'courseId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getSequences',
+				},
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						event: [
+							'courseSubscribe',
+							'courseComplete',
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Initiating Link',
@@ -75,7 +145,39 @@ export class ConvertKitTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: [
-							'linkClicked',
+							'linkClick',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Product ID',
+				name: 'productId',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						event: [
+							'productPurchase',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Tag ID',
+				name: 'tagId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						event: [
+							'tagAdd',
+							'tagRemove',
 						],
 					},
 				},
@@ -83,72 +185,180 @@ export class ConvertKitTrigger implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Get all the tags to display them to user so that he can
+			// select them easily
+			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+
+				const returnData: INodePropertyOptions[] = [];
+
+				const { tags } = await convertKitApiRequest.call(this, 'GET', '/tags');
+
+				for (const tag of tags) {
+
+					const tagName = tag.name;
+
+					const tagId = tag.id;
+
+					returnData.push({
+						name: tagName,
+						value: tagId,
+					});
+				}
+
+				return returnData;
+			},
+			// Get all the forms to display them to user so that he can
+			// select them easily
+			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+
+				const returnData: INodePropertyOptions[] = [];
+
+				const { forms } = await convertKitApiRequest.call(this, 'GET', '/forms');
+
+				for (const form of forms) {
+
+					const formName = form.name;
+
+					const formId = form.id;
+
+					returnData.push({
+						name: formName,
+						value: formId,
+					});
+				}
+
+				return returnData;
+			},
+
+			// Get all the sequences to display them to user so that he can
+			// select them easily
+			async getSequences(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+
+				const returnData: INodePropertyOptions[] = [];
+
+				const { courses } = await convertKitApiRequest.call(this, 'GET', '/sequences');
+
+				for (const course of courses) {
+
+					const courseName = course.name;
+
+					const courseId = course.id;
+
+					returnData.push({
+						name: courseName,
+						value: courseId,
+					});
+				}
+
+				return returnData;
+			},
+		}
+	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+
 				const webhookData = this.getWorkflowStaticData('node');
+
+				// THe API does not have an endpoint to list all webhooks
 
 				if(webhookData.webhookId) {
 					return true;
 				}
+
 				return false;
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-				let webhook;
+
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const event = this.getNodeParameter('event', 0);
+
+				let event = this.getNodeParameter('event', 0) as string;
+
 				const endpoint = '/automations/hooks';
 
-				const qs: IDataObject = {};
+				if (event === 'purchaseCreate') {
 
-				try {
-					qs.target_url = webhookUrl;
+					event = `purchase.${snakeCase(event)}`;
 
-					if(event === 'subscriberActivated') {
-						qs.event = {
-							name: 'subscriber.subscriber_activate',
-						};
-					} else if(event === 'linkClicked') {
-						const link = this.getNodeParameter('link', 0) as string;
-						qs.event = {
-							name: 'subscriber.link_click',
-							initiator_value: link,
-						};
-					}
-					webhook = await convertKitApiRequest.call(this, 'POST', endpoint, {}, qs);
-				} catch (error) {
-					throw error;
+				} else {
+
+					event = `subscriber.${snakeCase(event)}`;
 				}
+
+				const body: IDataObject = {
+					target_url: webhookUrl as string,
+					event: {
+						name: event
+					},
+				};
+
+				if (event === 'subscriber.form_subscribe') {
+					//@ts-ignore
+					body.event['form_id'] = this.getNodeParameter('formId', 0);
+				}
+
+				if (event === 'subscriber.course_subscribe' || event === 'subscriber.course_complete') {
+					//@ts-ignore
+					body.event['sequence_id'] = this.getNodeParameter('courseId', 0);
+				}
+
+				if (event === 'subscriber.link_click') {
+					//@ts-ignore
+					body.event['initiator_value'] = this.getNodeParameter('link', 0);
+				}
+
+				if (event === 'subscriber.product_purchase') {
+					//@ts-ignore
+					body.event['product_id'] = this.getNodeParameter('productId', 0);
+				}
+
+				if (event === 'subscriber.tag_add' || event === 'subscriber.tag_remove"') {
+					//@ts-ignore
+					body.event['tag_id'] = this.getNodeParameter('tagId', 0);
+				}
+
+				const webhook = await convertKitApiRequest.call(this, 'POST', endpoint, body);
 
 				if (webhook.rule.id === undefined) {
 					return false;
 				}
 
 				const webhookData = this.getWorkflowStaticData('node');
+
 				webhookData.webhookId = webhook.rule.id as string;
-				webhookData.events = event;
+
 				return true;
 			},
 
 			async delete(this: IHookFunctions): Promise<boolean> {
+
 				const webhookData = this.getWorkflowStaticData('node');
+
 				if (webhookData.webhookId !== undefined) {
+
 					const endpoint = `/automations/hooks/${webhookData.webhookId}`;
+
 					try {
-						await convertKitApiRequest.call(this, 'DELETE', endpoint, {}, {});
+
+						await convertKitApiRequest.call(this, 'DELETE', endpoint);
+
 					} catch (error) {
+
 						return false;
 					}
+
 					delete webhookData.webhookId;
-					delete webhookData.events;
 				}
+
 				return true;
 			},
 		},
 	};
-
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const returnData: IDataObject[] = [];

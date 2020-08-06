@@ -39,11 +39,18 @@ export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSin
 		delete options.body;
 	}
 
-	console.log(options);
+	// it's a webhook so include the api secret on the body
+	if ((options.uri as string).includes('/automations/hooks')) {
+		options.body['api_secret'] = credentials.apiSecret;
+	} else {
+		qs.api_secret = credentials.apiSecret;
+	}
+
+	if (Object.keys(options.qs).length === 0) {
+		delete options.qs;
+	}
 
 	try {
-
-		qs.api_secret = credentials.apiSecret;
 
 		return await this.helpers.request!(options);
 
