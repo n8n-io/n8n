@@ -153,6 +153,7 @@
       "dist/credentials/TogglApi.credentials.js",
       "dist/credentials/TwakeCloudApi.credentials.js",
       "dist/credentials/TwakeServerApi.credentials.js",
+      "dist/credentials/Unleashed.credentials.js",
       "dist/credentials/UpleadApi.credentials.js",
       "dist/credentials/VeroApi.credentials.js",
       "dist/credentials/WebflowApi.credentials.js",
@@ -165,8 +166,7 @@
       "dist/credentials/ZohoOAuth2Api.credentials.js",
       "dist/credentials/ZoomApi.credentials.js",
       "dist/credentials/ZoomOAuth2Api.credentials.js",
-      "dist/credentials/ZulipApi.credentials.js",
-      "dist/credentials/Unleashed.credentials.js"
+      "dist/credentials/ZulipApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/ActiveCampaign/ActiveCampaign.node.js",
@@ -325,6 +325,7 @@
       "dist/nodes/Twitter/Twitter.node.js",
       "dist/nodes/Typeform/TypeformTrigger.node.js",
       "dist/nodes/Twake/Twake.node.js",
+      "dist/nodes/Unleashed/Unleashed.node.js",
       "dist/nodes/Uplead/Uplead.node.js",
       "dist/nodes/Vero/Vero.node.js",
       "dist/nodes/Webflow/WebflowTrigger.node.js",
@@ -339,8 +340,7 @@
       "dist/nodes/Zendesk/ZendeskTrigger.node.js",
       "dist/nodes/Zoho/ZohoCrm.node.js",
       "dist/nodes/Zoom/Zoom.node.js",
-      "dist/nodes/Zulip/Zulip.node.js",
-      "dist/nodes/Unleashed/Unleashed.node.js"
+      "dist/nodes/Zulip/Zulip.node.js"
     ]
   },
   "devDependencies": {
