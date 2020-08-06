@@ -35,18 +35,33 @@ export class ActiveWebhooks {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
 
+		const webhookKey = this.getWebhookKey(webhookData.httpMethod, webhookData.path);
+
+		//check that there is not a webhook already registed with that path/method
+		if (this.webhookUrls[webhookKey] !== undefined) {
+			throw new Error(`Test-Webhook can not be activated because another one with the same method "${webhookData.httpMethod}" and path "${webhookData.path}" is already active!`);
+		}
+
 		if (this.workflowWebhooks[webhookData.workflowId] === undefined) {
 			this.workflowWebhooks[webhookData.workflowId] = [];
 		}
 
 		// Make the webhook available directly because sometimes to create it successfully
 		// it gets called
-		this.webhookUrls[this.getWebhookKey(webhookData.httpMethod, webhookData.path)] = webhookData;
+		this.webhookUrls[webhookKey] = webhookData;
 
 		const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
 		if (webhookExists === false) {
 			// If webhook does not exist yet create it
-			await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+			try {
+				await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+			} catch (error) {
+				// If there was a problem unregister the webhook again
+				delete this.webhookUrls[webhookKey];
+				delete this.workflowWebhooks[webhookData.workflowId];
+
+				throw error;
+			}
 		}
 
 		this.workflowWebhooks[webhookData.workflowId].push(webhookData);
@@ -70,6 +85,21 @@ export class ActiveWebhooks {
 		return this.webhookUrls[webhookKey];
 	}
 
+	/**
+	 * Gets all request methods associated with a single webhook
+	 * @param path
+	 */
+	getWebhookMethods(path: string): string[] {
+		const methods : string[] = [];
+
+		Object.keys(this.webhookUrls)
+		.filter(key => key.includes(path))
+		.map(key => {
+			methods.push(key.split('|')[0]);
+		});
+
+		return methods;
+	}
 
 	/**
 	 * Returns the ids of all the workflows which have active webhooks
