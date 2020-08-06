@@ -1,5 +1,6 @@
 import {
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
@@ -7,6 +8,7 @@ import {
 	INodeExecutionData,
 	INodeTypeDescription,
 	INodeType,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -14,9 +16,9 @@ import {
 } from './GenericFunctions';
 
 import {
-	fieldOperations,
-	fieldFields,
-} from './FieldDescription';
+	customFieldOperations,
+	customFieldFields,
+} from './CustomFieldDescription';
 
 import {
 	formOperations,
@@ -32,6 +34,11 @@ import {
 	tagOperations,
 	tagFields,
 } from './TagDescription';
+
+import {
+	tagSubscriberOperations,
+	tagSubscriberFields,
+} from './TagSubscriberDescription';
 
 export class ConvertKit implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,8 +68,8 @@ export class ConvertKit implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Field',
-						value: 'field',
+						name: 'Custom Field',
+						value: 'customField',
 					},
 					{
 						name: 'Form',
@@ -76,15 +83,19 @@ export class ConvertKit implements INodeType {
 						name: 'Tag',
 						value: 'tag',
 					},
+					{
+						name: 'Tag Subscriber',
+						value: 'tagSubscriber',
+					},
 				],
-				default: 'field',
+				default: 'customField',
 				description: 'The resource to operate on.'
 			},
 			//--------------------
 			// Field Description
 			//--------------------
-			...fieldOperations,
-			...fieldFields,
+			...customFieldOperations,
+			...customFieldFields,
 			//--------------------
 			// FormDescription
 			//--------------------
@@ -100,187 +111,373 @@ export class ConvertKit implements INodeType {
 			//--------------------
 			...tagOperations,
 			...tagFields,
+			//--------------------
+			// Tag Subscriber Description
+			//--------------------
+			...tagSubscriberOperations,
+			...tagSubscriberFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the tags to display them to user so that he can
+			// select them easily
+			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { tags } = await convertKitApiRequest.call(this, 'GET', '/tags');
+				for (const tag of tags) {
+					const tagName = tag.name;
+					const tagId = tag.id;
+					returnData.push({
+						name: tagName,
+						value: tagId,
+					});
+				}
+
+				return returnData;
+			},
+			// Get all the forms to display them to user so that he can
+			// select them easily
+			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { forms } = await convertKitApiRequest.call(this, 'GET', '/forms');
+				for (const form of forms) {
+					const formName = form.name;
+					const formId = form.id;
+					returnData.push({
+						name: formName,
+						value: formId,
+					});
+				}
+
+				return returnData;
+			},
+
+			// Get all the sequences to display them to user so that he can
+			// select them easily
+			async getSequences(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { courses } = await convertKitApiRequest.call(this, 'GET', '/sequences');
+				for (const course of courses) {
+					const courseName = course.name;
+					const courseId = course.id;
+					returnData.push({
+						name: courseName,
+						value: courseId,
+					});
+				}
+
+				return returnData;
+			},
+		}
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		let method = '';
-		let endpoint = '';
 		const qs: IDataObject = {};
 		let responseData;
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		const fullOperation = `${resource}/${operation}`;
-
 		for (let i = 0; i < items.length; i++) {
-			//--------------------
-			// Field Operations
-			//--------------------
-			if(resource === 'field') {
-				//---------
-				// Update
-				//---------
-				if(operation === 'update') {
-					qs.label = this.getNodeParameter('label', i) as string;
+
+			if (resource === 'customField') {
+				if (operation === 'create') {
+
+					const label = this.getNodeParameter('label', i) as string;
+
+					responseData = await convertKitApiRequest.call(this, 'POST', '/custom_fields', { label }, qs);
+				}
+				if (operation === 'delete') {
 
 					const id = this.getNodeParameter('id', i) as string;
 
-					method = 'PUT';
-					endpoint = `/custom_fields/${id}`;
-				//---------
-				// Get All
-				//---------
-				} else if(operation === 'getAll') {
-					method = 'GET';
-					endpoint = '/custom_fields';
-				//---------
-				// Create
-				//---------
-				} else if(operation === 'create') {
-					qs.label = this.getNodeParameter('label', i) as string;
+					responseData = await convertKitApiRequest.call(this, 'DELETE', `/custom_fields/${id}`);
+				}
+				if (operation === 'get') {
 
-					method = 'POST';
-					endpoint = '/custom_fields';
-				//---------
-				// Delete
-				//---------
-				} else if(operation === 'delete') {
 					const id = this.getNodeParameter('id', i) as string;
 
-					method = 'DELETE';
-					endpoint = `/custom_fields/${id}`;
-				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
+					responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields/${id}`);
 				}
-			//--------------------------------------------
-			// Form, Sequence, and Tag Operations
-			//--------------------------------------------
-			} else if(['form', 'sequence', 'tag'].includes(resource)) {
-				//-----------------
-				// Add Subscriber
-				//-----------------
-				if(operation === 'addSubscriber') {
-					qs.email= this.getNodeParameter('email', i) as string;
-					const id = this.getNodeParameter('id', i);
+				if (operation === 'getAll') {
 
-					const additionalParams = this.getNodeParameter('additionalFields', 0) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					if(additionalParams.firstName) {
-						qs.first_name = additionalParams.firstName;
+					responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields`);
+
+					responseData = responseData.custom_fields;
+
+					if (!returnAll) {
+
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = responseData.slice(0, limit);
 					}
-
-					if(additionalParams.fields !== undefined) {
-						const fields = {} as IDataObject;
-						const fieldsParams = additionalParams.fields as IDataObject;
-						const field = fieldsParams?.field as IDataObject[];
-
-						for(let j = 0; j < field.length; j++) {
-							const key = field[j].key as string;
-							const value = field[j].value as string;
-
-							fields[key] = value;
-						}
-
-						qs.fields = fields;
-					}
-
-					if(resource === 'form') {
-						method = 'POST';
-						endpoint = `/forms/${id}/subscribe`;
-					} else if(resource === 'sequence') {
-						method = 'POST';
-						endpoint = `/sequences/${id}/subscribe`;
-					} else if(resource === 'tag') {
-						method = 'POST';
-						endpoint = `/tags/${id}/subscribe`;
-					}
-				//-----------------
-				// Get All
-				//-----------------
-				} else if(operation === 'getAll') {
-					method = 'GET';
-					if(resource === 'form') {
-						endpoint = '/forms';
-					} else if(resource === 'tag') {
-						endpoint = '/tags';
-					} else if(resource === 'sequence') {
-						endpoint = '/sequences';
-					}
-				//--------------------
-				// Get Subscriptions
-				//--------------------
-				} else if(operation === 'getSubscriptions') {
-					const id = this.getNodeParameter('id', i);
-					const additionalParams = this.getNodeParameter('additionalFields', 0) as IDataObject;
-					if(additionalParams.subscriberState) {
-						qs.subscriber_state = additionalParams.subscriberState;
-					}
-
-					method = 'GET';
-					if(resource === 'form') {
-						endpoint = `/forms/${id}/subscriptions`;
-					} else if(resource === 'tag') {
-						endpoint = `/tags/${id}/subscriptions`;
-					} else if(resource === 'sequence') {
-						endpoint = `/sequences/${id}/subscriptions`;
-					}
-				//------------
-				// Create Tag
-				//------------
-				} else if(operation === 'create') {
-					const name = this.getNodeParameter('name', i);
-					qs.tag = { name, };
-
-					method = 'POST';
-					endpoint = '/tags';
-				//------------
-				// Remove Tag
-				//------------
-				} else if(operation === 'removeSubscriber') {
-					const id = this.getNodeParameter('id', i);
-
-					qs.email = this.getNodeParameter('email', i);
-
-					method = 'POST';
-					endpoint = `/tags/${id}/unsubscribe`;
-				} else {
-					throw new Error(`The operation "${operation}" is not known!`);
 				}
-			} else {
-				throw new Error(`The resource "${resource}" is not known!`);
+				if (operation === 'update') {
+
+					const id = this.getNodeParameter('id', i) as string;
+
+					const label = this.getNodeParameter('label', i) as string;
+
+					responseData = await convertKitApiRequest.call(this, 'PUT', `/custom_fields/${id}`, { label });
+
+					responseData = { success: true };
+				}
 			}
 
-			responseData = await convertKitApiRequest.call(this, method, endpoint, {}, qs);
+			if (resource === 'form') {
+				if (operation === 'addSubscriber') {
 
-			if(fullOperation === 'field/getAll') {
-				responseData = responseData.custom_fields;
-			} else if(['form/addSubscriber', 'tag/addSubscriber', 'sequence/addSubscriber'].includes(fullOperation)) {
-				responseData = responseData.subscription;
-			} else if(fullOperation === 'form/getAll') {
-				responseData = responseData.forms;
-			} else if(['form/getSubscriptions', 'tag/getSubscriptions'].includes(fullOperation)) {
-				responseData = responseData.subscriptions;
-			} else if(fullOperation === 'tag/getAll') {
-				responseData = responseData.tags;
-			} else if(fullOperation === 'sequence/getAll') {
-				responseData = responseData.courses;
+					const email = this.getNodeParameter('email', i) as string;
+
+					const formId = this.getNodeParameter('id', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						email,
+					};
+
+					if (additionalFields.firstName) {
+						body.first_name = additionalFields.firstName as string;
+					}
+
+					if (additionalFields.tags) {
+						body.tags = additionalFields.tags as string[];
+					}
+
+					if (additionalFields.fieldsUi) {
+						const fieldValues = (additionalFields.fieldsUi as IDataObject).fieldsValues as IDataObject[];
+						if (fieldValues) {
+							body.fields = {};
+							for (const fieldValue of fieldValues) {
+								//@ts-ignore
+								body.fields[fieldValue.key] = fieldValue.value;
+							}
+						}
+					}
+
+					const { subscription } = await convertKitApiRequest.call(this, 'POST', `/forms/${formId}/subscribe`, body);
+
+					responseData = subscription;
+				}
+				if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					responseData = await convertKitApiRequest.call(this, 'GET', `/forms`);
+
+					responseData = responseData.forms;
+
+					if (!returnAll) {
+
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = responseData.slice(0, limit);
+					}
+				}
+				if (operation === 'getSubscriptions') {
+
+					const formId = this.getNodeParameter('id', i) as string;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.subscriberState) {
+						qs.subscriber_state = additionalFields.subscriberState as string;
+					}
+
+					responseData = await convertKitApiRequest.call(this, 'GET', `/forms/${formId}/subscriptions`, {}, qs);
+
+					responseData = responseData.subscriptions;
+
+					if (!returnAll) {
+
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = responseData.slice(0, limit);
+					}
+				}
+			}
+
+			if (resource === 'sequence') {
+				if (operation === 'addSubscriber') {
+
+					const email = this.getNodeParameter('email', i) as string;
+
+					const sequenceId = this.getNodeParameter('id', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						email,
+					};
+
+					if (additionalFields.firstName) {
+						body.first_name = additionalFields.firstName as string;
+					}
+
+					if (additionalFields.tags) {
+						body.tags = additionalFields.tags as string[];
+					}
+
+					if (additionalFields.fieldsUi) {
+						const fieldValues = (additionalFields.fieldsUi as IDataObject).fieldsValues as IDataObject[];
+						if (fieldValues) {
+							body.fields = {};
+							for (const fieldValue of fieldValues) {
+								//@ts-ignore
+								body.fields[fieldValue.key] = fieldValue.value;
+							}
+						}
+					}
+
+					const { subscription } = await convertKitApiRequest.call(this, 'POST', `/sequences/${sequenceId}/subscribe`, body);
+
+					responseData = subscription;
+				}
+				if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					responseData = await convertKitApiRequest.call(this, 'GET', `/sequences`);
+
+					responseData = responseData.courses;
+
+					if (!returnAll) {
+
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = responseData.slice(0, limit);
+					}
+				}
+				if (operation === 'getSubscriptions') {
+
+					const sequenceId = this.getNodeParameter('id', i) as string;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.subscriberState) {
+						qs.subscriber_state = additionalFields.subscriberState as string;
+					}
+
+					responseData = await convertKitApiRequest.call(this, 'GET', `/sequences/${sequenceId}/subscriptions`, {}, qs);
+
+					responseData = responseData.subscriptions;
+
+					if (!returnAll) {
+
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = responseData.slice(0, limit);
+					}
+				}
+			}
+
+			if (resource === 'tag') {
+				if (operation === 'create') {
+
+					const names = ((this.getNodeParameter('name', i) as string).split(',') as string[]).map((e) => ({ name: e }));
+
+					const body: IDataObject = {
+						tag: names
+					};
+
+					responseData = await convertKitApiRequest.call(this, 'POST', '/tags', body);
+				}
+
+				if (operation === 'getAll') {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					responseData = await convertKitApiRequest.call(this, 'GET', `/tags`);
+
+					responseData = responseData.tags;
+
+					if (!returnAll) {
+
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = responseData.slice(0, limit);
+					}
+				}
+			}
+
+			if (resource === 'tagSubscriber') {
+
+				if (operation === 'add') {
+
+					const tagId = this.getNodeParameter('tagId', i) as string;
+
+					const email = this.getNodeParameter('email', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						email,
+					};
+
+					if (additionalFields.firstName) {
+						body.first_name = additionalFields.firstName as string;
+					}
+
+					if (additionalFields.fieldsUi) {
+						const fieldValues = (additionalFields.fieldsUi as IDataObject).fieldsValues as IDataObject[];
+						if (fieldValues) {
+							body.fields = {};
+							for (const fieldValue of fieldValues) {
+								//@ts-ignore
+								body.fields[fieldValue.key] = fieldValue.value;
+							}
+						}
+					}
+
+					const { subscription } = await convertKitApiRequest.call(this, 'POST', `/tags/${tagId}/subscribe`, body);
+
+					responseData = subscription;
+				}
+
+				if (operation === 'getAll') {
+
+					const tagId = this.getNodeParameter('tagId', i) as string;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					responseData = await convertKitApiRequest.call(this, 'GET', `/tags/${tagId}/subscriptions`);
+
+					responseData = responseData.subscriptions;
+
+					if (!returnAll) {
+
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = responseData.slice(0, limit);
+					}
+				}
+
+				if (operation === 'delete') {
+
+					const tagId = this.getNodeParameter('tagId', i) as string;
+
+					const email = this.getNodeParameter('email', i) as string;
+
+					responseData= await convertKitApiRequest.call(this, 'POST', `/tags/${tagId}>/unsubscribe`, { email });
+				}
 			}
 
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else if (responseData !== undefined) {
 				returnData.push(responseData as IDataObject);
-			} else {
-				if(method === 'GET') {
-					returnData.push( { } );
-				} else {
-					returnData.push( { success: true } );
-				}
 			}
 		}
 

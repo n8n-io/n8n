@@ -1,8 +1,8 @@
 import {
-	INodeProperties
+	INodeProperties,
 } from 'n8n-workflow';
 
-export const fieldOperations = [
+export const customFieldOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const fieldOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'field',
+					'customField',
 				],
 			},
 		},
@@ -18,22 +18,22 @@ export const fieldOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a field.',
+				description: 'Create a field',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a field.',
+				description: 'Delete a field',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: `List all of your account's custom fields.`,
+				description: 'Get all fields',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a field.',
+				description: 'Update a field',
 			},
 		],
 		default: 'update',
@@ -41,7 +41,7 @@ export const fieldOperations = [
 	},
 ] as INodeProperties[];
 
-export const fieldFields = [
+export const customFieldFields = [
 	{
 		displayName: 'Field ID',
 		name: 'id',
@@ -50,7 +50,7 @@ export const fieldFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'field',
+					'customField',
 				],
 				operation: [
 					'update',
@@ -69,7 +69,7 @@ export const fieldFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'field',
+					'customField',
 				],
 				operation: [
 					'update',
@@ -79,5 +79,46 @@ export const fieldFields = [
 		},
 		default: '',
 		description: 'The label of the custom field.',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'customField',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'customField',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 ] as INodeProperties[];

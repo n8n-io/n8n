@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const sequenceOperations = [
+export const tagSubscriberOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,33 +10,55 @@ export const sequenceOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'sequence',
+					'tagSubscriber',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Add Subscriber',
-				value: 'addSubscriber',
-				description: 'Add a subscriber.',
+				name: 'Add',
+				value: 'add',
+				description: 'Add a tag to a subscriber',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all sequences.',
+				description: 'List subscriptions to a tag including subscriber data',
 			},
 			{
-				name: 'Get Subscriptions',
-				value: 'getSubscriptions',
-				description: 'List subscriptions to a sequence including subscriber data.',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a tag from a subscriber',
 			},
 		],
-		default: 'addSubscriber',
-		description: 'The operations to perform.',
+		default: 'create',
+		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
-export const sequenceFields = [
+export const tagSubscriberFields = [
+	{
+		displayName: 'Tag ID',
+		name: 'tagId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTags',
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'tagSubscriber',
+				],
+				operation: [
+					'add',
+					'getAll',
+					'delete',
+				],
+			},
+		},
+		default: '',
+	},
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -45,80 +67,16 @@ export const sequenceFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'sequence',
+					'tagSubscriber',
 				],
 				operation: [
-					'addSubscriber',
+					'add',
+					'delete',
 				],
 			},
 		},
 		default: '',
-		description: `The subscriber's email address.`,
-	},
-	{
-		displayName: 'Sequence ID',
-		name: 'id',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getSequences',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'sequence',
-				],
-				operation: [
-					'addSubscriber',
-					'getSubscriptions',
-				],
-			},
-		},
-		default: '',
-		description: 'Sequence ID.',
-	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-					'getSubscriptions',
-				],
-				resource: [
-					'sequence',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-					'getSubscriptions',
-				],
-				resource: [
-					'sequence',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
+		description: 'Subscriber email address.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -129,17 +87,17 @@ export const sequenceFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'sequence',
+					'tagSubscriber',
 				],
 				operation: [
-					'addSubscriber',
+					'add',
 				],
 			},
 		},
 		options: [
 			{
 				displayName: 'Custom Fields',
-				name: 'fieldsUi',
+				name: 'fields',
 				placeholder: 'Add Custom Field',
 				description: 'Object of key/value pairs for custom fields (the custom field must exist before you can use it here).',
 				type: 'fixedCollection',
@@ -149,7 +107,7 @@ export const sequenceFields = [
 				default: {},
 				options: [
 					{
-						name: 'fieldsValues',
+						name: 'field',
 						displayName: 'Custom Field',
 						values: [
 							{
@@ -177,19 +135,50 @@ export const sequenceFields = [
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: `The subscriber's first name.`,
-			},
-			{
-				displayName: 'Tag IDs',
-				name: 'tags',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				default: [],
-				description: 'Tags',
+				description: 'Subscriber first name.',
 			},
 		],
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'tagSubscriber',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'tagSubscriber',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -200,10 +189,10 @@ export const sequenceFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'sequence',
+					'tagSubscriber',
 				],
 				operation: [
-					'getSubscriptions',
+					'getAll',
 				],
 			},
 		},
