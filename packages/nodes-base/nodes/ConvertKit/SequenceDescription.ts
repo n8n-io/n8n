@@ -18,17 +18,17 @@ export const sequenceOperations = [
 			{
 				name: 'Add Subscriber',
 				value: 'addSubscriber',
-				description: 'Add a subscriber.',
+				description: 'Add a subscriber',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all sequences.',
+				description: 'Get all sequences',
 			},
 			{
 				name: 'Get Subscriptions',
 				value: 'getSubscriptions',
-				description: 'List subscriptions to a sequence including subscriber data.',
+				description: 'Get all subscriptions to a sequence including subscriber data',
 			},
 		],
 		default: 'addSubscriber',
