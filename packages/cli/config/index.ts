@@ -332,8 +332,8 @@ const config = convict({
 				default: '',
 				env: 'N8N_JWT_AUTH_HEADER',
 				doc: 'The request header containing a signed JWT'
-      },
-      jwtHeaderValuePrefix: {
+			},
+			jwtHeaderValuePrefix: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
@@ -344,32 +344,32 @@ const config = convict({
 				default: '',
 				env: 'N8N_JWKS_URI',
 				doc: 'The URI to fetch JWK Set for JWT authentication'
-      },
-      jwtIssuer: {
-        format: String,
+			},
+			jwtIssuer: {
+				format: String,
 				default: '',
 				env: 'N8N_JWT_ISSUER',
 				doc: 'JWT issuer to expect (optional)'
-      },
-      jwtNamespace: {
-        format: String,
+			},
+			jwtNamespace: {
+				format: String,
 				default: '',
 				env: 'N8N_JWT_NAMESPACE',
 				doc: 'JWT namespace to expect (optional)'
-      },
-      jwtAllowedTenantKey: {
-        format: String,
+			},
+			jwtAllowedTenantKey: {
+				format: String,
 				default: '',
 				env: 'N8N_JWT_ALLOWED_TENANT_KEY',
 				doc: 'JWT tenant key name to inspect within JWT namespace (optional)'
-      },
-      jwtAllowedTenant: {
-        format: String,
+			},
+			jwtAllowedTenant: {
+				format: String,
 				default: '',
 				env: 'N8N_JWT_ALLOWED_TENANT',
 				doc: 'JWT tenant to allow (optional)'
-      },
-		}
+			},
+		},
 	},
 
 	endpoints: {
