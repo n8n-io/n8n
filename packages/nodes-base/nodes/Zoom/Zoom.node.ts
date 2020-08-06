@@ -544,7 +544,7 @@ export class Zoom implements INodeType {
 			// 			'additionalFields',
 			// 			i
 			// 		) as IDataObject;
-			// 		if (additionalFields.occurenceId) {
+			// 		if (additionalFields.occurrenceId) {
 			// 			qs.occurrence_id = additionalFields.occurrenceId as string;
 			// 		}
 			// 		if (additionalFields.action) {
