@@ -1,71 +1,71 @@
-import { Vue, Component } from 'vue-property-decorator'
-import createAuth0Client, { PopupLoginOptions, Auth0Client, RedirectLoginOptions, GetIdTokenClaimsOptions, GetTokenSilentlyOptions, GetTokenWithPopupOptions, LogoutOptions } from '@auth0/auth0-spa-js'
-import { User } from './User'
+import { Vue, Component } from 'vue-property-decorator';
+import createAuth0Client, { PopupLoginOptions, Auth0Client, RedirectLoginOptions, GetIdTokenClaimsOptions, GetTokenSilentlyOptions, GetTokenWithPopupOptions, LogoutOptions } from '@auth0/auth0-spa-js';
+import { User } from './User';
 
 export type Auth0Options = {
-  domain: string
-  clientId: string
-  audience?: string
-  scope?: string
-  [key: string]: string | undefined
-}
+  domain: string;
+  clientId: string;
+  audience?: string;
+  scope?: string;
+  [key: string]: string | undefined;
+};
 
-export type RedirectCallback = (appState: any) => void
+// tslint:disable-next-line: no-any
+export type RedirectCallback = (appState: any) => void;
 
 @Component({})
 export class VueAuth extends Vue {
-  loading = true
-  isAuthenticated? = false
-  user?: User
-  auth0Client?: Auth0Client
-  popupOpen = false
-  error?: Error
+  loading = true;
+  isAuthenticated?= false;
+  user?: User;
+  auth0Client?: Auth0Client;
+  popupOpen = false;
+  error?: Error;
 
   async getUser() {
-    const u = await this.auth0Client?.getUser()
-    return new User(u)
+    return new User(await this.auth0Client?.getUser());
   }
 
   /** Authenticates the user using a popup window */
   async loginWithPopup (o: PopupLoginOptions) {
-    this.popupOpen = true
+    this.popupOpen = true;
 
     try {
-      await this.auth0Client?.loginWithPopup(o)
+      await this.auth0Client?.loginWithPopup(o);
     } catch (e) {
-      console.error(e)
-      this.error = e
+      console.error(e);
+      this.error = e;
     } finally {
-      this.popupOpen = false
+      this.popupOpen = false;
     }
 
-    this.user = await this.getUser()
-    this.isAuthenticated = true
+    this.user = await this.getUser();
+    this.isAuthenticated = true;
   }
 
   /** Authenticates the user using the redirect method */
   loginWithRedirect (o: RedirectLoginOptions) {
-    return this.auth0Client?.loginWithRedirect(o)
+    return this.auth0Client?.loginWithRedirect(o);
   }
 
   /** Returns all the claims present in the ID token */
   getIdTokenClaims (o: GetIdTokenClaimsOptions) {
-    return this.auth0Client?.getIdTokenClaims(o)
+    return this.auth0Client?.getIdTokenClaims(o);
   }
 
   /** Returns the access token. If the token is invalid or missing, a new one is retrieved */
   getTokenSilently (o: GetTokenSilentlyOptions) {
-    return this.auth0Client?.getTokenSilently(o)
+    return this.auth0Client?.getTokenSilently(o);
   }
 
   /** Gets the access token using a popup window */
   getTokenWithPopup (o: GetTokenWithPopupOptions) {
-    return this.auth0Client?.getTokenWithPopup(o)
+    return this.auth0Client?.getTokenWithPopup(o);
   }
 
   /** Logs the user out and removes their session on the authorization server */
   logout (o: LogoutOptions) {
-    return this.auth0Client?.logout(o)
+    return this.auth0Client?.logout(o);
   }
 
   /** Use this lifecycle method to instantiate the SDK client */
@@ -77,7 +77,7 @@ export class VueAuth extends Vue {
       audience: auth0Options.audience,
       scope: auth0Options.scope,
       redirect_uri: redirectUri // eslint-disable-line @typescript-eslint/camelcase
-    })
+    });
 
     try {
       // If the user is returning to the app after authentication..
@@ -86,20 +86,20 @@ export class VueAuth extends Vue {
         (window.location.search.includes('code=') && window.location.search.includes('state='))
       ) {
         // handle the redirect and retrieve tokens
-        const { appState } = await this.auth0Client?.handleRedirectCallback() ?? { appState: undefined }
+        const { appState } = await this.auth0Client?.handleRedirectCallback() ?? { appState: undefined };
 
         // Notify subscribers that the redirect callback has happened, passing the appState
         // (useful for retrieving any pre-authentication state)
-        onRedirectCallback(appState)
+        onRedirectCallback(appState);
       }
     } catch (e) {
-      console.error(e)
-      this.error = e
+      console.error(e);
+      this.error = e;
     } finally {
       // Initialize our internal authentication state when the page is reloaded
-      this.isAuthenticated = await this.auth0Client?.isAuthenticated()
-      this.user = await this.getUser()
-      this.loading = false
+      this.isAuthenticated = await this.auth0Client?.isAuthenticated();
+      this.user = await this.getUser();
+      this.loading = false;
     }
   }
 }

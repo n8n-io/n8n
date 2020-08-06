@@ -176,7 +176,8 @@ Vue.use(Auth0Plugin, {
   clientId,
   audience,
   scope,
-  onRedirectCallback: (appState) => {
+  // tslint:disable-next-line: no-any
+  onRedirectCallback: (appState: any) => {
     router.push(
       appState && appState.targetUrl
         ? appState.targetUrl
