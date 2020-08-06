@@ -151,7 +151,7 @@ export class GoogleSheets implements INodeType {
 				displayName: 'To Delete',
 				name: 'toDelete',
 				placeholder: 'Add Columns/Rows to delete',
-				description: 'Deletes colums and rows from a sheet.',
+				description: 'Deletes columns and rows from a sheet.',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -363,7 +363,7 @@ export class GoogleSheets implements INodeType {
 					},
 				},
 				default: 0,
-				description: 'Index of the row which contains the keys. Starts at 0.<br />The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
+				description: 'Index of the row which contains the keys. Starts at 0.<br />The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
 			},
 
 

@@ -183,7 +183,7 @@ export class GoogleSheet {
 	}
 
     /**
-     * Returns the given sheet data in a strucutred way
+     * Returns the given sheet data in a structured way
      */
 	structureData(inputData: string[][], startRow: number, keys: string[], addEmpty?: boolean): IDataObject[] {
 		const returnData = [];
@@ -210,7 +210,7 @@ export class GoogleSheet {
 
 
     /**
-     * Returns the given sheet data in a strucutred way using
+     * Returns the given sheet data in a structured way using
      * the startRow as the one with the name of the key
      */
 	structureArrayDataByColumn(inputData: string[][], keyRow: number, dataStartRow: number): IDataObject[] {
@@ -218,7 +218,7 @@ export class GoogleSheet {
 		const keys: string[] = [];
 
 		if (keyRow < 0 || dataStartRow < keyRow || keyRow >= inputData.length) {
-			// The key row does not exist so it is not possible to strucutre data
+			// The key row does not exist so it is not possible to structure data
 			return [];
 		}
 
