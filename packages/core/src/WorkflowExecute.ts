@@ -459,7 +459,7 @@ export class WorkflowExecute {
 		let executionData: IExecuteData;
 		let executionError: IExecutionError | undefined;
 		let executionNode: INode;
-		let nodeSuccessData: INodeExecutionData[][] | null;
+		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
 		let startTime: number;
 		let taskData: ITaskData;
@@ -708,6 +708,9 @@ export class WorkflowExecute {
 				return Promise.resolve();
 			})()
 			.then(async () => {
+				if (gotCancel && executionError === undefined) {
+					return this.processSuccessExecution(startedAt, workflow, { message: 'Workflow has been canceled!' } as IExecutionError);
+				}
 				return this.processSuccessExecution(startedAt, workflow, executionError);
 			})
 			.catch(async (error) => {

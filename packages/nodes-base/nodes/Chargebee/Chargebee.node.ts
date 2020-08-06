@@ -215,12 +215,12 @@ export class Chargebee implements INodeType {
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Returns the invoices',
+						description: 'Return the invoices',
 					},
 					{
 						name: 'PDF Invoice URL',
 						value: 'pdfUrl',
-						description: 'Gets PDF invoice URL and adds it as property "pdfUrl"',
+						description: 'Get URL for the invoice PDF',
 					},
 				],
 			},

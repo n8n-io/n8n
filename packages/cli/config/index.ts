@@ -128,15 +128,23 @@ const config = convict({
 
 	credentials: {
 		overwrite: {
-			// Allows to set default values for credentials which
-			// get automatically prefilled and the user does not get
-			// displayed and can not change.
-			// Format: { CREDENTIAL_NAME: { PARAMTER: VALUE }}
-			doc: 'Overwrites for credentials',
-			format: '*',
-			default: '{}',
-			env: 'CREDENTIALS_OVERWRITE'
-		}
+			data: {
+				// Allows to set default values for credentials which
+				// get automatically prefilled and the user does not get
+				// displayed and can not change.
+				// Format: { CREDENTIAL_NAME: { PARAMTER: VALUE }}
+				doc: 'Overwrites for credentials',
+				format: '*',
+				default: '{}',
+				env: 'CREDENTIALS_OVERWRITE_DATA'
+			},
+			endpoint: {
+				doc: 'Fetch credentials from API',
+				format: String,
+				default: '',
+				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
+			},
+		},
 	},
 
 	executions: {
@@ -151,10 +159,34 @@ const config = convict({
 			env: 'EXECUTIONS_PROCESS'
 		},
 
+		// A Workflow times out and gets canceled after this time (seconds).
+		// If the workflow is executed in the main process a soft timeout
+		// is executed (takes effect after the current node finishes).
+		// If a workflow is running in its own process is a soft timeout
+		// tried first, before killing the process after waiting for an
+		// additional fifth of the given timeout duration.
+		//
+		// To deactivate timeout set it to -1
+		//
+		// Timeout is currently not activated by default which will change
+		// in a future version.
+		timeout: {
+			doc: 'Max run time (seconds) before stopping the workflow execution',
+			format: Number,
+			default: -1,
+			env: 'EXECUTIONS_TIMEOUT'
+		},
+		maxTimeout: {
+			doc: 'Max execution time (seconds) that can be set for a workflow individually',
+			format: Number,
+			default: 3600,
+			env: 'EXECUTIONS_TIMEOUT_MAX'
+		},
+
 		// If a workflow executes all the data gets saved by default. This
 		// could be a problem when a workflow gets executed a lot and processes
-		// a lot of data. To not write the database full it is possible to
-		// not save the execution at all.
+		// a lot of data. To not exceed the database's capacity it is possible to
+		// prune the database regularly or to not save the execution at all.
 		// Depending on if the execution did succeed or error a different
 		// save behaviour can be set.
 		saveDataOnError: {
@@ -177,8 +209,33 @@ const config = convict({
 		// in the editor.
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
+			format: 'Boolean',
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS'
+		},
+
+		// To not exceed the database's capacity and keep its size moderate
+		// the execution data gets pruned regularly (default: 1 hour interval).
+		// All saved execution data older than the max age will be deleted.
+		// Pruning is currently not activated by default, which will change in
+		// a future version.
+		pruneData: {
+			doc: 'Delete data of past executions on a rolling basis',
+			format: 'Boolean',
+			default: false,
+			env: 'EXECUTIONS_DATA_PRUNE'
+		},
+		pruneDataMaxAge: {
+			doc: 'How old (hours) the execution data has to be to get deleted',
+			format: Number,
+			default: 336,
+			env: 'EXECUTIONS_DATA_MAX_AGE'
+		},
+		pruneDataTimeout: {
+			doc: 'Timeout (seconds) after execution data has been pruned',
+			format: Number,
+			default: 3600,
+			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT'
 		},
 	},
 
@@ -196,6 +253,13 @@ const config = convict({
 	},
 
 	// How n8n can be reached (Editor & REST-API)
+	path: {
+		format: String,
+		default: '/',
+		arg: 'path',
+		env: 'N8N_PATH',
+		doc: 'Path n8n is deployed to'
+	},
 	host: {
 		format: String,
 		default: 'localhost',
