@@ -170,6 +170,7 @@ library.add(faUsers);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 
+// TODO: enable / disable the auth plugin when JWT is activated / deactivated
 // Install the authentication plugin
 Vue.use(Auth0Plugin, {
   domain,
