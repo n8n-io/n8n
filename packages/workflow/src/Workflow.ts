@@ -1128,6 +1128,18 @@ export class Workflow {
 			throw error;
 		}
 
+		if (node.executeOnce === true) {
+			// If node should be executed only use only the first input item
+			connectionInputData = connectionInputData.slice(0, 1);
+			const newInputData: ITaskDataConnections = {};
+			for (const inputName of Object.keys(inputData)) {
+				newInputData[inputName] = inputData[inputName].map(input => {
+					return input && input.slice(0, 1);
+				});
+			}
+			inputData = newInputData;
+		}
+
 		if (nodeType.executeSingle) {
 			const returnPromises: Array<Promise<INodeExecutionData>> = [];
 
