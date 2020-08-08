@@ -332,8 +332,8 @@ const config = convict({
 				default: '',
 				env: 'N8N_JWT_AUTH_HEADER',
 				doc: 'The request header containing a signed JWT'
-      },
-      jwtHeaderValuePrefix: {
+			},
+			jwtHeaderValuePrefix: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
