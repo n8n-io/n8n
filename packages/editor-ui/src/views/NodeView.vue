@@ -50,12 +50,12 @@
 				<font-awesome-icon icon="undo" title="Reset Zoom"/>
 			</button>
 		</div>
-    <div class="login-logout-wrapper" v-if="!$auth.loading">
-        <!-- show login when not authenticated -->
-        <el-button v-if="!$auth.isAuthenticated" @click="login">Log In</el-button>
-        <!-- show logout when authenticated -->
-        <el-button v-if="$auth.isAuthenticated" @click="logout">Log Out ({{ $auth.user.tenantId }})</el-button>
-    </div>
+		<div class="login-logout-wrapper" v-if="!$auth.loading">
+				<!-- show login when not authenticated -->
+				<el-button v-if="!$auth.isAuthenticated" @click="login">Log In</el-button>
+				<!-- show logout when authenticated -->
+				<el-button v-if="$auth.isAuthenticated" @click="logout">Log Out ({{ $auth.user.tenantId }})</el-button>
+		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
 			<el-button
 				type="text"
@@ -277,15 +277,15 @@ export default mixins(
 		},
 		methods: {
 			// User login method
-      login () {
-        this.$auth.loginWithRedirect({});
-      },
-      // User logout method
-      logout () {
-        this.$auth.logout({
-          returnTo: window.location.origin
-        });
-      },
+			login () {
+				this.$auth.loginWithRedirect({});
+			},
+			// User logout method
+			logout () {
+				this.$auth.logout({
+					returnTo: window.location.origin
+				});
+			},
 			async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
 				const functionName = inputParameters.shift() as string;
 				const debounceTime = inputParameters.shift() as number;

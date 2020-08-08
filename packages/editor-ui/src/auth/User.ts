@@ -1,21 +1,21 @@
 import decodeJwt from 'jwt-decode';
 
 export type UserDetails = {
-  namespace?: string;
-  userId?: string;
-  tenantId?: string;
+	namespace?: string;
+	userId?: string;
+	tenantId?: string;
 };
 
 export class User {
-  sub?: string;
-  provider?: string;
-  id?: string;
-  userId?: string;
+	sub?: string;
+	provider?: string;
+	id?: string;
+	userId?: string;
 	tenantId?: string;
 	token: any; // tslint:disable-line:no-any
 	payload: any;  // tslint:disable-line:no-any
 
-  constructor(userDetails: UserDetails, token: any) { // tslint:disable-line:no-any
+	constructor(userDetails: UserDetails, token: any) { // tslint:disable-line:no-any
 		if (!token) return;
 		try {
 			this.payload = decodeJwt(token) as any; // tslint:disable-line:no-any
@@ -24,14 +24,14 @@ export class User {
 			return;
 		}
 		this.token = token;
-    this.sub = this.payload.sub as string;
-    this.provider = this.sub.split('|')[0];
+		this.sub = this.payload.sub as string;
+		this.provider = this.sub.split('|')[0];
 		this.id = this.sub.split('|')[1];
-    if (userDetails.namespace) {
+		if (userDetails.namespace) {
 			for (const [k, v] of Object.entries(this.payload[userDetails.namespace] as object)) {
-        if (userDetails.userId === k) this.userId = v;
-        if (userDetails.tenantId === k) this.tenantId = v;
-      }
-    }
-  }
+				if (userDetails.userId === k) this.userId = v;
+				if (userDetails.tenantId === k) this.tenantId = v;
+			}
+		}
+	}
 }

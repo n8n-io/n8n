@@ -173,18 +173,18 @@ Vue.component('font-awesome-icon', FontAwesomeIcon);
 // TODO: enable / disable the auth plugin when JWT is activated / deactivated
 // Install the authentication plugin
 Vue.use(Auth0Plugin, {
-  domain,
-  clientId,
-  audience,
-  scope,
-  // tslint:disable-next-line: no-any
-  onRedirectCallback: (appState: any) => {
-    router.push(
-      appState && appState.targetUrl
-        ? appState.targetUrl
-        : window.location.pathname
-    );
-  }
+	domain,
+	clientId,
+	audience,
+	scope,
+	// tslint:disable-next-line: no-any
+	onRedirectCallback: (appState: any) => {
+		router.push(
+			appState && appState.targetUrl
+				? appState.targetUrl
+				: window.location.pathname
+		);
+	}
 });
 // TODO: enable / disable the auth guard when JWT is activated / deactivated
 // Guard all router paths with auth guard

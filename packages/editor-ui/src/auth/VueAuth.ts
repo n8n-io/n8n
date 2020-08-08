@@ -13,7 +13,7 @@ export type Auth0Options = {
 // tslint:disable-next-line: no-any
 export type RedirectCallback = (appState: any) => void;
 
-/** Based on https://blog.risingstack.com/auth0-vue-typescript-quickstart-docs/#securetheprofilepage **/
+/** Based on https://blog.risingstack.com/auth0-vue-typescript-quickstart-docs/#securetheprofilepage */
 @Component({})
 export class VueAuth extends Vue {
 	loading = true;
@@ -25,19 +25,19 @@ export class VueAuth extends Vue {
 	userDetails: UserDetails = {
 		namespace: 'https://api.faros.ai',
 		userId: 'userId',
-		tenantId: 'tenantId'
+		tenantId: 'tenantId',
 	};
 	error?: Error;
 
 	async getUser() {
 		let token;
-    try {
+		try {
 			token = await this.auth0Client?.getTokenSilently();
 			return new User(this.userDetails, token);
-    } catch (err) {
+		} catch (err) {
 			console.warn('Unable to get token.', err);
 			return undefined;
-    }
+		}
 	}
 
 	/** Authenticates the user using a popup window */
@@ -90,7 +90,7 @@ export class VueAuth extends Vue {
 			client_id: auth0Options.clientId, // eslint-disable-line @typescript-eslint/camelcase
 			audience: auth0Options.audience,
 			scope: auth0Options.scope,
-			redirect_uri: redirectUri // eslint-disable-line @typescript-eslint/camelcase
+			redirect_uri: redirectUri, // eslint-disable-line @typescript-eslint/camelcase
 		});
 
 		try {
