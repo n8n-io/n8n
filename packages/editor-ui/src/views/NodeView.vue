@@ -283,7 +283,7 @@ export default mixins(
 			// User logout method
 			logout () {
 				this.$auth.logout({
-					returnTo: window.location.origin
+					returnTo: window.location.origin,
 				});
 			},
 			async callDebounced (...inputParameters: any[]): Promise<void> { // tslint:disable-line:no-any
