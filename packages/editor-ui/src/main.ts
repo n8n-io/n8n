@@ -4,7 +4,7 @@ import Vue from 'vue';
 
 // Import Auth plugin and auth configuration
 import { domain, clientId, audience, scope } from '../auth_config.json';
-import { Auth0Plugin } from './auth';
+import { Auth0Plugin, authGuard } from './auth';
 
 import 'prismjs';
 import 'prismjs/themes/prism.css';
@@ -186,6 +186,9 @@ Vue.use(Auth0Plugin, {
     );
   }
 });
+// TODO: enable / disable the auth guard when JWT is activated / deactivated
+// Guard all router paths with auth guard
+router.beforeEach(authGuard);
 
 
 Vue.config.productionTip = false;

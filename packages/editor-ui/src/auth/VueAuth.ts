@@ -13,6 +13,7 @@ export type Auth0Options = {
 // tslint:disable-next-line: no-any
 export type RedirectCallback = (appState: any) => void;
 
+/** Based on https://blog.risingstack.com/auth0-vue-typescript-quickstart-docs/#securetheprofilepage **/
 @Component({})
 export class VueAuth extends Vue {
 	loading = true;
