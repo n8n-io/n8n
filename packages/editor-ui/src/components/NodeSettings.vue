@@ -25,7 +25,7 @@
 						The node does not have any parameters.
 					</div>
 				</el-tab-pane>
-				<el-tab-pane label="Node">
+				<el-tab-pane label="Settings">
 					<parameter-input-list :parameters="nodeSettings" :hideDelete="true" :nodeValues="nodeValues" path="" @valueChanged="valueChanged" />
 					<parameter-input-list :parameters="parametersSetting" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 				</el-tab-pane>
@@ -142,6 +142,7 @@ export default mixins(
 				nodeValues: {
 					color: '#ff0000',
 					alwaysOutputData: false,
+					executeOnce: false,
 					notesInFlow: false,
 					continueOnFail: false,
 					retryOnFail: false,
@@ -186,6 +187,14 @@ export default mixins(
 						default: false,
 						noDataExpression: true,
 						description: 'If activated and the node does not have any data for the first output,<br />it returns an empty item anyway. Be careful setting this on<br />IF-Nodes as it could easily cause an infinite loop.',
+					},
+					{
+						displayName: 'Execute Once',
+						name: 'executeOnce',
+						type: 'boolean',
+						default: false,
+						noDataExpression: true,
+						description: 'Instead of executing once per item does it only execute once with the data of the first item.',
 					},
 					{
 						displayName: 'Retry On Fail',
@@ -440,6 +449,11 @@ export default mixins(
 					if (this.node.alwaysOutputData) {
 						foundNodeSettings.push('alwaysOutputData');
 						Vue.set(this.nodeValues, 'alwaysOutputData', this.node.alwaysOutputData);
+					}
+
+					if (this.node.executeOnce) {
+						foundNodeSettings.push('executeOnce');
+						Vue.set(this.nodeValues, 'executeOnce', this.node.executeOnce);
 					}
 
 					if (this.node.continueOnFail) {
