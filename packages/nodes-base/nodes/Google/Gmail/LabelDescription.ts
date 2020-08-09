@@ -29,6 +29,11 @@ export const labelOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a label',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all labels',
 			}
 		],
 		default: 'create',
@@ -134,5 +139,49 @@ export const labelFields = [
 			},
 		},
 		description: 'The visibility of messages with this label in the message list in the Gmail web interface.',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 label:getAll                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'label',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'label',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 ] as INodeProperties[];

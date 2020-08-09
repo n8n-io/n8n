@@ -144,3 +144,8 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 	return returnData;
 }
+
+export	function extractEmail (s: string) {
+	const data = s.split('<')[1];
+	return data.substring(0, data.length - 1);
+}

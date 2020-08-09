@@ -16,6 +16,7 @@ import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 	encodeEmail,
+	extractEmail,
 } from './GenericFunctions';
 
 import {
@@ -206,6 +207,24 @@ export class Gmail implements INodeType {
 
 					responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 				}
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					responseData = await googleApiRequest.call(
+						this,
+						'GET',
+						`/gmail/v1/users/me/labels`,
+						{},
+						qs
+					);
+
+					responseData = responseData.labels;
+
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+				}
 			}
 			if (resource === 'messageLabel') {
 				if (operation === 'remove') {
@@ -316,6 +335,8 @@ export class Gmail implements INodeType {
 				}
 				if (operation === 'reply') {
 
+					const id = this.getNodeParameter('messageId', i) as string;
+
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					let toStr = '';
@@ -373,6 +394,23 @@ export class Gmail implements INodeType {
 						}
 					}
 
+					// if no receptor is defined then grab the one who sent the email
+					if (toStr === '') {
+
+						endpoint = `/gmail/v1/users/me/messages/${id}`;
+
+						qs.format = 'metadata';
+
+						const { payload } = await googleApiRequest.call(this, method, endpoint, body, qs);
+
+						for (const header of payload.headers as IDataObject[]) {
+							if (header.name === 'From') {
+								toStr = `<${extractEmail(header.value as string)}>,`;
+								break;
+							}
+						}
+					}
+
 					const email: IEmail = {
 						to: toStr,
 						cc: ccStr,
@@ -385,8 +423,8 @@ export class Gmail implements INodeType {
 					endpoint = '/gmail/v1/users/me/messages/send';
 					method = 'POST';
 
-					email.inReplyTo = this.getNodeParameter('messageId', i) as string;
-					email.reference = this.getNodeParameter('messageId', i) as string;
+					email.inReplyTo = id;
+					email.reference = id;
 
 					body = {
 						raw: encodeEmail(email),
@@ -444,6 +482,7 @@ export class Gmail implements INodeType {
 					Object.assign(qs, additionalFields);
 
 					if (qs.labelIds) {
+						// tslint:disable-next-line: triple-equals
 						if (qs.labelIds == '') {
 							delete qs.labelIds;
 						} else {
@@ -595,6 +634,10 @@ export class Gmail implements INodeType {
 					method = 'GET';
 					const id = this.getNodeParameter('messageId', i);
 
+					const format = this.getNodeParameter('format', i);
+
+					qs.format = format;
+
 					endpoint = `/gmail/v1/users/me/drafts/${id}`;
 
 					responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
@@ -609,6 +652,55 @@ export class Gmail implements INodeType {
 					responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 
 					responseData = { success: true };
+				}
+				if (operation === 'getAll') {
+					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
+
+					if (returnAll) {
+						responseData = await googleApiRequestAllItems.call(
+							this,
+							'drafts',
+							'GET',
+							`/gmail/v1/users/me/drafts`,
+							{},
+							qs
+						);
+					} else {
+						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/gmail/v1/users/me/drafts`,
+							{},
+							qs
+						);
+						responseData = responseData.drafts;
+					}
+
+					if (responseData === undefined) {
+						responseData = [];
+					}
+
+					if (resolveData) {
+
+						const resolveFormat = this.getNodeParameter('resolveFormat', i) as string;
+
+						qs.format = resolveFormat;
+
+						for (let i = 0; i < responseData.length; i++) {
+
+							responseData[i] = await googleApiRequest.call(
+								this,
+								'GET',
+								`/gmail/v1/users/me/drafts/${responseData[i].id}`,
+								body,
+								qs
+							);
+						}
+					}
 				}
 			}
 			if (Array.isArray(responseData)) {

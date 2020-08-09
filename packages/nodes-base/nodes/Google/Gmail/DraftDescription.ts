@@ -29,6 +29,11 @@ export const draftOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a draft',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all drafts',
 			}
 		],
 		default: 'create',
@@ -174,6 +179,175 @@ export const draftFields = [
 				default: '',
 				description: 'Array of supported attachments to add to the message.',
 			},
+		],
+	},
+	{
+		displayName: 'Format',
+		name: 'format',
+		type: 'options',
+		options: [
+			{
+				name: 'Full',
+				value: 'full',
+				description: 'Returns the full email message data with body content parsed in the payload field',
+			},
+			{
+				name: 'Metadata',
+				value: 'metadata',
+				description: 'Returns only email message ID, labels, and email headers.',
+			},
+			{
+				name: 'Minimal',
+				value: 'minimal',
+				description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+				description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'draft',
+				],
+			},
+		},
+		default: 'full',
+		description: 'The format to return the message in',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 draft:getAll                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'draft',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'draft',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Resolve Data',
+		name: 'resolveData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'draft',
+				],
+			},
+		},
+		default: true,
+		description: 'By default the response only contain the IDs. If this option gets activated it<br />will resolve the data automatically.',
+	},
+	{
+		displayName: 'Resolve Format',
+		name: 'resolveFormat',
+		type: 'options',
+		options: [
+			{
+				name: 'Full',
+				value: 'full',
+				description: 'Returns the full email message data with body content parsed in the payload field',
+			},
+			{
+				name: 'Metadata',
+				value: 'metadata',
+				description: 'Returns only email message ID, labels, and email headers.',
+			},
+			{
+				name: 'Minimal',
+				value: 'minimal',
+				description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+				description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'draft',
+				],
+				resolveData: [
+					true,
+				],
+			},
+		},
+		default: 'full',
+		description: 'The format use to return the message',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'draft',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Spam Trash',
+				name: 'includeSpamTrash',
+				type: 'boolean',
+				default: false,
+				description: 'Include messages from SPAM and TRASH in the results.',
+			},
+
 		],
 	},
 ] as INodeProperties[];

@@ -315,6 +315,9 @@ export const messageFields = [
 				downloadAttachments: [
 					true,
 				],
+				format: [
+					'full',
+				],
 			},
 		},
 		description: 'Name of the binary property to which to<br />write the data of the attachments.',
