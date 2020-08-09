@@ -1,6 +1,6 @@
 import {
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -102,6 +102,7 @@ export class GoogleTasks implements INodeType {
 					body = {};
 					//https://developers.google.com/tasks/v1/reference/tasks/insert
 					const taskId = this.getNodeParameter('task', i) as string;
+					body.title = this.getNodeParameter('title', i) as string;
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
 						i
@@ -121,11 +122,6 @@ export class GoogleTasks implements INodeType {
 					if (additionalFields.notes) {
 						body.notes = additionalFields.notes as string;
 					}
-
-					if (additionalFields.title) {
-						body.title = additionalFields.title as string;
-					}
-
 					if (additionalFields.dueDate) {
 						body.dueDate = additionalFields.dueDate as string;
 					}

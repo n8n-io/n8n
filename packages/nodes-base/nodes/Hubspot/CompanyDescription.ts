@@ -33,7 +33,7 @@ export const companyOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all company',
+				description: 'Get all companies',
 			},
 			{
 				name: 'Get Recently Created',

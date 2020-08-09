@@ -88,10 +88,11 @@ export class ActiveExecutions {
 	 * Forces an execution to stop
 	 *
 	 * @param {string} executionId The id of the execution to stop
+	 * @param {string} timeout String 'timeout' given if stop due to timeout
 	 * @returns {(Promise<IRun | undefined>)}
 	 * @memberof ActiveExecutions
 	 */
-	async stopExecution(executionId: string): Promise<IRun | undefined> {
+	async stopExecution(executionId: string, timeout?: string): Promise<IRun | undefined> {
 		if (this.activeExecutions[executionId] === undefined) {
 			// There is no execution running with that id
 			return;
@@ -101,17 +102,17 @@ export class ActiveExecutions {
 		// returned that it gets then also resolved correctly.
 		if (this.activeExecutions[executionId].process !== undefined) {
 			// Workflow is running in subprocess
-			setTimeout(() => {
-				if (this.activeExecutions[executionId].process!.connected) {
+			if (this.activeExecutions[executionId].process!.connected) {
+				setTimeout(() => {
+				// execute on next event loop tick;
 					this.activeExecutions[executionId].process!.send({
-						type: 'stopExecution'
+						type: timeout ? timeout : 'stopExecution',
 					});
-				}
-
-			}, 1);
+				}, 1);
+			}
 		} else {
 			// Workflow is running in current process
-			this.activeExecutions[executionId].workflowExecution!.cancel('Canceled by user');
+			this.activeExecutions[executionId].workflowExecution!.cancel();
 		}
 
 		return this.getPostExecutePromise(executionId);

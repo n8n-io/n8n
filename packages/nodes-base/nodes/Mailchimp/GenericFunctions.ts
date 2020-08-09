@@ -49,7 +49,6 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			const datacenter = (credentials.apiKey as string).split('-').pop();
 			options.url = `https://${datacenter}.${host}${endpoint}`;
-
 			return await this.helpers.request!(options);
 		} else {
 			const credentials = this.getCredentials('mailchimpOAuth2Api') as IDataObject;
@@ -58,7 +57,7 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			options.url = `${api_endpoint}/3.0${endpoint}`;
 			//@ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, 'Bearer');
+			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, { tokenType: 'Bearer' });
 		}
 	} catch (error) {
 		if (error.respose && error.response.body && error.response.body.detail) {
