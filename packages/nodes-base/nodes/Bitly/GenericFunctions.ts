@@ -1,12 +1,17 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
-import { attachmentFields } from '../Salesforce/AttachmentDescription';
+
+import {
+	IDataObject,
+ } from 'n8n-workflow';
 
 export async function bitlyApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
@@ -33,11 +38,19 @@ export async function bitlyApiRequest(this: IHookFunctions | IExecuteFunctions |
 
 			return await this.helpers.request!(options);
 		} else {
-			//@ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'bitlyOAuth2Api', options, 'Bearer');
+
+			return await this.helpers.requestOAuth2!.call(this, 'bitlyOAuth2Api', options, { tokenType: 'Bearer' });
 		}
 	} catch(error) {
-		throw new Error(error);
+
+		if (error.response && error.response.body && error.response.body.message) {
+			// Try to return the error prettier
+			const errorBody = error.response.body;
+			throw new Error(`Bitly error response [${error.statusCode}]: ${errorBody.message}`);
+		}
+
+		// Expected error data did not get returned so throw the actual error
+		throw error;
 	}
 }
 
