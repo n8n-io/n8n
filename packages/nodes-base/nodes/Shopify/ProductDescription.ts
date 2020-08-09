@@ -493,13 +493,6 @@ export const productFields = [
 				description: 'Return only products specified by a comma-separated list of product IDs.',
 			},
 			{
-				displayName: 'Since ID',
-				name: 'since_id',
-				type: 'string',
-				default: '',
-				description: 'Restrict results to after the specified ID.',
-			},
-			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
