@@ -113,6 +113,8 @@ class App {
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
 	timezone: string;
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 	push: Push.Push;
@@ -133,6 +135,8 @@ class App {
 		this.saveDataErrorExecution = config.get('executions.saveDataOnError') as string;
 		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess') as string;
 		this.saveManualExecutions = config.get('executions.saveDataManualExecutions') as boolean;
+		this.executionTimeout = config.get('executions.timeout') as number;
+		this.maxExecutionTimeout = config.get('executions.maxTimeout') as number;
 		this.timezone = config.get('generic.timezone') as string;
 		this.restEndpoint = config.get('endpoints.rest') as string;
 
@@ -209,37 +213,64 @@ class App {
 			const jwtAuthHeader = await GenericHelpers.getConfigValue('security.jwtAuth.jwtHeader') as string;
 			if (jwtAuthHeader === '') {
 				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
-			}
-
+      }
 			const jwksUri = await GenericHelpers.getConfigValue('security.jwtAuth.jwksUri') as string;
 			if (jwksUri === '') {
 				throw new Error('JWT auth is activated but no JWK Set URI was defined. Please set one!');
-			}
+      }
+      const jwtHeaderValuePrefix = await GenericHelpers.getConfigValue('security.jwtAuth.jwtHeaderValuePrefix') as string;
+      const jwtIssuer = await GenericHelpers.getConfigValue('security.jwtAuth.jwtIssuer') as string;
+      const jwtNamespace = await GenericHelpers.getConfigValue('security.jwtAuth.jwtNamespace') as string;
+      const jwtAllowedTenantKey = await GenericHelpers.getConfigValue('security.jwtAuth.jwtAllowedTenantKey') as string;
+      const jwtAllowedTenant = await GenericHelpers.getConfigValue('security.jwtAuth.jwtAllowedTenant') as string;
 
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				if (req.url.match(authIgnoreRegex)) {
-					return next();
-				}
+      function isTenantAllowed(decodedToken: object): Boolean  {
+        if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') return true;
+        else {
+          for (let [k, v] of Object.entries(decodedToken)) {
+            if (k === jwtNamespace) {
+              for (let [kn, kv] of Object.entries(v)) {
+                if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
+                  return true;
+                }
+              }
+            }
+          }
+        }
+        return false;
+      }
 
-				const token = req.header(jwtAuthHeader) as string;
-				if (token === '') {
-					return ResponseHelper.jwtAuthAuthorizationError(res, "Missing token");
-				}
+      this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+        if (req.url.match(authIgnoreRegex)) {
+          return next();
+        }
 
-				const jwkClient = jwks({ cache: true, jwksUri });
-				function getKey(header: any, callback: Function) { // tslint:disable-line:no-any
-					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => { // tslint:disable-line:no-any
-						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
+        var token = req.header(jwtAuthHeader) as string;
+        if (token === undefined || token === '') {
+          return ResponseHelper.jwtAuthAuthorizationError(res, "Missing token");
+        }
+        if (jwtHeaderValuePrefix != '' && token.startsWith(jwtHeaderValuePrefix)) {
+          token = token.replace(jwtHeaderValuePrefix + ' ', '').trimLeft();
+        }
 
-						const signingKey = key.publicKey || key.rsaPublicKey;
-						callback(null, signingKey);
-					});
-				}
+        const jwkClient = jwks({ cache: true, jwksUri });
+        function getKey(header: any, callback: Function) { // tslint:disable-line:no-any
+          jwkClient.getSigningKey(header.kid, (err: Error, key: any) => { // tslint:disable-line:no-any
+            if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
 
-				jwt.verify(token, getKey, {}, (err: jwt.VerifyErrors, decoded: object) => {
-					if (err) return ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
+            const signingKey = key.publicKey || key.rsaPublicKey;
+            callback(null, signingKey);
+          });
+        }
 
-					next();
+        var jwtVerifyOptions: jwt.VerifyOptions = {
+          issuer: jwtIssuer != '' ? jwtIssuer : undefined,
+          ignoreExpiration: false
+        }
+        jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
+          if (err) ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
+          else if (!isTenantAllowed(decoded)) ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
+          else next();
 				});
 			});
 		}
@@ -482,8 +513,11 @@ class App {
 					// Do not save when default got set
 					delete newWorkflowData.settings.saveManualExecutions;
 				}
+				if (parseInt(newWorkflowData.settings.executionTimeout as string, 10) === this.executionTimeout) {
+					// Do not save when default got set
+					delete newWorkflowData.settings.executionTimeout;
+				}
 			}
-
 
 			newWorkflowData.updatedAt = this.getCurrentDate();
 
@@ -1155,6 +1189,13 @@ class App {
 			const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
 			let returnUri = oAuthObj.code.getUri();
 
+			// if scope uses comma, change it as the library always return then with spaces
+			if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
+				const data = querystring.parse(returnUri.split('?')[1] as string);
+				data.scope = _.get(oauthCredentials, 'scope') as string;
+				returnUri = `${_.get(oauthCredentials, 'authUrl', '')}?${querystring.stringify(data)}`;
+			}
+
 			if (authQueryParameters) {
 				returnUri += '&' + authQueryParameters;
 			}
@@ -1534,6 +1575,8 @@ class App {
 				saveDataErrorExecution: this.saveDataErrorExecution,
 				saveDataSuccessExecution: this.saveDataSuccessExecution,
 				saveManualExecutions: this.saveManualExecutions,
+				executionTimeout: this.executionTimeout,
+				maxExecutionTimeout: this.maxExecutionTimeout,
 				timezone: this.timezone,
 				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
 				versionCli: this.versions!.cli,
