@@ -34,6 +34,7 @@ import {
 	Workflow,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
+	IOAuth2Options,
 } from 'n8n-workflow';
 
 import * as clientOAuth1 from 'oauth-1.0a';
@@ -44,14 +45,9 @@ import * as express from 'express';
 import * as path from 'path';
 import { OptionsWithUrl, OptionsWithUri } from 'request';
 import * as requestPromise from 'request-promise-native';
-
-import { Magic, MAGIC_MIME_TYPE } from 'mmmagic';
-
 import { createHmac } from 'crypto';
-
-
-const magic = new Magic(MAGIC_MIME_TYPE);
-
+import { fromBuffer } from 'file-type';
+import { lookup } from 'mime-types';
 
 
 /**
@@ -66,18 +62,28 @@ const magic = new Magic(MAGIC_MIME_TYPE);
  */
 export async function prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData> {
 	if (!mimeType) {
-		// If not mime type is given figure it out
-		mimeType = await new Promise<string>(
-			(resolve, reject) => {
-				magic.detect(binaryData, (err: Error, mimeType: string) => {
-					if (err) {
-						return reject(err);
-					}
+		// If no mime type is given figure it out
 
-					return resolve(mimeType);
-				});
+		if (filePath) {
+			// Use file path to guess mime type
+			const mimeTypeLookup = lookup(filePath);
+			if (mimeTypeLookup) {
+				mimeType = mimeTypeLookup;
 			}
-		);
+		}
+
+		if (!mimeType) {
+			// Use buffer to guess mime type
+			const fileTypeData = await fromBuffer(binaryData);
+			if (fileTypeData) {
+				mimeType = fileTypeData.mime;
+			}
+		}
+
+		if (!mimeType) {
+			// Fall back to text
+			mimeType = 'text/plain';
+		}
 	}
 
 	const returnData: IBinaryData = {
@@ -119,9 +125,10 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
  * @param {(OptionsWithUri | requestPromise.RequestPromiseOptions)} requestOptions
  * @param {INode} node
  * @param {IWorkflowExecuteAdditionalData} additionalData
+ *
  * @returns
  */
-export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, node: INode, additionalData: IWorkflowExecuteAdditionalData, tokenType?: string, property?: string) {
+export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, node: INode, additionalData: IWorkflowExecuteAdditionalData, oAuth2Options?: IOAuth2Options) {
 	const credentials = this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
@@ -140,7 +147,7 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 
 	const oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
 
-	const token = oAuthClient.createToken(get(oauthTokenData, property as string) || oauthTokenData.accessToken, oauthTokenData.refreshToken, tokenType || oauthTokenData.tokenType, oauthTokenData);
+	const token = oAuthClient.createToken(get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken, oauthTokenData.refreshToken, oAuth2Options?.tokenType || oauthTokenData.tokenType, oauthTokenData);
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
@@ -151,7 +158,18 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 			if (error.statusCode === 401) {
 				// TODO: Whole refresh process is not tested yet
 				// Token is probably not valid anymore. So try refresh it.
-				const newToken = await token.refresh();
+
+				const tokenRefreshOptions: IDataObject = {};
+
+				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+					const body: IDataObject = {
+						client_id: credentials.clientId as string,
+						client_secret: credentials.clientSecret as string,
+					};
+					tokenRefreshOptions.body = body;
+				}
+
+				const newToken = await token.refresh(tokenRefreshOptions);
 
 				credentials.oauthTokenData = newToken.data;
 
@@ -183,7 +201,7 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 * @param {(OptionsWithUrl | requestPromise.RequestPromiseOptions)} requestOptionså
 * @returns
 */
-export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions) {
+export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | OptionsWithUri | requestPromise.RequestPromiseOptions) {
 	const credentials = this.getCredentials(credentialsType) as ICredentialDataDecryptedObject;
 
 	if (credentials === undefined) {
@@ -216,14 +234,22 @@ export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: strin
 	};
 
 	const newRequestOptions = {
-		//@ts-ignore
-		url: requestOptions.url,
 		method: requestOptions.method,
 		data: { ...requestOptions.qs, ...requestOptions.body },
 		json: requestOptions.json,
 	};
 
-	if (Object.keys(requestOptions.qs).length !== 0) {
+	// Some RequestOptions have a URI and some have a URL
+	//@ts-ignores
+	if (requestOptions.url !== undefined) {
+		//@ts-ignore
+		newRequestOptions.url = requestOptions.url;
+	} else {
+		//@ts-ignore
+		newRequestOptions.url = requestOptions.uri;
+	}
+
+	if (requestOptions.qs !== undefined) {
 		//@ts-ignore
 		newRequestOptions.qs = oauth.authorize(newRequestOptions as RequestOptions, token);
 	} else {
@@ -413,7 +439,8 @@ export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode,
 		return undefined;
 	}
 
-	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString());
+	const isFullPath: boolean = workflow.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
+	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
 }
 
 
@@ -529,8 +556,8 @@ export function getExecutePollFunctions(workflow: Workflow, node: INode, additio
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, tokenType?: string, property?: string): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, tokenType, property);
+				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
+					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
 				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
@@ -592,8 +619,8 @@ export function getExecuteTriggerFunctions(workflow: Workflow, node: INode, addi
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, tokenType?: string, property?: string): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, tokenType, property);
+				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
+					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
 				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
@@ -688,8 +715,8 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, tokenType?: string, property?: string): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, tokenType, property);
+				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
+					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
 				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
@@ -786,8 +813,8 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, tokenType?: string, property?: string): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, tokenType, property);
+				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
+					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
 				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
@@ -842,8 +869,8 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
 			},
 			helpers: {
 				request: requestPromise,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, tokenType?: string, property?: string): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, tokenType, property);
+				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
+					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
 				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
@@ -909,8 +936,8 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
 			},
 			helpers: {
 				request: requestPromise,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, tokenType?: string, property?: string): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, tokenType, property);
+				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
+					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
 				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);
@@ -1003,8 +1030,8 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 			helpers: {
 				prepareBinaryData,
 				request: requestPromise,
-				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, tokenType?: string, property?: string): Promise<any> { // tslint:disable-line:no-any
-					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, tokenType, property);
+				requestOAuth2(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions, oAuth2Options?: IOAuth2Options): Promise<any> { // tslint:disable-line:no-any
+					return requestOAuth2.call(this, credentialsType, requestOptions, node, additionalData, oAuth2Options);
 				},
 				requestOAuth1(this: IAllExecuteFunctions, credentialsType: string, requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions): Promise<any> { // tslint:disable-line:no-any
 					return requestOAuth1.call(this, credentialsType, requestOptions);

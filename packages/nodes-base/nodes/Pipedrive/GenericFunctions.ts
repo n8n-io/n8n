@@ -25,7 +25,6 @@ export interface ICustomProperties {
 	[key: string]: ICustomInterface;
 }
 
-
 /**
  * Make an API request to Pipedrive
  *
@@ -36,18 +35,12 @@ export interface ICustomProperties {
  * @returns {Promise<any>}
  */
 export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('pipedriveApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	if (query === undefined) {
-		query = {};
-	}
-
-	query.api_token = credentials.apiToken;
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
+		headers: {
+			Accept: 'application/json',
+		},
 		method,
 		qs: query,
 		uri: `https://api.pipedrive.com/v1${endpoint}`,
@@ -67,9 +60,28 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		options.formData = formData;
 	}
 
+	if (query === undefined) {
+		query = {};
+	}
+
+	let responseData;
+
 	try {
-		//@ts-ignore
-		const responseData = await this.helpers.request(options);
+		if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken') {
+
+			const credentials = this.getCredentials('pipedriveApi');
+			if (credentials === undefined) {
+				throw new Error('No credentials got returned!');
+			}
+
+			query.api_token = credentials.apiToken;
+
+			//@ts-ignore
+			responseData = await this.helpers.request(options);
+
+		} else {
+			responseData = await this.helpers.requestOAuth2!.call(this, 'pipedriveOAuth2Api', options);
+		}
 
 		if (downloadFile === true) {
 			return {
@@ -85,7 +97,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 			additionalData: responseData.additional_data,
 			data: responseData.data,
 		};
-	} catch (error) {
+	} catch(error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
 			throw new Error('The Pipedrive credentials are not valid!');
@@ -93,7 +105,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 
 		if (error.response && error.response.body && error.response.body.error) {
 			// Try to return the error prettier
-			let errorMessage = `Pipedrive error response [${error.statusCode}]: ${error.response.body.error}`;
+			let errorMessage = `Pipedrive error response [${error.statusCode}]: ${error.response.body.error.message}`;
 			if (error.response.body.error_info) {
 				errorMessage += ` - ${error.response.body.error_info}`;
 			}
@@ -104,8 +116,6 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 		throw error;
 	}
 }
-
-
 
 /**
  * Make an API request to paginated Pipedrive endpoint
@@ -124,7 +134,7 @@ export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecut
 	if (query === undefined) {
 		query = {};
 	}
-	query.limit = 500;
+	query.limit = 100;
 	query.start = 0;
 
 	const returnData: IDataObject[] = [];
@@ -133,7 +143,12 @@ export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecut
 
 	do {
 		responseData = await pipedriveApiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData.data);
+		// the search path returns data diferently
+		if (responseData.data.items) {
+			returnData.push.apply(returnData, responseData.data.items);
+		} else {
+			returnData.push.apply(returnData, responseData.data);
+		}
 
 		query.start = responseData.additionalData.pagination.next_start;
 	} while (
