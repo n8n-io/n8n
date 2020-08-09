@@ -9,6 +9,7 @@ const scopes = [
 	'https://www.googleapis.com/auth/youtubepartner',
 	'https://www.googleapis.com/auth/youtube.force-ssl',
 	'https://www.googleapis.com/auth/youtube.upload',
+	'https://www.googleapis.com/auth/youtubepartner-channel-audit',
 ];
 
 export class YouTubeOAuth2Api implements ICredentialType {

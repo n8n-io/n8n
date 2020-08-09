@@ -1,5 +1,6 @@
 import {
-	IExecuteFunctions, BINARY_ENCODING,
+	IExecuteFunctions,
+	BINARY_ENCODING,
 } from 'n8n-core';
 
 import {
@@ -20,6 +21,20 @@ import {
 	channelOperations,
 	channelFields,
 } from './ChannelDescription';
+
+import {
+	playlistOperations,
+	playlistFields,
+} from './PlaylistDescription';
+
+import {
+	videoOperations,
+	videoFields,
+} from './VideoDescription';
+
+import {
+	countriesCodes,
+} from './CountryCodes';
 
 export class YouTube implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,12 +67,26 @@ export class YouTube implements INodeType {
 						name: 'Channel',
 						value: 'channel',
 					},
+					{
+						name: 'Playlist',
+						value: 'playlist',
+					},
+					{
+						name: 'Video',
+						value: 'video',
+					},
 				],
 				default: 'channel',
 				description: 'The resource to operate on.'
 			},
 			...channelOperations,
 			...channelFields,
+
+			...playlistOperations,
+			...playlistFields,
+
+			...videoOperations,
+			...videoFields,
 		],
 	};
 
@@ -85,6 +114,48 @@ export class YouTube implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the countries codes to display them to user so that he can
+			// select them easily
+			async getCountriesCodes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const countryCode of countriesCodes) {
+					const countryCodeName = `${countryCode.name} - ${countryCode.alpha2}`;
+					const countryCodeId = countryCode.alpha2;
+					returnData.push({
+						name: countryCodeName,
+						value: countryCodeId,
+					});
+				}
+				return returnData;
+			},
+			// Get all the video categories to display them to user so that he can
+			// select them easily
+			async getVideoCategories(
+				this: ILoadOptionsFunctions
+			): Promise<INodePropertyOptions[]> {
+				const countryCode = this.getCurrentNodeParameter('countryCode') as string;
+				const returnData: INodePropertyOptions[] = [];
+				const qs: IDataObject = {};
+				qs.regionCode = countryCode;
+				qs.part = 'snippet';
+				const categories = await googleApiRequestAllItems.call(
+					this,
+					'items',
+					'GET',
+					'/youtube/v3/videoCategories',
+					{},
+					qs,
+				);
+				for (const category of categories) {
+					const categoryName = category.snippet.title;
+					const categoryId = category.id;
+					returnData.push({
+						name: categoryName,
+						value: categoryId
+					});
+				}
+				return returnData;
+			},
 		}
 	};
 
@@ -103,23 +174,24 @@ export class YouTube implements INodeType {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const part = this.getNodeParameter('part', i) as string[];
 					const options = this.getNodeParameter('options', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					qs.part = part.join(',');
 
-					if (options.categoryId) {
-						qs.categoryId = options.categoryId as string;
+					if (filters.categoryId) {
+						qs.categoryId = filters.categoryId as string;
 					}
-					if (options.forUsername) {
-						qs.forUsername = options.forUsername as string;
+					if (filters.forUsername) {
+						qs.forUsername = filters.forUsername as string;
 					}
-					if (options.id) {
-						qs.id = options.id as string;
+					if (filters.id) {
+						qs.id = filters.id as string;
 					}
-					if (options.managedByMe) {
-						qs.managedByMe = options.managedByMe as boolean;
+					if (filters.managedByMe) {
+						qs.managedByMe = filters.managedByMe as boolean;
 					}
-					if (options.mine) {
-						qs.mine = options.mine as boolean;
+					if (filters.mine) {
+						qs.mine = filters.mine as boolean;
 					}
 					if (options.h1) {
 						qs.h1 = options.h1 as string;
@@ -296,6 +368,446 @@ export class YouTube implements INodeType {
 						},
 						qs,
 					);
+				}
+			}
+			if (resource === 'playlist') {
+				//https://developers.google.com/youtube/v3/docs/playlists/list
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const part = this.getNodeParameter('part', i) as string[];
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					qs.part = part.join(',');
+
+					Object.assign(qs, options, filters);
+
+					if (returnAll) {
+						responseData = await googleApiRequestAllItems.call(
+							this,
+							'items',
+							'GET',
+							`/youtube/v3/playlists`,
+							{},
+							qs
+						);
+					} else {
+						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/youtube/v3/playlists`,
+							{},
+							qs
+						);
+						responseData = responseData.items;
+					}
+				}
+				//https://developers.google.com/youtube/v3/docs/playlists/insert
+				if (operation === 'create') {
+					const title = this.getNodeParameter('title', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					qs.part = 'snippet';
+
+					const body: IDataObject = {
+						snippet: {
+							title,
+						},
+					};
+
+					if (options.tags) {
+						//@ts-ignore
+						body.snippet.tags = (options.tags as string).split(',') as string[];
+					}
+
+					if (options.description) {
+						//@ts-ignore
+						body.snippet.privacyStatus = options.privacyStatus as string;
+					}
+
+					if (options.defaultLanguage) {
+						//@ts-ignore
+						body.snippet.defaultLanguage = options.defaultLanguage as string;
+					}
+
+					if (options.onBehalfOfContentOwner) {
+						qs.onBehalfOfContentOwner = options.onBehalfOfContentOwner as string;
+					}
+
+					if (options.onBehalfOfContentOwnerChannel) {
+						qs.onBehalfOfContentOwnerChannel = options.onBehalfOfContentOwnerChannel as string;
+					}
+
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						'/youtube/v3/playlists',
+						body,
+						qs
+					);
+				}
+				//https://developers.google.com/youtube/v3/docs/playlists/update
+				if (operation === 'update') {
+					const playlistId = this.getNodeParameter('playlistId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					qs.part = 'snippet';
+
+					const body: IDataObject = {
+						id: playlistId,
+						snippet: {
+						}
+					};
+
+					if (updateFields.tags) {
+						//@ts-ignore
+						body.snippet.tags = (updateFields.tags as string).split(',') as string[];
+					}
+
+					if (updateFields.title) {
+						//@ts-ignore
+						body.snippet.title = updateFields.title as string
+					}
+
+					if (updateFields.description) {
+						//@ts-ignore
+						body.snippet.description = updateFields.description as string;
+					}
+
+					if (updateFields.defaultLanguage) {
+						//@ts-ignore
+						body.snippet.defaultLanguage = updateFields.defaultLanguage as string;
+					}
+
+					if (updateFields.onBehalfOfContentOwner) {
+						qs.onBehalfOfContentOwner = updateFields.onBehalfOfContentOwner as string;
+					}
+
+					responseData = await googleApiRequest.call(
+						this,
+						'PUT',
+						'/youtube/v3/playlists',
+						body,
+						qs
+					);
+				}
+				//https://developers.google.com/youtube/v3/docs/playlists/delete
+				if (operation === 'delete') {
+					const playlistId = this.getNodeParameter('playlistId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					const body: IDataObject = {
+						id: playlistId,
+					};
+
+					if (options.onBehalfOfContentOwner) {
+						qs.onBehalfOfContentOwner = options.onBehalfOfContentOwner as string;
+					}
+
+					responseData = await googleApiRequest.call(
+						this,
+						'DELETE',
+						'/youtube/v3/playlists',
+						body,
+					);
+
+					responseData = { success: true };
+				}
+			}
+			if (resource === 'video') {
+				//https://developers.google.com/youtube/v3/docs/videos/list?hl=en
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const part = this.getNodeParameter('part', i) as string[];
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					qs.part = part.join(',');
+
+					qs.chart = 'mostPopular';
+
+					Object.assign(qs, options, filters);
+
+					if (returnAll) {
+						responseData = await googleApiRequestAllItems.call(
+							this,
+							'items',
+							'GET',
+							`/youtube/v3/videos`,
+							{},
+							qs
+						);
+					} else {
+						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/youtube/v3/videos`,
+							{},
+							qs
+						);
+						responseData = responseData.items;
+					}
+				}
+				//https://developers.google.com/youtube/v3/docs/videos/list?hl=en
+				if (operation === 'get') {
+					const part = this.getNodeParameter('part', i) as string[];
+					const videoId = this.getNodeParameter('videoId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					qs.part = part.join(',');
+
+					qs.id = videoId;
+
+					Object.assign(qs, options);
+
+					responseData = await googleApiRequest.call(
+						this,
+						'GET',
+						`/youtube/v3/videos`,
+						{},
+						qs
+					);
+
+					responseData = responseData.items;
+				}
+				//https://developers.google.com/youtube/v3/guides/uploading_a_video?hl=en
+				if (operation === 'upload') {
+					const title = this.getNodeParameter('title', i) as string;
+					const categoryId = this.getNodeParameter('categoryId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+
+					let mimeType;
+
+					// Is binary file to upload
+					const item = items[i];
+
+					if (item.binary === undefined) {
+						throw new Error('No binary data exists on item!');
+					}
+
+					if (item.binary[binaryProperty] === undefined) {
+						throw new Error(`No binary data property "${binaryProperty}" does not exists on item!`);
+					}
+
+					if (item.binary[binaryProperty].mimeType) {
+						mimeType = item.binary[binaryProperty].mimeType;
+					}
+
+					const body = Buffer.from(item.binary[binaryProperty].data, BINARY_ENCODING);
+
+					const requestOptions = {
+						headers: {
+							'Content-Type': mimeType,
+						},
+						json: false,
+					};
+
+					let response = await googleApiRequest.call(this, 'POST', '/upload/youtube/v3/videos', body, qs, undefined, requestOptions);
+
+					const { id } = JSON.parse(response);
+
+					qs.part = 'snippet, status, recordingDetails';
+
+					const data = {
+						id,
+						snippet: {
+							title,
+							categoryId,
+						},
+						status: {
+						},
+						recordingDetails: {
+						},
+					}
+
+					if (options.description) {
+						//@ts-ignore
+						data.snippet.description = options.description as string;
+					}
+
+					if (options.privacyStatus) {
+						//@ts-ignore
+						data.status.privacyStatus = options.privacyStatus as string;
+					}
+
+					if (options.tags) {
+						//@ts-ignore
+						data.snippet.tags = (options.tags as string).split(',') as string[];
+					}
+
+					if (options.embeddable) {
+						//@ts-ignore
+						data.status.embeddable = options.embeddable as boolean;
+					}
+
+					if (options.publicStatsViewable) {
+						//@ts-ignore
+						data.status.publicStatsViewable = options.publicStatsViewable as boolean;
+					}
+
+					if (options.publishAt) {
+						//@ts-ignore
+						data.status.publishAt = options.publishAt as string;
+					}
+
+					if (options.recordingDate) {
+						//@ts-ignore
+						data.recordingDetails.recordingDate = options.recordingDate as string;
+					}
+
+					if (options.selfDeclaredMadeForKids) {
+						//@ts-ignore
+						data.status.selfDeclaredMadeForKids = options.selfDeclaredMadeForKids as boolean;
+					}
+
+					if (options.license) {
+						//@ts-ignore
+						data.status.license = options.license as string;
+					}
+
+					if (options.defaultLanguage) {
+						//@ts-ignore
+						data.snippet.defaultLanguage = options.defaultLanguage as string;
+					}
+
+					if (options.notifySubscribers) {
+						qs.notifySubscribers = options.notifySubscribers;
+						delete options.notifySubscribers;
+					}
+
+					responseData = await googleApiRequest.call(
+						this,
+						'PUT',
+						`/youtube/v3/videos`,
+						data,
+						qs,
+					);
+				}
+				//https://developers.google.com/youtube/v3/docs/playlists/update
+				if (operation === 'update') {
+					const id = this.getNodeParameter('videoId', i) as string;
+					//const categoryId = this.getNodeParameter('categoryId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					qs.part = 'snippet, status, recordingDetails';
+
+					const body = {
+						id,
+						snippet: {
+							//categoryId,
+						},
+						status: {
+						},
+						recordingDetails: {
+						},
+					}
+
+					if (updateFields.description) {
+						//@ts-ignore
+						data.snippet.description = updateFields.description as string;
+					}
+
+					if (updateFields.privacyStatus) {
+						//@ts-ignore
+						data.status.privacyStatus = updateFields.privacyStatus as string;
+					}
+
+					if (updateFields.tags) {
+						//@ts-ignore
+						data.snippet.tags = (updateFields.tags as string).split(',') as string[];
+					}
+
+					if (updateFields.description) {
+						//@ts-ignore
+						data.snippet.title = updateFields.title as string;
+					}
+
+					if (updateFields.embeddable) {
+						//@ts-ignore
+						data.status.embeddable = updateFields.embeddable as boolean;
+					}
+
+					if (updateFields.publicStatsViewable) {
+						//@ts-ignore
+						data.status.publicStatsViewable = updateFields.publicStatsViewable as boolean;
+					}
+
+					if (updateFields.publishAt) {
+						//@ts-ignore
+						data.status.publishAt = updateFields.publishAt as string;
+					}
+
+					if (updateFields.recordingDate) {
+						//@ts-ignore
+						data.recordingDetails.recordingDate = updateFields.recordingDate as string;
+					}
+
+					if (updateFields.selfDeclaredMadeForKids) {
+						//@ts-ignore
+						data.status.selfDeclaredMadeForKids = updateFields.selfDeclaredMadeForKids as boolean;
+					}
+
+					if (updateFields.license) {
+						//@ts-ignore
+						data.status.license = options.license as string;
+					}
+
+					if (updateFields.defaultLanguage) {
+						//@ts-ignore
+						data.snippet.defaultLanguage = updateFields.defaultLanguage as string;
+					}
+
+					responseData = await googleApiRequest.call(
+						this,
+						'PUT',
+						'/youtube/v3/videos',
+						body,
+						qs
+					);
+				}
+				//https://developers.google.com/youtube/v3/docs/videos/delete?hl=en
+				if (operation === 'delete') {
+					const videoId = this.getNodeParameter('videoId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					const body: IDataObject = {
+						id: videoId,
+					};
+
+					if (options.onBehalfOfContentOwner) {
+						qs.onBehalfOfContentOwner = options.onBehalfOfContentOwner as string;
+					}
+
+					responseData = await googleApiRequest.call(
+						this,
+						'DELETE',
+						'/youtube/v3/video',
+						body,
+					);
+
+					responseData = { success: true };
+				}
+				//https://developers.google.com/youtube/v3/docs/videos/rate?hl=en
+				if (operation === 'rate') {
+					const videoId = this.getNodeParameter('videoId', i) as string;
+					const rating = this.getNodeParameter('rating', i) as string;
+
+					const body: IDataObject = {
+						id: videoId,
+						rating,
+					};
+
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						'/youtube/v3/videos/rate',
+						body,
+					);
+
+					responseData = { success: true };
 				}
 			}
 		}

@@ -29,14 +29,26 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
+
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'youTubeOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
 
-			let errors = error.response.body.error.errors;
+		let errors;
 
-			errors = errors.map((e: IDataObject) => e.message);
+		if (error.response && error.response.body) {
+
+			if (resource === '/upload/youtube/v3/videos') {
+				error.response.body = JSON.parse(error.response.body);
+			}
+
+			if (error.response.body.error) {
+
+				errors = error.response.body.error.errors;
+
+				errors = errors.map((e: IDataObject) => e.message);
+			}
+
 			// Try to return the error prettier
 			throw new Error(
 				`YouTube error response [${error.statusCode}]: ${errors.join('|')}`

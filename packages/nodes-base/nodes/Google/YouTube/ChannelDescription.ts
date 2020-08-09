@@ -142,8 +142,8 @@ export const channelFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Options',
-		name: 'options',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
@@ -193,6 +193,25 @@ export const channelFields = [
 				default: false,
 				description: `This parameter can only be used in a properly authorized request. Set this parameter's value to true to instruct the API to only return channels owned by the authenticated user.`,
 			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'channel',
+				],
+			},
+		},
+		options: [
 			{
 				displayName: 'Language Code',
 				name: 'h1',
