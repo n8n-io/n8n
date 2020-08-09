@@ -133,12 +133,14 @@ export class UnleashedSoftware implements INodeType {
 
 						qs.pageSize = limit;
 
-						responseData = await unleashedApiRequest.call(this, 'GET', `/SalesOrders`, {}, qs);
+						const pageNumber = this.getNodeParameter('page', i) as number;
+						
+						responseData = await unleashedApiRequest.call(this, 'GET', `/SalesOrders`, {}, qs, pageNumber);
 
 						responseData = responseData.Items;
-
-						convertNETDates(responseData);
 					}
+
+					convertNETDates(responseData);
 				}
 			}
 
@@ -178,12 +180,14 @@ export class UnleashedSoftware implements INodeType {
 
 						qs.pageSize = limit;
 
-						responseData = await unleashedApiRequest.call(this, 'GET', `/StockOnHand`, {}, qs);
+						const pageNumber = this.getNodeParameter('page', i) as number;
+
+						responseData = await unleashedApiRequest.call(this, 'GET', `/StockOnHand`, {}, qs, pageNumber);
 
 						responseData = responseData.Items;
-
-						convertNETDates(responseData);
 					}
+
+					convertNETDates(responseData);
 				}
 
 				if (operation === 'get') {

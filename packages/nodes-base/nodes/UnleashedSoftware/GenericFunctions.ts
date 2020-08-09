@@ -20,7 +20,9 @@ import {
 
 import * as qs from 'qs';
 
-export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, query: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, query: IDataObject = {} , pageNumber?: number, headers?: object): Promise<any> { // tslint:disable-line:no-any
+
+	const paginatedPath = pageNumber ? `/${path}/${pageNumber}` : `/${path}`;
 
 	const options: OptionsWithUrl = {
 		headers: {
@@ -30,7 +32,7 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 		method,
 		qs: query,
 		body,
-		url: `https://api.unleashedsoftware.com/${path}`,
+		url: `https://api.unleashedsoftware.com/${paginatedPath}`,
 		json: true,
 	};
 
@@ -60,7 +62,7 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 
 	} catch (error) {
 
-		if (error.respose && error.response.body && error.response.body.description) {
+		if (error.response && error.response.body && error.response.body.description) {
 
 			throw new Error(`Unleashed Error response [${error.statusCode}]: ${error.response.body.description}`);
 		}
@@ -79,7 +81,7 @@ export async function unleashedApiRequestAllItems(this: IExecuteFunctions | ILoa
 	query.pageSize = 1000;
 
 	do {
-		responseData = await unleashedApiRequest.call(this, method, `${endpoint}/${pageNumber}`, body, query);
+		responseData = await unleashedApiRequest.call(this, method, endpoint, body, query, pageNumber);
 
 		returnData.push.apply(returnData, responseData[propertyName]);
 

@@ -98,6 +98,30 @@ export const stockOnHandFields = [
 		description: 'How many results to return.',
 	},
 	{
+		displayName: 'Page',
+		name: 'page',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'stockOnHand',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100000,
+		},
+		default: 1,
+		description: 'Page number.',
+	},
+	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
