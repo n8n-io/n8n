@@ -13,7 +13,6 @@ services:
       - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
       - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
       - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
-      - /home/jan/www/n8n/n8n:/data
     ports:
       - "443:443"
       - "80:80"
@@ -50,8 +49,8 @@ services:
       - N8N_PROTOCOL=https
       - NODE_ENV=production
       - N8N_PATH
-      - WEBHOOK_TUNNEL_URL=http://${DOMAIN_NAME}${N8N_PATH}
-      - VUE_APP_URL_BASE_API=http://${DOMAIN_NAME}${N8N_PATH}
+      - WEBHOOK_TUNNEL_URL=https://${DOMAIN_NAME}${N8N_PATH}
+      - VUE_APP_URL_BASE_API=https://${DOMAIN_NAME}${N8N_PATH}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_FOLDER}/.n8n:/root/.n8n
