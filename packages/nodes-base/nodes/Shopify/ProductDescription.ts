@@ -131,7 +131,7 @@ export const productFields = [
 				name: 'handle',
 				type: 'string',
 				default: '',
-				description: 'A unique human-friendly string for the product. Automatically generated from the product\'s title. Used by the Liquid templating language to refer to objects.',
+				description: 'A unique human-friendly string for the product.<br />Automatically generated from the product\'s title.<br />Used by the Liquid templating language to refer to objects.',
 			},
 			{
 				displayName: 'Product Type',
@@ -145,7 +145,7 @@ export const productFields = [
 				name: 'published_at',
 				type: 'dateTime',
 				default: '',
-				description: 'The date and time (ISO 8601 format) when the product was published. Can be set to null to unpublish the product from the Online Store channel.',
+				description: 'The date and time (ISO 8601 format) when the product was published.<br />Can be set to null to unpublish the product from the Online Store channel.',
 			},
 			{
 				displayName: 'Published Scope',
@@ -171,14 +171,14 @@ export const productFields = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'A string of comma-separated tags that are used for filtering and search. A product can have up to 250 tags. Each tag can have up to 255 characters.',
+				description: 'A string of comma-separated tags that are used for filtering and search.<br />A product can have up to 250 tags. Each tag can have up to 255 characters.',
 			},
 			{
 				displayName: 'Template Suffix',
 				name: 'template_suffix',
 				type: 'string',
 				default: '',
-				description: 'The suffix of the Liquid template used for the product page. If this property is specified, then the product page uses a template called "product.suffix.liquid", where "suffix" is the value of this property. If this property is "" or null, then the product page uses the default template "product.liquid". (default: null)',
+				description: 'The suffix of the Liquid template used for the product page.<br />If this property is specified, then the product page uses a template called "product.suffix.liquid",<br />where "suffix" is the value of this property. If this property is "" or null, then the product page uses the default template "product.liquid". (default: null)',
 			},
 			{
 				displayName: 'Vendor',
@@ -209,7 +209,7 @@ export const productFields = [
 			multipleValues: true,
 		},
 		default: {},
-		description: 'The custom product property names like Size, Color, and Material. You can add up to 3 options of up to 255 characters each.',
+		description: 'The custom product property names like Size, Color, and Material.<br />You can add up to 3 options of up to 255 characters each.',
 		options: [
 			{
 				displayName: 'Option',
@@ -278,7 +278,7 @@ export const productFields = [
 				name: 'position',
 				type: 'number',
 				default: '',
-				description: 'The order of the product image in the list. The first product image is at position 1 and is the "main" image for the product.',
+				description: 'The order of the product image in the list.<br />The first product image is at position 1 and is the "main" image for the product.',
 			},
 			{
 				displayName: 'Product ID',
@@ -302,7 +302,7 @@ export const productFields = [
 				name: 'src',
 				type: 'string',
 				default: '',
-				description: 'Specifies the location of the product image. This parameter supports URL filters that you can use to retrieve modified copies of the image. For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).',
+				description: 'Specifies the location of the product image.<br />This parameter supports URL filters that you can use to retrieve modified copies of the image. For example, add _small, to the filename to retrieve a scaled copy of the image at 100 x 100 px (for example, ipod-nano_small.png), or add _2048x2048 to retrieve a copy of the image<br />constrained at 2048 x 2048 px resolution (for example, ipod-nano_2048x2048.png).',
 			},
 			{
 				displayName: 'Width',
@@ -420,7 +420,7 @@ export const productFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the product will return, formatted as a string of comma-separated values. By default all the fields are returned',
+				description: 'Fields the product will return, formatted as a string of comma-separated values.<br />By default all the fields are returned',
 			},
 		],
 	},
@@ -605,7 +605,7 @@ export const productFields = [
 				name: 'presentment_currencies',
 				type: 'string',
 				default: '',
-				description: 'Return presentment prices in only certain currencies, specified by a comma-separated list of ISO 4217 currency codes.',
+				description: 'Return presentment prices in only certain currencies,<br />specified by a comma-separated list of ISO 4217 currency codes.',
 			},
 		],
 	},
