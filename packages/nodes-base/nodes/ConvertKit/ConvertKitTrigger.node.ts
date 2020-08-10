@@ -297,8 +297,6 @@ export class ConvertKitTrigger implements INodeType {
 					},
 				};
 
-				console.log(event);
-
 				if (event === 'subscriber.form_subscribe') {
 					//@ts-ignore
 					body.event['form_id'] = this.getNodeParameter('formId', 0);
