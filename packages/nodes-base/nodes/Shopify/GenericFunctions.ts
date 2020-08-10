@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -35,15 +35,13 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		json: true
 	};
 
-	console.log(options);
-
 	if (Object.keys(option).length !== 0) {
 		Object.assign(options, option);
 	}
-	if (Object.keys(body).length ===  0) {
+	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
-	if (Object.keys(query).length ===  0) {
+	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
 	try {
@@ -53,7 +51,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 			let message = '';
 			if (typeof error.response.body.errors === 'object') {
 				for (const key of Object.keys(error.response.body.errors)) {
-					message+= error.response.body.errors[key];
+					message += error.response.body.errors[key];
 				}
 			} else {
 				message = `${error.response.body.errors} |`;
@@ -67,7 +65,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 }
 
 
-export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -78,7 +76,7 @@ export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 	do {
 		responseData = await shopifyApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
 		if (responseData.headers.link) {
-			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>','');
+			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
 		}
 		returnData.push.apply(returnData, responseData.body[propertyName]);
 	} while (
@@ -88,7 +86,7 @@ export async function shopifyApiRequestAllItems(this: IHookFunctions | IExecuteF
 	return returnData;
 }
 
-export function keysToSnakeCase(elements: IDataObject[] | IDataObject) : IDataObject[] {
+export function keysToSnakeCase(elements: IDataObject[] | IDataObject): IDataObject[] {
 	if (elements === undefined) {
 		return [];
 	}
