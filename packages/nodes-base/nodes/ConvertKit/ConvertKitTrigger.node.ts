@@ -297,6 +297,8 @@ export class ConvertKitTrigger implements INodeType {
 					},
 				};
 
+				console.log(event);
+
 				if (event === 'subscriber.form_subscribe') {
 					//@ts-ignore
 					body.event['form_id'] = this.getNodeParameter('formId', 0);
@@ -317,7 +319,7 @@ export class ConvertKitTrigger implements INodeType {
 					body.event['product_id'] = this.getNodeParameter('productId', 0);
 				}
 
-				if (event === 'subscriber.tag_add' || event === 'subscriber.tag_remove"') {
+				if (event === 'subscriber.tag_add' || event === 'subscriber.tag_remove') {
 					//@ts-ignore
 					body.event['tag_id'] = this.getNodeParameter('tagId', 0);
 				}
