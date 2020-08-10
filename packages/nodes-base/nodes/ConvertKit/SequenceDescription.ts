@@ -38,24 +38,6 @@ export const sequenceOperations = [
 
 export const sequenceFields = [
 	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'sequence',
-				],
-				operation: [
-					'addSubscriber',
-				],
-			},
-		},
-		default: '',
-		description: `The subscriber's email address.`,
-	},
-	{
 		displayName: 'Sequence ID',
 		name: 'id',
 		type: 'options',
@@ -76,6 +58,24 @@ export const sequenceFields = [
 		},
 		default: '',
 		description: 'Sequence ID.',
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'sequence',
+				],
+				operation: [
+					'addSubscriber',
+				],
+			},
+		},
+		default: '',
+		description: `The subscriber's email address.`,
 	},
 	{
 		displayName: 'Return All',
