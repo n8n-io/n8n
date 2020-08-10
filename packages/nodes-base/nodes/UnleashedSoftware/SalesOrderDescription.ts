@@ -28,9 +28,9 @@ export const salesOrderOperations = [
 
 export const salesOrderFields = [
 
-/* ------------------------------------------------------------------------- */
-/*                                salesOrder:getAll                          */
-/* ------------------------------------------------------------------------- */
+	/* ------------------------------------------------------------------------- */
+	/*                                salesOrder:getAll                          */
+	/* ------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -73,30 +73,6 @@ export const salesOrderFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Page',
-		name: 'page',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'salesOrder',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 100000,
-		},
-		default: 1,
-		description: 'Page number.',
-	},
-	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
@@ -119,35 +95,35 @@ export const salesOrderFields = [
 				type: 'string',
 				default: '',
 				placeholder: 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX',
-				description: 'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs'
+				description: 'Only returns orders for a specified Customer GUID. The CustomerId can be specified as a list of comma-separated GUIDs',
 			},
 			{
 				displayName: 'Customer Code',
 				name: 'customerCode',
 				type: 'string',
 				default: '',
-				description: 'Returns orders that start with the specific customer code.'
+				description: 'Returns orders that start with the specific customer code.',
 			},
 			{
 				displayName: 'End Date',
 				name: 'endDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns orders with order date before the specified date. UTC.'
+				description: 'Returns orders with order date before the specified date. UTC.',
 			},
 			{
 				displayName: 'Modified Since',
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns orders created or edited after a specified date, must be UTC format.'
+				description: 'Returns orders created or edited after a specified date, must be UTC format.',
 			},
 			{
 				displayName: 'Order Number',
 				name: 'orderNumber',
 				type: 'string',
 				default: '',
-				description: 'Returns a single order with the specified order number. If set, it overrides all other filters.'
+				description: 'Returns a single order with the specified order number. If set, it overrides all other filters.',
 			},
 			{
 				displayName: 'Order Status',
@@ -155,36 +131,36 @@ export const salesOrderFields = [
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'Completed',
-						value: 'Completed'
-					},
-					{
 						name: 'Backordered',
-						value: 'Backordered'
+						value: 'Backordered',
 					},
 					{
-						name: 'Parked',
-						value: 'Parked'
-					},
-					{
-						name: 'Placed',
-						value: 'Placed'
+						name: 'Completed',
+						value: 'Completed',
 					},
 					{
 						name: 'Deleted',
-						value: 'Deleted'
-					}
+						value: 'Deleted',
+					},
+					{
+						name: 'Parked',
+						value: 'Parked',
+					},
+					{
+						name: 'Placed',
+						value: 'Placed',
+					},
 				],
 				default: [],
 				required: false,
-				description: 'Returns orders with the specified status. If no orderStatus filter is specified, then we exclude “Deleted” by default.'
+				description: 'Returns orders with the specified status. If no orderStatus filter is specified, then we exclude "Deleted" by default.',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns orders with order date after the specified date. UTC.'
+				description: 'Returns orders with order date after the specified date. UTC.',
 			},
 		],
 	},
