@@ -23,11 +23,20 @@ import {
 } from './OrderDescription';
 
 import {
+	productFields,
+	productOperations,
+} from './ProductDescription';
+
+import {
 	IOrder,
 	IDiscountCode,
 	IAddress,
 	ILineItem,
 } from './OrderInterface';
+
+import {
+	IProduct,
+} from './ProductInterface';
 
 export class Shopify implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,7 +57,7 @@ export class Shopify implements INodeType {
 			{
 				name: 'shopifyApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -60,6 +69,10 @@ export class Shopify implements INodeType {
 						name: 'Order',
 						value: 'order',
 					},
+					{
+						name: 'Product',
+						value: 'product',
+					},
 				],
 				default: 'order',
 				description: 'Resource to consume.',
@@ -67,6 +80,9 @@ export class Shopify implements INodeType {
 			// ORDER
 			...orderOperations,
 			...orderFields,
+			// PRODUCTS
+			...productOperations,
+			...productFields,
 		],
 	};
 
@@ -268,6 +284,80 @@ export class Shopify implements INodeType {
 					}
 					responseData = await shopifyApiRequest.call(this, 'PUT', `/orders/${orderId}.json`, { order: body });
 					responseData = responseData.order;
+				}
+			} else if (resource === 'product') {
+				const productId = this.getNodeParameter('productId', i, '') as string;
+				let body: IProduct = {};
+				//https://shopify.dev/docs/admin-api/rest/reference/products/product#create-2020-04
+				if (operation === 'create') {
+					const title = this.getNodeParameter('title', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					if (additionalFields.productOptions) {
+						const metadata = (additionalFields.productOptions as IDataObject).option as IDataObject[];
+						additionalFields.options = {};
+						for (const data of metadata) {
+							//@ts-ignore
+							additionalFields.options[data.name as string] = data.value;
+						}
+						delete additionalFields.productOptions;
+					}
+
+					body = additionalFields;
+
+					body.title = title;
+
+					responseData = await shopifyApiRequest.call(this, 'POST', '/products.json', { product: body });
+					responseData = responseData.product;
+				}
+				if (operation === 'delete') {
+					//https://shopify.dev/docs/admin-api/rest/reference/products/product#destroy-2020-04
+					responseData = await shopifyApiRequest.call(this, 'DELETE', `/products/${productId}.json`);
+					responseData = { success: true };
+				}
+				if (operation === 'get') {
+					//https://shopify.dev/docs/admin-api/rest/reference/products/product#show-2020-04
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					Object.assign(qs, additionalFields);
+					responseData = await shopifyApiRequest.call(this, 'GET', `/products/${productId}.json`, {}, qs);
+					responseData = responseData.product;
+				}
+				if (operation === 'getAll') {
+					//https://shopify.dev/docs/admin-api/rest/reference/products/product#index-2020-04
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					Object.assign(qs, additionalFields);
+
+					if (returnAll === true) {
+						responseData = await shopifyApiRequestAllItems.call(this, 'products', 'GET', '/products.json', {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await shopifyApiRequest.call(this, 'GET', '/products.json', {}, qs);
+						responseData = responseData.products;
+					}
+				}
+				if (operation === 'update') {
+					//https://shopify.dev/docs/admin-api/rest/reference/products/product?api[version]=2020-07#update-2020-07
+					const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+
+					if (updateFields.productOptions) {
+						const metadata = (updateFields.productOptions as IDataObject).option as IDataObject[];
+						updateFields.options = {};
+						for (const data of metadata) {
+							//@ts-ignore
+							updateFields.options[data.name as string] = data.value;
+						}
+						delete updateFields.productOptions;
+					}
+
+					body = updateFields;
+
+					responseData = await shopifyApiRequest.call(this, 'PUT', `/products/${productId}.json`, { product: body });
+
+					responseData = responseData.product;
 				}
 			}
 			if (Array.isArray(responseData)) {
