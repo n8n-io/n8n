@@ -33,10 +33,9 @@ export const stockOnHandOperations = [
 
 export const stockOnHandFields = [
 
-
-/* ------------------------------------------------------------------------- */
-/*                                stockOnHand:get                            */
-/* ------------------------------------------------------------------------- */
+	/* ------------------------------------------------------------------------- */
+	/*                                stockOnHand:get                            */
+	/* ------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
@@ -53,9 +52,9 @@ export const stockOnHandFields = [
 		},
 		default: '',
 	},
-/* ------------------------------------------------------------------------- */
-/*                                stockOnHand:getAll                         */
-/* ------------------------------------------------------------------------- */
+	/* ------------------------------------------------------------------------- */
+	/*                                stockOnHand:getAll                         */
+	/* ------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -98,30 +97,6 @@ export const stockOnHandFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Page',
-		name: 'page',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'stockOnHand',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 100000,
-		},
-		default: 1,
-		description: 'Page number.',
-	},
-	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
@@ -143,49 +118,49 @@ export const stockOnHandFields = [
 				name: 'asAtDate',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns the stock on hand for a specific date.'
+				description: 'Returns the stock on hand for a specific date.',
 			},
 			{
 				displayName: 'Is Assembled',
 				name: 'IsAssembled',
 				type: 'boolean',
 				default: '',
-				description: 'If set to True, the AvailableQty will also include the quantity that can be assembled.'
+				description: 'If set to True, the AvailableQty will also include the quantity that can be assembled.',
 			},
 			{
 				displayName: 'Modified Since',
 				name: 'modifiedSince',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns stock on hand values modified after a specific date.'
+				description: 'Returns stock on hand values modified after a specific date.',
 			},
 			{
 				displayName: 'Order By',
 				name: 'orderBy',
 				type: 'string',
 				default: '',
-				description: 'Orders the list by a specific column, by default the list is ordered by productCode.'
+				description: 'Orders the list by a specific column, by default the list is ordered by productCode.',
 			},
 			{
 				displayName: 'Product ID',
 				name: 'productId',
 				type: 'string',
 				default: '',
-				description: 'Returns products with the specific Product Guid. You can enter multiple product Ids separated by commas.'
+				description: 'Returns products with the specific Product Guid. You can enter multiple product Ids separated by commas.',
 			},
 			{
 				displayName: 'Warehouse Code',
 				name: 'warehouseCode',
 				type: 'string',
 				default: '',
-				description: 'Returns stock on hand for a specific warehouse code.'
+				description: 'Returns stock on hand for a specific warehouse code.',
 			},
 			{
 				displayName: 'Warehouse Name',
 				name: 'warehouseName',
 				type: 'string',
 				default: '',
-				description: 'Returns stock on hand for a specific warehouse name.'
+				description: 'Returns stock on hand for a specific warehouse name.',
 			},
 		],
 	},

@@ -1,7 +1,7 @@
 
 import {
 	OptionsWithUrl,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -12,7 +12,7 @@ import {
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 import {
 	createHmac,
@@ -20,7 +20,7 @@ import {
 
 import * as qs from 'qs';
 
-export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, query: IDataObject = {} , pageNumber?: number, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, query: IDataObject = {}, pageNumber?: number, headers?: object): Promise<any> { // tslint:disable-line:no-any
 
 	const paginatedPath = pageNumber ? `/${path}/${pageNumber}` : `/${path}`;
 
@@ -43,7 +43,6 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 	const credentials = this.getCredentials('unleashedSoftwareApi');
 
 	if (credentials === undefined) {
-
 		throw new Error('No credentials got returned!');
 	}
 
@@ -57,34 +56,26 @@ export async function unleashedApiRequest(this: IHookFunctions | IExecuteFunctio
 	});
 
 	try {
-
 		return await this.helpers.request!(options);
-
 	} catch (error) {
-
 		if (error.response && error.response.body && error.response.body.description) {
-
 			throw new Error(`Unleashed Error response [${error.statusCode}]: ${error.response.body.description}`);
 		}
 
 		throw error;
 	}
 }
-export async function unleashedApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string,  method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function unleashedApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
-
 	let responseData;
-
-	let pageNumber =  1;
+	let pageNumber = 1;
 
 	query.pageSize = 1000;
 
 	do {
 		responseData = await unleashedApiRequest.call(this, method, endpoint, body, query, pageNumber);
-
 		returnData.push.apply(returnData, responseData[propertyName]);
-
 		pageNumber++;
 
 	} while (
@@ -96,11 +87,11 @@ export async function unleashedApiRequestAllItems(this: IExecuteFunctions | ILoa
 //.NET code is serializing dates in the following format: "/Date(1586833770780)/"
 //which is useless on JS side and could not treated as a date for other nodes
 //so we need to convert all of the fields that has it.
-export function convertNETDates(item: {[key: string]: any}){
-	Object.keys(item).forEach( path => {
-		const type =  typeof item[path] as string;
+export function convertNETDates(item: { [key: string]: any }) { // tslint:disable-line:no-any
+	Object.keys(item).forEach(path => {
+		const type = typeof item[path] as string;
 		if (type === 'string') {
-			const value =  item[path] as string;
+			const value = item[path] as string;
 			const a = /\/Date\((\d*)\)\//.exec(value);
 			if (a) {
 				item[path] = new Date(+a[1]);
@@ -110,4 +101,3 @@ export function convertNETDates(item: {[key: string]: any}){
 		}
 	});
 }
-
