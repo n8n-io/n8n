@@ -211,6 +211,9 @@ export class GoogleContact implements INodeType {
 						body,
 						qs
 					);
+
+					responseData.contactId = responseData.resourceName.split('/')[1];
+
 				}
 				//https://developers.google.com/people/api/rest/v1/people/deleteContact
 				if (operation === 'delete') {
@@ -257,6 +260,9 @@ export class GoogleContact implements INodeType {
 							}
 						}
 					}
+
+					responseData.contactId = responseData.resourceName.split('/')[1];
+
 				}
 				//https://developers.google.com/people/api/rest/v1/people.connections/list
 				if (operation === 'getAll') {
@@ -311,6 +317,10 @@ export class GoogleContact implements INodeType {
 								}
 							}
 						}
+					}
+
+					for (let i = 0; i < responseData.length; i++ ) {
+						responseData[i].contactId = responseData[i].resourceName.split('/')[1];
 					}
 				}
 			}
