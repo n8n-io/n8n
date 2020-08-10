@@ -4,14 +4,14 @@ import {
 
 export interface IImage {
 	id?: string;
-    product_id?: string;
-    position?: number;
-    created_at?: string,
-    updated_at?: string,
-    width?: number;
-    height?: number;
-    src?: string;
-    variant_ids?: number[];
+	product_id?: string;
+	position?: number;
+	created_at?: string;
+	updated_at?: string;
+	width?: number;
+	height?: number;
+	src?: string;
+	variant_ids?: number[];
 }
 
 export interface IPrice {
@@ -54,7 +54,7 @@ export interface IProduct {
 	body_html?: string;
 	handle?: string;
 	images?: IImage[];
-	options?: IDataObject[],
+	options?: IDataObject[];
 	product_type?: string;
 	published_at?: string;
 	published_scope?: string;
