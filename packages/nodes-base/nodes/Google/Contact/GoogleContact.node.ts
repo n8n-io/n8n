@@ -23,7 +23,6 @@ import {
 } from './ContactDescription';
 
 import * as moment from 'moment';
-import { response } from 'express';
 
 export class GoogleContact implements INodeType {
 	description: INodeTypeDescription = {
