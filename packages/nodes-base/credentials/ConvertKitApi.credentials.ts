@@ -6,7 +6,7 @@ import {
 
 export class ConvertKitApi implements ICredentialType {
 	name = 'convertKitApi';
-	displayName = 'ConvertKit Api';
+	displayName = 'ConvertKit API';
 	properties = [
 		{
 			displayName: 'API Secret',

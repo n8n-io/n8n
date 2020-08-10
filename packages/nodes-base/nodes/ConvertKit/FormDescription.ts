@@ -38,24 +38,6 @@ export const formOperations = [
 
 export const formFields = [
 	{
-		displayName: 'Email',
-		name: 'email',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'addSubscriber',
-				],
-			},
-		},
-		default: '',
-		description: `The subscriber's email address.`,
-	},
-	{
 		displayName: 'Form ID',
 		name: 'id',
 		type: 'options',
@@ -76,6 +58,24 @@ export const formFields = [
 		},
 		default: '',
 		description: 'Form ID.',
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'form',
+				],
+				operation: [
+					'addSubscriber',
+				],
+			},
+		},
+		default: '',
+		description: `The subscriber's email address.`,
 	},
 	{
 		displayName: 'Additional Fields',
