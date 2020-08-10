@@ -459,7 +459,6 @@ export class GoogleSheet {
 					rowData.push('');
 				}
 			});
-
 			setData.push(rowData);
 		});
 
