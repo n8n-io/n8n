@@ -34,6 +34,9 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		body,
 		json: true
 	};
+
+	console.log(options);
+
 	if (Object.keys(option).length !== 0) {
 		Object.assign(options, option);
 	}
