@@ -478,6 +478,146 @@ export class Asana implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         taskComment
+			// ----------------------------------
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'taskComment',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a comment to a task',
+					},
+				],
+				default: 'add',
+				description: 'The operation to perform.',
+			},
+
+			// ----------------------------------
+			//         taskComment:add
+			// ----------------------------------
+
+			{
+				displayName: 'Task ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskComment',
+						],
+					},
+				},
+				description: 'The ID of the task to add the comment to',
+			},
+			{
+				displayName: 'Is Text HTML',
+				name: 'isTextHtml',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskComment',
+						],
+					},
+				},
+				default: false,
+				description: 'If body is HTML or simple text.',
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				default: '',
+				required: true,
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskComment',
+						],
+						isTextHtml: [
+							false,
+						],
+					},
+				},
+				description: 'The plain text of the comment to add',
+			},
+			{
+				displayName: 'HTML Text',
+				name: 'html_text',
+				type: 'string',
+				default: '',
+				required: true,
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskComment',
+						],
+						isTextHtml: [
+							true,
+						],
+					},
+				},
+				description: 'Comment as HTML string. Do not use together with plain text.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskComment',
+						],
+					},
+				},
+				default: {},
+				description: 'Properties of the task comment',
+				placeholder: 'Add Field',
+				options: [
+					{
+						displayName: 'Pinned',
+						name: 'is_pinned',
+						type: 'boolean',
+						default: false,
+						description: 'Pin the comment.',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         user
@@ -950,7 +1090,12 @@ export class Asana implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'GET';
+
 					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
 
 				} else if (operation === 'move') {
 					// ----------------------------------
@@ -1000,12 +1145,44 @@ export class Asana implements INodeType {
 					Object.assign(qs, searchTaskProperties);
 
 					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-
 					responseData = responseData.data;
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
+
+			} else if (resource === 'taskComment') {
+				if (operation === 'add') {
+					// ----------------------------------
+					//         taskComment:add
+					// ----------------------------------
+
+					const taskId = this.getNodeParameter('id', i) as string;
+
+					const isTextHtml = this.getNodeParameter('isTextHtml', i) as boolean;
+
+					if (!isTextHtml) {
+
+						body.text = this.getNodeParameter('text', i) as string;
+
+					} else {
+
+						body.html_text = this.getNodeParameter('html_text', i) as string;
+					}
+
+					requestMethod = 'POST';
+
+					endpoint = `/tasks/${taskId}/stories`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					Object.assign(body, additionalFields);
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = responseData.data;
+				}
+
 			} else if (resource === 'user') {
 				if (operation === 'get') {
 					// ----------------------------------
