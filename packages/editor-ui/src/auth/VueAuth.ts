@@ -1,13 +1,14 @@
 import { Vue, Component } from 'vue-property-decorator';
 import createAuth0Client, { PopupLoginOptions, Auth0Client, RedirectLoginOptions, GetIdTokenClaimsOptions, GetTokenSilentlyOptions, GetTokenWithPopupOptions, LogoutOptions } from '@auth0/auth0-spa-js';
-import { User, UserDetails } from './User';
+import { User } from './User';
 
 export type Auth0Options = {
 	domain: string;
 	clientId: string;
 	audience?: string;
 	scope?: string;
-	userDetails: UserDetails;
+	namespace?: string;
+	tenantId?: string;
 };
 
 // tslint:disable-next-line: no-any
@@ -22,11 +23,11 @@ export class VueAuth extends Vue {
 	auth0Client?: Auth0Client;
 	error?: Error;
 
-	async getUser(userDetails: UserDetails) {
+	async getUser(namespace?: string, tenantId?: string) {
 		let token;
 		try {
 			token = await this.auth0Client?.getTokenSilently();
-			return new User(userDetails, token);
+			return User.forToken(token, namespace, tenantId);
 		} catch (err) {
 			console.warn('Unable to get token', err);
 			return undefined;
@@ -88,7 +89,7 @@ export class VueAuth extends Vue {
 		} finally {
 			// Initialize our internal authentication state when the page is reloaded
 			this.isAuthenticated = await this.auth0Client?.isAuthenticated();
-			this.user = await this.getUser(auth0Options.userDetails);
+			this.user = await this.getUser(auth0Options.namespace, auth0Options.tenantId);
 			this.loading = false;
 		}
 	}

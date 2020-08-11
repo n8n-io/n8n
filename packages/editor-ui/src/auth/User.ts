@@ -1,34 +1,41 @@
 import decodeJwt from 'jwt-decode';
 
-export type UserDetails = {
-	namespace?: string;
-	tenantId?: string;
-};
+
+export interface UserInfo {
+  readonly token: any; // tslint:disable-line:no-any
+  readonly sub: string;
+  readonly provider: string;
+  readonly id: string;
+  readonly tenantId?: string;
+}
 
 export class User {
-	sub?: string;
-	provider?: string;
-	id?: string;
-	tenantId?: string;
-	token: any; // tslint:disable-line:no-any
-	payload: any;  // tslint:disable-line:no-any
+	constructor(readonly info?: UserInfo) { }
 
-	constructor(userDetails: UserDetails, token: any) { // tslint:disable-line:no-any
-		if (!token) return;
+	static forToken(token: any, namespace?: string, tenantId?: string): User { // tslint:disable-line:no-any
+		if (!token) return new User();
+		let payload;
 		try {
-			this.payload = decodeJwt(token) as any; // tslint:disable-line:no-any
+			payload = decodeJwt(token) as any; // tslint:disable-line:no-any
 		} catch (err) {
 			console.warn('Invalid token', err);
-			return;
+			return new User();
 		}
-		this.token = token;
-		this.sub = this.payload.sub as string;
-		this.provider = this.sub.split('|')[0];
-		this.id = this.sub.split('|')[1];
-		if (userDetails.namespace) {
-			for (const [k, v] of Object.entries(this.payload[userDetails.namespace] as object)) {
-				if (userDetails.tenantId === k) this.tenantId = v;
+		const sub = payload.sub as string;
+		const provider = sub.split('|')[0];
+		const id = sub.split('|')[1];
+		let tenant;
+		if (namespace) {
+			for (const [k, v] of Object.entries(payload[namespace] as object)) {
+				if (tenantId === k) tenant = v;
 			}
 		}
+		return new User({
+			token,
+			sub,
+			provider,
+			id,
+			tenantId: tenant,
+		});
 	}
 }

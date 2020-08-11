@@ -170,7 +170,7 @@ library.add(faUsers);
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 
 if (process.env.VUE_APP_JWT_AUTH_ACTIVE === 'true') {
-  // Install the authentication plugin
+  // Install the authentication plugin only if JWT Auth is active
 	Vue.use(Auth0Plugin, {
 		// tslint:disable-next-line: no-any
 		onRedirectCallback: (appState: any) => {
