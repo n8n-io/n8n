@@ -67,6 +67,11 @@ export class Signl4 implements INodeType {
 						value: 'send',
 						description: 'Send an alert.',
 					},
+					{
+						name: 'Resolve',
+						value: 'resolve',
+						description: 'Resolve an alert.',
+					},
 				],
 				default: 'send',
 				description: 'The operation to perform.',
@@ -161,7 +166,8 @@ export class Signl4 implements INodeType {
 						default: '',
 						description: `If the event originates from a record in a 3rd party system, use this parameter to pass <br/>
 						the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4,<br/>
-						which is great for correlation/synchronization of that record with the alert.`,
+						which is great for correlation/synchronization of that record with the alert.<br/>
+						If you resolve / close an alert you must use the same External ID as in the original alert.`,
 					},
 					{
 						displayName: 'Filtering',
@@ -216,8 +222,30 @@ export class Signl4 implements INodeType {
 						name: 'title',
 						type: 'string',
 						default: '',
+						description: 'The title or subject of this alert.',
 					},
 				],
+			},
+			{
+				displayName: 'External ID',
+				name: 'externalId',
+				type: 'string',
+				default: '',
+				required: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'resolve',
+						],
+						resource: [
+							'alert',
+						],
+					},
+				},
+				description: `If the event originates from a record in a 3rd party system, use this parameter to pass <br/>
+				the unique ID of that record. That ID will be communicated in outbound webhook notifications from SIGNL4,<br/>
+				which is great for correlation/synchronization of that record with the alert.<br/>
+				If you resolve / close an alert you must use the same External ID as in the original alert.`,
 			},
 		],
 	};
@@ -233,12 +261,13 @@ export class Signl4 implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'alert') {
 				//https://connect.signl4.com/webhook/docs/index.html
+				// Send alert
 				if (operation === 'send') {
 					const message = this.getNodeParameter('message', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields',i) as IDataObject;
 
 					const data: IDataObject = {
-						message,
+						'message': message
 					};
 
 					if (additionalFields.alertingScenario) {
@@ -259,6 +288,7 @@ export class Signl4 implements INodeType {
 					if (additionalFields.service) {
 						data['X-S4-Service'] = additionalFields.service as string;
 					}
+					data['X-S4-Status'] = 'new';
 					if (additionalFields.title) {
 						data['title'] = additionalFields.title as string;
 					}
@@ -303,14 +333,32 @@ export class Signl4 implements INodeType {
 						this,
 						'POST',
 						'',
-						{},
+						data,
 						{},
 						endpoint,
-						{
-							formData: {
-								...data,
-							},
-						},
+						{},
+					);
+				}
+				// Resolve alert
+				if (operation === 'resolve') {
+
+					const data: IDataObject = {};
+
+					data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;
+					data['X-S4-Status'] = 'resolved';
+
+					const credentials = this.getCredentials('signl4Api');
+
+					const endpoint = `https://connect.signl4.com/webhook/${credentials?.teamSecret}`;
+
+					responseData = await SIGNL4ApiRequest.call(
+						this,
+						'POST',
+						'',
+						data,
+						{},
+						endpoint,
+						{},
 					);
 				}
 			}
