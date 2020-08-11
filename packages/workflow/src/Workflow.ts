@@ -715,7 +715,7 @@ export class Workflow {
 	 * @returns {(string | undefined)}
 	 * @memberof Workflow
 	 */
-	getSimpleParameterValue(node: INode, parameterValue: string | undefined, defaultValue?: boolean | number | string): boolean | number | string | undefined {
+	getSimpleParameterValue(node: INode, parameterValue: string | boolean | undefined, defaultValue?: boolean | number | string): boolean | number | string | undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -781,7 +781,11 @@ export class Workflow {
 			node = this.nodes[nodeName];
 			nodeType = this.nodeTypes.getByName(node.type) as INodeType;
 
+
 			if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
+				if (node.disabled === true) {
+					continue;
+				}
 				return node;
 			}
 		}
@@ -1085,18 +1089,18 @@ export class Workflow {
 	 * @returns {(Promise<INodeExecutionData[][] | null>)}
 	 * @memberof Workflow
 	 */
-	async runNode(node: INode, inputData: ITaskDataConnections, runExecutionData: IRunExecutionData, runIndex: number, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<INodeExecutionData[][] | null> {
+	async runNode(node: INode, inputData: ITaskDataConnections, runExecutionData: IRunExecutionData, runIndex: number, additionalData: IWorkflowExecuteAdditionalData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode): Promise<INodeExecutionData[][] | null | undefined> {
 		if (node.disabled === true) {
 			// If node is disabled simply pass the data through
 			// return NodeRunHelpers.
 			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
 				// If the node is disabled simply return the data from the first main input
 				if (inputData.main[0] === null) {
-					return null;
+					return undefined;
 				}
 				return [(inputData.main[0] as INodeExecutionData[])];
 			}
-			return null;
+			return undefined;
 		}
 
 		const nodeType = this.nodeTypes.getByName(node.type);
@@ -1112,7 +1116,7 @@ export class Workflow {
 
 		if (connectionInputData.length === 0) {
 			// No data for node so return
-			return null;
+			return undefined;
 		}
 
 		if (runExecutionData.resultData.lastNodeExecuted === node.name && runExecutionData.resultData.error !== undefined) {
@@ -1122,6 +1126,18 @@ export class Workflow {
 			const error = new Error(runExecutionData.resultData.error.message);
 			error.stack = runExecutionData.resultData.error.stack;
 			throw error;
+		}
+
+		if (node.executeOnce === true) {
+			// If node should be executed only use only the first input item
+			connectionInputData = connectionInputData.slice(0, 1);
+			const newInputData: ITaskDataConnections = {};
+			for (const inputName of Object.keys(inputData)) {
+				newInputData[inputName] = inputData[inputName].map(input => {
+					return input && input.slice(0, 1);
+				});
+			}
+			inputData = newInputData;
 		}
 
 		if (nodeType.executeSingle) {

@@ -19,7 +19,7 @@
 
 		<div class="header">
 			<div class="title-text">
-				<strong v-if="dataCount < this.MAX_DISPLAY_ITEMS_AUTO_ALL && dataSize < MAX_DISPLAY_DATA_SIZE">
+				<strong v-if="dataCount < maxDisplayItems">
 					Results: {{ dataCount }}
 				</strong>
 				<strong v-else>Results:
@@ -248,7 +248,11 @@ export default mixins(
 				return executionData.resultData.runData;
 			},
 			maxDisplayItemsOptions (): number[] {
-				return [25, 50, 100, 250, 500, 1000, this.dataCount].filter(option => option <= this.dataCount);
+				const options = [25, 50, 100, 250, 500, 1000].filter(option => option <= this.dataCount);
+				if (!options.includes(this.dataCount)) {
+					options.push(this.dataCount);
+				}
+				return options;
 			},
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
