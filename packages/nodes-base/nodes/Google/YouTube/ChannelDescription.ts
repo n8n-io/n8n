@@ -16,6 +16,11 @@ export const channelOperations = [
 		},
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Retrieve a channel',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all channels',
@@ -45,10 +50,6 @@ export const channelFields = [
 		name: 'part',
 		type: 'multiOptions',
 		options: [
-			{
-				name: 'Audit Details',
-				value: 'auditDetails',
-			},
 			{
 				name: 'Branding Settings',
 				value: 'brandingSettings',
@@ -186,13 +187,6 @@ export const channelFields = [
 				default: false,
 				description: `Set this parameter's value to true to instruct the API to only return channels managed by the content owner that the onBehalfOfContentOwner parameter specifies`,
 			},
-			{
-				displayName: 'Mine',
-				name: 'mine',
-				type: 'boolean',
-				default: false,
-				description: `This parameter can only be used in a properly authorized request. Set this parameter's value to true to instruct the API to only return channels owned by the authenticated user.`,
-			},
 		],
 	},
 	{
@@ -230,6 +224,82 @@ export const channelFields = [
 				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 channel:get                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Channel ID',
+		name: 'channelId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'channel',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Fields',
+		name: 'part',
+		type: 'multiOptions',
+		options: [
+			{
+				name: 'Branding Settings',
+				value: 'brandingSettings',
+			},
+			{
+				name: 'Content Details',
+				value: 'contentDetails',
+			},
+			{
+				name: 'Content Owner Details',
+				value: 'contentOwnerDetails',
+			},
+			{
+				name: 'ID',
+				value: 'id',
+			},
+			{
+				name: 'Localizations',
+				value: 'localizations',
+			},
+			{
+				name: 'Snippet',
+				value: 'snippet',
+			},
+			{
+				name: 'Statistics',
+				value: 'statistics',
+			},
+			{
+				name: 'Status',
+				value: 'status',
+			},
+			{
+				name: 'Topic Details',
+				value: 'topicDetails',
+			},
+		],
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'channel',
+				],
+			},
+		},
+		description: 'The fields parameter specifies a comma-separated list of one or more channel resource properties that the API response will include.',
+		default: ''
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 channel:update                             */

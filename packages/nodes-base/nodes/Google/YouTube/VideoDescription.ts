@@ -73,8 +73,8 @@ export const videoFields = [
 		default: '',
 	},
 	{
-		displayName: 'Country Code',
-		name: 'countryCode',
+		displayName: 'Region Code',
+		name: 'regionCode',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCountriesCodes',
@@ -98,7 +98,7 @@ export const videoFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getVideoCategories',
 			loadOptionsDependsOn: [
-				'countryCode',
+				'regionCode',
 			],
 		},
 		displayOptions: {
@@ -150,7 +150,10 @@ export const videoFields = [
 			{
 				displayName: 'Default Language',
 				name: 'defaultLanguage',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLanguages',
+				},
 				default: '',
 				description: `The language of the text in the playlist resource's title and description properties.`,
 			},
@@ -182,7 +185,7 @@ export const videoFields = [
 						value: 'youtube',
 					},
 				],
-				default: false,
+				default: '',
 				description: `The video's license.`,
 			},
 			{
@@ -327,10 +330,6 @@ export const videoFields = [
 				value: 'contentDetails',
 			},
 			{
-				name: 'Field Details',
-				value: 'fieldDetails',
-			},
-			{
 				name: 'ID',
 				value: 'id',
 			},
@@ -345,10 +344,6 @@ export const videoFields = [
 			{
 				name: 'Player',
 				value: 'player',
-			},
-			{
-				name: 'Processing Details',
-				value: 'processingDetails',
 			},
 			{
 				name: 'Recording Details',
@@ -429,10 +424,6 @@ export const videoFields = [
 				value: 'contentDetails',
 			},
 			{
-				name: 'File Details',
-				value: 'fileDetails',
-			},
-			{
 				name: 'ID',
 				value: 'id',
 			},
@@ -447,10 +438,6 @@ export const videoFields = [
 			{
 				name: 'Player',
 				value: 'player',
-			},
-			{
-				name: 'Processing Details',
-				value: 'processingDetails',
 			},
 			{
 				name: 'Recording Details',
@@ -692,47 +679,64 @@ export const videoFields = [
 		},
 		default: '',
 	},
-	// {
-	// 	displayName: 'Country Code',
-	// 	name: 'countryCode',
-	// 	type: 'options',
-	// 	typeOptions: {
-	// 		loadOptionsMethod: 'getCountriesCodes',
-	// 	},
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: [
-	// 				'update',
-	// 			],
-	// 			resource: [
-	// 				'video',
-	// 			],
-	// 		},
-	// 	},
-	// 	default: '',
-	// },
-	// {
-	// 	displayName: 'Category ID',
-	// 	name: 'categoryId',
-	// 	type: 'options',
-	// 	typeOptions: {
-	// 		loadOptionsMethod: 'getVideoCategories',
-	// 		loadOptionsDependsOn: [
-	// 			'countryCode',
-	// 		],
-	// 	},
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: [
-	// 				'update',
-	// 			],
-	// 			resource: [
-	// 				'video',
-	// 			],
-	// 		},
-	// 	},
-	// 	default: '',
-	// },
+	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'video',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Region Code',
+		name: 'regionCode',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCountriesCodes',
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'video',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Category ID',
+		name: 'categoryId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getVideoCategories',
+			loadOptionsDependsOn: [
+				'regionCode',
+			],
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'video',
+				],
+			},
+		},
+		default: '',
+	},
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -753,7 +757,10 @@ export const videoFields = [
 			{
 				displayName: 'Default Language',
 				name: 'defaultLanguage',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLanguages',
+				},
 				default: '',
 				description: `The language of the text in the playlist resource's title and description properties.`,
 			},
@@ -785,7 +792,7 @@ export const videoFields = [
 						value: 'youtube',
 					},
 				],
-				default: false,
+				default: '',
 				description: `The video's license.`,
 			},
 			{
@@ -850,12 +857,6 @@ export const videoFields = [
 				type: 'string',
 				default: '',
 				description: `Keyword tags associated with the playlist. Mulplie can be defined separated by comma`,
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
 			},
 		],
 	},
