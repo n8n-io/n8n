@@ -3,7 +3,6 @@
 import Vue from 'vue';
 
 // Import Auth plugin and auth configuration
-import { domain, clientId, audience, scope } from '../auth_config.json';
 import { Auth0Plugin, authGuard } from './auth';
 
 import 'prismjs';
@@ -170,25 +169,27 @@ library.add(faUsers);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 
-// TODO: enable / disable the auth plugin when JWT is activated / deactivated
-// Install the authentication plugin
-Vue.use(Auth0Plugin, {
-	domain,
-	clientId,
-	audience,
-	scope,
-	// tslint:disable-next-line: no-any
-	onRedirectCallback: (appState: any) => {
-		router.push(
-			appState && appState.targetUrl
-				? appState.targetUrl
-				: window.location.pathname
-		);
-	}
-});
-// TODO: enable / disable the auth guard when JWT is activated / deactivated
-// Guard all router paths with auth guard
-router.beforeEach(authGuard);
+if (process.env.VUE_APP_JWT_AUTH_ACTIVE === 'true') {
+  // Install the authentication plugin
+	Vue.use(Auth0Plugin, {
+		// tslint:disable-next-line: no-any
+		onRedirectCallback: (appState: any) => {
+			router.push(
+				appState && appState.targetUrl ? appState.targetUrl : window.location.pathname
+			);
+		},
+		domain: process.env.VUE_APP_JWT_AUTH0_DOMAIN,
+		clientId: process.env.VUE_APP_JWT_AUTH0_CLIENT_ID,
+		audience: process.env.VUE_APP_JWT_AUTH0_AUDIENCE,
+		scope: process.env.VUE_APP_JWT_AUTH0_SCOPE,
+		userDetails: {
+			namespace: process.env.VUE_APP_JWT_NAMESPACE,
+			tenantId: process.env.VUE_APP_JWT_ALLOWED_TENANT_KEY,
+		},
+	});
+	// Guard all router paths with auth guard
+	router.beforeEach(authGuard);
+}
 
 
 Vue.config.productionTip = false;

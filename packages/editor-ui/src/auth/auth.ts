@@ -40,7 +40,7 @@ export const useAuth0 = ({
 export const Auth0Plugin = {
 	install(vue: VueConstructor, options: Auth0PluginOptions) {
 		vue.prototype.$auth = useAuth0(options);
-	}
+	},
 };
 
 /** Auth guard for Vue Router routes */

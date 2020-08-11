@@ -1,6 +1,0 @@
-{
-	"domain": "faros-ai.auth0.com",
-	"clientId": "j4lAOX6qmmjhMzCwsR7PKLh9GfgZz438",
-	"audience": "https://api.faros.ai/",
-	"scope": "openid"
-}

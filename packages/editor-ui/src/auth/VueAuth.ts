@@ -7,7 +7,7 @@ export type Auth0Options = {
 	clientId: string;
 	audience?: string;
 	scope?: string;
-	[key: string]: string | undefined;
+	userDetails: UserDetails;
 };
 
 // tslint:disable-next-line: no-any
@@ -20,41 +20,17 @@ export class VueAuth extends Vue {
 	isAuthenticated?= false;
 	user?: User;
 	auth0Client?: Auth0Client;
-	popupOpen = false;
-	// TODO: pass this from a config somehow
-	userDetails: UserDetails = {
-		namespace: 'https://api.faros.ai',
-		userId: 'userId',
-		tenantId: 'tenantId',
-	};
 	error?: Error;
 
-	async getUser() {
+	async getUser(userDetails: UserDetails) {
 		let token;
 		try {
 			token = await this.auth0Client?.getTokenSilently();
-			return new User(this.userDetails, token);
+			return new User(userDetails, token);
 		} catch (err) {
-			console.warn('Unable to get token.', err);
+			console.warn('Unable to get token', err);
 			return undefined;
 		}
-	}
-
-	/** Authenticates the user using a popup window */
-	async loginWithPopup (o: PopupLoginOptions) {
-		this.popupOpen = true;
-
-		try {
-			await this.auth0Client?.loginWithPopup(o);
-		} catch (e) {
-			console.error(e);
-			this.error = e;
-		} finally {
-			this.popupOpen = false;
-		}
-
-		this.user = await this.getUser();
-		this.isAuthenticated = true;
 	}
 
 	/** Authenticates the user using the redirect method */
@@ -112,7 +88,7 @@ export class VueAuth extends Vue {
 		} finally {
 			// Initialize our internal authentication state when the page is reloaded
 			this.isAuthenticated = await this.auth0Client?.isAuthenticated();
-			this.user = await this.getUser();
+			this.user = await this.getUser(auth0Options.userDetails);
 			this.loading = false;
 		}
 	}

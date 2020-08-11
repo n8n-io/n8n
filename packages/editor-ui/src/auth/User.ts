@@ -2,7 +2,6 @@ import decodeJwt from 'jwt-decode';
 
 export type UserDetails = {
 	namespace?: string;
-	userId?: string;
 	tenantId?: string;
 };
 
@@ -10,7 +9,6 @@ export class User {
 	sub?: string;
 	provider?: string;
 	id?: string;
-	userId?: string;
 	tenantId?: string;
 	token: any; // tslint:disable-line:no-any
 	payload: any;  // tslint:disable-line:no-any
@@ -29,7 +27,6 @@ export class User {
 		this.id = this.sub.split('|')[1];
 		if (userDetails.namespace) {
 			for (const [k, v] of Object.entries(this.payload[userDetails.namespace] as object)) {
-				if (userDetails.userId === k) this.userId = v;
 				if (userDetails.tenantId === k) this.tenantId = v;
 			}
 		}
