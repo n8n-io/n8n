@@ -37,7 +37,7 @@ export const customerOperations = [
 export const customerFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                   customer:create/update/delete            */
+/*                                   customer:create/delete			            */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
@@ -51,7 +51,7 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'create', 'update', 'delete'
+					'create', 'delete'
 				]
 			},
 		},
@@ -68,7 +68,7 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'create', 'update'
+					'create'
 				]
 			},
 		},
@@ -85,7 +85,7 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'create', 'update'
+					'create'
 				]
 			},
 		},
@@ -103,7 +103,7 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'create', 'update'
+					'create'
 				],
 			},
 		},
@@ -122,7 +122,7 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'create', 'update'
+					'create'
 				],
 				jsonParameters: [
 					true,
@@ -143,7 +143,7 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'create', 'update'
+					'create'
 				],
 				jsonParameters: [
 					false,
@@ -186,6 +186,140 @@ export const customerFields = [
 						],
 					},
 				]
+			},
+		],
+	},
+
+/* -------------------------------------------------------------------------- */
+/*                                   customer:update			              */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'ID',
+		name: 'id',
+		type: 'number',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update'
+				]
+			},
+		},
+		description: 'The unique identifier for the customer.',
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update'
+				],
+			},
+		},
+	},
+	{
+		displayName: ' Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update'
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-companys---companies-api" target="_blank">here</a>.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update'
+				],
+				jsonParameters: [
+					false,
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Custom Properties',
+				name: 'customProperties',
+				type: 'fixedCollection',
+				description: 'Custom Properties',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Property',
+						name: 'customProperty',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								required: true,
+								default: '',
+                                description: 'Property name.',
+                                placeholder: 'Plan'
+							},
+
+							{
+								displayName: 'Value',
+								name: 'value',
+                                type: 'string',
+                                required: true,
+								default: '',
+                                description: 'Property value.',
+                                placeholder: 'Basic'
+							},
+						],
+					},
+				]
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				description: 'The email address of the user.',
+			},
+			{
+				displayName: 'Created at',
+				name: 'createdAt',
+				type: 'dateTime',
+				default: '',
+				description: 'The UNIX timestamp from when the user was created.',
 			},
 		],
 	},

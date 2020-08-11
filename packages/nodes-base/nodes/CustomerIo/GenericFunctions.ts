@@ -16,7 +16,7 @@ import {
 	get,
 } from 'lodash';
 
-export async function customerIoApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, trackingApi? : boolean, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function customerIoApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, baseApi? : string, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('customerIoApi');
 
 	if (credentials === undefined) {
@@ -31,18 +31,23 @@ export async function customerIoApiRequest(this: IHookFunctions | IExecuteFuncti
 		},
 		method,
 		body,
-		uri: trackingApi? `https://track.customer.io/api/v1${endpoint}` : `https://beta-api.customer.io/v1/api${endpoint}`,
+		uri: '',
 		json: true,
 	};
-	
-	if (trackingApi) {
+
+	if (baseApi === 'tracking') {
+		options.uri = `https://track.customer.io/api/v1${endpoint}`;
 		const basicAuthKey = Buffer.from(`${credentials.siteId}:${credentials.apiKey}`).toString('base64');
 		Object.assign(options.headers, {'Authorization': `Basic ${basicAuthKey}`});
-	} else {
+	} else if (baseApi === 'api') {
+		options.uri = `https://api.customer.io/v1/api${endpoint}`;
+		const basicAuthKey = Buffer.from(`${credentials.siteId}:${credentials.apiKey}`).toString('base64');
+		Object.assign(options.headers, {'Authorization': `Basic ${basicAuthKey}`});
+	} else if (baseApi === 'beta') {
+		options.uri = `https://beta-api.customer.io/v1/api${endpoint}`;
 		Object.assign(options.headers, {'Authorization': `Bearer ${credentials.apiKey as string}`});
 	}
 
-	console.log(options);
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {

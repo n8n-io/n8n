@@ -53,8 +53,8 @@ export const eventFields = [
 		description: 'The unique identifier for the customer.',
 	},
 	{
-		displayName: 'Email',
-		name: 'email',
+		displayName: 'Name',
+		name: 'name',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -63,16 +63,36 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'create', 'update'
+					'track'
 				]
 			},
 		},
-		description: 'The email address of the user.',
+		description: 'Name of the event to track.',
 	},
 	{
-		displayName: 'Created at',
-		name: 'createdAt',
-		type: 'dateTime',
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'track'
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -80,11 +100,14 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'create', 'update'
-				]
+					'track'
+				],
+				jsonParameters: [
+					true,
+				],
 			},
 		},
-		description: 'The UNIX timestamp from when the user was created.',
+		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting" target="_blank">here</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -100,6 +123,9 @@ export const eventFields = [
 				operation: [
 					'track'
 				],
+				jsonParameters: [
+					false
+				]
 			},
 		},
 		options: [
@@ -139,6 +165,13 @@ export const eventFields = [
 					},
 				]
 			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'string',
+				default: '',
+				description: 'Used to change event type. For Page View events set to "page".',
+			},
 		],
 	},
 /* -------------------------------------------------------------------------- */
@@ -163,6 +196,46 @@ export const eventFields = [
 		description: 'The unique identifier for the customer.',
 	},
 	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'trackAnonymous'
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'trackAnonymous'
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting" target="_blank">here</a>.',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -176,6 +249,9 @@ export const eventFields = [
 				operation: [
 					'trackAnonymous'
 				],
+				jsonParameters: [
+					false
+				]
 			},
 		},
 		options: [
