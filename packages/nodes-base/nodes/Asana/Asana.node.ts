@@ -48,6 +48,13 @@ export class Asana implements INodeType {
 						value: 'task',
 					},
 					{
+						name: 'Task Comment',
+						value: 'taskComment',
+					},
+					{
+						name: 'Task Tag',
+						value: 'taskTag',
+					},					{
 						name: 'User',
 						value: 'user',
 					},
@@ -103,14 +110,9 @@ export class Asana implements INodeType {
 						description: 'Search for tasks',
 					},
 					{
-						name: 'Add Tag',
-						value: 'addTag',
-						description: 'Add a tag to a task',
-					},
-					{
 						name: 'Move',
-						value: 'moveToSection',
-						description: 'Move task to section',
+						value: 'move',
+						description: 'Move a task',
 					},
 				],
 				default: 'create',
@@ -294,7 +296,7 @@ export class Asana implements INodeType {
 			},
 
 			// ----------------------------------
-			//         task:add tag
+			//         task:move
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
@@ -305,51 +307,7 @@ export class Asana implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addTag',
-						],
-						resource: [
-							'task',
-						],
-					},
-				},
-				description: 'The ID of the task to add the tag to',
-			},
-			{
-				displayName: 'Tags',
-				name: 'tag',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				options: [],
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'addTag',
-						],
-						resource: [
-							'task',
-						],
-					},
-				},
-				description: 'The tag that should be added',
-			},
-
-			// ----------------------------------
-			//         task:move to section
-			// ----------------------------------
-			{
-				displayName: 'Task ID',
-				name: 'id',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'moveToSection',
+							'move',
 						],
 						resource: [
 							'task',
@@ -371,7 +329,7 @@ export class Asana implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'moveToSection',
+							'move',
 						],
 						resource: [
 							'task',
@@ -396,7 +354,7 @@ export class Asana implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'moveToSection',
+							'move',
 						],
 						resource: [
 							'task',
@@ -476,6 +434,124 @@ export class Asana implements INodeType {
 						description: 'If the task is liked by the authorized user.',
 					},
 				],
+			},
+			// ----------------------------------
+			//         taskTag
+			// ----------------------------------
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'taskTag',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a tag to a task',
+					},
+					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove a tag from a task',
+					},
+				],
+				default: 'add',
+				description: 'The operation to perform.',
+			},
+
+			// ----------------------------------
+			//         taskTag:add
+			// ----------------------------------
+
+			{
+				displayName: 'Task ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskTag',
+						],
+					},
+				},
+				description: 'The ID of the task to add the tag to',
+			},
+			{
+				displayName: 'Tags',
+				name: 'tag',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'add',
+						],
+						resource: [
+							'taskTag',
+						],
+					},
+				},
+				description: 'The tag that should be added',
+			},
+
+			// ----------------------------------
+			//         taskTag:remove
+			// ----------------------------------
+
+			{
+				displayName: 'Task ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'taskTag',
+						],
+					},
+				},
+				description: 'The ID of the task to remove the tag from',
+			},
+			{
+				displayName: 'Tags',
+				name: 'tag',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'remove',
+						],
+						resource: [
+							'taskTag',
+						],
+					},
+				},
+				description: 'The tag that should be removed',
 			},
 
 			// ----------------------------------
@@ -865,7 +941,7 @@ export class Asana implements INodeType {
 			// select them easily
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const endpoint = '/workspaces';
-				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
+				const responseData = await asanaApiRequestAllItems.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
 					throw new Error('No data got returned');
@@ -1181,6 +1257,44 @@ export class Asana implements INodeType {
 					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					responseData = responseData.data;
+				}
+			} else if (resource === 'taskTag') {
+				if (operation === 'add') {
+
+					// ----------------------------------
+					//         taskTag:add
+					// ----------------------------------
+
+					const taskId = this.getNodeParameter('id', i) as string;
+
+					requestMethod = 'POST';
+
+					endpoint = `/tasks/${taskId}/addTag`;
+
+					body.tag = this.getNodeParameter('tag', i) as string;
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
+				}
+
+				if (operation === 'remove') {
+
+					// ----------------------------------
+					//         taskTag:remove
+					// ----------------------------------
+
+					const taskId = this.getNodeParameter('id', i) as string;
+
+					requestMethod = 'POST';
+
+					endpoint = `/tasks/${taskId}/removeTag`;
+
+					body.tag = this.getNodeParameter('tag', i) as string;
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = { success: true };
 				}
 
 			} else if (resource === 'user') {
