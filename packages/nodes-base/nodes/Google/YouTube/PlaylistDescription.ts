@@ -26,6 +26,11 @@ export const playlistOperations = [
 				description: 'Delete a playlist',
 			},
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a playlist',
+			},
+			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Retrieve all playlists',
@@ -118,7 +123,10 @@ export const playlistFields = [
 			{
 				displayName: 'Default Language',
 				name: 'defaultLanguage',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLanguages',
+				},
 				default: '',
 				description: `The language of the text in the playlist resource's title and description properties.`,
 			},
@@ -137,6 +145,104 @@ export const playlistFields = [
 				default: '',
 				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
 				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 playlist:get                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Playlist ID',
+		name: 'playlistId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'playlist',
+				],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Fields',
+		name: 'part',
+		type: 'multiOptions',
+		options: [
+			{
+				name: 'Content Details',
+				value: 'contentDetails',
+			},
+			{
+				name: 'ID',
+				value: 'id',
+			},
+			{
+				name: 'Localizations',
+				value: 'localizations',
+			},
+			{
+				name: 'Player',
+				value: 'player',
+			},
+			{
+				name: 'Snippet',
+				value: 'snippet',
+			},
+			{
+				name: 'Status',
+				value: 'status',
+			},
+		],
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'playlist',
+				],
+			},
+		},
+		description: 'The fields parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include.',
+		default: ''
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'playlist',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'On Behalf Of Content Owner',
+				name: 'onBehalfOfContentOwner',
+				type: 'string',
+				default: '',
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
+				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+			},
+			{
+				displayName: 'On Behalf Of Content Owner Channel',
+				name: 'onBehalfOfContentOwnerChannel',
+				type: 'string',
+				default: '',
+				description: `The onBehalfOfContentOwnerChannel parameter specifies the YouTube channel ID of the channel to which a video is being added`,
 			},
 		],
 	},
@@ -306,13 +412,6 @@ export const playlistFields = [
 				default: '',
 				description: `The id parameter specifies a comma-separated list of the YouTube playlist ID(s) for the resource(s) that are being retrieved. In a playlist resource, the id property specifies the playlist's YouTube playlist ID.`,
 			},
-			{
-				displayName: 'Mine',
-				name: 'mine',
-				type: 'boolean',
-				default: false,
-				description: `Set this parameter's value to true to instruct the API to only return playlists owned by the authenticated user.`,
-			},
 		],
 	},
 	{
@@ -372,6 +471,24 @@ export const playlistFields = [
 		description: `The playlist's title.`,
 	},
 	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'playlist',
+				],
+			},
+		},
+		default: '',
+		description: `The playlist's title.`,
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -389,11 +506,29 @@ export const playlistFields = [
 		},
 		options: [
 			{
+				displayName: 'Default Language',
+				name: 'defaultLanguage',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLanguages',
+				},
+				default: '',
+				description: `The language of the text in the playlist resource's title and description properties.`,
+			},
+			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
 				description: `The playlist's description.`,
+			},
+			{
+				displayName: 'On Behalf Of Content Owner',
+				name: 'onBehalfOfContentOwner',
+				type: 'string',
+				default: '',
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
+				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 			{
 				displayName: 'Privacy Status',
@@ -422,27 +557,6 @@ export const playlistFields = [
 				type: 'string',
 				default: '',
 				description: `Keyword tags associated with the playlist. Mulplie can be defined separated by comma`,
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Default Language',
-				name: 'defaultLanguage',
-				type: 'string',
-				default: '',
-				description: `The language of the text in the playlist resource's title and description properties.`,
-			},
-			{
-				displayName: 'On Behalf Of Content Owner',
-				name: 'onBehalfOfContentOwner',
-				type: 'string',
-				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},

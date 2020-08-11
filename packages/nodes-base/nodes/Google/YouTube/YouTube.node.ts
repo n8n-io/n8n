@@ -33,6 +33,11 @@ import {
 } from './VideoDescription';
 
 import {
+	videoCategoryOperations,
+	videoCategoryFields,
+} from './VideoCategoryDescription';
+
+import {
 	countriesCodes,
 } from './CountryCodes';
 
@@ -75,6 +80,10 @@ export class YouTube implements INodeType {
 						name: 'Video',
 						value: 'video',
 					},
+					{
+						name: 'Video Category',
+						value: 'videoCategory',
+					},
 				],
 				default: 'channel',
 				description: 'The resource to operate on.'
@@ -87,6 +96,9 @@ export class YouTube implements INodeType {
 
 			...videoOperations,
 			...videoFields,
+
+			...videoCategoryOperations,
+			...videoCategoryFields,
 		],
 	};
 
@@ -133,7 +145,8 @@ export class YouTube implements INodeType {
 			async getVideoCategories(
 				this: ILoadOptionsFunctions
 			): Promise<INodePropertyOptions[]> {
-				const countryCode = this.getCurrentNodeParameter('countryCode') as string;
+				const countryCode = this.getCurrentNodeParameter('regionCode') as string;
+
 				const returnData: INodePropertyOptions[] = [];
 				const qs: IDataObject = {};
 				qs.regionCode = countryCode;
@@ -169,6 +182,25 @@ export class YouTube implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
 			if (resource === 'channel') {
+				if (operation === 'get') {
+					//https://developers.google.com/youtube/v3/docs/channels/list
+					const part = this.getNodeParameter('part', i) as string[];
+					const channelId = this.getNodeParameter('channelId', i) as string;
+
+					qs.part = part.join(',');
+
+					qs.id = channelId;
+
+					responseData = await googleApiRequest.call(
+						this,
+						'GET',
+						`/youtube/v3/channels`,
+						{},
+						qs
+					);
+
+					responseData = responseData.items;
+				}
 				//https://developers.google.com/youtube/v3/docs/channels/list
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -178,27 +210,14 @@ export class YouTube implements INodeType {
 
 					qs.part = part.join(',');
 
-					if (filters.categoryId) {
-						qs.categoryId = filters.categoryId as string;
+					Object.assign(qs, options, filters);
+
+					qs.mine = true;
+
+					if (qs.categoryId || qs.forUsername || qs.id || qs.managedByMe) {
+						delete qs.mine;
 					}
-					if (filters.forUsername) {
-						qs.forUsername = filters.forUsername as string;
-					}
-					if (filters.id) {
-						qs.id = filters.id as string;
-					}
-					if (filters.managedByMe) {
-						qs.managedByMe = filters.managedByMe as boolean;
-					}
-					if (filters.mine) {
-						qs.mine = filters.mine as boolean;
-					}
-					if (options.h1) {
-						qs.h1 = options.h1 as string;
-					}
-					if (options.onBehalfOfContentOwner) {
-						qs.onBehalfOfContentOwner = options.onBehalfOfContentOwner as string;
-					}
+
 					if (returnAll) {
 						responseData = await googleApiRequestAllItems.call(
 							this,
@@ -372,6 +391,28 @@ export class YouTube implements INodeType {
 			}
 			if (resource === 'playlist') {
 				//https://developers.google.com/youtube/v3/docs/playlists/list
+				if (operation === 'get') {
+					const part = this.getNodeParameter('part', i) as string[];
+					const playlistId = this.getNodeParameter('playlistId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					qs.part = part.join(',');
+
+					qs.id = playlistId;
+
+					Object.assign(qs, options);
+
+					responseData = await googleApiRequest.call(
+						this,
+						'GET',
+						`/youtube/v3/playlists`,
+						{},
+						qs
+					);
+
+					responseData = responseData.items;
+				}
+				//https://developers.google.com/youtube/v3/docs/playlists/list
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const part = this.getNodeParameter('part', i) as string[];
@@ -381,6 +422,12 @@ export class YouTube implements INodeType {
 					qs.part = part.join(',');
 
 					Object.assign(qs, options, filters);
+
+					qs.mine = true;
+
+					if (qs.channelId || qs.id) {
+						delete qs.mine;
+					}
 
 					if (returnAll) {
 						responseData = await googleApiRequestAllItems.call(
@@ -450,14 +497,18 @@ export class YouTube implements INodeType {
 				//https://developers.google.com/youtube/v3/docs/playlists/update
 				if (operation === 'update') {
 					const playlistId = this.getNodeParameter('playlistId', i) as string;
+					const title = this.getNodeParameter('title', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					qs.part = 'snippet';
+					qs.part = 'snippet, status';
 
 					const body: IDataObject = {
 						id: playlistId,
 						snippet: {
-						}
+							title,
+						},
+						status: {
+						},
 					};
 
 					if (updateFields.tags) {
@@ -465,9 +516,9 @@ export class YouTube implements INodeType {
 						body.snippet.tags = (updateFields.tags as string).split(',') as string[];
 					}
 
-					if (updateFields.title) {
+					if (updateFields.privacyStatus) {
 						//@ts-ignore
-						body.snippet.title = updateFields.title as string
+						body.status.privacyStatus = updateFields.privacyStatus as string;
 					}
 
 					if (updateFields.description) {
@@ -528,6 +579,10 @@ export class YouTube implements INodeType {
 					qs.chart = 'mostPopular';
 
 					Object.assign(qs, options, filters);
+
+					if (qs.myRating) {
+						delete qs.chart;
+					}
 
 					if (returnAll) {
 						responseData = await googleApiRequestAllItems.call(
@@ -689,7 +744,8 @@ export class YouTube implements INodeType {
 				//https://developers.google.com/youtube/v3/docs/playlists/update
 				if (operation === 'update') {
 					const id = this.getNodeParameter('videoId', i) as string;
-					//const categoryId = this.getNodeParameter('categoryId', i) as string;
+					const title = this.getNodeParameter('title', i) as string;
+					const categoryId = this.getNodeParameter('categoryId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 					qs.part = 'snippet, status, recordingDetails';
@@ -697,7 +753,8 @@ export class YouTube implements INodeType {
 					const body = {
 						id,
 						snippet: {
-							//categoryId,
+							title,
+							categoryId,
 						},
 						status: {
 						},
@@ -707,58 +764,55 @@ export class YouTube implements INodeType {
 
 					if (updateFields.description) {
 						//@ts-ignore
-						data.snippet.description = updateFields.description as string;
+						body.snippet.description = updateFields.description as string;
 					}
 
 					if (updateFields.privacyStatus) {
 						//@ts-ignore
-						data.status.privacyStatus = updateFields.privacyStatus as string;
+						body.status.privacyStatus = updateFields.privacyStatus as string;
 					}
 
 					if (updateFields.tags) {
 						//@ts-ignore
-						data.snippet.tags = (updateFields.tags as string).split(',') as string[];
-					}
-
-					if (updateFields.description) {
-						//@ts-ignore
-						data.snippet.title = updateFields.title as string;
+						body.snippet.tags = (updateFields.tags as string).split(',') as string[];
 					}
 
 					if (updateFields.embeddable) {
 						//@ts-ignore
-						data.status.embeddable = updateFields.embeddable as boolean;
+						body.status.embeddable = updateFields.embeddable as boolean;
 					}
 
 					if (updateFields.publicStatsViewable) {
 						//@ts-ignore
-						data.status.publicStatsViewable = updateFields.publicStatsViewable as boolean;
+						body.status.publicStatsViewable = updateFields.publicStatsViewable as boolean;
 					}
 
 					if (updateFields.publishAt) {
 						//@ts-ignore
-						data.status.publishAt = updateFields.publishAt as string;
-					}
-
-					if (updateFields.recordingDate) {
-						//@ts-ignore
-						data.recordingDetails.recordingDate = updateFields.recordingDate as string;
+						body.status.publishAt = updateFields.publishAt as string;
 					}
 
 					if (updateFields.selfDeclaredMadeForKids) {
 						//@ts-ignore
-						data.status.selfDeclaredMadeForKids = updateFields.selfDeclaredMadeForKids as boolean;
+						body.status.selfDeclaredMadeForKids = updateFields.selfDeclaredMadeForKids as boolean;
+					}
+
+					if (updateFields.recordingDate) {
+						//@ts-ignore
+						body.recordingDetails.recordingDate = updateFields.recordingDate as string;
 					}
 
 					if (updateFields.license) {
 						//@ts-ignore
-						data.status.license = options.license as string;
+						body.status.license = updateFields.license as string;
 					}
 
 					if (updateFields.defaultLanguage) {
 						//@ts-ignore
-						data.snippet.defaultLanguage = updateFields.defaultLanguage as string;
+						body.snippet.defaultLanguage = updateFields.defaultLanguage as string;
 					}
+
+					console.log(body)
 
 					responseData = await googleApiRequest.call(
 						this,
@@ -808,6 +862,31 @@ export class YouTube implements INodeType {
 					);
 
 					responseData = { success: true };
+				}
+			}
+			if (resource === 'videoCategory') {
+				//https://developers.google.com/youtube/v3/docs/videoCategories/list
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const regionCode = this.getNodeParameter('regionCode', i) as string;
+
+					qs.regionCode = regionCode;
+
+					qs.part = 'snippet';
+
+					responseData = await googleApiRequest.call(
+						this,
+						'GET',
+						`/youtube/v3/videoCategories`,
+						{},
+						qs
+					);
+					responseData = responseData.items;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
 				}
 			}
 		}
