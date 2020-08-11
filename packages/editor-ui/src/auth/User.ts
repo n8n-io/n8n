@@ -3,6 +3,7 @@ import decodeJwt from 'jwt-decode';
 
 export interface UserInfo {
   readonly token: any; // tslint:disable-line:no-any
+  readonly payload: any; // tslint:disable-line:no-any
   readonly sub: string;
   readonly provider: string;
   readonly id: string;
@@ -32,6 +33,7 @@ export class User {
 		}
 		return new User({
 			token,
+			payload,
 			sub,
 			provider,
 			id,

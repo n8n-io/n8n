@@ -54,7 +54,7 @@
 				<!-- show login when not authenticated -->
 				<el-button v-if="!$auth.isAuthenticated" @click="login">Log In</el-button>
 				<!-- show logout when authenticated -->
-				<el-button v-if="$auth.isAuthenticated" @click="logout">Log Out ({{ $auth.user.tenantId }})</el-button>
+				<el-button v-if="$auth.isAuthenticated" @click="logout">Log Out ({{ $auth.user.info.tenantId }})</el-button>
 		</div>
 		<div class="workflow-execute-wrapper" v-if="!isReadOnly">
 			<el-button

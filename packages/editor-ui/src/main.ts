@@ -170,7 +170,7 @@ library.add(faUsers);
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 
 if (process.env.VUE_APP_JWT_AUTH_ACTIVE === 'true') {
-  // Install the authentication plugin only if JWT Auth is active
+	// Install the authentication plugin only if JWT Auth is active
 	Vue.use(Auth0Plugin, {
 		// tslint:disable-next-line: no-any
 		onRedirectCallback: (appState: any) => {
@@ -178,11 +178,11 @@ if (process.env.VUE_APP_JWT_AUTH_ACTIVE === 'true') {
 				appState && appState.targetUrl ? appState.targetUrl : window.location.pathname
 			);
 		},
-		domain: process.env.VUE_APP_JWT_AUTH0_DOMAIN,
-		clientId: process.env.VUE_APP_JWT_AUTH0_CLIENT_ID,
-		audience: process.env.VUE_APP_JWT_AUTH0_AUDIENCE,
-		scope: process.env.VUE_APP_JWT_AUTH0_SCOPE,
-		userDetails: {
+		auth0Options: {
+			domain: process.env.VUE_APP_JWT_AUTH0_DOMAIN,
+			clientId: process.env.VUE_APP_JWT_AUTH0_CLIENT_ID,
+			audience: process.env.VUE_APP_JWT_AUTH0_AUDIENCE,
+			scope: process.env.VUE_APP_JWT_AUTH0_SCOPE,
 			namespace: process.env.VUE_APP_JWT_NAMESPACE,
 			tenantId: process.env.VUE_APP_JWT_ALLOWED_TENANT_KEY,
 		},
