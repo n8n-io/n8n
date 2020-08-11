@@ -45,10 +45,11 @@ for(const group of (groups as IDataObject).groups as IDataObject[]) {
 		if (tool.g === group.name) {
 		//if (tool?.groups.indexOf(group.name) !== -1) {
 					//@ts-ignore
+			const link = "https://app.uproc.io/#/tools/processor/" + (tool.k as string).replace("-", "/").replace("-", "/").replace("..", ".");
 			const option = {
 				name: tool.d as string,
 				value: tool.k,
-				description: tool.ed as string
+				description: (tool.ed as string) + ". <a href='" + link + "' target='_blank'>Info</a>"
 			};
 			options.push(option);
 		}
