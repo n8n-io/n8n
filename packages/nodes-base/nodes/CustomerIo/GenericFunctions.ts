@@ -16,7 +16,7 @@ import {
 	get,
 } from 'lodash';
 
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function customerIoApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, trackingApi? : boolean, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('customerIoApi');
 
 	if (credentials === undefined) {
@@ -28,14 +28,21 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${credentials.apiKey}`,
 		},
 		method,
 		body,
-		qs: query,
-		uri: `https://beta-api.customer.io/v1/api${endpoint}`,
+		uri: trackingApi? `https://track.customer.io/api/v1${endpoint}` : `https://beta-api.customer.io/v1/api${endpoint}`,
 		json: true,
 	};
+	
+	if (trackingApi) {
+		const basicAuthKey = Buffer.from(`${credentials.siteId}:${credentials.apiKey}`).toString('base64');
+		Object.assign(options.headers, {'Authorization': `Basic ${basicAuthKey}`});
+	} else {
+		Object.assign(options.headers, {'Authorization': `Bearer ${credentials.apiKey as string}`});
+	}
+
+	console.log(options);
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -62,4 +69,14 @@ export function eventExists(currentEvents: string[], webhookEvents: IDataObject)
 		}
 	}
 	return true;
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }
