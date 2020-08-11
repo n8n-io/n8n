@@ -103,6 +103,11 @@ export class Asana implements INodeType {
 						description: 'Search for tasks',
 					},
 					{
+						name: 'Add Tag',
+						value: 'addTag',
+						description: 'Add a tag to a task',
+					},
+					{
 						name: 'Move',
 						value: 'moveToSection',
 						description: 'Move task to section',
@@ -286,6 +291,50 @@ export class Asana implements INodeType {
 						description: 'If the task is marked completed.',
 					},
 				],
+			},
+
+			// ----------------------------------
+			//         task:add tag
+			// ----------------------------------
+			{
+				displayName: 'Task ID',
+				name: 'id',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'addTag',
+						],
+						resource: [
+							'task',
+						],
+					},
+				},
+				description: 'The ID of the task to add the tag to',
+			},
+			{
+				displayName: 'Tags',
+				name: 'tag',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'addTag',
+						],
+						resource: [
+							'task',
+						],
+					},
+				},
+				description: 'The tag that should be added',
 			},
 
 			// ----------------------------------
