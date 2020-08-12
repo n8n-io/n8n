@@ -52,6 +52,7 @@
       "dist/credentials/CustomerIoApi.credentials.js",
       "dist/credentials/CrateDb.credentials.js",
       "dist/credentials/DisqusApi.credentials.js",
+      "dist/credentials/DisqusOAuth2Api.credentials.js",
       "dist/credentials/DriftApi.credentials.js",
       "dist/credentials/DriftOAuth2Api.credentials.js",
       "dist/credentials/DropboxApi.credentials.js",
