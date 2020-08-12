@@ -359,7 +359,7 @@
     "@types/moment-timezone": "^0.5.12",
     "@types/mongodb": "^3.5.4",
     "@types/mssql": "^6.0.2",
-    "@types/node": "^10.10.1",
+    "@types/node": "^14.0.26",
     "@types/nodemailer": "^6.4.0",
     "@types/redis": "^2.8.11",
     "@types/request-promise-native": "~1.0.15",
