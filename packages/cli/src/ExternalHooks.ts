@@ -16,22 +16,16 @@ class ExternalHooksClass implements IExternalHooksClass {
 
 
 	async init(): Promise<void> {
-		console.log('ExternalHooks.init');
-
 		if (this.initDidRun === true) {
 			return;
 		}
 
 		const externalHookFiles = config.get('externalHookFiles').split(':');
 
-		console.log('externalHookFiles');
-		console.log(externalHookFiles);
-
 		// Load all the provided hook-files
 		for (let hookFilePath of externalHookFiles) {
 			hookFilePath = hookFilePath.trim();
 			if (hookFilePath !== '') {
-				console.log(' --- load: ' + hookFilePath);
 				try {
 					const hookFile = require(hookFilePath);
 
@@ -57,8 +51,6 @@ class ExternalHooksClass implements IExternalHooksClass {
 	}
 
 	async run(hookName: string, hookParameters?: any[]): Promise<void> { // tslint:disable-line:no-any
-		console.log('RUN NOW: ' + hookName);
-
 		const externalHookFunctions: IExternalHooksFunctions = {
 			dbCollections: Db.collections,
 		};

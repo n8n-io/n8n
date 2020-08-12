@@ -56,13 +56,13 @@ import {
 
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Hubspot',
+		displayName: 'HubSpot',
 		name: 'hubspot',
 		icon: 'file:hubspot.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Hubspot API',
+		description: 'Consume HubSpot API',
 		defaults: {
 			name: 'Hubspot',
 			color: '#ff7f64',
@@ -73,9 +73,44 @@ export class Hubspot implements INodeType {
 			{
 				name: 'hubspotApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'hubspotOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiKey',
+				description: 'The method of authentication.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

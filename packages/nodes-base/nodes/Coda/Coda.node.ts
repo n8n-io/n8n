@@ -38,7 +38,7 @@ export class Coda implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Coda Beta API',
+		description: 'Consume Coda API',
 		defaults: {
 			name: 'Coda',
 			color: '#c02428',
@@ -152,7 +152,7 @@ export class Coda implements INodeType {
 			async getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const docId = this.getCurrentNodeParameter('docId');
-				const views = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/views`, {});
+				const views = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/tables?tableTypes=view`, {});
 				for (const view of views) {
 					const viewName = view.name;
 					const viewId = view.id;
@@ -185,7 +185,7 @@ export class Coda implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const docId = this.getCurrentNodeParameter('docId');
 				const viewId = this.getCurrentNodeParameter('viewId');
-				const viewRows = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/views/${viewId}/rows`, {});
+				const viewRows = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/tables/${viewId}/rows`, {});
 				for (const viewRow of viewRows) {
 					const viewRowName = viewRow.name;
 					const viewRowId = viewRow.id;
@@ -204,7 +204,7 @@ export class Coda implements INodeType {
 				const docId = this.getCurrentNodeParameter('docId');
 				const viewId = this.getCurrentNodeParameter('viewId');
 
-				const viewColumns = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/views/${viewId}/columns`, {});
+				const viewColumns = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs/${docId}/tables/${viewId}/columns`, {});
 				for (const viewColumn of viewColumns) {
 					const viewColumnName = viewColumn.name;
 					const viewColumnId = viewColumn.id;
@@ -488,7 +488,7 @@ export class Coda implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					const docId = this.getNodeParameter('docId', i) as string;
 					const viewId = this.getNodeParameter('viewId', i) as string;
-					const endpoint = `/docs/${docId}/views/${viewId}`;
+					const endpoint = `/docs/${docId}/tables/${viewId}`;
 					responseData = await codaApiRequest.call(this, 'GET', endpoint, {});
 					returnData.push(responseData);
 				}
@@ -499,7 +499,7 @@ export class Coda implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const docId = this.getNodeParameter('docId', i) as string;
-					const endpoint = `/docs/${docId}/views`;
+					const endpoint = `/docs/${docId}/tables?tableTypes=view`;
 					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 					} else {
@@ -516,7 +516,7 @@ export class Coda implements INodeType {
 				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 				const viewId = this.getNodeParameter('viewId', 0) as string;
 				const options = this.getNodeParameter('options', 0) as IDataObject;
-				const endpoint = `/docs/${docId}/views/${viewId}/rows`;
+				const endpoint = `/docs/${docId}/tables/${viewId}/rows`;
 				if (options.useColumnNames === false) {
 					qs.useColumnNames = options.useColumnNames as boolean;
 				} else {
@@ -561,7 +561,7 @@ export class Coda implements INodeType {
 					const docId = this.getNodeParameter('docId', i) as string;
 					const viewId = this.getNodeParameter('viewId', i) as string;
 					const rowId = this.getNodeParameter('rowId', i) as string;
-					const endpoint = `/docs/${docId}/views/${viewId}/rows/${rowId}`;
+					const endpoint = `/docs/${docId}/tables/${viewId}/rows/${rowId}`;
 					responseData = await codaApiRequest.call(this, 'DELETE', endpoint);
 					returnData.push.apply(returnData,responseData);
 				}
@@ -574,7 +574,7 @@ export class Coda implements INodeType {
 					const viewId = this.getNodeParameter('viewId', i) as string;
 					const rowId = this.getNodeParameter('rowId', i) as string;
 					const columnId = this.getNodeParameter('columnId', i) as string;
-					const endpoint = `/docs/${docId}/views/${viewId}/rows/${rowId}/buttons/${columnId}`;
+					const endpoint = `/docs/${docId}/tables/${viewId}/rows/${rowId}/buttons/${columnId}`;
 					responseData = await codaApiRequest.call(this, 'POST', endpoint);
 					returnData.push.apply(returnData,responseData);
 				}
@@ -585,7 +585,7 @@ export class Coda implements INodeType {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const docId = this.getNodeParameter('docId', i) as string;
 					const viewId = this.getNodeParameter('viewId', i) as string;
-					const endpoint = `/docs/${docId}/views/${viewId}/columns`;
+					const endpoint = `/docs/${docId}/tables/${viewId}/columns`;
 					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 					} else {
@@ -607,12 +607,13 @@ export class Coda implements INodeType {
 					const keyName = this.getNodeParameter('keyName', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const body: IDataObject = {};
-					const endpoint = `/docs/${docId}/views/${viewId}/rows/${rowId}`;
+					const endpoint = `/docs/${docId}/tables/${viewId}/rows/${rowId}`;
 					if (options.disableParsing) {
 						qs.disableParsing = options.disableParsing as boolean;
 					}
 					const cells = [];
 					cells.length = 0;
+
 					//@ts-ignore
 					for (const key of Object.keys(items[i].json[keyName])) {
 						cells.push({
@@ -623,7 +624,7 @@ export class Coda implements INodeType {
 					}
 					body.row = {
 						cells
-					},
+					};
 					await codaApiRequest.call(this, 'PUT', endpoint, body, qs);
 				}
 				return [items];
