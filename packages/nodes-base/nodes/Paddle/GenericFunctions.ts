@@ -33,7 +33,6 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 	body['vendor_id'] = credentials.vendorId;
 	body['vendor_auth_code'] = credentials.vendorAuthCode;
-
 	try {
 		const response = await this.helpers.request!(options);
 

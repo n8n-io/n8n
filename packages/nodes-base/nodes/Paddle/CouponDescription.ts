@@ -188,12 +188,108 @@ export const couponFields = [
 		description: 'The currency must match the balance currency specified in your account.',
 		options: [
 			{
-				name: 'EUR',
-				value: 'EUR'
+				name: 'ARS',
+				value: 'ARS'
+			},
+			{
+				name: 'AUD',
+				value: 'AUD'
+			},
+			{
+				name: 'BRL',
+				value: 'BRL'
 			},
 			{
 				name: 'GBP',
 				value: 'GBP'
+			},
+			{
+				name: 'CAD',
+				value: 'CAD'
+			},
+			{
+				name: 'CNY',
+				value: 'CNY'
+			},
+			{
+				name: 'CZK',
+				value: 'CZK'
+			},
+			{
+				name: 'DKK',
+				value: 'DKK'
+			},
+			{
+				name: 'EUR',
+				value: 'EUR'
+			},
+			{
+				name: 'HKD',
+				value: 'HKD'
+			},
+			{
+				name: 'HUF',
+				value: 'HUF'
+			},
+			{
+				name: 'INR',
+				value: 'INR'
+			},
+			{
+				name: 'JPY',
+				value: 'JPY'
+			},
+			{
+				name: 'MXN',
+				value: 'MXN'
+			},
+			{
+				name: 'TWD',
+				value: 'TWD'
+			},
+			{
+				name: 'NZD',
+				value: 'NZD'
+			},
+			{
+				name: 'NOK',
+				value: 'NOK'
+			},
+			{
+				name: 'PLN',
+				value: 'PLN'
+			},
+			{
+				name: 'RUB',
+				value: 'RUB'
+			},
+			{
+				name: 'SGD',
+				value: 'SGD'
+			},
+			{
+				name: 'ZAR',
+				value: 'ZAR'
+			},
+			{
+				name: 'KRW',
+				value: 'KRW'
+			},
+			{
+				name: 'SEK',
+				value: 'SEK'
+			},
+			{
+				name: 'CHF',
+				value: 'CHF'
+			},
+			{
+				name: 'THB',
+				value: 'THB'
+			},
+			{
+				name: 'CHF',
+				value: 'CHF'
 			},
 			{
 				name: 'USD',
@@ -548,35 +644,194 @@ export const couponFields = [
 				description: 'Number of times a coupon can be used in a checkout. This will be set to 999,999 by default, if not specified.',
 			},
 			{
-				displayName: 'Currency',
-				name: 'currency',
-				type: 'options',
-				default: 'EUR',
-				description: 'The currency must match the balance currency specified in your account.',
+				displayName: 'Discount',
+				name: 'discount',
+				type: 'fixedCollection',
+				default: 'discountProperties',
 				options: [
 					{
-						name: 'EUR',
-						value: 'EUR'
-					},
-					{
-						name: 'GBP',
-						value: 'GBP'
-					},
-					{
-						name: 'USD',
-						value: 'USD'
+						displayName: 'Discount Properties',
+						name: 'discountProperties',
+						values: [
+							{
+								displayName: 'Currency',
+								name: 'currency',
+								type: 'options',
+								default: 'EUR',
+								description: 'The currency must match the balance currency specified in your account.',
+								displayOptions: {
+									show: {
+										discountType: [
+											'flat',
+										],
+									},
+								},
+								options: [
+									{
+										name: 'ARS',
+										value: 'ARS'
+									},
+									{
+										name: 'AUD',
+										value: 'AUD'
+									},
+									{
+										name: 'BRL',
+										value: 'BRL'
+									},
+									{
+										name: 'GBP',
+										value: 'GBP'
+									},
+									{
+										name: 'CAD',
+										value: 'CAD'
+									},
+									{
+										name: 'CNY',
+										value: 'CNY'
+									},
+									{
+										name: 'CZK',
+										value: 'CZK'
+									},
+									{
+										name: 'DKK',
+										value: 'DKK'
+									},
+									{
+										name: 'EUR',
+										value: 'EUR'
+									},
+									{
+										name: 'HKD',
+										value: 'HKD'
+									},
+									{
+										name: 'HUF',
+										value: 'HUF'
+									},
+									{
+										name: 'INR',
+										value: 'INR'
+									},
+									{
+										name: 'JPY',
+										value: 'JPY'
+									},
+									{
+										name: 'MXN',
+										value: 'MXN'
+									},
+									{
+										name: 'TWD',
+										value: 'TWD'
+									},
+									{
+										name: 'NZD',
+										value: 'NZD'
+									},
+									{
+										name: 'NOK',
+										value: 'NOK'
+									},
+									{
+										name: 'PLN',
+										value: 'PLN'
+									},
+									{
+										name: 'RUB',
+										value: 'RUB'
+									},
+									{
+										name: 'SGD',
+										value: 'SGD'
+									},
+									{
+										name: 'ZAR',
+										value: 'ZAR'
+									},
+									{
+										name: 'KRW',
+										value: 'KRW'
+									},
+									{
+										name: 'SEK',
+										value: 'SEK'
+									},
+									{
+										name: 'CHF',
+										value: 'CHF'
+									},
+									{
+										name: 'THB',
+										value: 'THB'
+									},
+									{
+										name: 'CHF',
+										value: 'CHF'
+									},
+									{
+										name: 'USD',
+										value: 'USD'
+									},
+								],
+							},
+							{
+								displayName: 'Discount Type',
+								name: 'discountType',
+								type: 'options',
+								default: 'flat',
+								description: 'Either flat or percentage.',
+								options: [
+									{
+										name: 'Flat',
+										value: 'flat'
+									},
+									{
+										name: 'Percentage',
+										value: 'percentage'
+									},
+								]
+							},
+							{
+								displayName: 'Discount Amount Currency',
+								name: 'discountAmount',
+								type: 'number',
+								default: '',
+								description: 'Discount amount.',
+								displayOptions: {
+									show: {
+										discountType: [
+											'flat',
+										],
+									},
+								},
+								typeOptions: {
+									minValue: 0
+								},
+							},
+							{
+								displayName: 'Discount Amount Percentage',
+								name: 'discountAmount',
+								type: 'number',
+								default: '',
+								description: 'Discount amount.',
+								displayOptions: {
+									show: {
+										discountType: [
+											'percentage',
+										],
+									},
+								},
+								typeOptions: {
+									minValue: 0,
+									maxValue: 100
+								},
+							},
+						],
 					},
 				],
-			},
-			{
-				displayName: 'Discount Amount',
-				name: 'discountAmount',
-				type: 'number',
-				default: '',
-				description: 'Discount amount.',
-				typeOptions: {
-					minValue: 0
-				},
 			},
 			{
 				displayName: 'Expires',

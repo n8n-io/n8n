@@ -326,6 +326,18 @@ export class Paddle implements INodeType {
 						if (additionalFields.discountAmount) {
 							body.discount_amount = additionalFields.discountAmount as number;
 						}
+						if (additionalFields.discount) {
+							//@ts-ignore
+							if (additionalFields.discount.discountProperties.discountType === 'percentage') {
+								// @ts-ignore
+								body.discount_amount = additionalFields.discount.discountProperties.discountAmount as number;
+							} else {
+								//@ts-ignore
+								body.currency = additionalFields.discount.discountProperties.currency as string;
+								//@ts-ignore
+								body.discount_amount = additionalFields.discount.discountProperties.discountAmount as number;
+							}
+						}
 					}
 
 					const endpoint = '/2.1/product/update_coupon';
