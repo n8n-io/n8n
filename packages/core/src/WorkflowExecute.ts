@@ -708,6 +708,9 @@ export class WorkflowExecute {
 				return Promise.resolve();
 			})()
 			.then(async () => {
+				if (gotCancel && executionError === undefined) {
+					return this.processSuccessExecution(startedAt, workflow, { message: 'Workflow has been canceled!' } as IExecutionError);
+				}
 				return this.processSuccessExecution(startedAt, workflow, executionError);
 			})
 			.catch(async (error) => {

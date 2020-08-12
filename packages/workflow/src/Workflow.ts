@@ -715,7 +715,7 @@ export class Workflow {
 	 * @returns {(string | undefined)}
 	 * @memberof Workflow
 	 */
-	getSimpleParameterValue(node: INode, parameterValue: string | undefined, defaultValue?: boolean | number | string): boolean | number | string | undefined {
+	getSimpleParameterValue(node: INode, parameterValue: string | boolean | undefined, defaultValue?: boolean | number | string): boolean | number | string | undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -781,7 +781,11 @@ export class Workflow {
 			node = this.nodes[nodeName];
 			nodeType = this.nodeTypes.getByName(node.type) as INodeType;
 
+
 			if (nodeType.trigger !== undefined || nodeType.poll !== undefined) {
+				if (node.disabled === true) {
+					continue;
+				}
 				return node;
 			}
 		}
@@ -1122,6 +1126,18 @@ export class Workflow {
 			const error = new Error(runExecutionData.resultData.error.message);
 			error.stack = runExecutionData.resultData.error.stack;
 			throw error;
+		}
+
+		if (node.executeOnce === true) {
+			// If node should be executed only use only the first input item
+			connectionInputData = connectionInputData.slice(0, 1);
+			const newInputData: ITaskDataConnections = {};
+			for (const inputName of Object.keys(inputData)) {
+				newInputData[inputName] = inputData[inputName].map(input => {
+					return input && input.slice(0, 1);
+				});
+			}
+			inputData = newInputData;
 		}
 
 		if (nodeType.executeSingle) {

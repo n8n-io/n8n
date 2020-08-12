@@ -16,7 +16,7 @@ export const tableOperations = [
 			{
 				name: 'Create Row',
 				value: 'createRow',
-				description: 'Create/Upsert a row',
+				description: 'Create/Insert a row',
 			},
 			{
 				name: 'Delete Row',
@@ -41,7 +41,7 @@ export const tableOperations = [
 			{
 				name: 'Get Row',
 				value: 'getRow',
-				description: 'Get row',
+				description: 'Get a row',
 			},
 			{
 				name: 'Push Button',

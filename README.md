@@ -1,10 +1,10 @@
 # n8n - Workflow Automation Tool
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-logo.png)
+![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
 
 n8n is a free and open [fair-code](http://faircode.io) licensed node based Workflow Automation Tool. It can be self-hosted, easily extended, and so also used with internal tools.
 
-<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/docs/images/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
+<a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
 
 
@@ -59,7 +59,7 @@ If you have problems or questions go to our forum, we will then try to help you 
 If you are interested in working for n8n and so shape the future of the project
 check out our job posts:
 
-[https://jobs.n8n.io](https://jobs.n8n.io)
+[https://n8n.join.com](https://n8n.join.com)
 
 
 

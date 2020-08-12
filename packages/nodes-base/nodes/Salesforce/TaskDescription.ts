@@ -119,7 +119,7 @@ export const taskFields = [
 				type: 'number',
 				default: '',
 				description: `Duration of the call in seconds. Not subject to field-level security,<br/>
-				 available for any user in an organization with Salesforce CRM Call Cente`,
+				 available for any user in an organization with Salesforce CRM Call Center`,
 			},
 			{
 				displayName: 'Call Object',
@@ -434,7 +434,7 @@ export const taskFields = [
 				type: 'number',
 				default: '',
 				description: `Duration of the call in seconds. Not subject to field-level security,<br/>
-				 available for any user in an organization with Salesforce CRM Call Cente`,
+				 available for any user in an organization with Salesforce CRM Call Center`,
 			},
 			{
 				displayName: 'Call Object',
