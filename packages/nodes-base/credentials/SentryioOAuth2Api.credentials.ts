@@ -28,7 +28,7 @@ export class SentryioOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'org:read,org:write,org:admin,project:read,project:write,project:admin,team:read,team:write,team:admin,event:read,event:write,event:admin',
+			default: 'event:admin event:read org:read project:read project:releases team:read event:write org:admin project:write team:write project:admin team:admin',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
