@@ -27,14 +27,20 @@ export class DisqusOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
-			default: 'read,write',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'admin',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
 			default: '',
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'body'
 		},
 	];
 }
