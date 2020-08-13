@@ -18,7 +18,7 @@ export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Drive',
 		name: 'googleDrive',
-		icon: 'file:googleDrive.png',
+		icon: 'file:googleDrive.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

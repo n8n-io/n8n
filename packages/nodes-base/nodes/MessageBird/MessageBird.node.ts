@@ -17,7 +17,7 @@ export class MessageBird implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MessageBird',
 		name: 'messageBird',
-		icon: 'file:messagebird.png',
+		icon: 'file:messagebird.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

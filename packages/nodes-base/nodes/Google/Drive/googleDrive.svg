@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="60px" height="60px" viewBox="0 0 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>google_drive_node_icon</title>
+    <defs>
+        <linearGradient x1="0%" y1="-0.488475384%" x2="100%" y2="100.488475%" id="linearGradient-1">
+            <stop stop-color="#4387FD" offset="0%"></stop>
+            <stop stop-color="#286EE6" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="0%" y1="-0.488475384%" x2="100%" y2="100.488475%" id="linearGradient-2">
+            <stop stop-color="#FFD24D" offset="0%"></stop>
+            <stop stop-color="#F6C338" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="google_drive_node_icon" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round">
+        <g id="Group" transform="translate(1.000000, 5.000000)">
+            <polygon id="Path" fill="#0DA960" points="10.2165161 51 0 33.252 19.1248817 0 29.3413978 17.748"></polygon>
+            <polygon id="Path" fill="url(#linearGradient-1)" points="10.2165161 51 20.4330323 33.252 58.6827957 33.252 48.4656452 51"></polygon>
+            <polygon id="Path" fill="url(#linearGradient-2)" points="58.6827957 33.252 38.2484946 33.252 19.1248817 0 39.5591828 0"></polygon>
+            <polygon id="Path" fill="#2D6FDD" points="29.3413978 33.252 20.4343011 33.252 24.8662796 25.5 10.2165161 51"></polygon>
+            <polygon id="Path" fill="#E5B93C" points="38.2484946 33.252 58.6827957 33.252 33.8165161 25.5"></polygon>
+            <polygon id="Path" fill="#0C9B57" points="24.8662796 25.5 29.3413978 17.748 19.1248817 0"></polygon>
+        </g>
+    </g>
+</svg>

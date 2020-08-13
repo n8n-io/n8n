@@ -19,7 +19,7 @@ export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Airtable',
 		name: 'airtable',
-		icon: 'file:airtable.png',
+		icon: 'file:airtable.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Read, update, write and delete data from Airtable',

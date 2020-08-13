@@ -77,7 +77,7 @@ export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Salesforce',
 		name: 'salesforce',
-		icon: 'file:salesforce.png',
+		icon: 'file:salesforce.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

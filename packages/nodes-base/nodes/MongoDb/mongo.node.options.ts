@@ -6,7 +6,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 export const nodeDescription: INodeTypeDescription = {
 	displayName: 'MongoDB',
 	name: 'mongoDb',
-	icon: 'file:mongoDb.png',
+	icon: 'file:mongoDb.svg',
 	group: ['input'],
 	version: 1,
 	description: 'Find, insert and update documents in MongoDB.',

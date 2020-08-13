@@ -25,7 +25,7 @@ export class GoogleSheets implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Sheets ',
 		name: 'googleSheets',
-		icon: 'file:googlesheets.png',
+		icon: 'file:googleSheets.svg',
 		group: ['input', 'output'],
 		version: 1,
 		description: 'Read, update and write data to Google Sheets',

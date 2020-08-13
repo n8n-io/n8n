@@ -34,7 +34,7 @@ export class Jira implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jira Software',
 		name: 'jira',
-		icon: 'file:jira.png',
+		icon: 'file:jira.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
