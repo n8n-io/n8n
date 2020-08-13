@@ -13,6 +13,7 @@ import {
 
 import {
 	allFields,
+	cleanData,
 	googleApiRequest,
 	googleApiRequestAllItems,
 } from './GenericFunctions';
@@ -246,22 +247,10 @@ export class GoogleContact implements INodeType {
 					);
 
 					if (!rawData) {
-						for (const key of Object.keys(responseData)) {
-							if (Array.isArray(responseData[key])) {
-								for (let i = 0; i < responseData[key].length; i++) {
-									delete responseData[key][i].metadata;
-									if (key === 'memberships') {
-										responseData[key][i] = responseData[key][i].contactGroupMembership;
-									}
-								}
-							} else if (key === 'metadata') {
-								delete responseData[key]['sources'];
-							}
-						}
+						responseData = cleanData(responseData)[0];
 					}
 
 					responseData.contactId = responseData.resourceName.split('/')[1];
-
 				}
 				//https://developers.google.com/people/api/rest/v1/people.connections/list
 				if (operation === 'getAll') {
@@ -302,20 +291,7 @@ export class GoogleContact implements INodeType {
 					}
 
 					if (!rawData) {
-						for (let y = 0; y < responseData.length; y++ ) {
-							for (const key of Object.keys(responseData[y])) {
-								if (Array.isArray(responseData[y][key])) {
-									for (let i = 0; i < responseData[y][key].length; i++) {
-										delete responseData[y][key][i].metadata;
-										if (key === 'memberships') {
-											responseData[y][key][i] = responseData[y][key][i].contactGroupMembership;
-										}
-									}
-								} else if (key === 'metadata') {
-									delete responseData[y][key]['sources'];
-								}
-							}
-						}
+						responseData = cleanData(responseData);
 					}
 
 					for (let i = 0; i < responseData.length; i++ ) {
