@@ -54,7 +54,7 @@
         "@oclif/command": "^1.5.18",
         "@oclif/errors": "^1.2.2",
         "@types/express": "^4.17.6",
-        "@types/node": "^14.0.26",
+        "@types/node": "^14.0.27",
         "change-case": "^4.1.1",
         "copyfiles": "^2.1.1",
         "inquirer": "^7.0.1",
