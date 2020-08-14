@@ -9,10 +9,6 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
- } from 'n8n-workflow';
-
 export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, binary? : boolean,headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUrl = {
 		headers: {
@@ -21,7 +17,7 @@ export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunction
 		},
 		method,
 		body,
-		url: `https://api.linkedin.com/v2${endpoint}`,
+		url: binary? endpoint : `https://api.linkedin.com/v2${endpoint}`, // Binary file upload URL doesn't have same base URL
 		json: true,
 	};
 
@@ -36,7 +32,7 @@ export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options);
+		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, { tokenType: 'Bearer' });
 	} catch (error) {
 		if (error.respose && error.response.body && error.response.body.detail) {
 			throw new Error(`Mailchimp Error response [${error.statusCode}]: ${error.response.body.detail}`);

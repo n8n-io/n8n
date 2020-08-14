@@ -151,7 +151,6 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
-
 	return this.helpers.request!(newRequestOptions)
 		.catch(async (error: IResponseError) => {
 			// TODO: Check if also other codes are possible

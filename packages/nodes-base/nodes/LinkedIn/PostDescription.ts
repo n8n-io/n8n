@@ -15,8 +15,7 @@ export const postOperations = [
 		options: [
 			{
 				name: 'Create',
-				value: 'create',
-				description: 'Create a new client',
+				value: 'create'
 			},
 		],
 		default: 'create',
@@ -29,18 +28,100 @@ export const postFields = [
 /*                                 post:create                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Visibility',
-		name: 'clientName',
+		displayName: 'Post As',
+		name: 'postAs',
 		type: 'options',
+		options: [
+			{
+				name: 'User',
+				value: 'user',
+			},
+			{
+				name: 'Organization',
+				value: 'organization',
+			},
+		],
+		default: 'user',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create'
+				]
+			},
+		},
+		description: 'Which entity to post as.',
+	},
+	{
+		displayName: 'Organization ID',
+		name: 'organizationId',
+		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create'
+				],
+				postAs: [
+					'organization'
+				]
+			},
+		},
+		required: true,
+		description: 'Identification of organization.',
+	},
+	{
+		displayName: 'Person',
+		name: 'person',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getPersonUrn',
+		},
+		default: [],
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create'
+				],
+				postAs: [
+					'user'
+				]
+			},
+		},
+		required: true,
+		description: 'Person account belongs to.',
+	},
+	{
+		displayName: 'Visibility',
+		name: 'visibility',
+		type: 'options',
+		default: 'CONNECTIONS',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create'
+				]
+			},
+		},
 		options: [
 			{
 				name: 'Connections',
-				value: 'connections'
+				value: 'CONNECTIONS'
 			},
 			{
 				name: 'Public',
-				value: 'public'
+				value: 'PUBLIC'
 			}
 		]
 	},
@@ -49,13 +130,33 @@ export const postFields = [
 		name: 'shareCommentary',
 		type: 'string',
 		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create'
+				]
+			},
+		},
 		description: 'Provides the primary content for the post.'
 	},
 	{
 		displayName: 'Media Category',
 		name: 'shareMediaCategory',
 		type: 'options',
-		default: '',
+		default: 'NONE',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create'
+				]
+			},
+		},
 		options: [
 			{
 				name: 'None',
@@ -74,21 +175,27 @@ export const postFields = [
 			}
 		]
 	},
-	// {
-	// 	displayName: 'Media URN',
-	// 	name: 'mediaUrn',
-	// 	type: 'string',
-	// 	default: '',
-	// 	required: true,
-	// 	displayOptions: {
-	// 		show: {
-	// 			shareMediaCategory: [
-	// 				'IMAGE'
-	// 			],
-	// 		},
-	// 	},
-	// 	description: 'URN of the uploaded image asset.'
-	// },
+	{
+        displayName: 'Binary Property',
+        name: 'binaryPropertyName',
+        type: 'string',
+		default: 'data',
+		displayOptions: {
+			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create'
+				],
+				shareMediaCategory: [
+					'IMAGE'
+				],
+			},
+		},
+        description: 'Object property name which holds binary data.',
+        required: true,
+    },
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -97,6 +204,12 @@ export const postFields = [
 		default: {},
 		displayOptions: {
 			show: {
+				resource: [
+					'post',
+				],
+				operation: [
+					'create'
+				],
 				shareMediaCategory: [
 					'IMAGE', 'ARTICLE'
 				],
