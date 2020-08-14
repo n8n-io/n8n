@@ -37,7 +37,7 @@
     "@types/jest": "^25.2.1",
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.set": "^4.3.6",
-    "@types/node": "12.12.22",
+    "@types/node": "^14.0.26",
     "@types/quill": "^2.0.1",
     "@typescript-eslint/eslint-plugin": "^2.13.0",
     "@typescript-eslint/parser": "^2.13.0",
