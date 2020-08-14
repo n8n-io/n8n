@@ -28,7 +28,7 @@
         "@types/express": "^4.17.6",
         "@types/jest": "^25.2.1",
         "@types/lodash.get": "^4.4.6",
-        "@types/node": "^14.0.26",
+        "@types/node": "^14.0.27",
         "jest": "^24.9.0",
         "ts-jest": "^25.4.0",
         "tslint": "^6.1.2",
