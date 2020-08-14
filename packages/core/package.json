@@ -31,7 +31,7 @@
         "@types/jest": "^25.2.1",
         "@types/lodash.get": "^4.4.6",
         "@types/mime-types": "^2.1.0",
-        "@types/node": "^14.0.26",
+        "@types/node": "^14.0.27",
         "@types/request-promise-native": "~1.0.15",
         "jest": "^24.9.0",
         "source-map-support": "^0.5.9",
