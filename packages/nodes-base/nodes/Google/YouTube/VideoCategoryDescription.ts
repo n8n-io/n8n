@@ -87,9 +87,9 @@ export const videoCategoryFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
+			maxValue: 50,
 		},
-		default: 100,
+		default: 25,
 		description: 'How many results to return.',
 	},
 ] as INodeProperties[];

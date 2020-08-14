@@ -174,6 +174,10 @@ export const playlistFields = [
 		type: 'multiOptions',
 		options: [
 			{
+				name: '*',
+				value: '*',
+			},
+			{
 				name: 'Content Details',
 				value: 'contentDetails',
 			},
@@ -302,6 +306,10 @@ export const playlistFields = [
 		type: 'multiOptions',
 		options: [
 			{
+				name: '*',
+				value: '*',
+			},
+			{
 				name: 'Content Details',
 				value: 'contentDetails',
 			},
@@ -376,9 +384,9 @@ export const playlistFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
+			maxValue: 50,
 		},
-		default: 100,
+		default: 25,
 		description: 'How many results to return.',
 	},
 	{
