@@ -8,7 +8,6 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
-import { postOperations, postFields } from './PostDescription';
 
 export class LinkedIn implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,6 +31,17 @@ export class LinkedIn implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Person',
+				name: 'person',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getPersonUrn',
+				},
+				default: [],
+				required: true,
+				description: 'Person account belongs to.',
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
@@ -40,14 +50,17 @@ export class LinkedIn implements INodeType {
 						name: 'Post',
 						value: 'post',
 					},
+					{
+						name: 'Media',
+						value: 'media',
+					},
 				],
 				default: 'post',
 				description: 'The resource to consume.',
 			},
-			//POST
-			...postOperations,
-			...postFields,
-		],		
+		],
+		
+		
 	};
 	
 	methods = {
@@ -55,9 +68,16 @@ export class LinkedIn implements INodeType {
 			// Get Person URN which has to be used with other LinkedIn API Requests
 			// https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 			async getPersonUrn(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				let returnData: INodePropertyOptions[] = [];
-				const person = await linkedInApiRequest.call(this, '/me', 'GET',  {});
-				returnData = [{name: `${person.localizedFirstName} ${person.localizedLastName}`, value: person.id}];
+				const returnData: INodePropertyOptions[] = [];
+				const events = await linkedInApiRequest.call(this, 'GET', '/me', {});
+				for (const event of events) {
+					const eventName = `${event.firstName} ${event.lastName}`;
+					const eventId = event.ID;
+					returnData.push({
+						name: eventName,
+						value: eventId,
+					});
+				}
 				return returnData;
 			},
 		}
@@ -73,88 +93,27 @@ export class LinkedIn implements INodeType {
 		let body = {};
 
 		for (let i = 0; i < items.length; i++) {
+
 			if (resource === 'post') {
 				if (operation === 'create') {
-					const postAs = this.getNodeParameter('postAs', i) as string;
 					const visibility = this.getNodeParameter('visibility', i) as string;
 					const shareCommentary = this.getNodeParameter('shareCommentary', i) as string;
 					const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
-					
-					let identifcation;
-
-					if (postAs === 'user') {
-						const personUrn = this.getNodeParameter('person', i) as string;
-						identifcation = `person:${personUrn}`;
-					} else {
-						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						identifcation = `organization:${organizationId}`;
-					}
+					const personUrn = this.getNodeParameter('person', i) as string;
 
 					if (shareMediaCategory === 'IMAGE') {
-						let imageAssetUrn = '';
-						
-						// Send a REQUEST to prepare a register of a media image file
-						const registerRequest = {
-							"registerUploadRequest": {
-								"recipes": [
-									"urn:li:digitalmediaRecipe:feedshare-image"
-								],
-								"owner": `urn:li:${identifcation}`,
-								"serviceRelationships": [
-									{
-										"relationshipType": "OWNER",
-										"identifier": "urn:li:userGeneratedContent"
-									}
-								]
-							}
-						};
+						const description = this.getNodeParameter('description', i) as string;
+						const originalUrl = this.getNodeParameter('originalUrl', i) as string;
+						const title = this.getNodeParameter('title', i) as string;
 
-						try {
-							const registerObject = await linkedInApiRequest.call(this, '/assets?action=registerUpload', 'POST', registerRequest);
-							
-							// Response provides a specific upload URL that is used to upload the binary image file
-							const uploadUrl = registerObject.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl as string;
-							const asset = registerObject.value.asset as string;
-							
-							// Prepare binary file upload
-							const item = items[i];
-							
-							if (item.binary === undefined) {
-								throw new Error('No binary data exists on item!');
-							}
-		
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-		
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
-							}
-		
-							// Buffer binary data
-							const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
-							
-							// Upload image
-							await linkedInApiRequest.call(this, uploadUrl, 'POST', buffer, true);
-		
-							// Return the asset string which is used to refer to media file when making posts
-							imageAssetUrn = asset;
-						} catch (error) {
-							throw new Error(error);
-						}
+						const item = items[i];
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						let description = '';
-						let title = '';
-
-						if (additionalFields.description) {
-							description = additionalFields.description as string;
-						}
-
-						if (additionalFields.title) {
-							title = additionalFields.title as string;
+						if (item.data === undefined) {
+							throw new Error('No binary data exists on item!');
 						}
 
 						body = {
-							"author": `urn:li:${identifcation}`,
+							"author": `urn:li:person:${personUrn}`,
 							"lifecycleState": "PUBLISHED",
 							"specificContent": {
 								"com.linkedin.ugc.ShareContent": {
@@ -168,7 +127,7 @@ export class LinkedIn implements INodeType {
 											"description": {
 												"text": description
 											},
-											"media": imageAssetUrn,
+											"media": `urn:li:digitalmediaAsset:${item.data}`,
 											"title": {
 												"text": title
 											}
@@ -181,25 +140,12 @@ export class LinkedIn implements INodeType {
 							}
 						};
 					} else if (shareMediaCategory === 'ARTICLE') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						let description = '';
-						let originalUrl = '';
-						let title = '';
-	
-						if (additionalFields.description) {
-							description = additionalFields.description as string;
-						}
-
-						if (additionalFields.originalUrl) {
-							originalUrl = additionalFields.originalUrl as string;
-						}
-
-						if (additionalFields.title) {
-							title = additionalFields.title as string;
-						}
+						const description = this.getNodeParameter('description', i) as string;
+						const originalUrl = this.getNodeParameter('originalUrl', i) as string;
+						const title = this.getNodeParameter('title', i) as string;
 
 						body = {
-							"author": `urn:li:${identifcation}`,
+							"author": `urn:li:person:${personUrn}`,
 							"lifecycleState": "PUBLISHED",
 							"specificContent": {
 								"com.linkedin.ugc.ShareContent": {
@@ -227,7 +173,7 @@ export class LinkedIn implements INodeType {
 						};
 					} else {
 						body = {
-								"author": `urn:li:${identifcation}`,
+								"author": `urn:li:person:${personUrn}`,
 								"lifecycleState": "PUBLISHED",
 								"specificContent": {
 									"com.linkedin.ugc.ShareContent": {
@@ -243,9 +189,60 @@ export class LinkedIn implements INodeType {
 						};
 					}
 
-					const endpoint = '/ugcPosts';
-					responseData = await linkedInApiRequest.call(this, endpoint, 'POST', body);
+					const endpoint = 'https://api.linkedin.com/v2/ugcPosts';
+					responseData = await linkedInApiRequest.call(this, endpoint, 'POST', JSON.stringify(body));
 				}
+			}
+
+			if (resource === 'media') {
+				if (operation === 'register') {
+					// Send a REQUEST to prepare a register of a media image file
+					const personUrn = this.getNodeParameter('person', i) as string;
+					const registerRequest = {
+						"registerUploadRequest": {
+							"recipes": [
+								"urn:li:digitalmediaRecipe:feedshare-image"
+							],
+							"owner": personUrn,
+							"serviceRelationships": [
+								{
+									"relationshipType": "OWNER",
+									"identifier": "urn:li:userGeneratedContent"
+								}
+							]
+						}
+					};
+
+					try {
+						const registerObject = JSON.parse(await linkedInApiRequest.call(this, 'https://api.linkedin.com/v2/assets?action=registerUpload', 'POST', {}));
+
+						// Response provides a specific upload URL that is used to upload the binary image file
+						const uploadUrl = registerObject.value.uploadMechanismcom.linkedin.digitalmedia.uploading.MediaUploadHttpRequest.uploadUrl as string;
+						const asset = registerObject.value.asset as string;
+						
+						// Prepare binary file upload
+						const item = items[i];
+	
+						if (item.binary === undefined) {
+							throw new Error('No binary data exists on item!');
+						}
+	
+						const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+	
+						if (item.binary[propertyNameUpload] === undefined) {
+							throw new Error(`No binary data property "${propertyNameUpload}" does not exists on item!`);
+						}
+	
+						// Buffer binary data
+						const buffer = Buffer.from(item.binary[propertyNameUpload].data, BINARY_ENCODING) as Buffer;
+						// Upload image
+						await linkedInApiRequest.call(this, uploadUrl, 'POST', buffer, true);
+	
+						// Return the asset string which is used to refer to media file when making posts
+						responseData = {data: asset};
+					} catch (error) {
+						throw new Error(error);
+					}
 			}
 
 			if (Array.isArray(responseData)) {
@@ -253,7 +250,7 @@ export class LinkedIn implements INodeType {
 			} else {
 				returnData.push(responseData as IDataObject);
 			}
-		
+		}
 	}
 	return [this.helpers.returnJsonArray(returnData)];
 	}

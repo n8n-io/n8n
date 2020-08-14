@@ -29,7 +29,7 @@ export class LinkedInOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'w_member_social,r_emailaddress,r_liteprofile',
+			default: 'r_liteprofile,r_emailaddress',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
