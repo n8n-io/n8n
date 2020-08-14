@@ -27,16 +27,16 @@
     "devDependencies": {
         "@types/cron": "^1.7.1",
         "@types/crypto-js": "^3.1.43",
-        "@types/express": "^4.16.1",
-        "@types/jest": "^24.0.18",
+        "@types/express": "^4.17.6",
+        "@types/jest": "^25.2.1",
         "@types/lodash.get": "^4.4.6",
         "@types/mime-types": "^2.1.0",
         "@types/node": "^14.0.26",
-        "@types/request-promise-native": "^1.0.15",
+        "@types/request-promise-native": "~1.0.15",
         "jest": "^24.9.0",
         "source-map-support": "^0.5.9",
-        "ts-jest": "^24.0.2",
-        "tslint": "6.1.2",
+        "ts-jest": "^25.4.0",
+        "tslint": "^6.1.2",
         "typescript": "~3.7.4"
     },
     "dependencies": {
