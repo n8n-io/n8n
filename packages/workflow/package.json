@@ -25,12 +25,12 @@
         "dist"
     ],
     "devDependencies": {
-        "@types/express": "^4.16.1",
-        "@types/jest": "^24.0.18",
+        "@types/express": "^4.17.6",
+        "@types/jest": "^25.2.1",
         "@types/lodash.get": "^4.4.6",
         "@types/node": "^14.0.26",
         "jest": "^24.9.0",
-        "ts-jest": "^24.0.2",
+        "ts-jest": "^25.4.0",
         "tslint": "^6.1.2",
         "typescript": "~3.7.4"
     },

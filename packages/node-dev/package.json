@@ -48,16 +48,16 @@
         "@types/inquirer": "^6.5.0",
         "@types/tmp": "^0.1.0",
         "@types/vorpal": "^1.11.0",
-        "tslint": "^5.17.0"
+        "tslint": "^6.1.2"
     },
     "dependencies": {
         "@oclif/command": "^1.5.18",
         "@oclif/errors": "^1.2.2",
-        "@types/express": "^4.16.1",
+        "@types/express": "^4.17.6",
         "@types/node": "^14.0.26",
         "change-case": "^4.1.1",
         "copyfiles": "^2.1.1",
-        "inquirer": "^7.0.0",
+        "inquirer": "^7.0.1",
         "n8n-core": "^0.36.0",
         "n8n-workflow": "^0.33.0",
         "replace-in-file": "^6.0.0",
