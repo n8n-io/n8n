@@ -25,11 +25,11 @@ import {
 
 import * as moment from 'moment';
 
-export class GoogleContact implements INodeType {
+export class GoogleContacts implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Contacts',
-		name: 'googleContact',
-		icon: 'file:googleContact.png',
+		name: 'googleContacts',
+		icon: 'file:googleContacts.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -42,9 +42,9 @@ export class GoogleContact implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'googleContactOAuth2Api',
+				name: 'googleContactsOAuth2Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

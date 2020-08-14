@@ -11,7 +11,6 @@ import {
 import {
 	IDataObject,
 } from 'n8n-workflow';
-import { response } from 'express';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
@@ -33,7 +32,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'googleContactOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'googleContactsOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error) {
 
@@ -125,7 +124,7 @@ export function cleanData(responseData: any) {
 			}
 			if (key === 'memberships') {
 				for (let i = 0; i < responseData[y][key].length; i++) {
-					responseData[y][key][i] = responseData[y][key][i].contactGroupMembership.contactGroupId;
+					responseData[y][key][i] = responseData[y][key][i].metadata.source.id;
 				}
 			}
 			if (key === 'birthdays') {

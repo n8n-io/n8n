@@ -7,8 +7,8 @@ const scopes = [
 	'https://www.googleapis.com/auth/contacts',
 ];
 
-export class GoogleContactOAuth2Api implements ICredentialType {
-	name = 'googleContactOAuth2Api';
+export class GoogleContactsOAuth2Api implements ICredentialType {
+	name = 'googleContactsOAuth2Api';
 	extends = [
 		'googleOAuth2Api',
 	];
