@@ -1,6 +1,7 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
+import { id } from 'rhea';
 
 export const videoOperations = [
 	{
@@ -271,6 +272,7 @@ export const videoFields = [
 				],
 			},
 		},
+		description: 'ID of the video',
 		default: '',
 	},
 	{
@@ -326,6 +328,10 @@ export const videoFields = [
 		type: 'multiOptions',
 		options: [
 			{
+				name: '*',
+				value: '*',
+			},
+			{
 				name: 'Content Details',
 				value: 'contentDetails',
 			},
@@ -360,10 +366,6 @@ export const videoFields = [
 			{
 				name: 'Status',
 				value: 'status',
-			},
-			{
-				name: 'Suggestions',
-				value: 'suggestions',
 			},
 			{
 				name: 'Topic Details',
@@ -415,70 +417,6 @@ export const videoFields = [
 	/*                                 video:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Fields',
-		name: 'part',
-		type: 'multiOptions',
-		options: [
-			{
-				name: 'Content Details',
-				value: 'contentDetails',
-			},
-			{
-				name: 'ID',
-				value: 'id',
-			},
-			{
-				name: 'Live Streaming Details',
-				value: 'liveStreamingDetails',
-			},
-			{
-				name: 'Localizations',
-				value: 'localizations',
-			},
-			{
-				name: 'Player',
-				value: 'player',
-			},
-			{
-				name: 'Recording Details',
-				value: 'recordingDetails',
-			},
-			{
-				name: 'Snippet',
-				value: 'snippet',
-			},
-			{
-				name: 'Statistics',
-				value: 'statistics',
-			},
-			{
-				name: 'Status',
-				value: 'status',
-			},
-			{
-				name: 'Suggestions',
-				value: 'suggestions',
-			},
-			{
-				name: 'Topic Details',
-				value: 'topicDetails',
-			},
-		],
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'video',
-				],
-			},
-		},
-		description: 'The fields parameter specifies a comma-separated list of one or more video resource properties that the API response will include.',
-		default: ''
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -514,9 +452,9 @@ export const videoFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
+			maxValue: 50,
 		},
-		default: 100,
+		default: 25,
 		description: 'How many results to return.',
 	},
 	{
@@ -537,28 +475,39 @@ export const videoFields = [
 		},
 		options: [
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Channel ID',
+				name: 'channelId',
 				type: 'string',
 				default: '',
-				description: `The id parameter specifies a comma-separated list of the YouTube video ID(s) for the resource(s) that are being retrieved. In a video resource, the id property specifies the video's YouTube video ID.`,
+				description: `The channelId parameter indicates that the API response should only contain resources created by the channel.`,
 			},
 			{
-				displayName: 'My Rating',
-				name: 'myRating',
-				type: 'options',
-				options: [
-					{
-						name: 'Dislike',
-						value: 'dislike',
-					},
-					{
-						name: 'Like',
-						value: 'like',
-					},
-				],
+				displayName: 'For Developer',
+				name: 'forDeveloper',
+				type: 'boolean',
+				default: false,
+				description: `The forDeveloper parameter restricts the search to only retrieve videos uploaded via the developer's application or website`,
+			},
+			{
+				displayName: 'Published After',
+				name: 'publishedAfter',
+				type: 'dateTime',
 				default: '',
-				description: `Set this parameter's value to like or dislike to instruct the API to only return videos liked or disliked by the authenticated user.`,
+				description: `The publishedAfter parameter indicates that the API response should only contain resources created at or after the specified time.`,
+			},
+			{
+				displayName: 'Published Before',
+				name: 'publishedBefore',
+				type: 'dateTime',
+				default: '',
+				description: `The publishedBefore parameter indicates that the API response should only contain resources created before or at the specified time.`,
+			},
+			{
+				displayName: 'Query',
+				name: 'q',
+				type: 'string',
+				default: '',
+				description: `The q parameter specifies the query term to search for.`,
 			},
 			{
 				displayName: 'Region Code',
@@ -571,11 +520,46 @@ export const videoFields = [
 				description: `The regionCode parameter instructs the API to select a video chart available in the specified region.`,
 			},
 			{
+				displayName: 'Related To Video ID',
+				name: 'relatedToVideoId',
+				type: 'string',
+				default: '',
+				description: 'The relatedToVideoId parameter retrieves a list of videos that are related to the video that the parameter value identifies',
+			},
+			{
 				displayName: 'Video Category ID',
 				name: 'videoCategoryId',
 				type: 'string',
 				default: '',
 				description: `The videoCategoryId parameter identifies the video category for which the chart should be retrieved.`,
+			},
+			{
+				displayName: 'Video Syndicated ',
+				name: 'videoSyndicated',
+				type: 'boolean',
+				default: false,
+				description: `The videoSyndicated parameter lets you to restrict a search to only videos that can be played outside youtube.com.`,
+			},
+			{
+				displayName: 'Video Type',
+				name: 'videoType',
+				type: 'options',
+				options: [
+					{
+						name: 'Any',
+						value: 'any',
+					},
+					{
+						name: 'Episode',
+						value: 'episode',
+					},
+					{
+						name: 'Movie',
+						value: 'movie',
+					},
+				],
+				default: '',
+				description: `The videoType parameter lets you restrict a search to a particular type of videos`,
 			},
 		],
 	},
@@ -597,12 +581,43 @@ export const videoFields = [
 		},
 		options: [
 			{
-				displayName: 'On Behalf Of Content Owner',
-				name: 'onBehalfOfContentOwner',
-				type: 'string',
+				displayName: 'Order',
+				name: 'order',
+				type: 'options',
+				options: [
+					{
+						name: 'Date',
+						value: 'date',
+					},
+					{
+						name: 'Relevance',
+						value: 'relevance',
+					},
+				],
+				default: 'relevance',
+			},
+			{
+				displayName: 'Safe Search',
+				name: 'safeSearch',
+				type: 'options',
+				options: [
+					{
+						name: 'Moderate',
+						value: 'moderate',
+						description: 'YouTube will filter some content from search results and, at the least, will filter content that is restricted in your locale',
+					},
+					{
+						name: 'none',
+						value: 'none',
+						description: 'YouTube will not filter the search result set',
+					},
+					{
+						name: 'Strict',
+						value: 'strict',
+						description: 'YouTube will try to exclude all restricted content from the search result set',
+					},
+				],
 				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},

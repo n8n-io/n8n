@@ -51,6 +51,10 @@ export const channelFields = [
 		type: 'multiOptions',
 		options: [
 			{
+				name: '*',
+				value: '*',
+			},
+			{
 				name: 'Branding Settings',
 				value: 'brandingSettings',
 			},
@@ -137,9 +141,9 @@ export const channelFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
+			maxValue: 50,
 		},
-		default: 100,
+		default: 25,
 		description: 'How many results to return.',
 	},
 	{
@@ -243,6 +247,7 @@ export const channelFields = [
 				],
 			},
 		},
+		description: 'ID of the video',
 		default: '',
 	},
 	{
@@ -250,6 +255,10 @@ export const channelFields = [
 		name: 'part',
 		type: 'multiOptions',
 		options: [
+			{
+				name: '*',
+				value: '*',
+			},
 			{
 				name: 'Branding Settings',
 				value: 'brandingSettings',
@@ -554,6 +563,7 @@ export const channelFields = [
 				],
 			},
 		},
+		description: 'ID of the channel',
 		default: '',
 	},
 	{

@@ -184,8 +184,22 @@ export class YouTube implements INodeType {
 			if (resource === 'channel') {
 				if (operation === 'get') {
 					//https://developers.google.com/youtube/v3/docs/channels/list
-					const part = this.getNodeParameter('part', i) as string[];
+					let part = this.getNodeParameter('part', i) as string[];
 					const channelId = this.getNodeParameter('channelId', i) as string;
+
+					if (part.includes('*')) {
+						part = [
+							'brandingSettings',
+							'contentDetails',
+							'contentOwnerDetails',
+							'id',
+							'localizations',
+							'snippet',
+							'statistics',
+							'status',
+							'topicDetails',
+						];
+					}
 
 					qs.part = part.join(',');
 
@@ -204,9 +218,23 @@ export class YouTube implements INodeType {
 				//https://developers.google.com/youtube/v3/docs/channels/list
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const part = this.getNodeParameter('part', i) as string[];
+					let part = this.getNodeParameter('part', i) as string[];
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (part.includes('*')) {
+						part = [
+							'brandingSettings',
+							'contentDetails',
+							'contentOwnerDetails',
+							'id',
+							'localizations',
+							'snippet',
+							'statistics',
+							'status',
+							'topicDetails',
+						];
+					}
 
 					qs.part = part.join(',');
 
@@ -392,9 +420,20 @@ export class YouTube implements INodeType {
 			if (resource === 'playlist') {
 				//https://developers.google.com/youtube/v3/docs/playlists/list
 				if (operation === 'get') {
-					const part = this.getNodeParameter('part', i) as string[];
+					let part = this.getNodeParameter('part', i) as string[];
 					const playlistId = this.getNodeParameter('playlistId', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					if (part.includes('*')) {
+						part = [
+							'contentDetails',
+							'id',
+							'localizations',
+							'player',
+							'snippet',
+							'status',
+						];
+					}
 
 					qs.part = part.join(',');
 
@@ -415,9 +454,20 @@ export class YouTube implements INodeType {
 				//https://developers.google.com/youtube/v3/docs/playlists/list
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const part = this.getNodeParameter('part', i) as string[];
+					let part = this.getNodeParameter('part', i) as string[];
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (part.includes('*')) {
+						part = [
+							'contentDetails',
+							'id',
+							'localizations',
+							'player',
+							'snippet',
+							'status',
+						];
+					}
 
 					qs.part = part.join(',');
 
@@ -567,21 +617,26 @@ export class YouTube implements INodeType {
 				}
 			}
 			if (resource === 'video') {
-				//https://developers.google.com/youtube/v3/docs/videos/list?hl=en
+				//https://developers.google.com/youtube/v3/docs/search/list
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const part = this.getNodeParameter('part', i) as string[];
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
-					qs.part = part.join(',');
+					qs.part = 'snippet';
 
-					qs.chart = 'mostPopular';
+					qs.type = 'video';
+
+					qs.forMine = true;
 
 					Object.assign(qs, options, filters);
 
-					if (qs.myRating) {
-						delete qs.chart;
+					if (Object.keys(filters).length > 0) {
+						delete qs.forMine;
+					}
+
+					if (qs.relatedToVideoId && qs.forDeveloper !== undefined) {
+						throw new Error(`When using the parameter 'related to video' the parameter 'for developer' cannot be set`);
 					}
 
 					if (returnAll) {
@@ -589,7 +644,7 @@ export class YouTube implements INodeType {
 							this,
 							'items',
 							'GET',
-							`/youtube/v3/videos`,
+							`/youtube/v3/search`,
 							{},
 							qs
 						);
@@ -598,7 +653,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/youtube/v3/videos`,
+							`/youtube/v3/search`,
 							{},
 							qs
 						);
@@ -607,9 +662,24 @@ export class YouTube implements INodeType {
 				}
 				//https://developers.google.com/youtube/v3/docs/videos/list?hl=en
 				if (operation === 'get') {
-					const part = this.getNodeParameter('part', i) as string[];
+					let part = this.getNodeParameter('part', i) as string[];
 					const videoId = this.getNodeParameter('videoId', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					if (part.includes('*')) {
+						part = [
+							'contentDetails',
+							'id',
+							'liveStreamingDetails',
+							'localizations',
+							'player',
+							'recordingDetails',
+							'snippet',
+							'statistics',
+							'status',
+							'topicDetails',
+						];
+					}
 
 					qs.part = part.join(',');
 
@@ -812,8 +882,6 @@ export class YouTube implements INodeType {
 						body.snippet.defaultLanguage = updateFields.defaultLanguage as string;
 					}
 
-					console.log(body)
-
 					responseData = await googleApiRequest.call(
 						this,
 						'PUT',
@@ -838,7 +906,7 @@ export class YouTube implements INodeType {
 					responseData = await googleApiRequest.call(
 						this,
 						'DELETE',
-						'/youtube/v3/video',
+						'/youtube/v3/videos',
 						body,
 					);
 
