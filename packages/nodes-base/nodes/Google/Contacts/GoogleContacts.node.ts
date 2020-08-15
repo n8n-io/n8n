@@ -78,7 +78,7 @@ export class GoogleContacts implements INodeType {
 					'contactGroups',
 					'GET',
 					`/contactGroups`,
-					);
+				);
 				for (const group of groups) {
 					const groupName = group.name;
 					const groupId = group.resourceName;
@@ -294,7 +294,7 @@ export class GoogleContacts implements INodeType {
 						responseData = cleanData(responseData);
 					}
 
-					for (let i = 0; i < responseData.length; i++ ) {
+					for (let i = 0; i < responseData.length; i++) {
 						responseData[i].contactId = responseData[i].resourceName.split('/')[1];
 					}
 				}
