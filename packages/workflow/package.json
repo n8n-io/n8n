@@ -30,7 +30,7 @@
         "@types/lodash.get": "^4.4.6",
         "@types/node": "^14.0.27",
         "jest": "^24.9.0",
-        "ts-jest": "^25.4.0",
+        "ts-jest": "^26.2.0",
         "tslint": "^6.1.2",
         "typescript": "~3.7.4"
     },
