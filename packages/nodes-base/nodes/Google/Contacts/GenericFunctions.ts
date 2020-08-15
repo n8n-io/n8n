@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -57,7 +57,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -76,7 +76,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-export	const allFields = [
+export const allFields = [
 	'addresses',
 	'biographies',
 	'birthdays',
@@ -103,14 +103,14 @@ export	const allFields = [
 	'userDefined',
 ];
 
-export function cleanData(responseData: any) {
+export function cleanData(responseData: any) { // tslint:disable-line:no-any
 	const fields = ['emailAddresses', 'phoneNumbers', 'relations', 'events', 'addresses'];
 	const newResponseData = [];
 	if (!Array.isArray(responseData)) {
 		responseData = [responseData];
 	}
-	for (let y = 0; y < responseData.length; y++ ) {
-		const object: { [key: string]: any  } = {};
+	for (let y = 0; y < responseData.length; y++) {
+		const object: { [key: string]: any } = {}; // tslint:disable-line:no-any
 		for (const key of Object.keys(responseData[y])) {
 			if (key === 'metadata') {
 				continue;
@@ -140,7 +140,7 @@ export function cleanData(responseData: any) {
 				}
 			}
 			if (fields.includes(key)) {
-				const value: { [key: string]: any  } = {};
+				const value: { [key: string]: any } = {}; // tslint:disable-line:no-any
 				for (const data of responseData[y][key]) {
 					let result;
 					if (value[data.type] === undefined) {

@@ -1,7 +1,6 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { LoadNodeParameterOptions } from 'n8n-core';
 
 export const contactOperations = [
 	{
@@ -471,56 +470,56 @@ export const contactFields = [
 								type: 'options',
 								options: [
 									{
-										name: 'Spouse',
-										value: 'spouse',
-									},
-									{
-										name: 'Child',
-										value: 'child',
-									},
-									{
-										name: 'Mother',
-										value: 'mother',
-									},
-									{
-										name: 'Father',
-										value: 'father',
-									},
-									{
-										name: 'Parent',
-										value: 'parent',
+										name: 'Assistant',
+										value: 'assistant',
 									},
 									{
 										name: 'Brother',
 										value: 'brother',
 									},
 									{
-										name: 'Sister',
-										value: 'sister',
-									},
-									{
-										name: 'Friend',
-										value: 'friend',
-									},
-									{
-										name: 'Relative',
-										value: 'relative',
+										name: 'Child',
+										value: 'child',
 									},
 									{
 										name: 'Domestic Partner',
 										value: 'domesticPartner',
 									},
 									{
+										name: 'Father',
+										value: 'father',
+									},
+									{
+										name: 'Friend',
+										value: 'friend',
+									},
+									{
 										name: 'Manager',
 										value: 'manager',
 									},
 									{
-										name: 'Assistant',
-										value: 'assistant',
+										name: 'Mother',
+										value: 'mother',
+									},
+									{
+										name: 'Parent',
+										value: 'parent',
 									},
 									{
 										name: 'Referred By',
 										value: 'referredBy',
+									},
+									{
+										name: 'Relative',
+										value: 'relative',
+									},
+									{
+										name: 'Sister',
+										value: 'sister',
+									},
+									{
+										name: 'Spouse',
+										value: 'spouse',
 									},
 								],
 								default: '',
