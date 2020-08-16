@@ -100,6 +100,28 @@ export const playlistItemFields = [
 		},
 		options: [
 			{
+				displayName: 'End At',
+				name: 'endAt',
+				type: 'dateTime',
+				default: '',
+				description: `The time, measured in seconds from the start of the video, when the video should stop playing.`,
+			},
+			{
+				displayName: 'Note',
+				name: 'note',
+				type: 'string',
+				default: '',
+				description: `A user-generated note for this item. The property value has a maximum length of 280 characters.`,
+			},
+			{
+				displayName: 'On Behalf Of Content Owner',
+				name: 'onBehalfOfContentOwner',
+				type: 'string',
+				default: '',
+				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
+				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
+			},
+			{
 				displayName: 'Position',
 				name: 'position',
 				type: 'number',
@@ -110,33 +132,11 @@ export const playlistItemFields = [
 				description: `The order in which the item appears in the playlist. The value uses a zero-based index, so the first item has a position of 0, the second item has a position of 1, and so forth.`,
 			},
 			{
-				displayName: 'Note',
-				name: 'note',
-				type: 'string',
-				default: '',
-				description: `A user-generated note for this item. The property value has a maximum length of 280 characters.`,
-			},
-			{
 				displayName: 'Start At',
 				name: 'startAt',
 				type: 'dateTime',
 				default: '',
 				description: `The time, measured in seconds from the start of the video, when the video should start playing.`,
-			},
-			{
-				displayName: 'End At',
-				name: 'endAt',
-				type: 'dateTime',
-				default: '',
-				description: `The time, measured in seconds from the start of the video, when the video should stop playing.`,
-			},
-			{
-				displayName: 'On Behalf Of Content Owner',
-				name: 'onBehalfOfContentOwner',
-				type: 'string',
-				default: '',
-				description: `The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify<br>
-				a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value`,
 			},
 		],
 	},
