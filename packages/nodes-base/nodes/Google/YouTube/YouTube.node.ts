@@ -5,11 +5,11 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -18,13 +18,13 @@ import {
 } from './GenericFunctions';
 
 import {
-	channelOperations,
 	channelFields,
+	channelOperations,
 } from './ChannelDescription';
 
 import {
-	playlistOperations,
 	playlistFields,
+	playlistOperations,
 } from './PlaylistDescription';
 
 import {
@@ -33,13 +33,13 @@ import {
 } from './PlaylistItemDescription';
 
 import {
-	videoOperations,
 	videoFields,
+	videoOperations,
 } from './VideoDescription';
 
 import {
-	videoCategoryOperations,
 	videoCategoryFields,
+	videoCategoryOperations,
 } from './VideoCategoryDescription';
 
 import {
@@ -48,7 +48,7 @@ import {
 
 export class YouTube implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Youtube',
+		displayName: 'YouTube',
 		name: 'youTube',
 		icon: 'file:youTube.png',
 		group: ['input'],
@@ -379,13 +379,13 @@ export class YouTube implements INodeType {
 						if (imageSettingsValues?.image) {
 							const imageSettingsOptions = imageSettings.image as IDataObject;
 							if (imageSettingsOptions.bannerExternalUrl) {
-								imageSettings.bannerExternalUrl = imageSettingsOptions.bannerExternalUrl as string
+								imageSettings.bannerExternalUrl = imageSettingsOptions.bannerExternalUrl as string;
 							}
 							if (imageSettingsOptions.trackingImageUrl) {
-								imageSettings.trackingImageUrl = imageSettingsOptions.trackingImageUrl as string
+								imageSettings.trackingImageUrl = imageSettingsOptions.trackingImageUrl as string;
 							}
 							if (imageSettingsOptions.watchIconImageUrl) {
-								imageSettings.watchIconImageUrl = imageSettingsOptions.watchIconImageUrl as string
+								imageSettings.watchIconImageUrl = imageSettingsOptions.watchIconImageUrl as string;
 							}
 						}
 
@@ -434,11 +434,11 @@ export class YouTube implements INodeType {
 						json: false,
 					};
 
-					let response = await googleApiRequest.call(this, 'POST', '/upload/youtube/v3/channelBanners/insert', body, qs, undefined, requestOptions);
+					const response = await googleApiRequest.call(this, 'POST', '/upload/youtube/v3/channelBanners/insert', body, qs, undefined, requestOptions);
 
 					const { url } = JSON.parse(response);
 
-					qs.part = 'brandingSettings'
+					qs.part = 'brandingSettings';
 
 					responseData = await googleApiRequest.call(
 						this,
@@ -744,7 +744,7 @@ export class YouTube implements INodeType {
 							playlistId,
 							resourceId: {
 								kind: 'youtube#video',
-								videoId: videoId,
+								videoId,
 							},
 						},
 						contentDetails: {
@@ -921,7 +921,7 @@ export class YouTube implements INodeType {
 						json: false,
 					};
 
-					let response = await googleApiRequest.call(this, 'POST', '/upload/youtube/v3/videos', body, qs, undefined, requestOptions);
+					const response = await googleApiRequest.call(this, 'POST', '/upload/youtube/v3/videos', body, qs, undefined, requestOptions);
 
 					const { id } = JSON.parse(response);
 
@@ -937,7 +937,7 @@ export class YouTube implements INodeType {
 						},
 						recordingDetails: {
 						},
-					}
+					};
 
 					if (options.description) {
 						//@ts-ignore
@@ -1021,7 +1021,7 @@ export class YouTube implements INodeType {
 						},
 						recordingDetails: {
 						},
-					}
+					};
 
 					if (updateFields.description) {
 						//@ts-ignore
