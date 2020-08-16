@@ -1,7 +1,6 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
-import { id } from 'rhea';
 
 export const videoOperations = [
 	{
@@ -384,7 +383,7 @@ export const videoFields = [
 			},
 		},
 		description: 'The fields parameter specifies a comma-separated list of one or more video resource properties that the API response will include.',
-		default: ''
+		default: ['*'],
 	},
 	{
 		displayName: 'Options',

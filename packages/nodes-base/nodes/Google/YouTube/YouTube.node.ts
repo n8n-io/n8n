@@ -28,6 +28,11 @@ import {
 } from './PlaylistDescription';
 
 import {
+	playlistItemOperations,
+	playlistItemFields,
+} from './PlaylistItemDescription';
+
+import {
 	videoOperations,
 	videoFields,
 } from './VideoDescription';
@@ -60,7 +65,7 @@ export class YouTube implements INodeType {
 			{
 				name: 'youTubeOAuth2Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -75,6 +80,10 @@ export class YouTube implements INodeType {
 					{
 						name: 'Playlist',
 						value: 'playlist',
+					},
+					{
+						name: 'Playlist Item',
+						value: 'playlistItem',
 					},
 					{
 						name: 'Video',
@@ -93,6 +102,9 @@ export class YouTube implements INodeType {
 
 			...playlistOperations,
 			...playlistFields,
+
+			...playlistItemOperations,
+			...playlistItemFields,
 
 			...videoOperations,
 			...videoFields,
@@ -165,6 +177,33 @@ export class YouTube implements INodeType {
 					returnData.push({
 						name: categoryName,
 						value: categoryId
+					});
+				}
+				return returnData;
+			},
+			// Get all the playlists to display them to user so that he can
+			// select them easily
+			async getPlaylists(
+				this: ILoadOptionsFunctions
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs: IDataObject = {};
+				qs.part = 'snippet';
+				qs.mine = true;
+				const playlists = await googleApiRequestAllItems.call(
+					this,
+					'items',
+					'GET',
+					'/youtube/v3/playlists',
+					{},
+					qs,
+				);
+				for (const playlist of playlists) {
+					const playlistName = playlist.snippet.title;
+					const playlistId = playlist.id;
+					returnData.push({
+						name: playlistName,
+						value: playlistId
 					});
 				}
 				return returnData;
@@ -610,6 +649,158 @@ export class YouTube implements INodeType {
 						this,
 						'DELETE',
 						'/youtube/v3/playlists',
+						body,
+					);
+
+					responseData = { success: true };
+				}
+			}
+			if (resource === 'playlistItem') {
+				//https://developers.google.com/youtube/v3/docs/playlistItems/list
+				if (operation === 'get') {
+					let part = this.getNodeParameter('part', i) as string[];
+					const playlistItemId = this.getNodeParameter('playlistItemId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					if (part.includes('*')) {
+						part = [
+							'contentDetails',
+							'id',
+							'snippet',
+							'status',
+						];
+					}
+
+					qs.part = part.join(',');
+
+					qs.id = playlistItemId;
+
+					Object.assign(qs, options);
+
+					responseData = await googleApiRequest.call(
+						this,
+						'GET',
+						`/youtube/v3/playlistItems`,
+						{},
+						qs
+					);
+
+					responseData = responseData.items;
+				}
+				//https://developers.google.com/youtube/v3/docs/playlistItems/list
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					let part = this.getNodeParameter('part', i) as string[];
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const playlistId = this.getNodeParameter('playlistId', i) as string;
+					//const filters = this.getNodeParameter('filters', i) as IDataObject;
+
+					if (part.includes('*')) {
+						part = [
+							'contentDetails',
+							'id',
+							'snippet',
+							'status',
+						];
+					}
+
+					qs.playlistId = playlistId;
+
+					qs.part = part.join(',');
+
+					Object.assign(qs, options);
+
+					if (returnAll) {
+						responseData = await googleApiRequestAllItems.call(
+							this,
+							'items',
+							'GET',
+							`/youtube/v3/playlistItems`,
+							{},
+							qs
+						);
+					} else {
+						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/youtube/v3/playlistItems`,
+							{},
+							qs
+						);
+						responseData = responseData.items;
+					}
+				}
+				//https://developers.google.com/youtube/v3/docs/playlistItems/insert
+				if (operation === 'add') {
+					const playlistId = this.getNodeParameter('playlistId', i) as string;
+					const videoId = this.getNodeParameter('videoId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					qs.part = 'snippet, contentDetails';
+
+					const body: IDataObject = {
+						snippet: {
+							playlistId,
+							resourceId: {
+								kind: 'youtube#video',
+								videoId: videoId,
+							},
+						},
+						contentDetails: {
+						},
+
+					};
+
+					if (options.position) {
+						//@ts-ignore
+						body.snippet.position = options.position as number;
+					}
+
+					if (options.note) {
+						//@ts-ignore
+						body.contentDetails.note = options.note as string;
+					}
+
+					if (options.startAt) {
+						//@ts-ignore
+						body.contentDetails.startAt = options.startAt as string;
+					}
+
+					if (options.endAt) {
+						//@ts-ignore
+						body.contentDetails.endAt = options.endAt as string;
+					}
+
+					if (options.onBehalfOfContentOwner) {
+						qs.onBehalfOfContentOwner = options.onBehalfOfContentOwner as string;
+					}
+
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						'/youtube/v3/playlistItems',
+						body,
+						qs
+					);
+				}
+				//https://developers.google.com/youtube/v3/docs/playlistItems/delete
+				if (operation === 'delete') {
+					const playlistItemId = this.getNodeParameter('playlistItemId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					const body: IDataObject = {
+						id: playlistItemId,
+					};
+
+					if (options.onBehalfOfContentOwner) {
+						qs.onBehalfOfContentOwner = options.onBehalfOfContentOwner as string;
+					}
+
+					responseData = await googleApiRequest.call(
+						this,
+						'DELETE',
+						'/youtube/v3/playlistItems',
 						body,
 					);
 
