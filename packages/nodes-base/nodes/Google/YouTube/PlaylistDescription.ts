@@ -214,7 +214,7 @@ export const playlistFields = [
 			},
 		},
 		description: 'The fields parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include.',
-		default: ''
+		default: ['*'],
 	},
 	{
 		displayName: 'Options',
@@ -346,7 +346,7 @@ export const playlistFields = [
 			},
 		},
 		description: 'The fields parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include.',
-		default: ''
+		default: ['*'],
 	},
 	{
 		displayName: 'Return All',

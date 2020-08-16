@@ -103,7 +103,7 @@ export const channelFields = [
 			},
 		},
 		description: 'The fields parameter specifies a comma-separated list of one or more channel resource properties that the API response will include.',
-		default: ''
+		default: ['*'],
 	},
 	{
 		displayName: 'Return All',
@@ -308,7 +308,7 @@ export const channelFields = [
 			},
 		},
 		description: 'The fields parameter specifies a comma-separated list of one or more channel resource properties that the API response will include.',
-		default: ''
+		default: ['*'],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 channel:update                             */
