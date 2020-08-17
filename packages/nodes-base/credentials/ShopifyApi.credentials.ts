@@ -6,6 +6,7 @@ import {
 export class ShopifyApi implements ICredentialType {
 	name = 'shopifyApi';
 	displayName = 'Shopify API';
+	documentationUrl = 'shopify';
 	properties = [
 		{
 			displayName: 'API Key',

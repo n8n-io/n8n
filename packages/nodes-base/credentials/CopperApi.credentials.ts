@@ -6,6 +6,7 @@ import {
 export class CopperApi implements ICredentialType {
 	name = 'copperApi';
 	displayName = 'Copper API';
+	documentationUrl = 'copper';
 	properties = [
 		{
 			displayName: 'API Key',
