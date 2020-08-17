@@ -400,7 +400,6 @@ export class Asana implements INodeType {
 						},
 						description: 'The new name of the task',
 					},
-					// TODO: Add "assignee" and "assignee_status"
 					{
 						displayName: 'Notes',
 						name: 'notes',
@@ -411,6 +410,41 @@ export class Asana implements INodeType {
 						},
 						default: '',
 						description: 'The task notes',
+					},
+					{
+						displayName: 'Assignee',
+						name: 'assignee',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getUsers',
+						},
+						default: 'null',
+						description: 'Set Assignee on the task',
+					},
+					{
+						displayName: 'Assignee Status',
+						name: 'assignee_status',
+						type: 'options',
+						options: [
+							{
+								name: 'Inbox',
+								value: 'inbox',
+							},
+							{
+								name: 'Today',
+								value: 'today',
+							},
+							{
+								name: 'Upcoming',
+								value: 'upcoming',
+							},
+							{
+								name: 'Later',
+								value: 'later',
+							},
+						],
+						default: 'inbox',
+						description: 'Set Assignee status on the task (requires Assignee)',
 					},
 					{
 						displayName: 'Completed',
