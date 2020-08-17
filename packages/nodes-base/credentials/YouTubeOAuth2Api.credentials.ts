@@ -18,6 +18,7 @@ export class YouTubeOAuth2Api implements ICredentialType {
 		'googleOAuth2Api',
 	];
 	displayName = 'Google OAuth2 API';
+	documentationUrl = 'google';
 	properties = [
 		{
 			displayName: 'Scope',

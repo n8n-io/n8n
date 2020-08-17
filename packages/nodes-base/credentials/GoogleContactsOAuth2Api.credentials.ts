@@ -13,6 +13,7 @@ export class GoogleContactsOAuth2Api implements ICredentialType {
 		'googleOAuth2Api',
 	];
 	displayName = 'Google Contacts OAuth2 API';
+	documentationUrl = 'google';
 	properties = [
 		{
 			displayName: 'Scope',

@@ -6,6 +6,7 @@ import {
 export class MailchimpApi implements ICredentialType {
 	name = 'mailchimpApi';
 	displayName = 'Mailchimp API';
+	documentationUrl = 'mailchimp';
 	properties = [
 		{
 			displayName: 'API Key',
