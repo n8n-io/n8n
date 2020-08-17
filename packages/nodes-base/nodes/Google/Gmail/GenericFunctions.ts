@@ -3,13 +3,20 @@ import {
 } from 'request';
 
 import {
+	simpleParser,
+	Source as ParserSource,
+} from 'mailparser';
+
+import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 import {
@@ -63,6 +70,39 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
+
+export async function parseRawEmail(this: IExecuteFunctions, messageEncoded: ParserSource, dataPropertyNameDownload: string): Promise<INodeExecutionData> {
+
+	const responseData = await simpleParser(messageEncoded);
+
+	const headers: IDataObject = {};
+	for (const header of responseData.headerLines) {
+		headers[header.key] = header.line;
+	}
+
+	// @ts-ignore
+	responseData.headers = headers;
+	// @ts-ignore
+	responseData.headerLines = undefined;
+
+	const binaryData: IBinaryKeyData = {};
+	if (responseData.attachments) {
+
+		for (let i = 0; i < responseData.attachments.length; i++) {
+			const attachment = responseData.attachments[i];
+			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(attachment.content, attachment.filename, attachment.contentType);
+		}
+		// @ts-ignore
+		responseData.attachments = undefined;
+	}
+
+	return {
+		json: responseData as unknown as IDataObject,
+		binary: Object.keys(binaryData).length ? binaryData : undefined,
+	} as INodeExecutionData;
+}
+
+
 //------------------------------------------------------------------------------------------------------------------------------------------
 // This function converts an email object into a MIME encoded email and then converts that string into base64 encoding
 // for more info on MIME, https://docs.microsoft.com/en-us/previous-versions/office/developer/exchange-server-2010/aa494197(v%3Dexchg.140)
@@ -71,14 +111,14 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 export function encodeEmail(email: IEmail) {
 	let mimeEmail = '';
 
-	if(email.attachments !== undefined && email.attachments !== []) {
+	if (email.attachments !== undefined && email.attachments !== []) {
 		const attachments = email.attachments.map((attachment) => {
 			return [
 				"--XXXXboundary text\n",
 				"Content-Type:", attachment.type, ";\n",
 				"Content-Transfer-Encoding: Base64\n",
 				"Content-Disposition: attachment;\n",
-					"\tfilename=\"", attachment.name, "\"\n\n",
+				"\tfilename=\"", attachment.name, "\"\n\n",
 
 				attachment.content, "\n\n",
 
@@ -95,7 +135,7 @@ export function encodeEmail(email: IEmail) {
 			"Subject: ", email.subject, "\n",
 			"MIME-Version: 1.0\n",
 			"Content-Type: multipart/mixed;\n",
-					"\tboundary=\"XXXXboundary text\"\n\n",
+			"\tboundary=\"XXXXboundary text\"\n\n",
 
 			"This is a multipart message in MIME format.\n\n",
 
@@ -126,7 +166,7 @@ export function encodeEmail(email: IEmail) {
 	return Buffer.from(mimeEmail).toString("base64").replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -145,7 +185,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-export	function extractEmail (s: string) {
+export function extractEmail(s: string) {
 	const data = s.split('<')[1];
 	return data.substring(0, data.length - 1);
 }

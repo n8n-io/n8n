@@ -202,9 +202,14 @@ export const draftFields = [
 				description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
 			},
 			{
-				name: 'Raw',
+				name: 'RAW',
 				value: 'raw',
 				description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+			},
+			{
+				name: 'Resolved',
+				value: 'resolved',
+				description: 'Returns the full email with all data resolved and attachments saved as binary data.',
 			},
 		],
 		displayOptions: {
@@ -217,9 +222,30 @@ export const draftFields = [
 				],
 			},
 		},
-		default: 'full',
+		default: 'resolved',
 		description: 'The format to return the message in',
 	},
+	{
+		displayName: 'Attachments Prefix',
+		name: 'dataPropertyAttachmentsPrefixName',
+		type: 'string',
+		default: 'attachment_',
+		displayOptions: {
+			show: {
+				format: [
+					'resolved',
+				],
+				operation: [
+					'get',
+				],
+				resource: [
+					'draft',
+				],
+			},
+		},
+		description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 draft:getAll                               */
 	/* -------------------------------------------------------------------------- */
@@ -261,7 +287,7 @@ export const draftFields = [
 			minValue: 1,
 			maxValue: 500,
 		},
-		default: 100,
+		default: 10,
 		description: 'How many results to return.',
 	},
 	{
@@ -302,9 +328,14 @@ export const draftFields = [
 				description: 'Returns only email message ID and labels; does not return the email headers, body, or payload',
 			},
 			{
-				name: 'Raw',
+				name: 'RAW',
 				value: 'raw',
 				description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+			},
+			{
+				name: 'Resolved',
+				value: 'resolved',
+				description: 'Returns the full email with all data resolved and attachments saved as binary data.',
 			},
 		],
 		displayOptions: {
@@ -320,8 +351,31 @@ export const draftFields = [
 				],
 			},
 		},
-		default: 'full',
+		default: 'resolved',
 		description: 'The format use to return the message',
+	},
+	{
+		displayName: 'Attachments Prefix',
+		name: 'dataPropertyAttachmentsPrefixName',
+		type: 'string',
+		default: 'attachment_',
+		displayOptions: {
+			show: {
+				resolveFormat: [
+					'resolved',
+				],
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'draft',
+				],
+				resolveData: [
+					true,
+				],
+			},
+		},
+		description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
 	},
 	{
 		displayName: 'Additional Fields',
