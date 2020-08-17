@@ -6,6 +6,7 @@ import {
 export class PagerDutyApi implements ICredentialType {
 	name = 'pagerDutyApi';
 	displayName = 'PagerDuty API';
+	documentationUrl = 'pagerDuty';
 	properties = [
 		{
 			displayName: 'API Token',

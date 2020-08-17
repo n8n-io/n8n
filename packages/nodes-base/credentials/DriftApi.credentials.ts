@@ -6,6 +6,7 @@ import {
 export class DriftApi implements ICredentialType {
 	name = 'driftApi';
 	displayName = 'Drift API';
+	documentationUrl = 'drift';
 	properties = [
 		{
 			displayName: 'Personal Access Token',

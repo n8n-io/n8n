@@ -7,6 +7,7 @@ import {
 export class Imap implements ICredentialType {
 	name = 'imap';
 	displayName = 'IMAP';
+	documentationUrl = 'imap';
 	properties = [
 		{
 			displayName: 'User',

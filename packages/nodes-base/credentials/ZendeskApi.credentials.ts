@@ -6,6 +6,7 @@ import {
 export class ZendeskApi implements ICredentialType {
 	name = 'zendeskApi';
 	displayName = 'Zendesk API';
+	documentationUrl = 'zendesk';
 	properties = [
 		{
 			displayName: 'Subdomain',
