@@ -25,37 +25,16 @@ import {
 	IDataObject,
  } from 'n8n-workflow';
 
-import { URL } from 'url';
-
-export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, bucket: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
-
-	let credentials;
-
-	try {
-			credentials = this.getCredentials('aws');
-	} catch (error) {
-		throw new Error(error);
-	}
-
+export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+	const credentials = this.getCredentials('aws');
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
 
-
-	const endpoint = new URL(`https://${bucket}.s3.${region || credentials.region}.amazonaws.com`);
-
-	endpoint.pathname = path;
+	const endpoint = `${service}.${region || credentials.region}.amazonaws.com`;
 
 	// Sign AWS API request with the user credentials
-	const signOpts = {
-		headers: headers || {},
-		region: region || credentials.region,
-		host: endpoint.host,
-		method,
-		path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`,
-		service: 's3',
-		body
-	};
+	const signOpts = {headers: headers || {}, host: endpoint, method, path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`, body};
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`, secretAccessKey: `${credentials.secretAccessKey}`});
 
@@ -63,7 +42,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 		headers: signOpts.headers,
 		method,
 		qs: query,
-		uri: endpoint,
+		uri: `https://${endpoint}${signOpts.path}`,
 		body: signOpts.body,
 	};
 
@@ -73,7 +52,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response?.body.message || error.response?.body.Message || error.message;
+		const errorMessage = error.response.body.message || error.response.body.Message || error.message;
 
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
@@ -87,8 +66,8 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 	}
 }
 
-export async function s3ApiRequestREST(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, bucket: string, method: string, path: string, body?: string, query: IDataObject = {}, headers?: object, options: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
-	const response = await s3ApiRequest.call(this, bucket, method, path, body, query, headers, options, region);
+export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers?: object, options: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+	const response = await awsApiRequest.call(this, service, method, path, body, query, headers, options, region);
 	try {
 		return JSON.parse(response);
 	} catch (e) {
@@ -96,8 +75,8 @@ export async function s3ApiRequestREST(this: IHookFunctions | IExecuteFunctions 
 	}
 }
 
-export async function s3ApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, bucket: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
-	const response = await s3ApiRequest.call(this, bucket, method, path, body, query, headers, option, region);
+export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string | Buffer, query: IDataObject = {}, headers?: object, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+	const response = await awsApiRequest.call(this, service, method, path, body, query, headers, option, region);
 	try {
 		return await new Promise((resolve, reject) => {
 			parseString(response, { explicitArray: false }, (err, data) => {
@@ -112,14 +91,14 @@ export async function s3ApiRequestSOAP(this: IHookFunctions | IExecuteFunctions 
 	}
 }
 
-export async function s3ApiRequestSOAPAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, propertyName: string, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers: IDataObject = {}, option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+export async function awsApiRequestSOAPAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, propertyName: string, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers: IDataObject = {},  option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
-		responseData = await s3ApiRequestSOAP.call(this, service, method, path, body, query, headers, option, region);
+		responseData = await awsApiRequestSOAP.call(this, service, method, path, body, query, headers, option, region);
 
 		//https://forums.aws.amazon.com/thread.jspa?threadID=55746
 		if (get(responseData, `${propertyName.split('.')[0]}.NextContinuationToken`)) {
