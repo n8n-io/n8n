@@ -20,7 +20,6 @@ import {
 	erpNextApiRequest,
 	erpNextApiRequestAllItems
 } from './GenericFunctions';
-import { filter } from 'rhea';
 
 export class ERPNext implements INodeType {
 	description: INodeTypeDescription = {
@@ -107,12 +106,13 @@ export class ERPNext implements INodeType {
 					'/api/resource/DocType',
 					{},
 				);
+
 				for (const type of types) {
 					const typeName = type.name;
 					const typeId = type.name;
 					returnData.push({
 						name: typeName,
-						value: typeId
+						value: encodeURI(typeId)
 					});
 				}
 				return returnData;
@@ -132,6 +132,7 @@ export class ERPNext implements INodeType {
 					{},
 				);
 				for (const field of data.fields) {
+					//field.reqd wheater is required or not
 					const fieldName = field.label;
 					const fieldId = field.fieldname;
 					returnData.push({
@@ -226,6 +227,11 @@ export class ERPNext implements INodeType {
 
 					if (properties) {
 						const fieldsValues = (properties as IDataObject).customProperty as IDataObject[];
+						if (Array.isArray(fieldsValues) && fieldsValues.length === 0) {
+							throw new Error(
+								`At least one property has to be defined`,
+							);
+						}
 						for (const fieldValue of fieldsValues) {
 							body[fieldValue.field as string] = fieldValue.value;
 						}

@@ -35,8 +35,6 @@ export async function erpNextApiRequest(this: IExecuteFunctions | IWebhookFuncti
 
 	options = Object.assign({}, options, option);
 
-	console.log(options);
-
 	options.headers!['Authorization'] = `token ${credentials.apiKey}:${credentials.apiSecret}`;
 
 	if (Object.keys(body).length === 0) {
@@ -45,6 +43,13 @@ export async function erpNextApiRequest(this: IExecuteFunctions | IWebhookFuncti
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+
+		if (error.statusCode === 307) {
+			throw new Error(
+				`ARPNext error response [${error.statusCode}]: Make sure the subdomain is correct`
+			);
+		}
+
 		let errorMessages;
 		if (error.response && error.response.body && error.response.body._server_messages) {
 			const errors = JSON.parse(error.response.body._server_messages);
@@ -70,7 +75,7 @@ export async function erpNextApiRequestAllItems(this: IHookFunctions | IExecuteF
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query!.limit_start += query!.limit_page_lengt - 1;
 	} while (
-		responseData.data.length !== 0
+		responseData.data.length > 0
 	);
 
 	return returnData;

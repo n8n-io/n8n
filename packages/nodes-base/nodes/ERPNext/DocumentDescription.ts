@@ -235,6 +235,7 @@ export const documentFields = [
 		displayName: 'Properties',
 		name: 'properties',
 		type: 'fixedCollection',
+		placeholder: 'Add Property',
 		description: 'Properties of request body.',
 		default: {},
 		typeOptions: {
