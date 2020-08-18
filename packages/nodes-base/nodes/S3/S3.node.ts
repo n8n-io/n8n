@@ -46,24 +46,24 @@ import {
 	s3ApiRequestSOAPAllItems,
 } from './GenericFunctions';
 
-export class AwsS3 implements INodeType {
+export class S3 implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'AWS S3',
-		name: 'awsS3',
-		icon: 'file:s3.png',
+		displayName: 'S3',
+		name: 'S3',
+		icon: 'file:generic-s3.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to AWS S3',
+		description: 'Sends data to any S3-compatible services',
 		defaults: {
-			name: 'AWS S3',
+			name: 'S3',
 			color: '#d05b4b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'aws',
+				name: 'customS3Endpoint',
 				required: true,
 			},
 		],
@@ -117,7 +117,7 @@ export class AwsS3 implements INodeType {
 					let credentials;
 
 					try {
-						credentials = this.getCredentials('aws');
+						credentials = this.getCredentials('customS3Endpoint');
 					} catch (error) {
 						throw new Error(error);
 					}
