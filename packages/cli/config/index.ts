@@ -142,9 +142,15 @@ const config = convict({
 				doc: 'Fetch credentials from API',
 				format: String,
 				default: '',
-				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
+				env: 'CREDENTIALS_OVERWRITE_ENDPOINT'
 			},
 		},
+		limit: {
+			doc: 'Maximum number of credentials',
+			format: Number,
+			default: 10,
+			env: 'CREDENTIALS_LIMIT'
+		}
 	},
 
 	executions: {
