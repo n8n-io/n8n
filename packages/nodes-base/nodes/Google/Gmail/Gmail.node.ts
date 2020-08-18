@@ -439,7 +439,8 @@ export class Gmail implements INodeType {
 
 					const id = this.getNodeParameter('messageId', i);
 
-					const format = this.getNodeParameter('format', i);
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const format = additionalFields.format || 'resolved';
 
 					if (format === 'resolved') {
 						qs.format = 'raw';
@@ -454,7 +455,7 @@ export class Gmail implements INodeType {
 					let nodeExecutionData: INodeExecutionData;
 					if (format === 'resolved') {
 						const messageEncoded = Buffer.from(responseData.raw, 'base64').toString('utf8');
-						const dataPropertyNameDownload = this.getNodeParameter('dataPropertyAttachmentsPrefixName', i) as string;
+						const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
 
 						nodeExecutionData = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
 					} else  {
@@ -466,7 +467,6 @@ export class Gmail implements INodeType {
 					responseData = nodeExecutionData;
 				}
 				if (operation === 'getAll') {
-					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
@@ -505,15 +505,14 @@ export class Gmail implements INodeType {
 						responseData = [];
 					}
 
-					let resolveFormat: undefined | string = undefined;
+					const format = additionalFields.format || 'resolved';
 
-					if (resolveData) {
-						resolveFormat = this.getNodeParameter('resolveFormat', i) as string;
+					if (format !== 'ids') {
 
-						if (resolveFormat === 'resolved') {
+						if (format === 'resolved') {
 							qs.format = 'raw';
 						} else {
-							qs.format = resolveFormat;
+							qs.format = format;
 						}
 
 						for (let i = 0; i < responseData.length; i++) {
@@ -525,15 +524,15 @@ export class Gmail implements INodeType {
 								qs
 							);
 
-							if (resolveFormat === 'resolved') {
+							if (format === 'resolved') {
 								const messageEncoded = Buffer.from(responseData[i].raw, 'base64').toString('utf8');
-								const dataPropertyNameDownload = this.getNodeParameter('dataPropertyAttachmentsPrefixName', i) as string;
+								const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
 								responseData[i] = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
 							}
 						}
 					}
 
-					if (resolveFormat !== 'resolved') {
+					if (format !== 'resolved') {
 						responseData = this.helpers.returnJsonArray(responseData);
 					}
 
@@ -638,7 +637,8 @@ export class Gmail implements INodeType {
 					method = 'GET';
 					const id = this.getNodeParameter('messageId', i);
 
-					const format = this.getNodeParameter('format', i);
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const format = additionalFields.format || 'resolved';
 
 					if (format === 'resolved') {
 						qs.format = 'raw';
@@ -655,7 +655,7 @@ export class Gmail implements INodeType {
 					let nodeExecutionData: INodeExecutionData;
 					if (format === 'resolved') {
 						const messageEncoded = Buffer.from(responseData.message.raw, 'base64').toString('utf8');
-						const dataPropertyNameDownload = this.getNodeParameter('dataPropertyAttachmentsPrefixName', i) as string;
+						const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
 
 						nodeExecutionData = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
 					} else {
@@ -679,7 +679,6 @@ export class Gmail implements INodeType {
 					responseData = { success: true };
 				}
 				if (operation === 'getAll') {
-					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
@@ -709,15 +708,13 @@ export class Gmail implements INodeType {
 						responseData = [];
 					}
 
-					let resolveFormat: undefined | string = undefined;
+					const format = additionalFields.format || 'resolved';
 
-					if (resolveData) {
-						resolveFormat = this.getNodeParameter('resolveFormat', i) as string;
-
-						if (resolveFormat === 'resolved') {
+					if (format !== 'ids') {
+						if (format === 'resolved') {
 							qs.format = 'raw';
 						} else {
-							qs.format = resolveFormat;
+							qs.format = format;
 						}
 
 						for (let i = 0; i < responseData.length; i++) {
@@ -730,15 +727,15 @@ export class Gmail implements INodeType {
 								qs
 							);
 
-							if (resolveFormat === 'resolved') {
+							if (format === 'resolved') {
 								const messageEncoded = Buffer.from(responseData[i].message.raw, 'base64').toString('utf8');
-								const dataPropertyNameDownload = this.getNodeParameter('dataPropertyAttachmentsPrefixName', i) as string;
+								const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
 								responseData[i] = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
 							}
 						}
 					}
 
-					if (resolveFormat !== 'resolved') {
+					if (format !== 'resolved') {
 						responseData = this.helpers.returnJsonArray(responseData);
 					}
 				}
