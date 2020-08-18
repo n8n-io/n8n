@@ -566,8 +566,8 @@ export class ZendeskTrigger implements INodeType {
 								{
 									field: 'notification_target',
 									value: [],
-								}
-							]
+								},
+							],
 						},
 					};
 					const bodyTarget: IDataObject = {
@@ -582,16 +582,19 @@ export class ZendeskTrigger implements INodeType {
 					};
 					let target: IDataObject = {};
 
-					// if target id exists but trigger does then reuse the target
+					// if target id exists but trigger does not then reuse the target
 					// and create the trigger else create both
 					if (webhookData.targetId !== undefined) {
 						target.id = webhookData.targetId;
 					} else {
 						target = await zendeskApiRequest.call(this, 'POST', '/targets', bodyTarget);
+						target = target.target as IDataObject;
 					}
 
 					// @ts-ignore
 					bodyTrigger.trigger.actions[0].value = [target.id, JSON.stringify(message)];
+
+					//@ts-ignore
 					const { trigger } = await zendeskApiRequest.call(this, 'POST', '/triggers', bodyTrigger);
 					webhookData.webhookId = trigger.id;
 					webhookData.targetId = target.id;
