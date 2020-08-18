@@ -291,6 +291,7 @@
       "dist/nodes/Rocketchat/Rocketchat.node.js",
       "dist/nodes/RssFeedRead.node.js",
       "dist/nodes/Rundeck/Rundeck.node.js",
+      "dist/nodes/S3/S3.node.js",
       "dist/nodes/Salesforce/Salesforce.node.js",
       "dist/nodes/Set.node.js",
       "dist/nodes/Shopify/Shopify.node.js",

@@ -31,18 +31,25 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 
 	let credentials;
 
-	try {
-			credentials = this.getCredentials('aws');
-	} catch (error) {
-		throw new Error(error);
-	}
+	credentials = this.getCredentials('customS3Endpoint');
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
 
+	if (!(credentials.endpoint as string).startsWith('http')) {
+		throw new Error('HTTP(S) Scheme is required in endpoint definition');
+	}
 
-	const endpoint = new URL(`https://${bucket}.s3.${region || credentials.region}.amazonaws.com`);
+	const endpoint = new URL(credentials.endpoint as string);
+
+	if (bucket) {
+		if (credentials.forcePathStyle) {
+			path = `/${bucket}${path}`;
+		} else {
+			endpoint.host = `${bucket}.${endpoint.host}`;
+		}
+	}
 
 	endpoint.pathname = path;
 
@@ -77,13 +84,13 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new Error('The AWS credentials are not valid!');
+				throw new Error('The S3 credentials are not valid!');
 			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
-				throw new Error('The AWS credentials are not valid!');
+				throw new Error('The S3 credentials are not valid!');
 			}
 		}
 
-		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
+		throw new Error(`S3 error response [${error.statusCode}]: ${errorMessage}`);
 	}
 }
 
