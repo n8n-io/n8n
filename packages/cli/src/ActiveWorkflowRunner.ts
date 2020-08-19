@@ -162,6 +162,21 @@ export class ActiveWorkflowRunner {
 	}
 
 	/**
+	 * Gets all request methods associated with a single webhook
+	 *
+	 * @param {string} path webhook path
+	 * @returns {Promise<string[]>}
+	 * @memberof ActiveWorkflowRunner
+	 */
+	async getWebhookMethods(path: string) : Promise<string[]> {
+		const webhooks = await Db.collections.Webhook?.find({ webhookPath: path}) as IWebhookDb[];
+
+		// Gather all request methods in string array
+		const webhookMethods: string[] = webhooks.map(webhook => webhook.method);
+		return webhookMethods;
+	}
+
+	/**
 	 * Returns the ids of the currently active workflows
 	 *
 	 * @returns {string[]}

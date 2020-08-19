@@ -17,7 +17,7 @@ export class MySql implements INodeType {
 		icon: 'file:mysql.png',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in MySQL.',
+		description: 'Get, add and update data in MySQL.',
 		defaults: {
 			name: 'MySQL',
 			color: '#4279a2',
@@ -39,7 +39,7 @@ export class MySql implements INodeType {
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
-						description: 'Executes a SQL query.',
+						description: 'Execute an SQL query.',
 					},
 					{
 						name: 'Insert',
@@ -49,7 +49,7 @@ export class MySql implements INodeType {
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Updates rows in database.',
+						description: 'Update rows in database.',
 					},
 				],
 				default: 'insert',

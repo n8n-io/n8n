@@ -205,7 +205,7 @@ export const webinarFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Attendees register once and can attend any of the occurences',
+						name: 'Attendees register once and can attend any of the occurrences',
 						value: 1,
 					},
 					{
@@ -308,8 +308,8 @@ export const webinarFields = [
 		},
 		options: [
 			{
-				displayName: 'Occurence ID',
-				name: 'occurenceId',
+				displayName: 'Occurrence ID',
+				name: 'occurrenceId',
 				type: 'string',
 				default: '',
 				description: 'To view webinar details of a particular occurrence of the recurring webinar.',

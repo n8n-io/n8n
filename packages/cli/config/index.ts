@@ -159,6 +159,30 @@ const config = convict({
 			env: 'EXECUTIONS_PROCESS'
 		},
 
+		// A Workflow times out and gets canceled after this time (seconds).
+		// If the workflow is executed in the main process a soft timeout
+		// is executed (takes effect after the current node finishes).
+		// If a workflow is running in its own process is a soft timeout
+		// tried first, before killing the process after waiting for an
+		// additional fifth of the given timeout duration.
+		//
+		// To deactivate timeout set it to -1
+		//
+		// Timeout is currently not activated by default which will change
+		// in a future version.
+		timeout: {
+			doc: 'Max run time (seconds) before stopping the workflow execution',
+			format: Number,
+			default: -1,
+			env: 'EXECUTIONS_TIMEOUT'
+		},
+		maxTimeout: {
+			doc: 'Max execution time (seconds) that can be set for a workflow individually',
+			format: Number,
+			default: 3600,
+			env: 'EXECUTIONS_TIMEOUT_MAX'
+		},
+
 		// If a workflow executes all the data gets saved by default. This
 		// could be a problem when a workflow gets executed a lot and processes
 		// a lot of data. To not exceed the database's capacity it is possible to
@@ -185,6 +209,7 @@ const config = convict({
 		// in the editor.
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
+			format: 'Boolean',
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS'
 		},
@@ -196,16 +221,19 @@ const config = convict({
 		// a future version.
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
+			format: 'Boolean',
 			default: false,
 			env: 'EXECUTIONS_DATA_PRUNE'
 		},
 		pruneDataMaxAge: {
 			doc: 'How old (hours) the execution data has to be to get deleted',
+			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE'
 		},
 		pruneDataTimeout: {
 			doc: 'Timeout (seconds) after execution data has been pruned',
+			format: Number,
 			default: 3600,
 			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT'
 		},
@@ -305,13 +333,43 @@ const config = convict({
 				env: 'N8N_JWT_AUTH_HEADER',
 				doc: 'The request header containing a signed JWT'
 			},
+			jwtHeaderValuePrefix: {
+				format: String,
+				default: '',
+				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
+				doc: 'The request header value prefix to strip (optional)'
+			},
 			jwksUri: {
 				format: String,
 				default: '',
 				env: 'N8N_JWKS_URI',
-				doc: 'The URI to fetch JWK Set for JWT auh'
+				doc: 'The URI to fetch JWK Set for JWT authentication'
 			},
-		}
+			jwtIssuer: {
+				format: String,
+				default: '',
+				env: 'N8N_JWT_ISSUER',
+				doc: 'JWT issuer to expect (optional)'
+			},
+			jwtNamespace: {
+				format: String,
+				default: '',
+				env: 'N8N_JWT_NAMESPACE',
+				doc: 'JWT namespace to expect (optional)'
+			},
+			jwtAllowedTenantKey: {
+				format: String,
+				default: '',
+				env: 'N8N_JWT_ALLOWED_TENANT_KEY',
+				doc: 'JWT tenant key name to inspect within JWT namespace (optional)'
+			},
+			jwtAllowedTenant: {
+				format: String,
+				default: '',
+				env: 'N8N_JWT_ALLOWED_TENANT',
+				doc: 'JWT tenant to allow (optional)'
+			},
+		},
 	},
 
 	endpoints: {

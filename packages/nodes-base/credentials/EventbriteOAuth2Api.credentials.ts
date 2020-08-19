@@ -10,6 +10,7 @@ export class EventbriteOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Eventbrite OAuth2 API';
+	documentationUrl = 'eventbrite';
 	properties = [
 		{
 			displayName: 'Authorization URL',

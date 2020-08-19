@@ -6,7 +6,22 @@ import {
 export class OAuth1Api implements ICredentialType {
 	name = 'oAuth1Api';
 	displayName = 'OAuth1 API';
+	documentationUrl = 'httpRequest';
 	properties = [
+		{
+			displayName: 'Authorization URL',
+			name: 'authUrl',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Access Token URL',
+			name: 'accessTokenUrl',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			required: true,
+		},
 		{
 			displayName: 'Consumer Key',
 			name: 'consumerKey',
@@ -24,20 +39,6 @@ export class OAuth1Api implements ICredentialType {
 		{
 			displayName: 'Request Token URL',
 			name: 'requestTokenUrl',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-			required: true,
-		},
-		{
-			displayName: 'Authorization URL',
-			name: 'authUrl',
-			type: 'string' as NodePropertyTypes,
-			default: '',
-			required: true,
-		},
-		{
-			displayName: 'Access Token URL',
-			name: 'accessTokenUrl',
 			type: 'string' as NodePropertyTypes,
 			default: '',
 			required: true,

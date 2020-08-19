@@ -53,7 +53,15 @@ export class ActiveWebhooks {
 		const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
 		if (webhookExists === false) {
 			// If webhook does not exist yet create it
-			await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+			try {
+				await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+			} catch (error) {
+				// If there was a problem unregister the webhook again
+				delete this.webhookUrls[webhookKey];
+				delete this.workflowWebhooks[webhookData.workflowId];
+
+				throw error;
+			}
 		}
 
 		this.workflowWebhooks[webhookData.workflowId].push(webhookData);
@@ -77,6 +85,21 @@ export class ActiveWebhooks {
 		return this.webhookUrls[webhookKey];
 	}
 
+	/**
+	 * Gets all request methods associated with a single webhook
+	 * @param path
+	 */
+	getWebhookMethods(path: string): string[] {
+		const methods : string[] = [];
+
+		Object.keys(this.webhookUrls)
+		.filter(key => key.includes(path))
+		.map(key => {
+			methods.push(key.split('|')[0]);
+		});
+
+		return methods;
+	}
 
 	/**
 	 * Returns the ids of all the workflows which have active webhooks
