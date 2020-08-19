@@ -27,6 +27,7 @@ export class VueAuth extends Vue {
 		let token;
 		try {
 			token = await this.auth0Client?.getTokenSilently();
+			window.localStorage.setItem('auth0-token', token);
 			return User.forToken(token, namespace, tenantId);
 		} catch (err) {
 			console.warn('Unable to get token', err);
