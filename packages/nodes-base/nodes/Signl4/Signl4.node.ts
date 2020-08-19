@@ -4,11 +4,11 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IBinaryKeyData,
 } from 'n8n-workflow';
 
 import {
@@ -65,12 +65,12 @@ export class Signl4 implements INodeType {
 					{
 						name: 'Send',
 						value: 'send',
-						description: 'Send an alert.',
+						description: 'Send an alert',
 					},
 					{
 						name: 'Resolve',
 						value: 'resolve',
-						description: 'Resolve an alert.',
+						description: 'Resolve an alert',
 					},
 				],
 				default: 'send',
@@ -267,7 +267,7 @@ export class Signl4 implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields',i) as IDataObject;
 
 					const data: IDataObject = {
-						'message': message
+						message,
 					};
 
 					if (additionalFields.alertingScenario) {
@@ -345,6 +345,7 @@ export class Signl4 implements INodeType {
 					const data: IDataObject = {};
 
 					data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;
+
 					data['X-S4-Status'] = 'resolved';
 
 					const credentials = this.getCredentials('signl4Api');
