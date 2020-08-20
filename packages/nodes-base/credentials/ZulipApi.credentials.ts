@@ -6,6 +6,7 @@ import {
 export class ZulipApi implements ICredentialType {
 	name = 'zulipApi';
 	displayName = 'Zulip API';
+	documentationUrl = 'zulip';
 	properties = [
 		{
 			displayName: 'URL',

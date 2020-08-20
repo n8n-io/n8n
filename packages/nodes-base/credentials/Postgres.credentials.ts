@@ -7,6 +7,7 @@ import {
 export class Postgres implements ICredentialType {
 	name = 'postgres';
 	displayName = 'Postgres';
+	documentationUrl = 'postgres';
 	properties = [
 		{
 			displayName: 'Host',

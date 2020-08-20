@@ -7,6 +7,7 @@ import {
 export class CustomerIoApi implements ICredentialType {
 	name = 'customerIoApi';
 	displayName = 'Customer.io API';
+	documentationUrl = 'customerIo';
 	properties = [
 		{
 			displayName: 'App API Key',

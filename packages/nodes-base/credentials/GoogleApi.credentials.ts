@@ -7,6 +7,7 @@ import {
 export class GoogleApi implements ICredentialType {
 	name = 'googleApi';
 	displayName = 'Google API';
+	documentationUrl = 'google';
 	properties = [
 		{
 			displayName: 'Email',

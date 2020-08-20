@@ -7,6 +7,7 @@ import {
 export class HttpBasicAuth implements ICredentialType {
 	name = 'httpBasicAuth';
 	displayName = 'Basic Auth';
+	documentationUrl = 'httpRequest';
 	properties = [
 		{
 			displayName: 'User',
