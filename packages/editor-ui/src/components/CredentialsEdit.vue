@@ -112,15 +112,20 @@ export default mixins(
 		documentationUrl (): string {
 			if (this.editCredentials) {
 				const credentialType = this.$store.getters.credentialType(this.editCredentials.type);
-				return `${credentialType.documentationUrl}`;
-			} else {
-				if (this.credentialType) {
-					const credentialType = this.$store.getters.credentialType(this.credentialType);
-					return `${credentialType.documentationUrl}`;
+				if (credentialType.documentationUrl === undefined) {
+					return credentialType.name;
 				} else {
-					return ``;
+					return `${credentialType.documentationUrl}`;
+				}
+			} else {
+				const credentialType = this.$store.getters.credentialType(this.credentialType);
+				if (credentialType.documentationUrl === undefined) {
+					return credentialType.name;
+				} else {
+					return `${credentialType.documentationUrl}`;
 				}
 			}
+	
 		},
 		node (): INodeUi {
 			return this.$store.getters.activeNode;
@@ -347,8 +352,6 @@ export default mixins(
 	flex-direction: row;
 	min-width: 40%;
 }
-
-
 
 #help-logo {
 	flex: 1;
