@@ -506,7 +506,7 @@ export class Asana implements INodeType {
 
 			{
 				displayName: 'Task ID',
-				name: 'id',
+				name: 'taskId',
 				type: 'string',
 				default: '',
 				required: true,
@@ -550,7 +550,7 @@ export class Asana implements INodeType {
 
 			{
 				displayName: 'Task ID',
-				name: 'id',
+				name: 'taskId',
 				type: 'string',
 				default: '',
 				required: true,
@@ -571,6 +571,9 @@ export class Asana implements INodeType {
 				name: 'tag',
 				type: 'options',
 				typeOptions: {
+					loadOptionsDependsOn: [
+						'taskId',
+					],
 					loadOptionsMethod: 'getTags',
 				},
 				default: '',
@@ -1112,7 +1115,14 @@ export class Asana implements INodeType {
 			// Get all tags to display them to user so that they can be selected easily
 			// See: https://developers.asana.com/docs/get-multiple-tags
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = `/tags`;
+				let endpoint = `/tags`;
+				const operation = this.getNodeParameter('operation', 0) as string;
+
+				if (operation === 'remove') {
+					const taskId = this.getCurrentNodeParameter('taskId') as string;
+					endpoint = `/tasks/${taskId}/tags`;
+				}
+
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
@@ -1299,7 +1309,7 @@ export class Asana implements INodeType {
 					//         taskTag:add
 					// ----------------------------------
 
-					const taskId = this.getNodeParameter('id', i) as string;
+					const taskId = this.getNodeParameter('taskId', i) as string;
 
 					requestMethod = 'POST';
 
@@ -1318,7 +1328,7 @@ export class Asana implements INodeType {
 					//         taskTag:remove
 					// ----------------------------------
 
-					const taskId = this.getNodeParameter('id', i) as string;
+					const taskId = this.getNodeParameter('taskId', i) as string;
 
 					requestMethod = 'POST';
 
