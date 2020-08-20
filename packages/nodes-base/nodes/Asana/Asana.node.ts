@@ -977,7 +977,7 @@ export class Asana implements INodeType {
 				const endpoint = '/workspaces';
 				const responseData = await asanaApiRequestAllItems.call(this, 'GET', endpoint, {});
 
-				if (responseData.data === undefined) {
+				if (responseData === undefined) {
 					throw new Error('No data got returned');
 				}
 
@@ -1041,7 +1041,7 @@ export class Asana implements INodeType {
 				}
 
 				const returnData: INodePropertyOptions[] = [];
-				for (const projectData of responseData) {
+				for (const projectData of responseData.data) {
 					if (projectData.resource_type !== 'project') {
 						// Not sure if for some reason also ever other resources
 						// get returned but just in case filter them out
@@ -1060,7 +1060,7 @@ export class Asana implements INodeType {
 			// can be selected easily
 			async getSections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
-				const endpoint = `projects/${projectId}/sections`;
+				const endpoint = `/projects/${projectId}/sections`;
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
@@ -1086,7 +1086,7 @@ export class Asana implements INodeType {
 			// Get all users to display them to user so that they can be selected easily
 			// See: https://developers.asana.com/docs/get-multiple-users
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = `users`;
+				const endpoint = `/users`;
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
@@ -1112,7 +1112,7 @@ export class Asana implements INodeType {
 			// Get all tags to display them to user so that they can be selected easily
 			// See: https://developers.asana.com/docs/get-multiple-tags
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = `tags`;
+				const endpoint = `/tags`;
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
@@ -1205,7 +1205,7 @@ export class Asana implements INodeType {
 
 					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
-					responseData = { success: true };
+					responseData = responseData.data;
 
 				} else if (operation === 'move') {
 					// ----------------------------------
