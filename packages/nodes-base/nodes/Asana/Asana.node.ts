@@ -35,7 +35,7 @@ export class Asana implements INodeType {
 			{
 				name: 'asanaApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -67,8 +67,6 @@ export class Asana implements INodeType {
 				description: 'The resource to operate on.',
 			},
 
-
-
 			// ----------------------------------
 			//         task
 			// ----------------------------------
@@ -97,7 +95,7 @@ export class Asana implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get data of a task',
+						description: 'Get a task',
 					},
 					{
 						name: 'Update',
@@ -168,7 +166,7 @@ export class Asana implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
-				name: 'id',
+				name: 'taskId',
 				type: 'string',
 				default: '',
 				required: true,
@@ -190,7 +188,7 @@ export class Asana implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
-				name: 'id',
+				name: 'taskId',
 				type: 'string',
 				default: '',
 				required: true,
@@ -212,7 +210,7 @@ export class Asana implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
-				name: 'id',
+				name: 'taskId',
 				type: 'string',
 				default: '',
 				required: true,
@@ -228,7 +226,6 @@ export class Asana implements INodeType {
 				},
 				description: 'The ID of the task to update the data of.',
 			},
-
 
 			// ----------------------------------
 			//         task:search
@@ -256,7 +253,7 @@ export class Asana implements INodeType {
 				description: 'The workspace in which the task is searched',
 			},
 			{
-				displayName: 'Search Properties',
+				displayName: 'Filters',
 				name: 'searchTaskProperties',
 				type: 'collection',
 				displayOptions: {
@@ -271,7 +268,7 @@ export class Asana implements INodeType {
 				},
 				default: {},
 				description: 'Properties to search for',
-				placeholder: 'Add Search Property',
+				placeholder: 'Add Filter',
 				options: [
 					// TODO: Add "assignee" and "assignee_status"
 					{
@@ -283,14 +280,14 @@ export class Asana implements INodeType {
 							rows: 5,
 						},
 						default: '',
-						description: 'Text to search for in name or notes.',
+						description: 'Text to search for in name or notes',
 					},
 					{
 						displayName: 'Completed',
 						name: 'completed',
 						type: 'boolean',
 						default: false,
-						description: 'If the task is marked completed.',
+						description: 'If the task is marked completed',
 					},
 				],
 			},
@@ -300,7 +297,7 @@ export class Asana implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Task ID',
-				name: 'id',
+				name: 'taskId',
 				type: 'string',
 				default: '',
 				required: true,
@@ -314,7 +311,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the task to be moved.',
+				description: 'The ID of the task to be moved',
 			},
 			{
 				displayName: 'Project',
@@ -336,7 +333,7 @@ export class Asana implements INodeType {
 						],
 					},
 				},
-				description: 'Project to show the sections of.',
+				description: 'Project to show the sections of',
 			},
 			{
 				displayName: 'Section',
@@ -368,7 +365,7 @@ export class Asana implements INodeType {
 			//         task:create/update properties
 			// ----------------------------------
 			{
-				displayName: 'Other Properties',
+				displayName: 'Additional Fields',
 				name: 'otherProperties',
 				type: 'collection',
 				displayOptions: {
@@ -383,8 +380,7 @@ export class Asana implements INodeType {
 					},
 				},
 				default: {},
-				description: 'Other properties to set',
-				placeholder: 'Add Property',
+				placeholder: 'Add Field',
 				options: [
 					{
 						displayName: 'Name',
@@ -469,6 +465,7 @@ export class Asana implements INodeType {
 					},
 				],
 			},
+
 			// ----------------------------------
 			//         taskTag
 			// ----------------------------------
@@ -488,12 +485,12 @@ export class Asana implements INodeType {
 					{
 						name: 'Add',
 						value: 'add',
-						description: 'Add a tag to a task',
+						description: 'Add tag to task',
 					},
 					{
 						name: 'Remove',
 						value: 'remove',
-						description: 'Remove a tag from a task',
+						description: 'Remove tag from task',
 					},
 				],
 				default: 'add',
@@ -610,7 +607,7 @@ export class Asana implements INodeType {
 					{
 						name: 'Add',
 						value: 'add',
-						description: 'Add a comment to a task',
+						description: 'Add comment to task',
 					},
 				],
 				default: 'add',
@@ -623,7 +620,7 @@ export class Asana implements INodeType {
 
 			{
 				displayName: 'Task ID',
-				name: 'id',
+				name: 'taskId',
 				type: 'string',
 				default: '',
 				required: true,
@@ -766,7 +763,7 @@ export class Asana implements INodeType {
 			//         user:get
 			// ----------------------------------
 			{
-				displayName: 'ID',
+				displayName: 'User ID',
 				name: 'userId',
 				type: 'string',
 				default: '',
@@ -809,7 +806,6 @@ export class Asana implements INodeType {
 				},
 				description: 'The workspace in which to get users.',
 			},
-
 
 			// ----------------------------------
 			//         project
@@ -1032,7 +1028,6 @@ export class Asana implements INodeType {
 
 				return returnData;
 			},
-
 			// Get all the available projects to display them to user so that they can be
 			// selected easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -1176,7 +1171,7 @@ export class Asana implements INodeType {
 			if (resource === 'task') {
 				if (operation === 'create') {
 					// ----------------------------------
-					//         create
+					//         task:create
 					// ----------------------------------
 
 					requestMethod = 'POST';
@@ -1194,11 +1189,11 @@ export class Asana implements INodeType {
 
 				} else if (operation === 'delete') {
 					// ----------------------------------
-					//         delete
+					//         task:delete
 					// ----------------------------------
 
 					requestMethod = 'DELETE';
-					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
+					endpoint = '/tasks/' + this.getNodeParameter('taskId', i) as string;
 
 					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -1206,12 +1201,12 @@ export class Asana implements INodeType {
 
 				} else if (operation === 'get') {
 					// ----------------------------------
-					//         get
+					//         task:get
 					// ----------------------------------
 
 					requestMethod = 'GET';
 
-					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
+					endpoint = '/tasks/' + this.getNodeParameter('taskId', i) as string;
 
 					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -1228,7 +1223,7 @@ export class Asana implements INodeType {
 
 					endpoint = `/sections/${sectionId}/addTask`;
 
-					body.task = this.getNodeParameter('id', i) as string;
+					body.task = this.getNodeParameter('taskId', i) as string;
 
 					Object.assign(body);
 
@@ -1242,7 +1237,7 @@ export class Asana implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'PUT';
-					endpoint = '/tasks/' + this.getNodeParameter('id', i) as string;
+					endpoint = '/tasks/' + this.getNodeParameter('taskId', i) as string;
 
 					const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 					Object.assign(body, otherProperties);
@@ -1270,14 +1265,13 @@ export class Asana implements INodeType {
 				} else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
-
 			} else if (resource === 'taskComment') {
 				if (operation === 'add') {
 					// ----------------------------------
 					//         taskComment:add
 					// ----------------------------------
 
-					const taskId = this.getNodeParameter('id', i) as string;
+					const taskId = this.getNodeParameter('taskId', i) as string;
 
 					const isTextHtml = this.getNodeParameter('isTextHtml', i) as boolean;
 
@@ -1320,9 +1314,8 @@ export class Asana implements INodeType {
 					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					responseData = { success: true };
-				}
 
-				if (operation === 'remove') {
+				} else if (operation === 'remove') {
 
 					// ----------------------------------
 					//         taskTag:remove
@@ -1340,7 +1333,6 @@ export class Asana implements INodeType {
 
 					responseData = { success: true };
 				}
-
 			} else if (resource === 'user') {
 				if (operation === 'get') {
 					// ----------------------------------
@@ -1370,7 +1362,6 @@ export class Asana implements INodeType {
 
 				}
 			} else if (resource === 'project') {
-
 				if (operation === 'get') {
 					// ----------------------------------
 					//         project:get
@@ -1389,7 +1380,7 @@ export class Asana implements INodeType {
 				} else if (operation === 'getAll') {
 
 					// ----------------------------------
-					//         getAll
+					//         project:getAll
 					// ----------------------------------
 					const workspaceId = this.getNodeParameter('workspace', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
