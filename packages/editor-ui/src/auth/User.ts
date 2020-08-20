@@ -19,7 +19,7 @@ export class User {
 		try {
 			payload = decodeJwt(token) as any; // tslint:disable-line:no-any
 		} catch (err) {
-			console.warn('Invalid token', err);
+			window.console.warn('Invalid token', err);
 			return new User();
 		}
 		const sub = payload.sub as string;

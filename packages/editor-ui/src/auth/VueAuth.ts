@@ -30,7 +30,7 @@ export class VueAuth extends Vue {
 			window.localStorage.setItem('auth0-token', token);
 			return User.forToken(token, namespace, tenantId);
 		} catch (err) {
-			console.warn('Unable to get token', err);
+			window.console.warn('Unable to get token', err);
 			return undefined;
 		}
 	}
@@ -85,7 +85,7 @@ export class VueAuth extends Vue {
 				onRedirectCallback(appState);
 			}
 		} catch (e) {
-			console.error(e);
+			window.console.error(e);
 			this.error = e;
 		} finally {
 			// Initialize our internal authentication state when the page is reloaded

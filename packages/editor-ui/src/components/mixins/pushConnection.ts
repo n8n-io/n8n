@@ -55,7 +55,7 @@ export const pushConnection = mixins(
 
 				this.eventSource = new EventSource(
 					connectionUrl,
-					{ headers: { authorization: `Bearer ${window.localStorage.getItem('auth0-token')}` } }
+					{ headers: { authorization: `Bearer ${window.localStorage.getItem('auth0-token')}` } },
 				);
 
 				this.eventSource.addEventListener('message', this.pushMessageReceived);

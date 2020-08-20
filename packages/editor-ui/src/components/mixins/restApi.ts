@@ -102,7 +102,7 @@ export const restApi = Vue.extend({
 							baseURL: self.$store.getters.getRestUrl,
 							headers: {
 								sessionid: self.$store.getters.sessionId,
-								authorization: `Bearer ${window.localStorage.getItem('auth0-token')}`
+								authorization: `Bearer ${window.localStorage.getItem('auth0-token')}`,
 							},
 						};
 						if (['PATCH', 'POST', 'PUT'].includes(method)) {
