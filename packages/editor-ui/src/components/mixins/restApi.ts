@@ -96,14 +96,22 @@ export const restApi = Vue.extend({
 			return {
 				async makeRestApiRequest (method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 					try {
+
+						const headers =
+							process.env.VUE_APP_JWT_AUTH_ACTIVE === 'true' ?
+								{
+									sessionid: self.$store.getters.sessionId,
+									authorization: `Bearer ${window.localStorage.getItem('auth0-token')}`,
+								} :
+								{
+									sessionid: self.$store.getters.sessionId,
+								};
+
 						const options: AxiosRequestConfig = {
 							method,
 							url: endpoint,
 							baseURL: self.$store.getters.getRestUrl,
-							headers: {
-								sessionid: self.$store.getters.sessionId,
-								authorization: `Bearer ${window.localStorage.getItem('auth0-token')}`,
-							},
+							headers,
 						};
 						if (['PATCH', 'POST', 'PUT'].includes(method)) {
 							options.data = data;

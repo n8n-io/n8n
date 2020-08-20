@@ -53,10 +53,12 @@ export const pushConnection = mixins(
 
 				const connectionUrl = `${this.$store.getters.getRestUrl}/push?sessionId=${this.sessionId}`;
 
-				this.eventSource = new EventSource(
-					connectionUrl,
-					{ headers: { authorization: `Bearer ${window.localStorage.getItem('auth0-token')}` } },
-				);
+				let eventSourceInitDict = undefined;
+				if (process.env.VUE_APP_JWT_AUTH_ACTIVE === 'true') {
+					eventSourceInitDict = { headers: { authorization: `Bearer ${window.localStorage.getItem('auth0-token')}` } };
+				}
+
+				this.eventSource = new EventSource(connectionUrl, eventSourceInitDict);
 
 				this.eventSource.addEventListener('message', this.pushMessageReceived);
 
