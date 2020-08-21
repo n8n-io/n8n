@@ -21,6 +21,15 @@ RUN rm -rf node_modules packages/*/node_modules packages/*/dist
 
 RUN npm install --production --loglevel notice
 RUN lerna bootstrap --hoist -- --production
+RUN npm run faros-node
+
+ENV VUE_APP_JWT_AUTH_ACTIVE true
+ENV VUE_APP_JWT_NAMESPACE https://api.faros.ai
+ENV VUE_APP_JWT_ALLOWED_TENANT_KEY tenantId
+ENV VUE_APP_JWT_AUTH0_DOMAIN faros-ai.auth0.com
+ENV VUE_APP_JWT_AUTH0_CLIENT_ID j4lAOX6qmmjhMzCwsR7PKLh9GfgZz438
+ENV VUE_APP_JWT_AUTH0_AUDIENCE https://api.faros.ai/
+ENV VUE_APP_JWT_AUTH0_SCOPE openid
 RUN npm run build
 
 
