@@ -13,7 +13,6 @@ import {
 
 import {
 	todoistApiRequest,
-	filterAndExecuteForEachTask,
 } from './GenericFunctions';
 
 interface IBodyCreateTask {
