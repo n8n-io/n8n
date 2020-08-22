@@ -9,6 +9,7 @@ export class PipedriveOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Pipedrive OAuth2 API';
+	documentationUrl = 'pipedrive';
 	properties = [
 		{
 			displayName: 'Authorization URL',

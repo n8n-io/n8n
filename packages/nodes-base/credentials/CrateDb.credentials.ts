@@ -3,6 +3,7 @@ import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
 export class CrateDb implements ICredentialType {
 	name = 'crateDb';
 	displayName = 'CrateDB';
+	documentationUrl = 'crateDb';
 	properties = [
 		{
 			displayName: 'Host',

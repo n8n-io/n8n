@@ -13,6 +13,7 @@ import {
 
 import {
 	todoistApiRequest,
+	filterAndExecuteForEachTask,
 } from './GenericFunctions';
 
 interface IBodyCreateTask {
@@ -527,4 +528,4 @@ export class Todoist implements INodeType {
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}
-}
+};

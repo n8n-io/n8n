@@ -10,6 +10,7 @@ export class GitlabOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Gitlab OAuth2 API';
+	documentationUrl = 'gitlab';
 	properties = [
 		{
 			displayName: 'Gitlab Server',

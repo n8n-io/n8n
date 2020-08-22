@@ -2,6 +2,7 @@ import { ContainerOptions } from 'rhea';
 
 import { ITriggerFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
@@ -53,6 +54,29 @@ export class AmqpTrigger implements INodeType {
 				placeholder: 'for durable/persistent topic subscriptions, example: "order-worker"',
 				description: 'Leave empty for non-durable topic subscriptions or queues',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Only Body',
+						name: 'onlyBody',
+						type: 'boolean',
+						default: false,
+						description: 'Returns only the body property.',
+					},
+					{
+						displayName: 'JSON Parse Body',
+						name: 'jsonParseBody',
+						type: 'boolean',
+						default: false,
+						description: 'Parse the body to an object.',
+					},
+				],
+			},
 		]
 	};
 
@@ -67,12 +91,15 @@ export class AmqpTrigger implements INodeType {
 		const sink = this.getNodeParameter('sink', '') as string;
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
+		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
 		}
+
 		let durable = false;
-		if(subscription && clientname) {
+
+		if (subscription && clientname) {
 			durable = true;
 		}
 
@@ -98,7 +125,17 @@ export class AmqpTrigger implements INodeType {
 				lastMsgId = context.message.message_id;
 				return;
 			}
-			self.emit([self.helpers.returnJsonArray([context.message])]);
+
+			let data = context.message;
+
+			if (options.jsonParseBody === true) {
+				data.body = JSON.parse(data.body);
+			}
+			if (options.onlyBody === true) {
+				data = data.body;
+			}
+
+			self.emit([self.helpers.returnJsonArray([data])]);
 		});
 
 		const connection = container.connect(connectOptions);
@@ -141,6 +178,14 @@ export class AmqpTrigger implements INodeType {
 					reject(new Error('Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.'));
 				}, 30000);
 				container.on('message', (context: any) => { // tslint:disable-line:no-any
+					// Check if the only property present in the message is body
+					// in which case we only emit the content of the body property
+					// otherwise we emit all properties and their content
+					if (Object.keys(context.message)[0] === 'body' && Object.keys(context.message).length === 1) {
+						self.emit([self.helpers.returnJsonArray([context.message.body])]);
+					} else {
+						self.emit([self.helpers.returnJsonArray([context.message])]);
+					}
 					clearTimeout(timeoutHandler);
 					resolve(true);
 				});

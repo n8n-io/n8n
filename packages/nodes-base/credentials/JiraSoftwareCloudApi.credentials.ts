@@ -6,6 +6,7 @@ import {
 export class JiraSoftwareCloudApi implements ICredentialType {
 	name = 'jiraSoftwareCloudApi';
 	displayName = 'Jira SW Cloud API';
+	documentationUrl = 'jira';
 	properties = [
 		{
 			displayName: 'Email',
