@@ -185,6 +185,7 @@
       "dist/nodes/Affinity/Affinity.node.js",
       "dist/nodes/Affinity/AffinityTrigger.node.js",
       "dist/nodes/Aws/AwsLambda.node.js",
+      "dist/nodes/Aws/ELB/AwsElb.node.js",
       "dist/nodes/Aws/S3/AwsS3.node.js",
       "dist/nodes/Aws/AwsSes.node.js",
       "dist/nodes/Aws/AwsSns.node.js",
