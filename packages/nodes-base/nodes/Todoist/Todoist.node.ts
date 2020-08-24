@@ -527,4 +527,4 @@ export class Todoist implements INodeType {
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}
-};
+}
