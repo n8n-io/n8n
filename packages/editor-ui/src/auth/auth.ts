@@ -45,7 +45,9 @@ export const authGuard: NavigationGuard = (to, from, next) => {
 
 	const fn = () => {
 		// Unwatch loading
-		unwatch();
+		if (unwatch) {
+			unwatch();
+		}
 
 		// If the user is authenticated, continue with the route
 		if (authService.isAuthenticated) {
