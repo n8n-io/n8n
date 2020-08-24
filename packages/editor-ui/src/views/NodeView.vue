@@ -157,6 +157,7 @@ import {
 	IWorkflowDataUpdate,
 	XYPositon,
 } from '../Interface';
+import titleChange from '../components/mixins/titleChange';
 
 export default mixins(
 	copyPaste,
@@ -167,6 +168,7 @@ export default mixins(
 	showMessage,
 	workflowHelpers,
 	workflowRun,
+	titleChange
 )
 	.extend({
 		name: 'NodeView',
@@ -1324,6 +1326,8 @@ export default mixins(
 					}
 
 					if (workflowId !== null) {
+						let workflow = await this.restApi().getWorkflow(workflowId);
+						titleChange.set(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflowId);
 					} else {
