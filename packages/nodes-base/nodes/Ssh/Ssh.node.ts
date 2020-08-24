@@ -163,7 +163,6 @@ export class Ssh implements INodeType {
 
 				responseData = await ssh.execCommand(command, { cwd, });
 
-				ssh.dispose();
 			}
 
 			if (Array.isArray(responseData)) {
@@ -175,6 +174,8 @@ export class Ssh implements INodeType {
 				returnData.push(responseData as IDataObject);
 			}
 		}
+
+		ssh.dispose();
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}
