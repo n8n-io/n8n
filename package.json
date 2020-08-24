@@ -7,6 +7,7 @@
     "build": "lerna exec npm run build",
     "dev": "lerna exec npm run dev --parallel",
     "clean:dist": "lerna exec -- rimraf ./dist",
+    "faros-node": "cp -r node_modules/n8n-nodes-faros packages/cli/node_modules",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:windows": "cd packages/cli/bin && n8n",

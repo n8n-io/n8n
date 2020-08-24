@@ -2,6 +2,9 @@
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
 import Vue from 'vue';
 
+// Import Auth plugin and auth configuration
+import { Auth0Plugin, authGuard } from './auth';
+
 import 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'vue-prism-editor/dist/VuePrismEditor.css';
@@ -165,6 +168,29 @@ library.add(faUndo);
 library.add(faUsers);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
+
+if (process.env.VUE_APP_JWT_AUTH_ACTIVE === 'true') {
+	// Install the authentication plugin only if JWT Auth is active
+	Vue.use(Auth0Plugin, {
+		// tslint:disable-next-line: no-any
+		onRedirectCallback: (appState: any) => {
+			router.push(
+				appState && appState.targetUrl ? appState.targetUrl : window.location.pathname
+			);
+		},
+		auth0Options: {
+			domain: process.env.VUE_APP_JWT_AUTH0_DOMAIN,
+			clientId: process.env.VUE_APP_JWT_AUTH0_CLIENT_ID,
+			audience: process.env.VUE_APP_JWT_AUTH0_AUDIENCE,
+			scope: process.env.VUE_APP_JWT_AUTH0_SCOPE,
+			namespace: process.env.VUE_APP_JWT_NAMESPACE,
+			tenantId: process.env.VUE_APP_JWT_ALLOWED_TENANT_KEY,
+		},
+	});
+	// Guard all router paths with auth guard
+	router.beforeEach(authGuard);
+}
+
 
 Vue.config.productionTip = false;
 

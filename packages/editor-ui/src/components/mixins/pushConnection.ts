@@ -10,6 +10,7 @@ import {
 
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import EventSource from 'eventsource';
 
 import mixins from 'vue-typed-mixins';
 
@@ -52,8 +53,14 @@ export const pushConnection = mixins(
 
 				const connectionUrl = `${this.$store.getters.getRestUrl}/push?sessionId=${this.sessionId}`;
 
-				this.eventSource = new EventSource(connectionUrl);
-				this.eventSource.addEventListener('message', this.pushMessageReceived, false);
+				let eventSourceInitDict = undefined;
+				if (process.env.VUE_APP_JWT_AUTH_ACTIVE === 'true') {
+					eventSourceInitDict = { headers: { authorization: `Bearer ${window.localStorage.getItem('auth0-token')}` } };
+				}
+
+				this.eventSource = new EventSource(connectionUrl, eventSourceInitDict);
+
+				this.eventSource.addEventListener('message', this.pushMessageReceived);
 
 				this.eventSource.addEventListener('open', () => {
 					this.$store.commit('setPushConnectionActive', true);
@@ -61,7 +68,7 @@ export const pushConnection = mixins(
 						clearTimeout(this.reconnectTimeout);
 						this.reconnectTimeout = null;
 					}
-				}, false);
+				});
 
 				this.eventSource.addEventListener('error', () => {
 					this.pushDisconnect();
@@ -73,7 +80,7 @@ export const pushConnection = mixins(
 
 					this.$store.commit('setPushConnectionActive', false);
 					this.pushAutomaticReconnect();
-				}, false);
+				});
 			},
 
 			/**

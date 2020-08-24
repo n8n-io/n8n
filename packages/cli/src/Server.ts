@@ -173,6 +173,24 @@ class App {
 		this.versions = await GenericHelpers.getVersions();
 		const authIgnoreRegex = new RegExp(`^\/(healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
 
+		const jwtAuthIgnoreRegex = new RegExp(`^\/(healthz|${this.endpointWebhook}|${this.endpointWebhookTest}|(?!${this.restEndpoint})|${this.restEndpoint}\/node-icon)\/?.*$`);
+
+		if (process.env['NODE_ENV'] !== 'production') {
+			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+				// Allow access also from frontend when developing
+				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
+				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+				res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, sessionid, Authorization, Cache-Control');
+				next();
+			});
+		}
+
+		// Options endpoint for preflight request
+		this.app.options('*', ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+			return '';
+		}));
+
+
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
 		if (basicAuthActive === true) {
@@ -241,7 +259,7 @@ class App {
       }
 
       this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-        if (req.url.match(authIgnoreRegex)) {
+        if (req.url.match(jwtAuthIgnoreRegex)) {
           return next();
         }
 
@@ -336,16 +354,6 @@ class App {
 
 		//support application/x-www-form-urlencoded post data
 		this.app.use(bodyParser.urlencoded({ extended: false }));
-
-		if (process.env['NODE_ENV'] !== 'production') {
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				// Allow access also from frontend when developing
-				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
-				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-				res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, sessionid');
-				next();
-			});
-		}
 
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {

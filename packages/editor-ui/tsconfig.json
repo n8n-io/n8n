@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		"target": "esnext",
+		"target": "es5",
 		"module": "esnext",
 		"noImplicitAny": true,
 		"removeComments": true,
@@ -14,6 +14,8 @@
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
 		"sourceMap": true,
+		"resolveJsonModule": true,
+		"experimentalDecorators": true,
 		"baseUrl": ".",
 		"types": [
 			"webpack-env",
