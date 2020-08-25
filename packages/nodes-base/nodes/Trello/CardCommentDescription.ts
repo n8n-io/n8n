@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
-} from "n8n-workflow";
+} from 'n8n-workflow';
 
 export const cardCommentOperations = [
 	{
@@ -16,29 +16,29 @@ export const cardCommentOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
-				value: 'add',
-				description: 'Add a comment to a card',
+				name: 'Create',
+				value: 'create',
+				description: 'Create a comment on a card',
 			},
 			{
-				name: 'Revove',
-				value: 'remove',
-				description: 'Remove a comment from a card',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a comment from a card',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a comment in a card',
+				description: 'Update a comment on a card',
 			},
 		],
-		default: 'add',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const cardCommentFields = [
 	// ----------------------------------
-	//         cardComment:add
+	//         cardComment:create
 	// ----------------------------------
 	{
 		displayName: 'Card ID',
@@ -49,7 +49,7 @@ export const cardCommentFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add',
+					'create',
 				],
 				resource: [
 					'cardComment',
@@ -67,7 +67,7 @@ export const cardCommentFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add',
+					'create',
 				],
 				resource: [
 					'cardComment',
@@ -89,7 +89,7 @@ export const cardCommentFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'remove',
+					'delete',
 				],
 				resource: [
 					'cardComment',
@@ -107,7 +107,7 @@ export const cardCommentFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'remove',
+					'delete',
 				],
 				resource: [
 					'cardComment',
