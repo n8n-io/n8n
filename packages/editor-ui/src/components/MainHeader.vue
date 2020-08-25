@@ -84,20 +84,20 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { pushConnection } from '@/components/mixins/pushConnection';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
-import titleChange from './mixins/titleChange';
 
 export default mixins(
 	genericHelpers,
 	pushConnection,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
-	titleChange
 )
 	.extend({
 		name: 'MainHeader',
@@ -157,7 +157,7 @@ export default mixins(
 		},
 		methods: {
 			async openWorkflow (workflowId: string) {
-				titleChange.set(workflowId, 'IDLE');
+				this.$titleSet(this.workflowName, 'IDLE');
 				// Change to other workflow
 				this.$router.push({
 					name: 'NodeViewExisting',

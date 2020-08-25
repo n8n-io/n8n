@@ -179,6 +179,7 @@ import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowSave } from '@/components/mixins/workflowSave';
 import { workflowRun } from '@/components/mixins/workflowRun';
@@ -186,16 +187,15 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 import { saveAs } from 'file-saver';
 
 import mixins from 'vue-typed-mixins';
-import titleChange from './mixins/titleChange';
 
 export default mixins(
 	genericHelpers,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
 	workflowRun,
 	workflowSave,
-	titleChange
 )
 	.extend({
 		name: 'MainHeader',
@@ -420,7 +420,7 @@ export default mixins(
 						return;
 					}
 					// Reset tab title since workflow is deleted.
-					titleChange.reset();
+					this.$titleReset();
 					this.$showMessage({
 						title: 'Workflow got deleted',
 						message: `The workflow "${this.workflowName}" got deleted!`,

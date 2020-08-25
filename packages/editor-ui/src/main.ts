@@ -15,8 +15,6 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
-import titleChange from './components/mixins/titleChange';
-
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
@@ -94,7 +92,6 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 import { store } from './store';
 Vue.use(ElementUI, { locale });
-Vue.mixin(titleChange);
 
 library.add(faAngleDoubleLeft);
 library.add(faAngleDown);

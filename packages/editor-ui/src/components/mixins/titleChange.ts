@@ -1,25 +1,31 @@
-type Status = 'EXECUTING' | 'IDLE' | 'ERROR';
+import Vue from 'vue';
 
-export default {
-    /**
-     * Change title of n8n tab
-     * @param workflow Name of workflow
-     * @param status Status of workflow
-     */
-    set (workflow : string, status : Status) {
-        if (status === 'EXECUTING') {
-            window.document.title = `n8n - 🔄 ${workflow}}`;
-        }
-        else if (status === 'IDLE') {
-            window.document.title = `n8n - ▶️ ${workflow}`;
-        }
-        else {
-            window.document.title = `n8n - ⚠️ ${workflow}`;
-        }
-       
-    },
+import {
+	WorkflowTitleStatus,
+} from '../../Interface';
 
-    reset () {
-        document.title = `n8n - Workflow Automation`;
-    }
-};
+export const titleChange = Vue.extend({
+	methods: {
+		/**
+		 * Change title of n8n tab
+		 *
+		 * @param {string} workflow Name of workflow
+		 * @param {WorkflowTitleStatus} status Status of workflow
+		 */
+		$titleSet(workflow: string, status: WorkflowTitleStatus) {
+			let icon = '⚠️';
+			if (status === 'EXECUTING') {
+				icon = '🔄';
+			} else if (status === 'IDLE') {
+				icon = '▶️';
+			}
+
+			window.document.title = `n8n - ${icon} ${workflow}`;
+		},
+
+		$titleReset() {
+			document.title = `n8n - Workflow Automation`;
+		},
+
+	},
+});

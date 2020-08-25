@@ -14,13 +14,12 @@ import { restApi } from '@/components/mixins/restApi';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
-import titleChange from './titleChange';
-import { title } from 'process';
+import { titleChange } from './titleChange';
 
 export const workflowRun = mixins(
 	restApi,
 	workflowHelpers,
-	titleChange
+	titleChange,
 ).extend({
 	methods: {
 		// Starts to executes a workflow on server.
@@ -59,8 +58,8 @@ export const workflowRun = mixins(
 			}
 
 			const workflow = this.getWorkflow();
-			titleChange.set(workflow.name, 'EXECUTING');
-			
+			this.$titleSet(workflow.name as string, 'EXECUTING');
+
 			try {
 				// Check first if the workflow has any issues before execute it
 				const issuesExist = this.$store.getters.nodesIssuesExist;
@@ -83,7 +82,7 @@ export const workflowRun = mixins(
 							type: 'error',
 							duration: 0,
 						});
-						titleChange.set(workflow.name, 'ERROR');
+						this.$titleSet(workflow.name as string, 'ERROR');
 						return;
 					}
 				}
@@ -170,10 +169,10 @@ export const workflowRun = mixins(
 					},
 				};
 				this.$store.commit('setWorkflowExecutionData', executionData);
-				
+
 				 return await this.runWorkflowApi(startRunData);
 			} catch (error) {
-				titleChange.set(workflow.name, 'ERROR');
+				this.$titleSet(workflow.name as string, 'ERROR');
 				this.$showError(error, 'Problem running workflow', 'There was a problem running the workflow:');
 				return undefined;
 			}
