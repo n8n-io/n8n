@@ -5,11 +5,11 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -266,7 +266,7 @@ export class ConvertKitTrigger implements INodeType {
 
 				// THe API does not have an endpoint to list all webhooks
 
-				if(webhookData.webhookId) {
+				if (webhookData.webhookId) {
 					return true;
 				}
 
@@ -282,11 +282,8 @@ export class ConvertKitTrigger implements INodeType {
 				const endpoint = '/automations/hooks';
 
 				if (event === 'purchaseCreate') {
-
 					event = `purchase.${snakeCase(event)}`;
-
 				} else {
-
 					event = `subscriber.${snakeCase(event)}`;
 				}
 
@@ -344,11 +341,8 @@ export class ConvertKitTrigger implements INodeType {
 					const endpoint = `/automations/hooks/${webhookData.webhookId}`;
 
 					try {
-
 						await convertKitApiRequest.call(this, 'DELETE', endpoint);
-
 					} catch (error) {
-
 						return false;
 					}
 
