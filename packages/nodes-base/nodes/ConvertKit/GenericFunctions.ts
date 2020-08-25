@@ -4,8 +4,8 @@ import {
 
 import {
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
@@ -16,7 +16,7 @@ import {
 export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-		const credentials = this.getCredentials('convertKitApi');
+	const credentials = this.getCredentials('convertKitApi');
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -29,7 +29,7 @@ export async function convertKitApiRequest(this: IExecuteFunctions | IExecuteSin
 		method,
 		qs,
 		body,
-		uri: uri ||`https://api.convertkit.com/v3${endpoint}`,
+		uri: uri || `https://api.convertkit.com/v3${endpoint}`,
 		json: true,
 	};
 
