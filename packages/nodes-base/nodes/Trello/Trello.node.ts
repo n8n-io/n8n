@@ -276,9 +276,9 @@ export class Trello implements INodeType {
 
 			} else if (resource === 'cardComment') {
 
-				if (operation === 'add') {
+				if (operation === 'create') {
 					// ----------------------------------
-					//         add
+					//         create
 					// ----------------------------------
 
 					const cardId = this.getNodeParameter('cardId', i) as string;
@@ -290,7 +290,7 @@ export class Trello implements INodeType {
 					endpoint = `cards/${cardId}/actions/comments`;
 
 
-				} else if (operation === 'remove') {
+				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         delete
 					// ----------------------------------
