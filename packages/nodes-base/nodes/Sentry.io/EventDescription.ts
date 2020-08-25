@@ -18,16 +18,16 @@ export const eventOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get event by ID.',
+				description: 'Get event by ID',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all events.',
+				description: 'Get all events',
 			}
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
@@ -38,7 +38,10 @@ export const eventFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -51,12 +54,15 @@ export const eventFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to.',
+		description: 'The slug of the organization the events belong to',
 	},
 	{
 		displayName: 'Project Slug',
 		name: 'projectSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -69,7 +75,7 @@ export const eventFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to.',
+		description: 'The slug of the project the events belong to',
 	},
 	{
 		displayName: 'Full',
@@ -86,7 +92,7 @@ export const eventFields = [
 				],
 			},
 		},
-		description: 'If this is set to true, then the event payload will include the full event body, including the stack trace.',
+		description: 'If this is set to true, then the event payload will include the full event body, including the stack trace',
 	},
 	{
 		displayName: 'Return All',
@@ -103,7 +109,7 @@ export const eventFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -127,7 +133,7 @@ export const eventFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                event:get                                   */
@@ -135,7 +141,10 @@ export const eventFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -148,12 +157,15 @@ export const eventFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to.',
+		description: 'The slug of the organization the events belong to',
 	},
 	{
 		displayName: 'Project Slug',
 		name: 'projectSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -166,7 +178,7 @@ export const eventFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the events belong to.',
+		description: 'The slug of the project the events belong to',
 	},
 	{
 		displayName: 'Event ID',

@@ -18,16 +18,16 @@ export const projectOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get project by ID.',
+				description: 'Get project by ID',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all projects.',
+				description: 'Get all projects',
 			}
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
@@ -38,7 +38,10 @@ export const projectFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -54,12 +57,15 @@ export const projectFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the events belong to.',
+		description: 'The slug of the organization the events belong to',
 	},
 	{
 		displayName: 'Project Slug',
 		name: 'projectSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -72,7 +78,7 @@ export const projectFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project to retrieve.',
+		description: 'The slug of the project to retrieve',
 	},
 	{
 		displayName: 'Team Slug',
@@ -92,7 +98,7 @@ export const projectFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the team to create a new project for.',
+		description: 'The slug of the team to create a new project for',
 	},
 	{
 		displayName: 'Name',
@@ -110,7 +116,7 @@ export const projectFields = [
 			},
 		},
 		required: true,
-		description: 'The name for the new project.',
+		description: 'The name for the new project',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -134,7 +140,7 @@ export const projectFields = [
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'Optionally a slug for the new project. If it’s not provided a slug is generated from the name.',
+				description: 'Optionally a slug for the new project. If it’s not provided a slug is generated from the name',
 			},
 		]
 	},
@@ -156,7 +162,7 @@ export const projectFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -180,6 +186,6 @@ export const projectFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 ] as INodeProperties[];

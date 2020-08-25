@@ -16,21 +16,21 @@ export const organizationOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an organization.',
+				description: 'Create an organization',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get organization by ID.',
+				description: 'Get organization by slug',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all organizations.',
+				description: 'Get all organizations',
 			}
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
@@ -53,7 +53,7 @@ export const organizationFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -77,7 +77,7 @@ export const organizationFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -101,14 +101,14 @@ export const organizationFields = [
 				name: 'member',
 				type: 'boolean',
 				default: true,
-				description: 'Restrict results to organizations which you have membership.',
+				description: 'Restrict results to organizations which you have membership',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'boolean',
 				default: true,
-				description: 'Restrict results to organizations which you are the owner.',
+				description: 'Restrict results to organizations which you are the owner',
 			},
 		]
 	},
@@ -118,7 +118,10 @@ export const organizationFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -131,7 +134,7 @@ export const organizationFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team should be created for.',
+		description: 'The slug of the organization the team should be created for',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                organization:create                         */
@@ -152,7 +155,7 @@ export const organizationFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team should be created for.',
+		description: 'The slug of the organization the team should be created for',
 	},
 	{
 		displayName: 'Agree to Terms',
@@ -169,7 +172,7 @@ export const organizationFields = [
 				],
 			},
 		},
-		description: 'Signaling you agree to the applicable terms of service and privacy policy of Sentry.io.',
+		description: 'Signaling you agree to the applicable terms of service and privacy policy of Sentry.io',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -193,7 +196,7 @@ export const organizationFields = [
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'The unique URL slug for this organization. If this is not provided a slug is automatically generated based on the name.',
+				description: 'The unique URL slug for this organization. If this is not provided a slug is automatically generated based on the name',
 			},
 		]
 	},

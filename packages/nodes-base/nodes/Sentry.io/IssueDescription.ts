@@ -18,26 +18,26 @@ export const issueOperations = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an issue.',
+				description: 'Delete an issue',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get issue by ID.',
+				description: 'Get issue by ID',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all issues.',
+				description: 'Get all issues',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update an issue.',
+				description: 'Update an issue',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
@@ -63,7 +63,7 @@ export const issueFields = [
 			},
 		},
 		required: true,
-		description: 'ID of issue to get.',
+		description: 'ID of issue to get',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                issue:getAll                                */
@@ -71,7 +71,10 @@ export const issueFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -84,12 +87,15 @@ export const issueFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the issues belong to.',
+		description: 'The slug of the organization the issues belong to',
 	},
 	{
 		displayName: 'Project Slug',
 		name: 'projectSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -102,7 +108,7 @@ export const issueFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the project the issues belong to.',
+		description: 'The slug of the project the issues belong to',
 	},
 	{
 		displayName: 'Return All',
@@ -119,7 +125,7 @@ export const issueFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -143,7 +149,7 @@ export const issueFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -167,7 +173,7 @@ export const issueFields = [
 				name: 'statsPeriod',
 				type: 'options',
 				default: '',
-				description: 'Time period of stats.',
+				description: 'Time period of stats',
 				options: [
 					{
 						name: '24 Hours',
@@ -184,7 +190,7 @@ export const issueFields = [
 				name: 'shortIdLookUp',
 				type: 'boolean',
 				default: true,
-				description: 'If this is set to true then short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in.',
+				description: 'If this is set to true then short IDs are looked up by this function as well. This can cause the return value of the function to return an event issue of a different project which is why this is an opt-in',
 			},
 		]
 	},
@@ -208,7 +214,7 @@ export const issueFields = [
 			},
 		},
 		required: true,
-		description: 'ID of issue to get.',
+		description: 'ID of issue to get',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -232,28 +238,28 @@ export const issueFields = [
 				name: 'assignedTo',
 				type: 'string',
 				default: '',
-				description: 'The actor id (or username) of the user or team that should be assigned to this issue.',
+				description: 'The actor id (or username) of the user or team that should be assigned to this issue',
 			},
 			{
 				displayName: 'Has Seen',
 				name: 'hasSeen',
 				type: 'boolean',
 				default: true,
-				description: 'In case this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event.',
+				description: 'In case this API call is invoked with a user context this allows changing of the flag that indicates if the user has seen the event',
 			},
 			{
 				displayName: 'Is Bookmarked',
 				name: 'isBookmarked',
 				type: 'boolean',
 				default: true,
-				description: 'In case this API call is invoked with a user context this allows changing of the bookmark flag.',
+				description: 'In case this API call is invoked with a user context this allows changing of the bookmark flag',
 			},
 			{
 				displayName: 'Is Public',
 				name: 'isPublic',
 				type: 'boolean',
 				default: true,
-				description: 'Sets the issue to public or private.',
+				description: 'Sets the issue to public or private',
 			},
 			{
 				displayName: 'Is Subscribed',
@@ -266,7 +272,7 @@ export const issueFields = [
 				name: 'status',
 				type: 'options',
 				default: '',
-				description: 'The new status for the issue.',
+				description: 'The new status for the issue',
 				options: [
 					{
 						name: 'Ignored',

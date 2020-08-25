@@ -7,6 +7,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -43,6 +45,7 @@ import {
 	sentryioApiRequest,
 	sentryApiRequestAllItems,
 } from './GenericFunctions';
+import { getToEmailArray } from '../Mandrill/GenericFunctions';
 
 export class Sentryio implements INodeType {
 	description: INodeTypeDescription = {
@@ -159,6 +162,39 @@ export class Sentryio implements INodeType {
 		...teamOperations,
 		...teamFields
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all organizations so they can be displayed easily
+			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const organizations = await sentryApiRequestAllItems.call(this, 'GET', `/api/0/organizations/`, {});
+				for (const organization of organizations) {
+					const name = organization.name;
+					returnData.push({
+						// tslint:disable-next-line: object-literal-shorthand (For reading consistency)
+						name: name,
+						value: name,
+					});
+				}
+				return returnData;
+			},
+			// Get all projects so can be displayed easily
+			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const projects = await sentryApiRequestAllItems.call(this, 'GET', `/api/0/projects/`, {});
+				for (const project of projects) {
+					const name = project.name;
+					returnData.push({
+						// tslint:disable-next-line: object-literal-shorthand (For reading consistency)
+						name: name,
+						value: name,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 
@@ -414,13 +450,12 @@ export class Sentryio implements INodeType {
 
 				if (operation === 'create') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
 					const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					if (additionalFields.name) {
-						qs.name = additionalFields.name;
-					}
+					qs.name = name;
 
 					if (additionalFields.slug) {
 						qs.slug = additionalFields.slug;

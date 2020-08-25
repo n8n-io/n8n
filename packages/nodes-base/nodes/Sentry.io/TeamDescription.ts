@@ -18,21 +18,21 @@ export const teamOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new team.',
+				description: 'Create a new team',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get team by ID.',
+				description: 'Get team by slug',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all teams.',
+				description: 'Get all teams',
 			}
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
@@ -43,7 +43,10 @@ export const teamFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -56,7 +59,7 @@ export const teamFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization for which the teams should be listed.',
+		description: 'The slug of the organization for which the teams should be listed',
 	},
 	{
 		displayName: 'Return All',
@@ -73,7 +76,7 @@ export const teamFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -97,7 +100,7 @@ export const teamFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                team:get                                   */
@@ -105,7 +108,10 @@ export const teamFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -118,7 +124,7 @@ export const teamFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to.',
+		description: 'The slug of the organization the team belongs to',
 	},
 	{
 		displayName: 'Team Slug',
@@ -136,7 +142,7 @@ export const teamFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the team to get.',
+		description: 'The slug of the team to get',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                team:create                                 */
@@ -144,6 +150,27 @@ export const teamFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'team',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		required: true,
+		description: 'The slug of the organization the team belongs to',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -157,7 +184,7 @@ export const teamFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to.',
+		description: 'The name of the team',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -177,18 +204,11 @@ export const teamFields = [
 		},
 		options: [
 			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'The name of the team.',
-			},
-			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'The optional slug for this team. If not provided it will be auto generated from the name..',
+				description: 'The optional slug for this team. If not provided it will be auto generated from the name',
 			},
 		]
 	},
@@ -198,7 +218,10 @@ export const teamFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -211,7 +234,7 @@ export const teamFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the team belongs to.',
+		description: 'The slug of the organization the team belongs to',
 	},
 	{
 		displayName: 'Team Slug',
@@ -229,7 +252,7 @@ export const teamFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the team to get.',
+		description: 'The slug of the team to get',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -253,14 +276,14 @@ export const teamFields = [
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'The new slug of the team. Must be unique and available.',
+				description: 'The new slug of the team. Must be unique and available',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The new name of the team.',
+				description: 'The new name of the team',
 			},
 		]
 	},

@@ -16,16 +16,16 @@ export const releaseOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get release by version identifier.',
+				description: 'Get release by version identifier',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all releases.',
+				description: 'Get all releases',
             },
 		],
 		default: 'get',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
@@ -36,7 +36,10 @@ export const releaseFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -49,7 +52,7 @@ export const releaseFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the releases belong to.',
+		description: 'The slug of the organization the releases belong to',
 	},
 	{
 		displayName: 'Return All',
@@ -66,7 +69,7 @@ export const releaseFields = [
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -90,7 +93,7 @@ export const releaseFields = [
 			maxValue: 500,
 		},
 		default: 100,
-		description: 'How many results to return.',
+		description: 'How many results to return',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -114,7 +117,7 @@ export const releaseFields = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'This parameter can be used to create a “starts with” filter for the version.',
+				description: 'This parameter can be used to create a “starts with” filter for the version',
 			},
 		]
 	},
@@ -124,7 +127,10 @@ export const releaseFields = [
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getOrganizations',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -137,7 +143,7 @@ export const releaseFields = [
 			},
 		},
 		required: true,
-		description: 'The slug of the organization the release belongs to.',
+		description: 'The slug of the organization the release belongs to',
 	},
 	{
 		displayName: 'Version',
@@ -155,6 +161,6 @@ export const releaseFields = [
 			},
 		},
 		required: true,
-		description: 'The version identifier of the release.',
+		description: 'The version identifier of the release',
 	},
 ] as INodeProperties[];
