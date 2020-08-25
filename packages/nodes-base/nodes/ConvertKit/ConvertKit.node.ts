@@ -6,9 +6,9 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeType,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -16,28 +16,28 @@ import {
 } from './GenericFunctions';
 
 import {
-	customFieldOperations,
 	customFieldFields,
+	customFieldOperations,
 } from './CustomFieldDescription';
 
 import {
-	formOperations,
 	formFields,
+	formOperations,
 } from './FormDescription';
 
 import {
-	sequenceOperations,
 	sequenceFields,
+	sequenceOperations,
 } from './SequenceDescription';
 
 import {
-	tagOperations,
 	tagFields,
+	tagOperations,
 } from './TagDescription';
 
 import {
-	tagSubscriberOperations,
 	tagSubscriberFields,
+	tagSubscriberOperations,
 } from './TagSubscriberDescription';
 
 export class ConvertKit implements INodeType {
@@ -88,7 +88,7 @@ export class ConvertKit implements INodeType {
 						value: 'tagSubscriber',
 					},
 				],
-				default: 'customField',
+				default: 'form',
 				description: 'The resource to operate on.'
 			},
 			//--------------------
@@ -470,7 +470,7 @@ export class ConvertKit implements INodeType {
 
 					const email = this.getNodeParameter('email', i) as string;
 
-					responseData= await convertKitApiRequest.call(this, 'POST', `/tags/${tagId}>/unsubscribe`, { email });
+					responseData = await convertKitApiRequest.call(this, 'POST', `/tags/${tagId}>/unsubscribe`, { email });
 				}
 			}
 
