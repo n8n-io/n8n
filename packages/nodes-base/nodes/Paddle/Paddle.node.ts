@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	ILoadOptionsFunctions,
-	INodePropertyOptions
 } from 'n8n-workflow';
 
 import {
@@ -163,7 +163,7 @@ export class Paddle implements INodeType {
 				const products = await paddleApiRequest.call(this, endpoint, 'POST', {});
 
 				// Alert user if there's no products present to be loaded into payments property
-				if ( products.length === 0) {
+				if (products.length === 0) {
 					throw Error('No products on account.');
 				}
 

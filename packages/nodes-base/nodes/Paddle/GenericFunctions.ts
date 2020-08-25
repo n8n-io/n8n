@@ -21,12 +21,12 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 		throw new Error('Could not retrieve credentials!');
 	}
 
-	const options : OptionsWithUri = {
+	const options: OptionsWithUri = {
 		method,
 		headers: {
 			'content-type': 'application/json'
 		},
-		uri: `https://vendors.paddle.com/api${endpoint}` ,
+		uri: `https://vendors.paddle.com/api${endpoint}`,
 		body,
 		json: true
 	};
