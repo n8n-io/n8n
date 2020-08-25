@@ -8,7 +8,7 @@ export const fields = [
 		placeholder: 'Add parameter',
 		type: 'fixedCollection',
 		typeOptions: {
-			multipleValues: true
+			multipleValues: true,
 		},
 		default: {},
 		options: [
@@ -29,9 +29,9 @@ export const fields = [
 						type: 'string',
 						default: '',
 						description: 'Value of the search parameter to set.'
-					}
-				]
-			}
-		]
+					},
+				],
+			},
+		],
 	}
 ] as INodeProperties[];

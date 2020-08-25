@@ -4,8 +4,8 @@ import {
 } from 'n8n-workflow';
 
 export const resource = {
-  name: 'Locale',
-  value: 'locale',
+	name: 'Locale',
+	value: 'locale',
 } as INodePropertyOptions;
 
 export const operations = [

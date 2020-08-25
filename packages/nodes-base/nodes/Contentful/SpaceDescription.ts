@@ -15,7 +15,7 @@ export const operations = [
 		displayOptions: {
 			show: {
 				resource: [
-					resource.value
+					resource.value,
 				],
 			},
 		},
