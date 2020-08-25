@@ -1166,6 +1166,53 @@ export class Hubspot implements INodeType {
 					const endpoint = `/contacts/v1/contact/vid/${contactId}`;
 					responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
 				}
+				//https://developers.hubspot.com/docs/api/crm/search
+				if (operation === 'search') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
+					const sorts = this.getNodeParameter('sorts', i) as string;
+					const direction = this.getNodeParameter('direction', i) as string;
+
+					const body: IDataObject = {
+						sorts: [
+							{
+								propertyName: sorts,
+								direction,
+							},
+						],
+					};
+
+					if (filtersGroupsUi) {
+						const filterGroupValues = (filtersGroupsUi as IDataObject).filterGroupsValues as IDataObject[];
+						if (filterGroupValues) {
+							body.filterGroups = [];
+							for (const filterGroupValue of filterGroupValues) {
+								if (filterGroupValue.filtersUi) {
+									const filterValues = (filterGroupValue.filtersUi as IDataObject).filterValues as IDataObject[];
+									if (filterValues) {
+										//@ts-ignore
+										body.filterGroups.push({ filters: filterValues });
+									}
+								}
+							}
+						}
+					}
+
+					Object.assign(body, additionalFields);
+
+					const endpoint = '/crm/v3/objects/contacts/search';
+
+					if (returnAll) {
+
+						responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
+
+					} else {
+						qs.count = this.getNodeParameter('limit', 0) as number;
+						responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
+						responseData = responseData.results;
+					}
+				}
 			}
 			//https://developers.hubspot.com/docs/methods/companies/companies-overview
 			if (resource === 'company') {
