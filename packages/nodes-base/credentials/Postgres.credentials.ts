@@ -37,9 +37,23 @@ export class Postgres implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+			description: 'Connect even if SSL certificate validation is not possible.',
+		},
+		{
 			displayName: 'SSL',
 			name: 'ssl',
 			type: 'options' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					allowUnauthorizedCerts: [
+						false,
+					],
+				},
+			},
 			options: [
 				{
 					name: 'disable',
