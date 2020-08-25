@@ -885,52 +885,6 @@ export const contactFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Sort By',
-		name: 'sorts',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getContactProperties',
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'search',
-				],
-			},
-		},
-		default: [],
-	},
-	{
-		displayName: 'Direction',
-		name: 'direction',
-		type: 'options',
-		options: [
-			{
-				name: 'ASC',
-				value: 'ASCENDING',
-			},
-			{
-				name: 'DESC',
-				value: 'DESCENDING',
-			},
-		],
-		displayOptions: {
-			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'search',
-				],
-			},
-		},
-		default: 'DESCENDING',
-		description: 'Defines the direction in which search results are ordered. Default value is DESC.',
-	},
-	{
 		displayName: 'Filter Groups',
 		name: 'filterGroupsUi',
 		type: 'fixedCollection',
@@ -1072,6 +1026,23 @@ export const contactFields = [
 		},
 		options: [
 			{
+				displayName: 'Direction',
+				name: 'direction',
+				type: 'options',
+				options: [
+					{
+						name: 'ASC',
+						value: 'ASCENDING',
+					},
+					{
+						name: 'DESC',
+						value: 'DESCENDING',
+					},
+				],
+				default: 'DESCENDING',
+				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
+			},
+			{
 				displayName: 'Fields',
 				name: 'properties',
 				type: 'multiOptions',
@@ -1094,6 +1065,15 @@ export const contactFields = [
 				type: 'string',
 				default: '',
 				description: 'Perform a text search against all property values for an object type',
+			},
+			{
+				displayName: 'Sort By',
+				name: 'sortBy',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactProperties',
+				},
+				default: 'createdate',
 			},
 		],
 	},
