@@ -37,9 +37,9 @@ export const couponOperations = [
 ] as INodeProperties[];
 
 export const couponFields = [
-/* -------------------------------------------------------------------------- */
-/*                                 coupon:create	                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 coupon:create	                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Coupon Type',
 		name: 'couponType',
@@ -200,12 +200,12 @@ export const couponFields = [
 				value: 'BRL'
 			},
 			{
-				name: 'GBP',
-				value: 'GBP'
-			},
-			{
 				name: 'CAD',
 				value: 'CAD'
+			},
+			{
+				name: 'CHF',
+				value: 'CHF'
 			},
 			{
 				name: 'CNY',
@@ -224,6 +224,10 @@ export const couponFields = [
 				value: 'EUR'
 			},
 			{
+				name: 'GBP',
+				value: 'GBP'
+			},
+			{
 				name: 'HKD',
 				value: 'HKD'
 			},
@@ -240,20 +244,20 @@ export const couponFields = [
 				value: 'JPY'
 			},
 			{
+				name: 'KRW',
+				value: 'KRW'
+			},
+			{
 				name: 'MXN',
 				value: 'MXN'
 			},
 			{
-				name: 'TWD',
-				value: 'TWD'
+				name: 'NOK',
+				value: 'NOK'
 			},
 			{
 				name: 'NZD',
 				value: 'NZD'
-			},
-			{
-				name: 'NOK',
-				value: 'NOK'
 			},
 			{
 				name: 'PLN',
@@ -264,36 +268,28 @@ export const couponFields = [
 				value: 'RUB'
 			},
 			{
-				name: 'SGD',
-				value: 'SGD'
-			},
-			{
-				name: 'ZAR',
-				value: 'ZAR'
-			},
-			{
-				name: 'KRW',
-				value: 'KRW'
-			},
-			{
 				name: 'SEK',
 				value: 'SEK'
 			},
 			{
-				name: 'CHF',
-				value: 'CHF'
+				name: 'SGD',
+				value: 'SGD'
 			},
 			{
 				name: 'THB',
 				value: 'THB'
 			},
 			{
-				name: 'CHF',
-				value: 'CHF'
+				name: 'TWD',
+				value: 'TWD'
 			},
 			{
 				name: 'USD',
 				value: 'USD'
+			},
+			{
+				name: 'ZAR',
+				value: 'ZAR'
 			},
 		],
 		displayOptions: {
@@ -395,6 +391,13 @@ export const couponFields = [
 				description: 'Prefix for generated codes. Not valid if coupon_code is specified.',
 			},
 			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				description: 'Description of the coupon. This will be displayed in the Seller Dashboard.',
+			},
+			{
 				displayName: 'Expires',
 				name: 'expires',
 				type: 'dateTime',
@@ -413,13 +416,6 @@ export const couponFields = [
 				description: 'The name of the coupon group this coupon should be assigned to.',
 			},
 			{
-				displayName: 'Recurring',
-				name: 'recurring',
-				type: 'boolean',
-				default: false,
-				description: 'If the coupon is used on subscription products, this indicates whether the discount should apply to recurring payments after the initial purchase.',
-			},
-			{
 				displayName: 'Number of Coupons',
 				name: 'numberOfCoupons',
 				type: 'number',
@@ -427,17 +423,17 @@ export const couponFields = [
 				description: 'Number of coupons to generate. Not valid if coupon_code is specified.',
 			},
 			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				description: 'Description of the coupon. This will be displayed in the Seller Dashboard.',
+				displayName: 'Recurring',
+				name: 'recurring',
+				type: 'boolean',
+				default: false,
+				description: 'If the coupon is used on subscription products, this indicates whether the discount should apply to recurring payments after the initial purchase.',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 coupon:getAll	                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 coupon:getAll	                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
@@ -497,9 +493,9 @@ export const couponFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 coupon:update	                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 coupon:update	                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Update by',
 		name: 'updateBy',
@@ -594,7 +590,7 @@ export const couponFields = [
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -680,12 +676,12 @@ export const couponFields = [
 										value: 'BRL'
 									},
 									{
-										name: 'GBP',
-										value: 'GBP'
-									},
-									{
 										name: 'CAD',
 										value: 'CAD'
+									},
+									{
+										name: 'CHF',
+										value: 'CHF'
 									},
 									{
 										name: 'CNY',
@@ -704,6 +700,10 @@ export const couponFields = [
 										value: 'EUR'
 									},
 									{
+										name: 'GBP',
+										value: 'GBP'
+									},
+									{
 										name: 'HKD',
 										value: 'HKD'
 									},
@@ -720,20 +720,20 @@ export const couponFields = [
 										value: 'JPY'
 									},
 									{
+										name: 'KRW',
+										value: 'KRW'
+									},
+									{
 										name: 'MXN',
 										value: 'MXN'
 									},
 									{
-										name: 'TWD',
-										value: 'TWD'
+										name: 'NOK',
+										value: 'NOK'
 									},
 									{
 										name: 'NZD',
 										value: 'NZD'
-									},
-									{
-										name: 'NOK',
-										value: 'NOK'
 									},
 									{
 										name: 'PLN',
@@ -744,55 +744,30 @@ export const couponFields = [
 										value: 'RUB'
 									},
 									{
-										name: 'SGD',
-										value: 'SGD'
-									},
-									{
-										name: 'ZAR',
-										value: 'ZAR'
-									},
-									{
-										name: 'KRW',
-										value: 'KRW'
-									},
-									{
 										name: 'SEK',
 										value: 'SEK'
 									},
 									{
-										name: 'CHF',
-										value: 'CHF'
+										name: 'SGD',
+										value: 'SGD'
 									},
 									{
 										name: 'THB',
 										value: 'THB'
 									},
 									{
-										name: 'CHF',
-										value: 'CHF'
+										name: 'TWD',
+										value: 'TWD'
 									},
 									{
 										name: 'USD',
 										value: 'USD'
 									},
+									{
+										name: 'ZAR',
+										value: 'ZAR'
+									},
 								],
-							},
-							{
-								displayName: 'Discount Type',
-								name: 'discountType',
-								type: 'options',
-								default: 'flat',
-								description: 'Either flat or percentage.',
-								options: [
-									{
-										name: 'Flat',
-										value: 'flat'
-									},
-									{
-										name: 'Percentage',
-										value: 'percentage'
-									},
-								]
 							},
 							{
 								displayName: 'Discount Amount Currency',
@@ -828,6 +803,23 @@ export const couponFields = [
 									minValue: 0,
 									maxValue: 100
 								},
+							},
+							{
+								displayName: 'Discount Type',
+								name: 'discountType',
+								type: 'options',
+								default: 'flat',
+								description: 'Either flat or percentage.',
+								options: [
+									{
+										name: 'Flat',
+										value: 'flat'
+									},
+									{
+										name: 'Percentage',
+										value: 'percentage'
+									},
+								]
 							},
 						],
 					},

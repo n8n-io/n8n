@@ -32,9 +32,9 @@ export const paymentOperations = [
 ] as INodeProperties[];
 
 export const paymentFields = [
-/* -------------------------------------------------------------------------- */
-/*                                 payment:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 payment:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -94,7 +94,7 @@ export const paymentFields = [
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -204,9 +204,9 @@ export const paymentFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 payment:reschedule                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 payment:reschedule                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Payment ID',
 		name: 'paymentId',
