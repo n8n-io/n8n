@@ -1,15 +1,15 @@
 import { ITriggerFunctions } from 'n8n-core';
 import {
 	IBinaryData,
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	IBinaryKeyData,
 } from 'n8n-workflow';
 
-import { connect as imapConnect, ImapSimple, ImapSimpleOptions, getParts, Message }  from 'imap-simple';
+import { connect as imapConnect, ImapSimple, ImapSimpleOptions, getParts, Message } from 'imap-simple';
 import {
 	simpleParser,
 	Source as ParserSource,
@@ -51,11 +51,11 @@ export class EmailReadImap implements INodeType {
 				options: [
 					{
 						name: 'Mark as read',
-						value: 'read'
+						value: 'read',
 					},
 					{
 						name: 'Nothing',
-						value: 'nothing'
+						value: 'nothing',
 					},
 				],
 				default: 'read',
@@ -69,7 +69,7 @@ export class EmailReadImap implements INodeType {
 				displayOptions: {
 					show: {
 						format: [
-							'simple'
+							'simple',
 						],
 					},
 				},
@@ -107,7 +107,7 @@ export class EmailReadImap implements INodeType {
 				displayOptions: {
 					show: {
 						format: [
-							'resolved'
+							'resolved',
 						],
 					},
 				},
@@ -121,10 +121,10 @@ export class EmailReadImap implements INodeType {
 				displayOptions: {
 					show: {
 						format: [
-							'simple'
+							'simple',
 						],
 						downloadAttachments: [
-							true
+							true,
 						],
 					},
 				},
@@ -254,7 +254,7 @@ export class EmailReadImap implements INodeType {
 				const dataPropertyAttachmentsPrefixName = this.getNodeParameter('dataPropertyAttachmentsPrefixName') as string;
 
 				for (const message of results) {
-					const part = lodash.find(message.parts, {which: ''});
+					const part = lodash.find(message.parts, { which: '' });
 
 					if (part === undefined) {
 						throw new Error('Email part could not be parsed.');
@@ -312,7 +312,7 @@ export class EmailReadImap implements INodeType {
 				}
 			} else if (format === 'raw') {
 				for (const message of results) {
-					const part = lodash.find(message.parts, {which: 'TEXT'});
+					const part = lodash.find(message.parts, { which: 'TEXT' });
 
 					if (part === undefined) {
 						throw new Error('Email part could not be parsed.');
