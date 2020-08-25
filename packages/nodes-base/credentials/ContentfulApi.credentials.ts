@@ -14,23 +14,21 @@ export class ContentfulApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 			required: true,
-			description: 'The id for the Contentful space.'
+			description: 'The id for the Contentful space.',
 		},
 		{
 			displayName: 'Content Delivery API Access token',
 			name: 'ContentDeliveryaccessToken',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			required: true,
-			description: 'Access token that has access to the space'
+			description: 'Access token that has access to the space. Can be left empty if only Delivery API should be used.',
 		},
 		{
 			displayName: 'Content Preview API Access token',
 			name: 'ContentPreviewaccessToken',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			required: true,
-			description: 'Access token that has access to the space'
+			description: 'Access token that has access to the space. Can be left empty if only Preview API should be used.',
 		},
 	];
 }

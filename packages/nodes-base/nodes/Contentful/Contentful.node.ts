@@ -46,7 +46,7 @@ export class Contentful implements INodeType {
 				displayName: 'Source',
 				name: 'source',
 				type: 'options',
-				default: 'Delivery API',
+				default: 'deliveryApi',
 				description: 'Pick where your data comes from, delivery or preview API',
 				options: [
 					{
@@ -71,7 +71,7 @@ export class Contentful implements INodeType {
 					LocaleDescription.resource,
 					SpaceDescription.resource,
 				],
-				default: '',
+				default: 'entry',
 				description: 'The resource to operate on.'
 			},
 
