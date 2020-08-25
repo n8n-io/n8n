@@ -115,6 +115,8 @@ import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
+
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
@@ -157,7 +159,6 @@ import {
 	IWorkflowDataUpdate,
 	XYPositon,
 } from '../Interface';
-import titleChange from '../components/mixins/titleChange';
 
 export default mixins(
 	copyPaste,
@@ -166,9 +167,9 @@ export default mixins(
 	moveNodeWorkflow,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
 	workflowRun,
-	titleChange
 )
 	.extend({
 		name: 'NodeView',
@@ -1326,8 +1327,8 @@ export default mixins(
 					}
 
 					if (workflowId !== null) {
-						let workflow = await this.restApi().getWorkflow(workflowId);
-						titleChange.set(workflow.name, 'IDLE');
+						const workflow = await this.restApi().getWorkflow(workflowId);
+						this.$titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflowId);
 					} else {
