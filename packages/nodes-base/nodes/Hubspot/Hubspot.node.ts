@@ -1171,13 +1171,13 @@ export class Hubspot implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
-					const sorts = this.getNodeParameter('sorts', i) as string;
-					const direction = this.getNodeParameter('direction', i) as string;
+					const sortBy = additionalFields.sortBy || 'createdate';
+					const direction = additionalFields.direction || 'DESCENDING';
 
 					const body: IDataObject = {
 						sorts: [
 							{
-								propertyName: sorts,
+								propertyName: sortBy,
 								direction,
 							},
 						],
