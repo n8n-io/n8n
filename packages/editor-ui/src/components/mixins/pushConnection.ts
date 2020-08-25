@@ -10,14 +10,14 @@ import {
 
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
 
 import mixins from 'vue-typed-mixins';
-import titleChange from './titleChange';
 
 export const pushConnection = mixins(
 	nodeHelpers,
 	showMessage,
-	titleChange
+	titleChange,
 )
 	.extend({
 		data () {
@@ -149,7 +149,6 @@ export const pushConnection = mixins(
 			 */
 			pushMessageReceived (event: Event, isRetry?: boolean): boolean {
 				const retryAttempts = 5;
-				const workflow = this.getWorkflow();
 				let receivedData: IPushData;
 				try {
 					// @ts-ignore
@@ -203,13 +202,19 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
+					console.log('..pushData..');
+					console.log(pushData);
+
+
+					// @ts-ignore
+					const workflow = this.getWorkflow();
 					if (runDataExecuted.finished !== true) {
 						// There was a problem with executing the workflow
 						let errorMessage = 'There was a problem executing the workflow!';
 						if (runDataExecuted.data.resultData.error && runDataExecuted.data.resultData.error.message) {
 							errorMessage = `There was a problem executing the workflow:<br /><strong>"${runDataExecuted.data.resultData.error.message}"</strong>`;
 						}
-						titleChange.set(workflow.name, 'ERROR');
+						this.$titleSet(workflow.name, 'ERROR');
 						this.$showMessage({
 							title: 'Problem executing workflow',
 							message: errorMessage,
@@ -217,7 +222,7 @@ export const pushConnection = mixins(
 						});
 					} else {
 						// Workflow did execute without a problem
-						titleChange.set(workflow.name, 'IDLE');
+						this.$titleSet(workflow.name, 'IDLE');
 						this.$showMessage({
 							title: 'Workflow got executed',
 							message: 'Workflow did get executed successfully!',
