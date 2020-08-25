@@ -375,14 +375,14 @@ export class ZendeskTrigger implements INodeType {
 						displayName: 'All',
 						values: [
 							...conditionFields,
-						]
+						],
 					},
 					{
 						name: 'any',
 						displayName: 'Any',
 						values: [
 							...conditionFields,
-						]
+						],
 					},
 				],
 			},
@@ -435,17 +435,74 @@ export class ZendeskTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId === undefined) {
+				const conditions = this.getNodeParameter('conditions') as IDataObject;
+				const conditionsAll = conditions.all as [IDataObject];
+
+				let endpoint = '';
+				const aux: IDataObject = {};
+				const resultAll = [], resultAny = [];
+
+				if (conditionsAll) {
+					for (const conditionAll of conditionsAll) {
+						aux.field = conditionAll.field;
+						aux.operator = conditionAll.operation;
+						if (conditionAll.operation !== 'changed'
+						&& conditionAll.operation !== 'not_changed') {
+							aux.value = conditionAll.value;
+						} else {
+							aux.value = null;
+						}
+						resultAll.push(aux);
+					}
+				}
+
+				const conditionsAny = conditions.any as [IDataObject];
+				if (conditionsAny) {
+					for (const conditionAny of conditionsAny) {
+						aux.field = conditionAny.field;
+						aux.operator = conditionAny.operation;
+						if (conditionAny.operation !== 'changed'
+						&& conditionAny.operation !== 'not_changed') {
+							aux.value = conditionAny.value;
+						} else {
+							aux.value = null;
+						}
+						resultAny.push(aux);
+					}
+				}
+
+				// check if there is a target already created
+				endpoint = `/targets`;
+				const targets  = await zendeskApiRequestAllItems.call(this, 'targets', 'GET', endpoint);
+				for (const target of targets) {
+					if (target.target_url === webhookUrl) {
+						webhookData.targetId = target.id.toString();
+						break;
+					}
+				}
+
+				// no target was found
+				if (webhookData.targetId === undefined) {
 					return false;
 				}
-				const endpoint = `/triggers/${webhookData.webhookId}`;
-				try {
-					await zendeskApiRequest.call(this, 'GET', endpoint);
-				} catch (e) {
-					return false;
+
+				endpoint = `/triggers/active`;
+				const triggers  = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', endpoint);
+				for (const trigger of triggers) {
+						const toDeleteTriggers = [];
+						// this trigger belong to the current target
+						if (trigger.actions[0].value[0].toString() === webhookData.targetId?.toString()) {
+							toDeleteTriggers.push(trigger.id);
+						}
+						// delete all trigger attach to this target;
+						if (toDeleteTriggers.length !== 0) {
+							await zendeskApiRequest.call(this, 'DELETE', '/triggers/destroy_many', {}, { ids: toDeleteTriggers.join(',') } );
+						}
 				}
-				return true;
+
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
@@ -509,8 +566,8 @@ export class ZendeskTrigger implements INodeType {
 								{
 									field: 'notification_target',
 									value: [],
-								}
-							]
+								},
+							],
 						},
 					};
 					const bodyTarget: IDataObject = {
@@ -523,9 +580,21 @@ export class ZendeskTrigger implements INodeType {
 							content_type: 'application/json',
 						},
 					};
-					const { target } = await zendeskApiRequest.call(this, 'POST', '/targets', bodyTarget);
+					let target: IDataObject = {};
+
+					// if target id exists but trigger does not then reuse the target
+					// and create the trigger else create both
+					if (webhookData.targetId !== undefined) {
+						target.id = webhookData.targetId;
+					} else {
+						target = await zendeskApiRequest.call(this, 'POST', '/targets', bodyTarget);
+						target = target.target as IDataObject;
+					}
+
 					// @ts-ignore
 					bodyTrigger.trigger.actions[0].value = [target.id, JSON.stringify(message)];
+
+					//@ts-ignore
 					const { trigger } = await zendeskApiRequest.call(this, 'POST', '/triggers', bodyTrigger);
 					webhookData.webhookId = trigger.id;
 					webhookData.targetId = target.id;
