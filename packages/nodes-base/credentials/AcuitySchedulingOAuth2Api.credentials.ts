@@ -10,6 +10,7 @@ export class AcuitySchedulingOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'AcuityScheduling OAuth2 API';
+	documentationUrl = 'acuityScheduling';
 	properties = [
 		{
 			displayName: 'Authorization URL',

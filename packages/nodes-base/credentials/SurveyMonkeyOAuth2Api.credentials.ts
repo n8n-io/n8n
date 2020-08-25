@@ -18,6 +18,7 @@ export class SurveyMonkeyOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'SurveyMonkey OAuth2 API';
+	documentationUrl = 'surveyMonkey';
 	properties = [
 		{
 			displayName: 'Authorization URL',

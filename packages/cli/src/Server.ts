@@ -1801,7 +1801,7 @@ class App {
 
 		let readIndexFile = readFileSync(filePath, 'utf8');
 		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
-		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}/favicon.ico`);
+		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
 		// Serve the altered index.html file separately
 		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {

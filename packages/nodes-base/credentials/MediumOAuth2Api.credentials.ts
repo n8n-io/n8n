@@ -9,6 +9,7 @@ export class MediumOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Medium OAuth2 API';
+	documentationUrl = 'medium';
 	properties = [
 		{
 			displayName: 'Authorization URL',

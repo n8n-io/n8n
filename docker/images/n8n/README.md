@@ -260,9 +260,9 @@ docker build --build-arg N8N_VERSION=0.18.1 -t n8nio/n8n:0.18.1 .
 ```
 
 
-## What does n8n mean and how do you pronounce it
+## What does n8n mean and how do you pronounce it?
 
-**Short answer:** It means "nodemation"
+**Short answer:** It means "nodemation" and it is pronounced as n-eight-n.
 
 **Long answer:** I get that question quite often (more often than I expected)
 so I decided it is probably best to answer it here. While looking for a
