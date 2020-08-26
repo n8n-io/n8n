@@ -202,10 +202,6 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
-					console.log('..pushData..');
-					console.log(pushData);
-
-
 					// @ts-ignore
 					const workflow = this.getWorkflow();
 					if (runDataExecuted.finished !== true) {
