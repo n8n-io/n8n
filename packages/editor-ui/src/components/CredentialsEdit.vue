@@ -1,6 +1,6 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
-		<el-dialog :visible="dialogVisible" append-to-body width="55%" :title="title" :before-close="closeDialog">
+		<el-dialog :visible="dialogVisible" append-to-body width="75%" :title="title" :before-close="closeDialog">
 
 			<div class="credential-type-item">
 				<el-row v-if="!setCredentialType">
