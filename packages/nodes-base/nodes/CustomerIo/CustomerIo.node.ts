@@ -92,15 +92,20 @@ export class CustomerIo implements INodeType {
 			if (resource === 'campaign') {
 				if (operation === 'get') {
 					const campaignId = this.getNodeParameter('campaignId', i) as number;
-					const triggerId = this.getNodeParameter('triggerId', i) as number;
+					const endpoint = `/campaigns/${campaignId}`;
 
-					const endpoint = `/campaigns/${campaignId}/triggers/${triggerId}`;
-
-					responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'api');
+					responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
 				}
 
-				if (operation === 'trigger') {
-					const id = this.getNodeParameter('id', i) as number;
+				if (operation === 'getAll') {
+					const endpoint = `/campaigns`;
+
+					responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
+					responseData = responseData.campaigns;
+				}
+
+				if (operation === 'getMetrics') {
+					const campaignId = this.getNodeParameter('campaignId', i) as number;
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 					if (jsonParameters) {
@@ -118,89 +123,27 @@ export class CustomerIo implements INodeType {
 						}
 					} else {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const data : any = {};
+						const period = this.getNodeParameter('period', i) as string;
+						let endpoint = `/campaigns/${campaignId}/metrics`;
 
-						if (additionalFields.customProperties) {
-							//@ts-ignore
-							additionalFields.customProperties.customProperty.map(property => {
-								data[property.key] = property.value;
-							});
+						if (period !== 'days') {
+							endpoint = `${endpoint}?period=${period}`;
 						}
-
-						if (additionalFields.recipients) {
-							const recipientArray = (additionalFields.recipients as string).split(',');
-							const recipients : any = {};
-
-							// If Recipient contains more than 1 value, the objects must be placed
-							// inside of an "or" object array
-							// https://customer.io/docs/api-triggered-data-format#basic-data-formatting
-							if (recipients.length > 1) {
-								recipientArray.map((recipient : string) => {
-									recipients.segment.id = recipient;
-								});
+						if (additionalFields.steps) {
+							body.steps = additionalFields.steps as number;
+						}
+						if (additionalFields.type) {
+							if (additionalFields.type === 'urbanAirship') {
+								additionalFields.type = 'urban_airship';
 							} else {
-								const array : any[] = [];
-								recipientArray.map(recipient => {
-									array.push({segment: {id: recipient}});
-								});
-								recipients.or = array;
-							}
-							
-							data.recipients = JSON.stringify(recipients);
-						}
-
-						if (additionalFields.ids) {
-							const ids : string[] = [];
-
-							(additionalFields.ids as string).split(',').map(id => {
-								ids.push(id);
-							});
-
-							body.ids = ids;
-						}
-
-						if (additionalFields.idIgnoreMissing) {
-							body.id_ignore_missing = additionalFields.idIgnoreMissing as boolean;
-						}
-
-						if (additionalFields.emails) {
-							const emails : string[] = [];
-
-							(additionalFields.emails as string).split(',').map(email => {
-								emails.push(email);
-							});
-
-							body.emails = emails;
-						}
-
-						if (additionalFields.emailIgnoreMissing) {
-							body.email_ignore_missing = additionalFields.emailIgnoreMissing as boolean;
-						}
-
-						if (additionalFields.emailAddDuplicates) {
-							body.email_add_duplicates = additionalFields.emailAddDuplicates as boolean;
-						}
-
-						if (additionalFields.perUserData as string) {
-							if (validateJSON(additionalFields.perUserData as string) !== undefined) {
-								body.per_user_data = additionalFields.perUserData as string;
-
-							} else {
-								throw new Error('Per user data property of Additional Fields must be a valid JSON.');
+								body.type = additionalFields.type as string;
 							}
 						}
 
-						if (additionalFields.dataFileUrl) {
-							body.data_file_url = additionalFields.dataFileUrl as string;
-						}
-
-						body.data = data;
+						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
+						responseData = responseData.metric;
 					}
-
-					const endpoint = `/campaigns/${id}/triggers`;
-					responseData = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'api');
 				}
-
 			}
 
 			if (resource === 'customer') {
@@ -241,7 +184,7 @@ export class CustomerIo implements INodeType {
 					}
 
 					const endpoint = `/customers/${id}`;
-					
+
 					responseData = await customerIoApiRequest.call(this, 'PUT', endpoint, body, 'tracking');
 				}
 
@@ -285,7 +228,7 @@ export class CustomerIo implements INodeType {
 					}
 
 					const endpoint = `/customers/${id}`;
-					
+
 					responseData = await customerIoApiRequest.call(this, 'PUT', endpoint, body, 'tracking');
 				}
 
@@ -375,7 +318,7 @@ export class CustomerIo implements INodeType {
 						}
 						body.data = data;
 					}
-					
+
 					const endpoint = `/events`;
 					responseData = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'tracking');
 				}
