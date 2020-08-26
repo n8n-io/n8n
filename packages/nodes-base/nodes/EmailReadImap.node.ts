@@ -198,7 +198,11 @@ export class EmailReadImap implements INodeType {
 				return '';
 			}
 
-			return await connection.getPartData(message, textParts[0]);
+			try{
+				return await connection.getPartData(message, textParts[0]);
+			} catch {
+				return '';
+			}
 		};
 
 
