@@ -426,52 +426,54 @@ export class Todoist implements INodeType {
 		const length = items.length as unknown as number;
 		const qs: IDataObject = {};
 		let responseData;
+
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
 
 			if (resource === 'task') {
 				if (operation === 'create') {
-				//https://developer.todoist.com/rest/v1/#create-a-new-task
-				const content = this.getNodeParameter('content', i) as string;
-				const projectId = this.getNodeParameter('project', i) as number;
-				const labels = this.getNodeParameter('labels', i) as number[];
-				const options = this.getNodeParameter('options', i) as IDataObject;
+					//https://developer.todoist.com/rest/v1/#create-a-new-task
+					const content = this.getNodeParameter('content', i) as string;
+					const projectId = this.getNodeParameter('project', i) as number;
+					const labels = this.getNodeParameter('labels', i) as number[];
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-				const body: IBodyCreateTask = {
-					content,
-					project_id: projectId,
-					priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
-				};
+					const body: IBodyCreateTask = {
+						content,
+						project_id: projectId,
+						priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
+					};
 
-				if (options.dueDateTime) {
-					body.due_datetime = options.dueDateTime as string;
-				}
+					if (options.dueDateTime) {
+						body.due_datetime = options.dueDateTime as string;
+					}
 
-				if (options.dueString) {
-					body.due_string = options.dueString as string;
-				}
+					if (options.dueString) {
+						body.due_string = options.dueString as string;
+					}
 
-				if (labels !== undefined && labels.length !== 0) {
-					body.label_ids = labels;
-				}
+					if (labels !== undefined && labels.length !== 0) {
+						body.label_ids = labels;
+					}
 
-				responseData =  await todoistApiRequest.call(this, 'POST', '/tasks', body);
+					responseData = await todoistApiRequest.call(this, 'POST', '/tasks', body);
 				}
 				if (operation === 'close') {
-				//https://developer.todoist.com/rest/v1/#close-a-task
+					//https://developer.todoist.com/rest/v1/#close-a-task
 					const id = this.getNodeParameter('taskId', i) as string;
 
-					responseData =  await todoistApiRequest.call(this, 'POST', `/tasks/${id}/close`);
+					responseData = await todoistApiRequest.call(this, 'POST', `/tasks/${id}/close`);
 
 					responseData = { success: true };
 
 				}
 				if (operation === 'delete') {
-				//https://developer.todoist.com/rest/v1/#delete-a-task
+					//https://developer.todoist.com/rest/v1/#delete-a-task
 					const id = this.getNodeParameter('taskId', i) as string;
 
-					responseData =  await todoistApiRequest.call(this, 'DELETE', `/tasks/${id}`);
+					responseData = await todoistApiRequest.call(this, 'DELETE', `/tasks/${id}`);
 
 					responseData = { success: true };
 
@@ -480,7 +482,7 @@ export class Todoist implements INodeType {
 					//https://developer.todoist.com/rest/v1/#get-an-active-task
 					const id = this.getNodeParameter('taskId', i) as string;
 
-					responseData =  await todoistApiRequest.call(this, 'GET', `/tasks/${id}`);
+					responseData = await todoistApiRequest.call(this, 'GET', `/tasks/${id}`);
 				}
 				if (operation === 'getAll') {
 					//https://developer.todoist.com/rest/v1/#get-active-tasks
@@ -513,7 +515,7 @@ export class Todoist implements INodeType {
 					//https://developer.todoist.com/rest/v1/#get-an-active-task
 					const id = this.getNodeParameter('taskId', i) as string;
 
-					responseData =  await todoistApiRequest.call(this, 'POST', `/tasks/${id}/reopen`);
+					responseData = await todoistApiRequest.call(this, 'POST', `/tasks/${id}/reopen`);
 
 					responseData = { success: true };
 				}
