@@ -1,6 +1,7 @@
-import { 
-	IExecuteSingleFunctions,
+import {
+	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeTypeDescription,
@@ -9,11 +10,10 @@ import {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+
 import {
 	todoistApiRequest,
-	filterAndExecuteForEachTask,
 } from './GenericFunctions';
-
 
 interface IBodyCreateTask {
 	content: string;
@@ -48,9 +48,44 @@ export class Todoist implements INodeType {
 			{
 				name: 'todoistApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'todoistOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiKey',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -85,24 +120,29 @@ export class Todoist implements INodeType {
 						description: 'Create a new task',
 					},
 					{
-						name: 'Close by ID',
-						value: 'close_id',
-						description: 'Close a task by passing an ID',
+						name: 'Close',
+						value: 'close',
+						description: 'Close a task',
 					},
 					{
-						name: 'Close matching',
-						value: 'close_match',
-						description: 'Close a task by passing a regular expression',
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a task',
 					},
 					{
-						name: 'Delete by ID',
-						value: 'delete_id',
-						description: 'Delete a task by passing an ID',
+						name: 'Get',
+						value: 'get',
+						description: 'Get a task',
 					},
 					{
-						name: 'Delete matching',
-						value: 'delete_match',
-						description: 'Delete a task by passing a regular expression',
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all tasks',
+					},
+					{
+						name: 'Reopen',
+						value: 'reopen',
+						description: 'Reopen a task',
 					},
 				],
 				default: 'create',
@@ -122,9 +162,7 @@ export class Todoist implements INodeType {
 						],
 						operation: [
 							'create',
-							'close_match', 
-							'delete_match',
-						]
+						],
 					},
 				},
 				default: '',
@@ -144,7 +182,7 @@ export class Todoist implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				default: [],
@@ -165,7 +203,7 @@ export class Todoist implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				default: '',
@@ -173,32 +211,27 @@ export class Todoist implements INodeType {
 				description: 'Task content',
 			},
 			{
-				displayName: 'ID',
-				name: 'id',
+				displayName: 'Task ID',
+				name: 'taskId',
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: { rows: 1 },
 				displayOptions: {
-					show: { resource: ['task'], operation: ['close_id', 'delete_id'] }
+					show: {
+						resource: [
+							'task',
+						],
+						operation: [
+							'delete',
+							'close',
+							'get',
+							'reopen',
+						],
+					},
 				},
 			},
 			{
-				displayName: 'Expression to match',
-				name: 'expression',
-				type: 'string',
-				default: '',
-				required: true,
-				typeOptions: { rows: 1 },
-				displayOptions: {
-					show: {
-						resource: ['task'],
-						operation: ['close_match', 'delete_match']
-					}
-				}
-			},
-			{
-				displayName: 'Options',
+				displayName: 'Additional Fields',
 				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Option',
@@ -210,22 +243,10 @@ export class Todoist implements INodeType {
 						],
 						operation: [
 							'create',
-						]
+						],
 					},
 				},
 				options: [
-					{
-						displayName: 'Priority',
-						name: 'priority',
-						type: 'number',
-						typeOptions: {
-							numberStepSize: 1,
-							maxValue: 4,
-							minValue: 1,
-						},
-						default: 1,
-						description: 'Task priority from 1 (normal) to 4 (urgent).',
-					},
 					{
 						displayName: 'Due Date Time',
 						name: 'dueDateTime',
@@ -240,11 +261,123 @@ export class Todoist implements INodeType {
 						default: '',
 						description: 'Human defined task due date (ex.: “next Monday”, “Tomorrow”). Value is set using local (not UTC) time.',
 					},
-				]
-			}
-		]
+					{
+						displayName: 'Priority',
+						name: 'priority',
+						type: 'number',
+						typeOptions: {
+							numberStepSize: 1,
+							maxValue: 4,
+							minValue: 1,
+						},
+						default: 1,
+						description: 'Task priority from 1 (normal) to 4 (urgent).',
+					},
+				],
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'task',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'task',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Filters',
+				name: 'filters',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'task',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Filter',
+						name: 'filter',
+						type: 'string',
+						default: '',
+						description: 'Filter by any <a href="https://get.todoist.help/hc/en-us/articles/205248842">supported filter.</a>',
+					},
+					{
+						displayName: 'IDs',
+						name: 'ids',
+						type: 'string',
+						default: '',
+						description: 'A list of the task IDs to retrieve, this should be a comma separated list.',
+					},
+					{
+						displayName: 'Label ID',
+						name: 'labelId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getLabels',
+						},
+						default: {},
+						description: 'Filter tasks by label.',
+					},
+					{
+						displayName: 'Lang',
+						name: 'lang',
+						type: 'string',
+						default: '',
+						description: 'IETF language tag defining what language filter is written in, if differs from default English',
+					},
+					{
+						displayName: 'Project ID',
+						name: 'projectId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getProjects',
+						},
+						default: '',
+						description: 'Filter tasks by project id.',
+					},
+				],
+			},
+		],
 	};
-
 
 	methods = {
 		loadOptions: {
@@ -252,12 +385,7 @@ export class Todoist implements INodeType {
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let projects;
-				try {
-					projects = await todoistApiRequest.call(this, '/projects', 'GET');
-				} catch (err) {
-					throw new Error(`Todoist Error: ${err}`);
-				}
+				const projects = await todoistApiRequest.call(this, 'GET', '/projects');
 				for (const project of projects) {
 					const projectName = project.name;
 					const projectId = project.id;
@@ -275,12 +403,8 @@ export class Todoist implements INodeType {
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let labels;
-				try {
-					labels = await todoistApiRequest.call(this, '/labels', 'GET');
-				} catch (err) {
-					throw new Error(`Todoist Error: ${err}`);
-				}
+				const labels = await todoistApiRequest.call(this, 'GET', '/labels');
+
 				for (const label of labels) {
 					const labelName = label.name;
 					const labelId = label.id;
@@ -296,67 +420,111 @@ export class Todoist implements INodeType {
 		}
 	};
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		const resource = this.getNodeParameter('resource') as string;
-		const operation = this.getNodeParameter('operation') as string;
-		try {
-			return {
-				json: { result: await OPERATIONS[resource]?.[operation]?.bind(this)() }
-			};
-		} catch (err) {
-			return { json: { error: `Todoist Error: ${err.message}` } };
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: IDataObject[] = [];
+		const length = items.length as unknown as number;
+		const qs: IDataObject = {};
+		let responseData;
+		for (let i = 0; i < length; i++) {
+			const resource = this.getNodeParameter('resource', 0) as string;
+			const operation = this.getNodeParameter('operation', 0) as string;
+
+			if (resource === 'task') {
+				if (operation === 'create') {
+				//https://developer.todoist.com/rest/v1/#create-a-new-task
+				const content = this.getNodeParameter('content', i) as string;
+				const projectId = this.getNodeParameter('project', i) as number;
+				const labels = this.getNodeParameter('labels', i) as number[];
+				const options = this.getNodeParameter('options', i) as IDataObject;
+
+				const body: IBodyCreateTask = {
+					content,
+					project_id: projectId,
+					priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
+				};
+
+				if (options.dueDateTime) {
+					body.due_datetime = options.dueDateTime as string;
+				}
+
+				if (options.dueString) {
+					body.due_string = options.dueString as string;
+				}
+
+				if (labels !== undefined && labels.length !== 0) {
+					body.label_ids = labels;
+				}
+
+				responseData =  await todoistApiRequest.call(this, 'POST', '/tasks', body);
+				}
+				if (operation === 'close') {
+				//https://developer.todoist.com/rest/v1/#close-a-task
+					const id = this.getNodeParameter('taskId', i) as string;
+
+					responseData =  await todoistApiRequest.call(this, 'POST', `/tasks/${id}/close`);
+
+					responseData = { success: true };
+
+				}
+				if (operation === 'delete') {
+				//https://developer.todoist.com/rest/v1/#delete-a-task
+					const id = this.getNodeParameter('taskId', i) as string;
+
+					responseData =  await todoistApiRequest.call(this, 'DELETE', `/tasks/${id}`);
+
+					responseData = { success: true };
+
+				}
+				if (operation === 'get') {
+					//https://developer.todoist.com/rest/v1/#get-an-active-task
+					const id = this.getNodeParameter('taskId', i) as string;
+
+					responseData =  await todoistApiRequest.call(this, 'GET', `/tasks/${id}`);
+				}
+				if (operation === 'getAll') {
+					//https://developer.todoist.com/rest/v1/#get-active-tasks
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					if (filters.projectId) {
+						qs.project_id = filters.projectId as string;
+					}
+					if (filters.labelId) {
+						qs.label_id = filters.labelId as string;
+					}
+					if (filters.filter) {
+						qs.filter = filters.filter as string;
+					}
+					if (filters.lang) {
+						qs.lang = filters.lang as string;
+					}
+					if (filters.ids) {
+						qs.ids = filters.ids as string;
+					}
+
+					responseData = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
+
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+				}
+				if (operation === 'reopen') {
+					//https://developer.todoist.com/rest/v1/#get-an-active-task
+					const id = this.getNodeParameter('taskId', i) as string;
+
+					responseData =  await todoistApiRequest.call(this, 'POST', `/tasks/${id}/reopen`);
+
+					responseData = { success: true };
+				}
+			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
+			}
 		}
+
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
-
-const OPERATIONS: {
-	[key: string]: { [key: string]: (this: IExecuteSingleFunctions) => any };
-} = {
-	task: {
-		create(this: IExecuteSingleFunctions) {
-			//https://developer.todoist.com/rest/v1/#create-a-new-task
-			const content = this.getNodeParameter('content') as string;
-			const projectId = this.getNodeParameter('project') as number;
-			const labels = this.getNodeParameter('labels') as number[];
-			const options = this.getNodeParameter('options') as IDataObject;
-
-			const body: IBodyCreateTask = {
-				content,
-				project_id: projectId,
-				priority: (options.priority!) ? parseInt(options.priority as string, 10) : 1,
-			};
-
-			if (options.dueDateTime) {
-				body.due_datetime = options.dueDateTime as string;
-			}
-
-			if (options.dueString) {
-				body.due_string = options.dueString as string;
-			}
-
-			if (labels !== undefined && labels.length !== 0) {
-				body.label_ids = labels;
-			}
-
-			return todoistApiRequest.call(this, '/tasks', 'POST', body);
-		},
-		close_id(this: IExecuteSingleFunctions) {
-			const id = this.getNodeParameter('id') as string;
-			return todoistApiRequest.call(this, `/tasks/${id}/close`, 'POST');
-		},
-		delete_id(this: IExecuteSingleFunctions) {
-			const id = this.getNodeParameter('id') as string;
-			return todoistApiRequest.call(this, `/tasks/${id}`, 'DELETE');
-		},
-		close_match(this) {
-			return filterAndExecuteForEachTask.call(this, t =>
-				todoistApiRequest.call(this, `/tasks/${t.id}/close`, 'POST')
-			);
-		},
-		delete_match(this) {
-			return filterAndExecuteForEachTask.call(this, t =>
-				todoistApiRequest.call(this, `/tasks/${t.id}`, 'DELETE')
-			);
-		}
-	}
-};

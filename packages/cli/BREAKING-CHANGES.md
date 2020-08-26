@@ -2,6 +2,26 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.80.0
+
+### What changed?
+
+We have renamed the operations on the Todoist Node to keep consistency with the codebase. Also, deleted the operations close_match and delete_match as these operations can be accomplished using the operations getAll, close, and delete.
+
+### When is action necessary?
+
+When one of the following operations is used.
+
+- close_by
+- close_match
+- delete_id
+- delete_match
+
+### How to upgrade:
+
+After upgrading open all workflows, which contain the Todoist Node, set the corresponding operation, and then save the workflow.
+
+If the operations close_match or delete_match are used, recreate them using the operations getAll, delete and close.
 
 ## 0.69.0
 
