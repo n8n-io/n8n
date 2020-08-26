@@ -214,7 +214,7 @@ export default mixins(
 
 			this.$showMessage({
 				title: 'Credentials created',
-				message: `The credential "${eventData.data.name}" got created!`,
+				message: `"${eventData.data.name}" credentials were successfully created!`,
 				type: 'success',
 			});
 
@@ -227,7 +227,7 @@ export default mixins(
 
 			this.$showMessage({
 				title: 'Credentials updated',
-				message: `The credential "${eventData.data.name}" got updated!`,
+				message: `"${eventData.data.name}" credentials were successfully updated!`,
 				type: 'success',
 			});
 
