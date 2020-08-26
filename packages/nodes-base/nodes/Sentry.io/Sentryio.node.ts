@@ -46,6 +46,7 @@ import {
 	sentryApiRequestAllItems,
 } from './GenericFunctions';
 import { getToEmailArray } from '../Mandrill/GenericFunctions';
+import { ICommit, IPatchSet, IRef } from './Interface';
 
 export class Sentryio implements INodeType {
 	description: INodeTypeDescription = {
@@ -420,6 +421,69 @@ export class Sentryio implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
 					}
+				}
+
+				if (operation === 'create') {
+					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+					const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
+					const version = this.getNodeParameter('version', i) as string;
+					const url = this.getNodeParameter('url', i) as string;
+					const projects = this.getNodeParameter('projects', i) as string[];
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.dateReleased) {
+						qs.dateReleased = additionalFields.dateReleased as string;
+					}
+
+					qs.version = version;
+					qs.url = url;
+					qs.projects = projects;
+
+					if (additionalFields.commits) {
+						const commits : ICommit[] = [];
+						//@ts-ignore
+						// tslint:disable-next-line: no-any
+						additionalFields.commits.commitProperties.map((commit : any) => {
+							const commitObject : ICommit = {id: commit.id};
+
+							if (commit.repository) {
+								commitObject.repository = commit.repository;
+							}
+							if (commit.message) {
+								commitObject.message = commit.message;
+							}
+							if (commit.patchSet && Array.isArray(commit.patchSet)) {
+								commit.patchSet.patchSetProperties.map((patchSet : IPatchSet) => {
+									commitObject.patch_set?.push(patchSet);
+								});
+							}
+							if (commit.authorName) {
+								commitObject.author_name = commit.authorName;
+							}
+							if (commit.authorEmail) {
+								commitObject.author_email = commit.authorEmail;
+							}
+							if (commit.timestamp) {
+								commitObject.timestamp = commit.timestamp;
+							}
+
+							commits.push(commitObject);
+						});
+
+						qs.commits = commits;
+					}
+					if (additionalFields.refs) {
+						const refs : IRef[] = [];
+						//@ts-ignore
+						additionalFields.refs.refProperties.map((ref : IRef) => {
+							refs.push(ref);
+						});
+
+						qs.refs = refs;
+					}
+
+					responseData = await sentryioApiRequest.call(this, 'POST', endpoint, qs);
 				}
 			}
 			if (resource === 'team') {
