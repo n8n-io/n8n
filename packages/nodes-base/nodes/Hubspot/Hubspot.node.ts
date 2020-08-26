@@ -307,6 +307,25 @@ export class Hubspot implements INodeType {
 				return returnData;
 			},
 
+			// Get all the contact properties to display them to user so that he can
+			// select them easily
+			async getContactCustomProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.hubspotDefined === null) {
+						const propertyName = property.label;
+						const propertyId = property.name;
+						returnData.push({
+							name: propertyName,
+							value: propertyId,
+						});
+					}
+				}
+				return returnData;
+			},
+
 			// Get all the contact number of employees options to display them to user so that he can
 			// select them easily
 			async getContactNumberOfEmployees(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -1064,6 +1083,20 @@ export class Hubspot implements INodeType {
 							value: additionalFields.workEmail,
 						});
 					}
+
+					if (additionalFields.customPropertiesUi) {
+						const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+
+						if (customProperties) {
+							for (const customProperty of customProperties) {
+								body.push({
+									property: customProperty.property,
+									value: customProperty.value,
+								});
+							}
+						}
+					}
+
 					const endpoint = `/contacts/v1/contact/createOrUpdate/email/${email}`;
 					responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties: body });
 
