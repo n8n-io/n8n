@@ -10,10 +10,10 @@ import {
 
 export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('salesforceOAuth2Api');
-	const subdomain = (credentials!.accessTokenUrl as string).split('.')[0].split('/')[2];
+	const subdomain = ((credentials!.accessTokenUrl as string).match(/https:\/\/(.+).salesforce\.com/) || [])[1]
 	const options: OptionsWithUri = {
 		method,
-		body,
+		body: method === "GET" ? undefined : body,
 		qs,
 		uri: uri || `https://${subdomain}.salesforce.com/services/data/v39.0${resource}`,
 		json: true

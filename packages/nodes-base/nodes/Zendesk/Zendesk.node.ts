@@ -28,10 +28,14 @@ import {
 } from './TicketFieldDescription';
 
 import {
+	userFields,
+	userOperations
+} from './UserDescription';
+
+import {
 	ITicket,
 	IComment,
  } from './TicketInterface';
-import { response } from 'express';
 
 export class Zendesk implements INodeType {
 	description: INodeTypeDescription = {
@@ -105,6 +109,11 @@ export class Zendesk implements INodeType {
 						value: 'ticketField',
 						description: 'Manage system and custom ticket fields',
 					},
+					{
+						name: 'User',
+						value: 'user',
+						description: 'Manage users',
+					},
 				],
 				default: 'ticket',
 				description: 'Resource to consume.',
@@ -112,9 +121,12 @@ export class Zendesk implements INodeType {
 			// TICKET
 			...ticketOperations,
 			...ticketFields,
-			// TICKET FIELDS
+			// TICKET FIELD
 			...ticketFieldOperations,
 			...ticketFieldFields,
+			// USER
+			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -173,6 +185,38 @@ export class Zendesk implements INodeType {
 					returnData.push({
 						name: tagName,
 						value: tagId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the locales to display them to user so that he can
+			// select them easily
+			async getLocales(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const locales = await zendeskApiRequestAllItems.call(this, 'locales', 'GET', '/locales');
+				for (const locale of locales) {
+					const localeName = `${locale.locale} - ${locale.name}`;
+					const localeId = locale.locale;
+					returnData.push({
+						name: localeName,
+						value: localeId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the user fields to display them to user so that he can
+			// select them easily
+			async getUserFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const fields = await zendeskApiRequestAllItems.call(this, 'user_fields', 'GET', '/user_fields');
+				for (const field of fields) {
+					const fieldName = field.title;
+					const fieldId = field.key;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
 					});
 				}
 				return returnData;
@@ -357,6 +401,87 @@ export class Zendesk implements INodeType {
 						responseData = await zendeskApiRequestAllItems.call(this, 'ticket_fields', 'GET', '/ticket_fields', {}, qs);
 						responseData = responseData.slice(0, limit);
 					}
+				}
+			}
+			//https://developer.zendesk.com/rest_api/docs/support/users
+			if (resource === 'user') {
+				//https://developer.zendesk.com/rest_api/docs/support/users#create-user
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						name,
+					};
+
+					Object.assign(body, additionalFields);
+
+					if (body.userFieldsUi) {
+						const userFields = (body.userFieldsUi as IDataObject).userFieldValues as IDataObject[];
+						if (userFields) {
+							body.user_fields = {};
+							for (const userField of userFields) {
+								//@ts-ignore
+								body.user_fields[userField.field] = userField.value;
+							}
+							delete body.userFieldsUi;
+						}
+					}
+
+					responseData = await zendeskApiRequest.call(this, 'POST', '/users', { user: body });
+					responseData = responseData.user;
+				}
+				//https://developer.zendesk.com/rest_api/docs/support/tickets#update-ticket
+				if (operation === 'update') {
+					const userId = this.getNodeParameter('id', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					const body: IDataObject = {};
+
+					Object.assign(body, updateFields);
+
+					if (body.userFieldsUi) {
+						const userFields = (body.userFieldsUi as IDataObject).userFieldValues as IDataObject[];
+						if (userFields) {
+							body.user_fields = {};
+							for (const userField of userFields) {
+								//@ts-ignore
+								body.user_fields[userField.field] = userField.value;
+							}
+							delete body.userFieldsUi;
+						}
+					}
+
+					responseData = await zendeskApiRequest.call(this, 'PUT', `/users/${userId}`, { user: body });
+					responseData = responseData.user;
+				}
+				//https://developer.zendesk.com/rest_api/docs/support/users#show-user
+				if (operation === 'get') {
+					const userId = this.getNodeParameter('id', i) as string;
+					responseData = await zendeskApiRequest.call(this, 'GET', `/users/${userId}`, {});
+					responseData = responseData.user;
+				}
+				//https://developer.zendesk.com/rest_api/docs/support/users#list-users
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('filters', i) as IDataObject;
+
+					Object.assign(qs, options);
+
+					if (returnAll) {
+						responseData = await zendeskApiRequestAllItems.call(this, 'users', 'GET', `/users`, {}, qs);
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.per_page = limit;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/users`, {}, qs);
+						responseData = responseData.users;
+					}
+				}
+				//https://developer.zendesk.com/rest_api/docs/support/users#delete-user
+				if (operation === 'delete') {
+					const userId = this.getNodeParameter('id', i) as string;
+					responseData = await zendeskApiRequest.call(this, 'DELETE', `/users/${userId}`, {});
+					responseData = responseData.user;
 				}
 			}
 			if (Array.isArray(responseData)) {
