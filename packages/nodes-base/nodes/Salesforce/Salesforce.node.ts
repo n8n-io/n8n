@@ -553,67 +553,67 @@ export class Salesforce implements INodeType {
 						Company: company,
 						LastName: lastname,
 					};
-					if (additionalFields.email) {
+					if (additionalFields.email !== undefined) {
 						body.Email = additionalFields.email as string;
 					}
-					if (additionalFields.city) {
+					if (additionalFields.city !== undefined) {
 						body.City = additionalFields.city as string;
 					}
-					if (additionalFields.phone) {
+					if (additionalFields.phone !== undefined) {
 						body.Phone = additionalFields.phone as string;
 					}
-					if (additionalFields.state) {
+					if (additionalFields.state !== undefined) {
 						body.State = additionalFields.state as string;
 					}
-					if (additionalFields.title) {
+					if (additionalFields.title !== undefined) {
 						body.Title = additionalFields.title as string;
 					}
-					if (additionalFields.jigsaw) {
+					if (additionalFields.jigsaw !== undefined) {
 						body.Jigsaw = additionalFields.jigsaw as string;
 					}
-					if (additionalFields.rating) {
+					if (additionalFields.rating !== undefined) {
 						body.Rating = additionalFields.rating as string;
 					}
-					if (additionalFields.status) {
+					if (additionalFields.status !== undefined) {
 						body.Status = additionalFields.status as string;
 					}
-					if (additionalFields.street) {
+					if (additionalFields.street !== undefined) {
 						body.Street = additionalFields.street as string;
 					}
-					if (additionalFields.country) {
+					if (additionalFields.country !== undefined) {
 						body.Country = additionalFields.country as string;
 					}
-					if (additionalFields.owner) {
+					if (additionalFields.owner !== undefined) {
 						body.OwnerId = additionalFields.owner as string;
 					}
-					if (additionalFields.website) {
+					if (additionalFields.website !== undefined) {
 						body.Website = additionalFields.website as string;
 					}
-					if (additionalFields.industry) {
+					if (additionalFields.industry !== undefined) {
 						body.Industry = additionalFields.industry as string;
 					}
-					if (additionalFields.firstName) {
+					if (additionalFields.firstName !== undefined) {
 						body.FirstName = additionalFields.firstName as string;
 					}
-					if (additionalFields.leadSource) {
+					if (additionalFields.leadSource !== undefined) {
 						body.LeadSource = additionalFields.leadSource as string;
 					}
-					if (additionalFields.postalCode) {
+					if (additionalFields.postalCode !== undefined) {
 						body.PostalCode = additionalFields.postalCode as string;
 					}
-					if (additionalFields.salutation) {
+					if (additionalFields.salutation !== undefined) {
 						body.Salutation = additionalFields.salutation as string;
 					}
-					if (additionalFields.description) {
+					if (additionalFields.description !== undefined) {
 						body.Description = additionalFields.description as string;
 					}
-					if (additionalFields.annualRevenue) {
+					if (additionalFields.annualRevenue !== undefined) {
 						body.AnnualRevenue = additionalFields.annualRevenue as number;
 					}
-					if (additionalFields.isUnreadByOwner) {
+					if (additionalFields.isUnreadByOwner !== undefined) {
 						body.IsUnreadByOwner = additionalFields.isUnreadByOwner as boolean;
 					}
-					if (additionalFields.numberOfEmployees) {
+					if (additionalFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = additionalFields.numberOfEmployees as number;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/lead', body);
@@ -626,73 +626,73 @@ export class Salesforce implements INodeType {
 					if (!Object.keys(updateFields).length) {
 						throw new Error('You must add at least one update field');
 					}
-					if (updateFields.lastname) {
+					if (updateFields.lastname !== undefined) {
 						body.LastName = updateFields.lastname as string;
 					}
-					if (updateFields.company) {
+					if (updateFields.company !== undefined) {
 						body.Company = updateFields.company as string;
 					}
-					if (updateFields.email) {
+					if (updateFields.email !== undefined) {
 						body.Email = updateFields.email as string;
 					}
-					if (updateFields.city) {
+					if (updateFields.city !== undefined) {
 						body.City = updateFields.city as string;
 					}
-					if (updateFields.phone) {
+					if (updateFields.phone !== undefined) {
 						body.Phone = updateFields.phone as string;
 					}
-					if (updateFields.state) {
+					if (updateFields.state !== undefined) {
 						body.State = updateFields.state as string;
 					}
-					if (updateFields.title) {
+					if (updateFields.title !== undefined) {
 						body.Title = updateFields.title as string;
 					}
-					if (updateFields.jigsaw) {
+					if (updateFields.jigsaw !== undefined) {
 						body.Jigsaw = updateFields.jigsaw as string;
 					}
-					if (updateFields.rating) {
+					if (updateFields.rating !== undefined) {
 						body.Rating = updateFields.rating as string;
 					}
-					if (updateFields.status) {
+					if (updateFields.status !== undefined) {
 						body.Status = updateFields.status as string;
 					}
-					if (updateFields.street) {
+					if (updateFields.street !== undefined) {
 						body.Street = updateFields.street as string;
 					}
-					if (updateFields.country) {
+					if (updateFields.country !== undefined) {
 						body.Country = updateFields.country as string;
 					}
-					if (updateFields.owner) {
+					if (updateFields.owner !== undefined) {
 						body.OwnerId = updateFields.owner as string;
 					}
-					if (updateFields.website) {
+					if (updateFields.website !== undefined) {
 						body.Website = updateFields.website as string;
 					}
-					if (updateFields.industry) {
+					if (updateFields.industry !== undefined) {
 						body.Industry = updateFields.industry as string;
 					}
-					if (updateFields.firstName) {
+					if (updateFields.firstName !== undefined) {
 						body.FirstName = updateFields.firstName as string;
 					}
-					if (updateFields.leadSource) {
+					if (updateFields.leadSource !== undefined) {
 						body.LeadSource = updateFields.leadSource as string;
 					}
-					if (updateFields.postalCode) {
+					if (updateFields.postalCode !== undefined) {
 						body.PostalCode = updateFields.postalCode as string;
 					}
-					if (updateFields.salutation) {
+					if (updateFields.salutation !== undefined) {
 						body.Salutation = updateFields.salutation as string;
 					}
-					if (updateFields.description) {
+					if (updateFields.description !== undefined) {
 						body.Description = updateFields.description as string;
 					}
-					if (updateFields.annualRevenue) {
+					if (updateFields.annualRevenue !== undefined) {
 						body.AnnualRevenue = updateFields.annualRevenue as number;
 					}
-					if (updateFields.isUnreadByOwner) {
+					if (updateFields.isUnreadByOwner !== undefined) {
 						body.IsUnreadByOwner = updateFields.isUnreadByOwner as boolean;
 					}
-					if (updateFields.numberOfEmployees) {
+					if (updateFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = updateFields.numberOfEmployees as number;
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/lead/${leadId}`, body);
@@ -780,94 +780,94 @@ export class Salesforce implements INodeType {
 					const body: IContact = {
 						LastName: lastname,
 					};
-					if (additionalFields.fax) {
+					if (additionalFields.fax !== undefined) {
 						body.Fax = additionalFields.fax as string;
 					}
-					if (additionalFields.email) {
+					if (additionalFields.email !== undefined) {
 						body.Email = additionalFields.email as string;
 					}
-					if (additionalFields.phone) {
+					if (additionalFields.phone !== undefined) {
 						body.Phone = additionalFields.phone as string;
 					}
-					if (additionalFields.title) {
+					if (additionalFields.title !== undefined) {
 						body.Title = additionalFields.title as string;
 					}
-					if (additionalFields.jigsaw) {
+					if (additionalFields.jigsaw !== undefined) {
 						body.Jigsaw = additionalFields.jigsaw as string;
 					}
-					if (additionalFields.owner) {
+					if (additionalFields.owner !== undefined) {
 						body.OwnerId = additionalFields.owner as string;
 					}
-					if (additionalFields.acconuntId) {
+					if (additionalFields.acconuntId !== undefined) {
 						body.AccountId = additionalFields.acconuntId as string;
 					}
-					if (additionalFields.birthdate) {
+					if (additionalFields.birthdate !== undefined) {
 						body.Birthdate = additionalFields.birthdate as string;
 					}
-					if (additionalFields.firstName) {
+					if (additionalFields.firstName !== undefined) {
 						body.FirstName = additionalFields.firstName as string;
 					}
-					if (additionalFields.homePhone) {
+					if (additionalFields.homePhone !== undefined) {
 						body.HomePhone = additionalFields.homePhone as string;
 					}
-					if (additionalFields.otherCity) {
+					if (additionalFields.otherCity !== undefined) {
 						body.OtherCity = additionalFields.otherCity as string;
 					}
-					if (additionalFields.department) {
+					if (additionalFields.department !== undefined) {
 						body.Department = additionalFields.department as string;
 					}
-					if (additionalFields.leadSource) {
+					if (additionalFields.leadSource !== undefined) {
 						body.LeadSource = additionalFields.leadSource as string;
 					}
-					if (additionalFields.otherPhone) {
+					if (additionalFields.otherPhone !== undefined) {
 						body.OtherPhone = additionalFields.otherPhone as string;
 					}
-					if (additionalFields.otherState) {
+					if (additionalFields.otherState !== undefined) {
 						body.OtherState = additionalFields.otherState as string;
 					}
-					if (additionalFields.salutation) {
+					if (additionalFields.salutation !== undefined) {
 						body.Salutation = additionalFields.salutation as string;
 					}
-					if (additionalFields.description) {
+					if (additionalFields.description !== undefined) {
 						body.Description = additionalFields.description as string;
 					}
-					if (additionalFields.mailingCity) {
+					if (additionalFields.mailingCity !== undefined) {
 						body.MailingCity = additionalFields.mailingCity as string;
 					}
-					if (additionalFields.mobilePhone) {
+					if (additionalFields.mobilePhone !== undefined) {
 						body.MobilePhone = additionalFields.mobilePhone as string;
 					}
-					if (additionalFields.otherStreet) {
+					if (additionalFields.otherStreet !== undefined) {
 						body.OtherStreet = additionalFields.otherStreet as string;
 					}
-					if (additionalFields.mailingState) {
+					if (additionalFields.mailingState !== undefined) {
 						body.MailingState = additionalFields.mailingState as string;
 					}
-					if (additionalFields.otherCountry) {
+					if (additionalFields.otherCountry !== undefined) {
 						body.OtherCountry = additionalFields.otherCountry as string;
 					}
-					if (additionalFields.assistantName) {
+					if (additionalFields.assistantName !== undefined) {
 						body.AssistantName = additionalFields.assistantName as string;
 					}
-					if (additionalFields.mailingStreet) {
+					if (additionalFields.mailingStreet !== undefined) {
 						body.MailingStreet = additionalFields.mailingStreet as string;
 					}
-					if (additionalFields.assistantPhone) {
+					if (additionalFields.assistantPhone !== undefined) {
 						body.AssistantPhone = additionalFields.assistantPhone as string;
 					}
-					if (additionalFields.mailingCountry) {
+					if (additionalFields.mailingCountry !== undefined) {
 						body.MailingCountry = additionalFields.mailingCountry as string;
 					}
-					if (additionalFields.otherPostalCode) {
+					if (additionalFields.otherPostalCode !== undefined) {
 						body.OtherPostalCode = additionalFields.otherPostalCode as string;
 					}
-					if (additionalFields.emailBouncedDate) {
+					if (additionalFields.emailBouncedDate !== undefined) {
 						body.EmailBouncedDate = additionalFields.emailBouncedDate as string;
 					}
-					if (additionalFields.mailingPostalCode) {
+					if (additionalFields.mailingPostalCode !== undefined) {
 						body.MailingPostalCode = additionalFields.mailingPostalCode as string;
 					}
-					if (additionalFields.emailBouncedReason) {
+					if (additionalFields.emailBouncedReason !== undefined) {
 						body.EmailBouncedReason = additionalFields.emailBouncedReason as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/contact', body);
@@ -880,94 +880,94 @@ export class Salesforce implements INodeType {
 					if (!Object.keys(updateFields).length) {
 						throw new Error('You must add at least one update field');
 					}
-					if (updateFields.fax) {
+					if (updateFields.fax !== undefined) {
 						body.Fax = updateFields.fax as string;
 					}
-					if (updateFields.email) {
+					if (updateFields.email !== undefined) {
 						body.Email = updateFields.email as string;
 					}
-					if (updateFields.phone) {
+					if (updateFields.phone !== undefined) {
 						body.Phone = updateFields.phone as string;
 					}
-					if (updateFields.title) {
+					if (updateFields.title !== undefined) {
 						body.Title = updateFields.title as string;
 					}
-					if (updateFields.jigsaw) {
+					if (updateFields.jigsaw !== undefined) {
 						body.Jigsaw = updateFields.jigsaw as string;
 					}
-					if (updateFields.owner) {
+					if (updateFields.owner !== undefined) {
 						body.OwnerId = updateFields.owner as string;
 					}
-					if (updateFields.acconuntId) {
+					if (updateFields.acconuntId !== undefined) {
 						body.AccountId = updateFields.acconuntId as string;
 					}
-					if (updateFields.birthdate) {
+					if (updateFields.birthdate !== undefined) {
 						body.Birthdate = updateFields.birthdate as string;
 					}
-					if (updateFields.firstName) {
+					if (updateFields.firstName !== undefined) {
 						body.FirstName = updateFields.firstName as string;
 					}
-					if (updateFields.homePhone) {
+					if (updateFields.homePhone !== undefined) {
 						body.HomePhone = updateFields.homePhone as string;
 					}
-					if (updateFields.otherCity) {
+					if (updateFields.otherCity !== undefined) {
 						body.OtherCity = updateFields.otherCity as string;
 					}
-					if (updateFields.department) {
+					if (updateFields.department !== undefined) {
 						body.Department = updateFields.department as string;
 					}
-					if (updateFields.leadSource) {
+					if (updateFields.leadSource !== undefined) {
 						body.LeadSource = updateFields.leadSource as string;
 					}
-					if (updateFields.otherPhone) {
+					if (updateFields.otherPhone !== undefined) {
 						body.OtherPhone = updateFields.otherPhone as string;
 					}
-					if (updateFields.otherState) {
+					if (updateFields.otherState !== undefined) {
 						body.OtherState = updateFields.otherState as string;
 					}
-					if (updateFields.salutation) {
+					if (updateFields.salutation !== undefined) {
 						body.Salutation = updateFields.salutation as string;
 					}
-					if (updateFields.description) {
+					if (updateFields.description !== undefined) {
 						body.Description = updateFields.description as string;
 					}
-					if (updateFields.mailingCity) {
+					if (updateFields.mailingCity !== undefined) {
 						body.MailingCity = updateFields.mailingCity as string;
 					}
-					if (updateFields.mobilePhone) {
+					if (updateFields.mobilePhone !== undefined) {
 						body.MobilePhone = updateFields.mobilePhone as string;
 					}
-					if (updateFields.otherStreet) {
+					if (updateFields.otherStreet !== undefined) {
 						body.OtherStreet = updateFields.otherStreet as string;
 					}
-					if (updateFields.mailingState) {
+					if (updateFields.mailingState !== undefined) {
 						body.MailingState = updateFields.mailingState as string;
 					}
-					if (updateFields.otherCountry) {
+					if (updateFields.otherCountry !== undefined) {
 						body.OtherCountry = updateFields.otherCountry as string;
 					}
-					if (updateFields.assistantName) {
+					if (updateFields.assistantName !== undefined) {
 						body.AssistantName = updateFields.assistantName as string;
 					}
-					if (updateFields.mailingStreet) {
+					if (updateFields.mailingStreet !== undefined) {
 						body.MailingStreet = updateFields.mailingStreet as string;
 					}
-					if (updateFields.assistantPhone) {
+					if (updateFields.assistantPhone !== undefined) {
 						body.AssistantPhone = updateFields.assistantPhone as string;
 					}
-					if (updateFields.mailingCountry) {
+					if (updateFields.mailingCountry !== undefined) {
 						body.MailingCountry = updateFields.mailingCountry as string;
 					}
-					if (updateFields.otherPostalCode) {
+					if (updateFields.otherPostalCode !== undefined) {
 						body.OtherPostalCode = updateFields.otherPostalCode as string;
 					}
-					if (updateFields.emailBouncedDate) {
+					if (updateFields.emailBouncedDate !== undefined) {
 						body.EmailBouncedDate = updateFields.emailBouncedDate as string;
 					}
-					if (updateFields.mailingPostalCode) {
+					if (updateFields.mailingPostalCode !== undefined) {
 						body.MailingPostalCode = updateFields.mailingPostalCode as string;
 					}
-					if (updateFields.emailBouncedReason) {
+					if (updateFields.emailBouncedReason !== undefined) {
 						body.EmailBouncedReason = updateFields.emailBouncedReason as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/contact/${contactId}`, body);
@@ -1035,13 +1035,13 @@ export class Salesforce implements INodeType {
 						Title: title,
 						ParentId: contactId,
 					};
-					if (options.body) {
+					if (options.body !== undefined) {
 						body.Body = options.body as string;
 					}
-					if (options.owner) {
+					if (options.owner !== undefined) {
 						body.OwnerId = options.owner as string;
 					}
-					if (options.isPrivate) {
+					if (options.isPrivate !== undefined) {
 						body.IsPrivate = options.isPrivate as boolean;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/note', body);
@@ -1059,37 +1059,37 @@ export class Salesforce implements INodeType {
 						CloseDate: closeDate,
 						StageName: stageName,
 					};
-					if (additionalFields.type) {
+					if (additionalFields.type !== undefined) {
 						body.Type = additionalFields.type as string;
 					}
-					if (additionalFields.ammount) {
+					if (additionalFields.ammount !== undefined) {
 						body.Amount = additionalFields.ammount as number;
 					}
-					if (additionalFields.owner) {
+					if (additionalFields.owner !== undefined) {
 						body.OwnerId = additionalFields.owner as string;
 					}
-					if (additionalFields.nextStep) {
+					if (additionalFields.nextStep !== undefined) {
 						body.NextStep = additionalFields.nextStep as string;
 					}
-					if (additionalFields.accountId) {
+					if (additionalFields.accountId !== undefined) {
 						body.AccountId = additionalFields.accountId as string;
 					}
-					if (additionalFields.campaignId) {
+					if (additionalFields.campaignId !== undefined) {
 						body.CampaignId = additionalFields.campaignId as string;
 					}
-					if (additionalFields.leadSource) {
+					if (additionalFields.leadSource !== undefined) {
 						body.LeadSource = additionalFields.leadSource as string;
 					}
-					if (additionalFields.description) {
+					if (additionalFields.description !== undefined) {
 						body.Description = additionalFields.description as string;
 					}
-					if (additionalFields.probability) {
+					if (additionalFields.probability !== undefined) {
 						body.Probability = additionalFields.probability as number;
 					}
-					if (additionalFields.pricebook2Id) {
+					if (additionalFields.pricebook2Id !== undefined) {
 						body.Pricebook2Id = additionalFields.pricebook2Id as string;
 					}
-					if (additionalFields.forecastCategoryName) {
+					if (additionalFields.forecastCategoryName !== undefined) {
 						body.ForecastCategoryName = additionalFields.forecastCategoryName as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/opportunity', body);
@@ -1099,46 +1099,46 @@ export class Salesforce implements INodeType {
 					const opportunityId = this.getNodeParameter('opportunityId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IOpportunity = {};
-					if (updateFields.name) {
+					if (updateFields.name !== undefined) {
 						body.Name = updateFields.name as string;
 					}
-					if (updateFields.closeDate) {
+					if (updateFields.closeDate !== undefined) {
 						body.CloseDate = updateFields.closeDate as string;
 					}
-					if (updateFields.stageName) {
+					if (updateFields.stageName !== undefined) {
 						body.StageName = updateFields.stageName as string;
 					}
-					if (updateFields.type) {
+					if (updateFields.type !== undefined) {
 						body.Type = updateFields.type as string;
 					}
-					if (updateFields.ammount) {
+					if (updateFields.ammount !== undefined) {
 						body.Amount = updateFields.ammount as number;
 					}
-					if (updateFields.owner) {
+					if (updateFields.owner !== undefined) {
 						body.OwnerId = updateFields.owner as string;
 					}
-					if (updateFields.nextStep) {
+					if (updateFields.nextStep !== undefined) {
 						body.NextStep = updateFields.nextStep as string;
 					}
-					if (updateFields.accountId) {
+					if (updateFields.accountId !== undefined) {
 						body.AccountId = updateFields.accountId as string;
 					}
-					if (updateFields.campaignId) {
+					if (updateFields.campaignId !== undefined) {
 						body.CampaignId = updateFields.campaignId as string;
 					}
-					if (updateFields.leadSource) {
+					if (updateFields.leadSource !== undefined) {
 						body.LeadSource = updateFields.leadSource as string;
 					}
-					if (updateFields.description) {
+					if (updateFields.description !== undefined) {
 						body.Description = updateFields.description as string;
 					}
-					if (updateFields.probability) {
+					if (updateFields.probability !== undefined) {
 						body.Probability = updateFields.probability as number;
 					}
-					if (updateFields.pricebook2Id) {
+					if (updateFields.pricebook2Id !== undefined) {
 						body.Pricebook2Id = updateFields.pricebook2Id as string;
 					}
-					if (updateFields.forecastCategoryName) {
+					if (updateFields.forecastCategoryName !== undefined) {
 						body.ForecastCategoryName = updateFields.forecastCategoryName as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/opportunity/${opportunityId}`, body);
@@ -1192,13 +1192,13 @@ export class Salesforce implements INodeType {
 						Title: title,
 						ParentId: opportunityId,
 					};
-					if (options.body) {
+					if (options.body !== undefined) {
 						body.Body = options.body as string;
 					}
-					if (options.owner) {
+					if (options.owner !== undefined) {
 						body.OwnerId = options.owner as string;
 					}
-					if (options.isPrivate) {
+					if (options.isPrivate !== undefined) {
 						body.IsPrivate = options.isPrivate as boolean;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/note', body);
@@ -1212,76 +1212,76 @@ export class Salesforce implements INodeType {
 					const body: IAccount = {
 						Name: name,
 					};
-					if (additionalFields.fax) {
+					if (additionalFields.fax !== undefined) {
 						body.Fax = additionalFields.fax as string;
 					}
-					if (additionalFields.type) {
+					if (additionalFields.type !== undefined) {
 						body.Type = additionalFields.type as string;
 					}
-					if (additionalFields.jigsaw) {
+					if (additionalFields.jigsaw !== undefined) {
 						body.Jigsaw = additionalFields.jigsaw as string;
 					}
-					if (additionalFields.phone) {
+					if (additionalFields.phone !== undefined) {
 						body.Phone = additionalFields.phone as string;
 					}
-					if (additionalFields.owner) {
+					if (additionalFields.owner !== undefined) {
 						body.OwnerId = additionalFields.owner as string;
 					}
-					if (additionalFields.sicDesc) {
+					if (additionalFields.sicDesc !== undefined) {
 						body.SicDesc = additionalFields.sicDesc as string;
 					}
-					if (additionalFields.website) {
+					if (additionalFields.website !== undefined) {
 						body.Website = additionalFields.website as string;
 					}
-					if (additionalFields.industry) {
+					if (additionalFields.industry !== undefined) {
 						body.Industry = additionalFields.industry as string;
 					}
-					if (additionalFields.parentId) {
+					if (additionalFields.parentId !== undefined) {
 						body.ParentId = additionalFields.parentId as string;
 					}
-					if (additionalFields.billingCity) {
+					if (additionalFields.billingCity !== undefined) {
 						body.BillingCity = additionalFields.billingCity as string;
 					}
-					if (additionalFields.description) {
+					if (additionalFields.description !== undefined) {
 						body.Description = additionalFields.description as string;
 					}
-					if (additionalFields.billingState) {
+					if (additionalFields.billingState !== undefined) {
 						body.BillingState = additionalFields.billingState as string;
 					}
-					if (additionalFields.shippingCity) {
+					if (additionalFields.shippingCity !== undefined) {
 						body.ShippingCity = additionalFields.shippingCity as string;
 					}
-					if (additionalFields.accountSource) {
+					if (additionalFields.accountSource !== undefined) {
 						body.AccountSource = additionalFields.accountSource as string;
 					}
-					if (additionalFields.annualRevenue) {
+					if (additionalFields.annualRevenue !== undefined) {
 						body.AnnualRevenue = additionalFields.annualRevenue as number;
 					}
-					if (additionalFields.billingStreet) {
+					if (additionalFields.billingStreet !== undefined) {
 						body.BillingStreet = additionalFields.billingStreet as string;
 					}
-					if (additionalFields.shippingState) {
+					if (additionalFields.shippingState !== undefined) {
 						body.ShippingState = additionalFields.shippingState as string;
 					}
-					if (additionalFields.billingCountry) {
+					if (additionalFields.billingCountry !== undefined) {
 						body.BillingCountry = additionalFields.billingCountry as string;
 					}
-					if (additionalFields.shippingStreet) {
+					if (additionalFields.shippingStreet !== undefined) {
 						body.ShippingStreet = additionalFields.shippingStreet as string;
 					}
-					if (additionalFields.shippingCountry) {
+					if (additionalFields.shippingCountry !== undefined) {
 						body.ShippingCountry = additionalFields.shippingCountry as string;
 					}
-					if (additionalFields.billingPostalCode) {
+					if (additionalFields.billingPostalCode !== undefined) {
 						body.BillingPostalCode = additionalFields.billingPostalCode as string;
 					}
-					if (additionalFields.numberOfEmployees) {
+					if (additionalFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = additionalFields.numberOfEmployees as string;
 					}
-					if (additionalFields.shippingPostalCode) {
+					if (additionalFields.shippingPostalCode !== undefined) {
 						body.ShippingPostalCode = additionalFields.shippingPostalCode as string;
 					}
-					if (additionalFields.shippingPostalCode) {
+					if (additionalFields.shippingPostalCode !== undefined) {
 						body.ShippingPostalCode = additionalFields.shippingPostalCode as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/account', body);
@@ -1291,79 +1291,79 @@ export class Salesforce implements INodeType {
 					const accountId = this.getNodeParameter('accountId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IAccount = {};
-					if (updateFields.name) {
+					if (updateFields.name !== undefined) {
 						body.Name = updateFields.name as string;
 					}
-					if (updateFields.fax) {
+					if (updateFields.fax !== undefined) {
 						body.Fax = updateFields.fax as string;
 					}
-					if (updateFields.type) {
+					if (updateFields.type !== undefined) {
 						body.Type = updateFields.type as string;
 					}
-					if (updateFields.jigsaw) {
+					if (updateFields.jigsaw !== undefined) {
 						body.Jigsaw = updateFields.jigsaw as string;
 					}
-					if (updateFields.phone) {
+					if (updateFields.phone !== undefined) {
 						body.Phone = updateFields.phone as string;
 					}
-					if (updateFields.owner) {
+					if (updateFields.owner !== undefined) {
 						body.OwnerId = updateFields.owner as string;
 					}
-					if (updateFields.sicDesc) {
+					if (updateFields.sicDesc !== undefined) {
 						body.SicDesc = updateFields.sicDesc as string;
 					}
-					if (updateFields.website) {
+					if (updateFields.website !== undefined) {
 						body.Website = updateFields.website as string;
 					}
-					if (updateFields.industry) {
+					if (updateFields.industry !== undefined) {
 						body.Industry = updateFields.industry as string;
 					}
-					if (updateFields.parentId) {
+					if (updateFields.parentId !== undefined) {
 						body.ParentId = updateFields.parentId as string;
 					}
-					if (updateFields.billingCity) {
+					if (updateFields.billingCity !== undefined) {
 						body.BillingCity = updateFields.billingCity as string;
 					}
-					if (updateFields.description) {
+					if (updateFields.description !== undefined) {
 						body.Description = updateFields.description as string;
 					}
-					if (updateFields.billingState) {
+					if (updateFields.billingState !== undefined) {
 						body.BillingState = updateFields.billingState as string;
 					}
-					if (updateFields.shippingCity) {
+					if (updateFields.shippingCity !== undefined) {
 						body.ShippingCity = updateFields.shippingCity as string;
 					}
-					if (updateFields.accountSource) {
+					if (updateFields.accountSource !== undefined) {
 						body.AccountSource = updateFields.accountSource as string;
 					}
-					if (updateFields.annualRevenue) {
+					if (updateFields.annualRevenue !== undefined) {
 						body.AnnualRevenue = updateFields.annualRevenue as number;
 					}
-					if (updateFields.billingStreet) {
+					if (updateFields.billingStreet !== undefined) {
 						body.BillingStreet = updateFields.billingStreet as string;
 					}
-					if (updateFields.shippingState) {
+					if (updateFields.shippingState !== undefined) {
 						body.ShippingState = updateFields.shippingState as string;
 					}
-					if (updateFields.billingCountry) {
+					if (updateFields.billingCountry !== undefined) {
 						body.BillingCountry = updateFields.billingCountry as string;
 					}
-					if (updateFields.shippingStreet) {
+					if (updateFields.shippingStreet !== undefined) {
 						body.ShippingStreet = updateFields.shippingStreet as string;
 					}
-					if (updateFields.shippingCountry) {
+					if (updateFields.shippingCountry !== undefined) {
 						body.ShippingCountry = updateFields.shippingCountry as string;
 					}
-					if (updateFields.billingPostalCode) {
+					if (updateFields.billingPostalCode !== undefined) {
 						body.BillingPostalCode = updateFields.billingPostalCode as string;
 					}
-					if (updateFields.numberOfEmployees) {
+					if (updateFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = updateFields.numberOfEmployees as string;
 					}
-					if (updateFields.shippingPostalCode) {
+					if (updateFields.shippingPostalCode !== undefined) {
 						body.ShippingPostalCode = updateFields.shippingPostalCode as string;
 					}
-					if (updateFields.shippingPostalCode) {
+					if (updateFields.shippingPostalCode !== undefined) {
 						body.ShippingPostalCode = updateFields.shippingPostalCode as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/account/${accountId}`, body);
@@ -1417,13 +1417,13 @@ export class Salesforce implements INodeType {
 						Title: title,
 						ParentId: accountId,
 					};
-					if (options.body) {
+					if (options.body !== undefined) {
 						body.Body = options.body as string;
 					}
-					if (options.owner) {
+					if (options.owner !== undefined) {
 						body.OwnerId = options.owner as string;
 					}
-					if (options.isPrivate) {
+					if (options.isPrivate !== undefined) {
 						body.IsPrivate = options.isPrivate as boolean;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/note', body);
@@ -1437,46 +1437,46 @@ export class Salesforce implements INodeType {
 					const body: ICase = {
 						Type: type,
 					};
-					if (additionalFields.origin) {
+					if (additionalFields.origin !== undefined) {
 						body.Origin = additionalFields.origin as string;
 					}
-					if (additionalFields.reason) {
+					if (additionalFields.reason !== undefined) {
 						body.Reason = additionalFields.reason as string;
 					}
-					if (additionalFields.owner) {
+					if (additionalFields.owner !== undefined) {
 						body.OwnerId = additionalFields.owner as string;
 					}
-					if (additionalFields.subject) {
+					if (additionalFields.subject !== undefined) {
 						body.Subject = additionalFields.subject as string;
 					}
-					if (additionalFields.parentId) {
+					if (additionalFields.parentId !== undefined) {
 						body.ParentId = additionalFields.parentId as string;
 					}
-					if (additionalFields.priority) {
+					if (additionalFields.priority !== undefined) {
 						body.Priority = additionalFields.priority as string;
 					}
-					if (additionalFields.accountId) {
+					if (additionalFields.accountId !== undefined) {
 						body.AccountId = additionalFields.accountId as string;
 					}
-					if (additionalFields.contactId) {
+					if (additionalFields.contactId !== undefined) {
 						body.ContactId = additionalFields.contactId as string;
 					}
-					if (additionalFields.description) {
+					if (additionalFields.description !== undefined) {
 						body.Description = additionalFields.description as string;
 					}
-					if (additionalFields.isEscalated) {
+					if (additionalFields.isEscalated !== undefined) {
 						body.IsEscalated = additionalFields.isEscalated as boolean;
 					}
-					if (additionalFields.suppliedName) {
+					if (additionalFields.suppliedName !== undefined) {
 						body.SuppliedName = additionalFields.suppliedName as string;
 					}
-					if (additionalFields.suppliedEmail) {
+					if (additionalFields.suppliedEmail !== undefined) {
 						body.SuppliedEmail = additionalFields.suppliedEmail as string;
 					}
-					if (additionalFields.suppliedPhone) {
+					if (additionalFields.suppliedPhone !== undefined) {
 						body.SuppliedPhone = additionalFields.suppliedPhone as string;
 					}
-					if (additionalFields.suppliedCompany) {
+					if (additionalFields.suppliedCompany !== undefined) {
 						body.SuppliedCompany = additionalFields.suppliedCompany as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/case', body);
@@ -1486,49 +1486,49 @@ export class Salesforce implements INodeType {
 					const caseId = this.getNodeParameter('caseId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: ICase = {};
-					if (updateFields.type) {
+					if (updateFields.type !== undefined) {
 						body.Type = updateFields.type as string;
 					}
-					if (updateFields.origin) {
+					if (updateFields.origin !== undefined) {
 						body.Origin = updateFields.origin as string;
 					}
-					if (updateFields.reason) {
+					if (updateFields.reason !== undefined) {
 						body.Reason = updateFields.reason as string;
 					}
-					if (updateFields.owner) {
+					if (updateFields.owner !== undefined) {
 						body.OwnerId = updateFields.owner as string;
 					}
-					if (updateFields.subject) {
+					if (updateFields.subject !== undefined) {
 						body.Subject = updateFields.subject as string;
 					}
-					if (updateFields.parentId) {
+					if (updateFields.parentId !== undefined) {
 						body.ParentId = updateFields.parentId as string;
 					}
-					if (updateFields.priority) {
+					if (updateFields.priority !== undefined) {
 						body.Priority = updateFields.priority as string;
 					}
-					if (updateFields.accountId) {
+					if (updateFields.accountId !== undefined) {
 						body.AccountId = updateFields.accountId as string;
 					}
-					if (updateFields.contactId) {
+					if (updateFields.contactId !== undefined) {
 						body.ContactId = updateFields.contactId as string;
 					}
-					if (updateFields.description) {
+					if (updateFields.description !== undefined) {
 						body.Description = updateFields.description as string;
 					}
-					if (updateFields.isEscalated) {
+					if (updateFields.isEscalated !== undefined) {
 						body.IsEscalated = updateFields.isEscalated as boolean;
 					}
-					if (updateFields.suppliedName) {
+					if (updateFields.suppliedName !== undefined) {
 						body.SuppliedName = updateFields.suppliedName as string;
 					}
-					if (updateFields.suppliedEmail) {
+					if (updateFields.suppliedEmail !== undefined) {
 						body.SuppliedEmail = updateFields.suppliedEmail as string;
 					}
-					if (updateFields.suppliedPhone) {
+					if (updateFields.suppliedPhone !== undefined) {
 						body.SuppliedPhone = updateFields.suppliedPhone as string;
 					}
-					if (updateFields.suppliedCompany) {
+					if (updateFields.suppliedCompany !== undefined) {
 						body.SuppliedCompany = updateFields.suppliedCompany as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/case/${caseId}`, body);
@@ -1580,10 +1580,10 @@ export class Salesforce implements INodeType {
 					const body: ICaseComment = {
 						ParentId: caseId,
 					};
-					if (options.commentBody) {
+					if (options.commentBody !== undefined) {
 						body.CommentBody = options.commentBody as string;
 					}
-					if (options.isPublished) {
+					if (options.isPublished !== undefined) {
 						body.IsPublished = options.isPublished as boolean;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/casecomment', body);
@@ -1597,73 +1597,73 @@ export class Salesforce implements INodeType {
 					const body: ITask = {
 						Status: status,
 					};
-					if (additionalFields.whoId) {
+					if (additionalFields.whoId !== undefined) {
 						body.WhoId = additionalFields.whoId as string;
 					}
-					if (additionalFields.whatId) {
+					if (additionalFields.whatId !== undefined) {
 						body.WhatId = additionalFields.whatId as string;
 					}
-					if (additionalFields.owner) {
+					if (additionalFields.owner !== undefined) {
 						body.OwnerId = additionalFields.owner as string;
 					}
-					if (additionalFields.subject) {
+					if (additionalFields.subject !== undefined) {
 						body.Subject = additionalFields.subject as string;
 					}
-					if (additionalFields.callType) {
+					if (additionalFields.callType !== undefined) {
 						body.CallType = additionalFields.callType as string;
 					}
-					if (additionalFields.priority) {
+					if (additionalFields.priority !== undefined) {
 						body.Priority = additionalFields.priority as string;
 					}
-					if (additionalFields.callObject) {
+					if (additionalFields.callObject !== undefined) {
 						body.CallObject = additionalFields.callObject as string;
 					}
-					if (additionalFields.description) {
+					if (additionalFields.description !== undefined) {
 						body.Description = additionalFields.description as string;
 					}
-					if (additionalFields.activityDate) {
+					if (additionalFields.activityDate !== undefined) {
 						body.ActivityDate = additionalFields.activityDate as string;
 					}
-					if (additionalFields.isReminderSet) {
+					if (additionalFields.isReminderSet !== undefined) {
 						body.IsReminderSet = additionalFields.isReminderSet as boolean;
 					}
-					if (additionalFields.recurrenceType) {
+					if (additionalFields.recurrenceType !== undefined) {
 						body.RecurrenceType = additionalFields.recurrenceType as string;
 					}
-					if (additionalFields.callDisposition) {
+					if (additionalFields.callDisposition !== undefined) {
 						body.CallDisposition = additionalFields.callDisposition as string;
 					}
-					if (additionalFields.reminderDateTime) {
+					if (additionalFields.reminderDateTime !== undefined) {
 						body.ReminderDateTime = additionalFields.reminderDateTime as string;
 					}
-					if (additionalFields.recurrenceInstance) {
+					if (additionalFields.recurrenceInstance !== undefined) {
 						body.RecurrenceInstance = additionalFields.recurrenceInstance as string;
 					}
-					if (additionalFields.recurrenceInterval) {
+					if (additionalFields.recurrenceInterval !== undefined) {
 						body.RecurrenceInterval = additionalFields.recurrenceInterval as number;
 					}
-					if (additionalFields.recurrenceDayOfMonth) {
+					if (additionalFields.recurrenceDayOfMonth !== undefined) {
 						body.RecurrenceDayOfMonth = additionalFields.recurrenceDayOfMonth as number;
 					}
-					if (additionalFields.callDurationInSeconds) {
+					if (additionalFields.callDurationInSeconds !== undefined) {
 						body.CallDurationInSeconds = additionalFields.callDurationInSeconds as number;
 					}
-					if (additionalFields.recurrenceEndDateOnly) {
+					if (additionalFields.recurrenceEndDateOnly !== undefined) {
 						body.RecurrenceEndDateOnly = additionalFields.recurrenceEndDateOnly as string;
 					}
-					if (additionalFields.recurrenceMonthOfYear) {
+					if (additionalFields.recurrenceMonthOfYear !== undefined) {
 						body.RecurrenceMonthOfYear = additionalFields.recurrenceMonthOfYear as string;
 					}
-					if (additionalFields.recurrenceDayOfWeekMask) {
+					if (additionalFields.recurrenceDayOfWeekMask !== undefined) {
 						body.RecurrenceDayOfWeekMask = additionalFields.recurrenceDayOfWeekMask as string;
 					}
-					if (additionalFields.recurrenceStartDateOnly) {
+					if (additionalFields.recurrenceStartDateOnly !== undefined) {
 						body.RecurrenceStartDateOnly = additionalFields.recurrenceStartDateOnly as string;
 					}
-					if (additionalFields.recurrenceTimeZoneSidKey) {
+					if (additionalFields.recurrenceTimeZoneSidKey !== undefined) {
 						body.RecurrenceTimeZoneSidKey = additionalFields.recurrenceTimeZoneSidKey as string;
 					}
-					if (additionalFields.recurrenceRegeneratedType) {
+					if (additionalFields.recurrenceRegeneratedType !== undefined) {
 						body.RecurrenceRegeneratedType = additionalFields.recurrenceRegeneratedType as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/task', body);
@@ -1673,76 +1673,76 @@ export class Salesforce implements INodeType {
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: ITask = {};
-					if (updateFields.whoId) {
+					if (updateFields.whoId !== undefined) {
 						body.WhoId = updateFields.whoId as string;
 					}
-					if (updateFields.status) {
+					if (updateFields.status !== undefined) {
 						body.Status = updateFields.status as string;
 					}
-					if (updateFields.whatId) {
+					if (updateFields.whatId !== undefined) {
 						body.WhatId = updateFields.whatId as string;
 					}
-					if (updateFields.owner) {
+					if (updateFields.owner !== undefined) {
 						body.OwnerId = updateFields.owner as string;
 					}
-					if (updateFields.subject) {
+					if (updateFields.subject !== undefined) {
 						body.Subject = updateFields.subject as string;
 					}
-					if (updateFields.callType) {
+					if (updateFields.callType !== undefined) {
 						body.CallType = updateFields.callType as string;
 					}
-					if (updateFields.priority) {
+					if (updateFields.priority !== undefined) {
 						body.Priority = updateFields.priority as string;
 					}
-					if (updateFields.callObject) {
+					if (updateFields.callObject !== undefined) {
 						body.CallObject = updateFields.callObject as string;
 					}
-					if (updateFields.description) {
+					if (updateFields.description !== undefined) {
 						body.Description = updateFields.description as string;
 					}
-					if (updateFields.activityDate) {
+					if (updateFields.activityDate !== undefined) {
 						body.ActivityDate = updateFields.activityDate as string;
 					}
-					if (updateFields.isReminderSet) {
+					if (updateFields.isReminderSet !== undefined) {
 						body.IsReminderSet = updateFields.isReminderSet as boolean;
 					}
-					if (updateFields.recurrenceType) {
+					if (updateFields.recurrenceType !== undefined) {
 						body.RecurrenceType = updateFields.recurrenceType as string;
 					}
-					if (updateFields.callDisposition) {
+					if (updateFields.callDisposition !== undefined) {
 						body.CallDisposition = updateFields.callDisposition as string;
 					}
-					if (updateFields.reminderDateTime) {
+					if (updateFields.reminderDateTime !== undefined) {
 						body.ReminderDateTime = updateFields.reminderDateTime as string;
 					}
-					if (updateFields.recurrenceInstance) {
+					if (updateFields.recurrenceInstance !== undefined) {
 						body.RecurrenceInstance = updateFields.recurrenceInstance as string;
 					}
-					if (updateFields.recurrenceInterval) {
+					if (updateFields.recurrenceInterval !== undefined) {
 						body.RecurrenceInterval = updateFields.recurrenceInterval as number;
 					}
-					if (updateFields.recurrenceDayOfMonth) {
+					if (updateFields.recurrenceDayOfMonth !== undefined) {
 						body.RecurrenceDayOfMonth = updateFields.recurrenceDayOfMonth as number;
 					}
-					if (updateFields.callDurationInSeconds) {
+					if (updateFields.callDurationInSeconds !== undefined) {
 						body.CallDurationInSeconds = updateFields.callDurationInSeconds as number;
 					}
-					if (updateFields.recurrenceEndDateOnly) {
+					if (updateFields.recurrenceEndDateOnly !== undefined) {
 						body.RecurrenceEndDateOnly = updateFields.recurrenceEndDateOnly as string;
 					}
-					if (updateFields.recurrenceMonthOfYear) {
+					if (updateFields.recurrenceMonthOfYear !== undefined) {
 						body.RecurrenceMonthOfYear = updateFields.recurrenceMonthOfYear as string;
 					}
-					if (updateFields.recurrenceDayOfWeekMask) {
+					if (updateFields.recurrenceDayOfWeekMask !== undefined) {
 						body.RecurrenceDayOfWeekMask = updateFields.recurrenceDayOfWeekMask as string;
 					}
-					if (updateFields.recurrenceStartDateOnly) {
+					if (updateFields.recurrenceStartDateOnly !== undefined) {
 						body.RecurrenceStartDateOnly = updateFields.recurrenceStartDateOnly as string;
 					}
-					if (updateFields.recurrenceTimeZoneSidKey) {
+					if (updateFields.recurrenceTimeZoneSidKey !== undefined) {
 						body.RecurrenceTimeZoneSidKey = updateFields.recurrenceTimeZoneSidKey as string;
 					}
-					if (updateFields.recurrenceRegeneratedType) {
+					if (updateFields.recurrenceRegeneratedType !== undefined) {
 						body.RecurrenceRegeneratedType = updateFields.recurrenceRegeneratedType as string;
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/task/${taskId}`, body);
@@ -1805,13 +1805,13 @@ export class Salesforce implements INodeType {
 					} else {
 						throw new Error(`The property ${binaryPropertyName} does not exist`);
 					}
-					if (additionalFields.description) {
+					if (additionalFields.description !== undefined) {
 						body.Description = additionalFields.description as string;
 					}
-					if (additionalFields.owner) {
+					if (additionalFields.owner !== undefined) {
 						body.OwnerId = additionalFields.owner as string;
 					}
-					if (additionalFields.isPrivate) {
+					if (additionalFields.isPrivate !== undefined) {
 						body.IsPrivate = additionalFields.isPrivate as boolean;
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/attachment', body);
@@ -1821,7 +1821,7 @@ export class Salesforce implements INodeType {
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IAttachment = {};
-					if (updateFields.binaryPropertyName) {
+					if (updateFields.binaryPropertyName !== undefined) {
 						const binaryPropertyName = updateFields.binaryPropertyName as string;
 						if (items[i].binary && items[i].binary![binaryPropertyName]) {
 							body.Body = items[i].binary![binaryPropertyName].data;
@@ -1830,16 +1830,16 @@ export class Salesforce implements INodeType {
 							throw new Error(`The property ${binaryPropertyName} does not exist`);
 						}
 					}
-					if (updateFields.name) {
+					if (updateFields.name !== undefined) {
 						body.Name = updateFields.name as string;
 					}
-					if (updateFields.description) {
+					if (updateFields.description !== undefined) {
 						body.Description = updateFields.description as string;
 					}
-					if (updateFields.owner) {
+					if (updateFields.owner !== undefined) {
 						body.OwnerId = updateFields.owner as string;
 					}
-					if (updateFields.isPrivate) {
+					if (updateFields.isPrivate !== undefined) {
 						body.IsPrivate = updateFields.isPrivate as boolean;
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/attachment/${attachmentId}`, body);
