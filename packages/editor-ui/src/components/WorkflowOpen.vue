@@ -34,6 +34,7 @@ import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
 import { IWorkflowShortResponse } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
@@ -42,6 +43,7 @@ export default mixins(
 	genericHelpers,
 	restApi,
 	showMessage,
+	titleChange,
 ).extend({
 	name: 'WorkflowOpen',
 	props: [
@@ -89,6 +91,7 @@ export default mixins(
 		},
 		openWorkflow (data: IWorkflowShortResponse, column: any) { // tslint:disable-line:no-any
 			if (column.label !== 'Active') {
+				this.$titleSet(data.name, 'IDLE');
 				this.$emit('openWorkflow', data.id);
 			}
 		},
