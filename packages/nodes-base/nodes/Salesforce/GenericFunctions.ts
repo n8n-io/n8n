@@ -13,7 +13,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 	const subdomain = ((credentials!.accessTokenUrl as string).match(/https:\/\/(.+).salesforce\.com/) || [])[1]
 	const options: OptionsWithUri = {
 		method,
-		body,
+		body: method === "GET" ? undefined : body,
 		qs,
 		uri: uri || `https://${subdomain}.salesforce.com/services/data/v39.0${resource}`,
 		json: true
