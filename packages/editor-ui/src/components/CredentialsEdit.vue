@@ -4,7 +4,7 @@
 			<div name="title" class="titleContainer" slot="title">
 				<div id="left">{{title}}</div>
 				<div id="right">
-					<div id="docsContainer">
+					<div v-if="credentialType" id="docsContainer">
 						<svg id="help-logo" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 							<title>Node Documentation</title>
 							<g id="MVP-Onboard-proposal" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
@@ -20,8 +20,7 @@
 								</g>
 							</g>
 						</svg>
-						<span v-if="nodeType" id='docLinkText'>Need help? <a id="doc-hyperlink"  :href="'https://docs.n8n.io/credentials/' + documentationUrl + '/?utm_source=n8n_app&utm_medium=add_credential_modal-credential_link&utm_campaign=' + nodeType.name" target="_blank">Open credential docs</a></span>
-						<span v-if="!nodeType" id='docLinkText'>Need help? <a id="doc-hyperlink"  :href="'https://docs.n8n.io/credentials/' + documentationUrl + '/?utm_source=n8n_app&utm_medium=add_credential_modal-credential_link&utm_campaign=unknown-nodes-base.' + documentationUrl" target="_blank">Open credential docs</a></span>
+						<span v-if="credentialType" id='docLinkText'>Need help? <a id="doc-hyperlink"  :href="'https://docs.n8n.io/credentials/' + documentationUrl + '/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal'" target="_blank">Open credential docs</a></span>
 					</div>
 				</div>
 			</div>
