@@ -62,7 +62,7 @@ import {
 	NodeHelpers,
 	ICredentialType,
 	INodeProperties,
-  INodeTypeDescription,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
