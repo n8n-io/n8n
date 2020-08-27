@@ -1,11 +1,11 @@
 <template>
-	<div v-if="dialogVisible" @keydown.stop class="credentials-edit-wrapper">
-		<el-dialog :visible="dialogVisible" append-to-body width="75%" :title="title" :nodeType="nodeType"  :before-close="closeDialog">
+	<div v-if="dialogVisible" @keydown.stop>
+		<el-dialog :visible="dialogVisible" append-to-body width="75%" class="credentials-edit-wrapper" :title="title" :nodeType="nodeType"  :before-close="closeDialog">
 			<div name="title" class="title-container" slot="title">
-				<div id="title-left">{{title}}</div>
-				<div id="title-right">
-					<div v-if="credentialType" id="docs-container">
-						<svg id="help-logo" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+				<div class="title-left">{{title}}</div>
+				<div class="title-right">
+					<div v-if="credentialType" class="docs-container">
+						<svg class="help-logo" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 							<title>Node Documentation</title>
 							<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
 								<g transform="translate(-1127.000000, -836.000000)" fill-rule="nonzero">
@@ -20,7 +20,7 @@
 								</g>
 							</g>
 						</svg>
-						<span v-if="credentialType" id="doc-link-text">Need help? <a id="doc-hyperlink" :href="'https://docs.n8n.io/credentials/' + documentationUrl + '/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal'" target="_blank">Open credential docs</a></span>
+						<span v-if="credentialType" class="doc-link-text">Need help? <a class="doc-hyperlink" :href="'https://docs.n8n.io/credentials/' + documentationUrl + '/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal'" target="_blank">Open credential docs</a></span>
 					</div>
 				</div>
 			</div>
@@ -315,7 +315,7 @@ export default mixins(
 			line-height: 17px;
 		}
 
-		#docs-container {
+		.docs-container {
 			margin-left: auto;
 			margin-right: 0;
 		}
@@ -329,14 +329,14 @@ export default mixins(
 			line-height: 17px;
 		}
 
-		#docs-container {
+		.docs-container {
 			margin-top: 10px;
 			margin-left: 0;
 			margin-right: auto;
 		}
 	}
 
-	#title-left {
+	.title-left {
 		flex: 7;
 		font-size: 16px;
 		font-weight: bold;
@@ -344,7 +344,7 @@ export default mixins(
 		vertical-align:middle;
 	}
 
-	#title-right {
+	.title-right {
 		vertical-align: middle;
 		flex: 3;
 		font-family: "Open Sans";
@@ -357,21 +357,21 @@ export default mixins(
 		min-width: 40%;
 	}
 
-	#help-logo {
+	.help-logo {
 		flex: 1;
 	}
 
-	#doc-link-text {
+	.doc-link-text {
 		margin-left: 2px;
 		float: right;
 		word-break: break-word;
 		flex: 9;
 	}
 
-	#doc-hyperlink,
-	#doc-hyperlink:visited,
-	#doc-hyperlink:focus,
-	#doc-hyperlink:active {
+	.doc-hyperlink,
+	.doc-hyperlink:visited,
+	.doc-hyperlink:focus,
+	.doc-hyperlink:active {
 		text-decoration: none;
 		color: #FF6150;
 	}
