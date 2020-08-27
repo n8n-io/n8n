@@ -189,15 +189,22 @@ export class Postgres implements INodeType {
 
 		const pgp = pgPromise();
 
-		const config = {
+		const config: IDataObject = {
 			host: credentials.host as string,
 			port: credentials.port as number,
 			database: credentials.database as string,
 			user: credentials.user as string,
 			password: credentials.password as string,
-			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
-			sslmode: (credentials.ssl as string) || 'disable',
 		};
+
+		if (credentials.allowUnauthorizedCerts === true) {
+			config.ssl = {
+				rejectUnauthorized: false,
+			};
+		} else {
+			config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+			config.sslmode = (credentials.ssl as string) || 'disable';
+		}
 
 		const db = pgp(config);
 
