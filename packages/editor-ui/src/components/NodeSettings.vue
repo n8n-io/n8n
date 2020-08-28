@@ -5,7 +5,7 @@
 				<display-with-change :key-name="'name'" @valueChanged="valueChanged"></display-with-change>
 				<a v-if="nodeType" :href="'http://n8n.io/nodes/' + nodeType.name" target="_blank" class="node-info">
 					<el-tooltip class="clickable" placement="top" effect="light">
-						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>For more information and usage examples click!</strong>'"></div>
+						<div slot="content" v-html="'<strong>Node Description:</strong><br />' + nodeTypeDescription + '<br /><br /><strong>Click the \'?\' icon to open this node on n8n.io </strong>'"></div>
 						<font-awesome-icon icon="question-circle" />
 					</el-tooltip>
 				</a>
@@ -22,7 +22,7 @@
 					<node-webhooks :node="node" :nodeType="nodeType" />
 					<parameter-input-list :parameters="parametersNoneSetting" :hideDelete="true" :nodeValues="nodeValues" path="parameters" @valueChanged="valueChanged" />
 					<div v-if="parametersNoneSetting.length === 0">
-						The node does not have any parameters.
+						This node does not have any parameters.
 					</div>
 				</el-tab-pane>
 				<el-tab-pane label="Settings">
@@ -162,15 +162,15 @@ export default mixins(
 						},
 						default: '',
 						noDataExpression: true,
-						description: 'Notes to save with the node.',
+						description: 'Optional note to save with the node.',
 					},
 					{
-						displayName: 'Notes In Flow',
+						displayName: 'Display note in flow?',
 						name: 'notesInFlow',
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If activated it will display the above notes in the flow as subtitle.',
+						description: 'If active, the note above will display in the flow as a subtitle.',
 					},
 					{
 						displayName: 'Node Color',
@@ -186,7 +186,7 @@ export default mixins(
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If activated and the node does not have any data for the first output,<br />it returns an empty item anyway. Be careful setting this on<br />IF-Nodes as it could easily cause an infinite loop.',
+						description: 'If active, the node will return an empty item even if the <br />node returns no data during an initial execution. Be careful setting <br />this on IF-Nodes as it could cause an infinite loop.',
 					},
 					{
 						displayName: 'Execute Once',
@@ -194,7 +194,7 @@ export default mixins(
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'Instead of executing once per item does it only execute once with the data of the first item.',
+						description: 'If active, the node executes only once, with data<br /> from the first item it recieves. ',
 					},
 					{
 						displayName: 'Retry On Fail',
@@ -202,7 +202,7 @@ export default mixins(
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If activated it will automatically retry the node again multiple times.',
+						description: 'If active, the node tries to execute a failed attempt <br /> multiple times until it succeeds.',
 					},
 					{
 						displayName: 'Max. Tries',
@@ -221,7 +221,7 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'How often it should try to execute the node before it should fail.',
+						description: 'Number of times Retry On Fail should attempt to execute the node <br />before stopping and returning the execution as failed.',
 					},
 					{
 						displayName: 'Wait Between Tries',
@@ -240,7 +240,7 @@ export default mixins(
 							},
 						},
 						noDataExpression: true,
-						description: 'How long to wait between ties. Value in ms.',
+						description: 'How long to wait between each attempt. Value in ms.',
 					},
 					{
 						displayName: 'Continue On Fail',
@@ -248,7 +248,7 @@ export default mixins(
 						type: 'boolean',
 						default: false,
 						noDataExpression: true,
-						description: 'If activated and the node fails the workflow will simply continue running.<br />It will then simply pass through the input data so the workflow has<br />to be set up to handle the case that different data gets returned.',
+						description: 'If active, the workflow continues even if this node\'s <br /execution fails. When this occurs, the node passes along input data from<br />previous nodes - so your workflow should account for unexpected output data.',
 					},
 				] as INodeProperties[],
 
