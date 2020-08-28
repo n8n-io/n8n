@@ -213,64 +213,65 @@ class App {
 			const jwtAuthHeader = await GenericHelpers.getConfigValue('security.jwtAuth.jwtHeader') as string;
 			if (jwtAuthHeader === '') {
 				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
-      }
+			}
 			const jwksUri = await GenericHelpers.getConfigValue('security.jwtAuth.jwksUri') as string;
 			if (jwksUri === '') {
 				throw new Error('JWT auth is activated but no JWK Set URI was defined. Please set one!');
-      }
-      const jwtHeaderValuePrefix = await GenericHelpers.getConfigValue('security.jwtAuth.jwtHeaderValuePrefix') as string;
-      const jwtIssuer = await GenericHelpers.getConfigValue('security.jwtAuth.jwtIssuer') as string;
-      const jwtNamespace = await GenericHelpers.getConfigValue('security.jwtAuth.jwtNamespace') as string;
-      const jwtAllowedTenantKey = await GenericHelpers.getConfigValue('security.jwtAuth.jwtAllowedTenantKey') as string;
-      const jwtAllowedTenant = await GenericHelpers.getConfigValue('security.jwtAuth.jwtAllowedTenant') as string;
+			}
+			const jwtHeaderValuePrefix = await GenericHelpers.getConfigValue('security.jwtAuth.jwtHeaderValuePrefix') as string;
+			const jwtIssuer = await GenericHelpers.getConfigValue('security.jwtAuth.jwtIssuer') as string;
+			const jwtNamespace = await GenericHelpers.getConfigValue('security.jwtAuth.jwtNamespace') as string;
+			const jwtAllowedTenantKey = await GenericHelpers.getConfigValue('security.jwtAuth.jwtAllowedTenantKey') as string;
+			const jwtAllowedTenant = await GenericHelpers.getConfigValue('security.jwtAuth.jwtAllowedTenant') as string;
 
-      function isTenantAllowed(decodedToken: object): Boolean  {
-        if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') return true;
-        else {
-          for (let [k, v] of Object.entries(decodedToken)) {
-            if (k === jwtNamespace) {
-              for (let [kn, kv] of Object.entries(v)) {
-                if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
-                  return true;
-                }
-              }
-            }
-          }
-        }
-        return false;
-      }
+			function isTenantAllowed(decodedToken: object): boolean {
+				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') return true;
+				else {
+					for (const [k, v] of Object.entries(decodedToken)) {
+						if (k === jwtNamespace) {
+							for (const [kn, kv] of Object.entries(v)) {
+								if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
+									return true;
+								}
+							}
+						}
+					}
+				}
+				return false;
+			}
 
-      this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-        if (req.url.match(authIgnoreRegex)) {
-          return next();
-        }
+			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+				if (req.url.match(authIgnoreRegex)) {
+					return next();
+				}
 
-        var token = req.header(jwtAuthHeader) as string;
-        if (token === undefined || token === '') {
-          return ResponseHelper.jwtAuthAuthorizationError(res, "Missing token");
-        }
-        if (jwtHeaderValuePrefix != '' && token.startsWith(jwtHeaderValuePrefix)) {
-          token = token.replace(jwtHeaderValuePrefix + ' ', '').trimLeft();
-        }
+				let token = req.header(jwtAuthHeader) as string;
+				if (token === undefined || token === '') {
+					return ResponseHelper.jwtAuthAuthorizationError(res, "Missing token");
+				}
+				if (jwtHeaderValuePrefix != '' && token.startsWith(jwtHeaderValuePrefix)) {
+					token = token.replace(jwtHeaderValuePrefix + ' ', '').trimLeft();
+				}
 
-        const jwkClient = jwks({ cache: true, jwksUri });
-        function getKey(header: any, callback: Function) { // tslint:disable-line:no-any
-          jwkClient.getSigningKey(header.kid, (err: Error, key: any) => { // tslint:disable-line:no-any
-            if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
+				const jwkClient = jwks({ cache: true, jwksUri });
+				function getKey(header: any, callback: Function) { // tslint:disable-line:no-any
+					jwkClient.getSigningKey(header.kid, (err: Error, key: any) => { // tslint:disable-line:no-any
+						if (err) throw ResponseHelper.jwtAuthAuthorizationError(res, err.message);
 
-            const signingKey = key.publicKey || key.rsaPublicKey;
-            callback(null, signingKey);
-          });
-        }
+						const signingKey = key.publicKey || key.rsaPublicKey;
+						callback(null, signingKey);
+					});
+				}
 
-        var jwtVerifyOptions: jwt.VerifyOptions = {
-          issuer: jwtIssuer != '' ? jwtIssuer : undefined,
-          ignoreExpiration: false
-        }
-        jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
-          if (err) ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
-          else if (!isTenantAllowed(decoded)) ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
-          else next();
+				const jwtVerifyOptions: jwt.VerifyOptions = {
+					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
+					ignoreExpiration: false
+				};
+
+				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
+					if (err) ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
+					else if (!isTenantAllowed(decoded)) ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
+					else next();
 				});
 			});
 		}
@@ -296,6 +297,8 @@ class App {
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
+			// @ts-ignore
+			req.rawBody = new Buffer('', 'base64');
 			next();
 		});
 
@@ -309,11 +312,13 @@ class App {
 
 		// Support application/xml type post data
 		// @ts-ignore
-		this.app.use(bodyParser.xml({ limit: '16mb', xmlParseOptions: {
-			normalize: true,     // Trim whitespace inside text nodes
-			normalizeTags: true, // Transform tags to lowercase
-			explicitArray: false, // Only put properties in array if length > 1
-		} }));
+		this.app.use(bodyParser.xml({
+			limit: '16mb', xmlParseOptions: {
+				normalize: true,     // Trim whitespace inside text nodes
+				normalizeTags: true, // Transform tags to lowercase
+				explicitArray: false, // Only put properties in array if length > 1
+			}
+		}));
 
 		this.app.use(bodyParser.text({
 			limit: '16mb', verify: (req, res, buf) => {
@@ -1008,8 +1013,8 @@ class App {
 				hash_function(base, key) {
 					const algorithm = (signatureMethod === 'HMAC-SHA1') ? 'sha1' : 'sha256';
 					return createHmac(algorithm, key)
-							.update(base)
-							.digest('base64');
+						.update(base)
+						.digest('base64');
 				},
 			});
 
@@ -1209,7 +1214,7 @@ class App {
 
 		// Verify and store app code. Generate access tokens and store for respective credential.
 		this.app.get(`/${this.restEndpoint}/oauth2-credential/callback`, async (req: express.Request, res: express.Response) => {
-			const {code, state: stateEncoded } = req.query;
+			const { code, state: stateEncoded } = req.query;
 
 			if (code === undefined || stateEncoded === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth2 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
@@ -1643,7 +1648,7 @@ class App {
 				response = await this.activeWorkflowRunner.executeWebhook('GET', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
-				return ;
+				return;
 			}
 
 			if (response.noWebhookResponse === true) {
@@ -1835,13 +1840,13 @@ export async function start(): Promise<void> {
 
 	let server;
 
-	if (app.protocol === 'https' && app.sslKey && app.sslCert){
+	if (app.protocol === 'https' && app.sslKey && app.sslCert) {
 		const https = require('https');
 		const privateKey = readFileSync(app.sslKey, 'utf8');
 		const cert = readFileSync(app.sslCert, 'utf8');
-		const credentials = { key: privateKey,cert };
-		server = https.createServer(credentials,app.app);
-	}else{
+		const credentials = { key: privateKey, cert };
+		server = https.createServer(credentials, app.app);
+	} else {
 		const http = require('http');
 		server = http.createServer(app.app);
 	}

@@ -417,3 +417,5 @@ export interface ITimeoutHMS {
 	minutes: number;
 	seconds: number;
 }
+
+export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
