@@ -340,7 +340,12 @@ class App {
 		}));
 
 		//support application/x-www-form-urlencoded post data
-		this.app.use(bodyParser.urlencoded({ extended: false }));
+		this.app.use(bodyParser.urlencoded({ extended: false,
+			verify: (req, res, buf) => {
+				// @ts-ignore
+				req.rawBody = buf;
+			}
+		}));
 
 		if (process.env['NODE_ENV'] !== 'production') {
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
