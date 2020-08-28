@@ -16,6 +16,9 @@ import {
 
 import * as ftpClient from 'promise-ftp';
 import * as sftpClient from 'ssh2-sftp-client';
+import { map } from 'mssql';
+import { agileCrmApiRequestUpdate } from './AgileCrm/GenericFunctions';
+import { Sftp } from '../credentials/Sftp.credentials';
 
 export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
@@ -220,6 +223,21 @@ export class Ftp implements INodeType {
 				description: 'Path of directory to list contents of.',
 				required: true,
 			},
+			{
+				displayName: 'Recursive',
+				displayOptions: {
+					show: {
+						operation: [
+							'list',
+						],
+					},
+				},
+				name: 'recursive',
+				type: 'boolean',
+				default: false,
+				description: 'Return object representing all directories / objects recursively found within SFTP server',
+				required: true,
+			},
 		],
 	};
 
@@ -244,11 +262,9 @@ export class Ftp implements INodeType {
 			throw new Error('Failed to get credentials!');
 		}
 
-		let ftp: ftpClient;
-		let sftp: sftpClient;
+		const ftp = new ftpClient();
+		const sftp = new sftpClient();
 		if (protocol === 'sftp') {
-			sftp = new sftpClient();
-
 			await sftp.connect({
 				host: credentials.host as string,
 				port: credentials.port as number,
@@ -257,8 +273,6 @@ export class Ftp implements INodeType {
 			});
 
 		} else {
-			ftp = new ftpClient();
-
 			await ftp.connect({
 				host: credentials.host as string,
 				port: credentials.port as number,
@@ -286,8 +300,15 @@ export class Ftp implements INodeType {
 				const path = this.getNodeParameter('path', i) as string;
 
 				if (operation === 'list') {
-					responseData = await sftp!.list(path);
-					returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					const recursive = this.getNodeParameter('recursive', i) as boolean;
+
+					if (recursive) {
+						responseData = await callRecursiveList(path, sftp);
+						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					} else {
+						responseData = await sftp!.list(path);
+						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					}
 				}
 
 				if (operation === 'download') {
@@ -431,4 +452,38 @@ export class Ftp implements INodeType {
 
 		return [returnItems];
 	}
+}
+async function callRecursiveList(path: string, client : sftpClient | ftpClient) {
+	const pathArray : string[] = [path];
+	let currentPath = path;
+	const directoryItems : sftpClient.FileInfo[] = [];
+	let index = 0;
+
+	do {
+		// tslint:disable-next-line: array-type
+		const returnData : sftpClient.FileInfo[] | (string | ftpClient.ListingElement)[] = await client.list(pathArray[index]);
+
+		// @ts-ignore
+		returnData.map((item : sftpClient.FileInfo) => {
+			if ((pathArray[index] as string).endsWith('/')) {
+				currentPath = `${pathArray[index]}${item.name}`;
+			} else {
+				currentPath = `${pathArray[index]}/${item.name}`;
+			}
+
+			// Is directory
+			if (item.type === 'd') {
+				pathArray.push(currentPath);
+			}
+
+			//@ts-ignore
+			item.path = currentPath;
+			directoryItems.push(item);
+		});
+		index++;
+
+	} while (index <= pathArray.length - 1);
+
+
+	return directoryItems;
 }
