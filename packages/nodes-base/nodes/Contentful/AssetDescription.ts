@@ -96,6 +96,23 @@ export const fields = [
 		description: 'How many results to return.',
 	},
 	{
+		displayName: 'Asset ID',
+		name: 'assetId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					resource.value
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -178,20 +195,30 @@ export const fields = [
 		],
 	},
 	{
-		displayName: 'Asset ID',
-		name: 'assetId',
-		type: 'string',
-		default: '',
-		required: true,
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Select Option',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
-					resource.value
+					resource.value,
 				],
 				operation: [
-					'get',
+					'getAll',
+					'get'
 				],
 			},
 		},
+		options: [
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: 'If the data should be returned RAW instead of parsed.',
+			},
+		],
 	},
 ] as INodeProperties[];
