@@ -16,9 +16,6 @@ import {
 
 import * as ftpClient from 'promise-ftp';
 import * as sftpClient from 'ssh2-sftp-client';
-import { map } from 'mssql';
-import { agileCrmApiRequestUpdate } from './AgileCrm/GenericFunctions';
-import { Sftp } from '../credentials/Sftp.credentials';
 
 export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
