@@ -797,13 +797,14 @@ export class HttpRequest implements INodeType {
 				};
 			}
 
-			if (responseFormat === 'json') {
-
-				requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
-			} else if (responseFormat === 'string') {
-				requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
-			} else {
-				requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+			if (requestOptions.headers!['accept'] === undefined) {
+				if (responseFormat === 'json') {
+					requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
+				} else if (responseFormat === 'string') {
+					requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
+				} else {
+					requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+				}
 			}
 
 			if (responseFormat === 'file') {
