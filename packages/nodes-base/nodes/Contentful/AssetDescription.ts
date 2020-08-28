@@ -192,26 +192,6 @@ export const fields = [
 				default: '',
 				description: ' Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
 			},
-		],
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Select Option',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'getAll',
-					'get'
-				],
-			},
-		},
-		options: [
 			{
 				displayName: 'RAW Data',
 				name: 'rawData',
