@@ -66,4 +66,30 @@ export const fields = [
 			},
 		},
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Select Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					resource.value,
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: 'If the data should be returned RAW instead of parsed.',
+			},
+		],
+	},
 ] as INodeProperties[];
