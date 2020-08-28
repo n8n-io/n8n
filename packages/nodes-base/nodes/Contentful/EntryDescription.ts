@@ -200,7 +200,7 @@ export const fields = [
 				],
 			},
 		},
-	}
+	},
 	{
 		displayName: 'Options',
 		name: 'options',

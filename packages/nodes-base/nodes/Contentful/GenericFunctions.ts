@@ -39,17 +39,7 @@ export async function contentfulApiRequest(this: IExecuteFunctions | IExecuteSin
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-
-		let errorMessage = error;
-
-		// if (error.response && error.response.body && error.response.body.details) {
-		// 	const details = error.response.body.details;
-		// 	errorMessage = details.errors.map((e: IDataObject) => e.details).join('|');
-		// } else if (error.response && error.response.body && error.response.body.message) {
-		// 	errorMessage = error.response.body.message;
-		// }
-
-		throw new Error(`Contentful error response [${error.statusCode}]: ${errorMessage}`);
+		throw new Error(`Contentful error response [${error.statusCode}]: ${error.error.message}`);
 	}
 
 }
