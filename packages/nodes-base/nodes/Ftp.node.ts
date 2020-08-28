@@ -368,8 +368,15 @@ export class Ftp implements INodeType {
 				const path = this.getNodeParameter('path', i) as string;
 
 				if (operation === 'list') {
-					responseData = await ftp!.list(path);
-					returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					const recursive = this.getNodeParameter('recursive', i) as boolean;
+
+					if (recursive) {
+						responseData = await callRecursiveList(path, ftp);
+						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					} else {
+						responseData = await ftp!.list(path);
+						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
+					}
 				}
 
 				if (operation === 'download') {
