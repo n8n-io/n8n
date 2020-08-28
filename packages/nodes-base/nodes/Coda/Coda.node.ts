@@ -237,10 +237,6 @@ export class Coda implements INodeType {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
 
-					if (options.keyColumns) {
-						// @ts-ignore
-						items[i].json['keyColumns'] = options.keyColumns.split(',') as string[];
-					}
 					if (options.disableParsing) {
 						qs.disableParsing = options.disableParsing as boolean;
 					}
@@ -264,6 +260,11 @@ export class Coda implements INodeType {
 						};
 					}
 					((sendData[endpoint]! as IDataObject).rows! as IDataObject[]).push({ cells });
+
+					if (options.keyColumns) {
+						// @ts-ignore
+						(sendData[endpoint]! as IDataObject).keyColumns! = options.keyColumns.split(',') as string[];
+					}
 				}
 
 				// Now that all data got collected make all the requests
