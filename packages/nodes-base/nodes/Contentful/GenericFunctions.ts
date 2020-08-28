@@ -42,12 +42,12 @@ export async function contentfulApiRequest(this: IExecuteFunctions | IExecuteSin
 
 		let errorMessage = error;
 
-		if (error.response && error.response.body && error.response.body.details) {
-			const details = error.response.body.details;
-			errorMessage = details.errors.map((e: IDataObject) => e.details).join('|');
-		} else if (error.response && error.response.body && error.response.body.message) {
-			errorMessage = error.response.body.message;
-		}
+		// if (error.response && error.response.body && error.response.body.details) {
+		// 	const details = error.response.body.details;
+		// 	errorMessage = details.errors.map((e: IDataObject) => e.details).join('|');
+		// } else if (error.response && error.response.body && error.response.body.message) {
+		// 	errorMessage = error.response.body.message;
+		// }
 
 		throw new Error(`Contentful error response [${error.statusCode}]: ${errorMessage}`);
 	}

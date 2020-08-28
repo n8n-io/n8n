@@ -118,7 +118,13 @@ export class Contentful implements INodeType {
 
 					const id = this.getNodeParameter('contentTypeId', 0) as string;
 
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
 					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/content_types/${id}`);
+
+					if (!options.rawData) {
+						responseData = responseData.fields;
+					}
 				}
 			}
 			if (resource === 'entry') {
@@ -131,7 +137,13 @@ export class Contentful implements INodeType {
 
 					const id = this.getNodeParameter('entryId', 0) as string;
 
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
 					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries/${id}`, {}, qs);
+
+					if (!options.rawData) {
+						responseData = responseData.fields;
+					}
 
 				} else if (operation === 'getAll') {
 					const credentials = this.getCredentials('contentfulApi');
@@ -141,6 +153,8 @@ export class Contentful implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const env = this.getNodeParameter('environmentId', i) as string;
+
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					Object.assign(qs, additionalFields);
 
@@ -170,11 +184,29 @@ export class Contentful implements INodeType {
 
 					if (returnAll) {
 						responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries`, {}, qs);
+
+						if (!options.rawData) {
+							const assets : IDataObject[] = [];
+							// tslint:disable-next-line: no-any
+							responseData.map((asset : any) => {
+								assets.push(asset.fields);
+							});
+							responseData = assets;
+						}
 					} else {
 						const limit = this.getNodeParameter('limit', 0) as number;
 						qs.limit = limit;
 						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/entries`, {}, qs);
 						responseData = responseData.items;
+
+						if (!options.rawData) {
+							const assets : IDataObject[] = [];
+							// tslint:disable-next-line: no-any
+							responseData.map((asset : any) => {
+								assets.push(asset.fields);
+							});
+							responseData = assets;
+						}
 					}
 				}
 			}
@@ -187,7 +219,13 @@ export class Contentful implements INodeType {
 
 					const id = this.getNodeParameter('assetId', 0) as string;
 
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
 					responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets/${id}`, {}, qs);
+
+					if (!options.rawData) {
+						responseData = responseData.fields;
+					}
 
 				} else if (operation === 'getAll') {
 
@@ -198,6 +236,8 @@ export class Contentful implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const env = this.getNodeParameter('environmentId', i) as string;
+
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					Object.assign(qs, additionalFields);
 
@@ -227,11 +267,29 @@ export class Contentful implements INodeType {
 
 					if (returnAll) {
 						responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets`, {}, qs);
+
+						if (!options.rawData) {
+							const assets : IDataObject[] = [];
+							// tslint:disable-next-line: no-any
+							responseData.map((asset : any) => {
+								assets.push(asset.fields);
+							});
+							responseData = assets;
+						}
 					} else {
 						const limit = this.getNodeParameter('limit', 0) as number;
 						qs.limit = limit;
 						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/assets`, {}, qs);
 						responseData = responseData.items;
+
+						if (!options.rawData) {
+							const assets : IDataObject[] = [];
+							// tslint:disable-next-line: no-any
+							responseData.map((asset : any) => {
+								assets.push(asset.fields);
+							});
+							responseData = assets;
+						}
 					}
 				}
 			}
@@ -247,11 +305,13 @@ export class Contentful implements INodeType {
 
 					if (returnAll) {
 						responseData = await contenfulApiRequestAllItems.call(this, 'items', 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
+
 					} else {
 						const limit = this.getNodeParameter('limit', 0) as number;
 						qs.limit = limit;
 						responseData = await contentfulApiRequest.call(this, 'GET', `/spaces/${credentials?.spaceId}/environments/${env}/locales`, {}, qs);
 						responseData = responseData.items;
+
 					}
 				}
 			}
