@@ -440,21 +440,38 @@ export default mixins(
 
 					saveAs(blob, workflowName + '.json');
 				} else if (key === 'workflow-save') {
+					console.log("saving......");
 					this.saveCurrentWorkflow();
 				} else if (key === 'workflow-save-as') {
+					console.log("saving......");
 					this.saveCurrentWorkflow(true);
 				} else if (key === 'help-about') {
 					this.aboutDialogVisible = true;
 				} else if (key === 'workflow-settings') {
 					this.workflowSettingsDialogVisible = true;
 				} else if (key === 'workflow-new') {
-					this.$router.push({ name: 'NodeViewNew' });
+					const workflowId = this.$store.getters.workflowId;
+					const result = await this.dataHasChanged(workflowId);
+					if(result) {
+						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+						if (importConfirm === true) {
+							this.$router.push({ name: 'NodeViewNew' });
 
-					this.$showMessage({
-						title: 'Workflow created',
-						message: 'A new workflow got created!',
-						type: 'success',
-					});
+							this.$showMessage({
+								title: 'Workflow created',
+								message: 'A new workflow got created!',
+								type: 'success',
+							});
+						}
+					} else {
+						this.$router.push({ name: 'NodeViewNew' });
+
+						this.$showMessage({
+							title: 'Workflow created',
+							message: 'A new workflow got created!',
+							type: 'success',
+						});
+					}
 				} else if (key === 'credentials-open') {
 					this.credentialOpenDialogVisible = true;
 				} else if (key === 'credentials-new') {
