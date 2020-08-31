@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.66.0",
+  "version": "0.67.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -143,6 +143,8 @@
       "dist/credentials/ZendeskApi.credentials.js",
       "dist/credentials/ZendeskOAuth2Api.credentials.js",
       "dist/credentials/ZohoOAuth2Api.credentials.js",
+      "dist/credentials/ZoomApi.credentials.js",
+      "dist/credentials/ZoomOAuth2Api.credentials.js",
       "dist/credentials/ZulipApi.credentials.js"
     ],
     "nodes": [
@@ -300,6 +302,7 @@
       "dist/nodes/Zendesk/Zendesk.node.js",
       "dist/nodes/Zendesk/ZendeskTrigger.node.js",
       "dist/nodes/Zoho/ZohoCrm.node.js",
+      "dist/nodes/Zoom/Zoom.node.js",
       "dist/nodes/Zulip/Zulip.node.js"
     ]
   },
@@ -350,7 +353,7 @@
     "moment-timezone": "^0.5.28",
     "mongodb": "^3.5.5",
     "mysql2": "^2.0.1",
-    "n8n-core": "~0.36.0",
+    "n8n-core": "~0.37.0",
     "nodemailer": "^6.4.6",
     "pdf-parse": "^1.1.1",
     "pg-promise": "^9.0.3",
