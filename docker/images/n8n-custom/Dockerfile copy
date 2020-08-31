@@ -1,12 +1,16 @@
-# 1. Create an image to build n8n
 FROM node:12.16-alpine as builder
+# FROM node:12.16-alpine
 
 # Update everything and install needed dependencies
+RUN apk add --update graphicsmagick tzdata git tini su-exec
+
 USER root
 
 # Install all needed dependencies
 RUN apk --update add --virtual build-dependencies python build-base ca-certificates && \
-	npm_config_user=root npm install -g lerna
+	npm_config_user=root npm install -g full-icu lerna
+
+ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
 
 WORKDIR /data
 
@@ -19,28 +23,27 @@ COPY packages/nodes-base/ ./packages/nodes-base/
 COPY packages/workflow/ ./packages/workflow/
 RUN rm -rf node_modules packages/*/node_modules packages/*/dist
 
-RUN npm install --production --loglevel notice
-RUN lerna bootstrap --hoist -- --production
+RUN npm install --loglevel notice
+RUN lerna bootstrap --hoist
 RUN npm run build
 
 
-# 2. Start with a new clean image with just the code that is needed to run n8n
 FROM node:12.16-alpine
-
-USER root
-
-RUN apk add --update graphicsmagick tzdata tini su-exec
 
 WORKDIR /data
 
 # Install all needed dependencies
 RUN npm_config_user=root npm install -g full-icu
 
+USER root
+
 ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
 
 COPY --from=builder /data ./
 
-COPY docker/images/n8n-custom/docker-entrypoint.sh /docker-entrypoint.sh
+RUN apk add --update graphicsmagick tzdata git tini su-exec
+
+COPY docker/images/n8n-dev/docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
 
 EXPOSE 5678/tcp
