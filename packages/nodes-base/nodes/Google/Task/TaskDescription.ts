@@ -71,6 +71,13 @@ export const taskFields = [
 		default: '',
 	},
 	{
+		displayName: 'Title',
+		name: 'title',
+		type: 'string',
+		default: '',
+		description: 'Title of the task.',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -146,13 +153,7 @@ export const taskFields = [
 				default: '',
 				description: 'Current status of the task.',
 			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'Title of the task.',
-			},
+
 		],
 	},
 	/* -------------------------------------------------------------------------- */
