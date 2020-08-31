@@ -371,8 +371,8 @@ export class ClickUp implements INodeType {
 					const body: IDataObject = {
 						name,
 					};
-					if (additionalFields.assigneeId) {
-						body.assignee = parseInt(additionalFields.assigneeId as string, 10);
+					if (additionalFields.assignee) {
+						body.assignee = parseInt(additionalFields.assignee as string, 10);
 					}
 					responseData = await clickupApiRequest.call(this, 'POST', `/checklist/${checklistId}/checklist_item`, body);
 					responseData = responseData.checklist;
