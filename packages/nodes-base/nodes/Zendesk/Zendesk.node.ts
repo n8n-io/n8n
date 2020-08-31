@@ -477,6 +477,22 @@ export class Zendesk implements INodeType {
 						responseData = responseData.users;
 					}
 				}
+				//https://developer.zendesk.com/rest_api/docs/support/users#search-users
+				if (operation === 'search') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('filters', i) as IDataObject;
+
+					Object.assign(qs, options);
+
+					if (returnAll) {
+						responseData = await zendeskApiRequestAllItems.call(this, 'users', 'GET', `/users/search`, {}, qs);
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.per_page = limit;
+						responseData = await zendeskApiRequest.call(this, 'GET', `/users/search`, {}, qs);
+						responseData = responseData.users;
+					}
+				}
 				//https://developer.zendesk.com/rest_api/docs/support/users#delete-user
 				if (operation === 'delete') {
 					const userId = this.getNodeParameter('id', i) as string;
