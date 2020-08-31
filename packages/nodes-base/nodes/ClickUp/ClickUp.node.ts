@@ -414,7 +414,7 @@ export class ClickUp implements INodeType {
 						comment_text: commentText,
 					};
 					if (additionalFields.assignee) {
-						body.assigneeId = additionalFields.assignee as string;
+						body.assignee = parseInt(additionalFields.assignee as string, 10);
 					}
 					if (additionalFields.notifyAll) {
 						body.notify_all = additionalFields.notifyAll as boolean;
