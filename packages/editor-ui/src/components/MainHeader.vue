@@ -19,7 +19,7 @@
 						workflow
 					</span>
 					<span index="workflow-name" class="current-workflow" v-if="!isReadOnly">
-						<span v-if="currentWorkflow">Workflow: <span class="workflow-name">{{workflowName}}</span></span>
+						<span v-if="currentWorkflow">Workflow: <span class="workflow-name">{{workflowName}}<span v-if="isDirty">*</span></span></span>
 						<span v-else class="workflow-not-saved">Workflow was not saved!</span>
 					</span>
 
