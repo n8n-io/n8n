@@ -36,6 +36,11 @@ export const userOperations = [
 				description: 'Get all users',
 			},
 			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search users',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
@@ -667,7 +672,81 @@ export const userFields = [
 			},
 		],
 	},
-
+/* -------------------------------------------------------------------------- */
+/*                                   user:search                              */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'user',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'External ID',
+				name: 'external_id',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
 /* -------------------------------------------------------------------------- */
 /*                                user:delete                                 */
 /* -------------------------------------------------------------------------- */
