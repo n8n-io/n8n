@@ -27,9 +27,9 @@ export const userOperations = [
 ] as INodeProperties[];
 
 export const userFields = [
-/* -------------------------------------------------------------------------- */
-/*                                 user:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -51,7 +51,7 @@ export const userFields = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 1,
+		default: 100,
 		required: true,
 		typeOptions: {
 			minValue: 1,
@@ -90,7 +90,7 @@ export const userFields = [
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
