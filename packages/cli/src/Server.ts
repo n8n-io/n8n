@@ -249,7 +249,7 @@ class App {
 				if (token === undefined || token === '') {
 					return ResponseHelper.jwtAuthAuthorizationError(res, "Missing token");
 				}
-				if (jwtHeaderValuePrefix != '' && token.startsWith(jwtHeaderValuePrefix)) {
+				if (jwtHeaderValuePrefix !== '' && token.startsWith(jwtHeaderValuePrefix)) {
 					token = token.replace(jwtHeaderValuePrefix + ' ', '').trimLeft();
 				}
 
