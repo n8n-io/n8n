@@ -3,10 +3,10 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	IDataObject,
 } from 'n8n-workflow';
 
 import * as mqtt from 'mqtt';
@@ -75,7 +75,7 @@ export class MqttTrigger implements INodeType {
 		const credentials = this.getCredentials('mqtt');
 
 		if (!credentials) {
-		  throw new Error('Credentials are mandatory!');
+			throw new Error('Credentials are mandatory!');
 		}
 
 		const topics = (this.getNodeParameter('topics') as string).split(',');
@@ -105,7 +105,7 @@ export class MqttTrigger implements INodeType {
 		const self = this;
 
 		async function manualTriggerFunction() {
-			await new Promise(( resolve, reject ) => {
+			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
 					client.subscribe(topics, (err, granted) => {
 						if (err) {
@@ -120,7 +120,7 @@ export class MqttTrigger implements INodeType {
 							if (options.jsonParseMessage) {
 								try {
 									message = JSON.parse(message.toString());
-								} catch (err) {}
+								} catch (err) { }
 							}
 
 							result.message = message;
@@ -131,8 +131,7 @@ export class MqttTrigger implements INodeType {
 								result = message;
 							}
 
-							self.emit([self.helpers.returnJsonArray([result],
-							)]);
+							self.emit([self.helpers.returnJsonArray([result])]);
 							resolve(true);
 						});
 					});
