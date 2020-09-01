@@ -127,7 +127,7 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
-
+import { uuid } from 'uuidv4';
 import { debounce, isEqual } from 'lodash';
 import axios from 'axios';
 import {
@@ -196,13 +196,8 @@ export default mixins(
 					if (this.$route && this.$route.params.name) {
 						workflowId = this.$route.params.name;
 					}
-					if(workflowId !== null) {
-						this.isDirty = await this.dataHasChanged(workflowId);
-					} else {
-						this.isDirty = true;
-					}
 				},
-				deep: true
+				deep: true,
 			},
 			connections: {
 				async handler (val, oldVal) {
@@ -211,13 +206,8 @@ export default mixins(
 					if (this.$route && this.$route.params.name) {
 						workflowId = this.$route.params.name;
 					}
-					if(workflowId !== null) {
-						this.isDirty = await this.dataHasChanged(workflowId);
-					} else {
-						this.isDirty = true;
-					}
 				},
-				deep: true
+				deep: true,
 			},
 		},
 		computed: {
@@ -292,7 +282,6 @@ export default mixins(
 				ctrlKeyPressed: false,
 				debouncedFunctions: [] as any[], // tslint:disable-line:no-any
 				stopExecutionInProgress: false,
-				isDirty: false,
 			};
 		},
 		beforeDestroy () {
@@ -336,7 +325,7 @@ export default mixins(
 					throw new Error(`Execution with id "${executionId}" could not be found!`);
 				}
 
-				this.$store.commit('setWorkflowName', data.workflowData.name);
+				this.$store.commit('setWorkflowName', {newName: data.workflowData.name, setStateDirty: false});
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 				this.$store.commit('setWorkflowExecutionData', data);
@@ -360,7 +349,7 @@ export default mixins(
 
 				this.$store.commit('setActive', data.active || false);
 				this.$store.commit('setWorkflowId', workflowId);
-				this.$store.commit('setWorkflowName', data.name);
+				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 
 				await this.addNodes(data.nodes, data.connections);
@@ -467,7 +456,7 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.isDirty = false;
+					this.$store.commit('setStateDirty', false);
 
 					this.callDebounced('saveCurrentWorkflow', 1000);
 				} else if (e.key === 'Enter') {
@@ -985,7 +974,7 @@ export default mixins(
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
 
 				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
-					newNodeData.webhookId = uuidv4();
+					newNodeData.webhookId = uuid();
 				}
 
 				await this.addNodes([newNodeData]);
@@ -1345,7 +1334,7 @@ export default mixins(
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
-					this.isDirty = false;
+					this.$store.commit('setStateDirty', false);
 					return Promise.resolve();
 				}
 
@@ -1375,7 +1364,7 @@ export default mixins(
 				document.addEventListener('keyup', this.keyUp);
 
 				window.addEventListener("beforeunload",  (e) => {
-					if(this.isDirty === true) {
+					if(this.$store.getters.getStateIsDirty === true) {
 						const confirmationMessage = 'It looks like you have been editing something. '
 								+ 'If you leave before saving, your changes will be lost.';
 						(e || window.event).returnValue = confirmationMessage; //Gecko + IE
@@ -1399,6 +1388,8 @@ export default mixins(
 						detachable: !this.isReadOnly,
 					});
 				} else {
+					// @ts-ignore
+					connection.setStateDirty = false;
 					// When nodes get connected it gets saved automatically to the storage
 					// so if we do not connect we have to save the connection manually
 					this.$store.commit('addConnection', { connection });
@@ -1586,7 +1577,7 @@ export default mixins(
 					this.instance.deleteEveryEndpoint();
 				}
 				this.$store.commit('removeAllConnections');
-				this.$store.commit('removeAllNodes');
+				this.$store.commit('removeAllNodes', {setStateDirty: true});
 
 				// Wait a tick that the old nodes had time to get removed
 				await Vue.nextTick();
@@ -1876,8 +1867,8 @@ export default mixins(
 						});
 				}
 
-				this.$store.commit('removeAllConnections');
-				this.$store.commit('removeAllNodes');
+				this.$store.commit('removeAllConnections', {setStateDirty: false});
+				this.$store.commit('removeAllNodes', {setStateDirty: false});
 
 				// Reset workflow execution data
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -1886,7 +1877,7 @@ export default mixins(
 
 				this.$store.commit('setActive', false);
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				this.$store.commit('setWorkflowName', '');
+				this.$store.commit('setWorkflowName', {newName: '', setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', {});
 
 				this.$store.commit('setActiveExecutionId', null);
@@ -1897,7 +1888,7 @@ export default mixins(
 				this.$store.commit('resetNodeIndex');
 				this.$store.commit('resetSelectedNodes');
 
-				this.$store.commit('setNodeViewOffsetPosition', [0, 0]);
+				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0], setStateDirty: false});
 
 				return Promise.resolve();
 			},
