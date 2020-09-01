@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -8,6 +6,7 @@ import {
 	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
 	IWebhookFunctions,
+	BINARY_ENCODING
 } from 'n8n-core';
 
 import {
@@ -21,48 +20,35 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 		throw new Error('Could not retrieve credentials!');
 	}
 
-	const options: OptionsWithUri = {
+	const options : OptionsWithUri = {
 		method,
 		headers: {
 			'content-type': 'application/json'
 		},
-		uri: `https://vendors.paddle.com/api${endpoint}`,
+		uri: `https://vendors.paddle.com/api${endpoint}` ,
 		body,
 		json: true
 	};
 
 	body['vendor_id'] = credentials.vendorId;
 	body['vendor_auth_code'] = credentials.vendorAuthCode;
+
+	console.log(options.body);
+	console.log(options);
+
 	try {
 		const response = await this.helpers.request!(options);
+		console.log(response);
 
 		if (!response.success) {
 			throw new Error(`Code: ${response.error.code}. Message: ${response.error.message}`);
 		}
 
-		return response;
+		return response.response;
 	} catch (error) {
-		throw new Error(`ERROR: Code: ${error.code}. Message: ${error.message}`);
+		console.log(error);
+		throw new Error(error);
 	}
-}
-
-export async function paddleApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-
-	body.results_per_page = 200;
-	body.page = 1;
-
-	do {
-		responseData = await paddleApiRequest.call(this, endpoint, method, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData[propertyName].length !== 0
-	);
-
-	return returnData;
 }
 
 export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any

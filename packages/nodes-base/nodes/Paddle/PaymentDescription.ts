@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const paymentOperations = [
+export const paymentsOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,7 +10,7 @@ export const paymentOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payment',
+					'payments',
 				],
 			},
 		},
@@ -18,7 +18,7 @@ export const paymentOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all payment.',
+				description: 'Get all payments.',
 			},
 			{
 				name: 'Reschedule',
@@ -31,51 +31,10 @@ export const paymentOperations = [
 	},
 ] as INodeProperties[];
 
-export const paymentFields = [
-	/* -------------------------------------------------------------------------- */
-	/*                                 payment:getAll                             */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'payment',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'payment',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
-	},
+export const paymentsFields = [
+/* -------------------------------------------------------------------------- */
+/*                                 payments:getAll                                */
+/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
@@ -85,7 +44,7 @@ export const paymentFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payment',
+					'payments',
 				],
 				operation: [
 					'getAll',
@@ -94,7 +53,7 @@ export const paymentFields = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
+		displayName: ' Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -104,7 +63,7 @@ export const paymentFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payment',
+					'payments',
 				],
 				operation: [
 					'getAll',
@@ -124,7 +83,7 @@ export const paymentFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payment',
+					'payments',
 				],
 				operation: [
 					'getAll',
@@ -141,14 +100,14 @@ export const paymentFields = [
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				description: 'payment starting from date.',
+				description: 'payments starting from date.',
 			},
 			{
 				displayName: 'Date To',
 				name: 'to',
 				type: 'dateTime',
 				default: '',
-				description: 'payment up until date.',
+				description: 'payments up until date.',
 			},
 			{
 				displayName: 'Is Paid',
@@ -158,7 +117,7 @@ export const paymentFields = [
 				description: 'payment is paid.',
 			},
 			{
-				displayName: 'Plan ID',
+				displayName: 'Plan',
 				name: 'plan',
 				type: 'string',
 				default: '',
@@ -204,29 +163,26 @@ export const paymentFields = [
 			},
 		],
 	},
-	/* -------------------------------------------------------------------------- */
-	/*                                 payment:reschedule                         */
-	/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/*                                 payments:reschedule                         */
+/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Payment ID',
-		name: 'paymentId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getpayment',
-		},
+		displayName: 'payments ID',
+		name: 'paymentsId',
+		type: 'number',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
 				resource: [
-					'payment',
+					'payments',
 				],
 				operation: [
 					'reschedule',
 				],
 			},
 		},
-		description: 'The upcoming subscription payment ID.',
+		description: 'The upcoming subscription payments ID.', // Use loadoptions to select payments
 	},
 	{
 		displayName: 'Date',
@@ -236,13 +192,13 @@ export const paymentFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payment',
+					'payments',
 				],
 				operation: [
 					'reschedule',
 				],
 			},
 		},
-		description: 'Date you want to move the payment to.',
+		description: 'Date you want to move the payments to.',
 	},
 ] as INodeProperties[];
