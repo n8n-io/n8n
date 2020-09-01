@@ -28,7 +28,7 @@
         "@types/cron": "^1.7.1",
         "@types/crypto-js": "^3.1.43",
         "@types/express": "^4.17.6",
-        "@types/jest": "^25.2.1",
+        "@types/jest": "^26.0.12",
         "@types/lodash.get": "^4.4.6",
         "@types/mime-types": "^2.1.0",
         "@types/node": "^14.0.27",
