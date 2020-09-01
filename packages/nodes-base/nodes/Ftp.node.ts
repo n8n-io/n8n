@@ -249,6 +249,7 @@ export class Ftp implements INodeType {
 
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
+
 		if (protocol === 'sftp') {
 			credentials = this.getCredentials('sftp');
 		} else {
@@ -259,9 +260,11 @@ export class Ftp implements INodeType {
 			throw new Error('Failed to get credentials!');
 		}
 
-		const ftp = new ftpClient();
-		const sftp = new sftpClient();
+		let ftp : ftpClient;
+		let sftp : sftpClient;
+
 		if (protocol === 'sftp') {
+			sftp = new sftpClient();
 			await sftp.connect({
 				host: credentials.host as string,
 				port: credentials.port as number,
@@ -270,6 +273,7 @@ export class Ftp implements INodeType {
 			});
 
 		} else {
+			ftp = new ftpClient();
 			await ftp.connect({
 				host: credentials.host as string,
 				port: credentials.port as number,
