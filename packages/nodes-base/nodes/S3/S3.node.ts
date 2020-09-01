@@ -28,17 +28,17 @@ import {
 import {
 	bucketFields,
 	bucketOperations,
-} from './BucketDescription';
+} from '../Aws/S3/BucketDescription';
 
 import {
 	folderFields,
 	folderOperations,
-} from './FolderDescription';
+} from '../Aws/S3/FolderDescription';
 
 import {
 	fileFields,
 	fileOperations,
-} from './FileDescription';
+} from '../Aws/S3/FileDescription';
 
 import {
 	s3ApiRequestREST,
