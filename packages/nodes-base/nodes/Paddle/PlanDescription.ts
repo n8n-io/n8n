@@ -26,16 +26,16 @@ export const planOperations = [
 				description: 'Get all plans.',
 			}
 		],
-		default: 'get',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const planFields = [
 
-	/* -------------------------------------------------------------------------- */
-	/*                                 plan:get                                   */
-	/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+/*                                 plan:get                                */
+/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Plan ID',
 		name: 'planId',
@@ -53,46 +53,5 @@ export const planFields = [
 			},
 		},
 		description: 'Filter: The subscription plan ID.',
-	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'plan',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'plan',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
 	},
 ] as INodeProperties[];
