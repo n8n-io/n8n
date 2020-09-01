@@ -64,7 +64,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 		body
 	};
 
-	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`, secretAccessKey: `${credentials.secretAccessKey}`});
+	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim()});
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
