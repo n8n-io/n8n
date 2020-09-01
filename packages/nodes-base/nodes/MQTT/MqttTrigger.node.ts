@@ -117,7 +117,7 @@ export class MqttTrigger implements INodeType {
 
 							message = message.toString() as string;
 
-							if (options.jsonParseBody) {
+							if (options.jsonParseMessage) {
 								try {
 									message = JSON.parse(message.toString());
 								} catch (err) {}
