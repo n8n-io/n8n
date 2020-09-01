@@ -12,7 +12,7 @@
 							<font-awesome-icon icon="check" class="execution-icon success" v-if="executionFinished" title="Execution was successful" />
 							<font-awesome-icon icon="times" class="execution-icon error" v-else title="Execution did fail" />
 						</span>
-							of 
+							of
 						<span class="workflow-name clickable" title="Open Workflow">
 							<span @click="openWorkflow(workflowExecution.workflowId)">"{{workflowName}}"</span>
 						</span>
@@ -153,6 +153,9 @@ export default mixins(
 			},
 			workflowRunning (): boolean {
 				return this.$store.getters.isActionActive('workflowRunning');
+			},
+			isDirty () : boolean {
+				return this.$store.getters.getStateIsDirty;
 			},
 		},
 		methods: {
