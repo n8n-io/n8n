@@ -33,8 +33,8 @@ export const segmentFields = [
 /*                                   segment:add                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
-		name: 'id',
+		displayName: 'Segment ID',
+		name: 'segmentId',
 		type: 'number',
 		required: true,
 		default: 0,
@@ -44,15 +44,16 @@ export const segmentFields = [
 					'segment',
 				],
 				operation: [
-					'add', 'remove'
+					'add',
+					'remove',
 				]
 			},
 		},
 		description: 'The unique identifier of the segment.',
 	},
 	{
-		displayName: 'IDs',
-		name: 'ids',
+		displayName: 'Customer IDs',
+		name: 'customerIds',
 		type: 'string',
 		required: true,
 		default: '',
@@ -62,7 +63,8 @@ export const segmentFields = [
 					'segment',
 				],
 				operation: [
-					'add', 'remove'
+					'add',
+					'remove',
 				]
 			},
 		},
