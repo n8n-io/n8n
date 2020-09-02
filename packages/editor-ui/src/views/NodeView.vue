@@ -1239,7 +1239,6 @@ export default mixins(
 					if (![null, undefined].includes(inputNameOverlay)) {
 						inputNameOverlay.setVisible(false);
 					}
-
 					this.$store.commit('addConnection', {
 						connection: [
 							{
@@ -1253,6 +1252,7 @@ export default mixins(
 								index: targetInfo.index,
 							},
 						],
+						setStateDirty: true,
 					});
 				});
 
@@ -1388,11 +1388,10 @@ export default mixins(
 						detachable: !this.isReadOnly,
 					});
 				} else {
-					// @ts-ignore
-					connection.setStateDirty = false;
+					let connectionProperties = {connection, setStateDirty: false};
 					// When nodes get connected it gets saved automatically to the storage
 					// so if we do not connect we have to save the connection manually
-					this.$store.commit('addConnection', { connection });
+					this.$store.commit('addConnection', connectionProperties);
 				}
 			},
 			__removeConnection (connection: [IConnection, IConnection], removeVisualConnection = false) {
