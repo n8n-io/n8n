@@ -17,6 +17,24 @@ import {
 import * as ftpClient from 'promise-ftp';
 import * as sftpClient from 'ssh2-sftp-client';
 
+interface ReturnFtpItem {
+	type: string;
+	name: string;
+	size: number;
+	accessTime: Date;
+	modifyTime: Date;
+	rights: {
+		user: string;
+		group: string;
+		other: string;
+	};
+	owner: string | number;
+	group: string | number;
+	target: string;
+	sticky?: boolean;
+	path: string;
+}
+
 export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FTP',
@@ -304,10 +322,11 @@ export class Ftp implements INodeType {
 					const recursive = this.getNodeParameter('recursive', i) as boolean;
 
 					if (recursive) {
-						responseData = await callRecursiveList(path, sftp);
+						responseData = await callRecursiveList(path, sftp!, normalizeSFtpItem);
 						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
 					} else {
 						responseData = await sftp!.list(path);
+						responseData.forEach(item => normalizeSFtpItem(item as sftpClient.FileInfo, path));
 						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
 					}
 				}
@@ -372,10 +391,11 @@ export class Ftp implements INodeType {
 					const recursive = this.getNodeParameter('recursive', i) as boolean;
 
 					if (recursive) {
-						responseData = await callRecursiveList(path, ftp);
+						responseData = await callRecursiveList(path, ftp!, normalizeFtpItem);
 						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
 					} else {
 						responseData = await ftp!.list(path);
+						responseData.forEach(item => normalizeFtpItem(item as ftpClient.ListingElement, path));
 						returnItems.push.apply(returnItems, this.helpers.returnJsonArray(responseData as unknown as IDataObject[]));
 					}
 				}
@@ -461,7 +481,25 @@ export class Ftp implements INodeType {
 		return [returnItems];
 	}
 }
-async function callRecursiveList(path: string, client : sftpClient | ftpClient) {
+
+
+function normalizeFtpItem(input: ftpClient.ListingElement, path: string) {
+	const item = input as unknown as ReturnFtpItem;
+	item.modifyTime = input.date;
+	item.path = `${path}${path.endsWith('/') ? '' : '/'}${item.name}`;
+	// @ts-ignore
+	item.date = undefined;
+}
+
+
+function normalizeSFtpItem(input: sftpClient.FileInfo, path: string) {
+	const item = input as unknown as ReturnFtpItem;
+	item.accessTime = new Date(input.accessTime);
+	item.modifyTime = new Date(input.modifyTime);
+	item.path = `${path}${path.endsWith('/') ? '' : '/'}${item.name}`;
+}
+
+async function callRecursiveList(path: string, client: sftpClient | ftpClient, normalizeFunction: (input: ftpClient.ListingElement & sftpClient.FileInfo, path: string) => void) {
 	const pathArray : string[] = [path];
 	let currentPath = path;
 	const directoryItems : sftpClient.FileInfo[] = [];
@@ -484,8 +522,7 @@ async function callRecursiveList(path: string, client : sftpClient | ftpClient) 
 				pathArray.push(currentPath);
 			}
 
-			//@ts-ignore
-			item.path = currentPath;
+			normalizeFunction(item as ftpClient.ListingElement & sftpClient.FileInfo, currentPath);
 			directoryItems.push(item);
 		});
 		index++;
