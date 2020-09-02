@@ -4,9 +4,9 @@ import {
 } from 'n8n-workflow';
 
 
-export class CustomS3Endpoint implements ICredentialType {
-	name = 'customS3Endpoint';
-	displayName = 'Custom S3';
+export class S3 implements ICredentialType {
+	name = 's3';
+	displayName = 'S3';
 	properties = [
 		{
 			displayName: 'S3 endpoint',
