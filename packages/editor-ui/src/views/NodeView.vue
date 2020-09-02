@@ -127,7 +127,7 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
-import { uuid } from 'uuidv4';
+import { v4 as uuidv4} from 'uuid';
 import { debounce, isEqual } from 'lodash';
 import axios from 'axios';
 import {
@@ -974,7 +974,7 @@ export default mixins(
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
 
 				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
-					newNodeData.webhookId = uuid();
+					newNodeData.webhookId = uuidv4();
 				}
 
 				await this.addNodes([newNodeData]);
