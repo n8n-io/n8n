@@ -49,12 +49,12 @@ import {
 export class S3 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'S3',
-		name: 'S3',
-		icon: 'file:generic-s3.png',
+		name: 's3',
+		icon: 'file:s3.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Sends data to any S3-compatible services',
+		description: 'Sends data to any S3-compatible service',
 		defaults: {
 			name: 'S3',
 			color: '#d05b4b',
@@ -63,7 +63,7 @@ export class S3 implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'customS3Endpoint',
+				name: 's3',
 				required: true,
 			},
 		],
@@ -117,7 +117,7 @@ export class S3 implements INodeType {
 					let credentials;
 
 					try {
-						credentials = this.getCredentials('customS3Endpoint');
+						credentials = this.getCredentials('s3');
 					} catch (error) {
 						throw new Error(error);
 					}
@@ -274,10 +274,10 @@ export class S3 implements INodeType {
 
 						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'DELETE', `/${folderKey}`, '', qs, {}, {}, region);
 
-						responseData = { deleted: [ { 'Key': folderKey } ] };
+						responseData = { deleted: [{ 'Key': folderKey }] };
 
 					} else {
-					// delete everything inside the folder
+						// delete everything inside the folder
 						const body: IDataObject = {
 							Delete: {
 								'$': {
@@ -301,7 +301,7 @@ export class S3 implements INodeType {
 
 						headers['Content-Type'] = 'application/xml';
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'POST', '/', data, { delete: '' } , headers, {}, region);
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'POST', '/', data, { delete: '' }, headers, {}, region);
 
 						responseData = { deleted: responseData.DeleteResult.Deleted };
 					}
@@ -437,7 +437,7 @@ export class S3 implements INodeType {
 
 					region = region.LocationConstraint._;
 
-					const response = await s3ApiRequestREST.call(this, bucketName, 'GET', `/${fileKey}`, '', qs, {}, {  encoding: null, resolveWithFullResponse: true }, region);
+					const response = await s3ApiRequestREST.call(this, bucketName, 'GET', `/${fileKey}`, '', qs, {}, { encoding: null, resolveWithFullResponse: true }, region);
 
 					let mimeType: string | undefined;
 					if (response.headers['content-type']) {
@@ -462,7 +462,7 @@ export class S3 implements INodeType {
 
 					const data = Buffer.from(response.body as string, 'utf8');
 
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer,  fileName, mimeType);
+					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
 				}
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html
 				if (operation === 'delete') {
