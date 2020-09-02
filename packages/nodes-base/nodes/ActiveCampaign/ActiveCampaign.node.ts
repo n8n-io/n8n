@@ -45,6 +45,23 @@ import {
 	connectionFields
 } from './ConnectionDescription';
 
+import {
+	accountFields,
+	accountOperations
+} from "./AccountDescription";
+
+import {
+	tagFields,
+	tagOperations
+} from "./TagDescription";
+
+import {
+	accountContactFields,
+	accountContactOperations
+} from "./AccountContactDescription";
+
+import {contactTagFields, contactTagOperations} from "./ContactTagDescription";
+
 interface CustomProperty {
 	name: string;
 	value: string;
@@ -104,6 +121,22 @@ export class ActiveCampaign implements INodeType {
 						value: 'contact',
 					},
 					{
+						name: 'Account',
+						value: 'account',
+					},
+					{
+						name: 'Account Contact',
+						value: 'accountContact',
+					},
+					{
+						name: 'Tag',
+						value: 'tag',
+					},
+					{
+						name: 'Contact Tag',
+						value: 'contactTag',
+					},
+					{
 						name: 'Deal',
 						value: 'deal',
 					},
@@ -131,7 +164,11 @@ export class ActiveCampaign implements INodeType {
 			// ----------------------------------
 			//         operations
 			// ----------------------------------
+			...accountOperations,
 			...contactOperations,
+			...accountContactOperations,
+			...contactTagOperations,
+			...tagOperations,
 			...dealOperations,
 			...connectionOperations,
 			...ecomOrderOperations,
@@ -141,6 +178,26 @@ export class ActiveCampaign implements INodeType {
 			// ----------------------------------
 			//         fields
 			// ----------------------------------
+			// ----------------------------------
+			//         tag
+			// ----------------------------------
+			...tagFields,
+
+			// ----------------------------------
+			//         tag
+			// ----------------------------------
+			...contactTagFields,
+
+			// ----------------------------------
+			//         account
+			// ----------------------------------
+			...accountFields,
+
+			// ----------------------------------
+			//         account
+			// ----------------------------------
+			...accountContactFields,
+
 			// ----------------------------------
 			//         contact
 			// ----------------------------------
@@ -277,6 +334,164 @@ export class ActiveCampaign implements INodeType {
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					addAdditionalFields(body.contact as IDataObject, updateFields);
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known`);
+				}
+			} else if (resource === 'account') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         account:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					endpoint = '/api/3/accounts';
+
+					dataKey = 'account';
+
+					body.account = {
+						name: this.getNodeParameter('name', i) as string,
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body.account as IDataObject, additionalFields);
+
+				}
+			}  else if (resource === 'accountContact') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         account:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					endpoint = '/api/3/accountContacts';
+
+					dataKey = 'accountContact';
+
+					body.accountContact = {
+						contact: this.getNodeParameter('contact', i) as string,
+						account: this.getNodeParameter('account', i) as string,
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body.account as IDataObject, additionalFields);
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         accountContact:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const accountContactId = this.getNodeParameter('accountContactId', i) as number;
+					endpoint = `/api/3/accountContacts/${accountContactId}`;
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known`);
+				}
+			} else if (resource === 'contactTag') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         contactTag:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					endpoint = '/api/3/contactTags';
+
+					dataKey = 'contactTag';
+
+					body.contactTag = {
+						contact: this.getNodeParameter('contact', i) as string,
+						tag: this.getNodeParameter('tag', i) as string,
+					} as IDataObject;
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         contactTag:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const contactTagId = this.getNodeParameter('contactTagId', i) as number;
+					endpoint = `/api/3/contactTags/${contactTagId}`;
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known`);
+				}
+			} else if (resource === 'tag') {
+				if (operation === 'create') {
+					// ----------------------------------
+					//         tag:create
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					endpoint = '/api/3/tags';
+
+					dataKey = 'tag';
+
+					body.tag = {
+						tag: this.getNodeParameter('name', i) as string,
+						tagType: this.getNodeParameter('tagType', i) as string,
+					} as IDataObject;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(body.account as IDataObject, additionalFields);
+
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         tag:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const tagId = this.getNodeParameter('tagId', i) as number;
+					endpoint = `/api/3/tags/${tagId}`;
+
+				} else if (operation === 'get') {
+					// ----------------------------------
+					//         tag:get
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					const tagId = this.getNodeParameter('tagId', i) as number;
+					endpoint = `/api/3/tags/${tagId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         tags:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					dataKey = 'tags';
+					endpoint = `/api/3/tags`;
+
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         tags:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const tagId = this.getNodeParameter('tagId', i) as number;
+					endpoint = `/api/3/tags/${tagId}`;
+
+					dataKey = 'tag';
+
+					body.tag = {} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body.tag as IDataObject, updateFields);
 
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
