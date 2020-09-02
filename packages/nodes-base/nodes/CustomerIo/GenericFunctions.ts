@@ -16,7 +16,7 @@ import {
 	get,
 } from 'lodash';
 
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function customerIoApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, baseApi? : string, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('customerIoApi');
 
 	if (credentials === undefined) {
@@ -28,14 +28,26 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${credentials.apiKey}`,
 		},
 		method,
 		body,
-		qs: query,
-		uri: `https://beta-api.customer.io/v1/api${endpoint}`,
+		uri: '',
 		json: true,
 	};
+
+	if (baseApi === 'tracking') {
+		options.uri = `https://track.customer.io/api/v1${endpoint}`;
+		const basicAuthKey = Buffer.from(`${credentials.trackingSiteId}:${credentials.trackingApiKey}`).toString('base64');
+		Object.assign(options.headers, {'Authorization': `Basic ${basicAuthKey}`});
+	} else if (baseApi === 'api') {
+		options.uri = `https://api.customer.io/v1/api${endpoint}`;
+		const basicAuthKey = Buffer.from(`${credentials.trackingSiteId}:${credentials.trackingApiKey}`).toString('base64');
+		Object.assign(options.headers, {'Authorization': `Basic ${basicAuthKey}`});
+	} else if (baseApi === 'beta') {
+		options.uri = `https://beta-api.customer.io/v1/api${endpoint}`;
+		Object.assign(options.headers, {'Authorization': `Bearer ${credentials.appApiKey as string}`});
+	}
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -62,4 +74,14 @@ export function eventExists(currentEvents: string[], webhookEvents: IDataObject)
 		}
 	}
 	return true;
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }

@@ -1,0 +1,296 @@
+import { INodeProperties } from 'n8n-workflow';
+
+export const eventOperations = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Track',
+				value: 'track',
+				description: 'Track a customer event.',
+			},
+			{
+				name: 'Track Anonymous',
+				value: 'trackAnonymous',
+				description: 'Track an anonymous event.',
+			},
+		],
+		default: 'track',
+		description: 'The operation to perform.',
+	},
+] as INodeProperties[];
+
+export const eventFields = [
+
+/* -------------------------------------------------------------------------- */
+/*                                   event:track                              */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'ID',
+		name: 'id',
+		type: 'number',
+		required: true,
+		default: 0,
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'track'
+				]
+			},
+		},
+		description: 'The unique identifier for the customer.',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'track'
+				]
+			},
+		},
+		description: 'Name of the event to track.',
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'track'
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'track'
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting" target="_blank">here</a>.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'track'
+				],
+				jsonParameters: [
+					false
+				]
+			},
+		},
+		options: [
+			{
+				displayName: 'Custom Attributes',
+				name: 'customAttributes',
+				type: 'fixedCollection',
+				description: 'Custom Properties',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Attribute',
+						name: 'customAttribute',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'Attribute name.',
+								placeholder: 'Price'
+							},
+
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'Attribute value.',
+								placeholder: '25.50'
+							},
+						],
+					},
+				]
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'string',
+				default: '',
+				description: 'Used to change event type. For Page View events set to "page".',
+			},
+		],
+	},
+/* -------------------------------------------------------------------------- */
+/*                                   event:track anonymous                    */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'trackAnonymous'
+				]
+			},
+		},
+		description: 'The unique identifier for the customer.',
+	},
+	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'trackAnonymous'
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'trackAnonymous'
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting" target="_blank">here</a>.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'event',
+				],
+				operation: [
+					'trackAnonymous'
+				],
+				jsonParameters: [
+					false
+				]
+			},
+		},
+		options: [
+			{
+				displayName: 'Custom Attributes',
+				name: 'customAttributes',
+				type: 'fixedCollection',
+				description: 'Custom Properties',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Attribute',
+						name: 'customAttribute',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'Attribute name.',
+								placeholder: 'Price'
+							},
+
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								required: true,
+								default: '',
+								description: 'Attribute value.',
+								placeholder: '25.50'
+							},
+						],
+					},
+				]
+			},
+		],
+	},
+] as INodeProperties[];
