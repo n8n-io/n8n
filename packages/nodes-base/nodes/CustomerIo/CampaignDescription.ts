@@ -40,7 +40,7 @@ export const campaignFields = [
 		name: 'campaignId',
 		type: 'number',
 		required: true,
-		default: '',
+		default: 0,
 		displayOptions: {
 			show: {
 				resource: [
@@ -61,7 +61,7 @@ export const campaignFields = [
 		name: 'campaignId',
 		type: 'number',
 		required: true,
-		default: '',
+		default: 0,
 		displayOptions: {
 			show: {
 				resource: [

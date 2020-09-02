@@ -44,7 +44,7 @@ export const customerFields = [
 		name: 'id',
 		type: 'number',
 		required: true,
-		default: '',
+		default: 0,
 		displayOptions: {
 			show: {
 				resource: [
@@ -198,7 +198,7 @@ export const customerFields = [
 		name: 'id',
 		type: 'number',
 		required: true,
-		default: '',
+		default: 0,
 		displayOptions: {
 			show: {
 				resource: [
