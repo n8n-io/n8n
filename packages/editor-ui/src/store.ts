@@ -160,7 +160,6 @@ export const store = new Vuex.Store({
 
 		// Selected Nodes
 		addSelectedNode (state, node: INodeUi) {
-			state.stateIsDirty = true;
 			state.selectedNodes.push(node);
 		},
 		removeNodeFromSelection (state, node: INodeUi) {
@@ -427,8 +426,8 @@ export const store = new Vuex.Store({
 			});
 
 			if (node) {
-				state.stateIsDirty = true;
 				for (const key of Object.keys(updateInformation.properties)) {
+					state.stateIsDirty = true;
 					Vue.set(node, key, updateInformation.properties[key]);
 				}
 			}
@@ -548,17 +547,14 @@ export const store = new Vuex.Store({
 		},
 
 		setActiveNode (state, nodeName: string) {
-			state.stateIsDirty = true;
 			state.activeNode = nodeName;
 		},
 
 		setLastSelectedNode (state, nodeName: string) {
-			state.stateIsDirty = true;
 			state.lastSelectedNode = nodeName;
 		},
 
 		setLastSelectedNodeOutputIndex (state, outputIndex: number | null) {
-			state.stateIsDirty = true;
 			state.lastSelectedNodeOutputIndex = outputIndex;
 		},
 
