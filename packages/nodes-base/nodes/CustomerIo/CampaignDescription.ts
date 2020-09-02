@@ -32,9 +32,9 @@ export const campaignOperations = [
 ] as INodeProperties[];
 
 export const campaignFields = [
-/* -------------------------------------------------------------------------- */
-/*                                   campaign:get                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   campaign:get                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
@@ -47,15 +47,15 @@ export const campaignFields = [
 					'campaign',
 				],
 				operation: [
-					'get'
+					'get',
 				]
 			},
 		},
 		description: 'The unique identifier for the campaign',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   campaign:getMetrics                      */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   campaign:getMetrics                      */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Campaign ID',
 		name: 'campaignId',
@@ -68,7 +68,7 @@ export const campaignFields = [
 					'campaign',
 				],
 				operation: [
-					'getMetrics'
+					'getMetrics',
 				]
 			},
 		},
@@ -85,7 +85,7 @@ export const campaignFields = [
 					'campaign',
 				],
 				operation: [
-					'getMetrics'
+					'getMetrics',
 				]
 			},
 		},
@@ -93,19 +93,19 @@ export const campaignFields = [
 		options: [
 			{
 				name: 'Hours',
-				value: 'hours'
+				value: 'hours',
 			},
 			{
 				name: 'Days',
-				value: 'days'
+				value: 'days',
 			},
 			{
 				name: 'Weeks',
-				value: 'weeks'
+				value: 'weeks',
 			},
 			{
 				name: 'Months',
-				value: 'months'
+				value: 'months',
 			},
 		]
 	},
@@ -121,7 +121,7 @@ export const campaignFields = [
 					'campaign',
 				],
 				operation: [
-					'getMetrics'
+					'getMetrics',
 				],
 			},
 		},
@@ -146,54 +146,54 @@ export const campaignFields = [
 			},
 		},
 		options: [
-				{
-					displayName: 'Steps',
-					name: 'steps',
-					type: 'number',
-					default: 0,
-					description: 'Integer specifying how many steps to return. Defaults to the maximum number of timeperiods available, or 12 when using the months period. Maximum timeperiods available are 24 hours, 45 days, 12 weeks and 120 months',
-					typeOptions: {
-						minValue: 0,
-						maxValue: 120
-					}
-				},
-				{
-					displayName: 'Type',
-					name: 'type',
-					type: 'options',
-					default: 'empty',
-					description: 'Specify metric type',
-					options: [
-						{
-							name: 'Empty',
-							value: 'empty'
-						},
-						{
-							name: 'Email',
-							value: 'email'
-						},
-						{
-							name: 'Webhook',
-							value: 'webhook'
-						},
-						{
-							name: 'twilio',
-							value: 'twilio'
-						},
-						{
-							name: 'Urban Airship',
-							value: 'urbanAirship'
-						},
-						{
-							name: 'Slack',
-							value: 'slack'
-						},
-						{
-							name: 'Push',
-							value: 'push'
-						},
-					]
-				},
-			],
-		},
+			{
+				displayName: 'Steps',
+				name: 'steps',
+				type: 'number',
+				default: 0,
+				description: 'Integer specifying how many steps to return. Defaults to the maximum number of timeperiods available, or 12 when using the months period. Maximum timeperiods available are 24 hours, 45 days, 12 weeks and 120 months',
+				typeOptions: {
+					minValue: 0,
+					maxValue: 120,
+				}
+			},
+			{
+				displayName: 'Type',
+				name: 'type',
+				type: 'options',
+				default: 'empty',
+				description: 'Specify metric type',
+				options: [
+					{
+						name: 'Empty',
+						value: 'empty',
+					},
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'Push',
+						value: 'push',
+					},
+					{
+						name: 'Slack',
+						value: 'slack',
+					},
+					{
+						name: 'twilio',
+						value: 'twilio',
+					},
+					{
+						name: 'Urban Airship',
+						value: 'urbanAirship',
+					},
+					{
+						name: 'Webhook',
+						value: 'webhook',
+					},
+				]
+			},
+		],
+	},
 ] as INodeProperties[];

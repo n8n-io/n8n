@@ -35,26 +35,26 @@ export const eventFields = [
 /*                                   event:track                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
-		name: 'id',
-		type: 'number',
+		displayName: 'Customer ID',
+		name: 'customerId',
+		type: 'string',
 		required: true,
-		default: 0,
+		default: '',
 		displayOptions: {
 			show: {
 				resource: [
 					'event',
 				],
 				operation: [
-					'track'
+					'track',
 				]
 			},
 		},
 		description: 'The unique identifier for the customer.',
 	},
 	{
-		displayName: 'Name',
-		name: 'name',
+		displayName: 'Event Name',
+		name: 'eventName',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -63,7 +63,7 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'track'
+					'track',
 				]
 			},
 		},
@@ -81,7 +81,7 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'track'
+					'track',
 				],
 			},
 		},
@@ -100,7 +100,7 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'track'
+					'track',
 				],
 				jsonParameters: [
 					true,
@@ -121,10 +121,10 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'track'
+					'track',
 				],
 				jsonParameters: [
-					false
+					false,
 				]
 			},
 		},
@@ -149,7 +149,7 @@ export const eventFields = [
 								required: true,
 								default: '',
 								description: 'Attribute name.',
-								placeholder: 'Price'
+								placeholder: 'Price',
 							},
 
 							{
@@ -159,7 +159,7 @@ export const eventFields = [
 								required: true,
 								default: '',
 								description: 'Attribute value.',
-								placeholder: '25.50'
+								placeholder: '25.50',
 							},
 						],
 					},
@@ -178,8 +178,8 @@ export const eventFields = [
 /*                                   event:track anonymous                    */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Name',
-		name: 'name',
+		displayName: 'Event Name',
+		name: 'eventName',
 		type: 'string',
 		required: true,
 		default: '',
@@ -189,7 +189,7 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'trackAnonymous'
+					'trackAnonymous',
 				]
 			},
 		},
@@ -207,7 +207,7 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'trackAnonymous'
+					'trackAnonymous',
 				],
 			},
 		},
@@ -226,7 +226,7 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'trackAnonymous'
+					'trackAnonymous',
 				],
 				jsonParameters: [
 					true,
@@ -247,10 +247,10 @@ export const eventFields = [
 					'event',
 				],
 				operation: [
-					'trackAnonymous'
+					'trackAnonymous',
 				],
 				jsonParameters: [
-					false
+					false,
 				]
 			},
 		},
@@ -275,9 +275,8 @@ export const eventFields = [
 								required: true,
 								default: '',
 								description: 'Attribute name.',
-								placeholder: 'Price'
+								placeholder: 'Price',
 							},
-
 							{
 								displayName: 'Value',
 								name: 'value',
@@ -285,7 +284,7 @@ export const eventFields = [
 								required: true,
 								default: '',
 								description: 'Attribute value.',
-								placeholder: '25.50'
+								placeholder: '25.50',
 							},
 						],
 					},
