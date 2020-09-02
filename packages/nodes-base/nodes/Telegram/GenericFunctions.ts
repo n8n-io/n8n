@@ -5,10 +5,13 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
+import {
+	OptionsWithUri,
+} from 'request';
 
-
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 // Interface in n8n
 export interface IMarkupKeyboard {
@@ -170,12 +173,10 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		delete options.qs;
 	}
 
-	console.log(options);
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.log(error);
+
 		if (error.statusCode === 401) {
 			// Return a clear error
 			throw new Error('The Telegram credentials are not valid!');

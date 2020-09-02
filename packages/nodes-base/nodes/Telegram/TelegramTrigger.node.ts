@@ -144,7 +144,7 @@ export class TelegramTrigger implements INodeType {
 							{
 								name: 'Large',
 								value: 'large',
-								description: '369 x 800',
+								description: '591 x 1280',
 							},
 						],
 						default: 'large',
@@ -220,7 +220,14 @@ export class TelegramTrigger implements INodeType {
 
 				if (bodyData.message.photo) {
 
-					const image = getImageBySize(bodyData.message.photo as IDataObject[], imageSize) as IDataObject;
+					let image = getImageBySize(bodyData.message.photo as IDataObject[], imageSize) as IDataObject;
+
+					// When the image is sent from the desktop app telegram does not resize the image
+					// So return the only image avaiable
+					// Basically the Image Size parameter would work just when the images comes from the mobile app
+					if (image === undefined) {
+						image = bodyData.message.photo[0];
+					}
 
 					fileId = image.file_id;
 
