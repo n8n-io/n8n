@@ -1388,7 +1388,7 @@ export default mixins(
 						detachable: !this.isReadOnly,
 					});
 				} else {
-					let connectionProperties = {connection, setStateDirty: false};
+					const connectionProperties = {connection, setStateDirty: false};
 					// When nodes get connected it gets saved automatically to the storage
 					// so if we do not connect we have to save the connection manually
 					this.$store.commit('addConnection', connectionProperties);
