@@ -7,6 +7,7 @@ import {
 export class NextCloudApi implements ICredentialType {
 	name = 'nextCloudApi';
 	displayName = 'NextCloud API';
+	documentationUrl = 'nextCloud';
 	properties = [
 		{
 			displayName: 'Web DAV URL',

@@ -214,10 +214,30 @@ class App {
 			if (jwtAuthHeader === '') {
 				throw new Error('JWT auth is activated but no request header was defined. Please set one!');
 			}
-
 			const jwksUri = await GenericHelpers.getConfigValue('security.jwtAuth.jwksUri') as string;
 			if (jwksUri === '') {
 				throw new Error('JWT auth is activated but no JWK Set URI was defined. Please set one!');
+			}
+			const jwtHeaderValuePrefix = await GenericHelpers.getConfigValue('security.jwtAuth.jwtHeaderValuePrefix') as string;
+			const jwtIssuer = await GenericHelpers.getConfigValue('security.jwtAuth.jwtIssuer') as string;
+			const jwtNamespace = await GenericHelpers.getConfigValue('security.jwtAuth.jwtNamespace') as string;
+			const jwtAllowedTenantKey = await GenericHelpers.getConfigValue('security.jwtAuth.jwtAllowedTenantKey') as string;
+			const jwtAllowedTenant = await GenericHelpers.getConfigValue('security.jwtAuth.jwtAllowedTenant') as string;
+
+			function isTenantAllowed(decodedToken: object): boolean {
+				if (jwtNamespace === '' || jwtAllowedTenantKey === '' || jwtAllowedTenant === '') return true;
+				else {
+					for (const [k, v] of Object.entries(decodedToken)) {
+						if (k === jwtNamespace) {
+							for (const [kn, kv] of Object.entries(v)) {
+								if (kn === jwtAllowedTenantKey && kv === jwtAllowedTenant) {
+									return true;
+								}
+							}
+						}
+					}
+				}
+				return false;
 			}
 
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -225,9 +245,12 @@ class App {
 					return next();
 				}
 
-				const token = req.header(jwtAuthHeader) as string;
-				if (token === '') {
+				let token = req.header(jwtAuthHeader) as string;
+				if (token === undefined || token === '') {
 					return ResponseHelper.jwtAuthAuthorizationError(res, "Missing token");
+				}
+				if (jwtHeaderValuePrefix !== '' && token.startsWith(jwtHeaderValuePrefix)) {
+					token = token.replace(jwtHeaderValuePrefix + ' ', '').trimLeft();
 				}
 
 				const jwkClient = jwks({ cache: true, jwksUri });
@@ -240,10 +263,15 @@ class App {
 					});
 				}
 
-				jwt.verify(token, getKey, {}, (err: jwt.VerifyErrors, decoded: object) => {
-					if (err) return ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
+				const jwtVerifyOptions: jwt.VerifyOptions = {
+					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
+					ignoreExpiration: false
+				};
 
-					next();
+				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
+					if (err) ResponseHelper.jwtAuthAuthorizationError(res, 'Invalid token');
+					else if (!isTenantAllowed(decoded)) ResponseHelper.jwtAuthAuthorizationError(res, 'Tenant not allowed');
+					else next();
 				});
 			});
 		}
@@ -269,6 +297,8 @@ class App {
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
+			// @ts-ignore
+			req.rawBody = Buffer.from('', 'base64');
 			next();
 		});
 
@@ -282,11 +312,13 @@ class App {
 
 		// Support application/xml type post data
 		// @ts-ignore
-		this.app.use(bodyParser.xml({ limit: '16mb', xmlParseOptions: {
-			normalize: true,     // Trim whitespace inside text nodes
-			normalizeTags: true, // Transform tags to lowercase
-			explicitArray: false, // Only put properties in array if length > 1
-		} }));
+		this.app.use(bodyParser.xml({
+			limit: '16mb', xmlParseOptions: {
+				normalize: true,     // Trim whitespace inside text nodes
+				normalizeTags: true, // Transform tags to lowercase
+				explicitArray: false, // Only put properties in array if length > 1
+			}
+		}));
 
 		this.app.use(bodyParser.text({
 			limit: '16mb', verify: (req, res, buf) => {
@@ -308,7 +340,12 @@ class App {
 		}));
 
 		//support application/x-www-form-urlencoded post data
-		this.app.use(bodyParser.urlencoded({ extended: false }));
+		this.app.use(bodyParser.urlencoded({ extended: false,
+			verify: (req, res, buf) => {
+				// @ts-ignore
+				req.rawBody = buf;
+			}
+		}));
 
 		if (process.env['NODE_ENV'] !== 'production') {
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -981,8 +1018,8 @@ class App {
 				hash_function(base, key) {
 					const algorithm = (signatureMethod === 'HMAC-SHA1') ? 'sha1' : 'sha256';
 					return createHmac(algorithm, key)
-							.update(base)
-							.digest('base64');
+						.update(base)
+						.digest('base64');
 				},
 			});
 
@@ -1182,7 +1219,7 @@ class App {
 
 		// Verify and store app code. Generate access tokens and store for respective credential.
 		this.app.get(`/${this.restEndpoint}/oauth2-credential/callback`, async (req: express.Request, res: express.Response) => {
-			const {code, state: stateEncoded } = req.query;
+			const { code, state: stateEncoded } = req.query;
 
 			if (code === undefined || stateEncoded === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Insufficient parameters for OAuth2 callback. Received following query parameters: ' + JSON.stringify(req.query), undefined, 503);
@@ -1228,6 +1265,15 @@ class App {
 
 			let options = {};
 
+			const oAuth2Parameters = {
+				clientId: _.get(oauthCredentials, 'clientId') as string,
+				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
+				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
+				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
+				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
+				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
+			};
+
 			if (_.get(oauthCredentials, 'authentication', 'header') as string === 'body') {
 				options = {
 					body: {
@@ -1235,17 +1281,11 @@ class App {
 						client_secret: _.get(oauthCredentials, 'clientSecret', '') as string,
 					},
 				};
+				delete oAuth2Parameters.clientSecret;
 			}
 			const redirectUri = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`;
 
-			const oAuthObj = new clientOAuth2({
-				clientId: _.get(oauthCredentials, 'clientId') as string,
-				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
-				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri,
-				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
-			});
+			const oAuthObj = new clientOAuth2(oAuth2Parameters);
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
@@ -1613,7 +1653,7 @@ class App {
 				response = await this.activeWorkflowRunner.executeWebhook('GET', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
-				return ;
+				return;
 			}
 
 			if (response.noWebhookResponse === true) {
@@ -1771,7 +1811,7 @@ class App {
 
 		let readIndexFile = readFileSync(filePath, 'utf8');
 		readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
-		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}/favicon.ico`);
+		readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
 
 		// Serve the altered index.html file separately
 		this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
@@ -1805,13 +1845,13 @@ export async function start(): Promise<void> {
 
 	let server;
 
-	if (app.protocol === 'https' && app.sslKey && app.sslCert){
+	if (app.protocol === 'https' && app.sslKey && app.sslCert) {
 		const https = require('https');
 		const privateKey = readFileSync(app.sslKey, 'utf8');
 		const cert = readFileSync(app.sslCert, 'utf8');
-		const credentials = { key: privateKey,cert };
-		server = https.createServer(credentials,app.app);
-	}else{
+		const credentials = { key: privateKey, cert };
+		server = https.createServer(credentials, app.app);
+	} else {
 		const http = require('http');
 		server = http.createServer(app.app);
 	}

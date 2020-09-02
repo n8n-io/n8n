@@ -19,9 +19,10 @@ jobs:
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Set up Docker Buildx
-        uses: crazy-max/ghaction-docker-buildx@v1
+        uses: crazy-max/ghaction-docker-buildx@v3
         with:
-          version: latest
+          buildx-version: latest
+          qemu-version: latest
       - name: Run Buildx (push image)
         if: success()
         run: |

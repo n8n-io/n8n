@@ -10,6 +10,7 @@ export class NextCloudOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'NextCloud OAuth2 API';
+	documentationUrl = 'nextCloud';
 	properties = [
 		{
 			displayName: 'Web DAV URL',

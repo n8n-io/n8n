@@ -6,6 +6,7 @@ import {
 export class OAuth1Api implements ICredentialType {
 	name = 'oAuth1Api';
 	displayName = 'OAuth1 API';
+	documentationUrl = 'httpRequest';
 	properties = [
 		{
 			displayName: 'Authorization URL',

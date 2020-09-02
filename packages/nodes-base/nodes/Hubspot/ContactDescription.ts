@@ -40,6 +40,11 @@ export const contactOperations = [
 				value: 'getRecentlyCreatedUpdated',
 				description: 'Get recently created/updated contacts',
 			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search contacts',
+			},
 		],
 		default: 'upsert',
 		description: 'The operation to perform.',
@@ -165,6 +170,41 @@ export const contactFields = [
 				name: 'country',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Custom Properties',
+				name: 'customPropertiesUi',
+				placeholder: 'Add Custom Property',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customPropertiesValues',
+						displayName: 'Custom Property',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getContactCustomProperties',
+								},
+								default: '',
+								description: 'Name of the property.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the property',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Date of Birth',
@@ -831,6 +871,244 @@ export const contactFields = [
 				],
 				default: 'valueAndHistory',
 				description: `Specify if the current value for a property should be fetched, or the value and all the historical values for that property.`,
+			},
+		],
+	},
+
+//*-------------------------------------------------------------------------- */
+/*                                 contact:search                             */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 250,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filter Groups',
+		name: 'filterGroupsUi',
+		type: 'fixedCollection',
+		default: '',
+		placeholder: 'Add Filter Group',
+		typeOptions: {
+			multipleValues: true,
+		},
+		required: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'filterGroupsValues',
+				displayName: 'Filter Group',
+				values: [
+					{
+						displayName: 'Filters',
+						name: 'filtersUi',
+						type: 'fixedCollection',
+						default: '',
+						placeholder: 'Add Filter',
+						typeOptions: {
+							multipleValues: true,
+						},
+						required: false,
+						options: [
+							{
+								name: 'filterValues',
+								displayName: 'Filter',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'propertyName',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getContactProperties',
+										},
+										default: '',
+									},
+									{
+										displayName: 'Operator',
+										name: 'operator',
+										type: 'options',
+										options: [
+											{
+												name: 'Equal',
+												value: 'EQ',
+											},
+											{
+												name: 'Not Equal',
+												value: 'NEQ',
+											},
+											{
+												name: 'Less Than',
+												value: 'LT',
+											},
+											{
+												name: 'Less Than Or Equal',
+												value: 'LTE',
+											},
+											{
+												name: 'Greater Than',
+												value: 'GT',
+											},
+											{
+												name: 'Greater Than Or Equal',
+												value: 'GTE',
+											},
+											{
+												name: 'Is Known',
+												value: 'HAS_PROPERTY',
+											},
+											{
+												name: 'Is Unknown',
+												value: 'NOT_HAS_PROPERTY',
+											},
+											{
+												name: 'Contains Exactly',
+												value: 'CONSTAIN_TOKEN',
+											},
+											{
+												name: `Doesn't Contain Exactly`,
+												value: 'NOT_CONSTAIN_TOKEN',
+											},
+										],
+										default: 'EQ',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										displayOptions: {
+											hide: {
+												operator: [
+													'HAS_PROPERTY',
+													'NOT_HAS_PROPERTY',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+									},
+								],
+							}
+						],
+						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+					},
+				],
+			}
+		],
+		description: `When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator.<br>
+		When multiple filterGroups are provided, they will be combined using a logical OR operator.<br>
+		The system supports a maximum of three filterGroups with up to three filters each.<br>
+		More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Direction',
+				name: 'direction',
+				type: 'options',
+				options: [
+					{
+						name: 'ASC',
+						value: 'ASCENDING',
+					},
+					{
+						name: 'DESC',
+						value: 'DESCENDING',
+					},
+				],
+				default: 'DESCENDING',
+				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
+			},
+			{
+				displayName: 'Fields',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getContactProperties',
+				},
+				default: [
+					'firstname',
+					'lastname',
+					'email',
+				],
+				description: `Used to include specific company properties in the results.<br/>
+				By default, the results will only include company ID and will not include the values for any properties for your companys.<br/>
+				Including this parameter will include the data for the specified property in the results.<br/>
+				You can include this parameter multiple times to request multiple properties separed by ,.`,
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'Perform a text search against all property values for an object type',
+			},
+			{
+				displayName: 'Sort By',
+				name: 'sortBy',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getContactProperties',
+				},
+				default: 'createdate',
 			},
 		],
 	},

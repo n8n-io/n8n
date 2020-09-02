@@ -102,6 +102,7 @@ export interface ICredentialType {
 	displayName: string;
 	extends?: string[];
 	properties: INodeProperties[];
+	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 }
 
@@ -337,6 +338,7 @@ export interface INode {
 	maxTries?: number;
 	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
+	executeOnce?: boolean;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;

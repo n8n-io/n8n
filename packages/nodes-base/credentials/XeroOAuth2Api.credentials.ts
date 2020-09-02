@@ -16,6 +16,7 @@ export class XeroOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Xero OAuth2 API';
+	documentationUrl = 'xero';
 	properties = [
 		{
 			displayName: 'Authorization URL',

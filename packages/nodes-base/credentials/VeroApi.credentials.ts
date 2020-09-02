@@ -7,6 +7,7 @@ import {
 export class VeroApi implements ICredentialType {
 	name = 'veroApi';
 	displayName = 'Vero API';
+	documentationUrl = 'vero';
 	properties = [
 		{
 			displayName: 'Auth Token',

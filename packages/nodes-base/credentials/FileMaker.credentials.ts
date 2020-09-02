@@ -7,6 +7,7 @@ import {
 export class FileMaker implements ICredentialType {
 	name = 'fileMaker';
 	displayName = 'FileMaker API';
+	documentationUrl = 'fileMaker';
 	properties = [
 		{
 			displayName: 'Host',

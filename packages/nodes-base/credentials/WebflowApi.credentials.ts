@@ -6,6 +6,7 @@ import {
 export class WebflowApi implements ICredentialType {
 	name = 'webflowApi';
 	displayName = 'Webflow API';
+	documentationUrl = 'webflow';
 	properties = [
 		{
 			displayName: 'Access Token',
