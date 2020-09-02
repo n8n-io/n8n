@@ -15,21 +15,21 @@ export class CustomerIoApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 			description: 'Required for tracking API.',
-			required: true
+			required: true,
 		},
 		{
 			displayName: 'Tracking Site ID',
 			name: 'trackingSiteId',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: 'Required for tracking API.'
+			description: 'Required for tracking API.',
 		},
 		{
 			displayName: 'App API Key',
 			name: 'appApiKey',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: 'Required for App API.'
+			description: 'Required for App API.',
 		},
 	];
 }
