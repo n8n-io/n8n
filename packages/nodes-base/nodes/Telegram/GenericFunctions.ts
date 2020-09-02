@@ -2,6 +2,7 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	IWebhookFunctions,
 } from 'n8n-core';
 
 import { OptionsWithUri } from 'request';
@@ -138,7 +139,7 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, endpoint: string, body: object, query?: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('telegramApi');
 
 	if (credentials === undefined) {
@@ -157,9 +158,24 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		json: true,
 	};
 
+	if (Object.keys(option).length > 0) {
+		Object.assign(options, option);
+	}
+
+	if (Object.keys(body).length === 0) {
+		delete options.body;
+	}
+
+	if (Object.keys(query).length === 0) {
+		delete options.qs;
+	}
+
+	console.log(options);
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+		console.log(error);
 		if (error.statusCode === 401) {
 			// Return a clear error
 			throw new Error('The Telegram credentials are not valid!');
@@ -174,4 +190,32 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		// Expected error data did not get returned so throw the actual error
 		throw error;
 	}
+}
+
+export function getImageBySize(photos: IDataObject[], size: string): IDataObject | undefined {
+
+	const sizes = {
+		'small': {
+			width: 148,
+			height: 320,
+		},
+		'medium': {
+			width: 369,
+			height: 800,
+		},
+		'large': {
+			width: 591,
+			height: 1280,
+		},
+	} as IDataObject;
+
+	const dimentions = sizes[size] as IDataObject;
+
+	for (const photo of photos) {
+		if (photo.width === dimentions.width && photo.height === dimentions.height) {
+			return photo;
+		}
+	}
+
+	return undefined;
 }
