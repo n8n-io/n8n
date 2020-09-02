@@ -217,6 +217,7 @@
       "dist/nodes/CrateDb/CrateDb.node.js",
       "dist/nodes/Cron.node.js",
       "dist/nodes/Crypto.node.js",
+      "dist/nodes/CustomerIo/CustomerIo.node.js",
       "dist/nodes/CustomerIo/CustomerIoTrigger.node.js",
       "dist/nodes/DateTime.node.js",
       "dist/nodes/Discord/Discord.node.js",
