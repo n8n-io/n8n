@@ -30,7 +30,7 @@ n8n is split up in different modules which are all in a single mono repository.
 
 The most important directories:
 
- - [/docker/image](/docker/image) - Dockerfiles to create n8n containers
+ - [/docker/image](/docker/images) - Dockerfiles to create n8n containers
  - [/docker/compose](/docker/compose) - Examples Docker Setups
  - [/packages](/packages) - The different n8n modules
  - [/packages/cli](/packages/cli) - CLI code to run front- & backend
