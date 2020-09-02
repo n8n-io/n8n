@@ -476,7 +476,7 @@ export class Gmail implements INodeType {
 						if (qs.labelIds == '') {
 							delete qs.labelIds;
 						} else {
-							qs.labelIds = (qs.labelIds as string[]).join(',');
+							qs.labelIds = qs.labelIds as string[];
 						}
 					}
 
