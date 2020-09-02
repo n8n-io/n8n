@@ -114,14 +114,13 @@ export class TelegramTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const endpoint = 'getWebhookInfo';
 				const webhookReturnData = await apiRequest.call(this, 'POST', endpoint, {});
+				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				//https://core.telegram.org/bots/api#webhookinfo
-				// IF Webhook URL is empty if not setup
-				if (webhookReturnData.result.url === '') {
-					return false;
+				if (webhookReturnData.result.url === webhookUrl) {
+					return true;
 				}
 
-				return true;
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
