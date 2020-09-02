@@ -52,7 +52,7 @@
       "dist/credentials/CopperApi.credentials.js",
       "dist/credentials/CalendlyApi.credentials.js",
       "dist/credentials/CustomerIoApi.credentials.js",
-      "dist/credentials/CustomS3Endpoint.credentials.js",
+      "dist/credentials/S3.credentials.js",
       "dist/credentials/CrateDb.credentials.js",
       "dist/credentials/DisqusApi.credentials.js",
       "dist/credentials/DriftApi.credentials.js",

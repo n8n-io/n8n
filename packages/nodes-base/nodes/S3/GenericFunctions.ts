@@ -23,7 +23,7 @@ import {
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 import { URL } from 'url';
 
@@ -31,7 +31,7 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 
 	let credentials;
 
-	credentials = this.getCredentials('customS3Endpoint');
+	credentials = this.getCredentials('s3');
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -64,13 +64,13 @@ export async function s3ApiRequest(this: IHookFunctions | IExecuteFunctions | IL
 		body
 	};
 
-	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim()});
+	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
 		method,
 		qs: query,
-		uri: endpoint,
+		uri: endpoint.toString(),
 		body: signOpts.body,
 	};
 
