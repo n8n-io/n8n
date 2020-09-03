@@ -41,7 +41,7 @@ export const accountContactFields = [
 	{
 		displayName: 'Account ID',
 		name: 'account',
-		type: 'string',
+		type: 'number',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -59,7 +59,7 @@ export const accountContactFields = [
 	{
 		displayName: 'Contact ID',
 		name: 'contact',
-		type: 'string',
+		type: 'number',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -106,7 +106,7 @@ export const accountContactFields = [
 	{
 		displayName: 'Account Contact ID',
 		name: 'accountContactId',
-		type: 'string',
+		type: 'number',
 		displayOptions: {
 			show: {
 				operation: [
@@ -127,7 +127,7 @@ export const accountContactFields = [
 	{
 		displayName: 'Account Contact ID',
 		name: 'accountContactId',
-		type: 'string',
+		type: 'number',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -155,7 +155,7 @@ export const accountContactFields = [
 					'update',
 				],
 				resource: [
-					'tag',
+					'accountContact',
 				],
 			},
 		},

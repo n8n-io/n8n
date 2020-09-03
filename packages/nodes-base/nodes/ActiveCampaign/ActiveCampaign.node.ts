@@ -475,8 +475,8 @@ export class ActiveCampaign implements INodeType {
 					dataKey = 'contactTag';
 
 					body.contactTag = {
-						contact: this.getNodeParameter('contact', i) as string,
-						tag: this.getNodeParameter('tag', i) as string,
+						contact: this.getNodeParameter('contactId', i) as string,
+						tag: this.getNodeParameter('tagId', i) as string,
 					} as IDataObject;
 
 				} else if (operation === 'delete') {

@@ -35,8 +35,8 @@ export const contactTagFields = [
 	// ----------------------------------
 	{
 		displayName: 'Tag ID',
-		name: 'tag',
-		type: 'string',
+		name: 'tagId',
+		type: 'number',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -53,8 +53,8 @@ export const contactTagFields = [
 	},
 	{
 		displayName: 'Contact ID',
-		name: 'contact',
-		type: 'string',
+		name: 'contactId',
+		type: 'number',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -75,7 +75,7 @@ export const contactTagFields = [
 	{
 		displayName: 'Contact Tag ID',
 		name: 'contactTagId',
-		type: 'string',
+		type: 'number',
 		displayOptions: {
 			show: {
 				operation: [

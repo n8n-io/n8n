@@ -129,7 +129,7 @@ export const tagFields = [
 	{
 		displayName: 'Tag ID',
 		name: 'tagId',
-		type: 'string',
+		type: 'number',
 		displayOptions: {
 			show: {
 				operation: [
@@ -184,7 +184,7 @@ export const tagFields = [
 	{
 		displayName: 'Tag ID',
 		name: 'tagId',
-		type: 'string',
+		type: 'number',
 		displayOptions: {
 			show: {
 				operation: [
@@ -205,7 +205,7 @@ export const tagFields = [
 	{
 		displayName: 'Tag ID',
 		name: 'tagId',
-		type: 'string',
+		type: 'number',
 		displayOptions: {
 			show: {
 				operation: [
