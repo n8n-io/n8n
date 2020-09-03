@@ -134,17 +134,14 @@ export class TelegramTrigger implements INodeType {
 							{
 								name: 'Small',
 								value: 'small',
-								description: '148 x 320',
 							},
 							{
 								name: 'Medium',
 								value: 'medium',
-								description: '369 x 800',
 							},
 							{
 								name: 'Large',
 								value: 'large',
-								description: '591 x 1280',
 							},
 						],
 						default: 'large',

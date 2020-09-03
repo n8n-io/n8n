@@ -196,27 +196,12 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 export function getImageBySize(photos: IDataObject[], size: string): IDataObject | undefined {
 
 	const sizes = {
-		'small': {
-			width: 148,
-			height: 320,
-		},
-		'medium': {
-			width: 369,
-			height: 800,
-		},
-		'large': {
-			width: 591,
-			height: 1280,
-		},
+		'small': 0,
+		'medium': 1,
+		'large': 2,
 	} as IDataObject;
 
-	const dimentions = sizes[size] as IDataObject;
+	const index = sizes[size] as number;
 
-	for (const photo of photos) {
-		if (photo.width === dimentions.width && photo.height === dimentions.height) {
-			return photo;
-		}
-	}
-
-	return undefined;
+	return photos[index];
 }
