@@ -57,9 +57,14 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 The packages which n8n uses depend on a few build tools:
 
-Linux:
+Debian/Ubuntu:
 ```
 apt-get install -y build-essential python
+```
+
+CentOS:
+```
+yum install gcc gcc-c++ make
 ```
 
 Windows:
