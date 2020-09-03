@@ -34,12 +34,12 @@ export const accountOperations = [
 				value: 'getAll',
 				description: 'Get data of all accounts',
 			},
+*/
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an account',
 			},
- */
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -127,27 +127,26 @@ export const accountFields = [
 			},
 		],
 	},
-/*
 	// ----------------------------------
 	//         contact:update
 	// ----------------------------------
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		type: 'number',
+		displayName: 'Account ID',
+		name: 'accountId',
+		type: 'string',
 		displayOptions: {
 			show: {
 				operation: [
 					'update',
 				],
 				resource: [
-					'contact',
+					'account',
 				],
 			},
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the contact to update.',
+		description: 'ID of the account to update.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -161,39 +160,25 @@ export const accountFields = [
 					'update',
 				],
 				resource: [
-					'contact',
+					'account',
 				],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Email',
-				name: 'email',
+				displayName: 'Name',
+				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Email of the contact.',
+				description: 'Account\'s name.',
 			},
 			{
-				displayName: 'First Name',
-				name: 'firstName',
+				displayName: 'Url',
+				name: 'accountUrl',
 				type: 'string',
 				default: '',
-				description: 'First name of the contact.',
-			},
-			{
-				displayName: 'Last Name',
-				name: 'lastName',
-				type: 'string',
-				default: '',
-				description: 'Last name of the contact.',
-			},
-			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description: 'Phone number of the contact.',
+				description: 'Account\'s website',
 			},
 			{
 				displayName: 'Custom Properties',
@@ -230,7 +215,7 @@ export const accountFields = [
 			},
 		],
 	},
-
+/*
 	// ----------------------------------
 	//         contact:delete
 	// ----------------------------------

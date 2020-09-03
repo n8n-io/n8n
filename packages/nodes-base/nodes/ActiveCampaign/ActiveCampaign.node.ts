@@ -357,6 +357,25 @@ export class ActiveCampaign implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body.account as IDataObject, additionalFields);
 
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         contact:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const accountId = this.getNodeParameter('accountId', i) as number;
+					endpoint = `/api/3/accounts/${accountId}`;
+
+					dataKey = 'account';
+
+					body.account = {} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body.account as IDataObject, updateFields);
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known`);
 				}
 			}  else if (resource === 'accountContact') {
 				if (operation === 'create') {
