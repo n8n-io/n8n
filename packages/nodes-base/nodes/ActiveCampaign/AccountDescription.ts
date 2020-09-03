@@ -24,11 +24,13 @@ export const accountOperations = [
 				value: 'delete',
 				description: 'Delete an account',
 			},
+*/
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an account',
 			},
+/*
 			{
 				name: 'Get All',
 				value: 'getAll',
@@ -133,7 +135,7 @@ export const accountFields = [
 	{
 		displayName: 'Account ID',
 		name: 'accountId',
-		type: 'string',
+		type: 'number',
 		displayOptions: {
 			show: {
 				operation: [
@@ -237,13 +239,13 @@ export const accountFields = [
 		required: true,
 		description: 'ID of the contact to delete.',
 	},
-
+*/
 	// ----------------------------------
-	//         contact:get
+	//         account:get
 	// ----------------------------------
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
+		displayName: 'Account ID',
+		name: 'accountId',
 		type: 'number',
 		displayOptions: {
 			show: {
@@ -251,15 +253,15 @@ export const accountFields = [
 					'get',
 				],
 				resource: [
-					'contact',
+					'account',
 				],
 			},
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the contact to get.',
+		description: 'ID of the account to get.',
 	},
-
+/*
 	// ----------------------------------
 	//         contact:getAll
 	// ----------------------------------
