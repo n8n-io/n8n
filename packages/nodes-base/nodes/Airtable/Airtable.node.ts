@@ -354,10 +354,10 @@ export class Airtable implements INodeType {
 				default: [],
 				placeholder: 'Name',
 				required: true,
-				description: 'The name of fields for which the data should be sent to Airtable.',
+				description: 'The name of fields for which data should be sent to Airtable.',
 			},
 
-            // ----------------------------------
+			// ----------------------------------
 			//         append + update
 			// ----------------------------------
 			
@@ -410,7 +410,7 @@ export class Airtable implements INodeType {
 			let typecast: boolean;
 			for (let i = 0; i < items.length; i++) {
 				addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
-				
+
 				if (addAllFields === true) {
 					// Add all the fields the item has
 					body.fields = items[i].json;
