@@ -18,25 +18,21 @@ export const accountOperations = [
 				value: 'create',
 				description: 'Create an account',
 			},
-/*
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an account',
 			},
-*/
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of an account',
 			},
-/*
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get data of all accounts',
 			},
-*/
 			{
 				name: 'Update',
 				value: 'update',
@@ -217,13 +213,12 @@ export const accountFields = [
 			},
 		],
 	},
-/*
 	// ----------------------------------
-	//         contact:delete
+	//         account:delete
 	// ----------------------------------
 	{
-		displayName: 'Contact ID',
-		name: 'contactId',
+		displayName: 'Account ID',
+		name: 'accountId',
 		type: 'number',
 		displayOptions: {
 			show: {
@@ -231,15 +226,14 @@ export const accountFields = [
 					'delete',
 				],
 				resource: [
-					'contact',
+					'account',
 				],
 			},
 		},
 		default: 0,
 		required: true,
-		description: 'ID of the contact to delete.',
+		description: 'ID of the account to delete.',
 	},
-*/
 	// ----------------------------------
 	//         account:get
 	// ----------------------------------
@@ -261,9 +255,8 @@ export const accountFields = [
 		required: true,
 		description: 'ID of the account to get.',
 	},
-/*
 	// ----------------------------------
-	//         contact:getAll
+	//         account:getAll
 	// ----------------------------------
 	{
 		displayName: 'Return All',
@@ -275,7 +268,7 @@ export const accountFields = [
 					'getAll',
 				],
 				resource: [
-					'contact',
+					'account',
 				],
 			},
 		},
@@ -292,7 +285,7 @@ export const accountFields = [
 					'getAll',
 				],
 				resource: [
-					'contact',
+					'account',
 				],
 				returnAll: [
 					false,
@@ -305,6 +298,5 @@ export const accountFields = [
 		},
 		default: 100,
 		description: 'How many results to return.',
-	},
- */
+	}
 ] as INodeProperties[];

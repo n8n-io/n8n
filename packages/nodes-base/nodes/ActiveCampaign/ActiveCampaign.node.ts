@@ -357,6 +357,16 @@ export class ActiveCampaign implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body.account as IDataObject, additionalFields);
 
+				} else if (operation === 'delete') {
+					// ----------------------------------
+					//         account:delete
+					// ----------------------------------
+
+					requestMethod = 'DELETE';
+
+					const accountId = this.getNodeParameter('accountId', i) as number;
+					endpoint = `/api/3/accounts/${accountId}`;
+
 				} else if (operation === 'get') {
 					// ----------------------------------
 					//         account:get
@@ -366,6 +376,21 @@ export class ActiveCampaign implements INodeType {
 
 					const accountId = this.getNodeParameter('accountId', i) as number;
 					endpoint = `/api/3/accounts/${accountId}`;
+
+				} else if (operation === 'getAll') {
+					// ----------------------------------
+					//         account:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					dataKey = 'accounts';
+					endpoint = `/api/3/accounts`;
 
 				} else if (operation === 'update') {
 					// ----------------------------------
