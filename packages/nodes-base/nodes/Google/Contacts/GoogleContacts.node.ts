@@ -314,11 +314,29 @@ export class GoogleContacts implements INodeType {
 
 					const contactId = this.getNodeParameter('contactId', i) as string;
 
-					const etag = this.getNodeParameter('etag', i) as string;
-
 					const fields = this.getNodeParameter('fields', i) as string[];
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					let etag;
+
+					if (updateFields.etag) {
+
+						etag = updateFields.etag as string;
+
+					} else {
+
+						const data = await googleApiRequest.call(
+							this,
+							'GET',
+							`/people/${contactId}`,
+							{},
+							{ personFields: 'Names' },
+						);
+
+						etag = data.etag;
+
+					}
 
 					if (fields.includes('*')) {
 						qs.personFields = allFields.join(',');
@@ -455,9 +473,6 @@ export class GoogleContacts implements INodeType {
 					}
 
 					qs.updatePersonFields = updatePersonFields.join(',');
-
-					console.log(body);
-					console.log(qs);
 
 					responseData = await googleApiRequest.call(
 						this,

@@ -973,24 +973,6 @@ export const contactFields = [
 		default: '',
 	},
 	{
-		displayName: 'Etag',
-		name: 'etag',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contact',
-				],
-			},
-		},
-		description: 'The etag field in the person is nedded to make sure the contact has not changed since your last read',
-		default: '',
-	},
-	{
 		displayName: 'Fields',
 		name: 'fields',
 		type: 'multiOptions',
@@ -1126,6 +1108,13 @@ export const contactFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Etag',
+				name: 'etag',
+				type: 'string',
+				default: '',
+				description: 'The etag field in the person is nedded to make sure the contact has not changed since your last read',
+			},
 			{
 				displayName: 'Family Name',
 				name: 'familyName',
