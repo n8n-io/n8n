@@ -23,6 +23,11 @@ export const accountContactOperations = [
 				value: 'delete',
 				description: 'Delete an association',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an association',
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -115,5 +120,54 @@ export const accountContactFields = [
 		default: 0,
 		required: true,
 		description: 'ID of the account contact to delete.',
+	},
+	// ----------------------------------
+	//         accountContact:update
+	// ----------------------------------
+	{
+		displayName: 'Account Contact ID',
+		name: 'accountContactId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'accountContact',
+				],
+			},
+		},
+		description: 'Account ID',
+	},
+
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		description: 'The fields to update.',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'tag',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Job title',
+				name: 'jobTitle',
+				type: 'string',
+				default: '',
+				description: 'Job Title of the contact at the account',
+			},
+		],
 	},
 ] as INodeProperties[];

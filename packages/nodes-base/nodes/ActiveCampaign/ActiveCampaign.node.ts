@@ -378,6 +378,23 @@ export class ActiveCampaign implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					addAdditionalFields(body.account as IDataObject, additionalFields);
 
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         accountContact:update
+					// ----------------------------------
+
+					requestMethod = 'PUT';
+
+					const accountContactId = this.getNodeParameter('accountContactId', i) as number;
+					endpoint = `/api/3/accountContacts/${accountContactId}`;
+
+					dataKey = 'accountContact';
+
+					body.accountContact = {} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body.accountContact as IDataObject, updateFields);
+
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         accountContact:delete
