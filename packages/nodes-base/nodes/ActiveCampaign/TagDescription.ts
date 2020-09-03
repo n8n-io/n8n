@@ -1,4 +1,5 @@
 import { INodeProperties } from "n8n-workflow";
+import {activeCampaignDefaultGetAllProperties} from "./GenericFunctions";
 
 export const tagOperations = [
 	{
@@ -223,45 +224,5 @@ export const tagFields = [
 	// ----------------------------------
 	//         tag:getAll
 	// ----------------------------------
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'tag',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'tag',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
-	},
+	...activeCampaignDefaultGetAllProperties('tag', 'getAll')
 ] as INodeProperties[];
