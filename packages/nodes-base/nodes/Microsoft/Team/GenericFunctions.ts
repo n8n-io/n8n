@@ -20,7 +20,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com/${resource}`,
+		uri: uri || `https://graph.microsoft.com${resource}`,
 		json: true
 	};
 	try {
@@ -28,7 +28,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 			options.headers = Object.assign({}, options.headers, headers);
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth.call(this, 'microsoftTeamOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'microsoftTeamOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error && error.response.body.error.message) {
 			// Try to return the error prettier
