@@ -56,5 +56,23 @@ export const userFields = [
 		default: false,
 		description:
 			'If all results should be returned or only up to a given limit.'
-	}
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false]
+			}
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100
+		},
+		default: 50,
+		description: 'How many results to return.'
+	},
 ] as INodeProperties[];
