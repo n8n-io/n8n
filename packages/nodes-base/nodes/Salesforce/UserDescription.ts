@@ -15,6 +15,11 @@ export const userOperations = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user'
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all users'
 			}
 		],
 		default: 'get',
