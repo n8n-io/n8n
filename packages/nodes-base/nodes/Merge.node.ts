@@ -69,7 +69,7 @@ export class Merge implements INodeType {
 					{
 						name: 'Wait',
 						value: 'wait',
-						description: 'Waits till data of both inputs is available and will then output a single empty item. If supposed to wait for multiple nodes they have to get attached to input 2. Node will not output any data.',
+						description: 'Waits till data of both inputs is available and will then output a single empty item. Source Nodes must connect to both Input 1 and 2. This node only supports 2 Sources, if you need more Sources, connect multiple Merge nodes in series. This node will not output any data.',
 					},
 				],
 				default: 'append',

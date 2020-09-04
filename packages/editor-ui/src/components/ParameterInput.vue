@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 	<expression-edit :dialogVisible="expressionEditDialogVisible" :value="value" :parameter="parameter" :path="path" @closeDialog="closeExpressionEditDialog" @valueChanged="expressionUpdated"></expression-edit>
 	<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
-		<div v-if="['json', 'string'].includes(parameter.type)">
+		<div v-if="['json', 'string'].includes(parameter.type) || remoteParameterOptionsLoadingIssues !== null">
 			<code-edit :dialogVisible="codeEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeCodeEditDialog" @valueChanged="expressionUpdated"></code-edit>
 			<text-edit :dialogVisible="textEditDialogVisible" :value="value" :parameter="parameter" @closeDialog="closeTextEditDialog" @valueChanged="expressionUpdated"></text-edit>
 
@@ -259,9 +259,7 @@ export default mixins(
 				return title;
 			},
 			displayValue (): string | number | boolean | null {
-				if (this.remoteParameterOptionsLoadingIssues !== null) {
-					return 'Error loading...';
-				} else if (this.remoteParameterOptionsLoading === true) {
+				if (this.remoteParameterOptionsLoading === true) {
 					// If it is loading options from server display
 					// to user that the data is loading. If not it would
 					// display the user the key instead of the value it

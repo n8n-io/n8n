@@ -17,7 +17,7 @@ import {
 export class FlowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow Trigger',
-		name: 'flow',
+		name: 'flowTrigger',
 		icon: 'file:flow.png',
 		group: ['trigger'],
 		version: 1,
@@ -99,7 +99,7 @@ export class FlowTrigger implements INodeType {
 						]
 					}
 				},
-				description: `Taks ids separated by ,`,
+				description: `Task ids separated by ,`,
 			},
 		],
 

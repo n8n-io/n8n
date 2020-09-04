@@ -252,6 +252,11 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('GET', `/credential-types`);
 				},
 
+				// Get OAuth1 Authorization URL using the stored credentials
+				oAuth1CredentialAuthorize: (sendData: ICredentialsResponse): Promise<string> => {
+					return self.restApi().makeRestApiRequest('GET', `/oauth1-credential/auth`, sendData);
+				},
+
 				// Get OAuth2 Authorization URL using the stored credentials
 				oAuth2CredentialAuthorize: (sendData: ICredentialsResponse): Promise<string> => {
 					return self.restApi().makeRestApiRequest('GET', `/oauth2-credential/auth`, sendData);

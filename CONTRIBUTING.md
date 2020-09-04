@@ -11,7 +11,9 @@ Great that you are here and you want to contribute to n8n
 - [Development Cycle](#development-cycle)
 - [Create Custom Nodes](#create-custom-nodes)
 - [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
+- [Checklist before submitting a new node](#checklist-before-submitting-a-new-node)
 - [Extend Documentation](#extend-documentation)
+- [Contributor License Agreement](#contributor-license-agreement)
 
 
 ## Code of Conduct
@@ -28,7 +30,7 @@ n8n is split up in different modules which are all in a single mono repository.
 
 The most important directories:
 
- - [/docker/image](/docker/image) - Dockerfiles to create n8n containers
+ - [/docker/image](/docker/images) - Dockerfiles to create n8n containers
  - [/docker/compose](/docker/compose) - Examples Docker Setups
  - [/packages](/packages) - The different n8n modules
  - [/packages/cli](/packages/cli) - CLI code to run front- & backend
@@ -36,7 +38,7 @@ The most important directories:
                                       execution, active webhooks and
                                       workflows
  - [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
- - [/packages/node-dev](/packages/node-dev) - Simple CLI to create new n8n-nodes
+ - [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
  - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
  - [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
                                             get used by front- & backend
@@ -55,9 +57,14 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 The packages which n8n uses depend on a few build tools:
 
-Linux:
+Debian/Ubuntu:
 ```
 apt-get install -y build-essential python
+```
+
+CentOS:
+```
+yum install gcc gcc-c++ make
 ```
 
 Windows:
@@ -117,6 +124,10 @@ To start n8n execute:
 npm run start
 ```
 
+To start n8n with tunnel:
+```
+./packages/cli/bin/n8n start --tunnel
+```
 
 ## Development Cycle
 
@@ -157,7 +168,7 @@ tests of all packages.
 
 ## Create Custom Nodes
 
-It is very easy to create own nodes for n8n. More information about that can
+It is very straightforward to create your own nodes for n8n. More information about that can
 be found in the documentation of "n8n-node-dev" which is a small CLI which
 helps with n8n-node-development.
 
@@ -175,9 +186,9 @@ If you want to create a node which should be added to n8n follow these steps:
 
   1. Create a new folder for the new node. For a service named "Example" the folder would be called: `/packages/nodes-base/nodes/Example`
 
-  1. If there is already a similar node simply copy the existing one in the new folder and rename it. If none exists yet, create a boilerplate node with [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev) and copy that one in the folder.
+  1. If there is already a similar node, copy the existing one in the new folder and rename it. If none exists yet, create a boilerplate node with [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev) and copy that one in the folder.
 
-  1. If the node needs credentials because it has to authenticate with an API or similar create new ones. Existing ones can be found in folder `/packages/nodes-base/credentials`. Also there it is the easiest to simply copy existing similar ones.
+  1. If the node needs credentials because it has to authenticate with an API or similar create new ones. Existing ones can be found in folder `/packages/nodes-base/credentials`. Also there it is the easiest to copy existing similar ones.
 
   1. Add the path to the new node (and optionally credentials) to package.json of `nodes-base`. It already contains a property `n8n` with its own keys `credentials` and `nodes`.
 
@@ -191,31 +202,33 @@ When developing n8n must get restarted and the browser reloaded every time param
 If only the code of the node changes (the execute method) than it is not needed as each workflow automatically starts a new process and so will always load the latest code.
 
 
+## Checklist before submitting a new node
+
+If you'd like to submit a new node, please go through the following checklist. This will help us be quicker to review and merge your PR.
+
+- [ ]  Make failing requests to the API to ensure that the errors get displayed correctly (like malformed requests or requests with invalid credentials)
+- [ ]  Ensure that the default values do not change and that the parameters do not get renamed, as it would break the existing workflows of the users
+- [ ]  Ensure that all the top-level parameters use camelCase
+- [ ]  Ensure that all the options are ordered alphabetically, unless a different order is needed for a specific reason
+- [ ]  Ensure that the parameters have the correct type
+- [ ]  Make sure that the file-name and the Class name are identical (case sensitive). The name under "description" in the node-code should also be identical (except that it starts with a lower-case letter and that it will never have a space)
+- [ ]  Names of Trigger-Nodes always have to end with "Trigger"
+- [ ]  Add credentials and nodes to the `package.json` file in alphanumerical order
+- [ ]  Use tabs in all the files except in the `package.json` file, where 4-spaces have to get used
+- [ ]  To make it as simple as possible for the users, check other similar nodes to ensure that they all behave similarly
+- [ ]  Try to add as few parameters as possible on the main level to ensure that the node doesn't appear overwhelming. It should only contain the required parameters. All the other ones should be hidden on lower levels as "Additional Parameters" or "Options"
+- [ ]  Create only one node per service which can do everything via "Resource" and "Options" and not a separate one for each possible operation.
+
+
 ## Extend Documentation
 
-All the files which get used in the n8n documentation on [https://docs.n8n.io](https://docs.n8n.io)
-can be found in the [/docs](https://github.com/n8n-io/n8n/tree/master/docs) folder. So all changes
-and additions can directly be made in there
-
-That the markdown docs look pretty we use [docsify](https://docsify.js.org). It is possible to test
-locally how it looks like rendered with the following commands:
-
-```bash
-# 1. Install docisify
-npm i docsify-cli -g
-
-# 2. Go into n8n folder (the same folder which contains this file). For example:
-cd /data/n8n
-
-# 3. Start docsificy
-docsify serve ./docs
-```
+The repository for the n8n documentation on https://docs.n8n.io can be found [here](https://github.com/n8n-io/n8n-docs).
 
 
 ## Contributor License Agreement
 
 That we do not have any potential problems later it is sadly necessary to sign a [Contributor License Agreement](CONTRIBUTOR_LICENSE_AGREEMENT.md). That can be done literally with the push of a button.
 
-We used the most simple one that exists. It is from [Indie Open Source](https://indieopensource.com/forms/cla) which uses plain English and is literally just a few lines long.
+We used the most simple one that exists. It is from [Indie Open Source](https://indieopensource.com/forms/cla) which uses plain English and is literally only a few lines long.
 
 A bot will automatically comment on the pull request once it got opened asking for the agreement to be signed. Before it did not get signed it is sadly not possible to merge it in.

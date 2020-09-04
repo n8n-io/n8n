@@ -48,9 +48,6 @@ export class FunctionItem implements INodeType {
 
 		// Define the global objects for the custom function
 		const sandbox = {
-			evaluateExpression: (expression: string, itemIndex: number | undefined) => {
-				return this.evaluateExpression(expression, itemIndex);
-			},
 			getBinaryData: (): IBinaryKeyData | undefined => {
 				return item.binary;
 			},
@@ -103,8 +100,14 @@ export class FunctionItem implements INodeType {
 			throw new Error('No data got returned. Always an object has to be returned!');
 		}
 
-		return {
+		const returnItem: INodeExecutionData = {
 			json: jsonData
 		};
+
+		if (item.binary) {
+			returnItem.binary = item.binary;
+		}
+
+		return returnItem;
 	}
 }

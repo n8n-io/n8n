@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+ } from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -10,9 +13,13 @@ import {
 
 import {
 	apiRequest,
+	apiRequestAllItems,
 	IAttachment,
 } from './GenericFunctions';
 
+import {
+	snakeCase,
+} from 'change-case';
 
 export class Mattermost implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +32,7 @@ export class Mattermost implements INodeType {
 		description: 'Sends data to Mattermost',
 		defaults: {
 			name: 'Mattermost',
-			color: '#0058CC',
+			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -55,7 +62,7 @@ export class Mattermost implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 
 
@@ -88,17 +95,22 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Soft-deletes a channel',
+						description: 'Soft delete a channel',
+					},
+					{
+						name: 'Member',
+						value: 'members',
+						description: 'Get a page of members for a channel',
 					},
 					{
 						name: 'Restore',
 						value: 'restore',
-						description: 'Restores a soft-deleted channel',
+						description: 'Restores a soft deleted channel',
 					},
 					{
 						name: 'Statistics',
 						value: 'statistics',
-						description: 'Get statistics for a channel.',
+						description: 'Get statistics for a channel',
 					},
 				],
 				default: 'create',
@@ -119,7 +131,7 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Soft deletes a post, by marking the post as deleted in the database.',
+						description: 'Soft delete a post, by marking the post as deleted in the database',
 					},
 					{
 						name: 'Post',
@@ -128,7 +140,7 @@ export class Mattermost implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The operation to perform.',
+				description: 'The operation to perform',
 			},
 
 
@@ -179,7 +191,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The non-unique UI name for the channel.',
+				description: 'The non-unique UI name for the channel',
 			},
 			{
 				displayName: 'Name',
@@ -198,7 +210,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The unique handle for the channel, will be present in the channel URL.',
+				description: 'The unique handle for the channel, will be present in the channel URL',
 			},
 			{
 				displayName: 'Type',
@@ -252,9 +264,117 @@ export class Mattermost implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the channel to soft-delete.',
+				description: 'The ID of the channel to soft delete',
 			},
 
+			// ----------------------------------
+			//         channel:members
+			// ----------------------------------
+			{
+				displayName: 'Team ID',
+				name: 'teamId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTeams',
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The Mattermost Team.',
+			},
+			{
+				displayName: 'Channel ID',
+				name: 'channelId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getChannelsInTeam',
+					loadOptionsDependsOn: [
+						'teamId',
+					],
+				},
+				options: [],
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				description: 'The Mattermost Team.',
+			},
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'channel',
+						],
+						operation: [
+							'members',
+						],
+					},
+				},
+				default: true,
+				description: 'By default the response only contain the ID of the user.<br />If this option gets activated it will resolve the user automatically.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'members',
+						],
+						resource: [
+							'channel',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
 
 			// ----------------------------------
 			//         channel:restore
@@ -448,78 +568,181 @@ export class Mattermost implements INodeType {
 				placeholder: 'Add attachment item',
 				options: [
 					{
-						displayName: 'Fallback Text',
-						name: 'fallback',
-						type: 'string',
+						displayName: 'Actions',
+						name: 'actions',
+						placeholder: 'Add Actions',
+						description: 'Actions to add to message. More information can be found <a href="https://docs.mattermost.com/developer/interactive-messages.html" target="_blank">here</a>',
+						type: 'fixedCollection',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
+							multipleValues: true,
 						},
-						default: '',
-						description: 'Required plain-text summary of the attachment.',
-					},
-					{
-						displayName: 'Text',
-						name: 'text',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Text to send.',
-					},
-					{
-						displayName: 'Title',
-						name: 'title',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Title of the message.',
-					},
-					{
-						displayName: 'Title Link',
-						name: 'title_link',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Link of the title.',
-					},
-					{
-						displayName: 'Color',
-						name: 'color',
-						type: 'color',
-						default: '#ff0000',
-						description: 'Color of the line left of text.',
-					},
-					{
-						displayName: 'Pretext',
-						name: 'pretext',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Text which appears before the message block.',
-					},
-					{
-						displayName: 'Author Name',
-						name: 'author_name',
-						type: 'string',
-						default: '',
-						description: 'Name that should appear.',
-					},
-					{
-						displayName: 'Author Link',
-						name: 'author_link',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Link for the author.',
+						default: {},
+						options: [
+							{
+								displayName: 'Item',
+								name: 'item',
+								values: [
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'options',
+										options: [
+											{
+												name: 'Button',
+												value: 'button',
+											},
+											{
+												name: 'Select',
+												value: 'select',
+											},
+										],
+										default: 'button',
+										description: 'The type of the action.',
+									},
+									{
+										displayName: 'Data Source',
+										name: 'data_source',
+										type: 'options',
+										displayOptions: {
+											show: {
+												type: [
+													'select'
+												],
+											},
+										},
+										options: [
+											{
+												name: 'Channels',
+												value: 'channels',
+											},
+											{
+												name: 'Custom',
+												value: 'custom',
+											},
+											{
+												name: 'Users',
+												value: 'users',
+											},
+
+										],
+										default: 'custom',
+										description: 'The type of the action.',
+									},
+									{
+										displayName: 'Options',
+										name: 'options',
+										placeholder: 'Add Option',
+										description: 'Adds a new option to select field.',
+										type: 'fixedCollection',
+										typeOptions: {
+											multipleValues: true,
+										},
+										displayOptions: {
+											show: {
+												data_source: [
+													'custom'
+												],
+												type: [
+													'select'
+												],
+											},
+										},
+										default: {},
+										options: [
+											{
+												name: 'option',
+												displayName: 'Option',
+												default: {},
+												values: [
+													{
+														displayName: 'Option Text',
+														name: 'text',
+														type: 'string',
+														default: '',
+														description: 'Text of the option.',
+													},
+													{
+														displayName: 'Option Value',
+														name: 'value',
+														type: 'string',
+														default: '',
+														description: 'Value of the option.',
+													},
+												]
+											},
+										],
+									},
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the Action.',
+									},
+									{
+										displayName: 'Integration',
+										name: 'integration',
+										placeholder: 'Add Integration',
+										description: 'Integration to add to message.',
+										type: 'fixedCollection',
+										typeOptions: {
+											multipleValues: false,
+										},
+										default: {},
+										options: [
+											{
+												displayName: 'Item',
+												name: 'item',
+												default: {},
+												values: [
+													{
+														displayName: 'URL',
+														name: 'url',
+														type: 'string',
+														default: '',
+														description: 'URL of the Integration.',
+													},
+													{
+														displayName: 'Context',
+														name: 'context',
+														placeholder: 'Add Context to Integration',
+														description: 'Adds a Context values set.',
+														type: 'fixedCollection',
+														typeOptions: {
+															multipleValues: true,
+														},
+														default: {},
+														options: [
+															{
+																name: 'property',
+																displayName: 'Property',
+																default: {},
+																values: [
+																	{
+																		displayName: 'Property Name',
+																		name: 'name',
+																		type: 'string',
+																		default: '',
+																		description: 'Name of the property to set.',
+																	},
+																	{
+																		displayName: 'Property Value',
+																		name: 'value',
+																		type: 'string',
+																		default: '',
+																		description: 'Value of the property to set.',
+																	},
+																]
+															},
+														],
+													},
+												]
+											},
+										],
+									},
+								]
+							},
+						],
 					},
 					{
 						displayName: 'Author Icon',
@@ -532,44 +755,38 @@ export class Mattermost implements INodeType {
 						description: 'Icon which should appear for the user.',
 					},
 					{
-						displayName: 'Image URL',
-						name: 'image_url',
+						displayName: 'Author Link',
+						name: 'author_link',
 						type: 'string',
 						typeOptions: {
 							alwaysOpenEditWindow: true,
 						},
 						default: '',
-						description: 'URL of image.',
+						description: 'Link for the author.',
 					},
 					{
-						displayName: 'Thumbnail URL',
-						name: 'thumb_url',
+						displayName: 'Author Name',
+						name: 'author_name',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
-						description: 'URL of thumbnail.',
+						description: 'Name that should appear.',
 					},
 					{
-						displayName: 'Footer',
-						name: 'footer',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Text of footer to add.',
+						displayName: 'Color',
+						name: 'color',
+						type: 'color',
+						default: '#ff0000',
+						description: 'Color of the line left of text.',
 					},
 					{
-						displayName: 'Footer Icon',
-						name: 'footer_icon',
+						displayName: 'Fallback Text',
+						name: 'fallback',
 						type: 'string',
 						typeOptions: {
 							alwaysOpenEditWindow: true,
 						},
 						default: '',
-						description: 'Icon which should appear next to footer.',
+						description: 'Required plain-text summary of the attachment.',
 					},
 					{
 						displayName: 'Fields',
@@ -610,7 +827,87 @@ export class Mattermost implements INodeType {
 								]
 							},
 						],
-					}
+					},
+					{
+						displayName: 'Footer',
+						name: 'footer',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text of footer to add.',
+					},
+					{
+						displayName: 'Footer Icon',
+						name: 'footer_icon',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Icon which should appear next to footer.',
+					},
+					{
+						displayName: 'Image URL',
+						name: 'image_url',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'URL of image.',
+					},
+					{
+						displayName: 'Pretext',
+						name: 'pretext',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text which appears before the message block.',
+					},
+					{
+						displayName: 'Text',
+						name: 'text',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Text to send.',
+					},
+					{
+						displayName: 'Thumbnail URL',
+						name: 'thumb_url',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'URL of thumbnail.',
+					},
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Title of the message.',
+					},
+					{
+						displayName: 'Title Link',
+						name: 'title_link',
+						type: 'string',
+						typeOptions: {
+							alwaysOpenEditWindow: true,
+						},
+						default: '',
+						description: 'Link of the title.',
+					},
 				],
 			},
 			{
@@ -660,6 +957,21 @@ export class Mattermost implements INodeType {
 						value: 'deactive',
 						description: 'Deactivates the user and revokes all its sessions by archiving its user object.',
 					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Retrieve all users',
+					},
+					{
+						name: 'Get By Email',
+						value: 'getByEmail',
+						description: 'Get a user by email',
+					},
+					{
+						name: 'Get By ID',
+						value: 'getById',
+						description: 'Get a user by id',
+					},
 				],
 				default: '',
 				description: 'The operation to perform.',
@@ -686,6 +998,191 @@ export class Mattermost implements INodeType {
 				description: 'User GUID'
 			},
 
+			// ----------------------------------
+			//         user:getAll
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: true,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'In Channel',
+						name: 'inChannel',
+						type: 'string',
+						default: '',
+						description: 'The ID of the channel to get users for.',
+					},
+					{
+						displayName: 'In Team',
+						name: 'inTeam',
+						type: 'string',
+						default: '',
+						description: 'The ID of the team to get users for.',
+					},
+					{
+						displayName: 'Not In Team',
+						name: 'notInTeam',
+						type: 'string',
+						default: '',
+						description: 'The ID of the team to exclude users for.',
+					},
+					{
+						displayName: 'Not In Channel',
+						name: 'notInChannel',
+						type: 'string',
+						default: '',
+						description: 'The ID of the channel to exclude users for.',
+					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'options',
+						options: [
+							{
+								name: 'Created At',
+								value: 'createdAt',
+							},
+							{
+								name: 'Last Activity At',
+								value: 'lastActivityAt',
+							},
+							{
+								name: 'Status',
+								value: 'status',
+							},
+							{
+								name: 'username',
+								value: 'username',
+							},
+						],
+						default: 'username',
+						description: 'The ID of the channel to exclude users for.',
+					},
+				],
+			},
+			// ----------------------------------
+			//         user:getByEmail
+			// ----------------------------------
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getByEmail',
+						],
+					},
+				},
+				default: '',
+				description: `User's email`,
+			},
+
+			// ----------------------------------
+			//         user:getById
+			// ----------------------------------
+			{
+				displayName: 'User IDs',
+				name: 'userIds',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getById',
+						],
+					},
+				},
+				default: '',
+				description: `User's ID`,
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getById',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Since',
+						name: 'since',
+						type: 'dateTime',
+						default: '',
+						description: 'Only return users that have been modified since the given Unix timestamp (in milliseconds).',
+					},
+				],
+			},
 		],
 	};
 
@@ -718,10 +1215,42 @@ export class Mattermost implements INodeType {
 				return returnData;
 			},
 
+			// Get all the channels in a team
+			async getChannelsInTeam(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const teamId = this.getCurrentNodeParameter('teamId');
+				const endpoint = `users/me/teams/${teamId}/channels`;
+				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
+				if (responseData === undefined) {
+					throw new Error('No data got returned');
+				}
+
+				const returnData: INodePropertyOptions[] = [];
+				let name: string;
+				for (const data of responseData) {
+					if (data.delete_at !== 0) {
+						continue;
+					}
+
+					const channelTypes: IDataObject = {
+						'O': 'public',
+						'P': 'private',
+						'D': 'direct',
+					};
+
+					name = `${data.name} (${channelTypes[data.type as string]})`;
+
+					returnData.push({
+						name,
+						value: data.id,
+					});
+				}
+
+				return returnData;
+			},
 
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = 'teams';
+				const endpoint = 'users/me/teams';
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData === undefined) {
@@ -785,6 +1314,11 @@ export class Mattermost implements INodeType {
 		let operation: string;
 		let resource: string;
 		let requestMethod = 'POST';
+		let returnAll = false;
+		let userIds: string[] = [];
+
+		resource = this.getNodeParameter('resource', 0) as string;
+		operation = this.getNodeParameter('operation', 0) as string;
 
 		// For Post
 		let body: IDataObject;
@@ -796,9 +1330,6 @@ export class Mattermost implements INodeType {
 			body = {};
 			qs = {};
 
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
-
 			if (resource === 'channel') {
 				if (operation === 'create') {
 					// ----------------------------------
@@ -809,7 +1340,7 @@ export class Mattermost implements INodeType {
 					endpoint = 'channels';
 
 					body.team_id = this.getNodeParameter('teamId', i) as string;
-					body.displayName = this.getNodeParameter('displayName', i) as string;
+					body.display_name = this.getNodeParameter('displayName', i) as string;
 					body.name = this.getNodeParameter('channel', i) as string;
 
 					const type = this.getNodeParameter('type', i) as string;
@@ -823,6 +1354,19 @@ export class Mattermost implements INodeType {
 					requestMethod = 'DELETE';
 					const channelId = this.getNodeParameter('channelId', i) as string;
 					endpoint = `channels/${channelId}`;
+
+				} else if (operation === 'members') {
+					// ----------------------------------
+					//         channel:members
+					// ----------------------------------
+
+					requestMethod = 'GET';
+					const channelId = this.getNodeParameter('channelId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					endpoint = `channels/${channelId}/members`;
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+					}
 
 				} else if (operation === 'restore') {
 					// ----------------------------------
@@ -890,6 +1434,47 @@ export class Mattermost implements INodeType {
 							}
 						}
 					}
+					for (const attachment of attachments) {
+						if (attachment.actions !== undefined) {
+							if (attachment.actions.item !== undefined) {
+								// Move the field-content up
+								// @ts-ignore
+								attachment.actions = attachment.actions.item;
+							} else {
+								// If it does not have any items set remove it
+								delete attachment.actions;
+							}
+						}
+					}
+
+					for (const attachment of attachments) {
+						if (Array.isArray(attachment.actions)) {
+							for (const attaction of attachment.actions) {
+
+								if (attaction.type === 'button') {
+									delete attaction.type;
+								}
+								if (attaction.data_source === 'custom') {
+									delete attaction.data_source;
+								}
+								if (attaction.options) {
+									attaction.options = attaction.options.option;
+								}
+
+								if (attaction.integration.item !== undefined) {
+									attaction.integration = attaction.integration.item;
+									if (Array.isArray(attaction.integration.context.property)) {
+										const tmpcontex = {};
+										for (const attactionintegprop of attaction.integration.context.property) {
+											Object.assign(tmpcontex, { [attactionintegprop.name]: attactionintegprop.value });
+										}
+										delete attaction.integration.context;
+										attaction.integration.context = tmpcontex;
+									}
+								}
+							}
+						}
+					}
 
 					body.props = {
 						attachments,
@@ -911,13 +1496,137 @@ export class Mattermost implements INodeType {
 					requestMethod = 'DELETE';
 					endpoint = `users/${userId}`;
 				}
+
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         user:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.inTeam) {
+						qs.in_team = additionalFields.inTeam;
+					}
+
+					if (additionalFields.notInTeam) {
+						qs.not_in_team = additionalFields.notInTeam;
+					}
+
+					if (additionalFields.inChannel) {
+						qs.in_channel = additionalFields.inChannel;
+					}
+
+					if (additionalFields.notInChannel) {
+						qs.not_in_channel = additionalFields.notInChannel;
+					}
+
+					if (additionalFields.sort) {
+						qs.sort = snakeCase(additionalFields.sort as string);
+					}
+
+					const validRules = {
+						inTeam: ['last_activity_at', 'created_at', 'username'],
+						inChannel: ['status', 'username'],
+					};
+
+					if (additionalFields.sort) {
+						if (additionalFields.inTeam !== undefined || additionalFields.inChannel !== undefined)  {
+
+							if (additionalFields.inTeam !== undefined
+							&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
+								throw new Error(`When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
+							}
+							if (additionalFields.inChannel !== undefined
+							&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
+									throw new Error(`When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
+							}
+							if (additionalFields.inChannel !== undefined
+							&& additionalFields.inChannel === ''
+							&& additionalFields.sort !== 'username') {
+								throw new Error('When sort is different than username In Channel must be set');
+							}
+
+							if (additionalFields.inTeam !== undefined
+								&& additionalFields.inTeam === ''
+								&& additionalFields.sort !== 'username') {
+									throw new Error('When sort is different than username In Team must be set');
+								}
+
+						} else {
+							throw new Error(`When sort is defined either 'in team' or 'in channel' must be defined`);
+						}
+					}
+
+					if (additionalFields.sort === 'username') {
+						qs.sort = '';
+					}
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', i) as number;
+					}
+
+					endpoint = `/users`;
+				}
+
+				if (operation === 'getByEmail') {
+					// ----------------------------------
+					//          user:getByEmail
+					// ----------------------------------
+					const email = this.getNodeParameter('email', i) as string;
+					requestMethod = 'GET';
+					endpoint = `users/email/${email}`;
+				}
+
+				if (operation === 'getById') {
+					// ----------------------------------
+					//          user:getById
+					// ----------------------------------
+					userIds = (this.getNodeParameter('userIds', i) as string).split(',') as string[];
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.since) {
+						qs.since = new Date(additionalFields.since as string).getTime();
+					}
+
+					requestMethod = 'POST';
+
+					endpoint = 'users/ids';
+
+					//@ts-ignore
+					body = userIds;
+
+				}
 			}
 			else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
-			const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-			returnData.push(responseData);
+			let responseData;
+			if (returnAll) {
+				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+			} else {
+				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				if (resource === 'channel' && operation === 'members') {
+					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+					if (resolveData) {
+						const userIds: string[] = [];
+						for (const data of responseData) {
+							userIds.push(data.user_id);
+						}
+						if (userIds.length > 0) {
+							responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds , qs);
+						}
+					}
+				}
+			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData);
+			} else {
+				returnData.push(responseData);
+			}
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

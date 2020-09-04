@@ -110,6 +110,21 @@ export class TestWebhooks {
 		});
 	}
 
+	/**
+	 * Gets all request methods associated with a single test webhook
+	 * @param path webhook path
+	 */
+	async getWebhookMethods(path : string) : Promise<string[]> {
+		const webhookMethods: string[] = this.activeWebhooks!.getWebhookMethods(path);
+
+		if (webhookMethods === undefined) {
+			// The requested webhook is not registered
+			throw new ResponseHelper.ResponseError(`The requested webhook "${path}" is not registered.`, 404, 404);
+		}
+
+		return webhookMethods;
+	}
+
 
 	/**
 	 * Checks if it has to wait for webhook data to execute the workflow. If yes it waits
@@ -129,6 +144,10 @@ export class TestWebhooks {
 			return false;
 		}
 
+		if (workflow.id === undefined) {
+			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
+		}
+
 		// Remove test-webhooks automatically if they do not get called (after 120 seconds)
 		const timeout = setTimeout(() => {
 			this.cancelTestWebhook(workflowData.id.toString());
@@ -137,12 +156,14 @@ export class TestWebhooks {
 		let key: string;
 		for (const webhookData of webhooks) {
 			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
+
+			await this.activeWebhooks!.add(workflow, webhookData, mode);
+
 			this.testWebhookData[key] = {
 				sessionId,
 				timeout,
 				workflowData,
 			};
-			await this.activeWebhooks!.add(workflow, webhookData, mode);
 
 			// Save static data!
 			this.testWebhookData[key].workflowData.staticData = workflow.staticData;

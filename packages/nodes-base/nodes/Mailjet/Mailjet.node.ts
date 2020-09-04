@@ -98,6 +98,7 @@ export class Mailjet implements INodeType {
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 					const htmlBody = this.getNodeParameter('html', i) as string;
 					const textBody = this.getNodeParameter('text', i) as string;
+					const subject = this.getNodeParameter('subject', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
 					const variables = (this.getNodeParameter('variablesUi', i) as IDataObject).variablesValues as IDataObject[];
@@ -108,6 +109,7 @@ export class Mailjet implements INodeType {
 								From: {
 									email: fromEmail,
 								},
+								subject,
 								to: [],
 								Cc: [],
 								Bcc: [],
@@ -153,10 +155,6 @@ export class Mailjet implements INodeType {
 								email,
 							});
 						}
-					}
-					if (additionalFields.subject) {
-						//@ts-ignore
-						body.Messages[0].subject = additionalFields.subject as string;
 					}
 					if (additionalFields.trackOpens) {
 						//@ts-ignore

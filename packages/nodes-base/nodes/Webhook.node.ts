@@ -15,8 +15,6 @@ import * as basicAuth from 'basic-auth';
 
 import { Response } from 'express';
 
-import { set } from 'lodash';
-
 import * as fs from 'fs';
 
 import * as formidable from 'formidable';
@@ -79,12 +77,14 @@ export class Webhook implements INodeType {
 			{
 				name: 'default',
 				httpMethod: '={{$parameter["httpMethod"]}}',
+				isFullPath: true,
 				responseCode: '={{$parameter["responseCode"]}}',
 				responseMode: '={{$parameter["responseMode"]}}',
 				responseData: '={{$parameter["responseData"]}}',
 				responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
 				responseContentType: '={{$parameter["options"]["responseContentType"]}}',
 				responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
+				responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
 				path: '={{$parameter["path"]}}',
 			},
 		],
@@ -134,7 +134,7 @@ export class Webhook implements INodeType {
 				default: '',
 				placeholder: 'webhook',
 				required: true,
-				description: 'The path to listen to. Slashes("/") in the path are not allowed.',
+				description: 'The path to listen to.',
 			},
 			{
 				displayName: 'Response Code',
@@ -269,6 +269,39 @@ export class Webhook implements INodeType {
 						description: 'Set a custom content-type to return if another one as the "application/json" should be returned.',
 					},
 					{
+						displayName: 'Response Headers',
+						name: 'responseHeaders',
+						placeholder: 'Add Response Header',
+						description: 'Add headers to the webhook response.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'entries',
+								displayName: 'Entries',
+								values: [
+									{
+										displayName: 'Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the header.',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the header.',
+									},
+								]
+							},
+						],
+					},
+					{
 						displayName: 'Property Name',
 						name: 'responsePropertyName',
 						type: 'string',
@@ -360,7 +393,7 @@ export class Webhook implements INodeType {
 					const returnItem: INodeExecutionData = {
 						binary: {},
 						json: {
-							body: this.getBodyData(),
+							body: data,
 							headers,
 							query: this.getQueryData(),
 						},

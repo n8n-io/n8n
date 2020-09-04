@@ -12,6 +12,11 @@ export interface IBinaryData {
 	fileExtension?: string;
 }
 
+export interface IOAuth2Options {
+	includeCredentialsOnRefreshOnBody?: boolean;
+	property?: string;
+	tokenType?: string;
+}
 
 export interface IConnection {
 	// The node the connection is to
@@ -97,6 +102,7 @@ export interface ICredentialType {
 	displayName: string;
 	extends?: string[];
 	properties: INodeProperties[];
+	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 }
 
@@ -180,7 +186,6 @@ export interface IExecuteData {
 	node: INode;
 }
 
-
 export type IContextObject = {
 	[key: string]: any; // tslint:disable-line:no-any
 };
@@ -206,7 +211,7 @@ export interface IExecuteFunctions {
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;
 	getTimezone(): string;
-	getWorkflow(workflow: Workflow): IWorkflowMetadata;
+	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
@@ -225,7 +230,7 @@ export interface IExecuteSingleFunctions {
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
 	getTimezone(): string;
-	getWorkflow(workflow: Workflow): IWorkflowMetadata;
+	getWorkflow(): IWorkflowMetadata;
 	getWorkflowDataProxy(): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
@@ -260,7 +265,7 @@ export interface IHookFunctions {
 	getTimezone(): string;
 	getWebhookDescription(name: string): IWebhookDescription | undefined;
 	getWebhookName(): string;
-	getWorkflow(workflow: Workflow): IWorkflowMetadata;
+	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
@@ -275,7 +280,7 @@ export interface IPollFunctions {
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
 	getTimezone(): string;
-	getWorkflow(workflow: Workflow): IWorkflowMetadata;
+	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
@@ -290,7 +295,7 @@ export interface ITriggerFunctions {
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
 	getTimezone(): string;
-	getWorkflow(workflow: Workflow): IWorkflowMetadata;
+	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
@@ -311,7 +316,7 @@ export interface IWebhookFunctions {
 	getTimezone(): string;
 	getWebhookName(): string;
 	getWorkflowStaticData(type: string): IDataObject;
-	getWorkflow(workflow: Workflow): IWorkflowMetadata;
+	getWorkflow(): IWorkflowMetadata;
 	prepareOutputData(outputData: INodeExecutionData[], outputIndex?: number): Promise<INodeExecutionData[][]>;
 	helpers: {
 		[key: string]: (...args: any[]) => any //tslint:disable-line:no-any
@@ -328,12 +333,16 @@ export interface INode {
 	type: string;
 	position: [number, number];
 	disabled?: boolean;
+	notesInFlow?: boolean;
 	retryOnFail?: boolean;
 	maxTries?: number;
 	waitBetweenTries?: number;
+	alwaysOutputData?: boolean;
+	executeOnce?: boolean;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
+	webhookId?: string;
 }
 
 
@@ -556,8 +565,9 @@ export interface IWebhookData {
 }
 
 export interface IWebhookDescription {
-	[key: string]: WebhookHttpMethod | WebhookResponseMode | string | undefined;
+	[key: string]: WebhookHttpMethod | WebhookResponseMode | boolean | string | undefined;
 	httpMethod: WebhookHttpMethod | string;
+	isFullPath?: boolean;
 	name: string;
 	path: string;
 	responseBinaryPropertyName?: string;
@@ -573,6 +583,7 @@ export interface IWorkflowDataProxyData {
 	$env: any; // tslint:disable-line:no-any
 	$evaluateExpression: any; // tslint:disable-line:no-any
 	$item: any; // tslint:disable-line:no-any
+	$items: any; // tslint:disable-line:no-any
 	$json: any; // tslint:disable-line:no-any
 	$node: any; // tslint:disable-line:no-any
 	$parameter: any; // tslint:disable-line:no-any
@@ -585,7 +596,7 @@ export interface IWorkflowMetadata {
 	active: boolean;
 }
 
-export type WebhookHttpMethod = 'GET' | 'POST';
+export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
@@ -718,7 +729,7 @@ export interface IWorkflowExecuteAdditionalData {
 	timezone: string;
 	webhookBaseUrl: string;
 	webhookTestBaseUrl: string;
-	currentNodeParameters? : INodeParameters[];
+	currentNodeParameters? : INodeParameters;
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';

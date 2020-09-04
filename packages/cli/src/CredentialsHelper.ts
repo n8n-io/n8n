@@ -5,10 +5,14 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
+	INodeParameters,
+	INodeProperties,
+	NodeHelpers,
 } from 'n8n-workflow';
 
 import {
 	CredentialsOverwrites,
+	CredentialTypes,
 	Db,
 	ICredentialsDb,
 } from './';
@@ -38,19 +42,82 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 
 	/**
+	 * Returns all the properties of the credentials with the given name
+	 *
+	 * @param {string} type The name of the type to return credentials off
+	 * @returns {INodeProperties[]}
+	 * @memberof CredentialsHelper
+	 */
+	getCredentialsProperties(type: string): INodeProperties[] {
+		const credentialTypes = CredentialTypes();
+		const credentialTypeData = credentialTypes.getByName(type);
+
+		if (credentialTypeData === undefined) {
+			throw new Error(`The credentials of type "${type}" are not known.`);
+		}
+
+		if (credentialTypeData.extends === undefined) {
+			return credentialTypeData.properties;
+		}
+
+		const combineProperties = [] as INodeProperties[];
+		for (const credentialsTypeName of credentialTypeData.extends) {
+			const mergeCredentialProperties = this.getCredentialsProperties(credentialsTypeName);
+			NodeHelpers.mergeNodeProperties(combineProperties, mergeCredentialProperties);
+		}
+
+		// The properties defined on the parent credentials take presidence
+		NodeHelpers.mergeNodeProperties(combineProperties, credentialTypeData.properties);
+
+		return combineProperties;
+	}
+
+
+	/**
 	 * Returns the decrypted credential data with applied overwrites
 	 *
 	 * @param {string} name Name of the credentials to return data of
 	 * @param {string} type Type of the credentials to return data of
+	 * @param {boolean} [raw] Return the data as supplied without defaults or overwrites
 	 * @returns {ICredentialDataDecryptedObject}
 	 * @memberof CredentialsHelper
 	 */
-	getDecrypted(name: string, type: string): ICredentialDataDecryptedObject {
+	getDecrypted(name: string, type: string, raw?: boolean): ICredentialDataDecryptedObject {
 		const credentials = this.getCredentials(name, type);
+
+		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
+
+		if (raw === true) {
+			return decryptedDataOriginal;
+		}
+
+		return this.applyDefaultsAndOverwrites(decryptedDataOriginal, type);
+	}
+
+
+	/**
+	 * Applies credential default data and overwrites
+	 *
+	 * @param {ICredentialDataDecryptedObject} decryptedDataOriginal The credential data to overwrite data on
+	 * @param {string} type  Type of the credentials to overwrite data of
+	 * @returns {ICredentialDataDecryptedObject}
+	 * @memberof CredentialsHelper
+	 */
+	applyDefaultsAndOverwrites(decryptedDataOriginal: ICredentialDataDecryptedObject, type: string): ICredentialDataDecryptedObject {
+		const credentialsProperties = this.getCredentialsProperties(type);
+
+		// Add the default credential values
+		const decryptedData = NodeHelpers.getNodeParameters(credentialsProperties, decryptedDataOriginal as INodeParameters, true, false) as ICredentialDataDecryptedObject;
+
+		if (decryptedDataOriginal.oauthTokenData !== undefined) {
+			// The OAuth data gets removed as it is not defined specifically as a parameter
+			// on the credentials so add it back in case it was set
+			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
+		}
 
 		// Load and apply the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();
-		return credentialsOverwrites.applyOverwrite(credentials.type, credentials.getData(this.encryptionKey));
+		return credentialsOverwrites.applyOverwrite(type, decryptedData);
 	}
 
 

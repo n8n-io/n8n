@@ -6,6 +6,7 @@ import {
 export class MondayComApi implements ICredentialType {
 	name = 'mondayComApi';
 	displayName = 'Monday.com API';
+	documentationUrl = 'mondayCom';
 	properties = [
 		{
 			displayName: 'Token V2',

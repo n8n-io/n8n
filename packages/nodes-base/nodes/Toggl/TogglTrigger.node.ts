@@ -12,7 +12,7 @@ import { togglApiRequest } from './GenericFunctions';
 export class TogglTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Toggl Trigger',
-		name: 'toggl',
+		name: 'togglTrigger',
 		icon: 'file:toggl.png',
 		group: ['trigger'],
 		version: 1,

@@ -8,7 +8,8 @@ Vue.use(Router);
 
 export default new Router({
 	mode: 'history',
-	base: process.env.BASE_URL,
+	// @ts-ignore
+	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
 	routes: [
 		{
 			path: '/execution/:id',

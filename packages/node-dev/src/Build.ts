@@ -83,7 +83,9 @@ export async function buildFiles (options?: IBuildOptions): Promise<string> {
 
 		// Forward the output of the child process to the main one
 		// that the user can see what is happening
+		//@ts-ignore
 		buildProcess.stdout.pipe(process.stdout);
+		//@ts-ignore
 		buildProcess.stderr.pipe(process.stderr);
 
 		// Make sure that the child process gets also always terminated
@@ -105,10 +107,10 @@ export async function buildFiles (options?: IBuildOptions): Promise<string> {
 	}
 
 	return new Promise((resolve, reject) => {
+		copyfiles([join(process.cwd(), './*.png'), outputDirectory], { up: true }, () => resolve(outputDirectory));
 		buildProcess.on('exit', code => {
 			// Remove the tmp tsconfig file
 			tsconfigData.cleanup();
-			copyfiles([join(process.cwd(), './*.png'), outputDirectory], { up: true }, () => resolve(outputDirectory));
 		});
 	});
 }

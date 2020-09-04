@@ -145,6 +145,7 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
+	oAuth1CredentialAuthorize(sendData: ICredentialsResponse): Promise<string>;
 	oAuth2CredentialAuthorize(sendData: ICredentialsResponse): Promise<string>;
 	oAuth2Callback(code: string, state: string): Promise<string>;
 }
@@ -396,6 +397,8 @@ export interface IN8nUISettings {
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
 	timezone: string;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
 	urlBaseWebhook: string;
 	versionCli: string;
 }
@@ -406,4 +409,13 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveDataSuccessExecution?: string;
 	saveManualExecutions?: boolean;
 	timezone?: string;
+	executionTimeout?: number;
 }
+
+export interface ITimeoutHMS {
+	hours: number;
+	minutes: number;
+	seconds: number;
+}
+
+export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';

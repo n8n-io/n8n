@@ -71,6 +71,7 @@ import {
 	faSave,
 	faSearchMinus,
 	faSearchPlus,
+	faServer,
 	faSignInAlt,
 	faSlidersH,
 	faSpinner,
@@ -146,6 +147,7 @@ library.add(faRss);
 library.add(faSave);
 library.add(faSearchMinus);
 library.add(faSearchPlus);
+library.add(faServer);
 library.add(faSignInAlt);
 library.add(faSlidersH);
 library.add(faSpinner);
@@ -181,7 +183,7 @@ if (process.env.NODE_ENV !== 'production') {
 			// not do anything about it anyway
 			return;
 		}
-		console.error('error cought in main.ts'); // eslint-disable-line no-console
+		console.error('error caught in main.ts'); // eslint-disable-line no-console
 		console.error(message); // eslint-disable-line no-console
 		console.error(error); // eslint-disable-line no-console
 	};

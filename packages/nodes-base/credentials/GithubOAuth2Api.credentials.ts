@@ -10,6 +10,7 @@ export class GithubOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Github OAuth2 API';
+	documentationUrl = 'github';
 	properties = [
 		{
 			displayName: 'Github Server',

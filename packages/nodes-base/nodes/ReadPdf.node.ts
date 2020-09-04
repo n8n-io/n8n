@@ -14,7 +14,7 @@ const pdf = require('pdf-parse');
 export class ReadPdf implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read PDF',
-		name: 'Read PDF',
+		name: 'readPDF',
 		icon: 'fa:file-pdf',
 		group: ['input'],
 		version: 1,
@@ -51,6 +51,7 @@ export class ReadPdf implements INodeType {
 		const binaryData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
 
 		return {
+			binary: item.binary,
 			json: await pdf(binaryData)
 		};
 	}

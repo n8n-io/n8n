@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+ } from 'n8n-workflow';
 
 export const ticketOperations = [
 	{
@@ -19,9 +21,9 @@ export const ticketOperations = [
 				description: 'Create a ticket',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a ticket',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a ticket',
 			},
 			{
 				name: 'Get',
@@ -34,9 +36,9 @@ export const ticketOperations = [
 				description: 'Get all tickets',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a ticket',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a ticket',
 			},
 		],
 		default: 'create',
@@ -71,6 +73,23 @@ export const ticketFields = [
 		description: 'The first comment on the ticket',
 	},
 	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -84,29 +103,53 @@ export const ticketFields = [
 				operation: [
 					'create',
 				],
+				jsonParameters: [
+					false,
+				],
 			},
 		},
 		options: [
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Custom Field',
+						name: 'customFieldsValues',
+						values: [
+							{
+								displayName: 'ID',
+								name: 'id',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+								},
+								default: '',
+								description: 'Custom field ID',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom field Value.',
+							},
+						],
+					},
+				],
+			},
 			{
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
 				default: '',
 				description: 'An id you can use to link Zendesk Support tickets to local records',
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-				description: 'The value of the subject field for this ticket',
-			},
-			{
-				displayName: 'Recipient',
-				name: 'recipient',
-				type: 'string',
-				default: '',
-				description: 'The original recipient e-mail address of the ticket',
 			},
 			{
 				displayName: 'Group',
@@ -117,6 +160,49 @@ export const ticketFields = [
 				},
 				default: '',
 				description: 'The group this ticket is assigned to',
+			},
+			{
+				displayName: 'Recipient',
+				name: 'recipient',
+				type: 'string',
+				default: '',
+				description: 'The original recipient e-mail address of the ticket',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'New',
+						value: 'new',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Solved',
+						value: 'solved',
+					},
+					{
+						name: 'Closed',
+						value: 'closed',
+					},
+				],
+				default: '',
+				description: 'The state of the ticket',
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The value of the subject field for this ticket',
 			},
 			{
 				displayName: 'Tags',
@@ -153,42 +239,37 @@ export const ticketFields = [
 				default: '',
 				description: 'The type of this ticket',
 			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Open',
-						value: 'open',
-					},
-					{
-						name: 'New',
-						value: 'new',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Solved',
-						value: 'solved',
-					},
-					{
-						name: 'Closed',
-						value: 'closed',
-					},
-				],
-				default: '',
-				description: 'The state of the ticket',
-			}
 		],
 	},
+	{
+		displayName: ' Additional Fields',
+		name: 'additionalFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'create',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: `Object of values to set as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets" target="_blank">here</a>.`,
+	},
+
 /* -------------------------------------------------------------------------- */
 /*                                ticket:update                               */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
+		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -206,6 +287,23 @@ export const ticketFields = [
 		description: 'Ticket ID',
 	},
 	{
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
+		type: 'boolean',
+		default: false,
+		description: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket'
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -219,29 +317,53 @@ export const ticketFields = [
 				operation: [
 					'update',
 				],
+				jsonParameters: [
+					false,
+				],
 			},
 		},
 		options: [
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Custom Field',
+						name: 'customFieldsValues',
+						values: [
+							{
+								displayName: 'ID',
+								name: 'id',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+								},
+								default: '',
+								description: 'Custom field ID',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Custom field Value.',
+							},
+						],
+					},
+				],
+			},
 			{
 				displayName: 'External ID',
 				name: 'externalId',
 				type: 'string',
 				default: '',
 				description: 'An id you can use to link Zendesk Support tickets to local records',
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				type: 'string',
-				default: '',
-				description: 'The value of the subject field for this ticket',
-			},
-			{
-				displayName: 'Recipient',
-				name: 'recipient',
-				type: 'string',
-				default: '',
-				description: 'The original recipient e-mail address of the ticket',
 			},
 			{
 				displayName: 'Group',
@@ -252,6 +374,49 @@ export const ticketFields = [
 				},
 				default: '',
 				description: 'The group this ticket is assigned to',
+			},
+			{
+				displayName: 'Recipient',
+				name: 'recipient',
+				type: 'string',
+				default: '',
+				description: 'The original recipient e-mail address of the ticket',
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'New',
+						value: 'new',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Solved',
+						value: 'solved',
+					},
+					{
+						name: 'Closed',
+						value: 'closed',
+					},
+				],
+				default: '',
+				description: 'The state of the ticket',
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The value of the subject field for this ticket',
 			},
 			{
 				displayName: 'Tags',
@@ -288,42 +453,37 @@ export const ticketFields = [
 				default: '',
 				description: 'The type of this ticket',
 			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Open',
-						value: 'open',
-					},
-					{
-						name: 'New',
-						value: 'new',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Solved',
-						value: 'solved',
-					},
-					{
-						name: 'Closed',
-						value: 'closed',
-					},
-				],
-				default: '',
-				description: 'The state of the ticket',
-			}
 		],
 	},
+	{
+		displayName: ' Update Fields',
+		name: 'updateFieldsJson',
+		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'ticket',
+				],
+				operation: [
+					'update',
+				],
+				jsonParameters: [
+					true,
+				],
+			},
+		},
+		description: `Object of values to update as described <a href="https://developer.zendesk.com/rest_api/docs/support/tickets" target="_blank">here</a>.`,
+	},
+
 /* -------------------------------------------------------------------------- */
 /*                                 ticket:get                                 */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
+		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
 		default: '',
@@ -402,35 +562,6 @@ export const ticketFields = [
 		},
 		options: [
 			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				options: [
-					{
-						name: 'Open',
-						value: 'open',
-					},
-					{
-						name: 'New',
-						value: 'new',
-					},
-					{
-						name: 'Pending',
-						value: 'pending',
-					},
-					{
-						name: 'Solved',
-						value: 'solved',
-					},
-					{
-						name: 'Closed',
-						value: 'closed',
-					},
-				],
-				default: '',
-				description: 'The state of the ticket',
-			},
-			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
@@ -475,7 +606,36 @@ export const ticketFields = [
 				],
 				default: 'desc',
 				description: 'Sort order',
-			}
+			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'New',
+						value: 'new',
+					},
+					{
+						name: 'Pending',
+						value: 'pending',
+					},
+					{
+						name: 'Solved',
+						value: 'solved',
+					},
+					{
+						name: 'Closed',
+						value: 'closed',
+					},
+				],
+				default: '',
+				description: 'The state of the ticket',
+			},
 		],
 	},
 
@@ -483,7 +643,7 @@ export const ticketFields = [
 /*                                ticket:delete                               */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'ID',
+		displayName: 'Ticket ID',
 		name: 'id',
 		type: 'string',
 		default: '',

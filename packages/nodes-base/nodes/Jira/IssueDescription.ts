@@ -41,12 +41,12 @@ export const issueOperations = [
 			{
 				name: 'Notify',
 				value: 'notify',
-				description: 'Creates an email notification for an issue and adds it to the mail queue.',
+				description: 'Create an email notification for an issue and add it to the mail queue',
 			},
 			{
-				name: 'Transitions',
+				name: 'Status',
 				value: 'transitions',
-				description: `Returns either all transitions or a transition that can be performed by the user on an issue, based on the issue's status.`,
+				description: `Return either all transitions or a transition that can be performed by the user on an issue, based on the issue's status`,
 			},
 			{
 				name: 'Delete',
@@ -81,6 +81,9 @@ export const issueFields = [
 		},
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
+			loadOptionsDependsOn: [
+				'jiraVersion',
+			],
 		},
 		description: 'Project',
 	},
@@ -101,6 +104,9 @@ export const issueFields = [
 		},
 		typeOptions: {
 			loadOptionsMethod: 'getIssueTypes',
+			loadOptionsDependsOn: [
+				'project',
+			],
 		},
 		description: 'Issue Types',
 	},
@@ -140,36 +146,6 @@ export const issueFields = [
 		},
 		options: [
 			{
-				displayName: 'Parent Issue Key',
-				name: 'parentIssueKey',
-				type: 'string',
-				required: false,
-				default: '',
-				description: 'Parent Issue Key',
-			},
-			{
-				displayName: 'Labels',
-				name: 'labels',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getLabels',
-				},
-				default: [],
-				required : false,
-				description: 'Labels',
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getPriorities',
-				},
-				default: '',
-				required : false,
-				description: 'Priority',
-			},
-			{
 				displayName: 'Assignee',
 				name: 'assignee',
 				type: 'options',
@@ -187,6 +163,61 @@ export const issueFields = [
 				default: '',
 				required : false,
 				description: 'Description',
+			},
+			{
+				displayName: 'Labels',
+				name: 'labels',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getLabels',
+				},
+				default: [],
+				required : false,
+				description: 'Labels',
+					displayOptions: {
+					show: {
+						'/jiraVersion': [
+							'cloud',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Labels',
+				name: 'serverLabels',
+				type: 'string',
+				default: [],
+				required : false,
+				description: 'Labels',
+					displayOptions: {
+					show: {
+						'/jiraVersion': [
+							'server',
+						],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
+			},
+			{
+				displayName: 'Parent Issue Key',
+				name: 'parentIssueKey',
+				type: 'string',
+				required: false,
+				default: '',
+				description: 'Parent Issue Key',
+			},
+			{
+				displayName: 'Priority',
+				name: 'priority',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getPriorities',
+				},
+				default: '',
+				required : false,
+				description: 'Priority',
 			},
 			{
 				displayName: 'Update History',
@@ -239,55 +270,6 @@ export const issueFields = [
 		},
 		options: [
 			{
-				displayName: 'Issue Type',
-				name: 'issueType',
-				type: 'options',
-				required: false,
-				typeOptions: {
-					loadOptionsMethod: 'getIssueTypes',
-				},
-				default: '',
-				description: 'Issue Types',
-			},
-			{
-				displayName: 'Summary',
-				name: 'summary',
-				type: 'string',
-				required: false,
-				default: '',
-				description: 'Summary',
-			},
-			{
-				displayName: 'Parent Issue Key',
-				name: 'parentIssueKey',
-				type: 'string',
-				required: false,
-				default: '',
-				description: 'Parent Issue Key',
-			},
-			{
-				displayName: 'Labels',
-				name: 'labels',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getLabels',
-				},
-				default: [],
-				required : false,
-				description: 'Labels',
-			},
-			{
-				displayName: 'Priority',
-				name: 'priority',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getPriorities',
-				},
-				default: '',
-				required : false,
-				description: 'Priority',
-			},
-			{
 				displayName: 'Assignee',
 				name: 'assignee',
 				type: 'options',
@@ -305,6 +287,91 @@ export const issueFields = [
 				default: '',
 				required : false,
 				description: 'Description',
+			},
+			{
+				displayName: 'Issue Type',
+				name: 'issueType',
+				type: 'options',
+				required: false,
+				typeOptions: {
+					loadOptionsMethod: 'getIssueTypes',
+				},
+				default: '',
+				description: 'Issue Types',
+			},
+			{
+				displayName: 'Labels',
+				name: 'labels',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getLabels',
+				},
+				default: [],
+				required : false,
+				description: 'Labels',
+					displayOptions: {
+					show: {
+						'/jiraVersion': [
+							'cloud',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Labels',
+				name: 'serverLabels',
+				type: 'string',
+				default: [],
+				required : false,
+				description: 'Labels',
+					displayOptions: {
+					show: {
+						'/jiraVersion': [
+							'server',
+						],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
+			},
+			{
+				displayName: 'Parent Issue Key',
+				name: 'parentIssueKey',
+				type: 'string',
+				required: false,
+				default: '',
+				description: 'Parent Issue Key',
+			},
+			{
+				displayName: 'Priority',
+				name: 'priority',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getPriorities',
+				},
+				default: '',
+				required : false,
+				description: 'Priority',
+			},
+			{
+				displayName: 'Summary',
+				name: 'summary',
+				type: 'string',
+				required: false,
+				default: '',
+				description: 'Summary',
+			},
+			{
+				displayName: 'Status ID',
+				name: 'statusId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTransitions',
+				},
+				required: false,
+				default: '',
+				description: 'The ID of the issue status.',
 			},
 		],
 	},
@@ -388,6 +455,23 @@ export const issueFields = [
 		},
 		options: [
 			{
+				displayName: 'Expand',
+				name: 'expand',
+				type: 'string',
+				required: false,
+				default: '',
+				description: `Use expand to include additional information about the issues in the response.<br/>
+				This parameter accepts a comma-separated list. Expand options include:<br/>
+				renderedFields Returns field values rendered in HTML format.<br/>
+				names Returns the display name of each field.<br/>
+				schema Returns the schema describing a field type.<br/>
+				transitions Returns all possible transitions for the issue.<br/>
+				editmeta Returns information about how each field can be edited.<br/>
+				changelog Returns a list of recent updates to an issue, sorted by date, starting from the most recent.<br/>
+				versionedRepresentations Returns a JSON array for each version of a field's value, with the highest number<br/>
+				representing the most recent version. Note: When included in the request, the fields parameter is ignored.`
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
@@ -409,23 +493,6 @@ export const issueFields = [
 				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
 				This parameter is useful where fields have been added by a connect app and a field's key<br/>
 				may differ from its ID.`,
-			},
-			{
-				displayName: 'Expand',
-				name: 'expand',
-				type: 'string',
-				required: false,
-				default: '',
-				description: `Use expand to include additional information about the issues in the response.<br/>
-				This parameter accepts a comma-separated list. Expand options include:<br/>
-				renderedFields Returns field values rendered in HTML format.<br/>
-				names Returns the display name of each field.<br/>
-				schema Returns the schema describing a field type.<br/>
-				transitions Returns all possible transitions for the issue.<br/>
-				editmeta Returns information about how each field can be edited.<br/>
-				changelog Returns a list of recent updates to an issue, sorted by date, starting from the most recent.<br/>
-				versionedRepresentations Returns a JSON array for each version of a field's value, with the highest number<br/>
-				representing the most recent version. Note: When included in the request, the fields parameter is ignored.`
 			},
 			{
 				displayName: 'Properties',
@@ -716,6 +783,17 @@ export const issueFields = [
 		},
 		options: [
 			{
+				displayName: 'HTML Body',
+				name: 'htmlBody',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				required: false,
+				default: '',
+				description: 'The HTML body of the email notification for the issue.',
+			},
+			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
@@ -735,17 +813,6 @@ export const issueFields = [
 				default: '',
 				description: `The subject of the email notification for the issue.
 				If this is not specified, then the subject is set to the issue key and summary.`
-			},
-			{
-				displayName: 'HTML Body',
-				name: 'htmlBody',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				required: false,
-				default: '',
-				description: 'The HTML body of the email notification for the issue.',
 			},
 		],
 	},

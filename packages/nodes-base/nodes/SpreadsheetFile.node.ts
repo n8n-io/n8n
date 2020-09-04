@@ -28,7 +28,7 @@ import {
 function flattenObject (data: IDataObject) {
 	const returnData: IDataObject = {};
 	for (const key1 of Object.keys(data)) {
-		if ((typeof data[key1]) === 'object') {
+		if (data[key1] !== null && (typeof data[key1]) === 'object') {
 			const flatObject = flattenObject(data[key1] as IDataObject);
 			for (const key2 in flatObject) {
 				if (flatObject[key2] === undefined) {
@@ -133,6 +133,11 @@ export class SpreadsheetFile implements INodeType {
 						value: 'xls',
 						description: 'Excel',
 					},
+					{
+						name: 'XLSX',
+						value: 'xlsx',
+						description: 'Excel',
+					},
 				],
 				default: 'xls',
 				displayOptions: {
@@ -168,6 +173,24 @@ export class SpreadsheetFile implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				options: [
+					{
+						displayName: 'Compression',
+						name: 'compression',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'toFile',
+								],
+								'/fileFormat': [
+									'xlsx',
+									'ods',
+								],
+							},
+						},
+						default: false,
+						description: 'Weather compression will be applied or not',
+					},
 					{
 						displayName: 'File Name',
 						name: 'fileName',
@@ -236,6 +259,7 @@ export class SpreadsheetFile implements INodeType {
 								'/fileFormat': [
 									'ods',
 									'xls',
+									'xlsx',
 								],
 							},
 						},
@@ -336,8 +360,16 @@ export class SpreadsheetFile implements INodeType {
 				wopts.bookType = 'rtf';
 			} else if (fileFormat === 'ods') {
 				wopts.bookType = 'ods';
+				if (options.compression) {
+					wopts.compression = true;
+				}
 			} else if (fileFormat === 'xls') {
-				wopts.bookType = 'xlml';
+				wopts.bookType = 'xls';
+			} else if (fileFormat === 'xlsx') {
+				wopts.bookType = 'xlsx';
+				if (options.compression) {
+					wopts.compression = true;
+				}
 			}
 
 			// Convert the data in the correct format

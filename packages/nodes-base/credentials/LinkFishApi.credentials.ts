@@ -7,6 +7,7 @@ import {
 export class LinkFishApi implements ICredentialType {
 	name = 'linkFishApi';
 	displayName = 'link.fish API';
+	documentationUrl = 'linkFish';
 	properties = [
 		{
 			displayName: 'Email',

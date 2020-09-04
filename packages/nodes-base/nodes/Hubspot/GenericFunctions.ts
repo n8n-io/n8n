@@ -1,10 +1,12 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
 import {
@@ -13,11 +15,12 @@ import {
 
 export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
-	const node = this.getNode();
-	const credentialName = Object.keys(node.credentials!)[0];
-	const credentials = this.getCredentials(credentialName);
+	let authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	query!.hapikey = credentials!.apiKey as string;
+	if (this.getNode().type.includes('Trigger')) {
+		authenticationMethod = 'developerApi';
+	}
+
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
@@ -26,14 +29,43 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 		json: true,
 		useQuerystring: true,
 	};
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
 
-		if (error.response && error.response.body && error.response.body.errors) {
-			// Try to return the error prettier
-			const errorMessages = error.response.body.errors.map((e: IDataObject) => e.message);
-			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join(' | ')}`);
+	try {
+		if (authenticationMethod === 'apiKey') {
+			const credentials = this.getCredentials('hubspotApi');
+
+			options.qs.hapikey = credentials!.apiKey as string;
+
+			return await this.helpers.request!(options);
+		} else if (authenticationMethod === 'developerApi') {
+			const credentials = this.getCredentials('hubspotDeveloperApi');
+
+			options.qs.hapikey = credentials!.apiKey as string;
+
+			return await this.helpers.request!(options);
+		} else {
+			// @ts-ignore
+			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, { tokenType: 'Bearer' });
+		}
+	} catch (error) {
+		let errorMessages;
+
+		if (error.response && error.response.body) {
+
+			if (error.response.body.message) {
+
+				errorMessages = [error.response.body.message];
+
+			} else if (error.response.body.errors) {
+				// Try to return the error prettier
+				errorMessages = error.response.body.errors;
+
+				if (errorMessages[0].message) {
+					// @ts-ignore
+					errorMessages = errorMessages.map(errorItem => errorItem.message);
+				}
+			}
+			throw new Error(`Hubspot error response [${error.statusCode}]: ${errorMessages.join('|')}`);
 		}
 
 		throw error;
@@ -50,14 +82,18 @@ export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteF
 
 	let responseData;
 
-	query.limit = 250;
+	query.limit = query.limit || 250;
 	query.count = 100;
+	body.limit = body.limit || 100;
 
 	do {
 		responseData = await hubspotApiRequest.call(this, method, endpoint, body, query);
 		query.offset = responseData.offset;
 		query['vid-offset'] = responseData['vid-offset'];
 		returnData.push.apply(returnData, responseData[propertyName]);
+		if (query.limit && query.limit <= returnData.length) {
+			return returnData;
+		}
 	} while (
 		responseData['has-more'] !== undefined &&
 		responseData['has-more'] !== null &&

@@ -7,6 +7,7 @@ import {
 export class OpenWeatherMapApi implements ICredentialType {
 	name = 'openWeatherMapApi';
 	displayName = 'OpenWeatherMap API';
+	documentationUrl = 'openWeatherMap';
 	properties = [
 		{
 			displayName: 'Access Token',

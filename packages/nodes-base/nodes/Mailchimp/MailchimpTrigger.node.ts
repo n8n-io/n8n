@@ -1,31 +1,31 @@
 import {
 	IHookFunctions,
 	IWebhookFunctions,
-  } from 'n8n-core';
+} from 'n8n-core';
 
-  import {
+import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-  } from 'n8n-workflow';
-  import {
+} from 'n8n-workflow';
+import {
 	mailchimpApiRequest,
- } from './GenericFunctions';
+} from './GenericFunctions';
 
 export class MailchimpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp Trigger',
-		name: 'Mailchimp',
+		name: 'mailchimpTrigger',
 		icon: 'file:mailchimp.png',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Mailchimp events via webhooks',
 		defaults: {
-		name: 'Mailchimp Trigger',
-		color: '#32325d',
+			name: 'Mailchimp Trigger',
+			color: '#32325d',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -33,7 +33,25 @@ export class MailchimpTrigger implements INodeType {
 			{
 				name: 'mailchimpApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiKey',
+						],
+					},
+				},
+			},
+			{
+				name: 'mailchimpOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -50,6 +68,23 @@ export class MailchimpTrigger implements INodeType {
 			}
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'apiKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiKey',
+				description: 'Method of authentication.',
+			},
 			{
 				displayName: 'List',
 				name: 'list',
@@ -250,8 +285,8 @@ export class MailchimpTrigger implements INodeType {
 		}
 		// @ts-ignore
 		if (!webhookData.events.includes(req.body.type)
-		// @ts-ignore
-		&& !webhookData.sources.includes(req.body.type)) {
+			// @ts-ignore
+			&& !webhookData.sources.includes(req.body.type)) {
 			return {};
 		}
 		return {

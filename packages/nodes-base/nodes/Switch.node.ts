@@ -32,7 +32,7 @@ export class Switch implements INodeType {
 					{
 						name: 'Expression',
 						value: 'expression',
-						description: 'Expression decides how to route date.',
+						description: 'Expression decides how to route data.',
 					},
 					{
 						name: 'Rules',

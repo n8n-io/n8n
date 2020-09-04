@@ -72,6 +72,17 @@ export class HttpRequest implements INodeType {
 				},
 			},
 			{
+				name: 'oAuth1Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth1',
+						],
+					},
+				},
+			},
+			{
 				name: 'oAuth2Api',
 				required: true,
 				displayOptions: {
@@ -100,6 +111,10 @@ export class HttpRequest implements INodeType {
 					{
 						name: 'Header Auth',
 						value: 'headerAuth'
+					},
+					{
+						name: 'OAuth1',
+						value: 'oAuth1'
 					},
 					{
 						name: 'OAuth2',
@@ -183,7 +198,6 @@ export class HttpRequest implements INodeType {
 				default: 'json',
 				description: 'The format in which the data gets returned from the URL.',
 			},
-
 			{
 				displayName: 'Property Name',
 				name: 'dataPropertyName',
@@ -579,6 +593,7 @@ export class HttpRequest implements INodeType {
 		const httpBasicAuth = this.getCredentials('httpBasicAuth');
 		const httpDigestAuth = this.getCredentials('httpDigestAuth');
 		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
+		const oAuth1Api = this.getCredentials('oAuth1Api');
 		const oAuth2Api = this.getCredentials('oAuth2Api');
 
 		let requestOptions: OptionsWithUri;
@@ -650,9 +665,9 @@ export class HttpRequest implements INodeType {
 						// Paramter is empty so skip it
 						continue;
 					}
+					const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 
 					if (optionData.name === 'body' && parametersAreJson === true) {
-						const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 						if (sendBinaryData === true) {
 
 							const contentTypesAllowed = [
@@ -782,12 +797,14 @@ export class HttpRequest implements INodeType {
 				};
 			}
 
-			if (responseFormat === 'json') {
-				requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
-			} else if (responseFormat === 'string') {
-				requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
-			} else {
-				requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+			if (requestOptions.headers!['accept'] === undefined) {
+				if (responseFormat === 'json') {
+					requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
+				} else if (responseFormat === 'string') {
+					requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
+				} else {
+					requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+				}
 			}
 
 			if (responseFormat === 'file') {
@@ -797,14 +814,15 @@ export class HttpRequest implements INodeType {
 			} else {
 				requestOptions.json = true;
 			}
-
-			// Now that the options are all set make the actual http request
-
 			try {
 				// Now that the options are all set make the actual http request
-
-				if (oAuth2Api !== undefined) {
-					response = await this.helpers.requestOAuth.call(this, 'oAuth2Api', requestOptions);
+				if (oAuth1Api !== undefined) {
+					//@ts-ignore
+					response = await this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+				}
+				else if (oAuth2Api !== undefined) {
+					//@ts-ignore
+					response = await this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, { tokenType: 'Bearer' });
 				} else {
 					response = await this.helpers.request(requestOptions);
 				}
@@ -873,7 +891,7 @@ export class HttpRequest implements INodeType {
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,
-						}
+						},
 					});
 				}
 			} else {
@@ -884,14 +902,22 @@ export class HttpRequest implements INodeType {
 						returnItem[property] = response[property];
 					}
 
-					if (typeof returnItem.body === 'string') {
-						throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					if (responseFormat === 'json' && typeof returnItem.body === 'string') {
+						try {
+							returnItem.body = JSON.parse(returnItem.body);
+						} catch (e) {
+							throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+						}
 					}
 
 					returnItems.push({ json: returnItem });
 				} else {
-					if (typeof response === 'string') {
-						throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+					if (responseFormat === 'json' && typeof response === 'string') {
+						try {
+							response = JSON.parse(response);
+						} catch (e) {
+							throw new Error('Response body is not valid JSON. Change "Response Format" to "String"');
+						}
 					}
 
 					returnItems.push({ json: response });
