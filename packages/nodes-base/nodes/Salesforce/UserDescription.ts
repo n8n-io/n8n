@@ -75,4 +75,26 @@ export const userFields = [
 		default: 50,
 		description: 'How many results to return.'
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll']
+			}
+		},
+		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '',
+				description: 'Fields to include separated by ,'
+			}
+		]
+	}
 ] as INodeProperties[];
