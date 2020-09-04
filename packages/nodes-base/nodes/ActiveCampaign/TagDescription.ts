@@ -1,5 +1,10 @@
-import { INodeProperties } from "n8n-workflow";
-import {activeCampaignDefaultGetAllProperties} from "./GenericFunctions";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+import {
+	activeCampaignDefaultGetAllProperties,
+} from './GenericFunctions';
 
 export const tagOperations = [
 	{
@@ -13,7 +18,6 @@ export const tagOperations = [
 				],
 			},
 		},
-
 		options: [
 			{
 				name: 'Create',

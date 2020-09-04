@@ -1,4 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const contactTagOperations = [
 	{
@@ -14,24 +16,24 @@ export const contactTagOperations = [
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create an association',
+				name: 'Add',
+				value: 'add',
+				description: 'Add a tag to a contact',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete an association',
+				name: 'Remove',
+				value: 'remove',
+				description: 'Remove a tag from a contact',
 			},
 		],
-		default: 'create',
+		default: 'add',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const contactTagFields = [
 	// ----------------------------------
-	//         contactTag:create
+	//         contactTag:add
 	// ----------------------------------
 	{
 		displayName: 'Tag ID',
@@ -42,7 +44,7 @@ export const contactTagFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create',
+					'add',
 				],
 				resource: [
 					'contactTag',
@@ -60,7 +62,7 @@ export const contactTagFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create',
+					'add',
 				],
 				resource: [
 					'contactTag',
@@ -79,7 +81,7 @@ export const contactTagFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'delete',
+					'remove',
 				],
 				resource: [
 					'contactTag',

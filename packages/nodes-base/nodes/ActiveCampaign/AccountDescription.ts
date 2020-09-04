@@ -1,5 +1,10 @@
-import { INodeProperties } from "n8n-workflow";
-import {activeCampaignDefaultGetAllProperties} from "./GenericFunctions";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+import {
+	activeCampaignDefaultGetAllProperties,
+} from './GenericFunctions';
 
 export const accountOperations = [
 	{
@@ -85,17 +90,17 @@ export const accountFields = [
 		default: {},
 		options: [
 			{
-				displayName: 'Url',
+				displayName: 'Account URL',
 				name: 'accountUrl',
 				type: 'string',
 				default: '',
-				description: 'Account\'s website',
+				description: `Account's website`,
 			},
 			{
-				displayName: 'Custom Properties',
-				name: 'customProperties',
-				placeholder: 'Add Custom Property',
-				description: 'Adds a custom property to set also values which have not been predefined.',
+				displayName: 'Fields',
+				name: 'fields',
+				placeholder: 'Add Custom Fields',
+				description: 'Adds a custom fields to set also values which have not been predefined.',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -104,28 +109,32 @@ export const accountFields = [
 				options: [
 					{
 						name: 'property',
-						displayName: 'Property',
+						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Property Name',
-								name: 'name',
-								type: 'string',
+								displayName: 'Field ID',
+								name: 'customFieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getAccountCustomFields',
+								},
 								default: '',
-								description: 'Name of the property to set.',
+								description: 'ID of the field to set.',
 							},
 							{
-								displayName: 'Property Value',
-								name: 'value',
+								displayName: 'Field Value',
+								name: 'fieldValue',
 								type: 'string',
 								default: '',
-								description: 'Value of the property to set.',
+								description: 'Value of the field to set.',
 							},
-						]
+						],
 					},
 				],
 			},
 		],
 	},
+
 	// ----------------------------------
 	//         contact:update
 	// ----------------------------------
@@ -173,17 +182,17 @@ export const accountFields = [
 				description: 'Account\'s name.',
 			},
 			{
-				displayName: 'Url',
+				displayName: 'Account URL',
 				name: 'accountUrl',
 				type: 'string',
 				default: '',
 				description: 'Account\'s website',
 			},
 			{
-				displayName: 'Custom Properties',
-				name: 'customProperties',
-				placeholder: 'Add Custom Property',
-				description: 'Adds a custom property to set also values which have not been predefined.',
+				displayName: 'Fields',
+				name: 'fields',
+				placeholder: 'Add Fields',
+				description: 'Adds a custom fields to set also values which have not been predefined.',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -192,23 +201,26 @@ export const accountFields = [
 				options: [
 					{
 						name: 'property',
-						displayName: 'Property',
+						displayName: 'Field',
 						values: [
 							{
-								displayName: 'Property Name',
-								name: 'name',
-								type: 'string',
+								displayName: 'Field ID',
+								name: 'customFieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getAccountCustomFields',
+								},
 								default: '',
-								description: 'Name of the property to set.',
+								description: 'ID of the field to set.',
 							},
 							{
-								displayName: 'Property Value',
-								name: 'value',
+								displayName: 'Field Value',
+								name: 'fieldValue',
 								type: 'string',
 								default: '',
-								description: 'Value of the property to set.',
+								description: 'Value of the field to set.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -259,5 +271,32 @@ export const accountFields = [
 	// ----------------------------------
 	//         account:getAll
 	// ----------------------------------
-	...activeCampaignDefaultGetAllProperties('account', 'getAll')
+	...activeCampaignDefaultGetAllProperties('account', 'getAll'),
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'account',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Search',
+				name: 'search',
+				type: 'string',
+				default: '',
+				description: 'Search by name',
+			},
+		],
+	},
+
 ] as INodeProperties[];

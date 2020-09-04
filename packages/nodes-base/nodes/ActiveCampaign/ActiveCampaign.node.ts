@@ -7,6 +7,8 @@ import {
 	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -60,13 +62,15 @@ import {
 	accountContactOperations
 } from "./AccountContactDescription";
 
-import {contactTagFields, contactTagOperations} from "./ContactTagDescription";
+import {
+	contactTagFields,
+	contactTagOperations,
+} from "./ContactTagDescription";
 
 interface CustomProperty {
 	name: string;
 	value: string;
 }
-
 
 /**
  * Add the additional fields to the body
@@ -80,6 +84,10 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 			for (const customProperty of (additionalFields.customProperties as IDataObject)!.property! as CustomProperty[]) {
 				body[customProperty.name] = customProperty.value;
 			}
+		} else if (key === 'fieldValues' && (additionalFields.fieldValues as IDataObject).property !== undefined) {
+			body.fieldValues = (additionalFields.fieldValues as IDataObject).property;
+		} else if (key === 'fields' && (additionalFields.fields as IDataObject).property !== undefined) {
+			body.fields = (additionalFields.fields as IDataObject).property;
 		} else {
 			body[key] = additionalFields[key];
 		}
@@ -105,7 +113,7 @@ export class ActiveCampaign implements INodeType {
 			{
 				name: 'activeCampaignApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			// ----------------------------------
@@ -117,10 +125,6 @@ export class ActiveCampaign implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Contact',
-						value: 'contact',
-					},
-					{
 						name: 'Account',
 						value: 'account',
 					},
@@ -129,20 +133,20 @@ export class ActiveCampaign implements INodeType {
 						value: 'accountContact',
 					},
 					{
-						name: 'Tag',
-						value: 'tag',
+						name: 'Contact',
+						value: 'contact',
 					},
 					{
 						name: 'Contact Tag',
 						value: 'contactTag',
 					},
 					{
-						name: 'Deal',
-						value: 'deal',
-					},
-					{
 						name: 'Connection',
 						value: 'connection'
+					},
+					{
+						name: 'Deal',
+						value: 'deal',
 					},
 					{
 						name: 'E-commerce Order',
@@ -155,7 +159,11 @@ export class ActiveCampaign implements INodeType {
 					{
 						name: 'E-commerce Order Products',
 						value: 'ecommerceOrderProducts'
-					}
+					},
+					{
+						name: 'Tag',
+						value: 'tag',
+					},
 				],
 				default: 'contact',
 				description: 'The resource to operate on.',
@@ -231,6 +239,40 @@ export class ActiveCampaign implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Get all the available custom fields to display them to user so that he can
+			// select them easily
+			async getContactCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { fields } = await activeCampaignApiRequest.call(this, 'GET', '/api/3/fields', {});
+				for (const field of fields) {
+					const fieldName = field.title;
+					const fieldId = field.id;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available custom fields to display them to user so that he can
+			// select them easily
+			async getAccountCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { accountCustomFieldMeta: fields } = await activeCampaignApiRequest.call(this, 'GET', '/api/3/accountCustomFieldMeta', {});
+				for (const field of fields) {
+					const fieldName = field.fieldLabel;
+					const fieldId = field.id;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -311,8 +353,17 @@ export class ActiveCampaign implements INodeType {
 					requestMethod = 'GET';
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					Object.assign(qs, additionalFields);
+
+					if (qs.orderBy) {
+						qs[qs.orderBy as string] = true;
+						delete qs.orderBy;
 					}
 
 					dataKey = 'contacts';
@@ -392,6 +443,9 @@ export class ActiveCampaign implements INodeType {
 					dataKey = 'accounts';
 					endpoint = `/api/3/accounts`;
 
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					Object.assign(qs, filters);
+
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//         account:update
@@ -463,9 +517,9 @@ export class ActiveCampaign implements INodeType {
 					throw new Error(`The operation "${operation}" is not known`);
 				}
 			} else if (resource === 'contactTag') {
-				if (operation === 'create') {
+				if (operation === 'add') {
 					// ----------------------------------
-					//         contactTag:create
+					//         contactTag:add
 					// ----------------------------------
 
 					requestMethod = 'POST';
@@ -479,9 +533,9 @@ export class ActiveCampaign implements INodeType {
 						tag: this.getNodeParameter('tagId', i) as string,
 					} as IDataObject;
 
-				} else if (operation === 'delete') {
+				} else if (operation === 'remove') {
 					// ----------------------------------
-					//         contactTag:delete
+					//         contactTag:remove
 					// ----------------------------------
 
 					requestMethod = 'DELETE';
@@ -510,7 +564,7 @@ export class ActiveCampaign implements INodeType {
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					addAdditionalFields(body.account as IDataObject, additionalFields);
+					addAdditionalFields(body.tag as IDataObject, additionalFields);
 
 				} else if (operation === 'delete') {
 					// ----------------------------------
