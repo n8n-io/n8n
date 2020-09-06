@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	 INodeProperties,
+} from 'n8n-workflow';
 
 export const userOperations = [
 	{
@@ -7,20 +9,22 @@ export const userOperations = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: ['user']
-			}
+				resource: [
+					'user',
+				],
+			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a user'
+				description: 'Get a user',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all users'
-			}
+				description: 'Get all users',
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform.'
@@ -39,9 +43,13 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['user'],
-				operation: ['get']
-			}
+				resource: [
+					'user',
+				],
+				operation: [
+					'get',
+				],
+			},
 		},
 		description: 'Id of user that needs to be fetched'
 	},
@@ -54,13 +62,16 @@ export const userFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: ['user'],
-				operation: ['getAll']
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
 			}
 		},
 		default: false,
-		description:
-			'If all results should be returned or only up to a given limit.'
+		description: 'If all results should be returned or only up to a given limit.'
 	},
 	{
 		displayName: 'Limit',
@@ -68,10 +79,16 @@ export const userFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: ['user'],
-				operation: ['getAll'],
-				returnAll: [false]
-			}
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
 		},
 		typeOptions: {
 			minValue: 1,
@@ -88,9 +105,13 @@ export const userFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['user'],
-				operation: ['getAll']
-			}
+				resource: [
+					'user',
+				],
+				operation: [
+					'getAll',
+				],
+			},
 		},
 		options: [
 			{
@@ -99,7 +120,7 @@ export const userFields = [
 				type: 'string',
 				default: '',
 				description: 'Fields to include separated by ,'
-			}
-		]
-	}
+			},
+		],
+	},
 ] as INodeProperties[];
