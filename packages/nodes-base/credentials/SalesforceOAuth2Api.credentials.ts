@@ -9,6 +9,7 @@ export class SalesforceOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Salesforce OAuth2 API';
+	documentationUrl = 'salesforce';
 	properties = [
 		{
 			displayName: 'Authorization URL',

@@ -404,7 +404,8 @@ export class JiraTrigger implements INodeType {
 				}
 
 				if (additionalFields.includeFields) {
-					const parameters: IDataObject = {};
+					// tslint:disable-next-line: no-any
+					const parameters: any = {};
 					for (const field of additionalFields.includeFields as string[]) {
 						parameters[field] = '${' + field + '}';
 					}

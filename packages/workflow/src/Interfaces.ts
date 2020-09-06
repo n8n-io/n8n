@@ -102,6 +102,7 @@ export interface ICredentialType {
 	displayName: string;
 	extends?: string[];
 	properties: INodeProperties[];
+	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 }
 

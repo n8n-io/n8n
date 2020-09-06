@@ -6,6 +6,7 @@ import {
 export class InvoiceNinjaApi implements ICredentialType {
 	name = 'invoiceNinjaApi';
 	displayName = 'Invoice Ninja API';
+	documentationUrl = 'invoiceNinja';
 	properties = [
 		{
 			displayName: 'URL',
