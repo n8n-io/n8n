@@ -1007,7 +1007,7 @@ export class Salesforce implements INodeType {
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM Contact Limit ${limit} OFFSET 1`;
+							qs.q = `SELECT ${fields.join(',')} FROM Contact Limit ${limit}`;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
 					} catch(err) {
