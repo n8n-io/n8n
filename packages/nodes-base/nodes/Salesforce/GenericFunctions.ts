@@ -1,21 +1,25 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+ } from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject
 } from 'n8n-workflow';
 
-export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('salesforceOAuth2Api');
 	const subdomain = ((credentials!.accessTokenUrl as string).match(/https:\/\/(.+).salesforce\.com/) || [])[1];
 	const options: OptionsWithUri = {
 		method,
 		body: method === "GET" ? undefined : body,
 		qs,
-		uri: uri || `https://${subdomain}.salesforce.com/services/data/v39.0${resource}`,
+		uri: `https://${subdomain}.salesforce.com/services/data/v39.0${uri || endpoint}`,
 		json: true
 	};
 	try {
@@ -39,7 +43,7 @@ export async function salesforceApiRequestAllItems(this: IExecuteFunctions | ILo
 
 	do {
 		responseData = await salesforceApiRequest.call(this, method, endpoint, body, query, uri);
-		uri = responseData.nextRecordsUrl;
+		uri = `${endpoint}/${responseData.nextRecordsUrl?.split('/')?.pop()}`;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
 		responseData.nextRecordsUrl !== undefined &&
