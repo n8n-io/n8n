@@ -1,27 +1,41 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import {
 	segmentApiRequest,
 } from './GenericFunctions';
+
+import {
+	groupOperations,
+	groupFields,
+} from './GroupDescription';
+
 import {
 	identifyFields,
 	identifyOperations,
 } from './IdentifyDescription';
+
 import {
 	IIdentify,
 } from './IdentifyInterface';
+
 import {
 	trackOperations,
 	trackFields,
 } from './TrackDescription';
-import { ITrack } from './TrackInterface';
+
+import {
+	ITrack, IGroup,
+} from './TrackInterface';
+
 import * as uuid from 'uuid/v4';
 
 export class Segment implements INodeType {
@@ -43,7 +57,7 @@ export class Segment implements INodeType {
 			{
 				name: 'segmentApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -52,9 +66,14 @@ export class Segment implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Group',
+						value: 'group',
+						description: 'Group lets you associate an identified user with a group',
+					},
+					{
 						name: 'Identify',
 						value: 'identify',
-						description: 'Identify lets you tie a user to their actions.'
+						description: 'Identify lets you tie a user to their actions'
 					},
 					{
 						name: 'Track',
@@ -65,6 +84,8 @@ export class Segment implements INodeType {
 				default: 'identify',
 				description: 'Resource to consume.',
 			},
+			...groupOperations,
+			...groupFields,
 			...identifyOperations,
 			...trackOperations,
 			...identifyFields,
@@ -80,7 +101,224 @@ export class Segment implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
 		for (let i = 0; i < length; i++) {
+			if (resource === 'group') {
+				//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#group
+				if (operation === 'add') {
+					const userId = this.getNodeParameter('userId', i) as string;
+					const groupId = this.getNodeParameter('groupId', i) as string;
+					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject;
+					const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
+					const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
+					const body: IGroup = {
+						groupId,
+						traits: {
+							company: {},
+							address: {},
+						},
+						context: {
+							app: {},
+							campaign: {},
+							device: {},
+						},
+						integrations: {},
+					};
+					if (userId) {
+						body.userId = userId as string;
+					} else {
+						body.anonymousId = uuid();
+					}
+					if (traits) {
+						if (traits.email) {
+							body.traits!.email = traits.email as string;
+						}
+						if (traits.firstname) {
+							body.traits!.firstname = traits.firstname as string;
+						}
+						if (traits.lastname) {
+							body.traits!.lastname = traits.lastname as string;
+						}
+						if (traits.gender) {
+							body.traits!.gender = traits.gender as string;
+						}
+						if (traits.phone) {
+							body.traits!.phone = traits.phone as string;
+						}
+						if (traits.username) {
+							body.traits!.username = traits.username as string;
+						}
+						if (traits.website) {
+							body.traits!.website = traits.website as string;
+						}
+						if (traits.age) {
+							body.traits!.age = traits.age as number;
+						}
+						if (traits.avatar) {
+							body.traits!.avatar = traits.avatar as string;
+						}
+						if (traits.birthday) {
+							body.traits!.birthday = traits.birthday as string;
+						}
+						if (traits.createdAt) {
+							body.traits!.createdAt = traits.createdAt as string;
+						}
+						if (traits.description) {
+							body.traits!.description = traits.description as string;
+						}
+						if (traits.id) {
+							body.traits!.id = traits.id as string;
+						}
+						if (traits.company) {
+							const company = (traits.company as IDataObject).companyUi as IDataObject;
+							if (company) {
+								if (company.id) {
+									//@ts-ignore
+									body.traits.company.id = company.id as string;
+								}
+								if (company.name) {
+									//@ts-ignore
+									body.traits.company.name = company.name as string;
+								}
+								if (company.industry) {
+									//@ts-ignore
+									body.traits.company.industry = company.industry as string;
+								}
+								if (company.employeeCount) {
+									//@ts-ignore
+									body.traits.company.employeeCount = company.employeeCount as number;
+								}
+								if (company.plan) {
+									//@ts-ignore
+									body.traits.company.plan = company.plan as string;
+								}
+							}
+						}
+						if (traits.address) {
+							const address = (traits.address as IDataObject).addressUi as IDataObject;
+							if (address) {
+								if (address.street) {
+									//@ts-ignore
+									body.traits.address.street = address.street as string;
+								}
+								if (address.city) {
+									//@ts-ignore
+									body.traits.address.city = address.city as string;
+								}
+								if (address.state) {
+									//@ts-ignore
+									body.traits.address.state = address.state as string;
+								}
+								if (address.postalCode) {
+									//@ts-ignore
+									body.traits.address.postalCode = address.postalCode as string;
+								}
+								if (address.country) {
+									//@ts-ignore
+									body.traits.address.country = address.country as string;
+								}
+							}
+						}
+					}
+					if (context) {
+						if (context.active) {
+							body.context!.active = context.active as boolean;
+						}
+						if (context.ip) {
+							body.context!.ip = context.ip as string;
+						}
+						if (context.locate) {
+							body.context!.locate = context.locate as string;
+						}
+						if (context.page) {
+							body.context!.page = context.page as string;
+						}
+						if (context.timezone) {
+							body.context!.timezone = context.timezone as string;
+						}
+						if (context.timezone) {
+							body.context!.timezone = context.timezone as string;
+						}
+						if (context.app) {
+							const app = (context.app as IDataObject).appUi as IDataObject;
+							if (app) {
+								if (app.name) {
+									//@ts-ignore
+									body.context.app.name = app.name as string;
+								}
+								if (app.version) {
+									//@ts-ignore
+									body.context.app.version = app.version as string;
+								}
+								if (app.build) {
+									//@ts-ignore
+									body.context.app.build = app.build as string;
+								}
+							}
+						}
+						if (context.campaign) {
+							const campaign = (context.campaign as IDataObject).campaignUi as IDataObject;
+							if (campaign) {
+								if (campaign.name) {
+									//@ts-ignore
+									body.context.campaign.name = campaign.name as string;
+								}
+								if (campaign.source) {
+									//@ts-ignore
+									body.context.campaign.source = campaign.source as string;
+								}
+								if (campaign.medium) {
+									//@ts-ignore
+									body.context.campaign.medium = campaign.medium as string;
+								}
+								if (campaign.term) {
+									//@ts-ignore
+									body.context.campaign.term = campaign.term as string;
+								}
+								if (campaign.content) {
+									//@ts-ignore
+									body.context.campaign.content = campaign.content as string;
+								}
+							}
+						}
+
+						if (context.device) {
+							const device = (context.device as IDataObject).deviceUi as IDataObject;
+							if (device) {
+								if (device.id) {
+									//@ts-ignore
+									body.context.device.id = device.id as string;
+								}
+								if (device.manufacturer) {
+									//@ts-ignore
+									body.context.device.manufacturer = device.manufacturer as string;
+								}
+								if (device.model) {
+									//@ts-ignore
+									body.context.device.model = device.model as string;
+								}
+								if (device.type) {
+									//@ts-ignore
+									body.context.device.type = device.type as string;
+								}
+								if (device.version) {
+									//@ts-ignore
+									body.context.device.version = device.version as string;
+								}
+							}
+						}
+					}
+					if (integrations) {
+						if (integrations.all) {
+							body.integrations!.all = integrations.all as boolean;
+						}
+						if (integrations.salesforce) {
+							body.integrations!.salesforce = integrations.salesforce as boolean;
+						}
+					}
+					responseData = await segmentApiRequest.call(this, 'POST', '/group', body);
+				}
+			}
 			if (resource === 'identify') {
 				//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#identify
 				if (operation === 'create') {
