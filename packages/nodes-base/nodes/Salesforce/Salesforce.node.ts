@@ -15,63 +15,78 @@ import {
 	accountFields,
 	accountOperations,
 } from './AccountDescription';
+
 import {
 	IAccount,
 } from './AccountInterface';
+
 import {
 	attachmentFields,
 	attachmentOperations,
 } from './AttachmentDescription';
+
 import {
 	IAttachment,
 } from './AttachmentInterface';
+
 import {
 	ICampaignMember,
 } from './CampaignMemberInterface';
+
 import {
 	caseFields,
 	caseOperations,
 } from './CaseDescription';
+
 import {
 	ICase,
 	ICaseComment,
 } from './CaseInterface';
+
 import {
 	contactFields,
 	contactOperations,
 } from './ContactDescription';
+
 import {
 	IContact,
 } from './ContactInterface';
+
 import {
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 } from './GenericFunctions';
+
 import {
 	leadFields,
 	leadOperations,
 } from './LeadDescription';
+
 import {
 	ILead,
 } from './LeadInterface';
+
 import {
 	INote,
 } from './NoteInterface';
+
 import {
 	opportunityFields,
 	opportunityOperations,
 } from './OpportunityDescription';
+
 import {
 	IOpportunity,
 } from './OpportunityInterface';
+
 import {
 	taskFields,
 	taskOperations,
 } from './TaskDescription';
+
 import {
 	ITask,
 } from './TaskInterface';
-
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -992,7 +1007,7 @@ export class Salesforce implements INodeType {
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
-							qs.q = `SELECT ${fields.join(',')} FROM Contact Limit ${limit}`;
+							qs.q = `SELECT ${fields.join(',')} FROM Contact Limit ${limit} OFFSET 1`;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
 					} catch(err) {

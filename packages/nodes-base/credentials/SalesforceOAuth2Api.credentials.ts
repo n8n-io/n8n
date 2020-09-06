@@ -36,5 +36,12 @@ export class SalesforceOAuth2Api implements ICredentialType {
 			type: 'hidden' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'header',
+			description: 'Method of authentication.',
+		},
 	];
 }
