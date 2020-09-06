@@ -38,7 +38,12 @@ class CredentialsOverwritesClass {
 		}
 
 		const returnData = JSON.parse(JSON.stringify(data));
-		Object.assign(returnData, overwrites);
+		// Overwrite only if there is currently no data set
+		for (const key of Object.keys(overwrites)) {
+			if ([null, undefined, ''].includes(returnData[key])) {
+				returnData[key] = overwrites[key];
+			}
+		}
 
 		return returnData;
 	}
