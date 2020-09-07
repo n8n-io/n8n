@@ -46,10 +46,6 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 				Authorization: `Bearer ${credentials?.token}`,
 			};
 
-			console.log('options');
-			console.log(options);
-
-
 			//@ts-ignore
 			return this.helpers.request(options);
 
