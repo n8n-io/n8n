@@ -32,9 +32,9 @@ export const projectOperations = [
 ] as INodeProperties[];
 
 export const projectFields = [
-/* -------------------------------------------------------------------------- */
-/*                                project:create/get                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                project:create/get                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -65,6 +65,9 @@ export const projectFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
+			loadOptionsDependsOn: [
+				'organizationSlug',
+			],
 		},
 		default: '',
 		displayOptions: {
@@ -144,9 +147,9 @@ export const projectFields = [
 			},
 		]
 	},
-/* -------------------------------------------------------------------------- */
-/*                                project:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                project:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

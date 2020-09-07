@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const releaseOperations = [
 	{
@@ -27,7 +29,7 @@ export const releaseOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all releases',
-            },
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform',
@@ -35,9 +37,9 @@ export const releaseOperations = [
 ] as INodeProperties[];
 
 export const releaseFields = [
-/* -------------------------------------------------------------------------- */
-/*                                release:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                release:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -126,9 +128,9 @@ export const releaseFields = [
 			},
 		]
 	},
-/* -------------------------------------------------------------------------- */
-/*                                release:get                                   */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                release:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -168,9 +170,9 @@ export const releaseFields = [
 		required: true,
 		description: 'The version identifier of the release',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                release:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                release:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',

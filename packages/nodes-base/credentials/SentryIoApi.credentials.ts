@@ -3,8 +3,8 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class SentryioApi implements ICredentialType {
-	name = 'sentryioApi';
+export class SentryIoApi implements ICredentialType {
+	name = 'sentryIoApi';
 	displayName = 'Sentry.io API';
 	properties = [
 		{

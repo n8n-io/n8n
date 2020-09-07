@@ -42,9 +42,9 @@ export const issueOperations = [
 ] as INodeProperties[];
 
 export const issueFields = [
-/* -------------------------------------------------------------------------- */
-/*                                issue:get/delete                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:get/delete                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue ID',
 		name: 'issueId',
@@ -65,9 +65,9 @@ export const issueFields = [
 		required: true,
 		description: 'ID of issue to get',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                issue:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -95,6 +95,9 @@ export const issueFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
+			loadOptionsDependsOn: [
+				'organizationSlug',
+			],
 		},
 		default: '',
 		displayOptions: {
@@ -176,12 +179,12 @@ export const issueFields = [
 				description: 'Time period of stats',
 				options: [
 					{
-						name: '24 Hours',
-						value: '24h'
-					},
-					{
 						name: '14 Days',
 						value: '14d'
+					},
+					{
+						name: '24 Hours',
+						value: '24h'
 					},
 				]
 			},
@@ -194,9 +197,9 @@ export const issueFields = [
 			},
 		]
 	},
-/* -------------------------------------------------------------------------- */
-/*                                issue:update                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue ID',
 		name: 'issueId',

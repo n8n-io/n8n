@@ -42,16 +42,15 @@ import {
 } from './TeamDescription';
 
 import {
-	sentryioApiRequest,
+	sentryIoApiRequest,
 	sentryApiRequestAllItems,
 } from './GenericFunctions';
-import { getToEmailArray } from '../Mandrill/GenericFunctions';
 import { ICommit, IPatchSet, IRef } from './Interface';
 
-export class Sentryio implements INodeType {
+export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sentry.io',
-		name: 'sentryio',
+		name: 'sentryIo',
 		icon: 'file:sentryio.png',
 		group: ['output'],
 		version: 1,
@@ -65,7 +64,7 @@ export class Sentryio implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'sentryioOAuth2Api',
+				name: 'sentryIoOAuth2Api',
 				required: true,
 				displayOptions: {
 					show: {
@@ -76,7 +75,7 @@ export class Sentryio implements INodeType {
 				},
 			},
 			{
-				name: 'sentryioApi',
+				name: 'sentryIoApi',
 				required: true,
 				displayOptions: {
 					show: {
@@ -139,29 +138,29 @@ export class Sentryio implements INodeType {
 				description: 'Resource to consume.',
 			},
 
-		// EVENT
-		...eventOperations,
-		...eventFields,
+			// EVENT
+			...eventOperations,
+			...eventFields,
 
-		// ISSUE
-		...issueOperations,
-		...issueFields,
+			// ISSUE
+			...issueOperations,
+			...issueFields,
 
-		// ORGANIZATION
-		...organizationOperations,
-		...organizationFields,
+			// ORGANIZATION
+			...organizationOperations,
+			...organizationFields,
 
-		// PROJECT
-		...projectOperations,
-		...projectFields,
+			// PROJECT
+			...projectOperations,
+			...projectFields,
 
-		// RELEASE
-		...releaseOperations,
-		...releaseFields,
+			// RELEASE
+			...releaseOperations,
+			...releaseFields,
 
-		// TEAM
-		...teamOperations,
-		...teamFields
+			// TEAM
+			...teamOperations,
+			...teamFields
 		],
 	};
 
@@ -171,28 +170,47 @@ export class Sentryio implements INodeType {
 			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const organizations = await sentryApiRequestAllItems.call(this, 'GET', `/api/0/organizations/`, {});
+
 				for (const organization of organizations) {
-					const name = organization.name;
 					returnData.push({
-						// tslint:disable-next-line: object-literal-shorthand (For reading consistency)
-						name: name,
-						value: name,
+						name: organization.slug,
+						value: organization.slug,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 			// Get all projects so can be displayed easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const projects = await sentryApiRequestAllItems.call(this, 'GET', `/api/0/projects/`, {});
+
+				const organizationSlug = this.getNodeParameter('organizationSlug') as string;
+
 				for (const project of projects) {
-					const name = project.name;
+
+					if (organizationSlug !== project.organization.slug) {
+						continue;
+					}
+
 					returnData.push({
-						// tslint:disable-next-line: object-literal-shorthand (For reading consistency)
-						name: name,
-						value: name,
+						name: project.slug,
+						value: project.slug,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 		},
@@ -239,7 +257,7 @@ export class Sentryio implements INodeType {
 
 					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/${eventId}/`;
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 				}
 			}
 			if (resource === 'issue') {
@@ -256,10 +274,10 @@ export class Sentryio implements INodeType {
 						qs.statsPeriod = additionalFields.statsPeriod as string;
 					}
 					if (additionalFields.shortIdLookup) {
-						qs.shortIdLookup  = additionalFields.shortIdLookup  as boolean;
+						qs.shortIdLookup = additionalFields.shortIdLookup as boolean;
 					}
-					if (additionalFields.query ) {
-						qs.query   = additionalFields.query   as string;
+					if (additionalFields.query) {
+						qs.query = additionalFields.query as string;
 					}
 
 					if (returnAll === false) {
@@ -279,13 +297,13 @@ export class Sentryio implements INodeType {
 					const issueId = this.getNodeParameter('issueId', i) as string;
 					const endpoint = `/api/0/issues/${issueId}/`;
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 				}
 				if (operation === 'delete') {
 					const issueId = this.getNodeParameter('issueId', i) as string;
 					const endpoint = `/api/0/issues/${issueId}/`;
 
-					responseData = await sentryioApiRequest.call(this, 'DELETE', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
 
 					responseData = { success: true };
 				}
@@ -313,7 +331,7 @@ export class Sentryio implements INodeType {
 						qs.isPublic = additionalFields.isPublic as boolean;
 					}
 
-					responseData = await sentryioApiRequest.call(this, 'PUT', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, qs);
 				}
 			}
 			if (resource === 'organization') {
@@ -321,7 +339,7 @@ export class Sentryio implements INodeType {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 					const endpoint = `/api/0/organizations/${organizationSlug}/`;
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -364,7 +382,7 @@ export class Sentryio implements INodeType {
 						qs.slug = additionalFields.slug as string;
 					}
 
-					responseData = await sentryioApiRequest.call(this, 'POST', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
 				}
 			}
 			if (resource === 'project') {
@@ -373,7 +391,7 @@ export class Sentryio implements INodeType {
 					const projectSlug = this.getNodeParameter('projectSlug', i) as string;
 					const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -398,7 +416,7 @@ export class Sentryio implements INodeType {
 					const version = this.getNodeParameter('version', i) as string;
 					const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 				}
 				if (operation === 'getAll') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
@@ -441,11 +459,11 @@ export class Sentryio implements INodeType {
 					qs.projects = projects;
 
 					if (additionalFields.commits) {
-						const commits : ICommit[] = [];
+						const commits: ICommit[] = [];
 						//@ts-ignore
 						// tslint:disable-next-line: no-any
-						additionalFields.commits.commitProperties.map((commit : any) => {
-							const commitObject : ICommit = {id: commit.id};
+						additionalFields.commits.commitProperties.map((commit: any) => {
+							const commitObject: ICommit = { id: commit.id };
 
 							if (commit.repository) {
 								commitObject.repository = commit.repository;
@@ -454,7 +472,7 @@ export class Sentryio implements INodeType {
 								commitObject.message = commit.message;
 							}
 							if (commit.patchSet && Array.isArray(commit.patchSet)) {
-								commit.patchSet.patchSetProperties.map((patchSet : IPatchSet) => {
+								commit.patchSet.patchSetProperties.map((patchSet: IPatchSet) => {
 									commitObject.patch_set?.push(patchSet);
 								});
 							}
@@ -474,16 +492,16 @@ export class Sentryio implements INodeType {
 						qs.commits = commits;
 					}
 					if (additionalFields.refs) {
-						const refs : IRef[] = [];
+						const refs: IRef[] = [];
 						//@ts-ignore
-						additionalFields.refs.refProperties.map((ref : IRef) => {
+						additionalFields.refs.refProperties.map((ref: IRef) => {
 							refs.push(ref);
 						});
 
 						qs.refs = refs;
 					}
 
-					responseData = await sentryioApiRequest.call(this, 'POST', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
 				}
 			}
 			if (resource === 'team') {
@@ -492,7 +510,7 @@ export class Sentryio implements INodeType {
 					const teamSlug = this.getNodeParameter('teamSlug', i) as string;
 					const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
 
-					responseData = await sentryioApiRequest.call(this, 'GET', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 				}
 				if (operation === 'getAll') {
 					const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
@@ -525,7 +543,7 @@ export class Sentryio implements INodeType {
 						qs.slug = additionalFields.slug;
 					}
 
-					responseData = await sentryioApiRequest.call(this, 'POST', endpoint, qs);
+					responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
 				}
 			}
 
@@ -538,4 +556,3 @@ export class Sentryio implements INodeType {
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
-

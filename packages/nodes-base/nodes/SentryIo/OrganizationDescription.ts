@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const organizationOperations = [
 	{
@@ -35,9 +37,9 @@ export const organizationOperations = [
 ] as INodeProperties[];
 
 export const organizationFields = [
-/* -------------------------------------------------------------------------- */
-/*                                organization:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                organization:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -112,9 +114,9 @@ export const organizationFields = [
 			},
 		]
 	},
-/* -------------------------------------------------------------------------- */
-/*                                organization:get                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                organization:get                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -136,9 +138,9 @@ export const organizationFields = [
 		required: true,
 		description: 'The slug of the organization the team should be created for',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                organization:create                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                organization:create                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',

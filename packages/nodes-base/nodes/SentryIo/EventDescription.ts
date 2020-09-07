@@ -32,9 +32,9 @@ export const eventOperations = [
 ] as INodeProperties[];
 
 export const eventFields = [
-/* -------------------------------------------------------------------------- */
-/*                                event:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                event:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',
@@ -62,6 +62,9 @@ export const eventFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
+			loadOptionsDependsOn: [
+				'organizationSlug',
+			],
 		},
 		default: '',
 		displayOptions: {
@@ -135,9 +138,9 @@ export const eventFields = [
 		default: 100,
 		description: 'How many results to return',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                event:get                                   */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                event:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Organization Slug',
 		name: 'organizationSlug',

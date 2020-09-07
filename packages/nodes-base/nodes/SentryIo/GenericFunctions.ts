@@ -14,7 +14,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function sentryioApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authentication = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
@@ -40,17 +40,21 @@ export async function sentryioApiRequest(this: IHookFunctions | IExecuteFunction
 	try {
 		if (authentication === 'accessToken') {
 
-			const credentials = this.getCredentials('sentryioApi');
+			const credentials = this.getCredentials('sentryIoApi');
 
 			options.headers = {
 				Authorization: `Bearer ${credentials?.token}`,
 			};
 
+			console.log('options');
+			console.log(options);
+
+
 			//@ts-ignore
 			return this.helpers.request(options);
 
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'sentryioOAuth2Api', options);
+			return await this.helpers.requestOAuth2!.call(this, 'sentryIoOAuth2Api', options);
 		}
 
 	} catch (error) {
@@ -69,7 +73,7 @@ export async function sentryApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	let uri: string | undefined;
 
 	do {
-		responseData = await sentryioApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+		responseData = await sentryIoApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
 		link = responseData.headers.link;
 		uri = getNext(link);
 		returnData.push.apply(returnData, responseData.body);
