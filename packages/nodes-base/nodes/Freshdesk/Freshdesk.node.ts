@@ -6,9 +6,11 @@ import {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	freshdeskApiRequest,
 	freshdeskApiRequestAllItems,
@@ -24,6 +26,9 @@ import {
 	contactFields,
 	contactOperations,
 } from './ContactDescription';
+
+import * as moment from 'moment-timezone';
+import { response } from 'express';
 
 enum Status {
 	Open = 2,
@@ -86,7 +91,7 @@ export class Freshdesk implements INodeType {
 		description: 'Consume Freshdesk API',
 		defaults: {
 			name: 'Freshdesk',
-			color: '#c02428',
+			color: '#25c10b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1362,6 +1367,7 @@ export class Freshdesk implements INodeType {
 				//https://developers.freshdesk.com/api/#create_contact
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
+					const email = this.getNodeParameter('email', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
 					if (additionalFields.customFields) {
@@ -1376,6 +1382,9 @@ export class Freshdesk implements INodeType {
 
 					const body: ICreateContactBody = additionalFields;
 					body.name = name;
+					if (email) {
+						body.email = email;
+					}
 					responseData = await freshdeskApiRequest.call(this, 'POST', '/contacts', body);
 				//https://developers.freshdesk.com/api/#delete_contact
 				} else if (operation === 'delete') {
@@ -1392,7 +1401,7 @@ export class Freshdesk implements INodeType {
 				} else if (operation === 'update') {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
-					
+
 					if (additionalFields.customFields) {
 						const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
 						additionalFields.custom_fields = {};
@@ -1407,14 +1416,14 @@ export class Freshdesk implements INodeType {
 					responseData = await freshdeskApiRequest.call(this, 'PUT', `/contacts/${contactId}`, body);
 				}
 			}
-			
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
 				if (responseData === undefined) {
-					responseData = { json: {
+					responseData = {
 						success: true,
-					} };
+					};
 				}
 
 				returnData.push(responseData as IDataObject);

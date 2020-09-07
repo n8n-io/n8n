@@ -12,7 +12,7 @@ export const contactOperations = [
 			show: {
 				resource: [
 					'contact',
-				]
+				],
 			},
 		},
 		options: [
@@ -70,6 +70,24 @@ export const contactFields = [
 		default: '',
 		description: 'Name of the contact.',
 		required: true,
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		description: `Primary email address of the contact. If you want to associate<br>
+		additional email(s) with this contact, use the other_emails attribute.`,
 	},
 	{
 		displayName: 'Contact ID',
@@ -174,6 +192,13 @@ export const contactFields = [
 				name: 'email',
 				type: 'string',
 				default: '',
+				displayOptions: {
+					show: {
+						'/operation': [
+							'update',
+						],
+					},
+				},
 				description: `Primary email address of the contact. If you want to associate<br>
 				additional email(s) with this contact, use the other_emails attribute.`,
 			},
@@ -331,7 +356,7 @@ export const contactFields = [
 	/*                                contact:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Filter By',
+		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',
