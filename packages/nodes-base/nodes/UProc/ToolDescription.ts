@@ -97,7 +97,7 @@ for(const tool of (tools as IDataObject).processors as IDataObject[]) {
 				modifiedParam = currentParam;
 			}
 		}
-		//if exists
+		//if exists, other wise
 		if (modifiedParam) {
 			//Assign new group and tool
 			//@ts-ignore
