@@ -96,6 +96,23 @@ export const fields = [
 		description: 'How many results to return.',
 	},
 	{
+		displayName: 'Asset ID',
+		name: 'assetId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					resource.value
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -175,23 +192,13 @@ export const fields = [
 				default: '',
 				description: ' Full-text search is case insensitive and might return more results than expected. A query will only take values with more than 1 character.',
 			},
-		],
-	},
-	{
-		displayName: 'Asset ID',
-		name: 'assetId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					resource.value
-				],
-				operation: [
-					'get',
-				],
+			{
+				displayName: 'RAW Data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: 'If the data should be returned RAW instead of parsed.',
 			},
-		},
+		],
 	},
 ] as INodeProperties[];
