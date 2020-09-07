@@ -24,7 +24,7 @@ import {
 
 export class UProc implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'uProc',
+		displayName: 'UProc',
 		name: 'uproc',
 		icon: 'file:uproc.png',
 		group: ['output'],
