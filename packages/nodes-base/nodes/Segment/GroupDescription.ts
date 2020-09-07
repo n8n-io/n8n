@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const identifyOperations = [
+export const groupOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,26 +10,26 @@ export const identifyOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'identify',
+					'group',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create an identity',
+				name: 'Add',
+				value: 'add',
+				description: 'Add a user to a group',
 			},
 		],
-		default: 'create',
+		default: 'add',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
-export const identifyFields = [
+export const groupFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                identify:create                             */
+/*                                group:add                                   */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
@@ -39,14 +39,32 @@ export const identifyFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'identify',
+					'group',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
 		required: false,
+	},
+	{
+		displayName: 'Group ID',
+		name: 'groupId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'group',
+				],
+				operation: [
+					'add',
+				],
+			},
+		},
+		description: 'A Group ID is the unique identifier which you recognize a group by in your own database',
+		required: true,
 	},
 	{
 		displayName: 'Traits',
@@ -59,10 +77,10 @@ export const identifyFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'identify',
+					'group',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
@@ -277,10 +295,10 @@ export const identifyFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'identify',
+					'group',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
@@ -478,10 +496,10 @@ export const identifyFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'identify',
+					'group',
 				],
 				operation: [
-					'create',
+					'add',
 				],
 			},
 		},
