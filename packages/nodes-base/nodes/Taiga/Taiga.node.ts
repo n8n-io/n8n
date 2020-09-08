@@ -103,8 +103,11 @@ export class Taiga implements INodeType {
 			// Get all the available tags to display them to user so that he can
 			// select them easily
 			async getTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const project = this.getCurrentNodeParameter('project') as string;
+				const slug = this.getCurrentNodeParameter('projectSlug') as string;
+
 				const returnData: INodePropertyOptions[] = [];
+
+				const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
 
 				const types = await taigaApiRequest.call(this, 'GET', `/issue-types?project=${project}`);
 				for (const type of types) {

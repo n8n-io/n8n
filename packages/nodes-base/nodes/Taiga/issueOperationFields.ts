@@ -19,7 +19,7 @@ export const issueOperationFields = [
 			},
 		},
 		default: '',
-		description: 'Project ID',
+		description: 'The project slug.  ',
 		required: true,
 	},
 	{
@@ -129,7 +129,7 @@ export const issueOperationFields = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: [
-						'project',
+						'projectSlug',
 					],
 					loadOptionsMethod: 'getTypes'
 				},
@@ -258,7 +258,7 @@ export const issueOperationFields = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: [
-						'project',
+						'projectSlug',
 					],
 					loadOptionsMethod: 'getTypes'
 				},
