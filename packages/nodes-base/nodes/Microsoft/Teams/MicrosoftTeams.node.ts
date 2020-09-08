@@ -26,24 +26,24 @@ import {
 	channelMessageOperations,
 } from './ChannelMessageDescription';
 
-export class MicrosoftTeam implements INodeType {
+export class MicrosoftTeams implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft Team',
-		name: 'microsoftTeam',
+		displayName: 'Microsoft Teams',
+		name: 'microsoftTeams',
 		icon: 'file:team.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Microsoft Team API.',
+		description: 'Consume Microsoft Teams API',
 		defaults: {
-			name: 'Microsoft Team',
+			name: 'Microsoft Teams',
 			color: '#555cc7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'microsoftTeamOAuth2Api',
+				name: 'microsoftTeamsOAuth2Api',
 				required: true,
 			},
 		],
@@ -171,7 +171,7 @@ export class MicrosoftTeam implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IDataObject = {};
 					if (updateFields.name) {
-						body.name = updateFields.name as string;
+						body.displayName = updateFields.name as string;
 					}
 					if (updateFields.description) {
 						body.description = updateFields.description as string;

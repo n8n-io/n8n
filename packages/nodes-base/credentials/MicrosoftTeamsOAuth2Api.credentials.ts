@@ -3,8 +3,8 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class MicrosoftTeamOAuth2Api implements ICredentialType {
-	name = 'microsoftTeamOAuth2Api';
+export class MicrosoftTeamsOAuth2Api implements ICredentialType {
+	name = 'microsoftTeamsOAuth2Api';
 	extends = [
 		'microsoftOAuth2Api',
 	];
