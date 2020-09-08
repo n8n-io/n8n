@@ -130,6 +130,13 @@ export class TelegramTrigger implements INodeType {
 						displayName: 'Image Size',
 						name: 'imageSize',
 						type: 'options',
+						displayOptions: {
+							show: {
+								download: [
+									true,
+								],
+							},
+						},
 						options: [
 							{
 								name: 'Small',
