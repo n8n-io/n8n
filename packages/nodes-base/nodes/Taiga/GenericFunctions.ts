@@ -15,6 +15,10 @@ import {
 	IDataObject,
  } from 'n8n-workflow';
 
+ import {
+	createHash,
+} from 'crypto';
+
 export async function getAuthorization(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	credentials?: ICredentialDataDecryptedObject,
@@ -124,4 +128,9 @@ export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFun
 		responseData.headers['x-pagination-next'] !== ''
 	);
 	return returnData;
+}
+
+export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
+	const data = `${credentials.username},${credentials.password}`;
+	return createHash('md5').update(data).digest('hex');
 }

@@ -1,15 +1,26 @@
 import {
-	INodeType,
-	INodeTypeDescription,
+	ICredentialDataDecryptedObject,
 	IDataObject,
-	IWebhookFunctions,
-	IWebhookResponseData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { IHookFunctions } from 'n8n-core';
-import { taigaApiRequest } from './GenericFunctions';
+import {
+	IHookFunctions,
+} from 'n8n-core';
+
+import {
+	taigaApiRequest,
+	getAutomaticSecret,
+} from './GenericFunctions';
+
+// import {
+// 	createHmac,
+// } from 'crypto';
 
 export class TaigaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +29,7 @@ export class TaigaTrigger implements INodeType {
 		icon: 'file:taiga.png',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["type"] + " - " + $parameter["event"] + " - " + $parameter["status"]}}',
+		subtitle: '={{"project:" + $parameter["projectSlug"]}}',
 		description: 'Handle Taiga events via webhook',
 		defaults: {
 			name: 'Taiga Trigger',
@@ -26,9 +37,27 @@ export class TaigaTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
-		credentials: [ 
+		credentials: [
 			{
-				name: 'taigaApi',
+				name: 'taigaCloudApi',
+				displayOptions: {
+					show: {
+						version: [
+							'cloud',
+						],
+					},
+				},
+				required: true,
+			},
+			{
+				name: 'taigaServerApi',
+				displayOptions: {
+					show: {
+						version: [
+							'server',
+						],
+					},
+				},
 				required: true,
 			},
 		],
@@ -42,69 +71,30 @@ export class TaigaTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Taiga URL',
-				name: 'taigaUrl',
-				type: 'string',
-				default: '',
-				placeholder: 'taiga.yourdomain.com',
-				description: 'The self hosted URL.',
-				required: true,
-			},
-			{
-				displayName: 'Project ID',
-				name: 'project',
-				type: 'string',
-				default: '',
-				placeholder: '1',
-				description: 'An ID for a Taiga project',
-				required: true,
-			},
-			{
-				displayName: 'Type',
-				name: 'type',
+				displayName: 'Taiga Version',
+				name: 'version',
 				type: 'options',
 				options: [
 					{
-						name: 'Issue',
-						value: 'issue',
+						name: 'Cloud',
+						value: 'cloud',
+					},
+					{
+						name: 'Server (Self Hosted)',
+						value: 'server',
 					},
 				],
-				default: 'issue',
-				required: true,
+				default: 'cloud',
 			},
 			{
-				displayName: 'Event',
-				name: 'event',
-				type: 'options',
-				options: [
-					{
-						name: 'Create',
-						value: 'create',
-					},
-					{
-						name: 'Delete',
-						value: 'delete',
-					},
-					{
-						name: 'Change',
-						value: 'change',
-					},
-				],
-				default: 'change',
-				required: true,
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
-				typeOptions: {
-					loadOptionsDependsOn: ['taigaUrl'],
-					loadOptionsMethod: 'getStatuses',
-				},
+				displayName: 'Project Slug',
+				name: 'projectSlug',
+				type: 'string',
 				default: '',
+				description: 'Project Slug',
 				required: true,
 			},
-		]
+		],
 	};
 
 	methods = {
@@ -133,97 +123,100 @@ export class TaigaTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+
 				const webhookData = this.getWorkflowStaticData('node');
-				const taigaUrl = this.getNodeParameter('taigaUrl') as string;
-				if (webhookData.webhookId === undefined) {
-					return false;
+
+				const endpoint = `/webhooks`;
+
+				const webhooks = await taigaApiRequest.call(this, 'GET', endpoint);
+
+				for (const webhook of webhooks) {
+					if (webhook.url === webhookUrl) {
+						webhookData.webhookId = webhook.id;
+						webhookData.key = webhook.key;
+						return true;
+					}
 				}
-				const endpoint = `/webhooks/${webhookData.webhookId}`;
-				try {
-					await taigaApiRequest.call(this, taigaUrl, 'GET', endpoint);
-				} catch (e) {
-					return false;
-				}
-				return true;
+
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
+				const version = this.getNodeParameter('version') as string;
+
+				let credentials;
+
+				if (version === 'server') {
+					credentials = this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
+				} else {
+					credentials = this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
+				}
+
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
+
 				const webhookData = this.getWorkflowStaticData('node');
-				const taigaUrl = this.getNodeParameter('taigaUrl') as string;
-				const project = this.getNodeParameter('project') as string[];
+
+				const slug = this.getNodeParameter('projectSlug') as string;
+
+				const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
+
+				const key = getAutomaticSecret(credentials);
+
 				const body: IDataObject = {
 					name: `n8n-webhook:${webhookUrl}`,
 					url: webhookUrl,
-					key: `n8n-secret:${webhookUrl}`, //can't validate the secret, see: https://github.com/taigaio/taiga-back/issues/1031
-        	project,
+					key, //can't validate the secret, see: https://github.com/taigaio/taiga-back/issues/1031
+					project,
 				};
-				const { id } = await taigaApiRequest.call(this, taigaUrl, 'POST', 'webhooks', body);
+				const { id } = await taigaApiRequest.call(this, 'POST', '/webhooks', body);
 
 				webhookData.webhookId = id;
+				webhookData.key = key;
+
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const taigaUrl = this.getNodeParameter('taigaUrl') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
-					await taigaApiRequest.call(this, taigaUrl, 'DELETE', `webhooks/${webhookData.webhookId}`);
+					await taigaApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`);
 				} catch(error) {
 					return false;
 				}
 				delete webhookData.webhookId;
+				delete webhookData.key;
 				return true;
 			},
 		},
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		//const webhookData = this.getWorkflowStaticData('node');
 		const req = this.getRequestObject();
 		const bodyData = req.body;
-		const headerData = this.getHeaderData();
+		//const headerData = this.getHeaderData();
 
-		//@ts-ignore
-		const requestSignature: string = headerData['x-taiga-webhook-signature']
 
-		if (requestSignature === undefined) {
-			return {};
-		}
+		// TODO
+		// Validate signature
+		// https://github.com/taigaio/taiga-back/issues/1031
 
-		const type = this.getNodeParameter('type') as string;
-		const event = this.getNodeParameter('event') as string;
-		const status = this.getNodeParameter('status') as string;
+		// //@ts-ignore
+		// const requestSignature: string = headerData['x-taiga-webhook-signature'];
 
-		const bodyDataType: string = bodyData.type;
-		const bodyDataAction: string = bodyData.action;
-		const bodyDataStatus: string = bodyData.data?.status?.slug;
+		// if (requestSignature === undefined) {
+		// 	return {};
+		// }
 
-		const returnData: IDataObject[] = [];
-		returnData.push(
-			{
-				body: this.getBodyData(),
-				headers: this.getHeaderData(),
-				query: this.getQueryData(),
-			}
-		);
+		// //@ts-ignore
+		// const computedSignature = createHmac('sha1', webhookData.key as string).update(JSON.stringify(bodyData)).digest('hex');
 
-		if(event === 'delete' && event === bodyDataAction) {
-			return {
-				workflowData: [
-					this.helpers.returnJsonArray(returnData)
-				],
-			};
-		}
-
-		if(
-			type !== bodyDataType ||
-			event !== bodyDataAction ||
-			bodyDataStatus !== status
-		) {
-			return {};
-		}
+		// if (requestSignature !== computedSignature) {
+		// 	return {};
+		// }
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(returnData)
+				this.helpers.returnJsonArray(bodyData)
 			],
 		};
 	}
