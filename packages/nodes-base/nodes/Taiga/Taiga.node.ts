@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	INodeExecutionData,
 	INodeType,
@@ -10,7 +13,7 @@ import {
 
 import {
 	taigaApiRequest,
-	getVersion,
+	taigaApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -19,7 +22,7 @@ import {
 
 import {
 	issueOperationFields,
-} from './issueOperationFields'
+} from './issueOperationFields';
 
 export class Taiga implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,7 +32,7 @@ export class Taiga implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Manage issues on Taiga',
+		description: 'Consume Taiga API',
 		defaults: {
 			name: 'Taiga',
 			color: '#772244',
@@ -38,37 +41,44 @@ export class Taiga implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'taigaApi',
+				name: 'taigaCloudApi',
+				displayOptions: {
+					show: {
+						version: [
+							'cloud',
+						],
+					},
+				},
+				required: true,
+			},
+			{
+				name: 'taigaServerApi',
+				displayOptions: {
+					show: {
+						version: [
+							'server',
+						],
+					},
+				},
 				required: true,
 			},
 		],
 		properties: [
 			{
-				displayName: 'Taiga URL',
-				name: 'taigaUrl',
-				type: 'string',
-				default: '',
-				placeholder: 'taiga.yourdomain.com',
-				description: 'The self hosted URL.',
-			},
-			{
-				displayName: 'Project ID',
-				name: 'project',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'issue',
-						],
-						operation: [
-							'create', 'update',
-						],
+				displayName: 'Taiga Version',
+				name: 'version',
+				type: 'options',
+				options: [
+					{
+						name: 'Cloud',
+						value: 'cloud',
 					},
-				},
-				default: '',
-				placeholder: '1',
-				description: 'An ID for a Taiga project',
-				required: true,
+					{
+						name: 'Server (Self Hosted)',
+						value: 'server',
+					},
+				],
+				default: 'cloud',
 			},
 			{
 				displayName: 'Resource',
@@ -85,7 +95,7 @@ export class Taiga implements INodeType {
 			},
 			...issueOperations,
 			...issueOperationFields,
-		]
+		],
 	};
 
 	methods = {
@@ -93,11 +103,10 @@ export class Taiga implements INodeType {
 			// Get all the available tags to display them to user so that he can
 			// select them easily
 			async getTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const taigaUrl = this.getCurrentNodeParameter('taigaUrl') as string;
 				const project = this.getCurrentNodeParameter('project') as string;
 				const returnData: INodePropertyOptions[] = [];
 
-				const types = await taigaApiRequest.call(this, taigaUrl, 'GET', `issue-types?project=${project}`);
+				const types = await taigaApiRequest.call(this, 'GET', `/issue-types?project=${project}`);
 				for (const type of types) {
 					const typeName = type.name;
 					const typeId = type.id;
@@ -112,10 +121,9 @@ export class Taiga implements INodeType {
 			// Get all the available statuses to display them to user so that he can
 			// select them easily
 			async getStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const taigaUrl = this.getCurrentNodeParameter('taigaUrl') as string;
 				const returnData: INodePropertyOptions[] = [];
 
-				const statuses = await taigaApiRequest.call(this, taigaUrl, 'GET', 'issue-statuses');
+				const statuses = await taigaApiRequest.call(this,'GET', '/issue-statuses');
 				for (const status of statuses) {
 					const statusName = status.name;
 					const statusId = status.id;
@@ -137,79 +145,87 @@ export class Taiga implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
-		for (let i=0; i<items.length; i++) {
+		const qs: IDataObject = {};
+
+		for (let i = 0; i < items.length; i++) {
 			if (resource === 'issue') {
 				if (operation === 'create') {
-					const taigaUrl = this.getNodeParameter('taigaUrl', i) as string;
-					const project = this.getNodeParameter('project', i) as number;
-					const subject = this.getNodeParameter('subjectCreate', i) as string;
-					const description = this.getNodeParameter('description', i) as string;
-					const type = this.getNodeParameter('type', i) as string;
-					const tag = this.getNodeParameter('tags', i) as string;
-					const tags = tag ? tag.split(',') : undefined;
+					const slug = this.getNodeParameter('projectSlug', i) as number;
+					const subject = this.getNodeParameter('subject', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
 
 					const body: IDataObject = {
 						project,
 						subject,
-						description,
-						type,
-						tags,
 					};
 
-					responseData = await taigaApiRequest.call(this, taigaUrl, 'POST', 'issues', body);
+					Object.assign(body, additionalFields);
+
+					if (body.tags) {
+						body.tags = (body.tags as string).split(',') as string[];
+					}
+
+					if (body.watchers) {
+						body.watchers = (body.watchers as string).split(',') as string[];
+					}
+
+					responseData = await taigaApiRequest.call(this, 'POST', '/issues', body);
 				}
 
 				if (operation === 'update') {
-					const taigaUrl = this.getNodeParameter('taigaUrl', i) as string;
-					const id = this.getNodeParameter('id', i) as string;
-					const subject = this.getNodeParameter('subjectEdit', i) as string;
-					const description = this.getNodeParameter('description', i) as string;
-					const type = this.getNodeParameter('type', i) as string;
-					const tags = this.getNodeParameter('tags', i) as string;
-					const status = this.getNodeParameter('status', i) as string;
-					const version = await getVersion.call(this, taigaUrl, id);
 
-					const body: IDataObject = {
-						version,
-					};
+					const issueId = this.getNodeParameter('issueId', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-					if(subject) {
-						body.subject = subject;
-					}
-					if(description) {
-						body.description = description;
-					}
-					if(type) {
-						body.type = type;
-					}
-					if(tags) {
-						body.tags = tags.split(',');
-					}
-					if(status) {
-						body.status = status;
+					const body: IDataObject = {};
+
+					Object.assign(body, updateFields);
+
+					if (body.tags) {
+						body.tags = (body.tags as string).split(',') as string[];
 					}
 
-					responseData = await taigaApiRequest.call(this, taigaUrl, 'PATCH', `issues/${id}`, body);
+					if (body.watchers) {
+						body.watchers = (body.watchers as string).split(',') as string[];
+					}
+
+					const { version } = await taigaApiRequest.call(this, 'GET', `/issues/${issueId}`);
+
+					body.version = version;
+
+					responseData = await taigaApiRequest.call(this, 'PATCH', `/issues/${issueId}`, body);
 				}
 
 				if (operation === 'delete') {
-					const taigaUrl = this.getNodeParameter('taigaUrl', i) as string;
-					const id = this.getNodeParameter('id', i) as string;
-
-					responseData = await taigaApiRequest.call(this, taigaUrl, 'DELETE', `issues/${id}`);
+					const issueId = this.getNodeParameter('issueId', i) as string;
+					responseData = await taigaApiRequest.call(this, 'DELETE', `/issues/${issueId}`);
+					responseData = { success: true };
 				}
 
 				if (operation === 'get') {
-					const taigaUrl = this.getNodeParameter('taigaUrl', i) as string;
-					const id = this.getNodeParameter('id', i) as string;
-
-					responseData = await taigaApiRequest.call(this, taigaUrl, 'GET', `issues/${id}`);
+					const issueId = this.getNodeParameter('issueId', i) as string;
+					responseData = await taigaApiRequest.call(this, 'GET', `/issues/${issueId}`);
 				}
 
-				if (operation === 'list') {
-					const taigaUrl = this.getNodeParameter('taigaUrl', i) as string;
+				if (operation === 'getAll') {
 
-					responseData = await taigaApiRequest.call(this, taigaUrl, 'GET', `issues`);
+					const slug = this.getNodeParameter('projectSlug', i) as number;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
+
+					qs.project = project;
+
+					if (returnAll === true) {
+						responseData = await taigaApiRequestAllItems.call(this, 'GET', '/issues', {}, qs);
+
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await taigaApiRequestAllItems.call(this, 'GET', '/issues', {}, qs);
+						responseData = responseData.splice(0, qs.limit);
+					}
 				}
 			}
 			if (Array.isArray(responseData)) {

@@ -12,11 +12,11 @@ import {
 
 import {
 	ICredentialDataDecryptedObject,
+	IDataObject,
  } from 'n8n-workflow';
 
 export async function getAuthorization(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	taigaUrl: string,
 	credentials?: ICredentialDataDecryptedObject,
 ): Promise<string> {
 	if (credentials === undefined) {
@@ -28,11 +28,11 @@ export async function getAuthorization(
 		headers: { 'Content-Type': 'application/json' },
 		method: 'POST',
 		body: {
-			type: "normal",
+			type: 'normal',
 			password,
 			username,
 		},
-		uri: `http://${taigaUrl}/api/v1/auth`,
+		uri: (credentials.domain) ? `http://${credentials.domain}/api/v1/auth` : 'https://api.taiga.io/api/v1/auth',
 		json: true,
 	};
 
@@ -47,13 +47,25 @@ export async function getAuthorization(
 
 export async function taigaApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	taigaUrl: string,
 	method: string,
 	resource: string,
-	body: any = {},
+	body = {},
+	query = {},
+	uri?: string | undefined,
+	option = {},
 ): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('taigaApi');
-	const authToken = await getAuthorization.call(this, taigaUrl, credentials);
+
+	const version = this.getNodeParameter('version', 0, 'cloud') as string;
+
+	let credentials;
+
+	if (version === 'server') {
+		credentials = this.getCredentials('taigaServerApi') as ICredentialDataDecryptedObject;
+	} else {
+		credentials = this.getCredentials('taigaCloudApi') as ICredentialDataDecryptedObject;
+	}
+
+	const authToken = await getAuthorization.call(this, credentials);
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -62,29 +74,54 @@ export async function taigaApiRequest(
 		auth: {
 			bearer: authToken,
 		},
+		qs: query,
 		method,
 		body,
-		uri: `http://${taigaUrl}/api/v1/${resource}`,
+		uri: uri || (credentials.domain) ? `http://${credentials.domain}/api/v1${resource}` : `https://api.taiga.io/api/v1${resource}`,
 		json: true
 	};
+
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
+	}
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
 		let errorMessage = error;
-		if (error.err) {
-			errorMessage = error.err;
+		if (error.response.body && error.response.body._error_message) {
+			errorMessage = error.response.body._error_message;
+
+			// when project slug is not correct currently the API responds with invalid permitions
+			// so make the message more clear
+			if (errorMessage === 'You do not have permission to perform this action.' &&
+				(method === 'GET' || method === 'POST') && resource === '/resolver') {
+					errorMessage = 'Invalid project slug';
+			}
 		}
-		throw new Error('Taiga Error: ' + errorMessage);
+
+		throw new Error(`Taigan error response [${error.statusCode}]: ${errorMessage}`);
 	}
 }
 
-export async function getVersion(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	taigaUrl: string,
-	id: string,
-): Promise<string> {
-	const response = await taigaApiRequest.call(this, taigaUrl, 'GET', `issues/${id}`);
+export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-	return response.version;
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	let uri: string | undefined;
+
+	do {
+		responseData = await taigaApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+		returnData.push.apply(returnData, responseData.body);
+		uri = responseData.headers['x-pagination-next'];
+		if (query.limit && returnData.length >= query.limit) {
+			return returnData;
+		}
+	} while (
+		responseData.headers['x-pagination-next'] !== undefined &&
+		responseData.headers['x-pagination-next'] !== ''
+	);
+	return returnData;
 }
