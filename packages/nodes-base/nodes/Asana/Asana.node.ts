@@ -255,10 +255,10 @@ export class Asana implements INodeType {
 				name: 'section',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getSections',
 					loadOptionsDependsOn: [
 						'projectId',
 					],
+					loadOptionsMethod: 'getSections',
 				},
 				options: [],
 				default: '',
@@ -563,7 +563,7 @@ export class Asana implements INodeType {
 			},
 			{
 				displayName: 'HTML Text',
-				name: 'html_text',
+				name: 'text',
 				type: 'string',
 				default: '',
 				required: true,
@@ -694,6 +694,9 @@ export class Asana implements INodeType {
 				name: 'tag',
 				type: 'options',
 				typeOptions: {
+					loadOptionsDependsOn: [
+						'id',
+					],
 					loadOptionsMethod: 'getTags',
 				},
 				default: '',
@@ -738,6 +741,9 @@ export class Asana implements INodeType {
 				name: 'tag',
 				type: 'options',
 				typeOptions: {
+					loadOptionsDependsOn: [
+						'id',
+					],
 					loadOptionsMethod: 'getTags',
 				},
 				default: '',
@@ -1016,6 +1022,12 @@ export class Asana implements INodeType {
 					});
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -1045,6 +1057,12 @@ export class Asana implements INodeType {
 					});
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 			// Get all the available sections in a project to display them to user so that they
@@ -1071,6 +1089,12 @@ export class Asana implements INodeType {
 						value: sectionData.gid,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -1107,6 +1131,12 @@ export class Asana implements INodeType {
 					});
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -1114,7 +1144,17 @@ export class Asana implements INodeType {
 			// See: https://developers.asana.com/docs/get-multiple-tags
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const endpoint = '/tags';
-				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
+
+				const taskId = this.getNodeParameter('id') as string;
+				let taskData;
+				try {
+					taskData = await asanaApiRequest.call(this, 'GET', `/tasks/${taskId}`, {});
+				} catch (e) {
+					throw new Error(`Could not find task with id "${taskId}" so tags could not be loaded.`);
+				}
+
+				const workspace = taskData.data.workspace.gid;
+				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
 
 				if (responseData.data === undefined) {
 					throw new Error('No data got returned');
@@ -1133,6 +1173,12 @@ export class Asana implements INodeType {
 						value: tagData.gid,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -1298,12 +1344,9 @@ export class Asana implements INodeType {
 					const isTextHtml = this.getNodeParameter('isTextHtml', i) as boolean;
 
 					if (!isTextHtml) {
-
 						body.text = this.getNodeParameter('text', i) as string;
-
 					} else {
-
-						body.html_text = this.getNodeParameter('html_text', i) as string;
+						body.html_text = this.getNodeParameter('text', i) as string;
 					}
 
 					requestMethod = 'POST';
@@ -1423,9 +1466,9 @@ export class Asana implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-				// ----------------------------------
-				//        project:getAll
-				// ----------------------------------
+					// ----------------------------------
+					//        project:getAll
+					// ----------------------------------
 					const workspaceId = this.getNodeParameter('workspace', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
