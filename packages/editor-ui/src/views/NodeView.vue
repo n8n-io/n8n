@@ -325,7 +325,7 @@ export default mixins(
 					throw new Error(`Execution with id "${executionId}" could not be found!`);
 				}
 
-				this.$store.commit('setWorkflowName', {newName: data.workflowData.name, setStateDirty: false});
+				this.$store.commit('setWorkflowName', {name: data.workflowData.name, setStateDirty: false});
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
 				this.$store.commit('setWorkflowExecutionData', data);
@@ -349,7 +349,7 @@ export default mixins(
 
 				this.$store.commit('setActive', data.active || false);
 				this.$store.commit('setWorkflowId', workflowId);
-				this.$store.commit('setWorkflowName', {newName: data.name, setStateDirty: false});
+				this.$store.commit('setWorkflowName', {name: data.name, setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 
 				await this.addNodes(data.nodes, data.connections);
@@ -1388,10 +1388,9 @@ export default mixins(
 						detachable: !this.isReadOnly,
 					});
 				} else {
-					const connectionProperties = {connection, setStateDirty: false};
 					// When nodes get connected it gets saved automatically to the storage
 					// so if we do not connect we have to save the connection manually
-					this.$store.commit('addConnection', connectionProperties);
+					this.$store.commit('addConnection', {connection, setStateDirty: false});
 				}
 			},
 			__removeConnection (connection: [IConnection, IConnection], removeVisualConnection = false) {
@@ -1876,7 +1875,7 @@ export default mixins(
 
 				this.$store.commit('setActive', false);
 				this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				this.$store.commit('setWorkflowName', {newName: '', setStateDirty: false});
+				this.$store.commit('setWorkflowName', {name: '', setStateDirty: false});
 				this.$store.commit('setWorkflowSettings', {});
 
 				this.$store.commit('setActiveExecutionId', null);
@@ -1887,7 +1886,7 @@ export default mixins(
 				this.$store.commit('resetNodeIndex');
 				this.$store.commit('resetSelectedNodes');
 
-				this.$store.commit('setNodeViewOffsetPosition', {newOffset: [0, 0], setStateDirty: false});
+				this.$store.commit('setNodeViewOffsetPosition', {offset: [0, 0], setStateDirty: false});
 
 				return Promise.resolve();
 			},

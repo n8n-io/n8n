@@ -74,7 +74,7 @@ export const workflowSave = mixins(
 
 						this.$store.commit('setActive', workflowData.active || false);
 						this.$store.commit('setWorkflowId', workflowData.id);
-						this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
+						this.$store.commit('setWorkflowName', {name: workflowData.name, setStateDirty: false});
 						this.$store.commit('setWorkflowSettings', workflowData.settings || {});
 					} else {
 						// Workflow exists already so update it
