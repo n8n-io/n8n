@@ -9,6 +9,7 @@ export class BoxOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Box OAuth2 API';
+	documentationUrl = 'box';
 	properties = [
 		{
 			displayName: 'Authorization URL',

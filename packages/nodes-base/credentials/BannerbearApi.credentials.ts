@@ -6,6 +6,7 @@ import {
 export class BannerbearApi implements ICredentialType {
 	name = 'bannerbearApi';
 	displayName = 'Bannerbear API';
+	documentationUrl = 'bannerbear';
 	properties = [
 		{
 			displayName: 'Project API Key',

@@ -6,6 +6,7 @@ import {
 export class GithubApi implements ICredentialType {
 	name = 'githubApi';
 	displayName = 'Github API';
+	documentationUrl = 'github';
 	properties = [
 		{
 			displayName: 'Github Server',

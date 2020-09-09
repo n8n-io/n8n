@@ -6,6 +6,7 @@ import {
 export class DisqusApi implements ICredentialType {
 	name = 'disqusApi';
 	displayName = 'Disqus API';
+	documentationUrl = 'disqus';
 	properties = [
 		{
 			displayName: 'Access Token',

@@ -6,6 +6,7 @@ import {
 export class CockpitApi implements ICredentialType {
 	name = 'cockpitApi';
 	displayName = 'Cockpit API';
+	documentationUrl = 'cockpit';
 	properties = [
 		{
 			displayName: 'Cockpit URL',

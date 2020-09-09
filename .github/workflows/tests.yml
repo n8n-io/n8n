@@ -23,5 +23,6 @@ jobs:
         npm run bootstrap
         npm run build --if-present
         npm test
+        npm run tslint
       env:
         CI: true
