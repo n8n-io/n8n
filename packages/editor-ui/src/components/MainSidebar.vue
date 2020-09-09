@@ -398,7 +398,7 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('setWorkflowName', {name: workflowName, setStateDirty: true});
+					this.$store.commit('setWorkflowName', {newName: workflowName, setStateDirty: true});
 
 					this.$showMessage({
 						title: 'Workflow renamed',
