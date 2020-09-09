@@ -3,7 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class ClickUpOAuth2Api implements ICredentialType {
 	name = 'clickUpOAuth2Api';
 	extends = [
@@ -40,7 +39,7 @@ export class ClickUpOAuth2Api implements ICredentialType {
 		{
             displayName: 'Authentication',
             name: 'authentication',
-            type: 'options' as NodePropertyTypes,
+            type: 'hidden' as NodePropertyTypes,
             default: 'body',
             description: 'Resource to consume.',
         },

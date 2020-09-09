@@ -12,6 +12,7 @@ import {
 
 import {
 	IDataObject,
+	IOAuth2Options,
  } from 'n8n-workflow';
 
 export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -41,8 +42,13 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 			return await this.helpers.request!(options);
 
 		} else {
+
+			const oAuth2Options: IOAuth2Options = {
+				keepBearer: false,
+				tokenType: 'Bearer',
+			};
 			// @ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'clickUpOAuth2Api', options, false, 'bearer');
+			return await this.helpers.requestOAuth2!.call(this, 'clickUpOAuth2Api', options, oAuth2Options);
 		}
 
 	} catch(error) {

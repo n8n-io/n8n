@@ -153,7 +153,7 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
 
 	// If keep bearer is false remove the it from the authorization header
-	if (!keepBearer) {
+	if (oAuth2Options?.keepBearer === false) {
 		//@ts-ignore
 		newRequestOptions?.headers?.Authorization = newRequestOptions?.headers?.Authorization.split(' ')[1];
 	}
