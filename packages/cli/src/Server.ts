@@ -120,6 +120,7 @@ class App {
 	push: Push.Push;
 	versions: IPackageVersions | undefined;
 	restEndpoint: string;
+	oauth2RedirectUri: string;
 
 	protocol: string;
 	sslKey: string;
@@ -151,6 +152,8 @@ class App {
 		this.sslCert = config.get('ssl_cert');
 
 		this.externalHooks = ExternalHooks();
+		this.oauth2RedirectUri =
+			config.get('credentials.oauth2.redirectUri') as string || `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`;
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
@@ -1169,7 +1172,8 @@ class App {
 			const csrfSecret = token.secretSync();
 			const state = {
 				token: token.create(csrfSecret),
-				cid: req.query.id
+				cid: req.query.id,
+				host: `${config.get('host') as string}/${this.restEndpoint}`,
 			};
 			const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
 
@@ -1178,7 +1182,7 @@ class App {
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
+				redirectUri: this.oauth2RedirectUri,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 				state: stateEncodedStr,
 			});
@@ -1270,7 +1274,7 @@ class App {
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
+				redirectUri: this.oauth2RedirectUri,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
 			};
 
@@ -1283,13 +1287,12 @@ class App {
 				};
 				delete oAuth2Parameters.clientSecret;
 			}
-			const redirectUri = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`;
 
 			const oAuthObj = new clientOAuth2(oAuth2Parameters);
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
-			const oauthToken = await oAuthObj.code.getToken(`${redirectUri}?${queryParameters}`, options);
+			const oauthToken = await oAuthObj.code.getToken(`${this.oauth2RedirectUri}?${queryParameters}`, options);
 
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
