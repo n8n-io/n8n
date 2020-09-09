@@ -31,7 +31,7 @@ export const moveNodeWorkflow = mixins(nodeIndex).extend({
 
 			const nodeViewOffsetPositionX = offsetPosition[0] + (e.pageX - this.moveLastPosition[0]);
 			const nodeViewOffsetPositionY = offsetPosition[1] + (e.pageY - this.moveLastPosition[1]);
-			this.$store.commit('setNodeViewOffsetPosition', {offset: [nodeViewOffsetPositionX, nodeViewOffsetPositionY], setStateDirty: true});
+			this.$store.commit('setNodeViewOffsetPosition', {newOffset: [nodeViewOffsetPositionX, nodeViewOffsetPositionY], setStateDirty: true});
 
 			// Update the last position
 			this.moveLastPosition[0] = e.pageX;
@@ -87,7 +87,7 @@ export const moveNodeWorkflow = mixins(nodeIndex).extend({
 			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
 			const nodeViewOffsetPositionX = offsetPosition[0] - e.deltaX;
 			const nodeViewOffsetPositionY = offsetPosition[1] - e.deltaY;
-			this.$store.commit('setNodeViewOffsetPosition', {offset: [nodeViewOffsetPositionX, nodeViewOffsetPositionY], setStateDirty: true});
+			this.$store.commit('setNodeViewOffsetPosition', {newOffset: [nodeViewOffsetPositionX, nodeViewOffsetPositionY], setStateDirty: true});
 		},
 	},
 });
