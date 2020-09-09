@@ -160,7 +160,6 @@ export const store = new Vuex.Store({
 
 		// Selected Nodes
 		addSelectedNode (state, node: INodeUi) {
-			state.stateIsDirty = true;
 			state.selectedNodes.push(node);
 		},
 		removeNodeFromSelection (state, node: INodeUi) {
