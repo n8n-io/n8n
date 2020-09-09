@@ -4,15 +4,20 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
+	IDataObject,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
 	apiRequest,
+	getImageBySize,
 } from './GenericFunctions';
 
+import {
+	IEvent,
+} from './IEvent';
 
 export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,7 +38,7 @@ export class TelegramTrigger implements INodeType {
 			{
 				name: 'telegramApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -105,6 +110,52 @@ export class TelegramTrigger implements INodeType {
 				default: [],
 				description: 'The update types to listen to.',
 			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Download Images/Files',
+						name: 'download',
+						type: 'boolean',
+						default: false,
+						description: `Telegram develiers the image in 3 sizes.<br>
+						By default, just the larger image would be downloaded.<br>
+						if you want to change the size set the field 'Image Size'`,
+					},
+					{
+						displayName: 'Image Size',
+						name: 'imageSize',
+						type: 'options',
+						displayOptions: {
+							show: {
+								download: [
+									true,
+								],
+							},
+						},
+						options: [
+							{
+								name: 'Small',
+								value: 'small',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+							},
+							{
+								name: 'Large',
+								value: 'large',
+							},
+						],
+						default: 'large',
+						description: 'The size of the image to be downloaded',
+					},
+				],
+			},
 		],
 	};
 
@@ -112,6 +163,14 @@ export class TelegramTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const endpoint = 'getWebhookInfo';
+				const webhookReturnData = await apiRequest.call(this, 'POST', endpoint, {});
+				const webhookUrl = this.getNodeWebhookUrl('default');
+
+				if (webhookReturnData.result.url === webhookUrl) {
+					return true;
+				}
+
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
@@ -149,14 +208,74 @@ export class TelegramTrigger implements INodeType {
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData();
+
+		const credentials = this.getCredentials('telegramApi') as IDataObject;
+
+		const bodyData = this.getBodyData() as IEvent;
+
+		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+
+		if (additionalFields.download === true) {
+
+			let imageSize = 'large';
+
+			if ((bodyData.message && bodyData.message.photo && Array.isArray(bodyData.message.photo) || bodyData.message?.document)) {
+
+				if (additionalFields.imageSize) {
+
+					imageSize = additionalFields.imageSize as string;
+
+				}
+
+				let fileId;
+
+				if (bodyData.message.photo) {
+
+					let image = getImageBySize(bodyData.message.photo as IDataObject[], imageSize) as IDataObject;
+
+					// When the image is sent from the desktop app telegram does not resize the image
+					// So return the only image avaiable
+					// Basically the Image Size parameter would work just when the images comes from the mobile app
+					if (image === undefined) {
+						image = bodyData.message.photo[0];
+					}
+
+					fileId = image.file_id;
+
+				} else {
+
+					fileId = bodyData.message?.document?.file_id;
+				}
+
+				const { result: { file_path } } = await apiRequest.call(this, 'GET', `getFile?file_id=${fileId}`, {});
+
+				const file = await apiRequest.call(this, 'GET', '', {}, {}, { json: false, encoding: null, uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${file_path}`, resolveWithFullResponse: true });
+
+				const data = Buffer.from(file.body as string);
+
+				const fileName = file_path.split('/').pop();
+
+				const binaryData = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName);
+
+				return {
+					workflowData: [
+						[
+							{
+								json: bodyData as unknown as IDataObject,
+								binary: {
+									data: binaryData,
+								},
+							}
+						]
+					],
+				};
+			}
+		}
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray([bodyData])
+				this.helpers.returnJsonArray([bodyData as unknown as IDataObject])
 			],
 		};
 	}
