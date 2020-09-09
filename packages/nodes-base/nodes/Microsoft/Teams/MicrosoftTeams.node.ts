@@ -30,7 +30,7 @@ export class MicrosoftTeams implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Teams',
 		name: 'microsoftTeams',
-		icon: 'file:team.png',
+		icon: 'file:teams.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
