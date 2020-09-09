@@ -123,6 +123,16 @@ export class GoogleContacts implements INodeType {
 						body.names[0].middleName = additionalFields.middleName as string;
 					}
 
+					if (additionalFields.honorificPrefix) {
+						//@ts-ignore
+						body.names[0].honorificPrefix = additionalFields.honorificPrefix as string;
+					}
+
+					if (additionalFields.honorificSuffix) {
+						//@ts-ignore
+						body.names[0].honorificSuffix = additionalFields.honorificSuffix as string;
+					}
+
 					if (additionalFields.companyUi) {
 						const companyValues = (additionalFields.companyUi as IDataObject).companyValues as IDataObject[];
 						body.organizations = companyValues;
@@ -297,6 +307,182 @@ export class GoogleContacts implements INodeType {
 					for (let i = 0; i < responseData.length; i++) {
 						responseData[i].contactId = responseData[i].resourceName.split('/')[1];
 					}
+				}
+				//https://developers.google.com/people/api/rest/v1/people/updateContact
+				if (operation === 'update') {
+					const updatePersonFields = [];
+
+					const contactId = this.getNodeParameter('contactId', i) as string;
+
+					const fields = this.getNodeParameter('fields', i) as string[];
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					let etag;
+
+					if (updateFields.etag) {
+
+						etag = updateFields.etag as string;
+
+					} else {
+
+						const data = await googleApiRequest.call(
+							this,
+							'GET',
+							`/people/${contactId}`,
+							{},
+							{ personFields: 'Names' },
+						);
+
+						etag = data.etag;
+
+					}
+
+					if (fields.includes('*')) {
+						qs.personFields = allFields.join(',');
+					} else {
+						qs.personFields = (fields as string[]).join(',');
+					}
+
+					const body: IDataObject = {
+						etag,
+						names: [
+							{},
+						],
+					};
+
+					if (updateFields.givenName) {
+						//@ts-ignore
+						body.names[0].givenName = updateFields.givenName as string;
+					}
+
+					if (updateFields.familyName) {
+						//@ts-ignore
+						body.names[0].familyName = updateFields.familyName as string;
+					}
+
+					if (updateFields.middleName) {
+						//@ts-ignore
+						body.names[0].middleName = updateFields.middleName as string;
+					}
+
+					if (updateFields.honorificPrefix) {
+						//@ts-ignore
+						body.names[0].honorificPrefix = updateFields.honorificPrefix as string;
+					}
+
+					if (updateFields.honorificSuffix) {
+						//@ts-ignore
+						body.names[0].honorificSuffix = updateFields.honorificSuffix as string;
+					}
+
+					if (updateFields.companyUi) {
+						const companyValues = (updateFields.companyUi as IDataObject).companyValues as IDataObject[];
+						body.organizations = companyValues;
+						updatePersonFields.push('organizations');
+					}
+
+					if (updateFields.phoneUi) {
+						const phoneValues = (updateFields.phoneUi as IDataObject).phoneValues as IDataObject[];
+						body.phoneNumbers = phoneValues;
+						updatePersonFields.push('phoneNumbers');
+					}
+
+					if (updateFields.addressesUi) {
+						const addressesValues = (updateFields.addressesUi as IDataObject).addressesValues as IDataObject[];
+						body.addresses = addressesValues;
+						updatePersonFields.push('addresses');
+					}
+
+					if (updateFields.relationsUi) {
+						const relationsValues = (updateFields.relationsUi as IDataObject).relationsValues as IDataObject[];
+						body.relations = relationsValues;
+						updatePersonFields.push('relations');
+					}
+
+					if (updateFields.eventsUi) {
+						const eventsValues = (updateFields.eventsUi as IDataObject).eventsValues as IDataObject[];
+						for (let i = 0; i < eventsValues.length; i++) {
+							const [month, day, year] = moment(eventsValues[i].date as string).format('MM/DD/YYYY').split('/');
+							eventsValues[i] = {
+								date: {
+									day,
+									month,
+									year,
+								},
+								type: eventsValues[i].type,
+							};
+						}
+						body.events = eventsValues;
+						updatePersonFields.push('events');
+					}
+
+					if (updateFields.birthday) {
+						const [month, day, year] = moment(updateFields.birthday as string).format('MM/DD/YYYY').split('/');
+
+						body.birthdays = [
+							{
+								date: {
+									day,
+									month,
+									year
+								}
+							}
+						];
+
+						updatePersonFields.push('birthdays');
+					}
+
+					if (updateFields.emailsUi) {
+						const emailsValues = (updateFields.emailsUi as IDataObject).emailsValues as IDataObject[];
+						body.emailAddresses = emailsValues;
+						updatePersonFields.push('emailAddresses');
+					}
+
+					if (updateFields.biographies) {
+						body.biographies = [
+							{
+								value: updateFields.biographies,
+								contentType: 'TEXT_PLAIN',
+							},
+						];
+						updatePersonFields.push('biographies');
+					}
+
+					if (updateFields.customFieldsUi) {
+						const customFieldsValues = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						body.userDefined = customFieldsValues;
+						updatePersonFields.push('userDefined');
+					}
+
+					if (updateFields.group) {
+						const memberships = (updateFields.group as string[]).map((groupId: string) => {
+							return {
+								contactGroupMembership: {
+									contactGroupResourceName: groupId
+								}
+							};
+						});
+
+						body.memberships = memberships;
+						updatePersonFields.push('memberships');
+					}
+
+					if ((body.names as IDataObject[]).length > 0) {
+						updatePersonFields.push('names');
+					}
+
+					qs.updatePersonFields = updatePersonFields.join(',');
+
+					responseData = await googleApiRequest.call(
+						this,
+						'PATCH',
+						`/people/${contactId}:updateContact`,
+						body,
+						qs
+					);
+
+					responseData.contactId = responseData.resourceName.split('/')[1];
 				}
 			}
 		}
