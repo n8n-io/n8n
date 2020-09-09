@@ -118,13 +118,6 @@ export const channelFields = [
 				description: `channel's description`,
 			},
 			{
-				displayName: 'Is Favorite By Default',
-				name: 'isFavoriteByDefault',
-				type: 'boolean',
-				default: false,
-				description: `Indicates whether the channel should automatically be marked 'favorite' for all members of the team.`,
-			},
-			{
 				displayName: 'Type',
 				name: 'type',
 				type: 'options',
@@ -382,13 +375,6 @@ export const channelFields = [
 				},
 				default: '',
 				description: `channel's description`,
-			},
-			{
-				displayName: 'Is Favorite By Default',
-				name: 'isFavoriteByDefault',
-				type: 'boolean',
-				default: false,
-				description: `Indicates whether the channel should automatically be marked 'favorite' for all members of the team.`,
 			},
 		],
 	},

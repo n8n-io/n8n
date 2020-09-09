@@ -134,9 +134,6 @@ export class MicrosoftTeams implements INodeType {
 					if (options.type) {
 						body.membershipType = options.type as string;
 					}
-					if (options.isFavoriteByDefault) {
-						body.isFavoriteByDefault = options.isFavoriteByDefault as boolean;
-					}
 					responseData = await microsoftApiRequest.call(this, 'POST', `/v1.0/teams/${teamId}/channels`, body);
 				}
 				//https://docs.microsoft.com/en-us/graph/api/channel-delete?view=graph-rest-beta&tabs=http
@@ -175,9 +172,6 @@ export class MicrosoftTeams implements INodeType {
 					}
 					if (updateFields.description) {
 						body.description = updateFields.description as string;
-					}
-					if (updateFields.isFavoriteByDefault) {
-						body.isFavoriteByDefault = updateFields.isFavoriteByDefault as boolean;
 					}
 					responseData = await microsoftApiRequest.call(this, 'PATCH', `/v1.0/teams/${teamId}/channels/${channelId}`, body);
 					responseData = { success: true };
