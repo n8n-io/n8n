@@ -7,7 +7,7 @@
 			:disabled="workflowRunning"
 			@click.stop="runWorkflow(node.name)"
 			class="execute-node-button"
-			:title="`Executes node ${node.name} and all not already executed nodes before it.`"
+			:title="`Executes this ${node.name} node after executing any previous nodes that have not yet returned data`"
 		>
 			<div class="run-icon-button">
 				<font-awesome-icon v-if="!workflowRunning" icon="play-circle"/>
@@ -19,7 +19,7 @@
 
 		<div class="header">
 			<div class="title-text">
-				<strong v-if="dataCount < this.MAX_DISPLAY_ITEMS_AUTO_ALL && dataSize < MAX_DISPLAY_DATA_SIZE">
+				<strong v-if="dataCount < maxDisplayItems">
 					Results: {{ dataCount }}
 				</strong>
 				<strong v-else>Results:
@@ -72,14 +72,14 @@
 				<span v-else>
 					<div v-if="showData === false" class="to-much-data">
 						<h3>
-							Node contains large amount of data
+							Node returned a large amount of data
 						</h3>
 
 						<div class="text">
 							The node contains {{parseInt(dataSize/1024).toLocaleString()}} KB of data.<br />
 							Displaying it could cause problems!<br />
 							<br />
-							If you decide to display it anyway avoid the JSON view!
+							If you do decide to display it, avoid the JSON view!
 						</div>
 
 						<el-button size="small" @click="displayMode = 'Table';showData = true;">
@@ -162,7 +162,7 @@
 				<div>
 					<strong>No data</strong><br />
 					<br />
-					To display data execute the node first by pressing the execute button above.
+					Data returned by this node will display here<br />
 				</div>
 			</div>
 		</div>
@@ -248,7 +248,11 @@ export default mixins(
 				return executionData.resultData.runData;
 			},
 			maxDisplayItemsOptions (): number[] {
-				return [25, 50, 100, 250, 500, 1000, this.dataCount].filter(option => option <= this.dataCount);
+				const options = [25, 50, 100, 250, 500, 1000].filter(option => option <= this.dataCount);
+				if (!options.includes(this.dataCount)) {
+					options.push(this.dataCount);
+				}
+				return options;
 			},
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;

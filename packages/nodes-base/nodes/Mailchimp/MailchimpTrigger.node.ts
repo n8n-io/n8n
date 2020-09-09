@@ -1,19 +1,19 @@
 import {
 	IHookFunctions,
 	IWebhookFunctions,
-  } from 'n8n-core';
+} from 'n8n-core';
 
-  import {
+import {
 	IDataObject,
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-  } from 'n8n-workflow';
-  import {
+} from 'n8n-workflow';
+import {
 	mailchimpApiRequest,
- } from './GenericFunctions';
+} from './GenericFunctions';
 
 export class MailchimpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,8 +24,8 @@ export class MailchimpTrigger implements INodeType {
 		version: 1,
 		description: 'Handle Mailchimp events via webhooks',
 		defaults: {
-		name: 'Mailchimp Trigger',
-		color: '#32325d',
+			name: 'Mailchimp Trigger',
+			color: '#32325d',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -285,8 +285,8 @@ export class MailchimpTrigger implements INodeType {
 		}
 		// @ts-ignore
 		if (!webhookData.events.includes(req.body.type)
-		// @ts-ignore
-		&& !webhookData.sources.includes(req.body.type)) {
+			// @ts-ignore
+			&& !webhookData.sources.includes(req.body.type)) {
 			return {};
 		}
 		return {

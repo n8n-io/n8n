@@ -219,7 +219,7 @@ export const tweetFields = [
 				description: 'The entities node will not be included when set to false',
 			},
 			{
-				displayName: 'Lang',
+				displayName: 'Language',
 				name: 'lang',
 				type: 'options',
 				typeOptions: {

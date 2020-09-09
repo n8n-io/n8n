@@ -17,13 +17,14 @@ export async function codaApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		method,
 		qs,
 		body,
-		uri: uri ||`https://coda.io/apis/v1beta1${resource}`,
+		uri: uri ||`https://coda.io/apis/v1${resource}`,
 		json: true
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {

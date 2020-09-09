@@ -1,4 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const eventOperations = [
 	{
@@ -37,37 +39,36 @@ export const eventOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update an event',
-			},
+			}
 		],
 		default: 'create',
-		description: 'The operation to perform.',
-	},
+		description: 'The operation to perform.'
+	}
 ] as INodeProperties[];
 
 export const eventFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 event:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
+			loadOptionsMethod: 'getCalendars'
 		},
 		required: true,
 		displayOptions: {
 			show: {
 				operation: [
-					'create',
+					'create'
 				],
 				resource: [
-					'event',
+					'event'
 				],
 			},
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Start',
@@ -85,7 +86,7 @@ export const eventFields = [
 			},
 		},
 		default: '',
-		description: 'Start time of the event.',
+		description: 'Start time of the event.'
 	},
 	{
 		displayName: 'End',
@@ -103,7 +104,7 @@ export const eventFields = [
 			},
 		},
 		default: '',
-		description: 'End time of the event.',
+		description: 'End time of the event.'
 	},
 	{
 		displayName: 'Use Default Reminders',
@@ -119,7 +120,7 @@ export const eventFields = [
 				],
 			},
 		},
-		default: true,
+		default: true
 	},
 	{
 		displayName: 'Additional Fields',
@@ -153,7 +154,7 @@ export const eventFields = [
 					},
 				],
 				default: 'no',
-				description: 'Wheater the event is all day or not',
+				description: 'Wheater the event is all day or not'
 			},
 			{
 				displayName: 'Attendees',
@@ -175,6 +176,15 @@ export const eventFields = [
 				},
 				default: '',
 				description: 'The color of the event.',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 			},
 			{
 				displayName: 'Guests Can Invite Others',
@@ -239,7 +249,7 @@ export const eventFields = [
 					{
 						name: 'Yearly',
 						value: 'yearly',
-					},
+					}
 				],
 				default: '',
 			},
@@ -254,9 +264,9 @@ export const eventFields = [
 				name: 'repeatHowManyTimes',
 				type: 'number',
 				typeOptions: {
-					minValue: 1,
+					minValue: 1
 				},
-				default: 1,
+				default: 1
 			},
 			{
 				displayName: 'Send Updates',
@@ -266,7 +276,7 @@ export const eventFields = [
 					{
 						name: 'All',
 						value: 'all',
-						description: ' Notifications are sent to all guests',
+						description: 'Notifications are sent to all guests'
 					},
 					{
 						name: 'External Only',
@@ -276,8 +286,8 @@ export const eventFields = [
 					{
 						name: 'None',
 						value: 'none',
-						description: ' No notifications are sent. This value should only be used for migration use case',
-					},
+						description: 'No notifications are sent. This value should only be used for migration use case',
+					}
 				],
 				description: 'Whether to send notifications about the creation of the new event',
 				default: '',
@@ -303,7 +313,7 @@ export const eventFields = [
 						name: 'Busy',
 						value: 'opaque',
 						description: ' The event does block time on the calendar.',
-					},
+					}
 				],
 				default: 'opaque',
 				description: 'Whether the event blocks time on the calendar',
@@ -316,7 +326,7 @@ export const eventFields = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on timezone set in n8n.'
+				description: 'The timezone the event will have set. By default events are schedule on timezone set in n8n.',
 			},
 			{
 				displayName: 'Visibility',
@@ -331,7 +341,7 @@ export const eventFields = [
 					{
 						name: 'Default',
 						value: 'default',
-						description: ' Uses the default visibility for events on the calendar.',
+						description: 'Uses the default visibility for events on the calendar.',
 					},
 					{
 						name: 'Private',
@@ -345,7 +355,7 @@ export const eventFields = [
 					},
 				],
 				default: 'default',
-				description: 'Visibility of the event.',
+				description: 'Visibility of the event.'
 			},
 		],
 	},
@@ -356,7 +366,7 @@ export const eventFields = [
 		default: '',
 		placeholder: 'Add Reminder',
 		typeOptions: {
-			multipleValues: true,
+			multipleValues: true
 		},
 		required: false,
 		displayOptions: {
@@ -404,13 +414,13 @@ export const eventFields = [
 						default: 0,
 					},
 				],
-			}
+			},
 		],
-		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`,
+		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 event:delete                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
@@ -429,7 +439,7 @@ export const eventFields = [
 				],
 			},
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Event ID',
@@ -473,7 +483,7 @@ export const eventFields = [
 					{
 						name: 'All',
 						value: 'all',
-						description: ' Notifications are sent to all guests',
+						description: 'Notifications are sent to all guests',
 					},
 					{
 						name: 'External Only',
@@ -483,17 +493,17 @@ export const eventFields = [
 					{
 						name: 'None',
 						value: 'none',
-						description: ' No notifications are sent. This value should only be used for migration use case',
-					},
+						description: 'No notifications are sent. This value should only be used for migration use case',
+					}
 				],
 				description: 'Whether to send notifications about the creation of the new event',
 				default: '',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 event:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
@@ -512,7 +522,7 @@ export const eventFields = [
 				],
 			},
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Event ID',
@@ -565,12 +575,12 @@ export const eventFields = [
 				},
 				default: '',
 				description: `Time zone used in the response. The default is the time zone of the calendar.`,
-			},
-		],
+			}
+		]
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 event:getAll                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:getAll                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
@@ -589,7 +599,7 @@ export const eventFields = [
 				],
 			},
 		},
-		default: '',
+		default: ''
 	},
 	{
 		displayName: 'Return All',
@@ -678,7 +688,7 @@ export const eventFields = [
 						name: 'Updated',
 						value: 'updated',
 						description: 'Order by last modification time (ascending).',
-					},
+					}
 				],
 				default: '',
 				description: 'The order of the events returned in the result.',
@@ -743,18 +753,18 @@ export const eventFields = [
 				default: '',
 				description: `Lower bound for an event's last modification time (as a RFC3339 timestamp) to filter by.<b/r>
 				When specified, entries deleted since this time will always be included regardless of showDeleted`,
-			},
-		],
+			}
+		]
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 event:update                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:update                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
+			loadOptionsMethod: 'getCalendars'
 		},
 		required: true,
 		displayOptions: {
@@ -800,7 +810,7 @@ export const eventFields = [
 				],
 			},
 		},
-		default: true,
+		default: true
 	},
 	{
 		displayName: 'Update Fields',
@@ -831,7 +841,7 @@ export const eventFields = [
 					{
 						name: 'No',
 						value: 'no',
-					},
+					}
 				],
 				default: 'no',
 				description: 'Wheater the event is all day or not',
@@ -856,6 +866,15 @@ export const eventFields = [
 				},
 				default: '',
 				description: 'The color of the event.',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
 			},
 			{
 				displayName: 'End',
@@ -927,7 +946,7 @@ export const eventFields = [
 					{
 						name: 'Yearly',
 						value: 'yearly',
-					},
+					}
 				],
 				default: '',
 			},
@@ -971,8 +990,8 @@ export const eventFields = [
 					{
 						name: 'None',
 						value: 'none',
-						description: ' No notifications are sent. This value should only be used for migration use case',
-					},
+						description: 'No notifications are sent. This value should only be used for migration use case',
+					}
 				],
 				description: 'Whether to send notifications about the creation of the new event',
 				default: '',
@@ -1011,7 +1030,7 @@ export const eventFields = [
 					loadOptionsMethod: 'getTimezones',
 				},
 				default: '',
-				description: 'The timezone the event will have set. By default events are schedule on n8n timezone '
+				description: 'The timezone the event will have set. By default events are schedule on n8n timezone',
 			},
 			{
 				displayName: 'Visibility',
@@ -1026,7 +1045,7 @@ export const eventFields = [
 					{
 						name: 'Default',
 						value: 'default',
-						description: ' Uses the default visibility for events on the calendar.',
+						description: 'Uses the default visibility for events on the calendar.',
 					},
 					{
 						name: 'Public',
@@ -1037,7 +1056,7 @@ export const eventFields = [
 						name: 'Private',
 						value: 'private',
 						description: 'The event is private and only event attendees may view event details.',
-					},
+					}
 				],
 				default: 'default',
 				description: 'Visibility of the event.',
@@ -1051,7 +1070,7 @@ export const eventFields = [
 		default: '',
 		placeholder: 'Add Reminder',
 		typeOptions: {
-			multipleValues: true,
+			multipleValues: true
 		},
 		required: false,
 		displayOptions: {
@@ -1084,7 +1103,7 @@ export const eventFields = [
 							{
 								name: 'Popup',
 								value: 'popup',
-							},
+							}
 						],
 						default: '',
 					},
@@ -1099,8 +1118,8 @@ export const eventFields = [
 						default: 0,
 					},
 				],
-			}
+			},
 		],
 		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`,
-	},
+	}
 ] as INodeProperties[];

@@ -115,6 +115,8 @@ import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
+
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
@@ -125,6 +127,8 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
+
+import { v4 as uuidv4 } from 'uuid';
 
 import { debounce } from 'lodash';
 import axios from 'axios';
@@ -163,6 +167,7 @@ export default mixins(
 	moveNodeWorkflow,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
 	workflowRun,
 )
@@ -946,6 +951,10 @@ export default mixins(
 				// Check if node-name is unique else find one that is
 				newNodeData.name = this.getUniqueNodeName(newNodeData.name);
 
+				if (nodeTypeData.webhooks && nodeTypeData.webhooks.length) {
+					newNodeData.webhookId = uuidv4();
+				}
+
 				await this.addNodes([newNodeData]);
 
 				// Automatically deselect all nodes and select the current one and also active
@@ -1318,6 +1327,8 @@ export default mixins(
 					}
 
 					if (workflowId !== null) {
+						const workflow = await this.restApi().getWorkflow(workflowId);
+						this.$titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflowId);
 					} else {
@@ -1579,6 +1590,11 @@ export default mixins(
 							console.error(e); // eslint-disable-line no-console
 						}
 						node.parameters = nodeParameters !== null ? nodeParameters : {};
+
+						// if it's a webhook and the path is empty set the UUID as the default path
+						if (node.type === 'n8n-nodes-base.webhook' && node.parameters.path === '') {
+							node.parameters.path = node.webhookId as string;
+						}
 					}
 
 					foundNodeIssues = this.getNodeIssues(nodeType, node);
@@ -1854,6 +1870,8 @@ export default mixins(
 				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
 				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
+				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
+				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
 			},
 			async loadNodeTypes (): Promise<void> {

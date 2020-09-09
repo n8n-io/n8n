@@ -6,6 +6,7 @@ import {
 export class JotFormApi implements ICredentialType {
 	name = 'jotFormApi';
 	displayName = 'JotForm API';
+	documentationUrl = 'jotForm';
 	properties = [
 		{
 			displayName: 'API Key',

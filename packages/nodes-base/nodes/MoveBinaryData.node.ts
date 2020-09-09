@@ -318,7 +318,7 @@ export class MoveBinaryData implements INodeType {
 		let options: IDataObject;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			item = items[itemIndex];
-			options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
@@ -336,7 +336,7 @@ export class MoveBinaryData implements INodeType {
 					continue;
 				}
 
-				const encoding = (options.encoding as string) || 'utf8';
+				const encoding = (options.encoding as BufferEncoding) || 'utf8';
 				let convertedValue = value.data;
 
 				if (setAllData === true) {
