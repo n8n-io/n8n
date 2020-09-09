@@ -183,19 +183,19 @@ export const store = new Vuex.Store({
 		},
 
 		// Connections
-		addConnection (state, data) {
-			if (data.connection.length !== 2) {
+		addConnection (state, {connection, setStateDirty}) {
+			if (connection.length !== 2) {
 				// All connections need two entries
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
 			}
 
-			if (data.setStateDirty === true) {
+			if (setStateDirty === true) {
 				state.stateIsDirty = true;
 			}
 
-			const sourceData: IConnection = data.connection[0];
-			const destinationData: IConnection = data.connection[1];
+			const sourceData: IConnection = connection[0];
+			const destinationData: IConnection = connection[1];
 
 			// Check if source node and type exist already and if not add them
 			if (!state.workflow.connections.hasOwnProperty(sourceData.node)) {
@@ -388,11 +388,11 @@ export const store = new Vuex.Store({
 		},
 
 		// Name
-		setWorkflowName (state, data) {
-			if (data.setStateDirty === true) {
+		setWorkflowName (state, {name, setStateDirty}) {
+			if (setStateDirty === true) {
 				state.stateIsDirty = true;
 			}
-			state.workflow.name = data.newName;
+			state.workflow.name = name;
 		},
 
 		// Nodes
@@ -476,11 +476,11 @@ export const store = new Vuex.Store({
 		setNodeViewMoveInProgress (state, value: boolean) {
 			state.nodeViewMoveInProgress = value;
 		},
-		setNodeViewOffsetPosition (state, data) {
-			if (data.setStateDirty === true) {
+		setNodeViewOffsetPosition (state, {offset, setStateDirty}) {
+			if (setStateDirty === true) {
 				state.stateIsDirty = true;
 			}
-			state.nodeViewOffsetPosition = data.newOffset;
+			state.nodeViewOffsetPosition = offset;
 		},
 
 		// Node-Types
