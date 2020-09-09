@@ -29,27 +29,41 @@ export const postFields = [
 /*                                 post:create                              */
 /* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Visibility',
-		name: 'clientName',
+		displayName: 'Post As',
+		name: 'postAs',
 		type: 'options',
 		default: '',
 		options: [
 			{
-				name: 'Connections',
-				value: 'connections'
+				name: 'Person',
+				value: 'person'
 			},
 			{
-				name: 'Public',
-				value: 'public'
+				name: 'Organization',
+				value: 'organization'
 			}
 		]
+	},
+	{
+		displayName: 'Organization URN',
+		name: 'organizationUrn',
+		type: 'string',
+		default: '',
+		description: 'URN of given organization',
+		displayOptions: {
+			show: {
+				postAs: [
+					'organization'
+				]
+			},
+		},
 	},
 	{
 		displayName: 'Commentary',
 		name: 'shareCommentary',
 		type: 'string',
 		default: '',
-		description: 'Provides the primary content for the post.'
+		description: 'Provides the primary content for the post'
 	},
 	{
 		displayName: 'Media Category',
@@ -60,35 +74,57 @@ export const postFields = [
 			{
 				name: 'None',
 				value: 'NONE',
-				description: 'The post does not contain any media, and will only consist of text.'
+				description: 'The post does not contain any media, and will only consist of text'
 			},
 			{
 				name: 'Article',
 				value: 'ARTICLE',
-				description: 'The post contains an article URL.'
+				description: 'The post contains an article URL'
 			},
 			{
 				name: 'Image',
 				value: 'IMAGE',
-				description: 'The post contains an image.'
+				description: 'The post contains an image'
 			}
 		]
 	},
-	// {
-	// 	displayName: 'Media URN',
-	// 	name: 'mediaUrn',
-	// 	type: 'string',
-	// 	default: '',
-	// 	required: true,
-	// 	displayOptions: {
-	// 		show: {
-	// 			shareMediaCategory: [
-	// 				'IMAGE'
-	// 			],
-	// 		},
-	// 	},
-	// 	description: 'URN of the uploaded image asset.'
-	// },
+	{
+		displayName: 'Visibility',
+		name: 'visibility',
+		type: 'options',
+		default: '',
+		options: [
+			{
+				name: 'Connections',
+				value: 'CONNECTIONS'
+			},
+			{
+				name: 'Public',
+				value: 'PUBLIC'
+			}
+		]
+	},
+	{
+		displayName: 'Binary Property',
+		displayOptions: {
+			show: {
+				resource: [
+					'post'
+				],
+				operation: [
+					'create',
+				],
+				shareMediaCategory: [
+					'IMAGE'
+				]
+			},
+		},
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		description: 'Object property name which holds binary data',
+		required: true,
+	},
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -108,21 +144,28 @@ export const postFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Provide a short description for your image or article.'
+				description: 'Provide a short description for your image or article'
 			},
 			{
 				displayName: 'Original URL',
 				name: 'originalUrl',
 				type: 'string',
 				default: '',
-				description: 'Provide the URL of the article you would like to share here.'
+				description: 'Provide the URL of the article you would like to share here',
+				displayOptions: {
+					show: {
+						'/shareMediaCategory': [
+							'ARTICLE'
+						]
+					}
+				}
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Customize the title of your image or article.'
+				description: 'Customize the title of your image or article'
 			},
 		]
 	},
