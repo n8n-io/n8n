@@ -20,6 +20,7 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
+import { compareSync } from 'bcrypt';
 
 import {
 	ActiveExecutions,
@@ -186,6 +187,8 @@ class App {
 				throw new Error('Basic auth is activated but no password got defined. Please set one!');
 			}
 
+			const basicAuthHashEnabled = await GenericHelpers.getConfigValue('security.basicAuth.hash') as boolean;
+
 			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 				if (req.url.match(authIgnoreRegex)) {
 					return next();
@@ -198,7 +201,7 @@ class App {
 					return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization is required!');
 				}
 
-				if (basicAuthData.name !== basicAuthUser || basicAuthData.pass !== basicAuthPassword) {
+				if (basicAuthData.name !== basicAuthUser || (!basicAuthHashEnabled && basicAuthData.pass !== basicAuthPassword) || (basicAuthHashEnabled && compareSync(basicAuthData.pass, basicAuthPassword) === false)) {
 					// Provided authentication data is wrong
 					return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization data is wrong!');
 				}
