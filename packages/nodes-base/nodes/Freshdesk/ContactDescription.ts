@@ -156,7 +156,7 @@ export const contactFields = [
 				},
 				description: `Key value pairs containing the name and value of the custom field.<br>
 				Only dates in the format YYYY-MM-DD are accepted as input for custom date fields.`,
-				default: {},
+				default: [],
 				options: [
 					{
 						displayName: 'Custom Field',
@@ -243,7 +243,7 @@ export const contactFields = [
 				displayName: 'Other Companies',
 				name: 'other_companies',
 				type: 'string',
-				default: '',
+				default: [],
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -256,7 +256,7 @@ export const contactFields = [
 				displayName: 'Other Emails',
 				name: 'other_emails',
 				type: 'string',
-				default: '',
+				default: [],
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -274,7 +274,7 @@ export const contactFields = [
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
-				default: '',
+				default: [],
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -306,7 +306,7 @@ export const contactFields = [
 				displayName: 'View All Tickets',
 				name: 'view_all_tickets',
 				type: 'boolean',
-				default: '',
+				default: false,
 				description: `Set to true if the contact can see all the tickets<br>
 				that are associated with the company to which he belong.`,
 			},
