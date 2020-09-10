@@ -83,7 +83,6 @@ export class LinkedIn implements INodeType {
 		}
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
@@ -95,26 +94,28 @@ export class LinkedIn implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'post') {
 				if (operation === 'create') {
-					const visibility = this.getNodeParameter('visibility', i) as string;
 					const shareCommentary = this.getNodeParameter('shareCommentary', i) as string;
 					const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
 					const postAs = this.getNodeParameter('postAs', i) as string;
 
 					let authorUrn = '';
+					let visibility = '';
 
 					if (postAs === 'person') {
 						const personUrn = this.getNodeParameter('person', i) as string;
+						// Only if posting as a person can user decide if post visible by public or connections
+						visibility = this.getNodeParameter('visibility', i) as string;
 						authorUrn = `urn:li:person:${personUrn}`;
 					} else {
 						const organizationUrn = this.getNodeParameter('organizationUrn', i) as string;
 						authorUrn = `urn:li:organization:${organizationUrn}`;
+						// Post by organization must always be public
+						visibility = 'PUBLIC';
 					}
 
 					let description = '';
 					let title = '';
 					let originalUrl = '';
-
-
 
 					if (shareMediaCategory === 'IMAGE') {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;

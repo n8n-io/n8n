@@ -4,14 +4,9 @@ import {
 
 import {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
-
-import {
-	IDataObject,
- } from 'n8n-workflow';
 
 export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, binary? : boolean,headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUrl = {
@@ -34,8 +29,6 @@ export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunction
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
-
-	console.log(options);
 
 	try {
 		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, {tokenType: 'Bearer'});

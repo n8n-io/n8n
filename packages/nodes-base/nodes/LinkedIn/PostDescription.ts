@@ -16,7 +16,7 @@ export const postOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new client',
+				description: 'Create a new post',
 			},
 		],
 		default: 'create',
@@ -33,6 +33,7 @@ export const postFields = [
 		name: 'postAs',
 		type: 'options',
 		default: '',
+		description: 'If to post on behalf of a user or an organization',
 		options: [
 			{
 				name: 'Person',
@@ -93,10 +94,18 @@ export const postFields = [
 		name: 'visibility',
 		type: 'options',
 		default: '',
+		description: 'Dictate if post will be seen by the public or only connections',
+		displayOptions: {
+			show: {
+				postAs: [
+					'person'
+				]
+			}
+		},
 		options: [
 			{
 				name: 'Connections',
-				value: 'CONNECTIONS'
+				value: 'CONNECTIONS',
 			},
 			{
 				name: 'Public',
