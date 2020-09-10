@@ -1274,13 +1274,12 @@ class App {
 
 			let options = {};
 
-			const redirectUri = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`
 			const oAuth2Parameters = {
 				clientId: _.get(oauthCredentials, 'clientId') as string,
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri,
+				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
 			};
 
@@ -1294,11 +1293,13 @@ class App {
 				delete oAuth2Parameters.clientSecret;
 			}
 
+			await this.externalHooks.run('oauth2.callback', [oAuth2Parameters]);
+
 			const oAuthObj = new clientOAuth2(oAuth2Parameters);
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
-			const oauthToken = await oAuthObj.code.getToken(`${redirectUri}?${queryParameters}`, options);
+			const oauthToken = await oAuthObj.code.getToken(`${oAuth2Parameters.redirectUri}?${queryParameters}`, options);
 
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
