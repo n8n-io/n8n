@@ -1012,7 +1012,7 @@ class App {
 
 			const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
 
-			const oauth = new clientOAuth1({
+			const oAuthOptions: clientOAuth1.Options = {
 				consumer: {
 					key: _.get(oauthCredentials, 'consumerKey') as string,
 					secret: _.get(oauthCredentials, 'consumerSecret') as string,
@@ -1024,16 +1024,20 @@ class App {
 						.update(base)
 						.digest('base64');
 				},
-			});
+			};
 
-			const callback = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`;
+			const oauthRequestData = {
+				oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`
+			};
+
+			await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
+
+			const oauth = new clientOAuth1(oAuthOptions);
 
 			const options: RequestOptions = {
 				method: 'POST',
 				url: (_.get(oauthCredentials, 'requestTokenUrl') as string),
-				data: {
-					oauth_callback: callback,
-				},
+				data: oauthRequestData,
 			};
 
 			const data = oauth.toHeader(oauth.authorize(options as RequestOptions));
@@ -1177,7 +1181,7 @@ class App {
 			};
 			const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
 
-			const oAuthObj = new clientOAuth2({
+			const oAuthOptions: clientOAuth2.Options = {
 				clientId: _.get(oauthCredentials, 'clientId') as string,
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
@@ -1185,7 +1189,11 @@ class App {
 				redirectUri: this.oauth2RedirectUri,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 				state: stateEncodedStr,
-			});
+			};
+
+			await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+
+			const oAuthObj = new clientOAuth2(oAuthOptions);
 
 			// Encrypt the data
 			const credentials = new Credentials(result.name, result.type, result.nodesAccess);

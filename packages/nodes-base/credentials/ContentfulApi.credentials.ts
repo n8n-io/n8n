@@ -7,6 +7,7 @@ import {
 export class ContentfulApi implements ICredentialType {
 	name = 'contentfulApi';
 	displayName = 'Contenful API';
+	documentationUrl = 'contentful';
 	properties = [
 		{
 			displayName: 'Space ID',
