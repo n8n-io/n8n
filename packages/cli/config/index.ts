@@ -145,14 +145,6 @@ const config = convict({
 				env: 'CREDENTIALS_OVERWRITE_ENDPOINT',
 			},
 		},
-		oauth2: {
-			redirectUri: {
-				doc: 'The redirect URI for OAuth',
-				format: String,
-				default: '',
-				env: 'CREDENTIALS_OAUTH2_REDIRECT_URI',
-			},
-		},
 	},
 
 	executions: {

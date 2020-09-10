@@ -120,7 +120,6 @@ class App {
 	push: Push.Push;
 	versions: IPackageVersions | undefined;
 	restEndpoint: string;
-	oauth2RedirectUri: string;
 
 	protocol: string;
 	sslKey: string;
@@ -152,8 +151,6 @@ class App {
 		this.sslCert = config.get('ssl_cert');
 
 		this.externalHooks = ExternalHooks();
-		this.oauth2RedirectUri =
-			config.get('credentials.oauth2.redirectUri') as string || `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`;
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
@@ -1186,7 +1183,7 @@ class App {
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: this.oauth2RedirectUri,
+				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 				state: stateEncodedStr,
 			};
@@ -1277,12 +1274,13 @@ class App {
 
 			let options = {};
 
+			const redirectUri = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`
 			const oAuth2Parameters = {
 				clientId: _.get(oauthCredentials, 'clientId') as string,
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: this.oauth2RedirectUri,
+				redirectUri,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
 			};
 
@@ -1300,7 +1298,7 @@ class App {
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
-			const oauthToken = await oAuthObj.code.getToken(`${this.oauth2RedirectUri}?${queryParameters}`, options);
+			const oauthToken = await oAuthObj.code.getToken(`${redirectUri}?${queryParameters}`, options);
 
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
