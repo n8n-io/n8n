@@ -49,8 +49,6 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		options.body = body;
 	}
 
-	console.log(JSON.stringify(options.body));
-
 	try {
 		const responseData = await this.helpers.request!(options);
 
