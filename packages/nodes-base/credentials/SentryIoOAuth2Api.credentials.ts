@@ -9,6 +9,7 @@ export class SentryIoOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Sentry.io OAuth2 API';
+	documentationUrl = 'sentryIo';
 	properties = [
 		{
 			displayName: 'Authorization URL',
