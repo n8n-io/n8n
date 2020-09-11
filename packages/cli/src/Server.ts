@@ -1176,7 +1176,7 @@ class App {
 			const csrfSecret = token.secretSync();
 			const state = {
 				token: token.create(csrfSecret),
-				cid: req.query.id
+				cid: req.query.id,
 			};
 			const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
 
@@ -1294,13 +1294,14 @@ class App {
 				};
 				delete oAuth2Parameters.clientSecret;
 			}
-			const redirectUri = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`;
+
+			await this.externalHooks.run('oauth2.callback', [oAuth2Parameters]);
 
 			const oAuthObj = new clientOAuth2(oAuth2Parameters);
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
-			const oauthToken = await oAuthObj.code.getToken(`${redirectUri}?${queryParameters}`, options);
+			const oauthToken = await oAuthObj.code.getToken(`${oAuth2Parameters.redirectUri}?${queryParameters}`, options);
 
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
