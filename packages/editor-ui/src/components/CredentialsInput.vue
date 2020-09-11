@@ -329,11 +329,16 @@ export default mixins(
 			let url;
 
 			let credentialData = this.credentialDataDynamic;
+
 			let newCredentials = false;
 			if (!credentialData) {
 				// Credentials did not get created yet. So create first before
 				// doing oauth authorize
 				credentialData = await this.createCredentials(false) as ICredentialsDecryptedResponse;
+				//@ts-ignore
+				credentialData['workflowId'] = this.$store.getters.workflowId;
+				//@ts-ignore
+				credentialData['nodeName'] = this.$store.getters.activeNode.name;
 				newCredentials = true;
 				if (credentialData === null) {
 					return;
@@ -347,6 +352,10 @@ export default mixins(
 			} else {
 				// Exists already but got maybe changed. So save first
 				credentialData = await this.updateCredentials(false) as ICredentialsDecryptedResponse;
+				//@ts-ignore
+				credentialData['workflowId'] = this.$store.getters.workflowId;
+				//@ts-ignore
+				credentialData['nodeName'] = this.$store.getters.activeNode.name;
 				if (credentialData === null) {
 					return;
 				}

@@ -80,6 +80,9 @@ import {
 	IRunData,
 	IWorkflowCredentials,
 	Workflow,
+	INode,
+	WorkflowDataProxy,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 
 import {
@@ -100,6 +103,9 @@ import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
 import { OptionsWithUrl } from 'request-promise-native';
+import { workerData } from 'worker_threads';
+import { getParameterIssues } from 'n8n-workflow/dist/src/NodeHelpers';
+import auth = require('basic-auth');
 
 class App {
 
@@ -1173,13 +1179,23 @@ class App {
 			};
 			const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
 
+			const workflowData = await Db.collections.Workflow?.findOne({ id: req.query.workflowId });
+
+			const nodeTypes = NodeTypes();
+			//@ts-ignore
+			const workflowInstance = new Workflow({ id: workflowData!.id, name: workflowData?.name, nodes: workflowData!.nodes, connections: workflowData!.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData!.settings });
+
+			const activeNode = workflowInstance.getNode(req.query.nodeName as string);
+
+			Object.assign(activeNode?.parameters, oauthCredentials);
+
 			const oAuthObj = new clientOAuth2({
 				clientId: _.get(oauthCredentials, 'clientId') as string,
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
-				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
-				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
+				accessTokenUri: workflowInstance.getSimpleParameterValue(activeNode as INode, _.get(oauthCredentials, 'accessTokenUrl', '') as string) as string,
+				authorizationUri: workflowInstance.getSimpleParameterValue(activeNode as INode, _.get(oauthCredentials, 'authUrl', '') as string) as string,
 				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
-				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
+				scopes: _.split(workflowInstance.getSimpleParameterValue(activeNode as INode, _.get(oauthCredentials, 'scope', 'openid') as string) as string, ','),
 				state: stateEncodedStr,
 			});
 
@@ -1196,10 +1212,10 @@ class App {
 			// Update the credentials in DB
 			await Db.collections.Credentials!.update(req.query.id as string, newCredentialsData);
 
-			const authQueryParameters = _.get(oauthCredentials, 'authQueryParameters', '') as string;
+			const authQueryParameters = workflowInstance.getSimpleParameterValue(activeNode as INode, _.get(oauthCredentials, 'authQueryParameters', '') as string);
 			let returnUri = oAuthObj.code.getUri();
 
-			// if scope uses comma, change it as the library always return then with spaces
+			// if scope uses comma, change it as the library always return them with spaces
 			if ((_.get(oauthCredentials, 'scope') as string).includes(',')) {
 				const data = querystring.parse(returnUri.split('?')[1] as string);
 				data.scope = _.get(oauthCredentials, 'scope') as string;
