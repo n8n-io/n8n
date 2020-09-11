@@ -1187,16 +1187,16 @@ class App {
 			const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
 
             const nodeTypes = NodeTypes();
-			
+
             const workflowData = await Db.collections.Workflow?.findOne({ id: req.query.workflowId });
+
+			//@ts-ignore
+			const workflowInstance = new Workflow({ id: workflowData!.id, name: workflowData?.name, nodes: workflowData!.nodes, connections: workflowData!.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData!.settings });
 
 			const activeNode = workflowInstance.getNode(req.query.nodeName as string);
 
             Object.assign(activeNode?.parameters, oauthCredentials);
-            
-			//@ts-ignore
-			const workflowInstance = new Workflow({ id: workflowData!.id, name: workflowData?.name, nodes: workflowData!.nodes, connections: workflowData!.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData!.settings });            
-            
+
             const oAuthOptions: clientOAuth2.Options = {
 				clientId: _.get(oauthCredentials, 'clientId') as string,
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
