@@ -1174,7 +1174,6 @@ class App {
 			const state = {
 				token: token.create(csrfSecret),
 				cid: req.query.id,
-				host: `${config.get('host') as string}/${this.restEndpoint}`,
 			};
 			const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
 
