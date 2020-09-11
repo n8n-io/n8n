@@ -59,7 +59,13 @@ export const issueOperationFields = [
 			{
 				displayName: 'Assigned To',
 				name: 'assigned_to',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectSlug',
+					],
+					loadOptionsMethod: 'getProjectUsers',
+				},
 				default: '',
 				description: 'User id to you want assign the issue to',
 			},
@@ -91,23 +97,41 @@ export const issueOperationFields = [
 			{
 				displayName: 'Milestone ID',
 				name: 'milestone',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectSlug',
+					],
+					loadOptionsMethod: 'getProjectMilestones',
+				},
 				default: '',
 			},
 			{
 				displayName: 'Priority ID',
 				name: 'priority',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectSlug',
+					],
+					loadOptionsMethod: 'getProjectPriorities',
+				},
 				default: '',
 			},
 			{
 				displayName: 'Severity ID',
 				name: 'severity',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectSlug',
+					],
+					loadOptionsMethod: 'getProjectSeverities',
+				},
 				default: '',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -124,7 +148,7 @@ export const issueOperationFields = [
 				placeholder: 'product, sales',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type ID',
 				name: 'type',
 				type: 'options',
 				typeOptions: {
@@ -133,12 +157,6 @@ export const issueOperationFields = [
 					],
 					loadOptionsMethod: 'getTypes'
 				},
-				default: '',
-			},
-			{
-				displayName: 'Watcher IDs',
-				name: 'watchers',
-				type: 'string',
 				default: '',
 			},
 		],
@@ -230,7 +248,7 @@ export const issueOperationFields = [
 				default: '',
 			},
 			{
-				displayName: 'Status',
+				displayName: 'Status ID',
 				name: 'status',
 				type: 'options',
 				typeOptions: {
@@ -253,20 +271,8 @@ export const issueOperationFields = [
 				placeholder: 'product, sales',
 			},
 			{
-				displayName: 'Type',
+				displayName: 'Type ID',
 				name: 'type',
-				type: 'options',
-				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectSlug',
-					],
-					loadOptionsMethod: 'getTypes'
-				},
-				default: '',
-			},
-			{
-				displayName: 'Watcher IDs',
-				name: 'watchers',
 				type: 'string',
 				default: '',
 			},
