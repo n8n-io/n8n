@@ -234,7 +234,7 @@ export class ActiveWorkflowRunner {
 			path = node.parameters.path as string;
 
 			if (node.parameters.path === undefined) {
-				path = workflow.getSimpleParameterValue(node, webhookData.webhookDescription['path']) as string | undefined;
+				path = workflow.expression.getSimpleParameterValue(node, webhookData.webhookDescription['path']) as string | undefined;
 
 				if (path === undefined) {
 					// TODO: Use a proper logger
@@ -243,7 +243,7 @@ export class ActiveWorkflowRunner {
 				}
 			}
 
-			const isFullPath: boolean = workflow.getSimpleParameterValue(node, webhookData.webhookDescription['isFullPath'], false) as boolean;
+			const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookData.webhookDescription['isFullPath'], false) as boolean;
 
 			const webhook = {
 				workflowId: webhookData.workflowId,
