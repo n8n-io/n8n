@@ -388,7 +388,7 @@ export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecu
 
 	let returnData;
 	try {
-		returnData = workflow.getParameterValue(value, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+		returnData = workflow.expression.getParameterValue(value, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
 	} catch (e) {
 		e.message += ` [Error in parameter: "${parameterName}"]`;
 		throw e;
@@ -434,12 +434,12 @@ export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode,
 		return undefined;
 	}
 
-	const path = workflow.getSimpleParameterValue(node, webhookDescription['path']);
+	const path = workflow.expression.getSimpleParameterValue(node, webhookDescription['path']);
 	if (path === undefined) {
 		return undefined;
 	}
 
-	const isFullPath: boolean = workflow.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
+	const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
 	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
 }
 
@@ -654,7 +654,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return continueOnFail(node);
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
-				return workflow.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
 			},
 			async executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
 				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
@@ -752,7 +752,7 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			},
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
-				return workflow.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
