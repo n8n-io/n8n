@@ -134,7 +134,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			}
 
 			if (this.nodeType !== null && this.nodeType.subtitle !== undefined) {
-				return this.workflow.getSimpleParameterValue(this.data as INode, this.nodeType.subtitle) as string | undefined;
+				return this.workflow.expression.getSimpleParameterValue(this.data as INode, this.nodeType.subtitle) as string | undefined;
 			}
 
 			if (this.data.parameters.operation !== undefined) {
