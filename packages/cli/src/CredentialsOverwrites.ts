@@ -3,6 +3,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	CredentialTypes,
 	ICredentialsOverwrite,
 	GenericHelpers,
 } from './';
@@ -49,7 +50,27 @@ class CredentialsOverwritesClass {
 	}
 
 	get(type: string): ICredentialDataDecryptedObject | undefined {
-		return this.overwriteData[type];
+		const credentialTypes = CredentialTypes();
+		const credentialTypeData = credentialTypes.getByName(type);
+
+		if (credentialTypeData === undefined) {
+			throw new Error(`The credentials of type "${type}" are not known.`);
+		}
+
+		if (credentialTypeData.extends === undefined) {
+			return this.overwriteData[type];
+		}
+
+		const overwrites: ICredentialDataDecryptedObject = {};
+		for (const credentialsTypeName of credentialTypeData.extends) {
+			Object.assign(overwrites, this.get(credentialsTypeName));
+		}
+
+		if (this.overwriteData[type] !== undefined) {
+			Object.assign(overwrites, this.overwriteData[type]);
+		}
+
+		return overwrites;
 	}
 
 	getAll(): ICredentialsOverwrite {
