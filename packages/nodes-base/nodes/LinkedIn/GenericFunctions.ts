@@ -1,6 +1,6 @@
 import {
 	OptionsWithUrl,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -8,7 +8,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, binary? : boolean,headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, binary?: boolean, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUrl = {
 		headers: {
 			'Accept': 'application/json',
@@ -31,7 +31,7 @@ export async function linkedInApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, {tokenType: 'Bearer'});
+		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, { tokenType: 'Bearer' });
 	} catch (error) {
 		if (error.respose && error.response.body && error.response.body.detail) {
 			throw new Error(`Linkedin Error response [${error.statusCode}]: ${error.response.body.detail}`);

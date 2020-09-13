@@ -33,99 +33,125 @@ export const postFields = [
 		name: 'postAs',
 		type: 'options',
 		default: '',
-		description: 'If to post on behalf of a user or an organization',
+		description: 'If to post on behalf of a user or an organization.',
 		options: [
 			{
 				name: 'Person',
-				value: 'person'
+				value: 'person',
 			},
 			{
 				name: 'Organization',
-				value: 'organization'
-			}
-		]
+				value: 'organization',
+			},
+		],
 	},
 	{
-		displayName: 'Organization URN',
-		name: 'organizationUrn',
-		type: 'string',
+		displayName: 'Person',
+		name: 'person',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getPersonUrn',
+		},
 		default: '',
-		description: 'URN of given organization',
+		required: true,
+		description: 'Person as which the post should be posted as.',
 		displayOptions: {
 			show: {
+				operation: [
+					'create',
+				],
 				postAs: [
-					'organization'
-				]
+					'person',
+				],
+				resource: [
+					'post',
+				],
+			}
+		}
+	},
+	{
+		displayName: 'Organization',
+		name: 'organization',
+		type: 'string',
+		default: '',
+		description: 'URN of Organization as which the post should be posted as',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				postAs: [
+					'organization',
+				],
+				resource: [
+					'post',
+				],
 			},
 		},
 	},
 	{
-		displayName: 'Commentary',
-		name: 'shareCommentary',
+		displayName: 'Text',
+		name: 'text',
 		type: 'string',
 		default: '',
-		description: 'Provides the primary content for the post'
+		description: 'The primary content of the post.',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'post',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Media Category',
 		name: 'shareMediaCategory',
 		type: 'options',
-		default: '',
+		default: 'NONE',
 		options: [
 			{
 				name: 'None',
 				value: 'NONE',
-				description: 'The post does not contain any media, and will only consist of text'
+				description: 'The post does not contain any media, and will only consist of text',
 			},
 			{
 				name: 'Article',
 				value: 'ARTICLE',
-				description: 'The post contains an article URL'
+				description: 'The post contains an article URL',
 			},
 			{
 				name: 'Image',
 				value: 'IMAGE',
-				description: 'The post contains an image'
+				description: 'The post contains an image',
 			}
-		]
-	},
-	{
-		displayName: 'Visibility',
-		name: 'visibility',
-		type: 'options',
-		default: '',
-		description: 'Dictate if post will be seen by the public or only connections',
+		],
 		displayOptions: {
 			show: {
-				postAs: [
-					'person'
-				]
-			}
-		},
-		options: [
-			{
-				name: 'Connections',
-				value: 'CONNECTIONS',
+				operation: [
+					'create',
+				],
+				resource: [
+					'post',
+				],
 			},
-			{
-				name: 'Public',
-				value: 'PUBLIC'
-			}
-		]
+		},
 	},
 	{
 		displayName: 'Binary Property',
 		displayOptions: {
 			show: {
-				resource: [
-					'post'
-				],
 				operation: [
 					'create',
 				],
+				resource: [
+					'post',
+				],
 				shareMediaCategory: [
-					'IMAGE'
-				]
+					'IMAGE',
+				],
 			},
 		},
 		name: 'binaryPropertyName',
@@ -142,8 +168,11 @@ export const postFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				shareMediaCategory: [
-					'IMAGE', 'ARTICLE'
+				operation: [
+					'create',
+				],
+				resource: [
+					'post',
 				],
 			},
 		},
@@ -153,29 +182,69 @@ export const postFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Provide a short description for your image or article'
+				description: 'Provide a short description for your image or article.',
+				displayOptions: {
+					show: {
+						'/shareMediaCategory': [
+							'ARTICLE',
+							'IMAGE',
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Original URL',
 				name: 'originalUrl',
 				type: 'string',
 				default: '',
-				description: 'Provide the URL of the article you would like to share here',
+				description: 'Provide the URL of the article you would like to share here.',
 				displayOptions: {
 					show: {
 						'/shareMediaCategory': [
-							'ARTICLE'
-						]
-					}
-				}
+							'ARTICLE',
+						],
+					},
+				},
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'Customize the title of your image or article'
+				description: 'Customize the title of your image or article.',
+				displayOptions: {
+					show: {
+						'/shareMediaCategory': [
+							'ARTICLE',
+							'IMAGE',
+						],
+					},
+				},
 			},
-		]
+			{
+				displayName: 'Visibility',
+				name: 'visibility',
+				type: 'options',
+				default: 'PUBLIC',
+				description: 'Dictate if post will be seen by the public or only connections.',
+				displayOptions: {
+					show: {
+						'/postAs': [
+							'person',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Connections',
+						value: 'CONNECTIONS',
+					},
+					{
+						name: 'Public',
+						value: 'PUBLIC',
+					},
+				],
+			},
+		],
 	},
 ] as INodeProperties[];

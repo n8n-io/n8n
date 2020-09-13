@@ -12,6 +12,13 @@ export class LinkedInOAuth2Api implements ICredentialType {
 	displayName = 'LinkedIn OAuth2 API';
 	properties = [
 		{
+			displayName: 'Organization Support',
+			name: 'organizationSupport',
+			type: 'boolean' as NodePropertyTypes,
+			default: true,
+			description: 'Request permissions to post as an orgaization.',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
@@ -28,8 +35,8 @@ export class LinkedInOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'string' as NodePropertyTypes,
-			default: 'r_liteprofile,r_emailaddress,w_member_social,w_organization_social',
+			type: 'hidden' as NodePropertyTypes,
+			default: '=r_liteprofile,r_emailaddress,w_member_social{{$parameter["organizationSupport"] === true ? ",w_organization_social":""}}',
 			description: 'Standard scopes for posting on behalf of a user or organization. See <a href="https://docs.microsoft.com/en-us/linkedin/marketing/getting-started#available-permissions"> this resource </a>.'
 		},
 		{
