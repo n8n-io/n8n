@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const channelMessageOperations = [
 	{
@@ -33,9 +33,9 @@ export const channelMessageOperations = [
 
 export const channelMessageFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                 channelMessage:create                      */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 channelMessage:create                      */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'teamId',
@@ -129,9 +129,9 @@ export const channelMessageFields = [
 		default: '',
 		description: 'The content of the item.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 channelMessage:getAll                      */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 channelMessage:getAll                      */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Team ID',
 		name: 'teamId',
