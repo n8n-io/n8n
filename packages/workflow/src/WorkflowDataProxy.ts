@@ -97,7 +97,7 @@ export class WorkflowDataProxy {
 
 				if (typeof returnValue === 'string' && returnValue.charAt(0) === '=') {
 					// The found value is an expression so resolve it
-					return that.workflow.getParameterValue(returnValue, that.runExecutionData, that.runIndex, that.itemIndex, that.activeNodeName, that.connectionInputData);
+					return that.workflow.expression.getParameterValue(returnValue, that.runExecutionData, that.runIndex, that.itemIndex, that.activeNodeName, that.connectionInputData);
 				}
 
 				return returnValue;
@@ -337,7 +337,7 @@ export class WorkflowDataProxy {
 			$env: this.envGetter(),
 			$evaluateExpression: (expression: string, itemIndex?: number) => {
 				itemIndex = itemIndex || that.itemIndex;
-				return that.workflow.getParameterValue('=' + expression, that.runExecutionData, that.runIndex, itemIndex, that.activeNodeName, that.connectionInputData);
+				return that.workflow.expression.getParameterValue('=' + expression, that.runExecutionData, that.runIndex, itemIndex, that.activeNodeName, that.connectionInputData);
 			},
 			$item: (itemIndex: number, runIndex?: number) => {
 				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;

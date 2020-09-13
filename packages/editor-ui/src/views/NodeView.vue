@@ -940,7 +940,7 @@ export default mixins(
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = this.getNewNodePosition(
-						[lastSelectedNode.position[0] + 150, lastSelectedNode.position[1]],
+						[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1]],
 						[100, 0],
 					);
 				} else {

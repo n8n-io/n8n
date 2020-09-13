@@ -319,6 +319,12 @@ const config = convict({
 				env: 'N8N_BASIC_AUTH_PASSWORD',
 				doc: 'The password of the basic auth user'
 			},
+			hash: {
+				format: 'Boolean',
+				default: false,
+				env: 'N8N_BASIC_AUTH_HASH',
+				doc: 'If password for basic auth is hashed'
+			}
 		},
 		jwtAuth: {
 			active: {

@@ -6,15 +6,29 @@ import {
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	freshdeskApiRequest,
 	freshdeskApiRequestAllItems,
 	// validateJSON,
 	capitalize
 } from './GenericFunctions';
+
+import {
+	ICreateContactBody,
+} from './ContactInterface';
+
+import {
+	contactFields,
+	contactOperations,
+} from './ContactDescription';
+
+import * as moment from 'moment-timezone';
+import { response } from 'express';
 
 enum Status {
 	Open = 2,
@@ -77,7 +91,7 @@ export class Freshdesk implements INodeType {
 		description: 'Consume Freshdesk API',
 		defaults: {
 			name: 'Freshdesk',
-			color: '#c02428',
+			color: '#25c10b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -94,6 +108,10 @@ export class Freshdesk implements INodeType {
 				type: 'options',
 				required: true,
 				options: [
+					{
+						name: 'Contact',
+						value: 'contact',
+					},
 					{
 						name: 'Ticket',
 						value: 'ticket',
@@ -1046,6 +1064,9 @@ export class Freshdesk implements INodeType {
 				default: '',
 				description: 'Ticket ID',
 			},
+			// CONTACTS
+			...contactOperations,
+			...contactFields,
 		]
 	};
 
@@ -1342,14 +1363,67 @@ export class Freshdesk implements INodeType {
 					const ticketId = this.getNodeParameter('ticketId', i) as string;
 					responseData = await freshdeskApiRequest.call(this, 'DELETE', `/tickets/${ticketId}`);
 				}
+			} else if (resource === 'contact') {
+				//https://developers.freshdesk.com/api/#create_contact
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const email = this.getNodeParameter('email', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					if (additionalFields.customFields) {
+						const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
+						additionalFields.custom_fields = {};
+						for (const data of metadata) {
+							//@ts-ignore
+							additionalFields.custom_fields[data.name as string] = data.value;
+						}
+						delete additionalFields.customFields;
+					}
+
+					const body: ICreateContactBody = additionalFields;
+					body.name = name;
+					if (email) {
+						body.email = email;
+					}
+					responseData = await freshdeskApiRequest.call(this, 'POST', '/contacts', body);
+				//https://developers.freshdesk.com/api/#delete_contact
+				} else if (operation === 'delete') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					responseData = await freshdeskApiRequest.call(this, 'DELETE', `/contacts/${contactId}`, {});
+				} else if (operation === 'get') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					responseData = await freshdeskApiRequest.call(this, 'GET', `/contacts/${contactId}`, {});
+				//https://developers.freshdesk.com/api/#list_all_contacts
+				} else if (operation === 'getAll') {
+					const qs = this.getNodeParameter('filters', i, {}) as IDataObject;
+					responseData = await freshdeskApiRequest.call(this, 'GET', '/contacts', {}, qs);
+				//https://developers.freshdesk.com/api/#update_contact
+				} else if (operation === 'update') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+
+					if (additionalFields.customFields) {
+						const metadata = (additionalFields.customFields as IDataObject).customField as IDataObject[];
+						additionalFields.custom_fields = {};
+						for (const data of metadata) {
+							//@ts-ignore
+							additionalFields.custom_fields[data.name as string] = data.value;
+						}
+						delete additionalFields.customFields;
+					}
+
+					const body: ICreateContactBody = additionalFields;
+					responseData = await freshdeskApiRequest.call(this, 'PUT', `/contacts/${contactId}`, body);
+				}
 			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
 				if (responseData === undefined) {
-					responseData = { json: {
+					responseData = {
 						success: true,
-					} };
+					};
 				}
 
 				returnData.push(responseData as IDataObject);
