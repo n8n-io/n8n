@@ -152,11 +152,11 @@ export class MicrosoftTeams implements INodeType {
 				//https://docs.microsoft.com/en-us/graph/api/channel-list?view=graph-rest-beta&tabs=http
 				if (operation === 'getAll') {
 					const teamId = this.getNodeParameter('teamId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll) {
 						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/teams/${teamId}/channels`);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/v1.0/teams/${teamId}/channels`, {});
 						responseData = responseData.splice(0, qs.limit);
 					}
@@ -196,11 +196,11 @@ export class MicrosoftTeams implements INodeType {
 				if (operation === 'getAll') {
 					const teamId = this.getNodeParameter('teamId', i) as string;
 					const channelId = this.getNodeParameter('channelId', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll) {
 						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/beta/teams/${teamId}/channels/${channelId}/messages`);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', `/beta/teams/${teamId}/channels/${channelId}/messages`, {});
 						responseData = responseData.splice(0, qs.limit);
 					}
