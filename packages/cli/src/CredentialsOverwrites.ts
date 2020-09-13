@@ -11,24 +11,44 @@ import {
 
 class CredentialsOverwritesClass {
 
+	private credentialTypes = CredentialTypes();
 	private overwriteData: ICredentialsOverwrite = {};
+	private resolvedTypes: string[] = [];
+
 
 	async init(overwriteData?: ICredentialsOverwrite) {
 		if (overwriteData !== undefined) {
 			// If data is already given it can directly be set instead of
 			// loaded from environment
-			this.overwriteData = overwriteData;
+			this.__setData(JSON.parse(JSON.stringify(overwriteData)));
 			return;
 		}
 
 		const data = await GenericHelpers.getConfigValue('credentials.overwrite.data') as string;
 
 		try {
-			this.overwriteData = JSON.parse(data);
+			const overwriteData = JSON.parse(data);
+			this.__setData(overwriteData);
 		} catch (error) {
 			throw new Error(`The credentials-overwrite is not valid JSON.`);
 		}
 	}
+
+
+	__setData(overwriteData: ICredentialsOverwrite) {
+		this.overwriteData = overwriteData;
+
+		for (const credentialTypeData of this.credentialTypes.getAll()) {
+			const type = credentialTypeData.name;
+
+			const overwrites = this.__getExtended(type);
+
+			if (overwrites && Object.keys(overwrites).length) {
+				this.overwriteData[type] = overwrites;
+			}
+		}
+	}
+
 
 	applyOverwrite(type: string, data: ICredentialDataDecryptedObject) {
 
@@ -49,29 +69,44 @@ class CredentialsOverwritesClass {
 		return returnData;
 	}
 
-	get(type: string): ICredentialDataDecryptedObject | undefined {
-		const credentialTypes = CredentialTypes();
-		const credentialTypeData = credentialTypes.getByName(type);
+
+	__getExtended(type: string): ICredentialDataDecryptedObject | undefined {
+
+		if (this.resolvedTypes.includes(type)) {
+			// Type got already resolved and can so returned directly
+			return this.overwriteData[type];
+		}
+
+		const credentialTypeData = this.credentialTypes.getByName(type);
 
 		if (credentialTypeData === undefined) {
 			throw new Error(`The credentials of type "${type}" are not known.`);
 		}
 
 		if (credentialTypeData.extends === undefined) {
+			this.resolvedTypes.push(type);
 			return this.overwriteData[type];
 		}
 
 		const overwrites: ICredentialDataDecryptedObject = {};
 		for (const credentialsTypeName of credentialTypeData.extends) {
-			Object.assign(overwrites, this.get(credentialsTypeName));
+			Object.assign(overwrites, this.__getExtended(credentialsTypeName));
 		}
 
 		if (this.overwriteData[type] !== undefined) {
 			Object.assign(overwrites, this.overwriteData[type]);
 		}
 
+		this.resolvedTypes.push(type);
+
 		return overwrites;
 	}
+
+
+	get(type: string): ICredentialDataDecryptedObject | undefined {
+		return this.overwriteData[type];
+	}
+
 
 	getAll(): ICredentialsOverwrite {
 		return this.overwriteData;
