@@ -79,7 +79,7 @@
     "vue": "^2.6.9",
     "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",
     "vue-json-tree": "^0.4.1",
-    "vue-prism-editor": "^0.3.0",
+    "vue-prism-editor": "^1.2.2",
     "vue-router": "^3.0.6",
     "vue-template-compiler": "^2.5.17",
     "vue-typed-mixins": "^0.2.0",
