@@ -8,12 +8,14 @@ const open = require('open');
 
 import * as config from '../config';
 import {
+	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialTypes,
 	CredentialsOverwrites,
 	Db,
 	ExternalHooks,
 	GenericHelpers,
+	IExecutionsCurrentSummary,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,
@@ -84,6 +86,21 @@ export class Start extends Command {
 		removePromises.push(testWebhooks.removeAll());
 
 		await Promise.all(removePromises);
+
+		// Wait for active workflow executions to finish
+		const activeExecutionsInstance = ActiveExecutions.getInstance();
+		let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
+
+		let count = 0;
+		while (executingWorkflows.length !== 0) {
+			if (count++ % 4 === 0) {
+				console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+			}
+			await new Promise((resolve) => {
+				setTimeout(resolve, 500);
+			});
+			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
+		}
 
 		process.exit(processExistCode);
 	}
