@@ -127,7 +127,7 @@ export class PostmarkTrigger implements INodeType {
 				if (this.getNodeParameter('includeContent') as boolean) {
 					events.push('includeContent');
 				}
-				if (this.getNodeParameter('firstOpen') as boolean) {
+				if (events.includes('open') && this.getNodeParameter('firstOpen') as boolean) {
 					events.push('firstOpen');
 				}
 
