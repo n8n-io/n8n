@@ -87,11 +87,14 @@ export class TaigaTrigger implements INodeType {
 				default: 'cloud',
 			},
 			{
-				displayName: 'Project Slug',
-				name: 'projectSlug',
-				type: 'string',
+				displayName: 'Project ID',
+				name: 'projectId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUserProjects',
+				},
 				default: '',
-				description: 'Project Slug',
+				description: 'Project ID',
 				required: true,
 			},
 		],
@@ -99,19 +102,20 @@ export class TaigaTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available tags to display them to user so that he can
+			// Get all the available projects to display them to user so that he can
 			// select them easily
-			async getStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const taigaUrl = this.getCurrentNodeParameter('taigaUrl') as string;
+			async getUserProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const statuses = await taigaApiRequest.call(this, taigaUrl, 'GET', 'issue-statuses');
-				for (const status of statuses) {
-					const statusName = status.name;
-					const statusSlug = status.slug;
+				const { id } = await taigaApiRequest.call(this, 'GET', '/users/me');
+
+				const projects = await taigaApiRequest.call(this,'GET', '/projects', {}, { member: id });
+				for (const project of projects) {
+					const projectName = project.name;
+					const projectId = project.id;
 					returnData.push({
-						name: statusName,
-						value: statusSlug,
+						name: projectName,
+						value: projectId,
 					});
 				}
 				return returnData;
@@ -156,9 +160,7 @@ export class TaigaTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 
-				const slug = this.getNodeParameter('projectSlug') as string;
-
-				const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
+				const projectId = this.getNodeParameter('projectId') as string;
 
 				const key = getAutomaticSecret(credentials);
 
@@ -166,7 +168,7 @@ export class TaigaTrigger implements INodeType {
 					name: `n8n-webhook:${webhookUrl}`,
 					url: webhookUrl,
 					key, //can't validate the secret, see: https://github.com/taigaio/taiga-back/issues/1031
-					project,
+					project: projectId,
 				};
 				const { id } = await taigaApiRequest.call(this, 'POST', '/webhooks', body);
 

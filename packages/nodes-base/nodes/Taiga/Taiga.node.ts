@@ -103,13 +103,11 @@ export class Taiga implements INodeType {
 			// Get all the available tags to display them to user so that he can
 			// select them easily
 			async getTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const slug = this.getCurrentNodeParameter('projectSlug') as string;
+				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
 				const returnData: INodePropertyOptions[] = [];
 
-				const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
-
-				const types = await taigaApiRequest.call(this, 'GET', `/issue-types?project=${project}`);
+				const types = await taigaApiRequest.call(this, 'GET', `/issue-types?project=${projectId}`);
 				for (const type of types) {
 					const typeName = type.name;
 					const typeId = type.id;
@@ -126,7 +124,9 @@ export class Taiga implements INodeType {
 			async getStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const statuses = await taigaApiRequest.call(this,'GET', '/issue-statuses');
+				const projectId = this.getCurrentNodeParameter('projectId') as string;
+
+				const statuses = await taigaApiRequest.call(this,'GET', '/issue-statuses', {}, { project: projectId });
 				for (const status of statuses) {
 					const statusName = status.name;
 					const statusId = status.id;
@@ -143,11 +143,9 @@ export class Taiga implements INodeType {
 			async getProjectUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const slug = this.getCurrentNodeParameter('projectSlug') as string;
+				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
-				const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
-
-				const users = await taigaApiRequest.call(this,'GET', '/users', {}, { project });
+				const users = await taigaApiRequest.call(this,'GET', '/users', {}, { project: projectId });
 				for (const user of users) {
 					const userName = user.username;
 					const userId = user.id;
@@ -164,11 +162,9 @@ export class Taiga implements INodeType {
 			async getProjectPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const slug = this.getCurrentNodeParameter('projectSlug') as string;
+				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
-				const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
-
-				const priorities = await taigaApiRequest.call(this,'GET', '/priorities', {}, { project });
+				const priorities = await taigaApiRequest.call(this,'GET', '/priorities', {}, { project: projectId });
 				for (const priority of priorities) {
 					const priorityName = priority.name;
 					const priorityId = priority.id;
@@ -185,11 +181,9 @@ export class Taiga implements INodeType {
 			async getProjectSeverities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const slug = this.getCurrentNodeParameter('projectSlug') as string;
+				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
-				const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
-
-				const severities = await taigaApiRequest.call(this,'GET', '/severities', {}, { project });
+				const severities = await taigaApiRequest.call(this,'GET', '/severities', {}, { project: projectId });
 				for (const severity of severities) {
 					const severityName = severity.name;
 					const severityId = severity.id;
@@ -206,17 +200,34 @@ export class Taiga implements INodeType {
 			async getProjectMilestones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const slug = this.getCurrentNodeParameter('projectSlug') as string;
+				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
-				const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
-
-				const milestones = await taigaApiRequest.call(this,'GET', '/milestones', {}, { project });
+				const milestones = await taigaApiRequest.call(this,'GET', '/milestones', {}, { project: projectId });
 				for (const milestone of milestones) {
 					const milestoneName = milestone.name;
 					const milestoneId = milestone.id;
 					returnData.push({
 						name: milestoneName,
 						value: milestoneId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the available projects to display them to user so that he can
+			// select them easily
+			async getUserProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const { id } = await taigaApiRequest.call(this, 'GET', '/users/me');
+
+				const projects = await taigaApiRequest.call(this,'GET', '/projects', {}, { member: id });
+				for (const project of projects) {
+					const projectName = project.name;
+					const projectId = project.id;
+					returnData.push({
+						name: projectName,
+						value: projectId,
 					});
 				}
 				return returnData;
@@ -237,14 +248,14 @@ export class Taiga implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'issue') {
 				if (operation === 'create') {
-					const slug = this.getNodeParameter('projectSlug', i) as number;
+					const projectId = this.getNodeParameter('projectId', i) as number;
+
 					const subject = this.getNodeParameter('subject', i) as string;
+
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
-
 					const body: IDataObject = {
-						project,
+						project: projectId,
 						subject,
 					};
 
@@ -260,6 +271,7 @@ export class Taiga implements INodeType {
 				if (operation === 'update') {
 
 					const issueId = this.getNodeParameter('issueId', i) as string;
+
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 					const body: IDataObject = {};
@@ -290,12 +302,10 @@ export class Taiga implements INodeType {
 
 				if (operation === 'getAll') {
 
-					const slug = this.getNodeParameter('projectSlug', i) as number;
+					const projectId = this.getNodeParameter('projectId', i) as number;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const { project } = await taigaApiRequest.call(this, 'GET', '/resolver', {}, { project: slug });
-
-					qs.project = project;
+					qs.project = projectId;
 
 					if (returnAll === true) {
 						responseData = await taigaApiRequestAllItems.call(this, 'GET', '/issues', {}, qs);

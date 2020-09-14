@@ -4,9 +4,12 @@ import {
 
 export const issueOperationFields = [
 	{
-		displayName: 'Project Slug',
-		name: 'projectSlug',
-		type: 'string',
+		displayName: 'Project ID',
+		name: 'projectId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getUserProjects',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -15,11 +18,12 @@ export const issueOperationFields = [
 				operation: [
 					'create',
 					'getAll',
+					'update',
 				],
 			},
 		},
 		default: '',
-		description: 'The project slug.  ',
+		description: 'The project ID.',
 		required: true,
 	},
 	{
@@ -62,7 +66,7 @@ export const issueOperationFields = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: [
-						'projectSlug',
+						'projectId',
 					],
 					loadOptionsMethod: 'getProjectUsers',
 				},
@@ -200,7 +204,13 @@ export const issueOperationFields = [
 			{
 				displayName: 'Assigned To',
 				name: 'assigned_to',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectId',
+					],
+					loadOptionsMethod: 'getProjectUsers',
+				},
 				default: '',
 				description: 'User id to you want assign the issue to',
 			},
@@ -232,19 +242,37 @@ export const issueOperationFields = [
 			{
 				displayName: 'Milestone ID',
 				name: 'milestone',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectSlug',
+					],
+					loadOptionsMethod: 'getProjectMilestones',
+				},
 				default: '',
 			},
 			{
 				displayName: 'Priority ID',
 				name: 'priority',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectSlug',
+					],
+					loadOptionsMethod: 'getProjectPriorities',
+				},
 				default: '',
 			},
 			{
 				displayName: 'Severity ID',
 				name: 'severity',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectSlug',
+					],
+					loadOptionsMethod: 'getProjectSeverities',
+				},
 				default: '',
 			},
 			{
@@ -273,7 +301,13 @@ export const issueOperationFields = [
 			{
 				displayName: 'Type ID',
 				name: 'type',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'projectSlug',
+					],
+					loadOptionsMethod: 'getTypes'
+				},
 				default: '',
 			},
 		],
