@@ -7,6 +7,7 @@ import {
 export class Mqtt implements ICredentialType {
 	name = 'mqtt';
 	displayName = 'MQTT';
+	documentationUrl = 'mqtt';
 	properties = [
 		// The credentials to get from user and save encrypted.
 		// Properties can be defined exactly in the same way
