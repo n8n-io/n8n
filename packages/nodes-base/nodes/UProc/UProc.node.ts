@@ -24,7 +24,7 @@ import {
 
 export class UProc implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'uProc',
+		displayName: 'UProc',
 		name: 'uproc',
 		icon: 'file:uproc.png',
 		group: ['output'],
@@ -71,7 +71,7 @@ export class UProc implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			const body: LooseObject = {
-				processor: tool,
+				processor: tool.replace(/ /g, "-").toLowerCase(),
 				params: {}
 			};
 
