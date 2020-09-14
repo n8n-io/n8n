@@ -12,6 +12,12 @@ export class PhilipsHueOAuth2Api implements ICredentialType {
 	documentationUrl = 'philipsHue';
 	properties = [
 		{
+			displayName: 'APP ID',
+			name: 'appId',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
@@ -27,7 +33,7 @@ export class PhilipsHueOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: '',
+			default: '={{"appid="+$parameter["appId"]}}',
 		},
 		{
 			displayName: 'Scope',
@@ -36,11 +42,11 @@ export class PhilipsHueOAuth2Api implements ICredentialType {
 			default: '',
 		},
 		{
-            displayName: 'Authentication',
-            name: 'authentication',
-            type: 'hidden' as NodePropertyTypes,
-            default: 'header',
-            description: 'Method of authentication.',
-        },
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'hidden' as NodePropertyTypes,
+			default: 'header',
+			description: 'Method of authentication.',
+		},
 	];
 }
