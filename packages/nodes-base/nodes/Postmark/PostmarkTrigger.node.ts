@@ -124,11 +124,17 @@ export class PostmarkTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events') as string[];
-				if (this.getNodeParameter('includeContent') as boolean) {
-					events.push('includeContent');
+
+				if (events.includes('bounce') || events.includes('spamComplaint')) {
+					if (this.getNodeParameter('includeContent') as boolean) {
+						events.push('includeContent');
+					}
 				}
-				if (events.includes('open') && this.getNodeParameter('firstOpen') as boolean) {
-					events.push('firstOpen');
+
+				if (events.includes('open')) {
+					if (this.getNodeParameter('firstOpen') as boolean) {
+						events.push('firstOpen');
+					}
 				}
 
 				// Get all webhooks
