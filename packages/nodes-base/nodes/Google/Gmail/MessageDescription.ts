@@ -442,7 +442,7 @@ export const messageFields = [
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
-				default: '',
+				default: [],
 				description: 'Only return messages with labels that match all of the specified label IDs.',
 			},
 			{

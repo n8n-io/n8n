@@ -15,63 +15,87 @@ import {
 	accountFields,
 	accountOperations,
 } from './AccountDescription';
+
 import {
 	IAccount,
 } from './AccountInterface';
+
 import {
 	attachmentFields,
 	attachmentOperations,
 } from './AttachmentDescription';
+
 import {
 	IAttachment,
 } from './AttachmentInterface';
+
 import {
 	ICampaignMember,
 } from './CampaignMemberInterface';
+
 import {
 	caseFields,
 	caseOperations,
 } from './CaseDescription';
+
 import {
 	ICase,
 	ICaseComment,
 } from './CaseInterface';
+
 import {
 	contactFields,
 	contactOperations,
 } from './ContactDescription';
+
 import {
 	IContact,
 } from './ContactInterface';
+
 import {
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 } from './GenericFunctions';
+
 import {
 	leadFields,
 	leadOperations,
 } from './LeadDescription';
+
 import {
 	ILead,
 } from './LeadInterface';
+
 import {
 	INote,
 } from './NoteInterface';
+
 import {
 	opportunityFields,
 	opportunityOperations,
 } from './OpportunityDescription';
+
 import {
 	IOpportunity,
 } from './OpportunityInterface';
+
 import {
 	taskFields,
 	taskOperations,
 } from './TaskDescription';
+
 import {
 	ITask,
 } from './TaskInterface';
 
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+
+import {
+	IUser,
+} from './UserInterface';
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {
@@ -135,7 +159,11 @@ export class Salesforce implements INodeType {
 						value: 'task',
 						description: 'Represents a business activity such as making a phone call or other to-do items. In the user interface, and records are collectively referred to as activities.',
 					},
-
+					{
+						name: 'User',
+						value: 'user',
+						description: 'Represents a person, which is one user in system.',
+					},
 				],
 				default: 'lead',
 				description: 'Resource to consume.',
@@ -154,6 +182,8 @@ export class Salesforce implements INodeType {
 			...taskFields,
 			...attachmentOperations,
 			...attachmentFields,
+			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -1883,6 +1913,35 @@ export class Salesforce implements INodeType {
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/get-attachment-id
 				if (operation === 'getSummary') {
 					responseData = await salesforceApiRequest.call(this, 'GET', '/sobjects/attachment');
+				}
+			}
+			if (resource === 'user') {
+				//https://developer.salesforce.com/docs/api-explorer/sobject/User/get-user-id
+				if (operation === 'get') {
+					const userId = this.getNodeParameter('userId', i) as string;
+					responseData = await salesforceApiRequest.call(this, 'GET', `/sobjects/user/${userId}`);
+				}
+				//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const fields = ['id,name,email'];
+					if (options.fields) {
+						// @ts-ignore
+						fields.push(...options.fields.split(','));
+					}
+					try {
+						if (returnAll) {
+							qs.q = `SELECT ${fields.join(',')} FROM User`;
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.q = `SELECT ${fields.join(',')} FROM User Limit ${limit}`;
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						}
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
 				}
 			}
 			if (Array.isArray(responseData)) {
