@@ -36,7 +36,7 @@ export async function getAuthorization(
 			password,
 			username,
 		},
-		uri: (credentials.domain) ? `http://${credentials.domain}/api/v1/auth` : 'https://api.taiga.io/api/v1/auth',
+		uri: (credentials.url) ? `${credentials.url}/api/v1/auth` : 'https://api.taiga.io/api/v1/auth',
 		json: true,
 	};
 
@@ -81,7 +81,7 @@ export async function taigaApiRequest(
 		qs: query,
 		method,
 		body,
-		uri: uri || (credentials.domain) ? `http://${credentials.domain}/api/v1${resource}` : `https://api.taiga.io/api/v1${resource}`,
+		uri: uri || (credentials.url) ? `${credentials.url}/api/v1${resource}` : `https://api.taiga.io/api/v1${resource}`,
 		json: true
 	};
 
@@ -95,13 +95,6 @@ export async function taigaApiRequest(
 		let errorMessage = error;
 		if (error.response.body && error.response.body._error_message) {
 			errorMessage = error.response.body._error_message;
-
-			// when project slug is not correct currently the API responds with invalid permitions
-			// so make the message more clear
-			if (errorMessage === 'You do not have permission to perform this action.' &&
-				(method === 'GET' || method === 'POST') && resource === '/resolver') {
-					errorMessage = 'Invalid project slug';
-			}
 		}
 
 		throw new Error(`Taigan error response [${error.statusCode}]: ${errorMessage}`);

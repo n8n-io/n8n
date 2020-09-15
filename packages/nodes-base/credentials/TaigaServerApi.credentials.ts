@@ -20,11 +20,11 @@ export class TaigaServerApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Domain',
-			name: 'domain',
+			displayName: 'URL',
+			name: 'url',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			placeholder: 'taiga.yourdomain.com',
+			placeholder: 'https://taiga.yourdomain.com',
 		},
 	];
 }
