@@ -44,6 +44,7 @@
       "dist/credentials/CircleCiApi.credentials.js",
       "dist/credentials/ClearbitApi.credentials.js",
       "dist/credentials/ClickUpApi.credentials.js",
+      "dist/credentials/ClickUpOAuth2Api.credentials.js",
       "dist/credentials/ClockifyApi.credentials.js",
       "dist/credentials/CockpitApi.credentials.js",
       "dist/credentials/CodaApi.credentials.js",

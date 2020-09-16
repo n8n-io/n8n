@@ -152,6 +152,12 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
 
+	// If keep bearer is false remove the it from the authorization header
+	if (oAuth2Options?.keepBearer === false) {
+		//@ts-ignore
+		newRequestOptions?.headers?.Authorization = newRequestOptions?.headers?.Authorization.split(' ')[1];
+	}
+
 	return this.helpers.request!(newRequestOptions)
 		.catch(async (error: IResponseError) => {
 			// TODO: Check if also other codes are possible
