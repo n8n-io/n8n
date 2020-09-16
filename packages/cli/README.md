@@ -60,9 +60,9 @@ If you are interested in a hosted version of n8n on our infrastructure please co
 
 
 
-## What does n8n mean and how do you pronounce it
+## What does n8n mean and how do you pronounce it?
 
-**Short answer:** It means "nodemation"
+**Short answer:** It means "nodemation" and it is pronounced as n-eight-n.
 
 **Long answer:** I get that question quite often (more often than I expected)
 so I decided it is probably best to answer it here. While looking for a
@@ -89,8 +89,7 @@ If you have problems or questions go to our forum, we will then try to help you 
 If you are interested in working for n8n and so shape the future of the project
 check out our job posts:
 
-[https://jobs.n8n.io](https://jobs.n8n.io)
-
+[https://n8n.join.com](https://n8n.join.com)
 
 
 ## Upgrading

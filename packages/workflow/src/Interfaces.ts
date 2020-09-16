@@ -12,6 +12,12 @@ export interface IBinaryData {
 	fileExtension?: string;
 }
 
+export interface IOAuth2Options {
+	includeCredentialsOnRefreshOnBody?: boolean;
+	property?: string;
+	tokenType?: string;
+	keepBearer?: boolean;
+}
 
 export interface IConnection {
 	// The node the connection is to
@@ -97,6 +103,7 @@ export interface ICredentialType {
 	displayName: string;
 	extends?: string[];
 	properties: INodeProperties[];
+	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 }
 
@@ -179,7 +186,6 @@ export interface IExecuteData {
 	data: ITaskDataConnections;
 	node: INode;
 }
-
 
 export type IContextObject = {
 	[key: string]: any; // tslint:disable-line:no-any
@@ -333,6 +339,7 @@ export interface INode {
 	maxTries?: number;
 	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
+	executeOnce?: boolean;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;

@@ -90,7 +90,6 @@ export class WorkflowRunner {
 		WorkflowExecuteAdditionalData.pushExecutionFinished(executionMode, fullRunData, executionId);
 	}
 
-
 	/**
 	 * Run the workflow
 	 *
@@ -155,7 +154,25 @@ export class WorkflowRunner {
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
 
+		// Soft timeout to stop workflow execution after current running node
+		let executionTimeout: NodeJS.Timeout;
+		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+		}
+
+		if (workflowTimeout) {
+			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
+			executionTimeout = setTimeout(() => {
+				this.activeExecutions.stopExecution(executionId, 'timeout');
+			}, timeout);
+		}
+
 		workflowExecution.then((fullRunData) => {
+			clearTimeout(executionTimeout);
+			if (workflowExecution.isCanceled) {
+				fullRunData.finished = false;
+			}
 			this.activeExecutions.remove(executionId, fullRunData);
 		});
 
@@ -195,6 +212,7 @@ export class WorkflowRunner {
 
 		let nodeTypeData: ITransferNodeTypes;
 		let credentialTypeData: ICredentialsTypeData;
+		let credentialsOverwrites = this.credentialsOverwrites;
 
 		if (loadAllNodeTypes === true) {
 			// Supply all nodeTypes and credentialTypes
@@ -202,15 +220,22 @@ export class WorkflowRunner {
 			const credentialTypes = CredentialTypes();
 			credentialTypeData = credentialTypes.credentialTypes;
 		} else {
-			// Supply only nodeTypes and credentialTypes which the workflow needs
+			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
 			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
 			credentialTypeData = WorkflowHelpers.getCredentialsData(data.credentials);
+
+			credentialsOverwrites = {};
+			for (const credentialName of Object.keys(credentialTypeData)) {
+				if (this.credentialsOverwrites[credentialName] !== undefined) {
+					credentialsOverwrites[credentialName] = this.credentialsOverwrites[credentialName];
+				}
+			}
 		}
 
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = this.credentialsOverwrites;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = credentialsOverwrites;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypeData; // TODO: Still needs correct value
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
@@ -218,24 +243,54 @@ export class WorkflowRunner {
 		// Send all data to subprocess it needs to run the workflow
 		subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
 
+		// Start timeout for the execution
+		let executionTimeout: NodeJS.Timeout;
+		let workflowTimeout = config.get('executions.timeout') as number > 0 && config.get('executions.timeout') as number; // initialize with default
+		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
+			workflowTimeout = data.workflowData.settings!.executionTimeout as number > 0 && data.workflowData.settings!.executionTimeout as number; // preference on workflow setting
+		}
+
+		if (workflowTimeout) {
+			const timeout = Math.min(workflowTimeout, config.get('executions.maxTimeout') as number) * 1000; // as seconds
+			executionTimeout = setTimeout(() => {
+				this.activeExecutions.stopExecution(executionId, 'timeout');
+
+				executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)); // minimum 5 seconds
+			}, timeout);
+		}
+
+
 		// Listen to data from the subprocess
 		subprocess.on('message', (message: IProcessMessage) => {
 			if (message.type === 'end') {
+				clearTimeout(executionTimeout);
 				this.activeExecutions.remove(executionId!, message.data.runData);
+
 			} else if (message.type === 'processError') {
-
+				clearTimeout(executionTimeout);
 				const executionError = message.data.executionError as IExecutionError;
-
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 
 			} else if (message.type === 'processHook') {
 				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
+			} else if (message.type === 'timeout') {
+				// Execution timed out and its process has been terminated
+				const timeoutError = { message: 'Workflow execution timed out!' } as IExecutionError;
+
+				this.processError(timeoutError, startedAt, data.executionMode, executionId);
 			}
 		});
 
-		// Also get informed when the processes does exit especially when it did crash
+		// Also get informed when the processes does exit especially when it did crash or timed out
 		subprocess.on('exit', (code, signal) => {
-			if (code !== 0) {
+			if (signal === 'SIGTERM'){
+				// Execution timed out and its process has been terminated
+				const timeoutError = {
+					message: 'Workflow execution timed out!',
+				} as IExecutionError;
+
+				this.processError(timeoutError, startedAt, data.executionMode, executionId);
+			} else if (code !== 0) {
 				// Process did exit with error code, so something went wrong.
 				const executionError = {
 					message: 'Workflow execution process did crash for an unknown reason!',
@@ -243,6 +298,7 @@ export class WorkflowRunner {
 
 				this.processError(executionError, startedAt, data.executionMode, executionId);
 			}
+			clearTimeout(executionTimeout);
 		});
 
 		return executionId;

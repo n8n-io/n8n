@@ -115,6 +115,8 @@ import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
+
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
@@ -165,6 +167,7 @@ export default mixins(
 	moveNodeWorkflow,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
 	workflowRun,
 )
@@ -937,7 +940,7 @@ export default mixins(
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = this.getNewNodePosition(
-						[lastSelectedNode.position[0] + 150, lastSelectedNode.position[1]],
+						[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1]],
 						[100, 0],
 					);
 				} else {
@@ -1324,6 +1327,8 @@ export default mixins(
 					}
 
 					if (workflowId !== null) {
+						const workflow = await this.restApi().getWorkflow(workflowId);
+						this.$titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflowId);
 					} else {
@@ -1865,6 +1870,8 @@ export default mixins(
 				this.$store.commit('setSaveDataSuccessExecution', settings.saveDataSuccessExecution);
 				this.$store.commit('setSaveManualExecutions', settings.saveManualExecutions);
 				this.$store.commit('setTimezone', settings.timezone);
+				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
+				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
 			},
 			async loadNodeTypes (): Promise<void> {

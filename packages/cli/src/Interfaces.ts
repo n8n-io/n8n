@@ -286,16 +286,16 @@ export interface IN8nUISettings {
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
 	timezone: string;
 	urlBaseWebhook: string;
 	versionCli: string;
 }
 
-
 export interface IPackageVersions {
 	cli: string;
 }
-
 
 export interface IPushData {
 	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook;
@@ -303,7 +303,6 @@ export interface IPushData {
 }
 
 export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'testWebhookDeleted' | 'testWebhookReceived';
-
 
 export interface IPushDataExecutionFinished {
 	data: IRun;

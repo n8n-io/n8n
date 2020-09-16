@@ -7,6 +7,7 @@ import {
 export class MoceanApi implements ICredentialType {
 	name = 'moceanApi';
 	displayName = 'Mocean Api';
+	documentationUrl = 'mocean';
 	properties = [
 		// The credentials to get from user and save encrypted.
 		// Properties can be defined exactly in the same way
