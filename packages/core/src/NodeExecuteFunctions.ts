@@ -162,7 +162,6 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 		.catch(async (error: IResponseError) => {
 			// TODO: Check if also other codes are possible
 			if (error.statusCode === 401) {
-				// TODO: Whole refresh process is not tested yet
 				// Token is probably not valid anymore. So try refresh it.
 
 				const tokenRefreshOptions: IDataObject = {};
