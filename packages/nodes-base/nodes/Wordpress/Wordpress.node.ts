@@ -238,7 +238,7 @@ export class Wordpress implements INodeType {
 					if (options.context) {
 						qs.context = options.context as string;
 					}
-					responseData = await wordpressApiRequest.call(this,'GET', `/posts/${postId}`, {}, qs);
+					responseData = await wordpressApiRequest.call(this, 'GET', `/posts/${postId}`, {}, qs);
 				}
 				//https://developer.wordpress.org/rest-api/reference/posts/#list-posts
 				if (operation === 'getAll') {
@@ -372,7 +372,7 @@ export class Wordpress implements INodeType {
 					if (options.context) {
 						qs.context = options.context as string;
 					}
-					responseData = await wordpressApiRequest.call(this,'GET', `/users/${userId}`, {}, qs);
+					responseData = await wordpressApiRequest.call(this, 'GET', `/users/${userId}`, {}, qs);
 				}
 				//https://developer.wordpress.org/rest-api/reference/users/#list-users
 				if (operation === 'getAll') {
