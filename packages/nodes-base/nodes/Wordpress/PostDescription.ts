@@ -85,6 +85,16 @@ export const postFields = [
 		},
 		options: [
 			{
+				displayName: 'Author ID',
+				name: 'authorId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAuthors',
+				},
+				default: '',
+				description: 'The ID for the author of the object.',
+			},
+			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
@@ -287,6 +297,16 @@ export const postFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Author ID',
+				name: 'authorId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getAuthors',
+				},
+				default: '',
+				description: 'The ID for the author of the object.',
+			},
 			{
 				displayName: 'Title',
 				name: 'title',
