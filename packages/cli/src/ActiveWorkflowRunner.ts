@@ -317,6 +317,8 @@ export class ActiveWorkflowRunner {
 			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, false);
 		}
 
+		await WorkflowHelpers.saveStaticData(workflow);
+
 		// if it's a mongo objectId convert it to string
 		if (typeof workflowData.id === 'object') {
 			workflowData.id = workflowData.id.toString();
