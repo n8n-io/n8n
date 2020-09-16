@@ -33,6 +33,7 @@
       "dist/credentials/AirtableApi.credentials.js",
       "dist/credentials/Amqp.credentials.js",
       "dist/credentials/AsanaApi.credentials.js",
+      "dist/credentials/AsanaOAuth2Api.credentials.js",
       "dist/credentials/Aws.credentials.js",
       "dist/credentials/AffinityApi.credentials.js",
       "dist/credentials/BannerbearApi.credentials.js",

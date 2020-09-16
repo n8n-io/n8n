@@ -5,6 +5,8 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
@@ -12,9 +14,12 @@ import {
 
 import {
 	asanaApiRequest,
+	getWorkspaces,
 } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+import {
+	createHmac,
+} from 'crypto';
 
 export class AsanaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,7 +31,7 @@ export class AsanaTrigger implements INodeType {
 		description: 'Starts the workflow when Asana events occure.',
 		defaults: {
 			name: 'Asana-Trigger',
-			color: '#559922',
+			color: '#FC636B',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -34,7 +39,25 @@ export class AsanaTrigger implements INodeType {
 			{
 				name: 'asanaApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'asanaOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -46,6 +69,23 @@ export class AsanaTrigger implements INodeType {
 		],
 		properties: [
 			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
+			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'string',
@@ -56,13 +96,31 @@ export class AsanaTrigger implements INodeType {
 			{
 				displayName: 'Workspace',
 				name: 'workspace',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getWorkspaces',
+				},
+				options: [],
 				default: '',
 				required: false,
 				description: 'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks.',
 			},
 		],
+	};
 
+	methods = {
+		loadOptions: {
+			// Get all the available workspaces to display them to user so that he can
+			// select them easily
+			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const workspaces = await getWorkspaces.call(this);
+				workspaces.unshift({
+					name: '',
+					value: '',
+				});
+				return workspaces;
+			},
+		},
 	};
 
 	// @ts-ignore (because of request)
@@ -71,32 +129,29 @@ export class AsanaTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
-				// Webhook got created before so check if it still exists
-				const endpoint = `webhooks/${webhookData.webhookId}`;
+				const resource = this.getNodeParameter('resource') as string;
 
-				try {
-					await asanaApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
-					if (e.statusCode === 404) {
-						// Webhook does not exist
-						delete webhookData.webhookId;
+				const workspace = this.getNodeParameter('workspace') as string;
 
-						return false;
+				const endpoint = '/webhooks';
+
+				const { data } = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
+
+				for (const webhook of data) {
+					if (webhook.resource.gid === resource && webhook.target === webhookUrl) {
+						webhookData.webhookId = webhook.gid;
+						return true;
 					}
-
-					// Some error occured
-					throw e;
 				}
 
 				// If it did not error then the webhook exists
-				return true;
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('%20')) {
@@ -105,9 +160,7 @@ export class AsanaTrigger implements INodeType {
 
 				const resource = this.getNodeParameter('resource') as string;
 
-				const workspace = this.getNodeParameter('workspace') as string;
-
-				const endpoint = `webhooks`;
+				const endpoint = `/webhooks`;
 
 				const body = {
 					resource,
@@ -115,29 +168,15 @@ export class AsanaTrigger implements INodeType {
 				};
 
 				let responseData;
-				try {
-					 responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
-				} catch(error) {
-					// delete webhook if it already exists
-					if (error.statusCode === 403) {
-						const webhookData = await asanaApiRequest.call(this, 'GET', endpoint, {}, { workspace });
-						const webhook = webhookData.data.find((webhook: any) => { // tslint:disable-line:no-any
-							return webhook.target === webhookUrl && webhook.resource.gid === resource;
-						});
-						await asanaApiRequest.call(this, 'DELETE', `${endpoint}/${webhook.gid}`, {});
-						responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
-					} else {
-						throw error;
-					}
-				}
 
-				if (responseData.data === undefined || responseData.data.id === undefined) {
+				responseData = await asanaApiRequest.call(this, 'POST', endpoint, body);
+
+				if (responseData.data === undefined || responseData.data.gid === undefined) {
 					// Required data is missing so was not successful
 					return false;
 				}
 
-				const webhookData = this.getWorkflowStaticData('node');
-				webhookData.webhookId = responseData.data.id as string;
+				webhookData.webhookId = responseData.data.gid as string;
 
 				return true;
 			},
@@ -145,7 +184,7 @@ export class AsanaTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `webhooks/${webhookData.webhookId}`;
+					const endpoint = `/webhooks/${webhookData.webhookId}`;
 					const body = {};
 
 					try {
@@ -165,15 +204,12 @@ export class AsanaTrigger implements INodeType {
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData() as IDataObject;
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 
-		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
-
+		const webhookData = this.getWorkflowStaticData('node');
 
 		if (headerData['x-hook-secret'] !== undefined) {
 			// Is a create webhook confirmation request
@@ -182,6 +218,7 @@ export class AsanaTrigger implements INodeType {
 			const res = this.getResponseObject();
 			res.set('X-Hook-Secret', webhookData.hookSecret as string);
 			res.status(200).end();
+
 			return {
 				noWebhookResponse: true,
 			};
@@ -198,7 +235,7 @@ export class AsanaTrigger implements INodeType {
 
 		// Check if the request is valid
 		// (if the signature matches to data and hookSecret)
-		const computedSignature = createHmac("sha256", webhookData.hookSecret as string).update(JSON.stringify(req.body)).digest("hex");
+		const computedSignature = createHmac('sha256', webhookData.hookSecret as string).update(JSON.stringify(req.body)).digest('hex');
 		if (headerData['x-hook-signature'] !== computedSignature) {
 			// Signature is not valid so ignore call
 			return {};
@@ -206,7 +243,7 @@ export class AsanaTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body.events)
 			],
 		};
 	}
