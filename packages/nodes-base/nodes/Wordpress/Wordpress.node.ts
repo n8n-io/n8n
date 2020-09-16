@@ -47,7 +47,7 @@ export class Wordpress implements INodeType {
 			{
 				name: 'wordpressApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -115,6 +115,7 @@ export class Wordpress implements INodeType {
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const authors = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, { who: 'authors' });
+				console.log(authors);
 				for (const author of authors) {
 					const authorName = author.name;
 					const authorId = author.id;
@@ -147,6 +148,9 @@ export class Wordpress implements INodeType {
 					const body: IPost = {
 						title,
 					};
+					if (additionalFields.authorId) {
+						body.author = additionalFields.authorId as number;
+					}
 					if (additionalFields.content) {
 						body.content = additionalFields.content as string;
 					}
@@ -186,6 +190,9 @@ export class Wordpress implements INodeType {
 					const body: IPost = {
 						id: parseInt(postId, 10),
 					};
+					if (updateFields.authorId) {
+						body.author = updateFields.authorId as number;
+					}
 					if (updateFields.title) {
 						body.title = updateFields.title as string;
 					}
