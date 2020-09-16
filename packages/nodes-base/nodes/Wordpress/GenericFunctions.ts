@@ -30,7 +30,7 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials!.url}/wp-json/wp/v2${resource}`,
+		uri: uri || `${credentials!.url}/wp-json/wp/v2${resource}`,
 		json: true
 	};
 	options = Object.assign({}, options, option);
@@ -41,7 +41,7 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 		return await this.helpers.request!(options);
 	} catch (error) {
 		let errorMessage = error.message;
-		if (error.response.body) {
+		if (error.response && error.response.body) {
 			errorMessage = error.response.body.message || error.response.body.Message || error.message;
 		}
 
