@@ -197,6 +197,7 @@ export class AsanaTrigger implements INodeType {
 					// that no webhooks are registred anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
+					delete webhookData.hookSecret;
 				}
 
 				return true;
@@ -233,13 +234,17 @@ export class AsanaTrigger implements INodeType {
 			return {};
 		}
 
-		// Check if the request is valid
-		// (if the signature matches to data and hookSecret)
-		const computedSignature = createHmac('sha256', webhookData.hookSecret as string).update(JSON.stringify(req.body)).digest('hex');
-		if (headerData['x-hook-signature'] !== computedSignature) {
-			// Signature is not valid so ignore call
-			return {};
-		}
+		// TODO: Had to be deactivated as it is currently not possible to get the secret
+		//       in production mode as the static data overwrites each other because the
+		//       two exist at the same time (create webhook [with webhookId] and receive
+		//       webhook [with secret])
+		// // Check if the request is valid
+		// // (if the signature matches to data and hookSecret)
+		// const computedSignature = createHmac('sha256', webhookData.hookSecret as string).update(JSON.stringify(req.body)).digest('hex');
+		// if (headerData['x-hook-signature'] !== computedSignature) {
+		// 	// Signature is not valid so ignore call
+		// 	return {};
+		// }
 
 		return {
 			workflowData: [
