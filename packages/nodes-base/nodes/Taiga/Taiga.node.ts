@@ -126,7 +126,7 @@ export class Taiga implements INodeType {
 
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
-				const statuses = await taigaApiRequest.call(this,'GET', '/issue-statuses', {}, { project: projectId });
+				const statuses = await taigaApiRequest.call(this, 'GET', '/issue-statuses', {}, { project: projectId });
 				for (const status of statuses) {
 					const statusName = status.name;
 					const statusId = status.id;
@@ -145,7 +145,7 @@ export class Taiga implements INodeType {
 
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
-				const users = await taigaApiRequest.call(this,'GET', '/users', {}, { project: projectId });
+				const users = await taigaApiRequest.call(this, 'GET', '/users', {}, { project: projectId });
 				for (const user of users) {
 					const userName = user.username;
 					const userId = user.id;
@@ -164,7 +164,7 @@ export class Taiga implements INodeType {
 
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
-				const priorities = await taigaApiRequest.call(this,'GET', '/priorities', {}, { project: projectId });
+				const priorities = await taigaApiRequest.call(this, 'GET', '/priorities', {}, { project: projectId });
 				for (const priority of priorities) {
 					const priorityName = priority.name;
 					const priorityId = priority.id;
@@ -183,7 +183,7 @@ export class Taiga implements INodeType {
 
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
-				const severities = await taigaApiRequest.call(this,'GET', '/severities', {}, { project: projectId });
+				const severities = await taigaApiRequest.call(this, 'GET', '/severities', {}, { project: projectId });
 				for (const severity of severities) {
 					const severityName = severity.name;
 					const severityId = severity.id;
@@ -202,7 +202,7 @@ export class Taiga implements INodeType {
 
 				const projectId = this.getCurrentNodeParameter('projectId') as string;
 
-				const milestones = await taigaApiRequest.call(this,'GET', '/milestones', {}, { project: projectId });
+				const milestones = await taigaApiRequest.call(this, 'GET', '/milestones', {}, { project: projectId });
 				for (const milestone of milestones) {
 					const milestoneName = milestone.name;
 					const milestoneId = milestone.id;
@@ -221,7 +221,7 @@ export class Taiga implements INodeType {
 
 				const { id } = await taigaApiRequest.call(this, 'GET', '/users/me');
 
-				const projects = await taigaApiRequest.call(this,'GET', '/projects', {}, { member: id });
+				const projects = await taigaApiRequest.call(this, 'GET', '/projects', {}, { member: id });
 				for (const project of projects) {
 					const projectName = project.name;
 					const projectId = project.id;
