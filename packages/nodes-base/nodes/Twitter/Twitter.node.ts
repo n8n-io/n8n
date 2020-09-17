@@ -28,6 +28,7 @@ import {
 import {
 	ITweet,
 } from './TweetInterface';
+import { isDate } from 'util';
 
 const ISO6391 = require('iso-639-1');
 
@@ -108,6 +109,10 @@ export class Twitter implements INodeType {
 					const body: ITweet = {
 						status: text,
 					};
+
+					if (additionalFields.inReplyToStatusId) {
+						body.in_reply_to_status_id = additionalFields.inReplyToStatusId as string;
+					}
 
 					if (additionalFields.attachments) {
 						const mediaIds = [];
@@ -225,6 +230,7 @@ export class Twitter implements INodeType {
 						}
 					}
 
+					console.log(body);
 					responseData = await twitterApiRequest.call(this, 'POST', '/statuses/update.json', body);
 				}
 				// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
@@ -267,6 +273,36 @@ export class Twitter implements INodeType {
 						responseData = await twitterApiRequest.call(this, 'GET', '/search/tweets.json', {}, qs);
 						responseData = responseData.statuses;
 					}
+				}
+				//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-favorites-create
+				if (operation === 'like') {
+					const tweetId = this.getNodeParameter('tweetId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const qs: IDataObject = {
+						id: tweetId,
+					};
+
+					if (additionalFields.includeEntities) {
+						qs.include_entities = additionalFields.includeEntities as boolean;
+					}
+
+					responseData = await twitterApiRequest.call(this, 'POST', '/favorites/create.json', {}, qs);
+				}
+				//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-statuses-retweet-id
+				if (operation === 'retweet') {
+					const tweetId = this.getNodeParameter('tweetId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const qs: IDataObject = {
+						id: tweetId,
+					};
+
+					if (additionalFields.trimUser) {
+						qs.trim_user = additionalFields.trimUser as boolean;
+					}
+
+					responseData = await twitterApiRequest.call(this, 'POST', `/statuses/retweet/${tweetId}.json`, {}, qs);
 				}
 			}
 			if (Array.isArray(responseData)) {
