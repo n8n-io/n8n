@@ -7,6 +7,7 @@ import {
 export class S3 implements ICredentialType {
 	name = 's3';
 	displayName = 'S3';
+	documentationUrl = 's3';
 	properties = [
 		{
 			displayName: 'S3 endpoint',
