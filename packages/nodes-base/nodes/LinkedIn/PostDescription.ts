@@ -70,7 +70,7 @@ export const postFields = [
 		}
 	},
 	{
-		displayName: 'Organization',
+		displayName: 'Organization URN',
 		name: 'organization',
 		type: 'string',
 		default: '',
