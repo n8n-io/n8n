@@ -172,7 +172,8 @@ class App {
 	async config(): Promise<void> {
 
 		this.versions = await GenericHelpers.getVersions();
-		const authIgnoreRegex = new RegExp(`^\/(healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
+		const ignoredEndpoints = _(['healthz', this.endpointWebhook, this.endpointWebhookTest, this.endpointPresetCredentials]).compact().join('|');
+		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints})\/?.*$`);
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
