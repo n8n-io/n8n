@@ -210,7 +210,7 @@ export class Paddle implements INodeType {
 						const discountAmount = this.getNodeParameter('discountAmount', i) as number;
 
 						if (couponType === 'product') {
-							body.product_ids = (this.getNodeParameter('productIds', i) as string[]).join();
+							body.product_ids = this.getNodeParameter('productIds', i) as string;
 						}
 
 						if (discountType === 'flat') {
@@ -253,7 +253,7 @@ export class Paddle implements INodeType {
 						const endpoint = '/2.1/product/create_coupon';
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
-						responseData = responseData.response.coupon_codes;
+						responseData = responseData.response.coupon_codes.map((coupon : string) => ({coupon}));
 					}
 				}
 
