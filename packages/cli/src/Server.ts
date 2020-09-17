@@ -1890,5 +1890,7 @@ export async function start(): Promise<void> {
 		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
+
+		await app.externalHooks.run('n8n.ready', []);
 	});
 }
