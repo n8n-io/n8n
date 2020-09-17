@@ -377,11 +377,11 @@ export const tweetFields = [
 		},
 		options: [
 			{
-				displayName: 'include Entities',
+				displayName: 'Include Entities',
 				name: 'includeEntities',
 				type: 'boolean',
 				default: false,
-				description: 'The entities node will be omitted when set to false',
+				description: 'The entities will be omitted when set to false',
 			},
 		],
 	},
