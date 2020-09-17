@@ -3,37 +3,45 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class GoogleOAuth2Api implements ICredentialType {
-	name = 'googleOAuth2Api';
+export class AsanaOAuth2Api implements ICredentialType {
+	name = 'asanaOAuth2Api';
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'Google OAuth2 API';
-	documentationUrl = 'google';
+	displayName = 'Asana OAuth2 API';
 	properties = [
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'https://accounts.google.com/o/oauth2/v2/auth',
+			default: 'https://app.asana.com/-/oauth_authorize',
+			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'https://oauth2.googleapis.com/token',
+			default: 'https://app.asana.com/-/oauth_token',
+			required: true,
+		},
+		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'hidden' as NodePropertyTypes,
+			default: '',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'access_type=offline&prompt=consent',
+			default: '',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'body',
+			description: 'Resource to consume.',
 		},
 	];
 }

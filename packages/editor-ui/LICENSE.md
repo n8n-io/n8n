@@ -19,7 +19,7 @@ Condition notice.
 
 Software: n8n
 
-License: Apache 2.0
+License: Apache 2.0 with Commons Clause
 
 Licensor: n8n GmbH
 

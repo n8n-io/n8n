@@ -20,7 +20,7 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
-import { compareSync } from 'bcrypt';
+import { compare } from 'bcrypt';
 
 import {
 	ActiveExecutions,
@@ -172,7 +172,8 @@ class App {
 	async config(): Promise<void> {
 
 		this.versions = await GenericHelpers.getVersions();
-		const authIgnoreRegex = new RegExp(`^\/(healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
+		const ignoredEndpoints = _(['healthz', this.endpointWebhook, this.endpointWebhookTest, this.endpointPresetCredentials]).compact().join('|');
+		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints})\/?.*$`);
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
@@ -189,7 +190,9 @@ class App {
 
 			const basicAuthHashEnabled = await GenericHelpers.getConfigValue('security.basicAuth.hash') as boolean;
 
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+			let validPassword: null | string = null;
+
+			this.app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
 				if (req.url.match(authIgnoreRegex)) {
 					return next();
 				}
@@ -201,12 +204,27 @@ class App {
 					return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization is required!');
 				}
 
-				if (basicAuthData.name !== basicAuthUser || (!basicAuthHashEnabled && basicAuthData.pass !== basicAuthPassword) || (basicAuthHashEnabled && compareSync(basicAuthData.pass, basicAuthPassword) === false)) {
-					// Provided authentication data is wrong
-					return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization data is wrong!');
+				if (basicAuthData.name === basicAuthUser) {
+					if (basicAuthHashEnabled === true) {
+						if (validPassword === null && await compare(basicAuthData.pass, basicAuthPassword)) {
+							// Password is valid so save for future requests
+							validPassword = basicAuthData.pass;
+						}
+
+						if (validPassword === basicAuthData.pass && validPassword !== null) {
+							// Provided hash is correct
+							return next();
+						}
+					} else {
+						if (basicAuthData.pass === basicAuthPassword) {
+							// Provided password is correct
+							return next();
+						}
+					}
 				}
 
-				next();
+				// Provided authentication data is wrong
+				return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization data is wrong!');
 			});
 		}
 
@@ -1872,5 +1890,7 @@ export async function start(): Promise<void> {
 		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
+
+		await app.externalHooks.run('n8n.ready', []);
 	});
 }

@@ -151,11 +151,17 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
+
+	// If keep bearer is false remove the it from the authorization header
+	if (oAuth2Options?.keepBearer === false) {
+		//@ts-ignore
+		newRequestOptions?.headers?.Authorization = newRequestOptions?.headers?.Authorization.split(' ')[1];
+	}
+
 	return this.helpers.request!(newRequestOptions)
 		.catch(async (error: IResponseError) => {
 			// TODO: Check if also other codes are possible
 			if (error.statusCode === 401) {
-				// TODO: Whole refresh process is not tested yet
 				// Token is probably not valid anymore. So try refresh it.
 
 				const tokenRefreshOptions: IDataObject = {};
