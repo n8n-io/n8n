@@ -143,6 +143,7 @@
       "dist/credentials/ShopifyApi.credentials.js",
       "dist/credentials/SalesforceOAuth2Api.credentials.js",
       "dist/credentials/SentryIoApi.credentials.js",
+      "dist/credentials/SentryIoServerApi.credentials.js",
       "dist/credentials/SentryIoOAuth2Api.credentials.js",
       "dist/credentials/SlackApi.credentials.js",
       "dist/credentials/SlackOAuth2Api.credentials.js",

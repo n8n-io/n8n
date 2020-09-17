@@ -45,7 +45,12 @@ import {
 	sentryIoApiRequest,
 	sentryApiRequestAllItems,
 } from './GenericFunctions';
-import { ICommit, IPatchSet, IRef } from './Interface';
+
+import {
+	ICommit,
+	IPatchSet,
+	IRef,
+} from './Interface';
 
 export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -71,6 +76,9 @@ export class SentryIo implements INodeType {
 						authentication: [
 							'oAuth2',
 						],
+						sentryVersion: [
+							'cloud',
+						],
 					},
 				},
 			},
@@ -82,15 +90,55 @@ export class SentryIo implements INodeType {
 						authentication: [
 							'accessToken',
 						],
+						sentryVersion: [
+							'cloud',
+						],
+					},
+				},
+			},
+			{
+				name: 'sentryIoServerApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+						sentryVersion: [
+							'server',
+						],
 					},
 				},
 			},
 		],
 		properties: [
 			{
+				displayName: 'Sentry Version',
+				name: 'sentryVersion',
+				type: 'options',
+				options: [
+					{
+						name: 'Cloud',
+						value: 'cloud',
+					},
+					{
+						name: 'Server (Self Hosted)',
+						value: 'server',
+					},
+				],
+				default: 'cloud',
+			},
+			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
+				displayOptions: {
+					show: {
+						sentryVersion: [
+							'cloud',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'Access Token',
@@ -99,6 +147,26 @@ export class SentryIo implements INodeType {
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				displayOptions: {
+					show: {
+						sentryVersion: [
+							'server',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
 					},
 				],
 				default: 'accessToken',
