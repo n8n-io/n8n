@@ -29,14 +29,13 @@ for(const group of (groups as IDataObject).groups as IDataObject[]) {
 		displayOptions: {
 			show: {
 				group: [
-					group.name,
+					group.name
 				],
 			},
 		},
 		default: '',
 		options: []
 	};
-
 
 	const options = [];
 
@@ -55,10 +54,12 @@ for(const group of (groups as IDataObject).groups as IDataObject[]) {
 		}
 	}
 
+	//Tool
 	item.options = <any>options.sort((a, b) => (a.name > b.name) ? 1 : -1)
 	item.default = <string>options[0].value;
 	operations.push(item);
 }
+
 export const toolOperations = operations as INodeProperties[];
 
 let parameters = [];

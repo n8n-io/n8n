@@ -47,6 +47,61 @@ export class UProc implements INodeType {
 			...groupOptions,
 			...toolOperations,
 			...toolParameters,
+			{
+				displayName: 'Additional Options',
+				name: 'additionalOptions',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						group: [
+							'audio',
+							'communication',
+							'company',
+							'finance',
+							'geographic',
+							'image',
+							'internet',
+							'personal',
+							'product',
+							'security',
+							'text',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Start Webhook',
+						name: 'startWebhook',
+						type: 'string',
+						description: 'URL to send "Start notification" when tool has started your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
+						default: '',
+					},
+					/*
+					{
+						displayName: 'Progress Webhook',
+						name: 'progressWebhook',
+						type: 'string',
+						description: 'URL to send "Progress notification" when tool is progressing with your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
+						default: '',
+					},*/
+					{
+						displayName: 'End Webhook',
+						name: 'endWebhook',
+						type: 'string',
+						description: 'URL to send "End notification" when tool has ended your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
+						default: '',
+					},
+					{
+						displayName: 'Data Webhook',
+						name: 'dataWebhook',
+						type: 'string',
+						description: 'URL to send "Data notification" when tool has resolved your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
+						default: '',
+					}
+				]
+			}
 		],
 	};
 
@@ -57,6 +112,13 @@ export class UProc implements INodeType {
 		let responseData;
 		const group = this.getNodeParameter('group', 0) as string;
 		const tool = this.getNodeParameter('tool', 0) as string;
+		const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
+
+
+		const startWebhook = additionalOptions.startWebhook as string;
+		const progressWebhook = additionalOptions.progressWebhook as string;
+		const endWebhook = additionalOptions.endWebhook as string;
+		const dataWebhook = additionalOptions.dataWebhook as string;
 
 		interface LooseObject {
 			[key: string]: any;
@@ -81,6 +143,23 @@ export class UProc implements INodeType {
 					body.params[field] = data;
 				}
 			});
+
+			if (startWebhook && startWebhook.length || progressWebhook && progressWebhook.length || endWebhook && endWebhook.length || dataWebhook && dataWebhook.length) {
+				body.callback = {};
+			}
+
+			if (startWebhook && startWebhook.length) {
+				body.callback.start = startWebhook;
+			}
+			if (progressWebhook && progressWebhook.length) {
+				body.callback.progress = progressWebhook;
+			}
+			if (endWebhook && endWebhook.length) {
+				body.callback.end = endWebhook;
+			}
+			if (dataWebhook && dataWebhook.length) {
+				body.callback.data = dataWebhook;
+			}
 
 			responseData = await uprocApiRequest.call(this, 'POST', body);
 
