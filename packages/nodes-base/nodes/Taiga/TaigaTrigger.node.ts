@@ -109,7 +109,7 @@ export class TaigaTrigger implements INodeType {
 
 				const { id } = await taigaApiRequest.call(this, 'GET', '/users/me');
 
-				const projects = await taigaApiRequest.call(this,'GET', '/projects', {}, { member: id });
+				const projects = await taigaApiRequest.call(this, 'GET', '/projects', {}, { member: id });
 				for (const project of projects) {
 					const projectName = project.name;
 					const projectId = project.id;
@@ -181,7 +181,7 @@ export class TaigaTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
 					await taigaApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;

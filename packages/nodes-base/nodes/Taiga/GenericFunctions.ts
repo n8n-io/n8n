@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -13,9 +13,9 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
- import {
+import {
 	createHash,
 } from 'crypto';
 
@@ -101,7 +101,7 @@ export async function taigaApiRequest(
 	}
 }
 
-export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function taigaApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
