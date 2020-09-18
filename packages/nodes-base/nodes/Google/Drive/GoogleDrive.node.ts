@@ -125,6 +125,11 @@ export class GoogleDrive implements INodeType {
 						description: 'List files and folders',
 					},
 					{
+						name: 'Share',
+						value: 'share',
+						description: 'Share a file',
+					},
+					{
 						name: 'Upload',
 						value: 'upload',
 						description: 'Upload a file',
@@ -155,6 +160,11 @@ export class GoogleDrive implements INodeType {
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a folder',
+					},
+					{
+						name: 'Share',
+						value: 'share',
+						description: 'Share a folder',
 					},
 				],
 				default: 'create',
@@ -479,6 +489,241 @@ export class GoogleDrive implements INodeType {
 
 
 			// ----------------------------------
+			//         file:share
+			// ----------------------------------
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'share'
+						],
+						resource: [
+							'file',
+							'folder',
+						],
+					},
+				},
+				description: 'The ID of the file or shared drive.',
+			},
+			{
+				displayName: 'Permissions',
+				name: 'permissionsUi',
+				placeholder: 'Add Permission',
+				type: 'fixedCollection',
+				default: '',
+				typeOptions: {
+					multipleValues: false,
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+						operation: [
+							'share',
+							'folder',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Permission',
+						name: 'permissionsValues',
+						values: [
+							{
+								displayName: 'Role',
+								name: 'role',
+								type: 'options',
+								options: [
+									{
+										name: 'Owner',
+										value: 'owner',
+									},
+									{
+										name: 'Organizer',
+										value: 'organizer',
+									},
+									{
+										name: 'File Organizer',
+										value: 'fileOrganizer',
+									},
+									{
+										name: 'Writer',
+										value: 'writer',
+									},
+									{
+										name: 'Commenter',
+										value: 'commenter',
+									},
+									{
+										name: 'Reader',
+										value: 'reader',
+									},
+								],
+								default: '',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: [
+									{
+										name: 'User',
+										value: 'user',
+									},
+									{
+										name: 'Group',
+										value: 'group',
+									},
+									{
+										name: 'Domain',
+										value: 'domain',
+									},
+									{
+										name: 'anyone',
+										value: 'anyone',
+									},
+								],
+								default: '',
+							},
+							{
+								displayName: 'Email Address',
+								name: 'emailAddress',
+								type: 'string',
+								displayOptions: {
+									show: {
+										type: [
+											'user',
+											'group',
+										],
+									},
+								},
+								default: '',
+								description: 'The email address of the user or group to which this permission refers',
+							},
+							{
+								displayName: 'Domain',
+								name: 'domain',
+								type: 'string',
+								displayOptions: {
+									show: {
+										type: [
+											'domain',
+										],
+									},
+								},
+								default: '',
+								description: 'The domain to which this permission refers',
+							},
+							{
+								displayName: 'Allow File Discovery',
+								name: 'allowFileDiscovery',
+								type: 'boolean',
+								displayOptions: {
+									show: {
+										type: [
+											'domain',
+											'anyone',
+										],
+									},
+								},
+								default: false,
+								description: 'Whether the permission allows the file to be discovered through search',
+							},
+						],
+					},
+				],
+			},
+
+			{
+				displayName: 'Parents',
+				name: 'parents',
+				type: 'string',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: [],
+				displayOptions: {
+					show: {
+						operation: [
+							'upload',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'The IDs of the parent folders which contain the file.',
+			},
+			{
+				displayName: 'Binary Data',
+				name: 'binaryData',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						operation: [
+							'upload'
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				description: 'If the data to upload should be taken from binary field.',
+			},
+			{
+				displayName: 'File Content',
+				name: 'fileContent',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'upload'
+						],
+						resource: [
+							'file',
+						],
+						binaryData: [
+							false
+						],
+					},
+
+				},
+				placeholder: '',
+				description: 'The text content of the file to upload.',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'upload'
+						],
+						resource: [
+							'file',
+						],
+						binaryData: [
+							true
+						],
+					},
+
+				},
+				placeholder: '',
+				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
+			},
+
+			// ----------------------------------
 			//         file:upload
 			// ----------------------------------
 			{
@@ -618,9 +863,94 @@ export class GoogleDrive implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Email Message',
+						name: 'emailMessage',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'share'
+								],
+								'/resource': [
+									'file',
+									'folder',
+								],
+							},
+						},
+						default: '',
+						description: 'A plain text custom message to include in the notification email.',
+					},
+					{
+						displayName: 'Enforce Single Parent',
+						name: 'enforceSingleParent',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'share'
+								],
+								'/resource': [
+									'file',
+									'folder',
+								],
+							},
+						},
+						default: false,
+						description: `Set to true to opt in to API behavior that aims for all items to have exactly one parent<br>
+						This parameter only takes effect if the item is not in a shared drive`,
+					},
+					{
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'multiOptions',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'share',
+								],
+								'/resource': [
+									'file',
+									'folder',
+								],
+							},
+						},
+						options: [
+							{
+								name: '*',
+								value: '*',
+								description: 'All fields.',
+							},
+							{
+								name: 'Email Address',
+								value: 'emailAddress',
+							},
+							{
+								name: 'Display Name',
+								value: 'displayName',
+							},
+							{
+								name: 'Deleted',
+								value: 'deleted',
+							},
+						],
+						default: [],
+						description: 'The fields to return.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						displayOptions: {
+							hide: {
+								'/operation': [
+									'share'
+								],
+								'/resource': [
+									'file',
+									'folder',
+								],
+							},
+						},
 						options: [
 							{
 								name: '*',
@@ -695,6 +1025,98 @@ export class GoogleDrive implements INodeType {
 						required: true,
 						default: [],
 						description: 'The fields to return.',
+					},
+					{
+						displayName: 'Move To New Owners Root',
+						name: 'moveToNewOwnersRoot',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'share'
+								],
+								'/resource': [
+									'file',
+									'folder',
+								],
+							},
+						},
+						default: '',
+						description: `This parameter only takes effect if the item is not in a shared drive and the request is attempting to transfer the ownership of the item.<br>
+						When set to true, the item is moved to the new owner's My Drive root folder and all prior parents removed`,
+					},
+					{
+						displayName: 'Send Notification Email',
+						name: 'sendNotificationEmail',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'share'
+								],
+								'/resource': [
+									'file',
+									'folder',
+								],
+							},
+						},
+						default: '',
+						description: 'Whether to send a notification email when sharing to users or groups',
+					},
+					{
+						displayName: 'Supports All Drives',
+						name: 'supportsAllDrives',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'share'
+								],
+								'/resource': [
+									'file',
+									'folder',
+								],
+							},
+						},
+						default: false,
+						description: 'Whether the requesting application supports both My Drives and shared drives',
+					},
+					{
+						displayName: 'Transfer Ownership',
+						name: 'transferOwnership',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'share'
+								],
+								'/resource': [
+									'file',
+									'folder',
+								],
+							},
+						},
+						default: false,
+						description: 'Whether to transfer ownership to the specified user and downgrade the current owner to a writer.',
+					},
+					{
+						displayName: 'Use Domain Admin Access',
+						name: 'useDomainAdminAccess',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'share'
+								],
+								'/resource': [
+									'file',
+									'folder',
+								],
+							},
+						},
+						default: false,
+						description: `Issue the request as a domain administrator; if set to true, then the requester will be granted access if the file ID parameter<br>
+						refers to a shared drive and the requester is an administrator of the domain to which the shared drive belongs.`,
 					},
 
 					{
@@ -837,7 +1259,6 @@ export class GoogleDrive implements INodeType {
 					},
 				],
 			},
-
 		],
 	};
 
@@ -1121,6 +1542,32 @@ export class GoogleDrive implements INodeType {
 						fileId,
 						success: true,
 					});
+				}
+				if (operation === 'share') {
+
+					const fileId = this.getNodeParameter('fileId', i) as string;
+
+					const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
+
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					const body: IDataObject = {};
+
+					const qs: IDataObject = {};
+
+					if (permissions.permissionsValues) {
+						Object.assign(body, permissions.permissionsValues);
+					}
+
+					Object.assign(qs, options);
+
+					if (qs.fields) {
+						qs.fields = (qs.fields as string[]).join(',');
+					}
+
+					const response = await googleApiRequest.call(this, 'POST', `/drive/v3/files/${fileId}/permissions`, body, qs);
+
+					returnData.push(response as IDataObject);
 				}
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
