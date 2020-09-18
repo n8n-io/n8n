@@ -230,7 +230,6 @@ export class Twitter implements INodeType {
 						}
 					}
 
-					console.log(body);
 					responseData = await twitterApiRequest.call(this, 'POST', '/statuses/update.json', body);
 				}
 				// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
