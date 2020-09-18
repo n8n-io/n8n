@@ -6,6 +6,7 @@ import {
 export class HarvestApi implements ICredentialType {
 	name = 'harvestApi';
 	displayName = 'Harvest API';
+	documentationUrl = 'harvest';
 	properties = [
 		{
 			displayName: 'Account ID',

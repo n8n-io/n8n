@@ -46,7 +46,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		},
 		method,
 		qs: query,
-		uri: uri || `${domain}/rest/api/2${endpoint}`,
+		uri: uri || `${domain}/rest${endpoint}`,
 		body,
 		json: true
 	};
@@ -54,6 +54,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+
 		let errorMessage = error.message;
 
 		if (error.response.body) {
@@ -104,3 +105,58 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	}
 	return result;
 }
+
+export function eventExists (currentEvents : string[], webhookEvents: string[]) {
+	for (const currentEvent of currentEvents) {
+		if (!webhookEvents.includes(currentEvent)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+export function getId (url: string) {
+	return url.split('/').pop();
+}
+
+export const allEvents = [
+	'board_created',
+	'board_updated',
+	'board_deleted',
+	'board_configuration_changed',
+	'comment_created',
+	'comment_updated',
+	'comment_deleted',
+	'jira:issue_created',
+	'jira:issue_updated',
+	'jira:issue_deleted',
+	'option_voting_changed',
+	'option_watching_changed',
+	'option_unassigned_issues_changed',
+	'option_subtasks_changed',
+	'option_attachments_changed',
+	'option_issuelinks_changed',
+	'option_timetracking_changed',
+	'project_created',
+	'project_updated',
+	'project_deleted',
+	'sprint_created',
+	'sprint_deleted',
+	'sprint_updated',
+	'sprint_started',
+	'sprint_closed',
+	'user_created',
+	'user_updated',
+	'user_deleted',
+	'jira:version_released',
+	'jira:version_unreleased',
+	'jira:version_created',
+	'jira:version_moved',
+	'jira:version_updated',
+	'jira:version_deleted',
+	'issuelink_created',
+	'issuelink_deleted',
+	'worklog_created',
+	'worklog_updated',
+	'worklog_deleted',
+];

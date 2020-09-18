@@ -62,7 +62,7 @@ export class Mattermost implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.',
+				description: 'The resource to operate on',
 			},
 
 
@@ -95,22 +95,22 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Soft-deletes a channel',
+						description: 'Soft delete a channel',
 					},
 					{
-						name: 'Members',
+						name: 'Member',
 						value: 'members',
-						description: 'Returns the members of a channel.',
+						description: 'Get a page of members for a channel',
 					},
 					{
 						name: 'Restore',
 						value: 'restore',
-						description: 'Restores a soft-deleted channel',
+						description: 'Restores a soft deleted channel',
 					},
 					{
 						name: 'Statistics',
 						value: 'statistics',
-						description: 'Get statistics for a channel.',
+						description: 'Get statistics for a channel',
 					},
 				],
 				default: 'create',
@@ -131,7 +131,7 @@ export class Mattermost implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Soft deletes a post, by marking the post as deleted in the database.',
+						description: 'Soft delete a post, by marking the post as deleted in the database',
 					},
 					{
 						name: 'Post',
@@ -140,7 +140,7 @@ export class Mattermost implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'The operation to perform.',
+				description: 'The operation to perform',
 			},
 
 
@@ -191,7 +191,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The non-unique UI name for the channel.',
+				description: 'The non-unique UI name for the channel',
 			},
 			{
 				displayName: 'Name',
@@ -210,7 +210,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				required: true,
-				description: 'The unique handle for the channel, will be present in the channel URL.',
+				description: 'The unique handle for the channel, will be present in the channel URL',
 			},
 			{
 				displayName: 'Type',
@@ -264,7 +264,7 @@ export class Mattermost implements INodeType {
 						],
 					},
 				},
-				description: 'The ID of the channel to soft-delete.',
+				description: 'The ID of the channel to soft delete',
 			},
 
 			// ----------------------------------
@@ -316,6 +316,23 @@ export class Mattermost implements INodeType {
 					},
 				},
 				description: 'The Mattermost Team.',
+			},
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'channel',
+						],
+						operation: [
+							'members',
+						],
+					},
+				},
+				default: true,
+				description: 'By default the response only contain the ID of the user.<br />If this option gets activated it will resolve the user automatically.',
 			},
 			{
 				displayName: 'Return All',
@@ -950,6 +967,11 @@ export class Mattermost implements INodeType {
 						value: 'getByEmail',
 						description: 'Get a user by email',
 					},
+					{
+						name: 'Get By ID',
+						value: 'getById',
+						description: 'Get a user by id',
+					},
 				],
 				default: '',
 				description: 'The operation to perform.',
@@ -1113,6 +1135,54 @@ export class Mattermost implements INodeType {
 				default: '',
 				description: `User's email`,
 			},
+
+			// ----------------------------------
+			//         user:getById
+			// ----------------------------------
+			{
+				displayName: 'User IDs',
+				name: 'userIds',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getById',
+						],
+					},
+				},
+				default: '',
+				description: `User's ID`,
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'getById',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Since',
+						name: 'since',
+						type: 'dateTime',
+						default: '',
+						description: 'Only return users that have been modified since the given Unix timestamp (in milliseconds).',
+					},
+				],
+			},
 		],
 	};
 
@@ -1245,6 +1315,10 @@ export class Mattermost implements INodeType {
 		let resource: string;
 		let requestMethod = 'POST';
 		let returnAll = false;
+		let userIds: string[] = [];
+
+		resource = this.getNodeParameter('resource', 0) as string;
+		operation = this.getNodeParameter('operation', 0) as string;
 
 		// For Post
 		let body: IDataObject;
@@ -1255,9 +1329,6 @@ export class Mattermost implements INodeType {
 			let endpoint = '';
 			body = {};
 			qs = {};
-
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
 
 			if (resource === 'channel') {
 				if (operation === 'create') {
@@ -1509,6 +1580,25 @@ export class Mattermost implements INodeType {
 					endpoint = `users/email/${email}`;
 				}
 
+				if (operation === 'getById') {
+					// ----------------------------------
+					//          user:getById
+					// ----------------------------------
+					userIds = (this.getNodeParameter('userIds', i) as string).split(',') as string[];
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.since) {
+						qs.since = new Date(additionalFields.since as string).getTime();
+					}
+
+					requestMethod = 'POST';
+
+					endpoint = 'users/ids';
+
+					//@ts-ignore
+					body = userIds;
+
+				}
 			}
 			else {
 				throw new Error(`The resource "${resource}" is not known!`);
@@ -1519,6 +1609,18 @@ export class Mattermost implements INodeType {
 				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 			} else {
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+				if (resource === 'channel' && operation === 'members') {
+					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+					if (resolveData) {
+						const userIds: string[] = [];
+						for (const data of responseData) {
+							userIds.push(data.user_id);
+						}
+						if (userIds.length > 0) {
+							responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds , qs);
+						}
+					}
+				}
 			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData);

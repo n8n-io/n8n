@@ -69,6 +69,26 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	return returnData;
 }
 
+/**
+ * Returns all the webhooks which should be created for the give workflow
+ *
+ * @export
+ * @param {string} workflowId
+ * @param {Workflow} workflow
+ * @returns {IWebhookData[]}
+ */
+export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
+	// Check all the nodes in the workflow if they have webhooks
+
+	const returnData: IWebhookData[] = [];
+
+	for (const node of Object.values(workflow.nodes)) {
+		returnData.push.apply(returnData, NodeHelpers.getNodeWebhooksBasic(workflow, node));
+	}
+
+	return returnData;
+}
+
 
  /**
   * Executes a webhook
@@ -94,8 +114,8 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 	}
 
 	// Get the responseMode
-	const responseMode = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], 'onReceived');
-	const responseCode = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], 200) as number;
+	const responseMode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseMode'], 'onReceived');
+	 const responseCode = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseCode'], 200) as number;
 
 	if (!['onReceived', 'lastNode'].includes(responseMode as string)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -149,8 +169,11 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 			};
 		}
 
+		// Save static data if it changed
+		await WorkflowHelpers.saveStaticData(workflow);
+
 		if (webhookData.webhookDescription['responseHeaders'] !== undefined) {
-			const responseHeaders = workflow.getComplexParameterValue(workflowStartNode, webhookData.webhookDescription['responseHeaders'], undefined) as {
+			const responseHeaders = workflow.expression.getComplexParameterValue(workflowStartNode, webhookData.webhookDescription['responseHeaders'], undefined) as {
 				entries?: Array<{
 					name: string;
 					value: string;
@@ -302,7 +325,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 				return data;
 			}
 
-			const responseData = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseData'], 'firstEntryJson');
+			const responseData = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseData'], 'firstEntryJson');
 
 			if (didSendResponse === false) {
 				let data: IDataObject | IDataObject[];
@@ -317,13 +340,13 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 
 					data = returnData.data!.main[0]![0].json;
 
-					const responsePropertyName = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responsePropertyName'], undefined);
+					const responsePropertyName = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responsePropertyName'], undefined);
 
 					if (responsePropertyName !== undefined) {
 						data = get(data, responsePropertyName as string) as IDataObject;
 					}
 
-					const responseContentType = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseContentType'], undefined);
+					const responseContentType = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseContentType'], undefined);
 
 					if (responseContentType !== undefined) {
 						// Send the webhook response manually to be able to set the content-type
@@ -356,7 +379,7 @@ export function getWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflo
 						didSendResponse = true;
 					}
 
-					const responseBinaryPropertyName = workflow.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseBinaryPropertyName'], 'data');
+					const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(workflowStartNode, webhookData.webhookDescription['responseBinaryPropertyName'], 'data');
 
 					if (responseBinaryPropertyName === undefined && didSendResponse === false) {
 						responseCallback(new Error('No "responseBinaryPropertyName" is set.'), {});

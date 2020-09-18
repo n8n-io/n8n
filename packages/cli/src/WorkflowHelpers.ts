@@ -1,5 +1,7 @@
 import {
+	CredentialTypes,
 	Db,
+	ICredentialsTypeData,
 	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
@@ -15,6 +17,7 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	IWorkflowCredentials,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -213,6 +216,63 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	}
 
 	return returnData;
+}
+
+
+
+/**
+ * Returns the credentials data of the given type and its parent types
+ * it extends
+ *
+ * @export
+ * @param {string} type The credential type to return data off
+ * @returns {ICredentialsTypeData}
+ */
+export function getCredentialsDataWithParents(type: string): ICredentialsTypeData {
+	const credentialTypes = CredentialTypes();
+	const credentialType = credentialTypes.getByName(type);
+
+	const credentialTypeData: ICredentialsTypeData = {};
+	credentialTypeData[type] = credentialType;
+
+	if (credentialType === undefined || credentialType.extends === undefined) {
+		return credentialTypeData;
+	}
+
+	for (const typeName of credentialType.extends) {
+		if (credentialTypeData[typeName] !== undefined) {
+			continue;
+		}
+
+		credentialTypeData[typeName] = credentialTypes.getByName(typeName);
+		Object.assign(credentialTypeData, getCredentialsDataWithParents(typeName));
+	}
+
+	return credentialTypeData;
+}
+
+
+
+/**
+ * Returns all the credentialTypes which are needed to resolve
+ * the given workflow credentials
+ *
+ * @export
+ * @param {IWorkflowCredentials} credentials The credentials which have to be able to be resolved
+ * @returns {ICredentialsTypeData}
+ */
+export function getCredentialsData(credentials: IWorkflowCredentials): ICredentialsTypeData {
+	const credentialTypeData: ICredentialsTypeData = {};
+
+	for (const credentialType of Object.keys(credentials)) {
+		if (credentialTypeData[credentialType] !== undefined) {
+			continue;
+		}
+
+		Object.assign(credentialTypeData, getCredentialsDataWithParents(credentialType));
+	}
+
+	return credentialTypeData;
 }
 
 

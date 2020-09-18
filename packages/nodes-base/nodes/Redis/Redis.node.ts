@@ -19,7 +19,7 @@ export class Redis implements INodeType {
 		icon: 'file:redis.png',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, sends data to Redis and receives generic information.',
+		description: 'Get, send and update data in Redis.',
 		defaults: {
 			name: 'Redis',
 			color: '#0033AA',
@@ -41,12 +41,12 @@ export class Redis implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Deletes a key from Redis.',
+						description: 'Delete a key from Redis.',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Returns the value of a key from Redis.',
+						description: 'Get the value of a key from Redis.',
 					},
 					{
 						name: 'Info',
@@ -61,7 +61,7 @@ export class Redis implements INodeType {
 					{
 						name: 'Set',
 						value: 'set',
-						description: 'Sets the value of a key in redis.',
+						description: 'Set the value of a key in redis.',
 					},
 				],
 				default: 'info',
@@ -402,6 +402,7 @@ export class Redis implements INodeType {
 			} else if (type === 'hash') {
 				const clientHset = util.promisify(client.hset).bind(client);
 				for (const key of Object.keys(value)) {
+					// @ts-ignore
 					await clientHset(keyName, key, (value as IDataObject)[key]!.toString());
 				}
 			} else if (type === 'list') {

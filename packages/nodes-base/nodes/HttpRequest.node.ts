@@ -71,6 +71,28 @@ export class HttpRequest implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'oAuth1Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth1',
+						],
+					},
+				},
+			},
+			{
+				name: 'oAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -89,6 +111,14 @@ export class HttpRequest implements INodeType {
 					{
 						name: 'Header Auth',
 						value: 'headerAuth'
+					},
+					{
+						name: 'OAuth1',
+						value: 'oAuth1'
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2'
 					},
 					{
 						name: 'None',
@@ -563,6 +593,8 @@ export class HttpRequest implements INodeType {
 		const httpBasicAuth = this.getCredentials('httpBasicAuth');
 		const httpDigestAuth = this.getCredentials('httpDigestAuth');
 		const httpHeaderAuth = this.getCredentials('httpHeaderAuth');
+		const oAuth1Api = this.getCredentials('oAuth1Api');
+		const oAuth2Api = this.getCredentials('oAuth2Api');
 
 		let requestOptions: OptionsWithUri;
 		let setUiParameter: IDataObject;
@@ -588,8 +620,8 @@ export class HttpRequest implements INodeType {
 			},
 		};
 
-		let response: any; // tslint:disable-line:no-any
 		const returnItems: INodeExecutionData[] = [];
+		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 			const url = this.getNodeParameter('url', itemIndex) as string;
@@ -765,13 +797,14 @@ export class HttpRequest implements INodeType {
 				};
 			}
 
-			if (responseFormat === 'json') {
-
-				requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
-			} else if (responseFormat === 'string') {
-				requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
-			} else {
-				requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+			if (requestOptions.headers!['accept'] === undefined) {
+				if (responseFormat === 'json') {
+					requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
+				} else if (responseFormat === 'string') {
+					requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
+				} else {
+					requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
+				}
 			}
 
 			if (responseFormat === 'file') {
@@ -781,17 +814,48 @@ export class HttpRequest implements INodeType {
 			} else {
 				requestOptions.json = true;
 			}
-			try {
-				// Now that the options are all set make the actual http request
-				response = await this.helpers.request(requestOptions);
-			} catch (error) {
-				if (this.continueOnFail() === true) {
-					returnItems.push({ json: { error } });
+
+			// Now that the options are all set make the actual http request
+			if (oAuth1Api !== undefined) {
+				requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
+			} else if (oAuth2Api !== undefined) {
+				requestPromises.push(this.helpers.requestOAuth2.call(this, 'oAuth2Api', requestOptions, { tokenType: 'Bearer' }));
+			} else {
+				requestPromises.push(this.helpers.request(requestOptions));
+			}
+		}
+
+		// @ts-ignore
+		const promisesResponses = await Promise.allSettled(requestPromises);
+
+		let response: any; // tslint:disable-line:no-any
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			// @ts-ignore
+			response = promisesResponses.shift();
+
+			if (response!.status !== 'fulfilled') {
+				if (this.continueOnFail() !== true) {
+					// throw error;
+					throw new Error(response!.reason);
+				} else {
+					// Return the actual reason as error
+					returnItems.push(
+						{
+							json: {
+								error: response.reason,
+							},
+						}
+					);
 					continue;
 				}
-
-				throw error;
 			}
+
+			response = response.value;
+
+			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const url = this.getNodeParameter('url', itemIndex) as string;
+
+			const fullResponse = !!options.fullResponse as boolean;
 
 			if (responseFormat === 'file') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
@@ -811,23 +875,22 @@ export class HttpRequest implements INodeType {
 
 				const fileName = (url).split('/').pop();
 
-
 				if (fullResponse === true) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
 							continue;
 						}
- 						returnItem[property] = response[property];
+ 						returnItem[property] = response![property];
 					}
 
 					newItem.json = returnItem;
 
-					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response.body, fileName);
+					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response!.body, fileName);
 				} else {
 					newItem.json = items[itemIndex].json;
 
-					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response, fileName);
+					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response!, fileName);
 				}
 
 				items[itemIndex] = newItem;
@@ -838,11 +901,11 @@ export class HttpRequest implements INodeType {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
-							returnItem[dataPropertyName] = response[property];
+							returnItem[dataPropertyName] = response![property];
 							continue;
 						}
 
-						returnItem[property] = response[property];
+						returnItem[property] = response![property];
 					}
 					returnItems.push({ json: returnItem });
 				} else {
@@ -857,7 +920,7 @@ export class HttpRequest implements INodeType {
 				if (fullResponse === true) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
-						returnItem[property] = response[property];
+						returnItem[property] = response![property];
 					}
 
 					if (responseFormat === 'json' && typeof returnItem.body === 'string') {

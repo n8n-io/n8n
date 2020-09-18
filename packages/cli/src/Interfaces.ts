@@ -1,6 +1,8 @@
 import {
+	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
+	ICredentialType,
 	IDataObject,
 	IExecutionError,
 	IRun,
@@ -35,13 +37,27 @@ export interface ICustomRequest extends Request {
 	parsedUrl: Url | undefined;
 }
 
+export interface ICredentialsTypeData {
+	[key: string]: ICredentialType;
+}
+
+export interface ICredentialsOverwrite {
+	[key: string]: ICredentialDataDecryptedObject;
+}
 
 export interface IDatabaseCollections {
 	Credentials: Repository<ICredentialsDb> | null;
 	Execution: Repository<IExecutionFlattedDb> | null;
 	Workflow: Repository<IWorkflowDb> | null;
+	Webhook: Repository<IWebhookDb> | null;
 }
 
+export interface IWebhookDb {
+	workflowId: number | string | ObjectID;
+	webhookPath: string;
+	method: string;
+	node: string;
+}
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 	id?: number | string | ObjectID;
@@ -71,7 +87,7 @@ export interface ICredentialsBase {
 	updatedAt: Date;
 }
 
-export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted{
+export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: number | string | ObjectID;
 }
 
@@ -188,6 +204,30 @@ export interface IExecutingWorkflowData {
 	workflowExecution?: PCancelable<IRun>;
 }
 
+export interface IExternalHooks {
+	credentials?: {
+		create?: Array<{ (this: IExternalHooksFunctions, credentialsData: ICredentialsEncrypted): Promise<void>; }>
+		delete?: Array<{ (this: IExternalHooksFunctions, credentialId: string): Promise<void>; }>
+		update?: Array<{ (this: IExternalHooksFunctions, credentialsData: ICredentialsDb): Promise<void>; }>
+	};
+	workflow?: {
+		activate?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void>; }>
+		create?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowBase): Promise<void>; }>
+		delete?: Array<{ (this: IExternalHooksFunctions, workflowId: string): Promise<void>; }>
+		execute?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb, mode: WorkflowExecuteMode): Promise<void>; }>
+		update?: Array<{ (this: IExternalHooksFunctions, workflowData: IWorkflowDb): Promise<void>; }>
+	};
+}
+
+export interface IExternalHooksFunctions {
+	dbCollections: IDatabaseCollections;
+}
+
+export interface IExternalHooksClass {
+	init(): Promise<void>;
+	run(hookName: string, hookParameters?: any[]): Promise<void>; // tslint:disable-line:no-any
+}
+
 export interface IN8nConfig {
 	database: IN8nConfigDatabase;
 	endpoints: IN8nConfigEndpoints;
@@ -246,16 +286,16 @@ export interface IN8nUISettings {
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
 	timezone: string;
 	urlBaseWebhook: string;
 	versionCli: string;
 }
 
-
 export interface IPackageVersions {
 	cli: string;
 }
-
 
 export interface IPushData {
 	data: IPushDataExecutionFinished | IPushDataNodeExecuteAfter | IPushDataNodeExecuteBefore | IPushDataTestWebhook;
@@ -263,7 +303,6 @@ export interface IPushData {
 }
 
 export type IPushDataType = 'executionFinished' | 'executionStarted' | 'nodeExecuteAfter' | 'nodeExecuteBefore' | 'testWebhookDeleted' | 'testWebhookReceived';
-
 
 export interface IPushDataExecutionFinished {
 	data: IRun;
@@ -346,7 +385,10 @@ export interface IWorkflowExecutionDataProcess {
 	workflowData: IWorkflowBase;
 }
 
+
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
+	credentialsOverwrite: ICredentialsOverwrite;
+	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
 	nodeTypeData: ITransferNodeTypes;
 }

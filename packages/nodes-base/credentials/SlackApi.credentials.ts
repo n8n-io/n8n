@@ -7,6 +7,7 @@ import {
 export class SlackApi implements ICredentialType {
 	name = 'slackApi';
 	displayName = 'Slack API';
+	documentationUrl = 'slack';
 	properties = [
 		{
 			displayName: 'Access Token',

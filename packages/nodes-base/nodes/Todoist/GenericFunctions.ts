@@ -1,30 +1,37 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
-import * as _ from 'lodash';
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
-export async function todoistApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('todoistApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	const headerWithAuthentication = Object.assign({}, headers, { Authorization: `Bearer ${credentials.apiKey}` });
+export async function todoistApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	body: any = {}, // tslint:disable-line:no-any
+	qs: IDataObject = {},
+): Promise<any> { // tslint:disable-line:no-any
+	const authentication = this.getNodeParameter('authentication', 0, 'apiKey');
 
 	const endpoint = 'api.todoist.com/rest/v1';
 
 	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+		headers: {},
 		method,
+		qs,
 		uri: `https://${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(body).length !== 0) {
@@ -32,13 +39,25 @@ export async function todoistApiRequest(this: IHookFunctions | IExecuteFunctions
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		if (authentication === 'apiKey') {
+			const credentials = this.getCredentials('todoistApi') as IDataObject;
+
+			//@ts-ignore
+			options.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
+
+			return this.helpers.request!(options);
+		} else {
+			//@ts-ignore
+			return await this.helpers.requestOAuth2.call(this, 'todoistOAuth2Api', options);
+		}
+
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message;
+		const errorMessage = error.response.body;
 
 		if (errorMessage !== undefined) {
-			throw errorMessage;
+			throw new Error(errorMessage);
 		}
-		throw error.response.body;
+
+		throw errorMessage;
 	}
 }

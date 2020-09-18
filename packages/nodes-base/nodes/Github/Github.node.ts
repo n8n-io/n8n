@@ -14,17 +14,16 @@ import {
 	getFileSha,
 } from './GenericFunctions';
 
-
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Github',
+		displayName: 'GitHub',
 		name: 'github',
 		icon: 'file:github.png',
 		group: ['input'],
 		version: 1,
-		description: 'Retrieve data from Github API.',
+		description: 'Retrieve data from GitHub API.',
 		defaults: {
-			name: 'Github',
+			name: 'GitHub',
 			color: '#665533',
 		},
 		inputs: ['main'],
@@ -33,9 +32,44 @@ export class Github implements INodeType {
 			{
 				name: 'githubApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'githubOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -143,7 +177,7 @@ export class Github implements INodeType {
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get the data of a single issues',
+						description: 'Get the data of a single issue',
 					},
 				],
 				default: 'create',
@@ -185,7 +219,7 @@ export class Github implements INodeType {
 					{
 						name: 'List Popular Paths',
 						value: 'listPopularPaths',
-						description: 'Get the data of a file in repositoryGet the top 10 popular content paths over the last 14 days.',
+						description: 'Get the top 10 popular content paths over the last 14 days.',
 					},
 					{
 						name: 'List Referrers',
@@ -209,11 +243,6 @@ export class Github implements INodeType {
 					},
 				},
 				options: [
-					{
-						name: 'Get Emails',
-						value: 'getEmails',
-						description: 'Returns the email addresses of a user',
-					},
 					{
 						name: 'Get Repositories',
 						value: 'getRepositories',
@@ -428,7 +457,7 @@ export class Github implements INodeType {
 								description: 'The name of the author of the commit.',
 							},
 							{
-								displayName: 'EMail',
+								displayName: 'Email',
 								name: 'email',
 								type: 'string',
 								default: '',
@@ -461,7 +490,7 @@ export class Github implements INodeType {
 								description: 'The name of the committer of the commit.',
 							},
 							{
-								displayName: 'EMail',
+								displayName: 'Email',
 								name: 'email',
 								type: 'string',
 								default: '',
@@ -984,28 +1013,28 @@ export class Github implements INodeType {
 						name: 'assignee',
 						type: 'string',
 						default: '',
-						description: 'Return only issuse which are assigned to a specific user.',
+						description: 'Return only issues which are assigned to a specific user.',
 					},
 					{
 						displayName: 'Creator',
 						name: 'creator',
 						type: 'string',
 						default: '',
-						description: 'Return only issuse which were created by a specific user.',
+						description: 'Return only issues which were created by a specific user.',
 					},
 					{
 						displayName: 'Mentioned',
 						name: 'mentioned',
 						type: 'string',
 						default: '',
-						description: 'Return only issuse in which a specific user was mentioned.',
+						description: 'Return only issues in which a specific user was mentioned.',
 					},
 					{
 						displayName: 'Labels',
 						name: 'labels',
 						type: 'string',
 						default: '',
-						description: 'Return only issuse with the given labels. Multiple lables can be separated by comma.',
+						description: 'Return only issues with the given labels. Multiple lables can be separated by comma.',
 					},
 					{
 						displayName: 'Updated Since',
@@ -1092,12 +1121,6 @@ export class Github implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-
-		const credentials = this.getCredentials('githubApi');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
 
 		// Operations which overwrite the returned data
 		const overwriteDataOperations = [

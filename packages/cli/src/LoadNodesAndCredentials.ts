@@ -97,23 +97,27 @@ class LoadNodesAndCredentialsClass {
 	 * @memberof LoadNodesAndCredentialsClass
 	 */
 	async getN8nNodePackages(): Promise<string[]> {
-		const packages: string[] = [];
-		for (const file of await fsReaddirAsync(this.nodeModulesPath)) {
-			if (file.indexOf('n8n-nodes-') !== 0) {
-				continue;
+		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {
+			const results: string[] = [];
+			const nodeModulesPath = `${this.nodeModulesPath}/${relativePath}`;
+			for (const file of await fsReaddirAsync(nodeModulesPath)) {
+				const isN8nNodesPackage = file.indexOf('n8n-nodes-') === 0;
+				const isNpmScopedPackage = file.indexOf('@') === 0;
+				if (!isN8nNodesPackage && !isNpmScopedPackage) {
+					continue;
+				}
+				if (!(await fsStatAsync(nodeModulesPath)).isDirectory()) {
+					continue;
+				}
+				if (isN8nNodesPackage) { results.push(`${relativePath}${file}`); }
+				if (isNpmScopedPackage) {
+					results.push(...await getN8nNodePackagesRecursive(`${relativePath}${file}/`));
+				}
 			}
-
-			// Check if it is really a folder
-			if (!(await fsStatAsync(path.join(this.nodeModulesPath, file))).isDirectory()) {
-				continue;
-			}
-
-			packages.push(file);
-		}
-
-		return packages;
+			return results;
+		};
+		return getN8nNodePackagesRecursive('');
 	}
-
 
 	/**
 	 * Loads credentials from a file
@@ -137,7 +141,7 @@ class LoadNodesAndCredentialsClass {
 			}
 		}
 
-		this.credentialTypes[credentialName] = tempCredential;
+		this.credentialTypes[tempCredential.name] = tempCredential;
 	}
 
 
@@ -192,7 +196,7 @@ class LoadNodesAndCredentialsClass {
 	 * @memberof N8nPackagesInformationClass
 	 */
 	async loadDataFromDirectory(setPackageName: string, directory: string): Promise<void> {
-		const files = await glob(path.join(directory, '*\.@(node|credentials)\.js'));
+		const files = await glob(path.join(directory, '**/*\.@(node|credentials)\.js'));
 
 		let fileName: string;
 		let type: string;

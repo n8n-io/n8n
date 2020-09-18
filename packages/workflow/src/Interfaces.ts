@@ -2,6 +2,8 @@ import { Workflow } from './Workflow';
 import { WorkflowHooks } from './WorkflowHooks';
 import * as express from 'express';
 
+export type IAllExecuteFunctions = IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | IPollFunctions | ITriggerFunctions | IWebhookFunctions;
+
 export interface IBinaryData {
 	[key: string]: string | undefined;
 	data: string;
@@ -10,6 +12,12 @@ export interface IBinaryData {
 	fileExtension?: string;
 }
 
+export interface IOAuth2Options {
+	includeCredentialsOnRefreshOnBody?: boolean;
+	property?: string;
+	tokenType?: string;
+	keepBearer?: boolean;
+}
 
 export interface IConnection {
 	// The node the connection is to
@@ -31,6 +39,27 @@ export interface IExecutionError {
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
 	get(type: string, name: string): Promise<ICredentialsEncrypted>;
+}
+
+export abstract class ICredentials {
+	name: string;
+	type: string;
+	data: string | undefined;
+	nodesAccess: ICredentialNodeAccess[];
+
+	constructor(name: string, type: string, nodesAccess: ICredentialNodeAccess[], data?: string) {
+		this.name = name;
+		this.type = type;
+		this.nodesAccess = nodesAccess;
+		this.data = data;
+	}
+
+	abstract getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject;
+	abstract getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation;
+	abstract getDataToSave(): ICredentialsEncrypted;
+	abstract hasNodeAccess(nodeType: string): boolean;
+	abstract setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void;
+	abstract setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void;
 }
 
 // Defines which nodes are allowed to access the credentials and
@@ -55,10 +84,27 @@ export interface ICredentialsEncrypted {
 	data?: string;
 }
 
+export abstract class ICredentialsHelper {
+	encryptionKey: string;
+	workflowCredentials: IWorkflowCredentials;
+
+	constructor(workflowCredentials: IWorkflowCredentials, encryptionKey: string) {
+		this.encryptionKey = encryptionKey;
+		this.workflowCredentials = workflowCredentials;
+	}
+
+	abstract getCredentials(name: string, type: string): ICredentials;
+	abstract getDecrypted(name: string, type: string): ICredentialDataDecryptedObject;
+	abstract updateCredentials(name: string, type: string, data: ICredentialDataDecryptedObject): Promise<void>;
+}
+
 export interface ICredentialType {
 	name: string;
 	displayName: string;
+	extends?: string[];
 	properties: INodeProperties[];
+	documentationUrl?: string;
+	__overwrittenProperties?: string[];
 }
 
 export interface ICredentialTypes {
@@ -78,7 +124,7 @@ export interface ICredentialData {
 }
 
 // The encrypted credentials which the nodes can access
-export type CredentialInformation = string | number | boolean;
+export type CredentialInformation = string | number | boolean | IDataObject;
 
 
 // The encrypted credentials which the nodes can access
@@ -140,7 +186,6 @@ export interface IExecuteData {
 	data: ITaskDataConnections;
 	node: INode;
 }
-
 
 export type IContextObject = {
 	[key: string]: any; // tslint:disable-line:no-any
@@ -294,9 +339,11 @@ export interface INode {
 	maxTries?: number;
 	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
+	executeOnce?: boolean;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
+	webhookId?: string;
 }
 
 
@@ -344,7 +391,7 @@ export interface INodeParameters {
 }
 
 
-export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'json' | 'multiOptions' | 'number' | 'options' | 'string';
+export type NodePropertyTypes = 'boolean' | 'collection' | 'color' | 'dateTime' | 'fixedCollection' | 'hidden' | 'json' | 'multiOptions' | 'number' | 'options' | 'string';
 
 export type EditorTypes = 'code';
 
@@ -519,8 +566,9 @@ export interface IWebhookData {
 }
 
 export interface IWebhookDescription {
-	[key: string]: WebhookHttpMethod | WebhookResponseMode | string | undefined;
+	[key: string]: WebhookHttpMethod | WebhookResponseMode | boolean | string | undefined;
 	httpMethod: WebhookHttpMethod | string;
+	isFullPath?: boolean;
 	name: string;
 	path: string;
 	responseBinaryPropertyName?: string;
@@ -549,7 +597,7 @@ export interface IWorkflowMetadata {
 	active: boolean;
 }
 
-export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD';
+export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
@@ -671,6 +719,7 @@ export interface IWorkflowExecuteHooks {
 
 export interface IWorkflowExecuteAdditionalData {
 	credentials: IWorkflowCredentials;
+	credentialsHelper: ICredentialsHelper;
 	encryptionKey: string;
 	executeWorkflow: (workflowInfo: IExecuteWorkflowInfo, additionalData: IWorkflowExecuteAdditionalData, inputData?: INodeExecutionData[]) => Promise<any>; // tslint:disable-line:no-any
 	// hooks?: IWorkflowExecuteHooks;

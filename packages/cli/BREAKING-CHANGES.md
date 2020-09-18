@@ -2,6 +2,70 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.79.0
+
+### What changed?
+
+We have renamed the operations in the Todoist Node for consistency with the codebase. We also deleted the `close_match` and `delete_match` operations as these can be accomplished using the following operations: `getAll`, `close`, and `delete`.
+
+### When is action necessary?
+
+When one of the following operations is used:
+
+- close_by
+- close_match
+- delete_id
+- delete_match
+
+### How to upgrade:
+
+After upgrading, open all workflows which contain the Todoist Node. Set the corresponding operation, and then save the workflow.
+
+If the operations `close_match` or `delete_match` are used, recreate them using the operations: `getAll`, `delete`, and `close`.
+
+## 0.69.0
+
+### What changed?
+
+We have simplified how attachments are handled by the Twitter node. Rather than clicking on `Add Attachments` and having to specify the `Catergory`, you can now add attachments by just clicking on `Add Field` and selecting `Attachments`. There's no longer an option to specify the type of attachment you are adding.
+
+### When is action necessary?
+
+If you have used the Attachments option in your Twitter nodes.
+
+### How to upgrade:
+
+You'll need to re-create the attachments for the Twitter node.
+
+
+## 0.68.0
+
+### What changed?
+
+To make it easier to use the data which the Slack-Node outputs we no longer return the whole
+object the Slack-API returns if the only other property is `"ok": true`. In this case it returns
+now directly the data under "channel".
+
+### When is action necessary?
+
+When you currently use the Slack-Node with Operations Channel -> Create and you use
+any of the data the node outputs.
+
+### How to upgrade:
+
+All values that get referenced which were before under the property "channel" are now on the main level.
+This means that these expressions have to get adjusted.
+
+Meaning if the expression used before was:
+```
+{{ $node["Slack"].data["channel"]["id"] }}
+```
+it has to get changed to:
+```
+{{ $node["Slack"].data["id"] }}
+```
+
+
 ## 0.67.0
 
 ### What changed?
