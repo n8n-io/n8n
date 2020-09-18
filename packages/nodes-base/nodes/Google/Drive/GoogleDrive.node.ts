@@ -585,11 +585,12 @@ export class GoogleDrive implements INodeType {
 										value: 'domain',
 									},
 									{
-										name: 'anyone',
+										name: 'Anyone',
 										value: 'anyone',
 									},
 								],
 								default: '',
+								description: 'Information about the different types can be found <a href="https://developers.google.com/drive/api/v3/ref-roles" target="_blank">here</a>.',
 							},
 							{
 								displayName: 'Email Address',
