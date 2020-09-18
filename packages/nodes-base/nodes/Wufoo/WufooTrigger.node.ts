@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
-	wufooApiRequest
+	wufooApiRequest,
 } from './GenericFunctions';
 
 import {
@@ -67,14 +67,13 @@ export class WufooTrigger implements INodeType {
 				description: 'The form upon which will trigger this node when a new entry is made.',
 			},
 			{
-				displayName: 'RAW Data',
-				name: 'rawData',
+				displayName: 'Only Answers',
+				name: 'onlyAnswers',
 				type: 'boolean',
-				default: false,
-				description: 'If set to true, the Webhook will include form/field structure data. If false, only form entries will be provided.',
-			}
+				default: true,
+				description: 'Returns only the answers of the form and not any of the other data.',
+			},
 		],
-
 	};
 
 	methods = {
@@ -121,7 +120,6 @@ export class WufooTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const formHash = this.getNodeParameter('form') as IDataObject;
-				const metadata = this.getNodeParameter('rawData') as boolean;
 				const endpoint = `forms/${formHash}/webhooks.json`;
 
 				// Handshake key for webhook endpoint protection
@@ -129,7 +127,7 @@ export class WufooTrigger implements INodeType {
 				const body: IWebhook = {
 					url: webhookUrl as string,
 					handshakeKey: webhookData.handshakeKey as string,
-					metadata
+					metadata: true,
 				};
 
 				const result = await wufooApiRequest.call(this, 'PUT', endpoint, body);
@@ -155,8 +153,9 @@ export class WufooTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
+		const body = this.getBodyData();
 		const webhookData = this.getWorkflowStaticData('node');
-		const metadata = this.getNodeParameter('rawData') as boolean;
+		const onlyAnswers = this.getNodeParameter('onlyAnswers') as boolean;
 		const entries : IDataObject = {};
 		let returnObject : IDataObject = {};
 
@@ -165,11 +164,63 @@ export class WufooTrigger implements INodeType {
 		}
 
 		const fieldsObject = JSON.parse(req.body.FieldStructure);
+
 		fieldsObject.Fields.map((field : IField) => {
-			entries[field.Title] = req.body[field.ID];
+
+			// TODO
+			// Handle docusign field
+
+			if (field.Type === 'file') {
+
+				entries[field.Title] = req.body[`${field.ID}-url`];
+
+			} else if (field.Type === 'address') {
+				const address: IDataObject = {};
+
+				for (const subfield of field.SubFields) {
+					address[subfield.Label] = body[subfield.ID];
+				}
+
+				entries[field.Title] = address;
+
+			} else if (field.Type === 'checkbox') {
+
+				const responses: string[] = [];
+
+				for (const subfield of field.SubFields) {
+					if (body[subfield.ID] !== '') {
+						responses.push(body[subfield.ID] as string);
+					}
+				}
+
+				entries[field.Title] = responses;
+
+			} else if (field.Type === 'likert') {
+
+				const likert: IDataObject = {};
+
+				for (const subfield of field.SubFields) {
+					likert[subfield.Label] = body[subfield.ID];
+				}
+
+				entries[field.Title] = likert;
+
+			} else if (field.Type === 'shortname') {
+
+				const shortname: IDataObject = {};
+
+				for (const subfield of field.SubFields) {
+					shortname[subfield.Label] = body[subfield.ID];
+				}
+
+				entries[field.Title] = shortname;
+
+			} else {
+				entries[field.Title] = req.body[field.ID];
+			}
 		});
 
-		if (metadata) {
+		if (onlyAnswers === false) {
 			returnObject = {
 				createdBy: req.body.CreatedBy as string,
 				entryId: req.body.EntryId as number,

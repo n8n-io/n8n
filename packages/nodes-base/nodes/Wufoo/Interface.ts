@@ -1,3 +1,5 @@
+import { IDataObject } from "n8n-workflow";
+
 export interface IFormQuery {
 		includeTodayCount?: boolean;
 }
@@ -6,6 +8,12 @@ export interface IWebhook {
 		url: string;
 		handshakeKey?: string;
 		metadata?: boolean;
+}
+
+interface ISubField {
+	DefaultVal: string;
+	ID: string;
+	Label: string;
 }
 
 export interface IField {
@@ -17,4 +25,5 @@ export interface IField {
 		Page: number;
 		Type: string;
 		ID: string;
+		SubFields: [ISubField];
 }
