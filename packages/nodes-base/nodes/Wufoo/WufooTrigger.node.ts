@@ -12,12 +12,19 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-
 import {
 	wufooApiRequest
 } from './GenericFunctions';
-import { IField, IFormQuery, IWebhook} from './Interface';
-import {randomBytes} from 'crypto';
+
+import {
+	IField,
+	IFormQuery,
+	IWebhook,
+} from './Interface';
+
+import {
+	randomBytes,
+} from 'crypto';
 
 export class WufooTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,7 +44,7 @@ export class WufooTrigger implements INodeType {
 			{
 				name: 'wufooApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
