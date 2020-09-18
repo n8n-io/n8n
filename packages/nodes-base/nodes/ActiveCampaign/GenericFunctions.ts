@@ -49,8 +49,6 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		options.body = body;
 	}
 
-	console.log(options);
-
 	try {
 		const responseData = await this.helpers.request!(options);
 
@@ -127,11 +125,11 @@ export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IE
 	return returnData;
 }
 
-export function activeCampaignDefaultGetAllProperties (resource: string, operation: string): INodeProperties [] {
+export function activeCampaignDefaultGetAllProperties(resource: string, operation: string): INodeProperties[] {
 	return [
 		{
 			displayName: 'Return All',
-				name: 'returnAll',
+			name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {
 				show: {
@@ -148,26 +146,26 @@ export function activeCampaignDefaultGetAllProperties (resource: string, operati
 		},
 		{
 			displayName: 'Limit',
-				name: 'limit',
+			name: 'limit',
 			type: 'number',
 			displayOptions: {
-			show: {
-				operation: [
-					operation,
-				],
-				resource: [
-					resource,
-				],
-				returnAll: [
-					false,
-				],
+				show: {
+					operation: [
+						operation,
+					],
+					resource: [
+						resource,
+					],
+					returnAll: [
+						false,
+					],
+				},
 			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
+			typeOptions: {
+				minValue: 1,
+				maxValue: 500,
+			},
+			default: 100,
 			description: 'How many results to return.',
 		},
 		{
@@ -185,7 +183,7 @@ export function activeCampaignDefaultGetAllProperties (resource: string, operati
 				},
 			},
 			default: true,
-			description: 'When set to true a simplify version of the response will be used else the raw data will be used',
+			description: 'When set to true a simplify version of the response will be used else the raw data.',
 		},
 	];
 }
