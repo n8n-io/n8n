@@ -30,8 +30,7 @@ export class EmailReadImap implements INodeType {
 			color: '#44AA22',
 		},
 		inputs: [],
-		outputs: ['main', 'main'],
-		outputNames: ['data', 'error'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'imap',
@@ -132,33 +131,19 @@ export class EmailReadImap implements INodeType {
 				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
-				displayName: 'Use custom email config',
-				name: 'useCustomEmailConfig',
-				type: 'boolean',
-				default: false,
-				description: 'If custom email rules should be used.',
-			},
-			{
-				displayName: 'Custom email rules',
-				name: 'customEmailConfig',
-				type: 'string',
-				default: "['UNSEEN']",
-				displayOptions: {
-					show: {
-						useCustomEmailConfig: [
-							true
-						],
-					},
-				},
-				description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details'
-			},
-			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
 				options: [
+					{
+						displayName: 'Custom email rules',
+						name: 'customEmailConfig',
+						type: 'string',
+						default: '["UNSEEN"]',
+						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details'
+					},
 					{
 						displayName: 'Ignore SSL Issues',
 						name: 'allowUnauthorizedCerts',
@@ -184,6 +169,16 @@ export class EmailReadImap implements INodeType {
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
+		let searchCriteria = [
+			'UNSEEN'
+		];
+		if (options.customEmailConfig !== undefined) {
+			try {
+				searchCriteria = JSON.parse(options.customEmailConfig as string);
+			} catch (err) {
+				throw new Error(`Custom email config is not valid JSON.`);
+			}
+		}
 
 		// Returns the email text
 		const getText = async (parts: any[], message: Message, subtype: string) => { // tslint:disable-line:no-any
@@ -235,22 +230,9 @@ export class EmailReadImap implements INodeType {
 
 
 		// Returns all the new unseen messages
-		const getNewEmails = async (connection: ImapSimple): Promise<INodeExecutionData[]> => {
+		const getNewEmails = async (connection: ImapSimple, searchCriteria: string[]): Promise<INodeExecutionData[]> => {
 			const format = this.getNodeParameter('format', 0) as string;
 
-			let searchCriteria = [
-				'UNSEEN'
-			];
-			const useCustomEmailConfig = this.getNodeParameter('useCustomEmailConfig') as boolean;
-			if (useCustomEmailConfig) {
-				const customEmailConfig = this.getNodeParameter('customEmailConfig') as string;
-				try {
-					searchCriteria = eval(customEmailConfig);
-				} catch (err) {
-					throw new Error(`Parsing of ${customEmailConfig}\nfailed with error ${err}`);
-				}
-			}
-			
 			let fetchOptions = {};
 
 			if (format === 'simple' || format === 'raw') {
@@ -273,8 +255,6 @@ export class EmailReadImap implements INodeType {
 			let newEmail: INodeExecutionData, messageHeader, messageBody;
 			let attachments: IBinaryData[];
 			let propertyName: string;
-
-
 
 			// All properties get by default moved to metadata except the ones
 			// which are defined here which get set on the top level.
@@ -367,22 +347,7 @@ export class EmailReadImap implements INodeType {
 			return newEmails;
 		};
 
-
-
 		let connection: ImapSimple;
-		let empty: INodeExecutionData[] = [];
-		let errToJson = (err: Error) => {
-			return {
-				json:
-				{
-					message: err.message,
-					stack: err.stack
-				}
-			};
-		}
-		let emitError = (err: Error) => {
-			this.emit([empty, [errToJson(err)]]);
-		}
 
 		const config: ImapSimpleOptions = {
 			imap: {
@@ -394,14 +359,10 @@ export class EmailReadImap implements INodeType {
 				authTimeout: 3000
 			},
 			onmail: async () => {
-				try{
-					const returnData = await getNewEmails(connection);
+				const returnData = await getNewEmails(connection, searchCriteria);
 
-					if (returnData.length) {
-						this.emit([returnData, empty]);
-					}
-				}catch(e) {
-					emitError(e);
+				if (returnData.length) {
+					this.emit([returnData]);
 				}
 			},
 		};
@@ -414,12 +375,8 @@ export class EmailReadImap implements INodeType {
 
 		// Connect to the IMAP server and open the mailbox
 		// that we get informed whenever a new email arrives
-		try {
-			connection = await imapConnect(config);
-			await connection.openBox(mailbox);
-		} catch (e) {
-			emitError(e);
-		}
+		connection = await imapConnect(config);
+		await connection.openBox(mailbox);
 
 		// When workflow and so node gets set to inactive close the connectoin
 		async function closeFunction() {
