@@ -6,7 +6,7 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
-In the Active Campaign Node, we have changed how the operation `getAll` works on various resources to keep consistency across them. To achive this a new parameter called 'Simple' was added.
+In the Active Campaign Node, we have changed how the `getAll` operation works with various resources for the sake of consistency. To achieve this, a new parameter called 'Simple' has been added.
 
 ### When is action necessary?
 
