@@ -474,7 +474,7 @@ export class ActiveCampaign implements INodeType {
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
 				}
-			}  else if (resource === 'accountContact') {
+			} else if (resource === 'accountContact') {
 				if (operation === 'create') {
 					// ----------------------------------
 					//         account:create
