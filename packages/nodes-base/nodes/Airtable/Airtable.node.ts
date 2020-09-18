@@ -360,11 +360,11 @@ export class Airtable implements INodeType {
 			// ----------------------------------
 			//         append + update
 			// ----------------------------------
-			
 			{
-				displayName: 'Typecast',
-				name: 'typecast',
-				type: 'boolean',
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
 						operation: [
@@ -373,10 +373,17 @@ export class Airtable implements INodeType {
 						],
 					},
 				},
-				default: false,
-				description: 'If the Airtable API should attempt mapping of string values for linked records & select options.',
+				default: {},
+				options: [
+					{
+						displayName: 'Typecast',
+						name: 'typecast',
+						type: 'boolean',
+						default: false,
+						description: 'If the Airtable API should attempt mapping of string values for linked records & select options.',
+					},
+				],
 			},
-
 		],
 	};
 
@@ -407,9 +414,11 @@ export class Airtable implements INodeType {
 
 			let addAllFields: boolean;
 			let fields: string[];
-			let typecast: boolean;
+			let options: IDataObject;
+
 			for (let i = 0; i < items.length; i++) {
 				addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
+				options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 				if (addAllFields === true) {
 					// Add all the fields the item has
@@ -425,9 +434,8 @@ export class Airtable implements INodeType {
 						body.fields[fieldName] = items[i].json[fieldName];
 					}
 				}
-				
-				typecast = this.getNodeParameter('typecast', i) as boolean;
-				if (typecast === true) {
+
+				if (options.typecast === true) {
 					body['typecast'] = true;
 				}
 
@@ -521,9 +529,11 @@ export class Airtable implements INodeType {
 			let id: string;
 			let updateAllFields: boolean;
 			let fields: string[];
-			let typecast: boolean;
+			let options: IDataObject;
+
 			for (let i = 0; i < items.length; i++) {
 				updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
+				options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 				if (updateAllFields === true) {
 					// Update all the fields the item has
@@ -540,8 +550,7 @@ export class Airtable implements INodeType {
 					}
 				}
 
-				typecast = this.getNodeParameter('typecast', i) as boolean;
-				if (typecast === true) {
+				if (options.typecast === true) {
 					body['typecast'] = true;
 				}
 
