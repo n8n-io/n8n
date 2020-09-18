@@ -101,7 +101,7 @@
         "localtunnel": "^2.0.0",
         "lodash.get": "^4.4.2",
         "mongodb": "^3.5.5",
-        "mysql2": "^2.0.1",
+        "mysql2": "~2.1.0",
         "n8n-core": "~0.45.0",
         "n8n-editor-ui": "~0.56.0",
         "n8n-nodes-base": "~0.77.0",
