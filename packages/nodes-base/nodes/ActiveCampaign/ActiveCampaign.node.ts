@@ -353,6 +353,7 @@ export class ActiveCampaign implements INodeType {
 					requestMethod = 'GET';
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const simple = this.getNodeParameter('simple', i, true) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (returnAll === false) {
@@ -366,7 +367,10 @@ export class ActiveCampaign implements INodeType {
 						delete qs.orderBy;
 					}
 
-					dataKey = 'contacts';
+					if (simple === true) {
+						dataKey = 'contacts';
+					}
+
 					endpoint = `/api/3/contacts`;
 
 				} else if (operation === 'update') {
@@ -435,12 +439,16 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
+					const simple = this.getNodeParameter('simple', i, true) as boolean;
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
-					dataKey = 'accounts';
+					if (simple === true) {
+						dataKey = 'accounts';
+					}
+
 					endpoint = `/api/3/accounts`;
 
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -593,12 +601,16 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
+					const simple = this.getNodeParameter('simple', i, true) as boolean;
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
-					dataKey = 'tags';
+					if (simple === true) {
+						dataKey = 'tags';
+					}
+
 					endpoint = `/api/3/tags`;
 
 				} else if (operation === 'update') {
@@ -688,8 +700,6 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
-					dataKey = 'deal';
-
 					const dealId = this.getNodeParameter('dealId', i) as number;
 					endpoint = `/api/3/deals/${dealId}`;
 
@@ -700,12 +710,15 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
+					const simple = this.getNodeParameter('simple', i, true) as boolean;
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
-					dataKey = 'deals';
+					if (simple === true) {
+						dataKey = 'deals';
+					}
 
 					endpoint = `/api/3/deals`;
 
@@ -789,8 +802,6 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
-					dataKey = 'connections';
-
 					const connectionId = this.getNodeParameter('connectionId', i) as number;
 					endpoint = `/api/3/connections/${connectionId}`;
 
@@ -801,11 +812,14 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
-					dataKey = 'connections';
-
+					const simple = this.getNodeParameter('simple', i, true) as boolean;
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (simple === true) {
+						dataKey = 'connections';
 					}
 
 					endpoint = `/api/3/connections`;
@@ -886,8 +900,6 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
-					dataKey = 'ecomOrders';
-
 					const orderId = this.getNodeParameter('orderId', i) as number;
 					endpoint = `/api/3/ecomOrders/${orderId}`;
 
@@ -898,12 +910,15 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
+					const simple = this.getNodeParameter('simple', i, true) as boolean;
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
-					dataKey = 'ecomOrders';
+					if (simple === true) {
+						dataKey = 'ecomOrders';
+					}
 
 					endpoint = `/api/3/ecomOrders`;
 
@@ -975,8 +990,6 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
-					dataKey = 'ecomCustomers';
-
 					const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
 					endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
 
@@ -987,11 +1000,14 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
-					dataKey = 'ecomCustomers';
-
+					const simple = this.getNodeParameter('simple', i, true) as boolean;
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (simple === true) {
+						dataKey = 'ecomCustomers';
 					}
 
 					endpoint = `/api/3/ecomCustomers`;
@@ -1018,7 +1034,7 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
-					dataKey = 'ecomOrderProducts';
+					//dataKey = 'ecomOrderProducts';
 
 					const orderId = this.getNodeParameter('orderId', i) as number;
 					endpoint = `/api/3/ecomOrders/${orderId}/orderProducts`;
@@ -1030,11 +1046,14 @@ export class ActiveCampaign implements INodeType {
 
 					requestMethod = 'GET';
 
-					dataKey = 'ecomOrderProducts';
-
+					const simple = this.getNodeParameter('simple', i, true) as boolean;
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (simple === true) {
+						dataKey = 'ecomOrderProducts';
 					}
 
 					endpoint = `/api/3/ecomOrderProducts`;

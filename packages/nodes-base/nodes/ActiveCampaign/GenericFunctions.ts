@@ -49,6 +49,8 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		options.body = body;
 	}
 
+	console.log(options);
+
 	try {
 		const responseData = await this.helpers.request!(options);
 
@@ -132,16 +134,16 @@ export function activeCampaignDefaultGetAllProperties (resource: string, operati
 				name: 'returnAll',
 			type: 'boolean',
 			displayOptions: {
-			show: {
-				operation: [
-					operation,
-				],
-				resource: [
-					resource,
-				],
+				show: {
+					operation: [
+						operation,
+					],
+					resource: [
+						resource,
+					],
+				},
 			},
-		},
-		default: false,
+			default: false,
 			description: 'If all results should be returned or only up to a given limit.',
 		},
 		{
@@ -167,6 +169,23 @@ export function activeCampaignDefaultGetAllProperties (resource: string, operati
 		},
 		default: 100,
 			description: 'How many results to return.',
-		}
+		},
+		{
+			displayName: 'Simple',
+			name: 'simple',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: [
+						operation,
+					],
+					resource: [
+						resource,
+					],
+				},
+			},
+			default: true,
+			description: 'When set to true a simplify version of the response will be used else the raw data will be used',
+		},
 	];
 }
