@@ -2,6 +2,28 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.83.0
+
+### What changed?
+
+In the Active Campaign Node, we have changed how the operation `getAll` works on various resources to keep consistency across them. To achive this a new parameter called 'Simple' was added.
+
+### When is action necessary?
+
+When one of the following resources/operations is used:
+
+| Resource | Operation |
+|--|--|
+| Deal | Get All |
+| Connector | Get All |
+|  E-commerce Order | Get All |
+|  E-commerce Customer | Get All |
+|  E-commerce Order Products | Get All |
+
+### How to upgrade:
+
+Open the affected resource/operation and set the parameter `Simple` to false.
+
 ## 0.79.0
 
 ### What changed?

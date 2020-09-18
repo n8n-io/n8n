@@ -1,6 +1,14 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from "n8n-workflow";
 
-import { allCurrencies } from './currencies';
+import {
+	allCurrencies,
+} from './currencies';
+
+import {
+	activeCampaignDefaultGetAllProperties,
+} from './GenericFunctions';
 
 export const ecomOrderOperations = [
 	{
@@ -672,45 +680,6 @@ export const ecomOrderFields = [
 	// ----------------------------------
 	//         ecommerceOrder:getAll
 	// ----------------------------------
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
-	},
+	...activeCampaignDefaultGetAllProperties('ecommerceOrder', 'getAll'),
+
 ] as INodeProperties[];

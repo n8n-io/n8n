@@ -1,4 +1,10 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from "n8n-workflow";
+
+import {
+	activeCampaignDefaultGetAllProperties,
+} from "./GenericFunctions";
 
 export const connectionOperations = [
 	{
@@ -278,45 +284,6 @@ export const connectionFields = [
 	// ----------------------------------
 	//         connection:getAll
 	// ----------------------------------
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'connection',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'connection',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
-	},
+	...activeCampaignDefaultGetAllProperties('connection', 'getAll'),
+
 ] as INodeProperties[];
