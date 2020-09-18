@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -6,7 +8,9 @@ import {
 	BINARY_ENCODING
 } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import {
+	IDataObject,
+} from 'n8n-workflow';
 
 export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 

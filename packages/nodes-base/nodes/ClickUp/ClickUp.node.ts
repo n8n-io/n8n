@@ -99,9 +99,43 @@ export class ClickUp implements INodeType {
 			{
 				name: 'clickUpApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'clickUpOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -296,7 +330,7 @@ export class ClickUp implements INodeType {
 				const { tags } = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
 				for (const tag of tags) {
 					const tagName = tag.name;
-					const tagId = tag.id;
+					const tagId = tag.name;
 					returnData.push({
 						name: tagName,
 						value: tagId,
@@ -316,6 +350,23 @@ export class ClickUp implements INodeType {
 					returnData.push({
 						name: statusName,
 						value: statusId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the custom fields to display them to user so that he can
+			// select them easily
+			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const listId = this.getCurrentNodeParameter('list') as string;
+				const returnData: INodePropertyOptions[] = [];
+				const { fields } = await clickupApiRequest.call(this, 'GET', `/list/${listId}/field`);
+				for (const field of fields) {
+					const fieldName = field.name;
+					const fieldId = field.id;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
 					});
 				}
 				return returnData;
@@ -846,12 +897,41 @@ export class ClickUp implements INodeType {
 					if (filters.dateUpdatedLt) {
 						qs.date_updated_lt = new Date(filters.dateUpdatedLt as string).getTime();
 					}
+					if (filters.customFieldsUi) {
+						const customFieldsValues = (filters.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFieldsValues) {
+							const customFields: IDataObject[] = [];
+							for (const customFieldValue of customFieldsValues) {
+								customFields.push({
+									field_id: customFieldValue.fieldId,
+									operator: (customFieldValue.operator === 'equal') ? '=' : customFieldValue.operator,
+									value: customFieldValue.value as string,
+								});
+							}
+
+							qs.custom_fields = JSON.stringify(customFields);
+						}
+					}
+
 					const listId = this.getNodeParameter('list', i) as string;
 					if (returnAll === true) {
 						responseData = await clickupApiRequestAllItems.call(this, 'tasks', 'GET', `/list/${listId}/task`, {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await clickupApiRequestAllItems.call(this, 'tasks', 'GET', `/list/${listId}/task`, {}, qs);
+						responseData = responseData.splice(0, qs.limit);
+					}
+				}
+				if (operation === 'member') {
+					const taskId = this.getNodeParameter('id', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === true) {
+						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}/member`, {}, qs);
+						responseData = responseData.members;
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}/member`, {}, qs);
+						responseData = responseData.members;
 						responseData = responseData.splice(0, qs.limit);
 					}
 				}
@@ -982,6 +1062,19 @@ export class ClickUp implements INodeType {
 					} else {
 						const folderId = this.getNodeParameter('folder', i) as string;
 						responseData = await clickupApiRequest.call(this, 'POST', `/folder/${folderId}/list`, body);
+					}
+				}
+				if (operation === 'member') {
+					const listId = this.getNodeParameter('id', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === true) {
+						responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}/member`, {}, qs);
+						responseData = responseData.members;
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}/member`, {}, qs);
+						responseData = responseData.members;
+						responseData = responseData.splice(0, qs.limit);
 					}
 				}
 				if (operation === 'customFields') {

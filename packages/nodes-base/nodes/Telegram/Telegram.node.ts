@@ -147,6 +147,11 @@ export class Telegram implements INodeType {
 						description: 'Edit a text message',
 					},
 					{
+						name: 'Send Animation',
+						value: 'sendAnimation',
+						description: 'Send an animated file',
+					},
+					{
 						name: 'Send Audio',
 						value: 'sendAudio',
 						description: 'Send a audio file',
@@ -209,6 +214,7 @@ export class Telegram implements INodeType {
 							'member',
 							'setDescription',
 							'setTitle',
+							'sendAnimation',
 							'sendAudio',
 							'sendChatAction',
 							'sendDocument',
@@ -514,6 +520,29 @@ export class Telegram implements INodeType {
 
 
 			// ----------------------------------
+			//         message:sendAnimation
+			// ----------------------------------
+			{
+				displayName: 'Animation',
+				name: 'file',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'sendAnimation'
+						],
+						resource: [
+							'message',
+						],
+					},
+				},
+				description: 'Animation to send. Pass a file_id to send an animation that exists on the Telegram servers (recommended)<br />or pass an HTTP URL for Telegram to get an animation from the Internet.',
+			},
+
+
+
+			// ----------------------------------
 			//         message:sendAudio
 			// ----------------------------------
 			{
@@ -811,7 +840,7 @@ export class Telegram implements INodeType {
 
 
 			// ----------------------------------
-			//         message:editMessageText/sendAudio/sendMessage/sendPhoto/sendSticker/sendVideo
+			//         message:editMessageText/sendAnimation/sendAudio/sendMessage/sendPhoto/sendSticker/sendVideo
 			// ----------------------------------
 
 			{
@@ -820,6 +849,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'sendAnimation',
 							'sendDocument',
 							'sendMessage',
 							'sendPhoto',
@@ -1147,6 +1177,7 @@ export class Telegram implements INodeType {
 					show: {
 						operation: [
 							'editMessageText',
+							'sendAnimation',
 							'sendDocument',
 							'sendMessage',
 							'sendMediaGroup',
@@ -1171,6 +1202,7 @@ export class Telegram implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'sendAnimation',
 									'sendAudio',
 									'sendDocument',
 									'sendPhoto',
@@ -1220,6 +1252,7 @@ export class Telegram implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'sendAnimation',
 									'sendAudio',
 									'sendVideo',
 								],
@@ -1238,6 +1271,7 @@ export class Telegram implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'sendAnimation',
 									'sendVideo',
 								],
 							},
@@ -1263,6 +1297,7 @@ export class Telegram implements INodeType {
 							show: {
 								'/operation': [
 									'editMessageText',
+									'sendAnimation',
 									'sendAudio',
 									'sendMessage',
 									'sendPhoto',
@@ -1325,6 +1360,7 @@ export class Telegram implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'sendAnimation',
 									'sendAudio',
 									'sendDocument',
 									'sendVideo',
@@ -1344,6 +1380,7 @@ export class Telegram implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'sendAnimation',
 									'sendVideo',
 								],
 							},
@@ -1468,6 +1505,21 @@ export class Telegram implements INodeType {
 
 					// Add additional fields and replyMarkup
 					addAdditionalFields.call(this, body, i);
+
+
+				} else if (operation === 'sendAnimation') {
+					// ----------------------------------
+					//         message:sendAnimation
+					// ----------------------------------
+
+					endpoint = 'sendAnimation';
+
+					body.chat_id = this.getNodeParameter('chatId', i) as string;
+					body.animation = this.getNodeParameter('file', i) as string;
+
+					// Add additional fields and replyMarkup
+					addAdditionalFields.call(this, body, i);
+
 
 				} else if (operation === 'sendAudio') {
 					// ----------------------------------

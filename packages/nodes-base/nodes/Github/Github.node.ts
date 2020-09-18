@@ -14,7 +14,6 @@ import {
 	getFileSha,
 } from './GenericFunctions';
 
-
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',

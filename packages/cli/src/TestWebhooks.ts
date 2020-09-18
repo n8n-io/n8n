@@ -3,11 +3,9 @@ import * as express from 'express';
 import {
 	IResponseCallbackData,
 	IWorkflowDb,
-	NodeTypes,
 	Push,
 	ResponseHelper,
 	WebhookHelpers,
-	WorkflowHelpers,
 } from './';
 
 import {
@@ -31,6 +29,7 @@ export class TestWebhooks {
 			sessionId?: string;
 			timeout: NodeJS.Timeout,
 			workflowData: IWorkflowDb;
+			workflow: Workflow;
 		};
 	} = {};
 	private activeWebhooks: ActiveWebhooks | null = null;
@@ -64,10 +63,13 @@ export class TestWebhooks {
 
 		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
 
-		const workflowData = this.testWebhookData[webhookKey].workflowData;
+		// TODO: Clean that duplication up one day and improve code generally
+		if (this.testWebhookData[webhookKey] === undefined) {
+			// The requested webhook is not registered
+			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+		}
 
-		const nodeTypes = NodeTypes();
-		const workflow = new Workflow({ id: webhookData.workflowId, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings});
+		const workflow = this.testWebhookData[webhookKey].workflow;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -157,16 +159,14 @@ export class TestWebhooks {
 		for (const webhookData of webhooks) {
 			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
 
-			await this.activeWebhooks!.add(workflow, webhookData, mode);
-
 			this.testWebhookData[key] = {
 				sessionId,
 				timeout,
+				workflow,
 				workflowData,
 			};
 
-			// Save static data!
-			this.testWebhookData[key].workflowData.staticData = workflow.staticData;
+			await this.activeWebhooks!.add(workflow, webhookData, mode);
 		}
 
 		return true;
@@ -181,8 +181,6 @@ export class TestWebhooks {
 	 * @memberof TestWebhooks
 	 */
 	cancelTestWebhook(workflowId: string): boolean {
-		const nodeTypes = NodeTypes();
-
 		let foundWebhook = false;
 		for (const webhookKey of Object.keys(this.testWebhookData)) {
 			const webhookData = this.testWebhookData[webhookKey];
@@ -205,8 +203,7 @@ export class TestWebhooks {
 				}
 			}
 
-			const workflowData = webhookData.workflowData;
-			const workflow = new Workflow({ id: workflowData.id.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
+			const workflow = this.testWebhookData[webhookKey].workflow;
 
 			// Remove the webhook
 			delete this.testWebhookData[webhookKey];
@@ -225,14 +222,10 @@ export class TestWebhooks {
 			return;
 		}
 
-		const nodeTypes = NodeTypes();
-
-		let workflowData: IWorkflowDb;
 		let workflow: Workflow;
 		const workflows: Workflow[] = [];
 		for (const webhookKey of Object.keys(this.testWebhookData)) {
-			workflowData = this.testWebhookData[webhookKey].workflowData;
-			workflow = new Workflow({ id: workflowData.id.toString(), name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: workflowData.active, nodeTypes, staticData: workflowData.staticData, settings: workflowData.settings });
+			workflow = this.testWebhookData[webhookKey].workflow;
 			workflows.push(workflow);
 		}
 
