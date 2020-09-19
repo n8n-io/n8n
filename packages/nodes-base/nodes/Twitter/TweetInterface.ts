@@ -1,4 +1,5 @@
 export interface ITweet {
+	auto_populate_reply_metadata?: boolean;
 	display_coordinates?: boolean;
 	lat?: number;
 	long?: number;
