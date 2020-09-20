@@ -1,13 +1,15 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export const simpleResources = [
+export const simpleOperations = [
 	{
-		displayName: 'Resource',
-		name: 'resource',
+		displayName: 'Operation',
+		name: 'operation',
 		type: 'options',
 		displayOptions: {
 			show: {
-				context: [
+				resource: [
 					'simple',
 				],
 			},
@@ -17,187 +19,185 @@ export const simpleResources = [
 				name: 'Price',
 				value: 'price',
 				description: 'Get the current price of any cryptocurrencies in any other supported currencies that you need',
-            },
-			{
-				name: 'Supported VS currencies',
-				value: 'supported_vs_currencies',
-				description: 'Get list of supported VS currencies',
 			},
 			{
-				name: 'Token price',
-				value: 'token_price/<id>',
-				description: 'Get current price of tokens (using contract addresses) for a given platform in any other currency that you need',
+				name: 'Token Price',
+				value: 'tokenPrice',
+				description: 'Get current price of tokens for a given platform in any other currency that you need',
 			},
-        ],
-        default: 'price',
+		],
+		default: 'price',
 		description: 'The resource to retreive',
 	},
 ] as INodeProperties[];
 
 const includeOptions = [
-    {
-        displayName: 'Include 24hr change',
-        name: 'include_24hr_change',
-        type: 'boolean',
-        default: false,
-    },
-    {
-        displayName: 'Include 24hr vol',
-        name: 'include_24hr_vol',
-        type: 'boolean',
-        default: false,
-    },
-    {
-        displayName: 'Include last updated at',
-        name: 'include_last_updated_at',
-        type: 'boolean',
-        default: false,
-    },
-    {
-        displayName: 'Include market cap',
-        name: 'include_market_cap',
-        type: 'boolean',
-        default: false,
-    },
-]
+	{
+		displayName: 'Include 24hr Change',
+		name: 'include_24hr_change',
+		type: 'boolean',
+		default: false,
+	},
+	{
+		displayName: 'Include 24hr Vol',
+		name: 'include_24hr_vol',
+		type: 'boolean',
+		default: false,
+	},
+	{
+		displayName: 'Include Last Updated At',
+		name: 'include_last_updated_at',
+		type: 'boolean',
+		default: false,
+	},
+	{
+		displayName: 'Include Market Cap',
+		name: 'include_market_cap',
+		type: 'boolean',
+		default: false,
+	},
+];
 
 export const simpleFields = [
 /* -------------------------------------------------------------------------- */
 /*                                  simple:price                              */
 /* -------------------------------------------------------------------------- */
-    {
-        displayName: 'Coins IDs',
-        name: 'ids',
-        type: 'string',
-        required: true,
-        displayOptions: {
-            show: {
-                context: [
-                    'simple',
-                ],
-                resource: [
-                    'price',
-                ],
-            },
-        },
-        description: 'ID of coins, comma-separated if querying more than 1 coin. Refers to Coins / List',
-    },
-    {
-        displayName: 'VS currencies',
-        name: 'vs_currencies',
-        type: 'string',
-        required: true,
-        displayOptions: {
-            show: {
-                context: [
-                    'simple',
-                ],
-                resource: [
-                    'price'
-                ],
-            },
-        },
-        description: 'VS currency of coins, comma-separated if querying more than 1 vs_currency. Refers to Simple / Supported VS currencies',
-    },
-    {
-        displayName: 'Options',
-        name: 'options',
-        type: 'collection',
-        placeholder: 'Add Field',
-        default: {},
-        displayOptions: {
-            show: {
-                context: [
-                    'simple',
-                ],
-                resource: [
-                    'price',
-                ],
-            },
-        },
-        options: [
-            ...includeOptions
-        ],
-    },
+	{
+		displayName: 'Coin IDs',
+		name: 'ids',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'simple',
+				],
+				operation: [
+					'price',
+				],
+			},
+		},
+		default: '',
+		description: 'ID of coins, comma-separated if querying more than 1 coin. Refers to Coins / List',
+	},
+	{
+		displayName: 'Currencies',
+		name: 'currencies',
+		type: 'string',
+		required: true,
+		placeholder: 'usd',
+		displayOptions: {
+			show: {
+				resource: [
+					'simple',
+				],
+				operation: [
+					'price',
+				],
+			},
+		},
+		default: '',
+		description: 'VS currency of coins, comma-separated if querying more than 1 vs_currency. Refers to Simple / Supported VS currencies',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'simple',
+				],
+				operation: [
+					'price',
+				],
+			},
+		},
+		options: [
+			...includeOptions,
+		],
+	},
 /* -------------------------------------------------------------------------- */
-/*                                  simple:token_price                        */
+/*                                  simple:tokenPrice                         */
 /* -------------------------------------------------------------------------- */
-    {
-        displayName: 'platform ID',
-        name: 'id',
-        required: true,
-        displayOptions: {
-            show: {
-                context: [
-                    'simple',
-                ],
-                resource: [
-                    'token_price/<id>',
-                ],
-            },
-        },
-        type: 'options',
-        options: [
-            {
-                name: 'Ethereum',
-                value: 'ethereum',
-            },
-        ],
-        default: 'ethereum',
-        description: 'The id of the platform issuing tokens',
-    },
-    {
-        displayName: 'Contract addresses',
-        name: 'contract_addresses',
-        type: 'string',
-        required: true,
-        displayOptions: {
-            show: {
-                context: [
-                    'simple',
-                ],
-                resource: [
-                    'token_price/<id>',
-                ],
-            },
-        },
-        description: 'The contract address of tokens, comma separated',
-    },
-    {
-        displayName: 'VS currencies',
-        name: 'vs_currencies',
-        type: 'string',
-        required: true,
-        displayOptions: {
-            show: {
-                context: [
-                    'simple',
-                ],
-                resource: [
-                    'token_price/<id>'
-                ],
-            },
-        },
-        description: 'VS currency of coins, comma-separated if querying more than 1 vs_currency. Refers to Simple / Supported VS currencies',
-    },
-    {
-        displayName: 'Options',
-        name: 'options',
-        type: 'collection',
-        placeholder: 'Add Field',
-        default: {},
-        displayOptions: {
-            show: {
-                context: [
-                    'simple',
-                ],
-                resource: [
-                    'token_price/<id>',
-                ],
-            },
-        },
-        options: [
-            ...includeOptions
-        ],
-    },
+	{
+		displayName: 'Platform ID',
+		name: 'id',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'simple',
+				],
+				operation: [
+					'tokenPrice',
+				],
+			},
+		},
+		type: 'options',
+		options: [
+			{
+				name: 'Ethereum',
+				value: 'ethereum',
+			},
+		],
+		default: 'ethereum',
+		description: 'The id of the platform issuing tokens',
+	},
+	{
+		displayName: 'Contract addresses',
+		name: 'contractAddresses',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'simple',
+				],
+				operation: [
+					'tokenPrice',
+				],
+			},
+		},
+		description: 'The contract address of tokens, comma separated',
+	},
+	{
+		displayName: 'Currencies',
+		name: 'currencies',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'simple',
+				],
+				operation: [
+					'tokenPrice',
+				],
+			},
+		},
+		description: 'VS currency of coins, comma-separated if querying more than 1 vs_currency. Refers to Simple / Supported VS currencies',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'simple',
+				],
+				operation: [
+					'tokenPrice',
+				],
+			},
+		},
+		options: [
+			...includeOptions,
+		],
+	},
 ] as INodeProperties[];
