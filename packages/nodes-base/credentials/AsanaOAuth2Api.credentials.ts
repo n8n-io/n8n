@@ -9,6 +9,7 @@ export class AsanaOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Asana OAuth2 API';
+	documentationUrl = 'asana';
 	properties = [
 		{
 			displayName: 'Authorization URL',
