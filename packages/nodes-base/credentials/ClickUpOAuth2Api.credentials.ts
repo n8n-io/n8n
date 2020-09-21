@@ -9,6 +9,7 @@ export class ClickUpOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'ClickUp OAuth2 API';
+	documentationUrl = 'clickUp';
 	properties = [
 		{
 			displayName: 'Authorization URL',
