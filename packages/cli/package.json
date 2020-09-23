@@ -97,7 +97,7 @@
         "google-timezones-json": "^1.0.2",
         "inquirer": "^7.0.1",
         "jsonwebtoken": "^8.5.1",
-        "jwks-rsa": "^1.6.0",
+        "jwks-rsa": "~1.9.0",
         "localtunnel": "^2.0.0",
         "lodash.get": "^4.4.2",
         "mongodb": "^3.5.5",
