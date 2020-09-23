@@ -611,7 +611,10 @@ export class GoogleSheets implements INodeType {
 		let range = '';
 		if (operation !== 'delete') {
 			range = this.getNodeParameter('range', 0) as string;
-			range = encodeURIComponent(range);
+			if (range.includes('!')) {
+				const [sheet, ranges] = range.split('!');
+				range =	`${encodeURIComponent(sheet)}!${ranges}`;
+			}
 		}
 
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
