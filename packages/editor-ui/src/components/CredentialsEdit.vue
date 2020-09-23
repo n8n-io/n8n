@@ -112,15 +112,16 @@ export default mixins(
 		documentationUrl (): string | undefined {
 			let credentialTypeName = '';
 			if (this.editCredentials) {
-				credentialTypeName = this.editCredentials.type;
+				credentialTypeName = this.editCredentials.type as string;
 			} else {
-				credentialTypeName = this.credentialType;
+				credentialTypeName = this.credentialType as string;
 			}
 
 			const credentialType = this.$store.getters.credentialType(credentialTypeName);
 			if (credentialType.documentationUrl !== undefined) {
 				return `${credentialType.documentationUrl}`;
 			}
+			return undefined;
 		},
 		node (): INodeUi {
 			return this.$store.getters.activeNode;
