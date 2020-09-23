@@ -404,10 +404,11 @@ export default mixins(
 						message: 'Connected successfully!',
 						type: 'success',
 					});
+
+					// Make sure that the event gets removed again
+					window.removeEventListener('message', receiveMessage, false);
 				}
 
-				// Make sure that the event gets removed again
-				window.removeEventListener('message', receiveMessage, false);
 			};
 
 			window.addEventListener('message', receiveMessage, false);
