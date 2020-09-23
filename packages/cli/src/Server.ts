@@ -1296,7 +1296,7 @@ class App {
 
 			const oAuth2Parameters = {
 				clientId: _.get(oauthCredentials, 'clientId') as string,
-				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
+				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string | undefined,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
