@@ -5,7 +5,7 @@ import {
 
 export class HubspotDeveloperApi implements ICredentialType {
 	name = 'hubspotDeveloperApi';
-	displayName = 'Hubspot API';
+	displayName = 'Hubspot Developer API';
 	documentationUrl = 'hubspot';
 	properties = [
 		{
