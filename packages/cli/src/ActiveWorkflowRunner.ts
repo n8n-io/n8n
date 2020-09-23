@@ -497,7 +497,11 @@ export class ActiveWorkflowRunner {
 
 		if (this.activeWorkflows !== null) {
 			// Remove all the webhooks of the workflow
-			await this.removeWorkflowWebhooks(workflowId);
+			try {
+				await this.removeWorkflowWebhooks(workflowId);
+			} catch (error) {
+				console.error(`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`);
+			}
 
 			if (this.activationErrors[workflowId] !== undefined) {
 				// If there were any activation errors delete them
