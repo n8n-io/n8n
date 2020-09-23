@@ -103,7 +103,7 @@
         "mongodb": "^3.5.5",
         "mysql2": "~2.1.0",
         "n8n-core": "~0.47.0",
-        "n8n-editor-ui": "~0.57.0",
+        "n8n-editor-ui": "~0.57.1",
         "n8n-nodes-base": "~0.79.0",
         "n8n-workflow": "~0.42.0",
         "oauth-1.0a": "^2.2.6",
