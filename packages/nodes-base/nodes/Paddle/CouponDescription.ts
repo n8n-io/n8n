@@ -131,7 +131,7 @@ export const couponFields = [
 		displayName: 'Discount Amount Currency',
 		name: 'discountAmount',
 		type: 'number',
-		default: '',
+		default: 1,
 		description: 'Discount amount in currency.',
 		typeOptions: {
 			minValue: 1
@@ -157,7 +157,7 @@ export const couponFields = [
 		displayName: 'Discount Amount %',
 		name: 'discountAmount',
 		type: 'number',
-		default: '',
+		default: 1,
 		description: 'Discount amount in percentage.',
 		typeOptions: {
 			minValue: 1,

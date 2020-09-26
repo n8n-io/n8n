@@ -7,6 +7,8 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+type Cheerio = ReturnType<typeof cheerio>;
+
 interface IValueData {
 	attribute?: string;
 	cssSelector: string;

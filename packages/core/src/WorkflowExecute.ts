@@ -698,7 +698,10 @@ export class WorkflowExecute {
 										return Promise.reject(new Error(`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`));
 									}
 
-									this.addNodeToBeExecuted(workflow, connectionData, parseInt(outputIndex, 10), executionNode.name, nodeSuccessData!, runIndex);
+									if (nodeSuccessData![outputIndex] && nodeSuccessData![outputIndex].length !== 0) {
+										// Add the node only if there is data for it to process
+										this.addNodeToBeExecuted(workflow, connectionData, parseInt(outputIndex, 10), executionNode.name, nodeSuccessData!, runIndex);
+									}
 								}
 							}
 						}

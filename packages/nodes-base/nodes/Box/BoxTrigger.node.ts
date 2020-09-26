@@ -275,8 +275,6 @@ export class BoxTrigger implements INodeType {
 				const endpoint = '/webhooks';
 				const webhooks = await boxApiRequestAllItems.call(this, 'entries', 'GET', endpoint, {});
 
-				console.log(webhooks);
-
 				for (const webhook of webhooks) {
 					if (webhook.address === webhookUrl &&
 						webhook.target.id === targetId &&

@@ -551,7 +551,7 @@ export class Mandrill implements INodeType {
 			},
 			{
 				displayName: 'Attachments',
-				name: 'attachments',
+				name: 'attachmentsJson',
 				type: 'json',
 				typeOptions: {
 					alwaysOpenEditWindow: true,

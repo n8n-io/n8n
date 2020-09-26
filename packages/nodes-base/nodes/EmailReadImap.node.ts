@@ -138,6 +138,13 @@ export class EmailReadImap implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Custom email rules',
+						name: 'customEmailConfig',
+						type: 'string',
+						default: '["UNSEEN"]',
+						description: 'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details'
+					},
+					{
 						displayName: 'Ignore SSL Issues',
 						name: 'allowUnauthorizedCerts',
 						type: 'boolean',
@@ -162,6 +169,16 @@ export class EmailReadImap implements INodeType {
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
+		let searchCriteria = [
+			'UNSEEN'
+		];
+		if (options.customEmailConfig !== undefined) {
+			try {
+				searchCriteria = JSON.parse(options.customEmailConfig as string);
+			} catch (err) {
+				throw new Error(`Custom email config is not valid JSON.`);
+			}
+		}
 
 		// Returns the email text
 		const getText = async (parts: any[], message: Message, subtype: string) => { // tslint:disable-line:no-any
@@ -177,7 +194,11 @@ export class EmailReadImap implements INodeType {
 				return '';
 			}
 
-			return await connection.getPartData(message, textParts[0]);
+			try{
+				return await connection.getPartData(message, textParts[0]);
+			} catch {
+				return '';
+			}
 		};
 
 
@@ -209,11 +230,8 @@ export class EmailReadImap implements INodeType {
 
 
 		// Returns all the new unseen messages
-		const getNewEmails = async (connection: ImapSimple): Promise<INodeExecutionData[]> => {
+		const getNewEmails = async (connection: ImapSimple, searchCriteria: string[]): Promise<INodeExecutionData[]> => {
 			const format = this.getNodeParameter('format', 0) as string;
-			const searchCriteria = [
-				'UNSEEN'
-			];
 
 			let fetchOptions = {};
 
@@ -237,8 +255,6 @@ export class EmailReadImap implements INodeType {
 			let newEmail: INodeExecutionData, messageHeader, messageBody;
 			let attachments: IBinaryData[];
 			let propertyName: string;
-
-
 
 			// All properties get by default moved to metadata except the ones
 			// which are defined here which get set on the top level.
@@ -331,8 +347,6 @@ export class EmailReadImap implements INodeType {
 			return newEmails;
 		};
 
-
-
 		let connection: ImapSimple;
 
 		const config: ImapSimpleOptions = {
@@ -345,7 +359,7 @@ export class EmailReadImap implements INodeType {
 				authTimeout: 3000
 			},
 			onmail: async () => {
-				const returnData = await getNewEmails(connection);
+				const returnData = await getNewEmails(connection, searchCriteria);
 
 				if (returnData.length) {
 					this.emit([returnData]);
@@ -363,7 +377,6 @@ export class EmailReadImap implements INodeType {
 		// that we get informed whenever a new email arrives
 		connection = await imapConnect(config);
 		await connection.openBox(mailbox);
-
 
 		// When workflow and so node gets set to inactive close the connectoin
 		async function closeFunction() {

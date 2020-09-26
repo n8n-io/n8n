@@ -48,7 +48,7 @@ export const boardItemOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all item',
+				description: 'Get all items',
 			},
 			{
 				name: 'Get By Column Value',
