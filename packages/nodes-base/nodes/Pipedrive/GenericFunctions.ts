@@ -34,7 +34,7 @@ export interface ICustomProperties {
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
+export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query: IDataObject = {}, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
@@ -67,7 +67,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 	let responseData;
 
 	try {
-		if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken') {
+		if (authenticationMethod === 'basicAuth' || authenticationMethod === 'apiToken' || authenticationMethod === 'none') {
 
 			const credentials = this.getCredentials('pipedriveApi');
 			if (credentials === undefined) {
