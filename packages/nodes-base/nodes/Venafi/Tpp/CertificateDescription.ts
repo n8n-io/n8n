@@ -23,12 +23,12 @@ export const certificateOperations = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete an certificate',
+				description: 'Delete a certificate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve an certificate',
+				description: 'Retrieve a certificate',
 			},
 			{
 				name: 'Get All',
@@ -36,9 +36,9 @@ export const certificateOperations = [
 				description: 'Retrieve all certificates from a calendar',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update an certificate',
+				name: 'Renew',
+				value: 'renew',
+				description: 'Renew a certificate',
 			}
 		],
 		default: 'create',
@@ -158,7 +158,10 @@ export const certificateFields = [
 				displayName: 'Contacts',
 				name: 'Contacts',
 				type: 'string',
-				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: [],
 				description: 'An array of one or more identities for users or groups who receive notifications about events pertaining to the object'
 			},
 			{
@@ -200,7 +203,7 @@ export const certificateFields = [
 				],
 			},
 			{
-				displayName: 'CreatedBy',
+				displayName: 'Created By',
 				name: 'CreatedBy',
 				type: 'string',
 				default: 'Web SDK',
@@ -256,7 +259,10 @@ export const certificateFields = [
 						displayName: 'Contacts',
 						name: 'Contacts',
 						type: 'string',
-						default: '',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: [],
 						description: 'An array of one or more identities who receive notifications for this device.',
 					},
 					{
@@ -346,7 +352,7 @@ export const certificateFields = [
 				description: 'The setting to control whether manual intervention is required for certificate renewal.'
 			},
 			{
-				displayName: 'EllipticCurve',
+				displayName: 'Elliptic Curve',
 				name: 'EllipticCurve',
 				type: 'options',
 				options: [
@@ -370,7 +376,7 @@ export const certificateFields = [
 				description: 'For Elliptic Curve Cryptography (ECC), use this parameter in conjunction with KeyAlgorithm.',
 			},
 			{
-				displayName: 'KeyAlgorithm',
+				displayName: 'Key Algorithm',
 				name: 'KeyAlgorithm',
 				type: 'options',
 				options: [
@@ -389,7 +395,7 @@ export const certificateFields = [
 				description: 'The encryption algorithm for the public ke:',
 			},
 			{
-				displayName: 'KeyBitSize',
+				displayName: 'Key Bit Size',
 				name: 'KeyBitSize',
 				type: 'number',
 				default: 2048,
@@ -433,13 +439,6 @@ export const certificateFields = [
 				},
 				default: 'Web SDK',
 				description: 'Additional information, such as the name and version of the calling application, that describes the source of this enrollment, renewal, or provisioning request. The default is Web SDK.'
-			},
-			{
-				displayName: 'Policy DN',
-				name: 'PolicyDN',
-				type: 'string',
-				default: '',
-				description: 'The folder DN for the new certificate. If the value is missing, the folder name is the system default',
 			},
 			{
 				displayName: 'Organization',
@@ -486,17 +485,16 @@ export const certificateFields = [
 			{
 				displayName: 'Subject Alt Names',
 				name: 'SubjectAltNamesUi',
-				placeholder: 'Custom Fields',
+				placeholder: 'Add Subject',
 				type: 'fixedCollection',
 				default: '',
 				typeOptions: {
-					multipleValues: false,
+					multipleValues: true,
 				},
-				description: '',
 				options: [
 					{
 						name: 'SubjectAltNamesValues',
-						displayName: 'Address',
+						displayName: 'Subject alt Name',
 						values: [
 							{
 								displayName: 'Typename',
@@ -532,7 +530,8 @@ export const certificateFields = [
 								displayName: 'Name',
 								name: 'name',
 								type: 'string',
-								default: 'The SAN friendly name that corresponds to the Type or TypeName parameter. For example, if a TypeName is IPAddress, the Name value is a valid IP address.',
+								default: '',
+								description: 'The SAN friendly name that corresponds to the Type or TypeName parameter. For example, if a TypeName is IPAddress, the Name value is a valid IP address.',
 							},
 						],
 					},
@@ -541,113 +540,10 @@ export const certificateFields = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 certificate:delete                               */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Calendar',
-		name: 'calendar',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'certificate',
-				],
-			},
-		},
-		default: ''
-	},
-	{
-		displayName: 'certificate ID',
-		name: 'certificateId',
-		type: 'string',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'certificate',
-				],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Options',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'certificate',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Send Updates',
-				name: 'sendUpdates',
-				type: 'options',
-				options: [
-					{
-						name: 'All',
-						value: 'all',
-						description: 'Notifications are sent to all guests',
-					},
-					{
-						name: 'External Only',
-						value: 'externalOnly',
-						description: 'Notifications are sent to non-Google Calendar guests only',
-					},
-					{
-						name: 'None',
-						value: 'none',
-						description: 'No notifications are sent. This value should only be used for migration use case',
-					}
-				],
-				description: 'Whether to send notifications about the creation of the new certificate',
-				default: '',
-			},
-		],
-	},
-	/* -------------------------------------------------------------------------- */
 	/*                                 certificate:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar',
-		name: 'calendar',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'certificate',
-				],
-			},
-		},
-		default: ''
-	},
-	{
-		displayName: 'certificate ID',
+		displayName: 'Certificate GUID',
 		name: 'certificateId',
 		type: 'string',
 		required: true,
@@ -655,6 +551,7 @@ export const certificateFields = [
 			show: {
 				operation: [
 					'get',
+					'delete',
 				],
 				resource: [
 					'certificate',
@@ -662,43 +559,7 @@ export const certificateFields = [
 			},
 		},
 		default: '',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Options',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'certificate',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Max Attendees',
-				name: 'maxAttendees',
-				type: 'number',
-				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timeZone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
-			}
-		]
+		description: 'A GUID that uniquely identifies the certificate',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 certificate:getAll                         */
@@ -762,134 +623,44 @@ export const certificateFields = [
 		},
 		options: [
 			{
-				displayName: 'iCalUID',
-				name: 'iCalUID',
-				type: 'string',
-				default: '',
-				description: 'Specifies certificate ID in the iCalendar format to be included in the response',
-			},
-			{
-				displayName: 'Max Attendees',
-				name: 'maxAttendees',
-				type: 'number',
-				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
-			},
-			{
-				displayName: 'Order By',
-				name: 'orderBy',
-				type: 'options',
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'multiOptions',
 				options: [
 					{
-						name: 'Start Time',
-						value: 'startTime',
-						description: 'Order by the start date/time (ascending). This is only available when querying single certificates (i.e. the parameter singlecertificates is True)',
+						name: 'Issuer',
+						value: 'Issuer',
 					},
 					{
-						name: 'Updated',
-						value: 'updated',
-						description: 'Order by last modification time (ascending).',
-					}
+						name: 'KeyAlgorithm',
+						value: 'KeyAlgorithm',
+					},
+					{
+						name: 'KeySize',
+						value: 'KeySize',
+					},
+					{
+						name: 'Subject',
+						value: 'Subject',
+					},
 				],
-				default: '',
-				description: 'The order of the certificates returned in the result.',
+				default: [],
+				description: 'Include one or more of the following certificate attributes in the return value',
 			},
-			{
-				displayName: 'Query',
-				name: 'query',
-				type: 'string',
-				default: '',
-				description: 'Free text search terms to find certificates that match these terms in any field, except for extended properties.',
-			},
-			{
-				displayName: 'Show Deleted',
-				name: 'showDeleted',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include deleted certificates (with status equals "cancelled") in the result.',
-			},
-			{
-				displayName: 'Show Hidden Invitations',
-				name: 'showHiddenInvitations',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include hidden invitations in the result.',
-			},
-			{
-				displayName: 'Single certificates',
-				name: 'singlecertificates',
-				type: 'boolean',
-				default: false,
-				description: `Whether to expand recurring certificates into instances and only return single one-off</br>
-				certificates and instances of recurring certificates, but not the underlying recurring certificates themselves.`,
-			},
-			{
-				displayName: 'Time Max',
-				name: 'timeMax',
-				type: 'dateTime',
-				default: '',
-				description: `Upper bound (exclusive) for an certificate's start time to filter by`,
-			},
-			{
-				displayName: 'Time Min',
-				name: 'timeMin',
-				type: 'dateTime',
-				default: '',
-				description: `Lower bound (exclusive) for an certificate's end time to filter by`,
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timeZone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: `Time zone used in the response. The default is the time zone of the calendar.`,
-			},
-			{
-				displayName: 'Updated Min',
-				name: 'updatedMin',
-				type: 'dateTime',
-				default: '',
-				description: `Lower bound for an certificate's last modification time (as a RFC3339 timestamp) to filter by.<b/r>
-				When specified, entries deleted since this time will always be included regardless of showDeleted`,
-			}
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 certificate:update                               */
+	/*                                 certificate:renew                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar',
-		name: 'calendar',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars'
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'certificate',
-				],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'certificate ID',
-		name: 'certificateId',
+		displayName: 'Certificate DN',
+		name: 'certificateDN',
 		type: 'string',
 		required: true,
 		displayOptions: {
 			show: {
 				operation: [
-					'update',
+					'renew',
 				],
 				resource: [
 					'certificate',
@@ -897,33 +668,18 @@ export const certificateFields = [
 			},
 		},
 		default: '',
+		description: 'The Distinguished Name (DN) of the certificate to renew',
 	},
 	{
-		displayName: 'Use Default Reminders',
-		name: 'useDefaultReminders',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'certificate',
-				],
-			},
-		},
-		default: true
-	},
-	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
 		displayOptions: {
 			show: {
 				operation: [
-					'update',
+					'renew',
 				],
 				resource: [
 					'certificate',
@@ -932,296 +688,19 @@ export const certificateFields = [
 		},
 		options: [
 			{
-				displayName: 'All Day',
-				name: 'allday',
-				type: 'boolean',
-				options: [
-					{
-						name: 'Yes',
-						value: 'yes',
-					},
-					{
-						name: 'No',
-						value: 'no',
-					}
-				],
-				default: 'no',
-				description: 'Wheater the certificate is all day or not',
-			},
-			{
-				displayName: 'Attendees',
-				name: 'attendees',
+				displayName: 'PKCS10',
+				name: 'PKCS10',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-					multipleValueButtonText: 'Add Attendee',
-				},
 				default: '',
-				description: 'The attendees of the certificate',
+				description: 'The PKCS#10 Certificate Signing Request (CSR). Omit escape characters such as \n or \r\n. If this value is provided, any Subject DN fields and the KeyBitSize in the request are ignored.',
 			},
 			{
-				displayName: 'Color',
-				name: 'color',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getColors',
-				},
-				default: '',
-				description: 'The color of the certificate.',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'End',
-				name: 'end',
-				type: 'dateTime',
-				default: '',
-				description: 'End time of the certificate.',
-			},
-			{
-				displayName: 'Guests Can Invite Others',
-				name: 'guestsCanInviteOthers',
-				type: 'boolean',
-				default: true,
-				description: 'Whether attendees other than the organizer can invite others to the certificate',
-			},
-			{
-				displayName: 'Guests Can Modify',
-				name: 'guestsCanModify',
+				displayName: 'Reenable',
+				name: 'Reenable',
 				type: 'boolean',
 				default: false,
-				description: 'Whether attendees other than the organizer can modify the certificate',
-			},
-			{
-				displayName: 'Guests Can See Other Guests',
-				name: 'guestsCanSeeOtherGuests',
-				type: 'boolean',
-				default: true,
-				description: `Whether attendees other than the organizer can see who the certificate's attendees are.`,
-			},
-			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-				default: '',
-				description: 'Opaque identifier of the certificate',
-			},
-			{
-				displayName: 'Location',
-				name: 'location',
-				type: 'string',
-				default: '',
-				description: 'Geographic location of the certificate as free-form text.',
-			},
-			{
-				displayName: 'Max Attendees',
-				name: 'maxAttendees',
-				type: 'number',
-				default: 0,
-				description: `The maximum number of attendees to include in the response.</br>
-				If there are more than the specified number of attendees, only the participant is returned`,
-			},
-			{
-				displayName: 'Repeat Frecuency',
-				name: 'repeatFrecuency',
-				type: 'options',
-				options: [
-					{
-						name: 'Daily',
-						value: 'Daily',
-					},
-					{
-						name: 'Weekly',
-						value: 'weekly',
-					},
-					{
-						name: 'Monthly',
-						value: 'monthly',
-					},
-					{
-						name: 'Yearly',
-						value: 'yearly',
-					}
-				],
-				default: '',
-			},
-			{
-				displayName: 'Repeat Until',
-				name: 'repeatUntil',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Repeat How Many Times?',
-				name: 'repeatHowManyTimes',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				default: 1,
-			},
-			{
-				displayName: 'Start',
-				name: 'start',
-				type: 'dateTime',
-				default: '',
-				description: 'Start time of the certificate.',
-			},
-			{
-				displayName: 'Send Updates',
-				name: 'sendUpdates',
-				type: 'options',
-				options: [
-					{
-						name: 'All',
-						value: 'all',
-						description: ' Notifications are sent to all guests',
-					},
-					{
-						name: 'External Only',
-						value: 'externalOnly',
-						description: 'Notifications are sent to non-Google Calendar guests only',
-					},
-					{
-						name: 'None',
-						value: 'none',
-						description: 'No notifications are sent. This value should only be used for migration use case',
-					}
-				],
-				description: 'Whether to send notifications about the creation of the new certificate',
-				default: '',
-			},
-			{
-				displayName: 'Summary',
-				name: 'summary',
-				type: 'string',
-				default: '',
-				description: 'Title of the certificate.',
-			},
-			{
-				displayName: 'Show Me As',
-				name: 'showMeAs',
-				type: 'options',
-				options: [
-					{
-						name: 'Available',
-						value: 'transparent',
-						description: 'The certificate does not block time on the calendar',
-					},
-					{
-						name: 'Busy',
-						value: 'opaque',
-						description: ' The certificate does block time on the calendar.',
-					},
-				],
-				default: 'opaque',
-				description: 'Whether the certificate blocks time on the calendar',
-			},
-			{
-				displayName: 'Timezone',
-				name: 'timezone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description: 'The timezone the certificate will have set. By default certificates are schedule on n8n timezone',
-			},
-			{
-				displayName: 'Visibility',
-				name: 'visibility',
-				type: 'options',
-				options: [
-					{
-						name: 'Confidential',
-						value: 'confidential',
-						description: 'The certificate is private. This value is provided for compatibility reasons.',
-					},
-					{
-						name: 'Default',
-						value: 'default',
-						description: 'Uses the default visibility for certificates on the calendar.',
-					},
-					{
-						name: 'Public',
-						value: 'public',
-						description: 'The certificate is public and certificate details are visible to all readers of the calendar.',
-					},
-					{
-						name: 'Private',
-						value: 'private',
-						description: 'The certificate is private and only certificate attendees may view certificate details.',
-					}
-				],
-				default: 'default',
-				description: 'Visibility of the certificate.',
+				description: ' The action to control a previously disabled certificate',
 			},
 		],
 	},
-	{
-		displayName: 'Reminders',
-		name: 'remindersUi',
-		type: 'fixedCollection',
-		default: '',
-		placeholder: 'Add Reminder',
-		typeOptions: {
-			multipleValues: true
-		},
-		required: false,
-		displayOptions: {
-			show: {
-				resource: [
-					'certificate',
-				],
-				operation: [
-					'update',
-				],
-				useDefaultReminders: [
-					false,
-				],
-			},
-		},
-		options: [
-			{
-				name: 'remindersValues',
-				displayName: 'Reminder',
-				values: [
-					{
-						displayName: 'Method',
-						name: 'method',
-						type: 'options',
-						options: [
-							{
-								name: 'Email',
-								value: 'email',
-							},
-							{
-								name: 'Popup',
-								value: 'popup',
-							}
-						],
-						default: '',
-					},
-					{
-						displayName: 'Minutes Before',
-						name: 'minutes',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-							maxValue: 40320,
-						},
-						default: 0,
-					},
-				],
-			},
-		],
-		description: `If the certificate doesn't use the default reminders, this lists the reminders specific to the certificate`,
-	}
 ] as INodeProperties[];

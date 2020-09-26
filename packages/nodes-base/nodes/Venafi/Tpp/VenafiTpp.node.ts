@@ -7,8 +7,6 @@ import {
 	INodeExecutionData,
 	INodeTypeDescription,
 	INodeType,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -20,8 +18,6 @@ import {
 	certificateOperations,
 	certificateFields,
 } from './CertificateDescription';
-
-import * as moment from 'moment-timezone';
 
 export class VenafiTpp implements INodeType {
 	description: INodeTypeDescription = {
@@ -63,70 +59,6 @@ export class VenafiTpp implements INodeType {
 		],
 	};
 
-	// methods = {
-	// 	loadOptions: {
-	// 		// Get all the calendars to display them to user so that he can
-	// 		// select them easily
-	// 		async getCalendars(
-	// 			this: ILoadOptionsFunctions
-	// 		): Promise<INodePropertyOptions[]> {
-	// 			const returnData: INodePropertyOptions[] = [];
-	// 			const calendars = await googleApiRequestAllItems.call(
-	// 				this,
-	// 				'items',
-	// 				'GET',
-	// 				'/calendar/v3/users/me/calendarList'
-	// 			);
-	// 			for (const calendar of calendars) {
-	// 				const calendarName = calendar.summary;
-	// 				const calendarId = calendar.id;
-	// 				returnData.push({
-	// 					name: calendarName,
-	// 					value: calendarId
-	// 				});
-	// 			}
-	// 			return returnData;
-	// 		},
-	// 		// Get all the colors to display them to user so that he can
-	// 		// select them easily
-	// 		async getColors(
-	// 			this: ILoadOptionsFunctions
-	// 		): Promise<INodePropertyOptions[]> {
-	// 			const returnData: INodePropertyOptions[] = [];
-	// 			const { event } = await googleApiRequest.call(
-	// 				this,
-	// 				'GET',
-	// 				'/calendar/v3/colors'
-	// 			);
-	// 			for (const key of Object.keys(event)) {
-	// 				const colorName = `Background: ${event[key].background} - Foreground: ${event[key].foreground}`;
-	// 				const colorId = key;
-	// 				returnData.push({
-	// 					name: `${colorName}`,
-	// 					value: colorId
-	// 				});
-	// 			}
-	// 			return returnData;
-	// 		},
-	// 		// Get all the timezones to display them to user so that he can
-	// 		// select them easily
-	// 		async getTimezones(
-	// 			this: ILoadOptionsFunctions
-	// 		): Promise<INodePropertyOptions[]> {
-	// 			const returnData: INodePropertyOptions[] = [];
-	// 			for (const timezone of moment.tz.names()) {
-	// 				const timezoneName = timezone;
-	// 				const timezoneId = timezone;
-	// 				returnData.push({
-	// 					name: timezoneName,
-	// 					value: timezoneId
-	// 				});
-	// 			}
-	// 			return returnData;
-	// 		}
-	// 	}
-	// };
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
@@ -136,39 +68,137 @@ export class VenafiTpp implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+
 			if (resource === 'certificate') {
-				//https://developers.google.com/calendar/v3/reference/events/list
+
+				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-POST-Certificates-request.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7CPOST%20Certificates%2FRequest%7C_____0
+				if (operation === 'create') {
+
+					const policyDN = this.getNodeParameter('PolicyDN', i) as string;
+
+					const subject = this.getNodeParameter('Subject', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						PolicyDN: policyDN,
+						Subject: subject,
+					};
+
+					Object.assign(body, additionalFields);
+
+					if (body.SubjectAltNamesUi) {
+
+						body.SubjectAltNames = (body.SubjectAltNamesUi as IDataObject).SubjectAltNamesValues;
+
+						delete body.SubjectAltNamesUi;
+					}
+
+					responseData = await venafiApiRequest.call(
+						this,
+						'POST',
+						`/vedsdk/Certificates/Request`,
+						body,
+						qs
+					);
+				}
+
+				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-DELETE-Certificates-Guid.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____9
+				if (operation === 'delete') {
+
+					const certificateId = this.getNodeParameter('certificateId', i) as string;
+
+					responseData = await venafiApiRequest.call(
+						this,
+						'DELETE',
+						`/vedsdk/Certificates/${certificateId}`,
+						{},
+						qs
+					);
+				}
+
+				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-GET-Certificates-guid.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____10
+				if (operation === 'get') {
+
+					const certificateId = this.getNodeParameter('certificateId', i) as string;
+
+					responseData = await venafiApiRequest.call(
+						this,
+						'GET',
+						`/vedsdk/Certificates/${certificateId}`,
+						{},
+						qs
+					);
+				}
+
+				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-GET-Certificates.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____4
 				if (operation === 'getAll') {
+
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
 					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					if (options.fields) {
+						qs.OptionalFields = (options.fields as string[]).join(',');
+					}
+
 					if (returnAll) {
-						// responseData = await googleApiRequestAllItems.call(
-						// 	this,
-						// 	'items',
-						// 	'GET',
-						// 	`/calendar/v3/calendars/${calendarId}/events`,
-						// 	{},
-						// 	qs
-						// );
-					} else {
-						//qs.maxResults = this.getNodeParameter('limit', i) as number;
-						responseData = await venafiApiRequest.call(
+
+						responseData = await venafiApiRequestAllItems.call(
 							this,
+							'Certificates',
 							'GET',
-							`/Certificates/Retrieve`,
+							`/vedsdk/Certificates`,
 							{},
 							qs
 						);
-						// responseData = responseData.items;
+
+					} else {
+						qs.Limit = this.getNodeParameter('limit', i) as number;
+						responseData = await venafiApiRequest.call(
+							this,
+							'GET',
+							`/vedsdk/Certificates`,
+							{},
+							qs
+						);
+
+						responseData = responseData.Certificates;
 					}
+				}
+
+				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-POST-Certificates-renew.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____16
+				if (operation === 'renew') {
+
+					const certificateDN = this.getNodeParameter('certificateDN', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						CertificateDN: certificateDN,
+					};
+
+					Object.assign(body, additionalFields);
+
+					responseData = await venafiApiRequest.call(
+						this,
+						'POST',
+						`/vedsdk/Certificates/Renew`,
+						{},
+						qs
+					);
 				}
 			}
 		}
 		if (Array.isArray(responseData)) {
+
 			returnData.push.apply(returnData, responseData as IDataObject[]);
+
 		} else if (responseData !== undefined) {
+
 			returnData.push(responseData as IDataObject);
 		}
+
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

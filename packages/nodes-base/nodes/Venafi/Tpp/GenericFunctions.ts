@@ -6,19 +6,22 @@ import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+import {
+	get,
+} from 'lodash';
+
+export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('venafiTppApi') as IDataObject;
 
 	const data = await getToken.call(this);
-
-	console.log(data);
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -28,11 +31,10 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		method,
 		body,
 		qs,
+		rejectUnauthorized: false,
 		uri: uri || `${credentials.domain}${resource}`,
 		json: true
 	};
-
-
 
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -51,7 +53,7 @@ export async function venafiApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
 			throw new Error(
-				`venafi Calendar error response [${error.statusCode}]: ${errors.join('|')}`
+				`Venafi error response [${error.statusCode}]: ${errors.join('|')}`
 			);
 		}
 		throw error;
@@ -63,21 +65,20 @@ export async function venafiApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query.maxResults = 100;
 
 	do {
 		responseData = await venafiApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['nextPageToken'];
+		endpoint = get(responseData, '_links[0].Next');
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		responseData['nextPageToken'] !== undefined &&
-		responseData['nextPageToken'] !== ''
+		responseData._links &&
+		responseData._links[0].Next
 	);
 
 	return returnData;
 }
 
-async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions): Promise<any> { // tslint:disable-line:no-any
+async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions | IPollFunctions): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('venafiTppApi') as IDataObject;
 

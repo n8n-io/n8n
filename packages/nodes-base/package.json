@@ -364,6 +364,7 @@
       "dist/nodes/Uplead/Uplead.node.js",
       "dist/nodes/Vero/Vero.node.js",
       "dist/nodes/Venafi/Tpp/VenafiTpp.node.js",
+      "dist/nodes/Venafi/Tpp/VenafiTppTrigger.node.js",
       "dist/nodes/Webflow/WebflowTrigger.node.js",
       "dist/nodes/Webhook.node.js",
       "dist/nodes/Wordpress/Wordpress.node.js",
