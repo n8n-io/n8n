@@ -863,12 +863,23 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/users.profile.set
 				if (operation === 'set') {
 					const statusText = this.getNodeParameter('status_text', i) as string;
-					const statusEmoji = this.getNodeParameter('status_emoji', i) as string;
-					const statusExpiration = this.getNodeParameter('status_expiration', i) as string;
+					let statusEmoji = this.getNodeParameter('status_emoji', i) as string;
+					if (!statusEmoji.startsWith(":")) {
+						statusEmoji = ":" + statusEmoji;
+					}
+					if (!statusEmoji.endsWith(":")) {
+						statusEmoji = statusEmoji + ":";
+					}
+					// although we say "as string" it is returned as number if no value is set
+					let statusExpiration = this.getNodeParameter('status_expiration', i) as string;
+					let statusExpirationUnixTimestamp = 0; // 0 means: ignore
+					if (statusExpiration !== "" && statusExpiration !== "0" && typeof(statusExpiration) !== "number") {
+						statusExpirationUnixTimestamp = Date.parse(statusExpiration) / 1000;
+					}
 					const profile: IDataObject = {
-						statusText,
-						statusEmoji,
-						statusExpiration,
+						status_text: statusText,
+						status_emoji: statusEmoji,
+						status_expiration: statusExpirationUnixTimestamp,
 					};
 					const body: IDataObject = {
 						profile,
