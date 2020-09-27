@@ -16,30 +16,37 @@ import {
 	channelFields,
 	channelOperations,
 } from './ChannelDescription';
+
 import {
 	messageFields,
 	messageOperations,
 } from './MessageDescription';
+
 import {
 	starFields,
 	starOperations,
 } from './StarDescription';
+
 import {
 	fileFields,
 	fileOperations,
 } from './FileDescription';
+
 import {
-	statusFields,
-	statusOperations,
-} from './StatusDescription';
+	userProfileFields,
+	userProfileOperations,
+} from './UserProfileDescription';
+
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
+
 import {
 	IAttachment,
 } from './MessageInterface';
+import moment = require('moment');
 
 interface Attachment {
 	fields: {
@@ -161,8 +168,8 @@ export class Slack implements INodeType {
 						value: 'star',
 					},
 					{
-						name: 'Status',
-						value: 'status',
+						name: 'User Profile',
+						value: 'userProfile',
 					},
 				],
 				default: 'message',
@@ -177,8 +184,8 @@ export class Slack implements INodeType {
 			...starFields,
 			...fileOperations,
 			...fileFields,
-			...statusOperations,
-			...statusFields,
+			...userProfileOperations,
+			...userProfileFields,
 		],
 	};
 
@@ -226,6 +233,22 @@ export class Slack implements INodeType {
 					return 0;
 				});
 
+				return returnData;
+			},
+			// Get all the team fields to display them to user so that he can
+			// select them easily
+			async getTeamFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { profile: { fields } } = await slackApiRequest.call(this, 'GET', '/team.profile.get');
+				console.log(fields);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.id;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
 				return returnData;
 			},
 		}
@@ -859,37 +882,55 @@ export class Slack implements INodeType {
 					responseData = responseData.file;
 				}
 			}
-			if (resource === 'status') {
+			if (resource === 'userProfile') {
 				//https://api.slack.com/methods/users.profile.set
-				if (operation === 'set') {
-					const statusText = this.getNodeParameter('status_text', i) as string;
-					let statusEmoji = this.getNodeParameter('status_emoji', i) as string;
-					if (!statusEmoji.startsWith(":")) {
-						statusEmoji = ":" + statusEmoji;
+				if (operation === 'update') {
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const timezone = this.getTimezone();
+
+					const body: IDataObject = {};
+
+					Object.assign(body, additionalFields);
+
+					if (body.status_expiration === undefined) {
+						body.status_expiration = 0;
+
+					} else {
+						body.status_expiration = moment.tz(body.status_expiration as string, timezone).unix();
 					}
-					if (!statusEmoji.endsWith(":")) {
-						statusEmoji = statusEmoji + ":";
+
+					if (body.customFieldUi) {
+
+						const customFields = (body.customFieldUi as IDataObject).customFieldValues as IDataObject[];
+
+						body.fields = {};
+
+						for (const customField of customFields) {
+							//@ts-ignore
+							body.fields[customField.id] = {
+								value: customField.value,
+								alt: customField.alt,
+							};
+						}
 					}
-					// although we say "as string" it is returned as number if no value is set
-					let statusExpiration = this.getNodeParameter('status_expiration', i) as string;
-					let statusExpirationUnixTimestamp = 0; // 0 means: ignore
-					if (statusExpiration !== "" && statusExpiration !== "0" && typeof(statusExpiration) !== "number") {
-						statusExpirationUnixTimestamp = Date.parse(statusExpiration) / 1000;
-					}
-					const profile: IDataObject = {
-						status_text: statusText,
-						status_emoji: statusEmoji,
-						status_expiration: statusExpirationUnixTimestamp,
-					};
-					const body: IDataObject = {
-						profile,
-					};
-					responseData = await slackApiRequest.call(this, 'POST', '/users.profile.set', body, qs);
+
+					responseData = await slackApiRequest.call(this, 'POST', '/users.profile.set', { profile: body }, qs);
+
 					responseData = responseData.profile;
 				}
 				//https://api.slack.com/methods/users.profile.get
 				if (operation === 'get') {
-					responseData = await slackApiRequest.call(this, 'POST', '/users.profile.get', {}, qs);
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {};
+
+					Object.assign(body, additionalFields);
+
+					responseData = await slackApiRequest.call(this, 'POST', '/users.profile.get', body);
+
 					responseData = responseData.profile;
 				}
 			}
