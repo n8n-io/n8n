@@ -1,5 +1,5 @@
 import {
-	IPollFunctions
+	IPollFunctions,
 } from 'n8n-core';
 
 import {
@@ -10,8 +10,10 @@ import {
 } from 'n8n-workflow';
 
 import {
-	spotifyApiRequestAllItems
+	spotifyApiRequestAllItems,
 } from './GenericFunctions';
+
+import * as moment from 'moment';
 
 export class SpotifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,8 +23,9 @@ export class SpotifyTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when Spotify events occur',
+		subtitle: '={{$parameter["event"]}}',
 		defaults: {
-			name: 'Spotify',
+			name: 'Spotify Trigger',
 			color: '#1DB954',
 		},
 		credentials: [
@@ -42,7 +45,7 @@ export class SpotifyTrigger implements INodeType {
 				options: [
 					{
 						name: 'New Song Added to Playlist',
-						value: 'newSongAdded',
+						value: 'newSongAddedToPlaylist',
 					},
 					{
 						name: 'New Liked Song',
@@ -61,59 +64,67 @@ export class SpotifyTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: [
-							'newSongAdded',
+							'newSongAddedToPlaylist',
 						],
 					},
 				},
 				placeholder: 'spotify:playlist:37i9dQZF1DWUhI3iC1khPH',
 				description: `The playlist's Spotify URI or its ID.`,
 			},
-		]
+		],
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
+
 		const webhookData = this.getWorkflowStaticData('node');
+
 		const event = this.getNodeParameter('event') as string;
+
 		let endpoint: string;
 
-		if (event === 'newSongAdded') {
+		if (event === 'newSongAddedToPlaylist') {
+
 			const uri = this.getNodeParameter('id') as string;
 
 			const id = uri.replace('spotify:playlist:', '');
 
 			endpoint = `/playlists/${id}/tracks`;
+
 		} else if(event === 'newLikedSong') {
+
 			endpoint = '/me/tracks';
+
 		} else {
 			throw new Error(`The requested event "${event}" is not supported`);
 		}
 
-		let allTracks = [];
 		const newTracks: IDataObject[] = [];
-		const start = webhookData.lastTimeChecked as string;
-		const endDate = new Date();
 
-		const startDate = new Date(start);
+		const now = moment().format();
 
-		try {
-			allTracks = await spotifyApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
-			webhookData.lastTimeChecked = endDate;
+		const startDate = webhookData.lastTimeChecked as string || now;
 
-			// tslint:disable-next-line: no-any
-			allTracks.forEach((track: any) => {
-				const trackDate = new Date(track.added_at);
-				if(startDate && trackDate > startDate && trackDate < endDate) {
-					newTracks.push(track.track);
-				}
-			});
-		} catch (err) {
-			throw new Error(`Spotify Trigger Error: ${err}`);
+		const endDate = now;
+
+		const tracks = await spotifyApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
+
+		webhookData.lastTimeChecked = endDate;
+
+		for (const track of tracks) {
+
+			const trackDate = moment(track.added_at);
+
+			if(trackDate.isBetween(moment(startDate), moment(endDate))) {
+
+				newTracks.push(track.track);
+			}
 		}
+
 		if (Array.isArray(newTracks) && newTracks.length) {
+
 			return [this.helpers.returnJsonArray(newTracks)];
 		}
 
 		return null;
 	}
-
 }

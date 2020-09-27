@@ -3,6 +3,18 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
+const scopes = [
+	'playlist-modify-private',
+	'playlist-modify-public',
+	'playlist-read-collaborative',
+	'playlist-read-collaborative',
+	'playlist-read-private',
+	'user-library-read',
+	'user-modify-playback-state',
+	'user-read-currently-playing',
+	'user-read-playback-state',
+	'user-read-recently-played',
+];
 
 export class SpotifyOAuth2Api implements ICredentialType {
 	name = 'spotifyOAuth2Api';
@@ -35,7 +47,7 @@ export class SpotifyOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'user-read-playback-state playlist-read-collaborative user-library-read user-modify-playback-state playlist-modify-public user-read-currently-playing playlist-read-private user-read-recently-played playlist-modify-private',
+			default: encodeURIComponent(scopes.join(' ')),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
@@ -48,6 +60,6 @@ export class SpotifyOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'header',
-        }
+		}
 	];
 }
