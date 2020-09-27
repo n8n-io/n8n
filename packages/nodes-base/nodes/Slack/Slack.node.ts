@@ -29,6 +29,10 @@ import {
 	fileOperations,
 } from './FileDescription';
 import {
+	statusFields,
+	statusOperations,
+} from './StatusDescription';
+import {
 	slackApiRequest,
 	slackApiRequestAllItems,
 	validateJSON,
@@ -156,6 +160,10 @@ export class Slack implements INodeType {
 						name: 'Star',
 						value: 'star',
 					},
+					{
+						name: 'Status',
+						value: 'status',
+					},
 				],
 				default: 'message',
 				description: 'The resource to operate on.',
@@ -169,6 +177,8 @@ export class Slack implements INodeType {
 			...starFields,
 			...fileOperations,
 			...fileFields,
+			...statusOperations,
+			...statusFields,
 		],
 	};
 
@@ -232,6 +242,7 @@ export class Slack implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
+			responseData = { error: 'Resource ' + resource + ' / operation ' + operation + ' not found!'};
 			qs = {};
 			if (resource === 'channel') {
 				//https://api.slack.com/methods/conversations.archive
@@ -846,6 +857,29 @@ export class Slack implements INodeType {
 					qs.file = fileId;
 					responseData = await slackApiRequest.call(this, 'GET', '/files.info', {}, qs);
 					responseData = responseData.file;
+				}
+			}
+			if (resource === 'status') {
+				//https://api.slack.com/methods/users.profile.set
+				if (operation === 'set') {
+					const statusText = this.getNodeParameter('status_text', i) as string;
+					const statusEmoji = this.getNodeParameter('status_emoji', i) as string;
+					const statusExpiration = this.getNodeParameter('status_expiration', i) as string;
+					const profile: IDataObject = {
+						statusText,
+						statusEmoji,
+						statusExpiration,
+					};
+					const body: IDataObject = {
+						profile,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/users.profile.set', body, qs);
+					responseData = responseData.profile;
+				}
+				//https://api.slack.com/methods/users.profile.get
+				if (operation === 'get') {
+					responseData = await slackApiRequest.call(this, 'POST', '/users.profile.get', {}, qs);
+					responseData = responseData.profile;
 				}
 			}
 			if (Array.isArray(responseData)) {
