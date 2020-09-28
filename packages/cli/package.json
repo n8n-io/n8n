@@ -54,7 +54,7 @@
     "devDependencies": {
         "@oclif/dev-cli": "^1.22.2",
         "@types/basic-auth": "^1.1.2",
-        "@types/bcrypt": "^3.0.0",
+        "@types/bcryptjs": "^2.4.1",
         "@types/compression": "1.0.1",
         "@types/connect-history-api-fallback": "^1.3.1",
         "@types/convict": "^4.2.1",
@@ -82,7 +82,7 @@
         "@oclif/errors": "^1.2.2",
         "@types/jsonwebtoken": "^8.3.4",
         "basic-auth": "^2.0.1",
-        "bcrypt": "^5.0.0",
+        "bcryptjs": "^2.4.3",
         "body-parser": "^1.18.3",
         "body-parser-xml": "^1.1.0",
         "client-oauth2": "^4.2.5",

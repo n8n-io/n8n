@@ -20,7 +20,7 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
-import { compare } from 'bcrypt';
+import { compare } from 'bcryptjs';
 
 import {
 	ActiveExecutions,
