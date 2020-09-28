@@ -1,37 +1,54 @@
 import {
 	INodeProperties,
 } from 'n8n-workflow';
+
 export const jobsOperations = [
-    {
-        default: 'getJob',
-        displayName: 'Operation',
-        name: 'operation',
-        type: 'options',
-        description:'Choose an operation',
-        required: true,
-        displayOptions: {
-            show: {
-                resource: ['job']
-            }
-        },
-        options: [
-            { name: 'Get Job', value: 'getJob', description: 'Get job details' },
-            { name: 'Get Report', value: 'getReport', description: 'Get job report' },
-        ]
-    },
-	
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		description:'Choose an operation',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'job',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get job details',
+			},
+			{
+				name: 'Report',
+				value: 'report',
+				description: 'Get job report',
+			},
+		],
+		default: 'get',
+	},
 ] as INodeProperties[];
-export const jobFields:INodeProperties[] =[
-    {
-        displayName:'Job Id',
-        name:'jobId',
-        type:'string',
-        required:true,
-        displayOptions:{
-            show:{
-                resource:['job'],operation:['getJob','getReport']
-            },
-        },
-        default:'',
-    }
+
+export const jobFields: INodeProperties[] =[
+	{
+		displayName: 'Job ID',
+		name: 'jobId',
+		type: 'string',
+		required: true,
+		displayOptions:{
+			show: {
+				resource: [
+					'job',
+				],
+				operation: [
+					'get',
+					'report',
+				],
+			},
+		},
+		default:'',
+	},
 ];

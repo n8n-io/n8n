@@ -1,18 +1,17 @@
-import { IExecuteFunctions } from 'n8n-core';
 import {
-	getAnalyzers,
-	getAnalyzerDetails,
-	getResponders,
-	getResponderDetails,
-	getJobDetailsAndReport,
-	getJobDetails,
-	executeResponder,
-	executeAnalyzer
+	IExecuteFunctions,
+	BINARY_ENCODING,
+} from 'n8n-core';
+
+import {
+	cortexApiRequest,
+	getEntityLabel,
 } from './GenericFunctions';
+
 import {
 	analyzersOperations,
-	analyzerFields
-} from './AnalyzerDescriptions'
+	analyzerFields,
+} from './AnalyzerDescriptions';
 
 import {
 	INodeExecutionData,
@@ -21,44 +20,25 @@ import {
 	INodePropertyOptions,
 	ILoadOptionsFunctions,
 	IDataObject,
-
 } from 'n8n-workflow';
-import {
-	createReadStream
-} from 'fs';
-import {
-	IExecuteSingleFunctions
-} from 'n8n-core'
-import { respondersOperations, responderFields } from './ResponderDescription';
-import { jobFields, jobsOperations } from './JobDescription';
 
-function getEntityLabel(entity:any):string{
-	let label:string='';
-	console.log("getting entity of ",entity._type);
-	switch (entity._type) {
-		case  'case':
-			label = `#${entity.caseId} ${entity.title}`
-			break;
-		case  'case_artifact':
-			label = `[${entity.dataType}] ${entity.data?entity.data:(entity.attachment.name)}`
-			break;
-		case  'alert':
-			label = `[${entity.source}:${entity.sourceRef}] ${entity.title}`
-			break;
-		case  'case_task_log':
-			label = `${entity.message} from ${entity.createdBy}`
-			break;
-		case  'case_task':
-			label = `${entity.title} (${entity.status})`
-			break;
-		case  'job':
-			label = `${entity.analyzerName} (${entity.status})`
-			break;
-		default:
-			break
-	}
-	return label;
-}
+import {
+	respondersOperations,
+	responderFields,
+} from './ResponderDescription';
+
+import {
+	jobFields,
+	jobsOperations,
+} from './JobDescription';
+
+import {
+	upperFirst,
+} from 'lodash';
+
+import {
+	IJob,
+} from './AnalyzerInterface';
 
 export class Cortex implements INodeType {
 	description: INodeTypeDescription = {
@@ -67,13 +47,11 @@ export class Cortex implements INodeType {
 		icon: 'file:cortex.png',
 		group: ['transform'],
 		subtitle: '={{$parameter["resource"]+ ": " + $parameter["operation"]}}',
-
 		version: 1,
 		description: 'Apply the Cortex analyzer/responder on the given entity',
 		defaults: {
 			name: 'Cortex',
 			color: '#54c4c3',
-
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -81,7 +59,7 @@ export class Cortex implements INodeType {
 			{
 				name: 'cortexApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			// Node properties which the user gets displayed and
@@ -91,15 +69,22 @@ export class Cortex implements INodeType {
 				name:'resource',
 				type:'options',
 				options:[
-					{name:"Analyzer",value:'analyzer'},
-					{name:"Responder",value:'responder'},
-					{name:"Job",value:'job'}
+					{
+						name: 'Analyzer',
+						value:'analyzer',
+					},
+					{
+						name: 'Responder',
+						value:'responder',
+					},
+					{
+						name: 'Job',
+						value:'job',
+					},
 				],
-				default:'analyzer',
-				description:'Choose a resource',
-				required:true,
-
-
+				default: 'analyzer',
+				description: 'Choose a resource',
+				required: true,
 			},
 			...analyzersOperations,
 			...analyzerFields,
@@ -107,17 +92,22 @@ export class Cortex implements INodeType {
 			...responderFields,
 			...jobsOperations,
 			...jobFields
-		]
+		],
 	};
 
 	methods = {
 		loadOptions: {
 
 			async loadActiveAnalyzers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// request the enabled analyzers from instance 
-				let requestResult = await getAnalyzers.call(this);
+				// request the enabled analyzers from instance
+				const requestResult = await cortexApiRequest.call(
+					this,
+					'POST',
+					`/analyzer/_search`,
+				);
 
 				const returnData: INodePropertyOptions[] = [];
+
 				for (const analyzer of requestResult) {
 					returnData.push({
 						name: analyzer.name as string,
@@ -126,15 +116,16 @@ export class Cortex implements INodeType {
 					});
 				}
 
-				return returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
+				return returnData;
 			},
+
 			async loadActiveResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// request the enabled responders from instance 
-				let requestResult = await getResponders.call(this);
+				// request the enabled responders from instance
+				const requestResult = await cortexApiRequest.call(
+					this,
+					'GET',
+					`/responder`,
+				);
 
 				const returnData: INodePropertyOptions[] = [];
 				for (const responder of requestResult) {
@@ -144,40 +135,39 @@ export class Cortex implements INodeType {
 						description: responder.description as string,
 					});
 				}
-
-				return returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
+				return returnData;
 			},
-			async loadObservableOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 
-				let selectedAnalyzerId = (this.getNodeParameter('analyzer') as string).split('::')[0];
-				// request the analyzers from instance 
-				let requestResult = await getAnalyzerDetails.call(this, selectedAnalyzerId);
+			async loadObservableOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const selectedAnalyzerId = (this.getNodeParameter('analyzer') as string).split('::')[0];
+				// request the analyzers from instance
+				const requestResult = await cortexApiRequest.call(
+					this,
+					'GET',
+					`/analyzer/${selectedAnalyzerId}`,
+				);
 
 				// parse supported observable types  into options
 				const returnData: INodePropertyOptions[] = [];
 				for (const dataType of requestResult.dataTypeList) {
 					returnData.push(
 						{
+							name: upperFirst(dataType as string),
 							value: dataType as string,
-							name: (dataType as string)
 						},
 					);
 				}
-				return returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
+				return returnData;
 			},
-			async loadDataTypeOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 
-				let selectedResponderId = (this.getNodeParameter('responder') as string).split('::')[0];
-				// request the responder from instance 
-				let requestResult = await getResponderDetails.call(this, selectedResponderId);
+			async loadDataTypeOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const selectedResponderId = (this.getNodeParameter('responder') as string).split('::')[0];
+				// request the responder from instance
+				const requestResult = await cortexApiRequest.call(
+					this,
+					'GET',
+					`/responder/${selectedResponderId}`,
+				);
 				// parse the accepted dataType into options
 				const returnData: INodePropertyOptions[] = [];
 				for (const dataType of requestResult.dataTypeList) {
@@ -188,130 +178,175 @@ export class Cortex implements INodeType {
 						},
 					);
 				}
-				return returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
+				return returnData;
 			},
-			
+
 		},
 	};
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		let response: any ={};
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: IDataObject[] = [];
+		const length = (items.length as unknown) as number;
+		const qs: IDataObject = {};
+		let responseData;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
 
-		let resource = this.getNodeParameter('resource');
-		let operation = this.getNodeParameter('operation');
-		let body = {}
-		let option = {}
-		let jobId;
-		
+		for (let i = 0; i < length; i++) {
+			if (resource === 'analyzer') {
+				//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#run
+				if (operation === 'execute') {
 
-		switch (resource) {
-			case 'analyzer':
-				switch (operation) {
-					case 'execute':
-						let analyzer = (this.getNodeParameter('analyzer') as string).split('::')[0];
-						let observableType = this.getNodeParameter('observableType');
-				
-						let cache = Boolean(this.getNodeParameter('cache'));
-						let tlp = this.getNodeParameter('tlp');
-						let timeout = Number.parseInt(String(this.getNodeParameter('timeout')));
-				
-						let streamData;
-				
-						if (observableType === 'file') {
-							let fileType: string = this.getNodeParameter('fileType') as string;
-							if (fileType === 'path') {
-								let path: string = this.getNodeParameter('path') as string;
-								streamData = createReadStream(path);
-							} else if (fileType === 'binary') {
-								let mimeType = this.getNodeParameter('mimeType') as string;
-								let fileName = this.getNodeParameter('fileName') as string;
-								let data = this.getNodeParameter('data') as string;
-				
-								let buff = Buffer.from(data, 'base64');
-				
-								streamData = {
-									value: buff,
+					let force = false;
+
+					const analyzer = this.getNodeParameter('analyzer', i) as string;
+
+					const observableType = this.getNodeParameter('observableType', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const tlp = this.getNodeParameter('tlp', i) as string;
+
+					const body: IDataObject = {
+						dataType: observableType,
+						tlp,
+					};
+
+					if (additionalFields.force === true) {
+						force = true;
+					}
+
+					if (observableType === 'file') {
+
+						const item = items[i];
+
+						if (item.binary === undefined) {
+							throw new Error('No binary data exists on item!');
+						}
+
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+						if (item.binary[binaryPropertyName] === undefined) {
+							throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+						}
+
+						const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+
+						const options = {
+							formData: {
+								data: {
+									value: fileBufferData,
 									options: {
-										filename: fileName,
-										contentType: mimeType
+										contentType: item.binary[binaryPropertyName].mimeType,
+										filename: item.binary[binaryPropertyName].fileName,
 									}
-								}
-							}
-				
-							option = {
-								formData: {
-									'data': streamData,
-									_json: JSON.stringify({
-										'dataType': observableType,
-										'tlp': tlp,
-									})
 								},
+								_json: JSON.stringify({
+									dataType: observableType,
+									tlp,
+								})
 							}
-						} else {
-							let observableValue = this.getNodeParameter('observableValue');
-							body = {
-								'dataType': observableType,
-								'data': observableValue,
-								'tlp': tlp
-							}
-						}
-						response = await executeAnalyzer.call(this, analyzer, cache, timeout, body, option)
-						break;
-					default:
-						break;
-				}
-				break;
-			case 'responder':
-				switch (operation) {
-					case 'execute':
-						// get what reponder to execute and on which entity
-						let responderId= (this.getNodeParameter('responder')as string).split('::')[0];
-						let dataType= this.getNodeParameter('dataType') as string;
-						let entityJson = JSON.parse(this.getNodeParameter('objectData')as string);
+						};
 
-						let body={
-							responderId,
-							label: getEntityLabel(entityJson),
-							dataType: `thehive:${dataType}`,
-							data: entityJson,
-							tlp: entityJson.tlp,
-							pap: entityJson.pap,
-							message: entityJson.message || '',
-							parameters:[],
-						}
-						response = await executeResponder.call(this,responderId,true,3,body,{});
-						break;
-				
-					default:
-						break;
+						responseData = await cortexApiRequest.call(
+							this,
+							'POST',
+							`/analyzer/${analyzer.split('::')[0]}/run`,
+							{},
+							{ force },
+							'',
+							options,
+						) as IJob;
+
+						continue;
+
+					} else {
+						const observableValue = this.getNodeParameter('observableValue', i) as string;
+
+						body.data = observableValue;
+
+						responseData = await cortexApiRequest.call(
+							this,
+							'POST',
+							`/analyzer/${analyzer.split('::')[0]}/run`,
+							body,
+							{ force },
+						) as IJob;
+					}
+
+					if (additionalFields.timeout) {
+						responseData = await cortexApiRequest.call(
+							this,
+							'GET',
+							`/job/${responseData.id}/waitreport`,
+							{},
+							{ atMost: `${additionalFields.timeout}second` },
+						);
+					}
 				}
-				break;
-			case 'job':
-				switch(operation){
-					case 'getJob':
-						jobId= this.getNodeParameter('jobId');
-						response = await getJobDetails.call(this,jobId);
-						break;
-					case 'getReport':
-						jobId= this.getNodeParameter('jobId');
-						response = await getJobDetailsAndReport.call(this,jobId);
-						break;
-					default:
-						break;
+			}
+
+			if (resource === 'job') {
+				//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#get-details-1
+				if (operation === 'get') {
+
+					const jobId = this.getNodeParameter('jobId', i) as string;
+
+					responseData = await cortexApiRequest.call(
+						this,
+						'GET',
+						`/job/${jobId}`,
+					);
 				}
-				break;
-			default:
-				break;
+				//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#get-details-and-report
+				if (operation === 'report') {
+
+					const jobId = this.getNodeParameter('jobId', i) as string;
+
+					responseData = await cortexApiRequest.call(
+						this,
+						'GET',
+						`/job/${jobId}/report`,
+					);
+				}
+			}
+
+			if (resource === 'responder') {
+
+				if (operation === 'execute') {
+
+					const responderId = (this.getNodeParameter('responder', i) as string).split('::')[0];
+
+					const dataType = this.getNodeParameter('dataType', i) as string;
+
+					const entityJson = JSON.parse(this.getNodeParameter('objectData', i) as string);
+
+					const body: IDataObject = {
+						responderId,
+						label: getEntityLabel(entityJson),
+						dataType: `thehive:${dataType}`,
+						data: entityJson,
+						tlp: entityJson.tlp,
+						pap: entityJson.pap,
+						message: entityJson.message || '',
+						parameters:[],
+					};
+
+					responseData = await cortexApiRequest.call(
+						this,
+						'POST',
+						`/responder/${responderId}/run`,
+						body,
+					) as IJob;
+				}
+			}
 		}
-		
-		return {
-			json: response,
-		};
-
+		if (Array.isArray(responseData)) {
+			returnData.push.apply(returnData, responseData as IDataObject[]);
+		} else if (responseData !== undefined) {
+			returnData.push(responseData as IDataObject);
+		}
+		return [this.helpers.returnJsonArray(returnData)];
 	}
-
 }

@@ -1,4 +1,8 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+	BINARY_ENCODING
+} from 'n8n-core';
+
 import {
 	INodeExecutionData,
 	INodeType,
@@ -6,16 +10,41 @@ import {
 	IDataObject,
 	INodeParameters,
 	ILoadOptionsFunctions,
-	INodePropertyOptions
+	INodePropertyOptions,
+	IBinaryData
 } from 'n8n-workflow';
-import { alertOperations, alertFields } from './descriptions/AlertDescription';
-import { observableOperations, observableFields } from './descriptions/ObservableDescription';
-import { caseOperations, caseFields } from './descriptions/CaseDescription';
-import { taskOperations, taskFields } from './descriptions/TaskDescription';
-import { logOperations, logFields } from './descriptions/LogDescription';
-import { createReadStream, } from 'fs';
-import { Buffer } from 'buffer';
+
+import {
+	alertOperations,
+	alertFields,
+} from './descriptions/AlertDescription';
+
+import {
+	observableOperations,
+	observableFields,
+} from './descriptions/ObservableDescription';
+
+import {
+	caseOperations,
+	caseFields,
+} from './descriptions/CaseDescription';
+
+import {
+	taskOperations,
+	taskFields,
+} from './descriptions/TaskDescription';
+
+import {
+	logOperations,
+	logFields,
+} from './descriptions/LogDescription';
+
+import {
+	Buffer,
+} from 'buffer';
+
 import moment = require('moment');
+
 import {
 	IQueryObject,
 	Parent,
@@ -24,45 +53,44 @@ import {
 	And,
 	Between,
 	In,
-	ContainsString
-} from './QueryFunctions'
+	ContainsString,
+} from './QueryFunctions';
+
 import {
-	getAll,
-	getOneById,
-	create,
-	update,
-	search,
 	theHiveApiRequest,
 } from './GenericFunctions';
+
 // Helpers functions
 function mapResource(resource: string): string {
 	switch (resource) {
 		case 'alert':
-			return 'alert'
+			return 'alert';
 			break;
 		case 'case':
-			return 'case'
+			return 'case';
 			break;
 		case 'observable':
-			return 'case_artifact'
+			return 'case_artifact';
 			break;
 		case 'task':
-			return 'case_task'
+			return 'case_task';
 			break;
 		case 'log':
-			return 'case_task_log'
+			return 'case_task_log';
 			break;
 		default:
 			return '';
 			break;
 	}
 }
+
 function splitTags(tags: string): string[] {
 	return tags.split(',').filter(tag => tag != ' ' && tag)
 }
+
 function prepareOptional(optionals: IDataObject): IDataObject {
-	let response: IDataObject = {};
-	for (let key in optionals) {
+	const response: IDataObject = {};
+	for (const key in optionals) {
 		if (optionals[key]!== undefined && optionals[key]!==null && optionals[key]!=='') {
 			if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
 				response[key] = Date.parse(optionals[key] as string);
@@ -71,27 +99,30 @@ function prepareOptional(optionals: IDataObject): IDataObject {
 			} else if (key === 'tags') {
 				response[key] = splitTags(optionals[key] as string);
 			} else {
-				response[key] = optionals[key]
+				response[key] = optionals[key];
 			}
 		}
 	}
-	return response
+	return response;
 }
-function prepareSortQuery(sort: string, body: { 'query': {}[] }) {
+
+function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {
 	if (sort) {
-		let field = sort.substring(1);
-		let value = sort.charAt(0) == '+' ? 'asc' : 'desc';
-		let sortOption: IDataObject = {}; sortOption[field] = value;
-		body['query'].push(
+		const field = sort.substring(1);
+		const value = sort.charAt(0) === '+' ? 'asc' : 'desc';
+		const sortOption: IDataObject = {};
+		sortOption[field] = value;
+		body.query.push(
 			{
 				'_name': 'sort',
 				'_fields': [
-					sortOption
-				]
-			}
-		)
+					sortOption,
+				],
+			},
+		);
 	}
 }
+
 function prepareRangeQuery(range: string, body: { 'query': {}[] }) {
 	if (range && range != 'all') {
 		body['query'].push(
@@ -103,6 +134,7 @@ function prepareRangeQuery(range: string, body: { 'query': {}[] }) {
 		)
 	}
 }
+
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TheHive',
@@ -122,112 +154,93 @@ export class TheHive implements INodeType {
 			{
 				name: 'theHiveApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
-				default: 'alert',
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
 				required: true,
 				options: [
-					{ name: 'Alert', value: 'alert', description: '' },
-					{ name: 'Observable', value: 'observable', description: '' },
-					{ name: 'Case', value: 'case', description: '' },
-					{ name: 'Task', value: 'task', description: '' },
-					{ name: 'Log', value: 'log', description: '' },
-				]
+					{
+						name: 'Alert',
+						value: 'alert',
+					},
+					{
+						name: 'Observable',
+						value: 'observable',
+					},
+					{
+						name: 'Case',
+						value: 'case',
+					},
+					{
+						name: 'Task',
+						value: 'task',
+					},
+					{
+						name: 'Log',
+						value: 'log',
+					},
+				],
+				default: 'alert',
 			},
-			// Alert 
+			// Alert
 			...alertOperations,
 			...alertFields,
 			// Observable
 			...observableOperations,
 			...observableFields,
-			// Case 
+			// Case
 			...caseOperations,
 			...caseFields,
-			// Task 
+			// Task
 			...taskOperations,
 			...taskFields,
-			// Log 
+			// Log
 			...logOperations,
 			...logFields,
-			{
-				displayName: 'Explode array',
-				name: 'explode',
-				type: 'boolean',
-				required: true,
-				default: true,
-				description: 'Turn result array into output items',
-				displayOptions: {
-					show: {
-						operation: ['list', 'search']
-					}
-				}
-			},
-			{
-				displayName: 'Range',
-				name: 'range',
-				type: 'string',
-				placeholder: 'all or X-Y',
-				required: false,
-				default: '',
-				displayOptions: {
-					show: {
-						operation: ['list', 'search']
-					}
-				}
-			},
-			{
-				displayName: 'Sort',
-				name: 'sort',
-				type: 'string',
-				placeholder: '±Attribut, exp +status',
-				required: false,
-				default: '',
-				displayOptions: {
-					show: {
-						operation: ['list', 'search']
-					}
-				}
-			}
-		]
+		],
 	};
 	methods = {
 		loadOptions: {
 			async loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// request the analyzers from instance 
-				let resource = mapResource(this.getNodeParameter('resource') as string);
-				let resourceId = this.getNodeParameter('id');
-				let endpoint = `connector/cortex/responder/${resource}/${resourceId}`;
-				let requestResult = await getAll.call(this, endpoint, {}, {});
-				// parse them into options
+				// request the analyzers from instance
+				const resource = mapResource(this.getNodeParameter('resource') as string);
+				const resourceId = this.getNodeParameter('id');
+				const endpoint = `/connector/cortex/responder/${resource}/${resourceId}`;
+
+				const responders = await theHiveApiRequest.call(
+					this,
+					'GET',
+					endpoint as string,
+				);
+
 				const returnData: INodePropertyOptions[] = [];
-				let responder: any;
-				for (responder of requestResult) {
+
+				for (const responder of responders) {
 					returnData.push({
 						name: responder.name as string,
-						value: responder.id,//`${responder.id as string}::${responder.name as string}`,
+						value: responder.id,
 						description: responder.description as string,
 					});
 				}
-				return returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
+				return returnData;
 			},
+
 			async loadAnalyzers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				// request the analyzers from instance 
+				// request the analyzers from instance
 				let dataType = this.getNodeParameter('dataType') as string;
-				let endpoint = `connector/cortex/analyzer/type/${dataType}`;
-				let requestResult = await getAll.call(this, endpoint, {}, {});
-				// parse them into options
+				let endpoint = `/connector/cortex/analyzer/type/${dataType}`;
+				let requestResult = await theHiveApiRequest.call(
+					this,
+					'GET',
+					endpoint as string
+				);
 				const returnData: INodePropertyOptions[] = [];
-				let analyzer: any;
-				for (analyzer of requestResult) {
+
+				for (let analyzer of requestResult) {
 					for (let cortexId of analyzer.cortexIds) {
 						returnData.push({
 							name: `[${cortexId}] ${analyzer.name}`,
@@ -236,1227 +249,1848 @@ export class TheHive implements INodeType {
 						});
 					}
 				}
-				return returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
+				return returnData;
 			},
 			async loadObservableOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// if v1 is not used we remove 'count' option
-				let apiVersion = this.getCredentials('theHiveApi')?.apiVersion;
-				
+				let version = this.getCredentials('theHiveApi')?.version;
+
 				let options= [
-				{name:'List',value:'list',description:'List observables'},
-				{name: 'Fetch One', value: 'fetch', description: 'Get a single observable' },
-				{name:'Create',value:'create',description:'Create observable'},
-				{name:'Update',value:'update',description:'Update observable'},
-				{name:'Search',value:'search',description:'Search observables'},
-				...(apiVersion=='v1')?[{name:'Count',value:'count',description:'Count observables'}]:[],
-				{name:'Execute a responder',value:'execute_responder',description:'Execute a responder on selected observable'},
-				{name:'Execute an analyzer',value:'execute_analyzer',description:'Execute an responder on selected observable'},
+					...(version=='v1')?[{name:'Count',value:'count',description:'Count observables'}]:[],
+					{name:'Create',value:'create',description:'Create observable'},
+					{name:'Execute an analyzer',value:'executeAnalyzer',description:'Execute an responder on selected observable'},
+					{name:'Execute a responder',value:'executeResponder',description:'Execute a responder on selected observable'},
+					{name:'Get All',value:'getAll',description:'Get all observables of a specific case'},
+					{name:'Get', value: 'get', description: 'Get a single observable' },
+					{name:'Search',value:'search',description:'Search observables'},
+					{name:'Update',value:'update',description:'Update observable'},
 				]
 				return options;
 			},
 			async loadTaskOptions(this:ILoadOptionsFunctions): Promise<INodePropertyOptions[]>{
-				let apiVersion = this.getCredentials('theHiveApi')?.apiVersion;
+				let version = this.getCredentials('theHiveApi')?.version;
 				let options =[
-				{name:'List',value:'list',description:'List tasks'},
-				{name:'Fetch One', value: 'fetch', description: 'Get a single task' },
-				{name:'Create',value:'create',description:'Create a task'},
-				{name:'Update',value:'update',description:'Update a task'},
-				{name:'Search',value:'search',description:'Search tasks'},
-				...(apiVersion=='v1')?[{name:'Count',value:'count',description:'Count tasks'}]:[],
-				{name:'Execute a responder', value: 'execute_responder', description: 'Execute a responder on the specified task' },
+					...(version=='v1')?[{name:'Count',value:'count',description:'Count tasks'}]:[],
+					{name:'Create',value:'create',description:'Create a task'},
+					{name:'Execute a responder', value: 'executeResponder', description: 'Execute a responder on the specified task' },
+					{name:'Get All',value:'getAll',description:'Get all asks of a specific case'},
+					{name:'Get', value: 'get', description: 'Get a single task' },
+					{name:'Search',value:'search',description:'Search tasks'},
+					{name:'Update',value:'update',description:'Update a task'},
 				]
 				return options
 			},
 			async loadAlertOptions(this:ILoadOptionsFunctions):Promise<INodePropertyOptions[]>{
-				let apiVersion= this.getCredentials('theHiveApi')?.apiVersion;
-				let options=[
-					{ name: 'List', value: 'list', description: 'List alerts' },
-					{ name: 'Fetch One', value: 'fetch', description: 'Get a single alert' },
+				const version = this.getCredentials('theHiveApi')?.version;
+
+				const options = [
+					...(version ==='v1')?[{ name: 'Count', value: 'count', description: 'Count alerts' }]:[],
 					{ name: 'Create', value: 'create', description: 'Create alert' },
-					{ name: 'Update', value: 'update', description: 'Update alert' },
-					{ name: 'Search', value: 'search', description: 'Search alert' },
-					...(apiVersion=='v1')?[{ name: 'Count', value: 'count', description: 'Count alert' }]:[],
+					{ name: 'Execute a responder', value: 'executeResponder', description: 'Execute a responder on the specified alert' },
+					{ name: 'Get', value: 'get', description: 'Get an alert' },
+					{ name: 'Get All', value: 'getAll', description: 'Get all alerts' },
 					{ name: 'Merge', value: 'merge', description: 'Merge alert into an existing case' },
 					{ name: 'Promote', value: 'promote', description: 'Promote an alert into a case' },
-					{ name: 'Execute a responder', value: 'execute_responder', description: 'Execute a responder on the specified alert' },
-		
-				]
-				return options
+					{ name: 'Update', value: 'update', description: 'Update alert' },
+				];
+				return options;
 			},
 			async loadCaseOptions(this:ILoadOptionsFunctions):Promise<INodePropertyOptions[]>{
-				let apiVersion= this.getCredentials('theHiveApi')?.apiVersion;
+				let version = this.getCredentials('theHiveApi')?.version;
 				let options=[
-					{ name: 'List', value: 'list', description: 'List cases' },
-					{ name: 'Fetch One', value: 'fetch', description: 'Get a single case' },
+					...(version =='v1')?[{ name: 'Count', value: 'count', description: 'Count a case' }]:[],
 					{ name: 'Create', value: 'create', description: 'Create a case' },
+					{ name: 'Execute a responder', value: 'executeResponder', description: 'Execute a responder on the specified case' },
+					{ name: 'Get All', value: 'getAll', description: 'Get all cases' },
+					{ name: 'Get', value: 'get', description: 'Get a single case' },
 					{ name: 'Update', value: 'update', description: 'Update a case' },
-					{ name: 'Search', value: 'search', description: 'Search a case' },
-					...(apiVersion=='v1')?[{ name: 'Count', value: 'count', description: 'Count a case' }]:[],
-					{ name: 'Execute a responder', value: 'execute_responder', description: 'Execute a responder on the specified case' },
-		
 				]
 				return options
 			}
 		}
 	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		let items = this.getInputData();
-		let apiVersion = this.getCredentials('theHiveApi')?.apiVersion;
-		let outputData: INodeExecutionData[] = [];;
-		let endpoint: string;
-		let range: string;
-		let sort: string;
-		let response: any;
-		let resource: string;
-		let operation: string;
-		let body: any;
-		let query: any;
-		for (var i = 0; i < items.length; i++) {
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
-			body = {};
-			query = {};
-			switch (resource) {
-				case 'alert':
-					switch (operation) {
-						case 'list':
-							if (apiVersion === 'v1') {
-								endpoint = 'v1/query';
-								range = this.getNodeParameter('range', i, 'all') as string || 'all';
-								sort = this.getNodeParameter('sort', i) as string;
-								body = {
-									'query': [
-										{
-											'_name': 'listAlert'
-										},
-									]
-								}
-								prepareSortQuery(sort, body)
-								prepareRangeQuery(range, body)
-								query = { name: 'alerts' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								query = prepareOptional({
-									'sort': this.getNodeParameter('sort', i),
-									'range': this.getNodeParameter('range', i, 'all')
-								})
-								response = await getAll.call(this, resource, body, query);
-							}
-							let explode = this.getNodeParameter('explode', i) as boolean;
-							if (explode) {
-								outputData.push(...this.helpers.returnJsonArray(response));
-							} else {
-								outputData.push({ json: response })
-							}
-							break;
-						case 'fetch':
-							let fetchAlertId = this.getNodeParameter('id', i);
-							if (apiVersion == 'v1') {
-								endpoint = 'v1/query';
-								body = {
-									"query": [
-										{
-											"_name": "getAlert",
-											"idOrName": fetchAlertId
-										}
-									]
-								}
-								query = { name: `get-alert-${fetchAlertId}` }
-								response = await create.call(this, endpoint, body, query);
-								response = response[0];
-							} else {
-								response = await getOneById.call(this, `${resource}/${fetchAlertId}`, body, {});
-							}
-							outputData.push({ json: response });
-							break;
-						case 'create':
-							body = {
-								title: this.getNodeParameter('title', i),
-								description: this.getNodeParameter('description', i),
-								severity: this.getNodeParameter('severity', i),
-								date: Date.parse(this.getNodeParameter('date', i) as string),
-								tags: splitTags(this.getNodeParameter('tags', i) as string),
-								tlp: this.getNodeParameter('tlp', i),
-								status: this.getNodeParameter('status', i),
-								type: this.getNodeParameter('type', i),
-								source: this.getNodeParameter('source', i),
-								sourceRef: this.getNodeParameter('sourceRef', i),
-								artifacts: JSON.parse(this.getNodeParameter('artifacts', i)as string),
-								follow: this.getNodeParameter('follow', i, true),
-								...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
-							};
-							response = await create.call(this, resource, body, {});
-							outputData.push({ json: response });
-							break;
-						case 'update':
-							let id = this.getNodeParameter('id', i);
-							body = {
-								...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
-							};
-							response = await update.call(this, `${resource}/${id}`, body, query);
-							outputData.push({ json: response });
-							break;
-						case 'merge':
-							let merginAlertId = this.getNodeParameter('id', i);
-							let caseId = this.getNodeParameter('caseId', i);
-							response = await theHiveApiRequest.call(this, 'POST', `${resource}/${merginAlertId}/merge/${caseId}`, body, query, undefined, {});
-							outputData.push({ json: response });
-							break;
-						case 'search':
-							let queryAttributs: any = prepareOptional(this.getNodeParameter('query', i, {}) as INodeParameters);
-							let _searchQuery: IQueryObject = And();
-							for (const key of Object.keys(queryAttributs)) {
-								if ( key == 'tags') {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										In(key, queryAttributs[key] as string[])
-									)
-								} else if (key == 'description' || key == 'title' ) {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										ContainsString(key, queryAttributs[key] as string)
-									)
-								} else {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										Eq(key, queryAttributs[key] as string)
-									)
-								}
-							}
-							if (apiVersion == 'v1') {
-								range = this.getNodeParameter('range', i, 'all') as string || 'all';
-								sort = this.getNodeParameter('sort', i) as string;
-								endpoint = 'v1/query'
-								body = {
-									"query": [
-										{
-											"_name": "listAlert"
-										},
-										{
-											"_name": "filter",
-											"_and": _searchQuery['_and']
-										},
-									]
-								}
-								prepareSortQuery(sort, body)
-								prepareRangeQuery(range, body)
-								query = { name: 'alerts' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								 query = prepareOptional({
-									'sort': this.getNodeParameter('sort', i),
-									'range': this.getNodeParameter('range', i, 'all')
-								})
-								response = await search.call(this, `alert`, { query: _searchQuery }, query);
-							}
-							let explodeOption = this.getNodeParameter('explode', i) as boolean;
-							if (explodeOption) {
-								outputData.push(...this.helpers.returnJsonArray(response));
-							} else {
-								outputData.push({ json: response })
-							}
-							break;
-						case 'count':
-							let countQueryAttributs: any = prepareOptional(this.getNodeParameter('query', i, {}) as INodeParameters);
-							let _countSearchQuery: IQueryObject = And();
-							for (const key of Object.keys(countQueryAttributs)) {
-								if ( key == 'tags') {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										In(key, countQueryAttributs[key] as string[])
-									)
-								} else if (key == 'description' || key == 'title' ) {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										ContainsString(key, countQueryAttributs[key] as string)
-									)
-								} else {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										Eq(key, countQueryAttributs[key] as string)
-									)
-								}
-							}
-							if (apiVersion == 'v1') {
-								
-								endpoint = 'v1/query'
-								body = {
-									"query": [
-										{
-											"_name": "listAlert"
-										},
-										{
-											"_name": "filter",
-											"_and": _countSearchQuery['_and']
-										},
-									]
-								}
-								
-								body['query'].push(
-									{
-										"_name": "count"
-									}
-								)
-								query = { name: 'count-Alert' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								throw Error('Count in available only for API v1, please the version')
-							}
-							
-							outputData.push({ json: {count:response} })
-							
-							break;
-						case 'promote':
-							let alertId = this.getNodeParameter('id', i);
-							body = {
-								...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
-							}
-							response = await theHiveApiRequest.call(this, 'POST', `${resource}/${alertId}/createCase`, body, query, undefined, {});
-							outputData.push({ json: response });
-							break;
-						case 'execute_responder':
-							let objectId = this.getNodeParameter('id', i);
-							let responders = this.getNodeParameter('responder', i) as string[];
-							for (let responderId of responders) {
-								body = {
-									responderId,
-									objectId,
-									objectType: 'alert'
-								}
-								response = await create.call(this, `connector/cortex/action`, body, query);
-								body = {
-									"query": [
-										{
-											"_name": "listAction"
-										},
-										{
-											"_name": "filter",
-											"_and": [
-												{
-													"_field": "cortexId",
-													"_value": response.cortexId
-												},
-												{
-													"_field": "objectId",
-													"_value": response.objectId
-												},
-												{
-													"_field": "startDate",
-													"_value": response.startDate
-												}
-											]
-										}
-									]
-								}
-								query={name:'alert-actions'}
-								do {
-									response = await theHiveApiRequest.call(this,'POST',`v1/query`,body,query,undefined,{});
-									response = response[0];
-								} while (response.status=="Waiting" || response.status=="InProgress" );  
-								outputData.push({ json: response });
-							}
-							break;
-						default:
-							break;
+		const items = this.getInputData();
+		const returnData: IDataObject[] = [];
+		const length = (items.length as unknown) as number;
+		const qs: IDataObject = {};
+		let responseData;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
+
+		for (let i = 0; i < length; i++) {
+
+			if (resource === 'alert') {
+
+				if (operation === 'count') {
+
+					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+
+					const _countSearchQuery: IQueryObject = And();
+
+					for (const key of Object.keys(countQueryAttributs)) {
+						if ( key === 'tags') {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								In(key, countQueryAttributs[key] as string[])
+							);
+						} else if (key === 'description' || key === 'title' ) {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								ContainsString(key, countQueryAttributs[key] as string)
+							);
+						} else {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								Eq(key, countQueryAttributs[key] as string)
+							);
+						}
 					}
-					break;
-				case 'observable':
-					switch (operation) {
-						case 'list':
-							let caseid = this.getNodeParameter('caseid', i);
-							range = this.getNodeParameter('range', i, 'all') as string || 'all';
-							sort = this.getNodeParameter('sort', i) as string;
-							if (apiVersion == 'v1') {
-								endpoint = 'v1/query';
-								body = {
-									"query": [
-										{
-											"_name": "getCase",
-											"idOrName": caseid
-										},
-										{
-											"_name": "observables"
-										},
-									]
-								}
-								prepareSortQuery(sort, body)
-								prepareRangeQuery(range, body)
-								query = { name: 'observables' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								query = prepareOptional({
-									'sort': this.getNodeParameter('sort', i),
-									'range': this.getNodeParameter('range', i, 'all')
-								})
-								let searchQuery: IQueryObject = Parent("case", Id(caseid as string));
-								/* body content format:
-								{
-									"query":{
-										"_parent": { "_type": "case", "_query": { "_id": caseid } } 
+
+					const body = {
+						'query': [
+							{
+								'_name': 'listAlert',
+							},
+							{
+								'_name': 'filter',
+								'_and': _countSearchQuery['_and']
+							},
+						]
+					};
+
+					body['query'].push(
+						{
+							'_name': 'count',
+						}
+					);
+
+					qs.name = 'count-Alert';
+
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						'/v1/query',
+						body,
+						qs,
+					);
+
+					responseData = { count: responseData };
+
+				}
+
+				if (operation === 'create') {
+
+					const body: IDataObject = {
+						title: this.getNodeParameter('title', i),
+						description: this.getNodeParameter('description', i),
+						severity: this.getNodeParameter('severity', i),
+						date: Date.parse(this.getNodeParameter('date', i) as string),
+						tags: splitTags(this.getNodeParameter('tags', i) as string),
+						tlp: this.getNodeParameter('tlp', i),
+						status: this.getNodeParameter('status', i),
+						type: this.getNodeParameter('type', i),
+						source: this.getNodeParameter('source', i),
+						sourceRef: this.getNodeParameter('sourceRef', i),
+						follow: this.getNodeParameter('follow', i, true),
+						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
+					};
+
+					const artifactUi = this.getNodeParameter('artifactUi', i)as IDataObject;
+
+					if (artifactUi) {
+
+						const artifactValues = (artifactUi as IDataObject).artifactValues as IDataObject[];
+
+						if (artifactValues) {
+
+							const artifactData = [];
+
+							for (const artifactvalue of artifactValues) {
+
+								const element: IDataObject = {};
+
+								element.message = artifactvalue.message as string;
+
+								element.tags = (artifactvalue.tags as string).split(',') as string[];
+
+								element.dataType = artifactvalue.dataType as string;
+
+								element.data = artifactvalue.data as string;
+
+								if (artifactvalue.dataType === 'file') {
+
+									const item = items[i];
+
+									if (item.binary === undefined) {
+										throw new Error('No binary data exists on item!');
 									}
-								}
-								*/
-								response = await search.call(this, `case/artifact`, { query: searchQuery }, query);
-							}
-							let explode = this.getNodeParameter('explode', i) as boolean;
-							if (explode) {
-								outputData.push(...this.helpers.returnJsonArray(response));
-							} else {
-								outputData.push({ json: response })
-							}
-							break;
-						case 'fetch':
-							let fetchObservableId = this.getNodeParameter('id', i);
-							if (apiVersion == 'v1') {
-								endpoint = 'v1/query';
-								body = {
-									"query": [
-										{
-											"_name": "getObservable",
-											"idOrName": fetchObservableId
-										}
-									]
-								}
-								query = { name: `get-observable-${fetchObservableId}` }
-								response = await create.call(this, endpoint, body, query);
-								response = response[0];
-							} else {
-								response = await getOneById.call(this, `case/artifact/${fetchObservableId}`, body, {});
-							}
-							outputData.push({ json: response });
-							break;
-						case 'create':
-							let caseId = this.getNodeParameter('caseid', i);
-							body = {
-								dataType: this.getNodeParameter('dataType', i) as string,
-								message: this.getNodeParameter('message', i) as string,
-								startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
-								tlp: this.getNodeParameter('tlp', i) as number,
-								ioc: this.getNodeParameter('ioc', i) as boolean,
-								sighted: this.getNodeParameter('sighted', i) as boolean,
-								status: this.getNodeParameter('status', i) as string,
-								...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
-							}
-							let options = {};
-							if (this.getNodeParameter('dataType', i) === 'file') {
-								let attachmentData;
-								let attachmentType = this.getNodeParameter('attachmentType', i) as string;
-								if (attachmentType === 'path') {
-									let attachmentPath = this.getNodeParameter('attachment', i) as string;
-									attachmentData = createReadStream(attachmentPath);
-								} else if (attachmentType === 'binary') {
-									let mimeType = this.getNodeParameter('mimeType', i) as string;
-									let fileName = this.getNodeParameter('fileName', i) as string;
-									let data = this.getNodeParameter('data', i) as string;
-									let buff = Buffer.from(data, 'base64');
-									attachmentData = {
-										value: buff,
-										options: {
-											filename: fileName,
-											contentType: mimeType
-										}
+
+									const binaryPropertyName = artifactvalue.binaryProperty as string;
+
+									if (item.binary[binaryPropertyName] === undefined) {
+										throw new Error(`No binary data property '${binaryPropertyName}' does not exists on item!`);
 									}
-								}
-								options = {
-									'formData': {
-										'attachment': attachmentData,
-										'_json': JSON.stringify({
-											...body
-										})
-									}
-								}
-								body = {}
-							} else {
-								body = {
-									...body,
-									data: this.getNodeParameter('data', i, null),
-								}
-							}
-							response = await theHiveApiRequest.call(this, 'POST', `case/${caseId}/artifact`, body, query, undefined, options);
-							outputData.push({ json: response });
-							break;
-						case 'update':
-							let id = this.getNodeParameter('id', i);
-							body = {
-								...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
-							}
-							response = await update.call(this, `case/artifact/${id}`, body, query);
-							outputData.push({ json: response });
-							break;
-						case 'search':
-							let queryAttributs: any = prepareOptional(this.getNodeParameter('query', i, {}) as INodeParameters);
-							let _searchQuery: IQueryObject = And();
-							for (const key of Object.keys(queryAttributs)) {
-								if (key == 'dataType' || key == 'tags') {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										In(key, queryAttributs[key] as string[])
-									)
-								} else if (key == 'description' || key == 'keywork' || key == 'message') {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										ContainsString(key, queryAttributs[key] as string)
-									)
-								} else if (key == 'range') {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										Between(
-											"startDate",
-											queryAttributs['range']['dateRange']['fromDate'],
-											queryAttributs['range']['dateRange']['toDate']
-										)
-									)
-								} else {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										Eq(key, queryAttributs[key] as string)
-									)
-								}
-							}
-							if (apiVersion == 'v1') {
-								range = this.getNodeParameter('range', i, 'all') as string || 'all';
-								sort = this.getNodeParameter('sort', i) as string;
-								endpoint = 'v1/query'
-								body = {
-									"query": [
-										{
-											"_name": "listObservable"
-										},
-										{
-											"_name": "filter",
-											"_and": _searchQuery['_and']
-										},
-									]
-								}
-								prepareSortQuery(sort, body)
-								prepareRangeQuery(range, body)
-								query = { name: 'observables' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								query = prepareOptional({
-									'sort': this.getNodeParameter('sort', i),
-									'range': this.getNodeParameter('range', i, 'all')
-								})
-								response = await search.call(this, `case/artifact`, { query: _searchQuery }, query);
-							}
-							let explodeOption = this.getNodeParameter('explode', i) as boolean;
-							if (explodeOption) {
-								outputData.push(...this.helpers.returnJsonArray(response));
-							} else {
-								outputData.push({ json: response })
-							}
-							break;
-						case 'count':
-							let countQueryAttributs: any = prepareOptional(this.getNodeParameter('query', i, {}) as INodeParameters);
-							let _countSearchQuery: IQueryObject = And();
-							for (const key of Object.keys(countQueryAttributs)) {
-								if (key == 'dataType' || key == 'tags') {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										In(key, countQueryAttributs[key] as string[])
-									)
-								} else if (key == 'description' || key == 'keywork' || key == 'message') {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										ContainsString(key, countQueryAttributs[key] as string)
-									)
-								} else if (key == 'range') {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										Between(
-											"startDate",
-											countQueryAttributs['range']['dateRange']['fromDate'],
-											countQueryAttributs['range']['dateRange']['toDate']
-										)
-									)
-								} else {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										Eq(key, countQueryAttributs[key] as string)
-									)
-								}
-							}
-							if (apiVersion == 'v1') {
-								
-								endpoint = 'v1/query'
-								body = {
-									"query": [
-										{
-											"_name": "listObservable"
-										},
-										{
-											"_name": "filter",
-											"_and": _countSearchQuery['_and']
-										},
-									]
-								}
-								
-								body['query'].push(
-									{
-										"_name": "count"
-									}
-								)
-								query = { name: 'count-observables' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								throw Error('Count in available only for API v1, please the version')
-							}
-							
-							outputData.push({ json: {count:response} })
-							
-							break;
-						case 'execute_responder':
-							let objectId = this.getNodeParameter('id', i);
-							let responders = this.getNodeParameter('responder', i) as string[];
-							for (let responderId of responders) {
-								body = {
-									responderId,
-									objectId,
-									objectType: 'case_artifact'
-								}
-								response = await create.call(this, `connector/cortex/action`, body, query);
-								body = {
-									"query": [
-										{
-											"_name": "listAction"
-										},
-										{
-											"_name": "filter",
-											"_and": [
-												{
-													"_field": "cortexId",
-													"_value": response.cortexId
-												},
-												{
-													"_field": "objectId",
-													"_value": response.objectId
-												},
-												{
-													"_field": "startDate",
-													"_value": response.startDate
-												}
-												
-											]
-										}
-									]
-								}
-								query={name:'observable-actions'}
-								do {
-									response = await theHiveApiRequest.call(this,'POST',`v1/query`,body,query,undefined,{});
-									response = response[0];
-								} while (response.status=="Waiting" || response.status=="InProgress" ); 
-								outputData.push({ json: response });
-							}
-							break;
-						case 'execute_analyzer':
-							let artifactId = this.getNodeParameter('id', i);
-							let analyzers = (this.getNodeParameter('analyzer', i) as string[])
-								.map(analyzer => {
-									let ids = analyzer.split("::");
-									return {
-										analyzerId: ids[0],
-										cortexId: ids[1]
-									}
-								})
-							for (let analyzer of analyzers) {
-								body = {
-									...analyzer,
-									artifactId,
-								}
-								// execute the analyzer
-								response = await create.call(this, `connector/cortex/job`, body, query);
-								let jobId = response.id
-								query={name:'observable-jobs'}
-								// query the job result (including the report)
-								do {
-									response = await theHiveApiRequest.call(this,'GET',`connector/cortex/job/${jobId}`,body,query,undefined,{});
-								} while (response.status=="Waiting" || response.status=="InProgress" ); 
-								outputData.push({ json: response });
-							}
-						default:
-							break;
-					}
-					break;
-				case 'case':
-					switch (operation) {
-						case 'list':
-							if (apiVersion == 'v1') {
-								endpoint = 'v1/query';
-								range = this.getNodeParameter('range', i, 'all') as string || 'all';
-								sort = this.getNodeParameter('sort', i) as string
-								body = {
-									"query": [
-										{
-											"_name": "listCase"
-										},
-									]
-								}
-								prepareSortQuery(sort, body)
-								prepareRangeQuery(range, body)
-								query = { name: 'cases' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								query = prepareOptional({
-									'sort': this.getNodeParameter('sort', i),
-									'range': this.getNodeParameter('range', i, 'all')
-								})
-								response = await getAll.call(this, resource, body, query);
-							}
-							let explode = this.getNodeParameter('explode', i) as boolean;
-							if (explode) {
-								outputData.push(...this.helpers.returnJsonArray(response));
-							} else {
-								outputData.push({ json: response })
-							}
-							break;
-						case 'fetch':
-							let fetchCaseId = this.getNodeParameter('id', i);
-							if (apiVersion == 'v1') {
-								endpoint = 'v1/query';
-								body = {
-									"query": [
-										{
-											"_name": "getCase",
-											"idOrName": fetchCaseId
-										}
-									]
-								}
-								query = { name: `get-case-${fetchCaseId}` }
-								response = await create.call(this, endpoint, body, query);
-								response = response[0];
-							} else {
-								response = await getOneById.call(this, `${resource}/${fetchCaseId}`, body, {});
-							}
-							outputData.push({ json: response });
-							break;
-						case 'create':
-							body = {
-								title: this.getNodeParameter('title', i),
-								description: this.getNodeParameter('description', i),
-								severity: this.getNodeParameter('severity', i),
-								startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
-								owner: this.getNodeParameter('owner', i),
-								flag: this.getNodeParameter('flag', i),
-								tlp: this.getNodeParameter('tlp', i),
-								tags: splitTags(this.getNodeParameter('tags', i) as string),
-								...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
-							}
-							response = await create.call(this, resource, body, query);
-							outputData.push({ json: response });
-							break;
-						case 'update':
-							let id = this.getNodeParameter('id', i);
-							body = {
-								...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
-							}
-							response = await update.call(this, `${resource}/${id}`, body, query);
-							outputData.push({ json: response });
-							break;
-						case 'search':
-							let queryAttributs: any = prepareOptional(this.getNodeParameter('query', i, {}) as INodeParameters);
-							let _searchQuery: IQueryObject = And();
-							for (const key of Object.keys(queryAttributs)) {
-								if ( key == 'tags') {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										In(key, queryAttributs[key] as string[])
-									)
-								} else if (key == 'description' || key == 'summary' || key == 'title') {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										ContainsString(key, queryAttributs[key] as string)
-									)
-								} else {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										Eq(key, queryAttributs[key] as string)
-									)
-								}
-							}
-							if (apiVersion == 'v1') {
-								range = this.getNodeParameter('range', i, 'all') as string || 'all';
-								sort = this.getNodeParameter('sort', i) as string;
-								endpoint = 'v1/query'
-								body = {
-									"query": [
-										{
-											"_name": "listCase"
-										},
-										{
-											"_name": "filter",
-											"_and": _searchQuery['_and']
-										},
-									]
-								}
-								prepareSortQuery(sort, body)
-								prepareRangeQuery(range, body)
-								query = { name: 'cases' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								query = prepareOptional({
-									'sort': this.getNodeParameter('sort', i),
-									'range': this.getNodeParameter('range', i, 'all')
-								})
-								response = await search.call(this, `case`, { query: _searchQuery }, query);
-							}
-							let explodeOption = this.getNodeParameter('explode', i) as boolean;
-							if (explodeOption) {
-								outputData.push(...this.helpers.returnJsonArray(response));
-							} else {
-								outputData.push({ json: response })
-							}
-							break;
-						case 'count':
-							let countQueryAttributs: any = prepareOptional(this.getNodeParameter('query', i, {}) as INodeParameters);
-							let _countSearchQuery: IQueryObject = And();
-							for (const key of Object.keys(countQueryAttributs)) {
-								if ( key == 'tags') {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										In(key, countQueryAttributs[key] as string[])
-									)
-								} else if (key == 'description' || key == 'summary' || key == 'title') {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										ContainsString(key, countQueryAttributs[key] as string)
-									)
-								} else {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										Eq(key, countQueryAttributs[key] as string)
-									)
-								}
-							}
-							if (apiVersion == 'v1') {
-								
-								endpoint = 'v1/query'
-								body = {
-									"query": [
-										{
-											"_name": "listCase"
-										},
-										{
-											"_name": "filter",
-											"_and": _countSearchQuery['_and']
-										},
-									]
-								}
-								
-								body['query'].push(
-									{
-										"_name": "count"
-									}
-								)
-								query = { name: 'count-cases' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								throw Error('Count in available only for API v1, please the version')
-							}
-							outputData.push({ json: {count:response} })
-							break;
-						case 'execute_responder':
-							let objectId = this.getNodeParameter('id', i);
-							let responders = this.getNodeParameter('responder', i) as string[];
-							for (let responderId of responders) {
-								body = {
-									responderId,
-									objectId,
-									objectType: 'case'
-								}
-								response = await create.call(this, `connector/cortex/action`, body, query);
-								body = {
-									"query": [
-										{
-											"_name": "listAction"
-										},
-										{
-											"_name": "filter",
-											"_and": [
-												{
-													"_field": "cortexId",
-													"_value": response.cortexId
-												},
-												{
-													"_field": "objectId",
-													"_value": response.objectId
-												},
-												{
-													"_field": "startDate",
-													"_value": response.startDate
-												}
-												
-											]
-										}
-									]
-								}
-								query={name:'case-actions'}
-								do {
-									response = await theHiveApiRequest.call(this,'POST',`v1/query`,body,query,undefined,{});
-									response = response[0];
-								} while (response.status=="Waiting" || response.status=="InProgress" );  
-								outputData.push({ json: response });
-							}
-							break;
-						default:
-							break;
-					}
-					break;
-				case 'task':
-					switch (operation) {
-						case 'list':
-							let caseId = this.getNodeParameter('caseId', i) as string;
-							range = this.getNodeParameter('range', i, 'all') as string || 'all';
-							sort = this.getNodeParameter('sort', i) as string;
-							endpoint = 'v1/query';
-							if (apiVersion == 'v1') {
-								body = {
-									"query": [
-										{
-											"_name": "getCase",
-											"idOrName": caseId
-										},
-										{
-											"_name": "tasks"
-										},
-									]
-								}
-								prepareSortQuery(sort, body)
-								prepareRangeQuery(range, body)
-								query = { name: 'case-tasks' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								query = prepareOptional({
-									'sort': this.getNodeParameter('sort', i),
-									'range': this.getNodeParameter('range', i, 'all')
-								})
-								body={
-									'query':{
-										'_and':[Parent("case",Id(caseId))]
-									}
-								}
-								response = await search.call(this, `case/task`, body, query);
-							}
-							let explode = this.getNodeParameter('explode', i) as boolean;
-							if (explode) {
-								outputData.push(...this.helpers.returnJsonArray(response));
-							} else {
-								outputData.push({ json: response })
-							}
-							break;
-						case 'fetch':
-							let fetchTaskId = this.getNodeParameter('id', i);
-							if (apiVersion == 'v1') {
-								endpoint = 'v1/query';
-								body = {
-									"query": [
-										{
-											"_name": "getTask",
-											"idOrName": fetchTaskId
-										}
-									]
-								}
-								query = { name: `get-task-${fetchTaskId}` }
-								response = await create.call(this, endpoint, body, query);
-								response = response[0];
-							} else {
-								response = await getOneById.call(this, `case/${resource}/${fetchTaskId}`, body, {});
-							}
-							outputData.push({ json: response });
-							break;
-						case 'create':
-							let caseIdToAdd = this.getNodeParameter('caseId', i) as string;
-							body = {
-								title: this.getNodeParameter('title', i) as string,
-								status: this.getNodeParameter('status', i) as string,
-								flag: this.getNodeParameter('flag', i),
-								...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
-							}
-							response = await create.call(this, `case/${caseIdToAdd}/task`, body, query);
-							outputData.push({ json: response });
-							break;
-						case 'update':
-							let id = this.getNodeParameter('id', i) as string;
-							body = {
-								...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
-							}
-							response = await update.call(this, `case/task/${id}`, body, query);
-							outputData.push({ json: response });
-							break;
-						case 'search':
-							let _searchQuery: IQueryObject = And();
-							let queryAttributs = prepareOptional(this.getNodeParameter('query', i, {}) as INodeParameters)
-							for (const key of Object.keys(queryAttributs)) {
-								if (key == 'title' || key == 'description') {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										ContainsString(key, queryAttributs[key] as string)
-									)
-								} else {
-									(_searchQuery['_and'] as IQueryObject[]).push(
-										Eq(key, queryAttributs[key] as string)
-									)
-								}
-							}
-							if (apiVersion == 'v1') {
-								range = this.getNodeParameter('range', i, 'all') as string || 'all';
-								sort = this.getNodeParameter('sort', i) as string;
-								endpoint = 'v1/query'
-								body = {
-									"query": [
-										{
-											"_name": "listTask"
-										},
-										{
-											"_name": "filter",
-											"_and": _searchQuery['_and']
-										},
-									]
-								}
-								prepareSortQuery(sort, body)
-								prepareRangeQuery(range, body)
-								query = { name: 'tasks' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								query = prepareOptional({
-									'sort': this.getNodeParameter('sort', i),
-									'range': this.getNodeParameter('range', i, 'all')
-								})
-								response = await search.call(this, `case/task`, { query: _searchQuery }, query);
-							}
-							let explodeOption = this.getNodeParameter('explode', i) as boolean;
-							if (explodeOption) {
-								outputData.push(...this.helpers.returnJsonArray(response));
-							} else {
-								outputData.push({ json: response })
-							}
-							break;
-						case 'count':
-							let countQueryAttributs: any = prepareOptional(this.getNodeParameter('query', i, {}) as INodeParameters);
-							let _countSearchQuery: IQueryObject = And();
-							for (const key of Object.keys(countQueryAttributs)) {
-								if (key == 'title' || key == 'description') {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										ContainsString(key, countQueryAttributs[key] as string)
-									)
-								} else {
-									(_countSearchQuery['_and'] as IQueryObject[]).push(
-										Eq(key, countQueryAttributs[key] as string)
-									)
-								}
-							}
-							if (apiVersion == 'v1') {
-								
-								endpoint = 'v1/query'
-								body = {
-									"query": [
-										{
-											"_name": "listTask"
-										},
-										{
-											"_name": "filter",
-											"_and": _countSearchQuery['_and']
-										},
-									]
+
+									const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+
+									element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
 								}
 
-								body['query'].push(
-									{
-										"_name": "count"
+								artifactData.push(element);
+							}
+							body.artifacts = artifactData;
+						}
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						'/alert' as string,
+						body,
+					);
+				}
+
+				/*
+					Execute responder feature differs from Cortex execute responder
+					if it doesn't interfere with n8n standards then we should keep it
+				*/
+
+				if (operation === 'executeResponder'){
+					let alertId = this.getNodeParameter('id', i);
+					let responders = this.getNodeParameter('responders', i) as string[];
+					let body:IDataObject;
+					let response;
+					responseData = [];
+					for (let responderId of responders) {
+						body = {
+							responderId,
+							objectId:alertId,
+							objectType: 'alert'
+						}
+						response = await theHiveApiRequest.call(
+							this,
+							'POST',
+							'/connector/cortex/action' as string,
+							body,
+						);
+						body = {
+							query: [
+								{
+									'_name': 'listAction'
+								},
+								{
+									'_name': 'filter',
+									'_and': [
+										{
+											'_field': 'cortexId',
+											'_value': response.cortexId
+										},
+										{
+											'_field': 'objectId',
+											'_value': response.objectId
+										},
+										{
+											'_field': 'startDate',
+											'_value': response.startDate
+										}
+
+									]
+								}
+							]
+						}
+						qs.name = 'log-actions'
+						do {
+							response = await theHiveApiRequest.call(
+								this,
+								'POST',
+								`/v1/query`,
+								body,
+								qs
+							);
+						} while (response.status=='Waiting' || response.status=='InProgress' );
+
+						responseData.push(response);
+					}
+
+				}
+
+				if (operation === 'get') {
+
+					const alertId = this.getNodeParameter('id', i) as string;
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'GET',
+						`/alert/${alertId}`,
+						{},
+					);
+				}
+
+				if (operation === 'getAll') {
+
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const version = credentials.version;
+
+					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+
+					const options =  this.getNodeParameter('options', i) as IDataObject;
+
+					const _searchQuery: IQueryObject = And();
+
+					for (const key of Object.keys(queryAttributs)) {
+						if ( key === 'tags') {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								In(key, queryAttributs[key] as string[])
+							);
+						} else if (key === 'description' || key === 'title' ) {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								ContainsString(key, queryAttributs[key] as string)
+							);
+						} else {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								Eq(key, queryAttributs[key] as string)
+							);
+						}
+					}
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					let limit = undefined;
+
+					if (returnAll === false) {
+						limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (version === 'v1') {
+
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'listAlert',
+								},
+								{
+									'_name': 'filter',
+									'_and': _searchQuery['_and'],
+								},
+							],
+						};
+
+						//@ts-ignore
+						prepareSortQuery(options.sort, body);
+
+						if (limit !== undefined) {
+							//@ts-ignore
+							prepareRangeQuery(`0-${limit}`, body);
+						}
+
+						qs.name = 'alerts';
+
+					} else {
+
+						method = 'POST';
+
+						endpoint = '/alert/_search';
+
+						if (limit !== undefined) {
+							qs.range = `0-${limit}`;
+						}
+
+						body.query = _searchQuery;
+
+						Object.assign(qs, prepareOptional(options));
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if (operation === 'merge') {
+
+					const alertId = this.getNodeParameter('id', i) as string;
+
+					const caseId = this.getNodeParameter('caseId', i) as string;
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						`/alert/${alertId}/merge/${caseId}`,
+						{},
+					);
+				}
+
+				if (operation === 'promote') {
+
+					const alertId = this.getNodeParameter('id', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {};
+
+					Object.assign(body, additionalFields);
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						`/alert/${alertId}/createCase`,
+						body,
+					);
+				}
+
+				if (operation === 'update') {
+
+					const alertId = this.getNodeParameter('id', i) as string;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					const artifactUi = updateFields.artifactUi as IDataObject;
+
+					delete updateFields.artifactUi;
+
+					const body: IDataObject = {};
+
+					Object.assign(body, updateFields);
+
+					if (artifactUi) {
+
+						const artifactValues = (artifactUi as IDataObject).artifactValues as IDataObject[];
+
+						if (artifactValues) {
+
+							const artifactData = [];
+
+							for (const artifactvalue of artifactValues) {
+
+								const element: IDataObject = {};
+
+								element.message = artifactvalue.message as string;
+
+								element.tags = (artifactvalue.tags as string).split(',') as string[];
+
+								element.dataType = artifactvalue.dataType as string;
+
+								element.data = artifactvalue.data as string;
+
+								if (artifactvalue.dataType === 'file') {
+
+									const item = items[i];
+
+									if (item.binary === undefined) {
+										throw new Error('No binary data exists on item!');
 									}
+
+									const binaryPropertyName = artifactvalue.binaryProperty as string;
+
+									if (item.binary[binaryPropertyName] === undefined) {
+										throw new Error(`No binary data property '${binaryPropertyName}' does not exists on item!`);
+									}
+
+									const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+
+									element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
+								}
+
+								artifactData.push(element);
+							}
+							body.artifacts = artifactData;
+						}
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'PATCH',
+						`/alert/${alertId}` as string,
+						body,
+					);
+				}
+			}
+
+			if(resource === 'observable'){
+
+				if(operation === 'count'){
+					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+
+					const _countSearchQuery: IQueryObject = And();
+
+					for (const key of Object.keys(countQueryAttributs)) {
+						if (key == 'dataType' || key == 'tags') {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								In(key, countQueryAttributs[key] as string[])
+							)
+						} else if (key == 'description' || key == 'keywork' || key == 'message') {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								ContainsString(key, countQueryAttributs[key] as string)
+							)
+						} else if (key == 'range') {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								Between(
+									'startDate',
+									countQueryAttributs['range']['dateRange']['fromDate'],
+									countQueryAttributs['range']['dateRange']['toDate']
 								)
-								query = { name: 'count-tasks' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								throw Error('Count in available only for API v1, please the version')
-							}
-							outputData.push({ json: {count:response} })
-							break;
-						case 'execute_responder':
-							let objectId = this.getNodeParameter('id', i);
-							let responders = this.getNodeParameter('responder', i) as string[];
-							for (let responderId of responders) {
-								body = {
-									responderId,
-									objectId,
-									objectType: 'case_task'
-								}
-								response = await create.call(this, `connector/cortex/action`, body, query);
-								body = {
-									"query": [
-										{
-											"_name": "listAction"
-										},
-										{
-											"_name": "filter",
-											"_and": [
-												{
-													"_field": "cortexId",
-													"_value": response.cortexId
-												},
-												{
-													"_field": "objectId",
-													"_value": response.objectId
-												},
-												{
-													"_field": "startDate",
-													"_value": response.startDate
-												}
-												
-											]
-										}
-									]
-								}
-								query={name:'task-actions'}
-								do {
-									response = await theHiveApiRequest.call(this,'POST',`v1/query`,body,query,undefined,{});
-									response = response[0];
-								} while (response.status=="Waiting" || response.status=="InProgress" ); 
-								outputData.push({ json: response });
-							}
-							break;
-						default:
-							break;
+							)
+						} else {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								Eq(key, countQueryAttributs[key] as string)
+							)
+						}
 					}
-					break;
-				case 'log':
-					switch (operation) {
-						case 'list':
-							let taskid = this.getNodeParameter('taskId', i) as string;
-							range = this.getNodeParameter('range', i, 'all') as string || 'all';
-							sort = this.getNodeParameter('sort', i) as string;
-							endpoint = 'v1/query';
-							if (apiVersion == 'v1') {
-								body = {
-									"query": [
-										{
-											"_name": "getTask",
-											"idOrName": taskid
-										},
-										{
-											"_name": "logs"
-										},
-									]
-								}
-								prepareSortQuery(sort, body)
-								prepareRangeQuery(range, body)
-								query = { name: 'case-task-logs' }
-								response = await create.call(this, endpoint, body, query);
-							} else {
-								query = prepareOptional({
-									'sort': this.getNodeParameter('sort', i),
-									'range': this.getNodeParameter('range', i, 'all')
-								})
-								let _searchQuery = And(Parent(
-									"task",
-									Id(taskid)
-								))
-								response = await search.call(this, `case/task/log`, { query: _searchQuery }, query);
+
+					const body = {
+						'query': [
+							{
+								'_name': 'listObservable'
+							},
+							{
+								'_name': 'filter',
+								'_and': _countSearchQuery['_and']
+							},
+						]
+					};
+
+					body['query'].push(
+						{
+							'_name': 'count'
+						}
+					);
+
+					qs.name = 'count-observables';
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						'/v1/query',
+						body,
+						qs,
+					);
+
+					responseData = { count: responseData };
+				}
+
+				if (operation === 'executeAnalyzer'){
+					let observableId = this.getNodeParameter('id', i);
+					let analyzers = (this.getNodeParameter('analyzers', i) as string[])
+						.map(analyzer => {
+							let parts = analyzer.split('::');
+							return {
+								analyzerId: parts[0],
+								cortexId: parts[1]
 							}
-							let explode = this.getNodeParameter('explode', i) as boolean;
-							if (explode) {
-								outputData.push(...this.helpers.returnJsonArray(response));
-							} else {
-								outputData.push({ json: response })
-							}
-							break;
-						case 'fetch':
-							let fetchLogId = this.getNodeParameter('id', i);
-							if (apiVersion == 'v1') {
-								endpoint = 'v1/query';
-								body = {
-									"query": [
-										{
-											"_name": "getLog",
-											"idOrName": fetchLogId
-										}
-									]
-								}
-								query = { name: `get-log-${fetchLogId}` }
-								response = await create.call(this, endpoint, body, query);
-								response = response[0];
-							} else {
-								body = {
-									query: { "_id": fetchLogId }
-								}
-								response = await search.call(this, `case/task/${resource}`, body, {});
-								if (response.length == 0) throw Error(`Log ${fetchLogId} not found`)
-								response = response[0];
-							}
-							outputData.push({ json: response });
-							break;
-						case 'create':
-							let taskId = this.getNodeParameter('taskId', i);
-							let req_option = {}
-							body = {
-								message: this.getNodeParameter('message', i),
-								startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
-								status: this.getNodeParameter('status', i),
-							}
-							let options = this.getNodeParameter('optionals', i, {}) as { attachement: { value?: string, attachmentType: string, mimeType?: string, fileName?: string, data?: string } };
-							if (options['attachement']) {
-								let attachmentData;
-								if (options['attachement']['attachmentType'] == 'path') {
-									attachmentData = createReadStream(options['attachement']['value'] as string);
-								} else if (options['attachement']['attachmentType'] == 'binary') {
-									let mimeType = options['attachement']['mimeType'] as string;
-									let fileName = options['attachement']['fileName'] as string;
-									let data = options['attachement']['data'] as string;
-									let buff = Buffer.from(data, 'base64');
-									attachmentData = {
-										value: buff,
-										options: {
-											filename: fileName,
-											contentType: mimeType
-										}
-									}
-								}
-								req_option = {
-									'formData': {
-										'attachment': attachmentData,
-										'_json': JSON.stringify({
-											...body
-										})
-									}
-								}
-								body = {}
-							}
-							response = await theHiveApiRequest.call(this, 'POST', `case/task/${taskId}/log`, body, query, undefined, req_option)
-							outputData.push({ json: response });
-							break;
-						case 'execute_responder':
-							let objectId = this.getNodeParameter('id', i);
-							let responders = this.getNodeParameter('responder', i) as string[];
-							for (let responderId of responders) {
-								body = {
-									responderId,
-									objectId,
-									objectType: 'case_task_log'
-								}
-								response = await create.call(this, `connector/cortex/action`, body, query);
-								body = {
-									"query": [
-										{
-											"_name": "listAction"
-										},
-										{
-											"_name": "filter",
-											"_and": [
-												{
-													"_field": "cortexId",
-													"_value": response.cortexId
-												},
-												{
-													"_field": "objectId",
-													"_value": response.objectId
-												},
-												{
-													"_field": "startDate",
-													"_value": response.startDate
-												}
-												
-											]
-										}
-									]
-								}
-								query={name:'log-actions'}
-								do {
-									response = await theHiveApiRequest.call(this,'POST',`v1/query`,body,query,undefined,{});
-									response = response[0];
-								} while (response.status=="Waiting" || response.status=="InProgress" ); 
-								outputData.push({ json: response });
-							}
-							break;
-						default:
-							break;
+						})
+					let response:any;
+					let body:IDataObject;
+					responseData=[];
+					for (let analyzer of analyzers) {
+						body = {
+							...analyzer,
+							artifactId:observableId,
+						}
+						// execute the analyzer
+						response = await theHiveApiRequest.call(
+							this,
+							'POST',
+							'/connector/cortex/job' as string,
+							body,
+							qs
+						);
+						let jobId = response.id;
+						qs.name = 'observable-jobs';
+						// query the job result (including the report)
+						do {
+							response = await theHiveApiRequest.call(this,'GET',`/connector/cortex/job/${jobId}`,body,qs);
+						} while (response.status == 'Waiting' || response.status == 'InProgress' );
+
+						responseData.push({ json: response });
 					}
-					break;
-				default:
-					break;
+					
+				}
+
+				if (operation === 'executeResponder'){
+					let observableId = this.getNodeParameter('id', i);
+					let responders = this.getNodeParameter('responders', i) as string[];
+					let body:IDataObject;
+					let response;
+					responseData = [];
+					for (let responderId of responders) {
+						body = {
+							responderId,
+							objectId:observableId,
+							objectType: 'case_artifact'
+						}
+						response = await theHiveApiRequest.call(
+							this,
+							'POST',
+							'/connector/cortex/action' as string,
+							body,
+						);
+						body = {
+							query: [
+								{
+									'_name': 'listAction'
+								},
+								{
+									'_name': 'filter',
+									'_and': [
+										{
+											'_field': 'cortexId',
+											'_value': response.cortexId
+										},
+										{
+											'_field': 'objectId',
+											'_value': response.objectId
+										},
+										{
+											'_field': 'startDate',
+											'_value': response.startDate
+										}
+
+									]
+								}
+							]
+						}
+						qs.name = 'log-actions'
+						do {
+							response = await theHiveApiRequest.call(
+								this,
+								'POST',
+								`/v1/query`,
+								body,
+								qs
+							);
+						} while (response.status=='Waiting' || response.status=='InProgress' );
+
+						responseData.push({ json: response });
+					}
+
+				}
+
+				if(operation === 'create'){
+					let caseId = this.getNodeParameter('caseId', i);
+
+					let body: IDataObject = {
+						dataType: this.getNodeParameter('dataType', i) as string,
+						message: this.getNodeParameter('message', i) as string,
+						startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+						tlp: this.getNodeParameter('tlp', i) as number,
+						ioc: this.getNodeParameter('ioc', i) as boolean,
+						sighted: this.getNodeParameter('sighted', i) as boolean,
+						status: this.getNodeParameter('status', i) as string,
+						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
+					};
+
+					let options: IDataObject = {};
+
+					if (body.dataType === 'file') {
+						const item = items[i];
+
+						if (item.binary === undefined) {
+							throw new Error('No binary data exists on item!');
+						}
+
+						const binaryPropertyName = this.getNodeParameter('binaryProperty', i) as string;
+
+						if (item.binary[binaryPropertyName] === undefined) {
+							throw new Error(`No binary data property '${binaryPropertyName}' does not exists on item!`);
+						}
+
+						const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+
+						options = {
+							formData: {
+								attachment: {
+									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									options: {
+										contentType:  binaryData.mimeType,
+										filename: binaryData.fileName,
+									}
+								},
+								_json: JSON.stringify(body)
+							}
+						};
+						body={}
+					}else{
+						body.data = this.getNodeParameter('data', i) as string;
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						`/case/${caseId}/artifact` as string,
+						body,
+						qs,
+						'',
+						options
+					);
+				}
+				
+				if(operation === 'get'){
+					const observableId = this.getNodeParameter('id', i) as string;
+
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const version = credentials.version;
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					if (version === 'v1') {
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'getObservable',
+									'idOrName': observableId
+								}
+							]
+						}
+
+						qs.name = `get-observable-${observableId}`;
+
+					} else {
+
+						method = 'GET';
+
+						endpoint = `/case/artifact/${observableId}`;
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if(operation === 'getAll'){
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const version = credentials.version;
+
+					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+
+					const _searchQuery: IQueryObject = And();
+
+					const options =  this.getNodeParameter('options', i) as IDataObject;
+
+					let caseId = this.getNodeParameter('caseId', i);
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					let limit = undefined;
+
+					if (returnAll === false) {
+						limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (version === 'v1') {
+
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'getCase',
+									'idOrName': caseId
+								},
+								{
+									'_name': 'observables'
+								},
+							]
+						};
+
+						//@ts-ignore
+						prepareSortQuery(options.sort, body);
+
+						if (limit !== undefined) {
+							//@ts-ignore
+							prepareRangeQuery(`0-${limit}`, body);
+						}
+
+						qs.name = 'observables';
+
+					} else {
+
+						method = 'POST';
+
+						endpoint = '/case/artifact/_search';
+
+						if (limit !== undefined) {
+							qs.range = `0-${limit}`;
+						}
+
+						body.query =  Parent('case', Id(caseId as string));;
+
+						Object.assign(qs, prepareOptional(options));
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if(operation === 'search'){
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const version = credentials.version;
+
+					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+
+					const _searchQuery: IQueryObject = And();
+
+					const options =  this.getNodeParameter('options', i) as IDataObject;
+
+					for (const key of Object.keys(queryAttributs)) {
+						if (key == 'dataType' || key == 'tags') {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								In(key, queryAttributs[key] as string[])
+							)
+						} else if (key == 'description' || key == 'keywork' || key == 'message') {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								ContainsString(key, queryAttributs[key] as string)
+							)
+						} else if (key == 'range') {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								Between(
+									'startDate',
+									queryAttributs['range']['dateRange']['fromDate'],
+									queryAttributs['range']['dateRange']['toDate']
+								)
+							)
+						} else {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								Eq(key, queryAttributs[key] as string)
+							)
+						}
+					}
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					let limit = undefined;
+
+					if (returnAll === false) {
+						limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (version === 'v1') {
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'listObservable'
+								},
+								{
+									'_name': 'filter',
+									'_and': _searchQuery['_and']
+								},
+							]
+						};
+
+						//@ts-ignore
+						prepareSortQuery(options.sort, body);
+						
+						if (limit !== undefined) {
+							//@ts-ignore
+							prepareRangeQuery(`0-${limit}`, body);
+						}
+
+						qs.name = 'observables';
+
+					} else {
+
+						method = 'POST';
+
+						endpoint = '/case/artifact/_search';
+
+						if (limit !== undefined) {
+							qs.range = `0-${limit}`;
+						}
+
+						body.query = _searchQuery;
+
+						Object.assign(qs, prepareOptional(options));
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if(operation === 'update'){
+					const id = this.getNodeParameter('id', i) as string;
+					
+					const body: IDataObject = {
+						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
+					};
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'PATCH',
+						`/case/artifact/${id}` as string,
+						body,
+						qs,
+					);
+				}
+			}
+
+			if (resource === 'case'){
+				
+				if(operation === 'count'){
+					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+
+					const _countSearchQuery: IQueryObject = And();
+
+					for (const key of Object.keys(countQueryAttributs)) {
+						if ( key == 'tags') {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								In(key, countQueryAttributs[key] as string[])
+							)
+						} else if (key == 'description' || key == 'summary' || key == 'title') {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								ContainsString(key, countQueryAttributs[key] as string)
+							)
+						} else {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								Eq(key, countQueryAttributs[key] as string)
+							)
+						}
+					}
+
+					const body = {
+						'query': [
+							{
+								'_name': 'listCase',
+							},
+							{
+								'_name': 'filter',
+								'_and': _countSearchQuery['_and']
+							},
+						]
+					};
+
+					body['query'].push(
+						{
+							'_name': 'count',
+						}
+					);
+
+					qs.name = 'count-cases';
+
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						'/v1/query',
+						body,
+						qs,
+					);
+
+					responseData = { count: responseData };
+				}
+
+				if (operation === 'executeResponder'){
+					let caseId = this.getNodeParameter('id', i);
+					let responders = this.getNodeParameter('responders', i) as string[];
+					let body:IDataObject;
+					let response;
+					responseData = [];
+					for (let responderId of responders) {
+						body = {
+							responderId,
+							objectId:caseId,
+							objectType: 'case'
+						}
+						response = await theHiveApiRequest.call(
+							this,
+							'POST',
+							'/connector/cortex/action' as string,
+							body,
+						);
+						body = {
+							query: [
+								{
+									'_name': 'listAction'
+								},
+								{
+									'_name': 'filter',
+									'_and': [
+										{
+											'_field': 'cortexId',
+											'_value': response.cortexId
+										},
+										{
+											'_field': 'objectId',
+											'_value': response.objectId
+										},
+										{
+											'_field': 'startDate',
+											'_value': response.startDate
+										}
+
+									]
+								}
+							]
+						}
+						qs.name = 'log-actions'
+						do {
+							response = await theHiveApiRequest.call(
+								this,
+								'POST',
+								`/v1/query`,
+								body,
+								qs
+							);
+						} while (response.status=='Waiting' || response.status=='InProgress' );
+
+						responseData.push(response);
+					}
+
+				}
+
+				if(operation === 'create'){
+					
+					const body: IDataObject = {
+						title: this.getNodeParameter('title', i),
+						description: this.getNodeParameter('description', i),
+						severity: this.getNodeParameter('severity', i),
+						startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+						owner: this.getNodeParameter('owner', i),
+						flag: this.getNodeParameter('flag', i),
+						tlp: this.getNodeParameter('tlp', i),
+						tags: splitTags(this.getNodeParameter('tags', i) as string),
+						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
+					};
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						'/case' as string,
+						body,
+					);
+				}
+
+				if(operation === 'get'){
+					const caseId = this.getNodeParameter('id', i) as string;
+
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const version = credentials.version;
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					if (version === 'v1') {
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'getCase',
+									'idOrName': caseId
+								}
+							]
+						}
+
+						qs.name = `get-case-${caseId}`;
+
+					} else {
+
+						method = 'GET';
+
+						endpoint = `/case/${caseId}`;
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if(operation === 'getAll'){
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const version = credentials.version;
+
+					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+
+					const _searchQuery: IQueryObject = And();
+
+					const options =  this.getNodeParameter('options', i) as IDataObject;
+
+					for (const key of Object.keys(queryAttributs)) {
+						if ( key == 'tags') {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								In(key, queryAttributs[key] as string[])
+							)
+						} else if (key == 'description' || key == 'summary' || key == 'title') {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								ContainsString(key, queryAttributs[key] as string)
+							)
+						} else {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								Eq(key, queryAttributs[key] as string)
+							)
+						}
+					}
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					let limit = undefined;
+
+					if (returnAll === false) {
+						limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (version === 'v1') {
+
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'listCase'
+								},
+								{
+									'_name': 'filter',
+									'_and': _searchQuery['_and']
+								},
+							]
+						};
+
+						//@ts-ignore
+						prepareSortQuery(options.sort, body);
+
+						if (limit !== undefined) {
+							//@ts-ignore
+							prepareRangeQuery(`0-${limit}`, body);
+						}
+
+						qs.name = 'cases';
+
+					} else {
+
+						method = 'POST';
+
+						endpoint = '/case/_search';
+
+						if (limit !== undefined) {
+							qs.range = `0-${limit}`;
+						}
+
+						body.query = _searchQuery;
+
+						Object.assign(qs, prepareOptional(options));
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if(operation === 'update'){
+
+					const id = this.getNodeParameter('id', i) as string;
+					
+					const body: IDataObject = {
+						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
+					};
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'PATCH',
+						`/case/${id}` as string,
+						body,
+					);
+				}
+			}
+
+			if (resource === 'task'){
+
+				if (operation === 'count'){
+					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+
+					const _countSearchQuery: IQueryObject = And();
+
+					for (const key of Object.keys(countQueryAttributs)) {
+						if (key == 'title' || key == 'description') {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								ContainsString(key, countQueryAttributs[key] as string)
+							)
+						} else {
+							(_countSearchQuery['_and'] as IQueryObject[]).push(
+								Eq(key, countQueryAttributs[key] as string)
+							)
+						}
+					}
+
+					const body = {
+						'query': [
+							{
+								'_name': 'listTask'
+							},
+							{
+								'_name': 'filter',
+								'_and': _countSearchQuery['_and']
+							},
+						]
+					};
+
+					body['query'].push(
+						{
+							'_name': 'count',
+						}
+					);
+
+					qs.name = 'count-tasks';
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						'/v1/query',
+						body,
+						qs,
+					);
+
+					responseData = { count: responseData };
+				}
+
+				if (operation === 'create'){
+
+					const caseId = this.getNodeParameter('caseId', i) as string;
+					
+					const body: IDataObject = {
+						title: this.getNodeParameter('title', i) as string,
+						status: this.getNodeParameter('status', i) as string,
+						flag: this.getNodeParameter('flag', i),
+						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
+					};
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						`/case/${caseId}/task` as string,
+						body,
+					);
+				}
+
+				if (operation === 'executeResponder'){
+					let taskId = this.getNodeParameter('id', i);
+					let responders = this.getNodeParameter('responders', i) as string[];
+					let body:IDataObject;
+					let response;
+					responseData = [];
+					for (let responderId of responders) {
+						body = {
+							responderId,
+							objectId:taskId,
+							objectType: 'case_task'
+						}
+						response = await theHiveApiRequest.call(
+							this,
+							'POST',
+							'/connector/cortex/action' as string,
+							body,
+						);
+						body = {
+							query: [
+								{
+									'_name': 'listAction'
+								},
+								{
+									'_name': 'filter',
+									'_and': [
+										{
+											'_field': 'cortexId',
+											'_value': response.cortexId
+										},
+										{
+											'_field': 'objectId',
+											'_value': response.objectId
+										},
+										{
+											'_field': 'startDate',
+											'_value': response.startDate
+										}
+
+									]
+								}
+							]
+						}
+						qs.name = 'task-actions'
+						do {
+							response = await theHiveApiRequest.call(
+								this,
+								'POST',
+								`/v1/query`,
+								body,
+								qs
+							);
+						} while (response.status=='Waiting' || response.status=='InProgress' );
+
+						responseData.push({ json: response });
+					}
+
+				}
+
+				if (operation === 'get'){
+					const taskId = this.getNodeParameter('id', i) as string;
+
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const version = credentials.version;
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					if (version === 'v1') {
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'getTask',
+									'idOrName': taskId
+								}
+							]
+						}
+
+						qs.name = `get-task-${taskId}`;
+
+					} else {
+
+						method = 'GET';
+
+						endpoint = `/case/task/${taskId}`;
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if(operation === 'getAll'){
+					// get all require a case id (it retursn all tasks for a specific case)
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const version = credentials.version;
+
+					const caseId = this.getNodeParameter('caseId', i) as string;
+
+					const options =  this.getNodeParameter('options', i) as IDataObject;
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					let limit = undefined;
+
+					if (returnAll === false) {
+						limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (version === 'v1') {
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'getCase',
+									'idOrName': caseId
+								},
+								{
+									'_name': 'tasks'
+								},
+							]
+						};
+
+						//@ts-ignore
+						prepareSortQuery(options.sort, body);
+
+						if (limit !== undefined) {
+							//@ts-ignore
+							prepareRangeQuery(`0-${limit}`, body);
+						}
+
+						qs.name = 'case-tasks';
+
+					} else {
+
+						method = 'POST';
+
+						endpoint = '/case/task/_search';
+					
+
+						if (limit !== undefined) {
+							qs.range = `0-${limit}`;
+						}
+
+						body.query = And(Parent('case', Id(caseId)));
+
+						Object.assign(qs, prepareOptional(options));
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if(operation === 'search'){
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const version = credentials.version;
+
+					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+
+					const _searchQuery: IQueryObject = And();
+
+					const options =  this.getNodeParameter('options', i) as IDataObject;
+
+					for (const key of Object.keys(queryAttributs)) {
+						if (key == 'title' || key == 'description') {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								ContainsString(key, queryAttributs[key] as string)
+							)
+						} else {
+							(_searchQuery['_and'] as IQueryObject[]).push(
+								Eq(key, queryAttributs[key] as string)
+							)
+						}
+					}
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					let limit = undefined;
+
+					if (returnAll === false) {
+						limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (version === 'v1') {
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'listTask'
+								},
+								{
+									'_name': 'filter',
+									'_and': _searchQuery['_and']
+								},
+							]
+						};
+
+						//@ts-ignore
+						prepareSortQuery(options.sort, body);
+
+						if (limit !== undefined) {
+							//@ts-ignore
+							prepareRangeQuery(`0-${limit}`, body);
+						}
+
+						qs.name = 'tasks';
+
+					} else {
+
+						method = 'POST';
+
+						endpoint = '/case/task/_search';
+
+						if (limit !== undefined) {
+							qs.range = `0-${limit}`;
+						}
+
+						body.query = _searchQuery;
+
+						Object.assign(qs, prepareOptional(options));
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if(operation === 'update'){
+					const id = this.getNodeParameter('id', i) as string;
+					
+					const body: IDataObject = {
+						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
+					};
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'PATCH',
+						`/case/task/${id}` as string,
+						body,
+					);
+
+				}
+
+			}
+
+			if (resource === 'log'){
+				if (operation === 'create') {
+
+					const taskId =  this.getNodeParameter('taskId', i) as string;
+
+					let body: IDataObject = {
+						message: this.getNodeParameter('message', i),
+						startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+						status: this.getNodeParameter('status', i),
+					};
+					const optionals = this.getNodeParameter('optionals', i) as IDataObject;
+
+					let options: IDataObject ={};
+
+					if (optionals && optionals.attachement) {
+												
+						const item = items[i];
+
+						if (item.binary === undefined) {
+							throw new Error('No binary data exists on item!');
+						}
+
+						const binaryPropertyName = (optionals.attachement as IDataObject).binaryProperty as string;
+
+						if (item.binary[binaryPropertyName] === undefined) {
+							throw new Error(`No binary data property '${binaryPropertyName}' does not exists on item!`);
+						}
+
+						const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+
+						options = {
+							formData: {
+								attachment: {
+									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									options: {
+										contentType:  binaryData.mimeType,
+										filename: binaryData.fileName,
+									}
+								},
+								_json: JSON.stringify(body)
+							}
+						};
+						body={}
+					}
+					
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						`/case/task/${taskId}/log` as string,
+						body,
+						qs,
+						'',
+						options
+					);
+				}
+			
+				if (operation === 'executeResponder'){
+					let logId = this.getNodeParameter('id', i);
+					let responders = this.getNodeParameter('responders', i) as string[];
+					let body:IDataObject;
+					let response;
+					responseData = [];
+					for (let responderId of responders) {
+						body = {
+							responderId,
+							objectId:logId,
+							objectType: 'case_task_log'
+						}
+						response = await theHiveApiRequest.call(
+							this,
+							'POST',
+							'/connector/cortex/action' as string,
+							body,
+						);
+						body = {
+							query: [
+								{
+									'_name': 'listAction'
+								},
+								{
+									'_name': 'filter',
+									'_and': [
+										{
+											'_field': 'cortexId',
+											'_value': response.cortexId
+										},
+										{
+											'_field': 'objectId',
+											'_value': response.objectId
+										},
+										{
+											'_field': 'startDate',
+											'_value': response.startDate
+										}
+
+									]
+								}
+							]
+						}
+						qs.name = 'log-actions'
+						do {
+							response = await theHiveApiRequest.call(
+								this,
+								'POST',
+								`/v1/query`,
+								body,
+								qs
+							);
+						} while (response.status=='Waiting' || response.status=='InProgress' );
+
+						responseData.push({ json: response });
+					}
+
+				}
+
+				if (operation === 'get') {
+					const logId = this.getNodeParameter('id', i) as string;
+
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const version = credentials.version;
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					if (version === 'v1') {
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							query: [
+								{
+									_name: 'getLog',
+									idOrName: logId
+								}
+							]
+						};
+
+						qs.name = `get-log-${logId}`;
+
+					} else {
+
+						method = 'POST';
+
+						endpoint = '/case/task/log/_search';
+
+						body.query = { _id: logId };
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+				}
+
+				if (operation === 'getAll'){
+
+					const credentials = this.getCredentials('theHiveApi') as IDataObject;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const version = credentials.version;
+
+					const taskId =  this.getNodeParameter('taskId', i) as string;
+
+					let endpoint;
+
+					let method;
+
+					let body: IDataObject = {};
+
+					let limit = undefined;
+
+					if (returnAll === false) {
+						limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (version === 'v1') {
+
+						endpoint = '/v1/query';
+
+						method = 'POST';
+
+						body = {
+							'query': [
+								{
+									'_name': 'getTask',
+									'idOrName': taskId
+								},
+								{
+									'_name': 'logs'
+								},
+							]
+						};
+
+						if (limit !== undefined) {
+							//@ts-ignore
+							prepareRangeQuery(`0-${limit}`, body);
+						}
+
+						qs.name = 'case-task-logs';
+
+					} else {
+
+						method = 'POST';
+
+						endpoint = '/case/task/log/_search';
+
+						if (limit !== undefined) {
+							qs.range = `0-${limit}`;
+						}
+
+						body.query = And(Parent(
+							'task',
+							Id(taskId)
+						));
+
+					}
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						method,
+						endpoint as string,
+						body,
+						qs,
+					);
+		
+				}
+
 			}
 		}
-		return this.prepareOutputData(outputData);
+		if (Array.isArray(responseData)) {
+
+			returnData.push.apply(returnData, responseData as IDataObject[]);
+
+		} else if (responseData !== undefined) {
+
+			returnData.push(responseData as IDataObject);
+		}
+
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
