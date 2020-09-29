@@ -6,6 +6,7 @@ import {
 const scopes = [
 	'https://www.googleapis.com/auth/admin.directory.user',
 	'https://www.googleapis.com/auth/admin.directory.domain.readonly',
+	'https://www.googleapis.com/auth/admin.directory.userschema.readonly',
 ];
 
 export class GSuiteAdminOAuth2Api implements ICredentialType {

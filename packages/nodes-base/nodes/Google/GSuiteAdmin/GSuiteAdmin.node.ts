@@ -85,6 +85,28 @@ export class GSuiteAdmin implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the schemas to display them to user so that he can
+			// select them easily
+			async getSchemas(
+				this: ILoadOptionsFunctions
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const schemas = await googleApiRequestAllItems.call(
+					this,
+					'schemas',
+					'GET',
+					'/directory/v1/customer/my_customer/schemas'
+				);
+				for (const schema of schemas) {
+					const schemaName = schema.displayName;
+					const schemaId = schema.schemaName;
+					returnData.push({
+						name: schemaName,
+						value: schemaId
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -187,9 +209,21 @@ export class GSuiteAdmin implements INodeType {
 
 					const userId = this.getNodeParameter('userId', i) as string;
 
+					const projection = this.getNodeParameter('projection', i) as string;
+
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
+					qs.projection = projection;
+
 					Object.assign(qs, options);
+
+					if (qs.customFieldMask) {
+						qs.customFieldMask = (qs.customFieldMask as string[]).join(' ');
+					}
+
+					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
+						throw new Error('When projection is set to custom, the custom schemas field must be defined');
+					}
 
 					responseData = await googleApiRequest.call(
 						this,
@@ -205,12 +239,24 @@ export class GSuiteAdmin implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
+					const projection = this.getNodeParameter('projection', i) as string;
+
 					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					qs.projection = projection;
 
 					Object.assign(qs, options);
 
 					if (qs.customer === undefined) {
 						qs.customer = 'my_customer';
+					}
+
+					if (qs.customFieldMask) {
+						qs.customFieldMask = (qs.customFieldMask as string[]).join(' ');
+					}
+
+					if (qs.projection === 'custom' && qs.customFieldMask === undefined) {
+						throw new Error('When projection is set to custom, the custom schemas field must be defined');
 					}
 
 					if (returnAll) {
@@ -263,6 +309,10 @@ export class GSuiteAdmin implements INodeType {
 						delete body.lastName;
 					}
 
+					if (Object.keys(body.name).length === 0) {
+						delete body.name;
+					}
+
 					if (updateFields.phoneUi) {
 
 						const phones = (updateFields.phoneUi as IDataObject).phoneValues as IDataObject[];
@@ -282,6 +332,9 @@ export class GSuiteAdmin implements INodeType {
 						//@ts-ignore
 						delete body.emailUi;
 					}
+
+					//@ts-ignore
+					body['customSchemas'] = { testing: { hasdog: true } };
 
 					responseData = await googleApiRequest.call(
 						this,

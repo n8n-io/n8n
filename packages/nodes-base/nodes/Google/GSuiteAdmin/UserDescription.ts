@@ -88,6 +88,9 @@ export const userFields = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: {
+			password: true,
+		},
 		required: true,
 		displayOptions: {
 			show: {
@@ -306,7 +309,7 @@ export const userFields = [
 				],
 			},
 			{
-				displayName: 'Secundary Emails',
+				displayName: 'Secondary Emails',
 				name: 'emailUi',
 				placeholder: 'Add Email',
 				type: 'fixedCollection',
@@ -395,6 +398,41 @@ export const userFields = [
 		description: `The value can be the user's primary email address, alias email address, or unique user ID.`,
 	},
 	{
+		displayName: 'Projection',
+		name: 'projection',
+		type: 'options',
+		required: true,
+		options: [
+			{
+				name: 'Basic',
+				value: 'basic',
+				description: 'Do not include any custom fields for the user',
+			},
+			{
+				name: 'Custom',
+				value: 'custom',
+				description: 'Include custom fields from schemas requested in customField',
+			},
+			{
+				name: 'Full',
+				value: 'full',
+				description: 'Include all fields associated with this user',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		default: 'basic',
+		description: 'What subset of fields to fetch for this user',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -412,35 +450,21 @@ export const userFields = [
 		},
 		options: [
 			{
-				displayName: 'Custom Field Mask',
+				displayName: 'Custom Schemas',
 				name: 'customFieldMask',
-				type: 'string',
-				default: '',
+				type: 'multiOptions',
+				displayOptions: {
+					show: {
+						'/projection': [
+							'custom',
+						],
+					},
+				},
+				typeOptions: {
+					loadOptionsMethod: 'getSchemas',
+				},
+				default: [],
 				description: `A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.`,
-			},
-			{
-				displayName: 'Projection',
-				name: 'projection',
-				type: 'options',
-				options: [
-					{
-						name: 'Basic',
-						value: 'basic',
-						description: 'Do not include any custom fields for the user',
-					},
-					{
-						name: 'Custom',
-						value: 'custom',
-						description: 'Include custom fields from schemas requested in customField',
-					},
-					{
-						name: 'Full',
-						value: 'full',
-						description: 'Include all fields associated with this user',
-					},
-				],
-				default: 'basic',
-				description: 'Property to use for sorting results.',
 			},
 			{
 				displayName: 'View Type',
@@ -508,6 +532,41 @@ export const userFields = [
 		description: 'How many results to return.',
 	},
 	{
+		displayName: 'Projection',
+		name: 'projection',
+		type: 'options',
+		required: true,
+		options: [
+			{
+				name: 'Basic',
+				value: 'basic',
+				description: 'Do not include any custom fields for the user',
+			},
+			{
+				name: 'Custom',
+				value: 'custom',
+				description: 'Include custom fields from schemas requested in customField',
+			},
+			{
+				name: 'Full',
+				value: 'full',
+				description: 'Include all fields associated with this user',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'user',
+				],
+			},
+		},
+		default: 'basic',
+		description: 'What subset of fields to fetch for this user',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -525,10 +584,20 @@ export const userFields = [
 		},
 		options: [
 			{
-				displayName: 'Custom Field Mask',
+				displayName: 'Custom Schemas',
 				name: 'customFieldMask',
-				type: 'string',
-				default: '',
+				type: 'multiOptions',
+				displayOptions: {
+					show: {
+						'/projection': [
+							'custom',
+						],
+					},
+				},
+				typeOptions: {
+					loadOptionsMethod: 'getSchemas',
+				},
+				default: [],
 				description: `A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom.`,
 			},
 			{
@@ -595,7 +664,8 @@ export const userFields = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Free text search terms to find users that match these terms in any field, except for extended properties.',
+				description: `Free text search terms to find users that match these terms in any field, except for extended properties.</br>
+				For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>`,
 			},
 			{
 				displayName: 'Show Deleted',
@@ -845,7 +915,7 @@ export const userFields = [
 				description: `The user's primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.`,
 			},
 			{
-				displayName: 'Secundary Emails',
+				displayName: 'Secondary Emails',
 				name: 'emailUi',
 				placeholder: 'Add Email',
 				type: 'fixedCollection',
