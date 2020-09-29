@@ -105,10 +105,13 @@ export async function pgUpdate(
 	items: INodeExecutionData[],
 ): Promise<IDataObject[]> {
 	const table = getNodeParam('table', 0) as string;
+	const schema = getNodeParam('schema', 0) as string;
 	const updateKey = getNodeParam('updateKey', 0) as string;
 	const columnString = getNodeParam('columns', 0) as string;
 
 	const columns = columnString.split(',').map(column => column.trim());
+
+	const te = new pgp.helpers.TableName({ table, schema });
 
 	// Make sure that the updateKey does also get queried
 	if (!columns.includes(updateKey)) {
@@ -120,7 +123,7 @@ export async function pgUpdate(
 
 	// Generate the multi-row update query
 	const query =
-		pgp.helpers.update(updateItems, columns, table) + ' WHERE v.' + updateKey + ' = t.' + updateKey;
+		pgp.helpers.update(updateItems, columns, te) + ' WHERE v.' + updateKey + ' = t.' + updateKey;
 
 	// Executing the query to update the data
 	await db.none(query);
