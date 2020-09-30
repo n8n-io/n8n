@@ -37,7 +37,7 @@ import {
 import {
 	tagOperations,
 	tagFields,
-} from './tagDescription';
+} from './TagDescription';
 
 import {
 	timeEntryFields,

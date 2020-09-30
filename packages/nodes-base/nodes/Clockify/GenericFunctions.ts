@@ -10,24 +10,7 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
 } from 'n8n-workflow';
-
-import {
-	IProjectDto,
-} from './ProjectInterfaces';
-
-import {
-	ITagDto,
-} from './CommonDtos';
-
-import {
-	find,
-} from 'lodash';
-
-import {
-	ITimeEntryRequest,
-} from './TimeEntryInterfaces';
 
 export async function clockifyApiRequest(this: ILoadOptionsFunctions | IPollFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
@@ -97,17 +80,4 @@ export async function clockifyApiRequestAllItems(this: IExecuteFunctions | ILoad
 	);
 
 	return returnData;
-}
-
-export async function findProjectByName(this: IExecuteFunctions | ILoadOptionsFunctions, workspaceId: number, projectName: string, clientId: string): Promise<IProjectDto | undefined> {
-	const resource = `workspaces/${workspaceId}/projects`;
-	const qs: IDataObject = {};
-	qs.name = projectName.trim().replace(/\s/g, '+');
-
-	let result = await clockifyApiRequest.call(this, 'GET', `${resource}?name=${qs.name}`);
-	result = find(result,
-		{
-			"clientId": clientId
-		});
-	return result;
 }
