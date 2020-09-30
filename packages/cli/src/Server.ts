@@ -121,7 +121,7 @@ class App {
 	push: Push.Push;
 	versions: IPackageVersions | undefined;
 	restEndpoint: string;
-
+	frontendSettings: IN8nUISettings;
 	protocol: string;
 	sslKey: string;
 	sslCert: string;
@@ -155,6 +155,25 @@ class App {
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
+
+		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+
+		this.frontendSettings = {
+			endpointWebhook: this.endpointWebhook,
+			endpointWebhookTest: this.endpointWebhookTest,
+			saveDataErrorExecution: this.saveDataErrorExecution,
+			saveDataSuccessExecution: this.saveDataSuccessExecution,
+			saveManualExecutions: this.saveManualExecutions,
+			executionTimeout: this.executionTimeout,
+			maxExecutionTimeout: this.maxExecutionTimeout,
+			timezone: this.timezone,
+			urlBaseWebhook,
+			versionCli: '',
+			oauthCallbackUrls: {
+				'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
+				'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
+			}
+		};
 	}
 
 
@@ -172,6 +191,9 @@ class App {
 	async config(): Promise<void> {
 
 		this.versions = await GenericHelpers.getVersions();
+		this.frontendSettings.versionCli = this.versions.cli;
+
+		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
 		const excludeEndpoints = config.get('security.excludeEndpoints') as string;
 
@@ -1617,24 +1639,7 @@ class App {
 
 		// Returns the settings which are needed in the UI
 		this.app.get(`/${this.restEndpoint}/settings`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-			const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
-
-			const settings: IN8nUISettings = {
-				endpointWebhook: this.endpointWebhook,
-				endpointWebhookTest: this.endpointWebhookTest,
-				saveDataErrorExecution: this.saveDataErrorExecution,
-				saveDataSuccessExecution: this.saveDataSuccessExecution,
-				saveManualExecutions: this.saveManualExecutions,
-				executionTimeout: this.executionTimeout,
-				maxExecutionTimeout: this.maxExecutionTimeout,
-				timezone: this.timezone,
-				urlBaseWebhook,
-				versionCli: this.versions!.cli,
-				oauthCallbackUrls: {
-					'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
-					'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
-				}
-			};
+			return this.frontendSettings;
 		}));
 
 
