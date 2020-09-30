@@ -1617,7 +1617,9 @@ class App {
 
 		// Returns the settings which are needed in the UI
 		this.app.get(`/${this.restEndpoint}/settings`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-			return {
+			const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+
+			const settings: IN8nUISettings = {
 				endpointWebhook: this.endpointWebhook,
 				endpointWebhookTest: this.endpointWebhookTest,
 				saveDataErrorExecution: this.saveDataErrorExecution,
@@ -1626,8 +1628,12 @@ class App {
 				executionTimeout: this.executionTimeout,
 				maxExecutionTimeout: this.maxExecutionTimeout,
 				timezone: this.timezone,
-				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
+				urlBaseWebhook,
 				versionCli: this.versions!.cli,
+				oauthCallbackUrls: {
+					'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
+					'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
+				}
 			};
 		}));
 
