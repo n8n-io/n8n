@@ -288,6 +288,10 @@ export interface IN8nUISettings {
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
+	oauthCallbackUrls: {
+		oauth1: string;
+		oauth2: string;
+	};
 	timezone: string;
 	urlBaseWebhook: string;
 	versionCli: string;
