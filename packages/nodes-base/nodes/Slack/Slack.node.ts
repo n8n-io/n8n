@@ -885,7 +885,6 @@ export class Slack implements INodeType {
 			if (resource === 'userProfile') {
 				//https://api.slack.com/methods/users.profile.set
 				if (operation === 'update') {
-
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const timezone = this.getTimezone();
@@ -902,7 +901,6 @@ export class Slack implements INodeType {
 					}
 
 					if (body.customFieldUi) {
-
 						const customFields = (body.customFieldUi as IDataObject).customFieldValues as IDataObject[];
 
 						body.fields = {};
@@ -922,7 +920,6 @@ export class Slack implements INodeType {
 				}
 				//https://api.slack.com/methods/users.profile.get
 				if (operation === 'get') {
-
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const body: IDataObject = {};
