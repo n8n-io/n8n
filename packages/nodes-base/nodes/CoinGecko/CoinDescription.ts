@@ -28,7 +28,7 @@ export const coinOperations = [
 			{
 				name: 'Market',
 				value: 'market',
-				description: 'Get all supported coins price, market cap, volume, and market related data',
+				description: 'Get prices and market related data for all trading pairs that match the selected currency',
 			},
 			{
 				name: 'Market Chart',
@@ -51,9 +51,9 @@ export const coinOperations = [
 				description: 'Get historical data (name, price, market, stats) at a given date for a coin',
 			},
 			{
-				name: 'Candle',
-				value: 'candle',
-				description: "Get coin's candle OHLC (Beta)",
+				name: 'Candlestick',
+				value: 'candlestick',
+				description: 'Get a candlestick open-high-low-close chart for the selected currency',
 			},
 		],
 		default: 'getAll',
@@ -62,7 +62,7 @@ export const coinOperations = [
 
 export const coinFields = [
 	{
-		displayName: 'Search by',
+		displayName: 'Search By',
 		name: 'searchBy',
 		required: true,
 		type: 'options',
@@ -103,13 +103,9 @@ export const coinFields = [
 			show: {
 				operation: [
 					'get',
-					'marketChart',
 				],
 				resource: [
 					'coin',
-				],
-				searchBy: [
-					'coinId'
 				],
 			},
 		},
@@ -130,7 +126,7 @@ export const coinFields = [
 				operation: [
 					'ticker',
 					'history',
-					'candle',
+					'candlestick',
 				],
 				resource: [
 					'coin',
@@ -166,79 +162,108 @@ export const coinFields = [
 		placeholder: 'bitcoin',
 		description: 'ID of coins, comma-separated. Refers to Coin / GetAll',
 	},
-    {
-        displayName: 'Platform ID',
-        name: 'platformId',
-        required: true,
-        displayOptions: {
-            show: {
-				operation: [
-					'get',
-					'marketChart',
-					'price',
-				],
-				resource: [
-					'coin',
-				],
-				searchBy: [
-					'contractAddress'
-				],
-            },
-        },
-        type: 'options',
-        options: [
-            {
-                name: 'Ethereum',
-                value: 'ethereum',
-            },
-        ],
-        default: 'ethereum',
-        description: 'The id of the platform issuing tokens',
-    },
-    {
-        displayName: 'Contract address',
-        name: 'contractAddress',
-        required: true,
-        type: 'string',
-        displayOptions: {
-            show: {
-				operation: [
-					'get',
-					'marketChart',
-				],
-				resource: [
-					'coin',
-				],
-				searchBy: [
-					'contractAddress'
-				],
-            },
-        },
-        description: "Token's contract address",
-	},
-    {
-        displayName: 'Contract addresses',
-        name: 'contractAddresses',
-        required: true,
-        type: 'string',
-        displayOptions: {
-            show: {
-				operation: [
-					'price',
-				],
-				resource: [
-					'coin',
-				],
-				searchBy: [
-					'contractAddress'
-				],
-            },
-        },
-        description: "The contract address of tokens, comma separated",
-    },
 	{
-		displayName: 'Currency',
-		name: 'currency',
+		displayName: 'Platform ID',
+		name: 'platformId',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+					'marketChart',
+					'price',
+				],
+				resource: [
+					'coin',
+				],
+				searchBy: [
+					'contractAddress'
+				],
+			},
+		},
+		type: 'options',
+		options: [
+			{
+				name: 'Ethereum',
+				value: 'ethereum',
+			},
+		],
+		default: 'ethereum',
+		description: 'The id of the platform issuing tokens',
+	},
+	{
+		displayName: 'Contract address',
+		name: 'contractAddress',
+		required: true,
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+					'marketChart',
+				],
+				resource: [
+					'coin',
+				],
+				searchBy: [
+					'contractAddress'
+				],
+			},
+		},
+		description: "Token's contract address",
+	},
+	{
+		displayName: 'Contract addresses',
+		name: 'contractAddresses',
+		required: true,
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'price',
+				],
+				resource: [
+					'coin',
+				],
+				searchBy: [
+					'contractAddress'
+				],
+			},
+		},
+		description: "The contract address of tokens, comma separated",
+	},
+	{
+		displayName: 'Base Currency',
+		name: 'baseCurrency',
+		required: true,
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCoins',
+		},
+		displayOptions: {
+			show: {
+				operation: [
+					'marketChart',
+				],
+				resource: [
+					'coin',
+				],
+				searchBy: [
+					'coinId'
+				],
+			},
+			hide: {
+				searchBy: [
+					'contractAddress',
+				],
+			},
+		},
+		default: '',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC',
+	},
+	{
+		displayName: 'Quote Currency',
+		name: 'quoteCurrency',
 		required: true,
 		type: 'options',
 		typeOptions: {
@@ -249,7 +274,7 @@ export const coinFields = [
 				operation: [
 					'market',
 					'marketChart',
-					'candle',
+					'candlestick',
 				],
 				resource: [
 					'coin',
@@ -257,7 +282,7 @@ export const coinFields = [
 			},
 		},
 		default: '',
-		description: 'The target currency of market data',
+		description: 'The second currency in the pair. For BTC:ETH this is ETH',
 	},
 	{
 		displayName: 'Currencies',
@@ -281,7 +306,7 @@ export const coinFields = [
 		description: 'Currencies of coin',
 	},
 	{
-		displayName: 'Days',
+		displayName: 'Historical Range (days)',
 		name: 'days',
 		required: true,
 		type: 'options',
@@ -323,7 +348,7 @@ export const coinFields = [
 			show: {
 				operation: [
 					'marketChart',
-					'candle',
+					'candlestick',
 				],
 				resource: [
 					'coin',
@@ -331,7 +356,7 @@ export const coinFields = [
 			},
 		},
 		default: '',
-		description: 'Data up to number of days ago',
+		description: 'Return data for this many days in the past from now',
 	},
 	{
 		displayName: 'Date',
@@ -419,7 +444,7 @@ export const coinFields = [
 				type: 'string',
 				placeholder: 'bitcoin',
 				default: '',
-				description: 'The ids of the coin, comma separated crytocurrency symbols (base)',
+				description: 'Filter results by comma separated list of coin IDs',
 			},
 			{
 				displayName: 'Category',
@@ -621,6 +646,7 @@ export const coinFields = [
 					},
 				],
 				default: 'trust_score_desc',
+				description: 'Sorts results by the selected rule',
 			},
 		],
 	},
@@ -671,28 +697,28 @@ export const coinFields = [
 				displayName: 'Community data',
 				name: 'community_data',
 				type: 'boolean',
-				default: true,
+				default: false,
 				description: 'Include community data'
 			},
 			{
 				displayName: 'Developer data',
 				name: 'developer_data',
 				type: 'boolean',
-				default: true,
+				default: false,
 				description: 'Include developer data'
 			},
 			{
 				displayName: 'Localization',
 				name: 'localization',
 				type: 'boolean',
-				default: true,
+				default: false,
 				description: 'Include all localized languages in response'
 			},
 			{
 				displayName: 'Market data',
 				name: 'market_data',
 				type: 'boolean',
-				default: true,
+				default: false,
 				description: 'Include market data'
 			},
 			{
@@ -706,7 +732,7 @@ export const coinFields = [
 				displayName: 'Tickers',
 				name: 'tickers',
 				type: 'boolean',
-				default: true,
+				default: false,
 				description: 'Include tickers data'
 			},
 		],
