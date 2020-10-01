@@ -1,12 +1,11 @@
 import { set } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {

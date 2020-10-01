@@ -15,8 +15,8 @@ import {
 	companyOperations,
 } from './CompanyDesciption';
 import {
+	personFields,
 	personOperations,
-	 personFields,
 } from './PersonDescription';
 
 export class Uplead implements INodeType {

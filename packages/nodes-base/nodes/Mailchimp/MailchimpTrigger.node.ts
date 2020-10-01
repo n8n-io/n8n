@@ -5,11 +5,11 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 import {
 	mailchimpApiRequest,

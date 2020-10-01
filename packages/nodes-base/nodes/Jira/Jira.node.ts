@@ -18,8 +18,8 @@ import {
 } from './GenericFunctions';
 
 import {
-	issueOperations,
 	issueFields,
+	issueOperations,
 } from './IssueDescription';
 
 import {

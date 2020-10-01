@@ -3,9 +3,9 @@ import {
 } from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {

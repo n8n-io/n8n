@@ -2,9 +2,9 @@ import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 	IPollFunctions,
 	ITriggerFunctions,
 } from 'n8n-core';

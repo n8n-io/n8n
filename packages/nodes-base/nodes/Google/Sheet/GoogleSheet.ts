@@ -5,11 +5,11 @@ import {
 import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	googleApiRequest,
- } from './GenericFunctions';
+} from './GenericFunctions';
 
 import {
 	utils as xlsxUtils,
@@ -84,9 +84,9 @@ export class GoogleSheet {
 		return response;
 	}
 
-    /**
-     * Returns the cell values
-     */
+	/**
+	 * Returns the cell values
+	 */
 	async getData(range: string, valueRenderMode: ValueRenderOption): Promise<string[][] | undefined> {
 
 		const query = {
@@ -129,9 +129,9 @@ export class GoogleSheet {
 	}
 
 
-    /**
-     * Sets the cell values
-     */
+	/**
+	 * Sets the cell values
+	 */
 	async batchUpdate(updateData: ISheetUpdateData[], valueInputMode: ValueInputOption) {
 
 		const body = {
@@ -145,9 +145,9 @@ export class GoogleSheet {
 	}
 
 
-    /**
-     * Sets the cell values
-     */
+	/**
+	 * Sets the cell values
+	 */
 	async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 
 		const body = {
@@ -161,9 +161,9 @@ export class GoogleSheet {
 	}
 
 
-    /**
-     * Appends the cell values
-     */
+	/**
+	 * Appends the cell values
+	 */
 	async appendData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 
 		const body = {
@@ -180,9 +180,9 @@ export class GoogleSheet {
 		return response;
 	}
 
-    /**
-     * Returns the given sheet data in a structured way
-     */
+	/**
+	 * Returns the given sheet data in a structured way
+	 */
 	structureData(inputData: string[][], startRow: number, keys: string[], addEmpty?: boolean): IDataObject[] {
 		const returnData = [];
 
@@ -207,10 +207,10 @@ export class GoogleSheet {
 	}
 
 
-    /**
-     * Returns the given sheet data in a structured way using
-     * the startRow as the one with the name of the key
-     */
+	/**
+	 * Returns the given sheet data in a structured way using
+	 * the startRow as the one with the name of the key
+	 */
 	structureArrayDataByColumn(inputData: string[][], keyRow: number, dataStartRow: number): IDataObject[] {
 
 		const keys: string[] = [];
@@ -235,7 +235,7 @@ export class GoogleSheet {
 	}
 
 
-	getColumnWithOffset (startColumn: string, offset: number): string {
+	getColumnWithOffset(startColumn: string, offset: number): string {
 		const columnIndex = xlsxUtils.decode_col(startColumn) + offset;
 		return xlsxUtils.encode_col(columnIndex);
 	}
@@ -303,7 +303,7 @@ export class GoogleSheet {
 		sheetDataKeyColumn.shift();
 
 		// Create an Array which all the key-values of the Google Sheet
-		const keyColumnIndexLookup = sheetDataKeyColumn.map((rowContent) => rowContent[0] );
+		const keyColumnIndexLookup = sheetDataKeyColumn.map((rowContent) => rowContent[0]);
 
 		const updateData: ISheetUpdateData[] = [];
 		let itemKey: string | number | undefined | null;

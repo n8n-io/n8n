@@ -3,17 +3,17 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	flowApiRequest,
 	FlowApiRequestAllItems,
 } from './GenericFunctions';
 import {
-	taskOpeations,
 	taskFields,
+	taskOpeations,
 } from './TaskDescription';
 import {
 	ITask, TaskInfo,

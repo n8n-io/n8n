@@ -17,28 +17,28 @@ import {
  } from './GenericFunctions';
 
  import {
-	contactOperations,
 	contactFields,
+	contactOperations,
 } from './ContactDescription';
 
  import {
-	companyOperations,
 	companyFields,
+	companyOperations,
 } from './CompanyDescription';
 
 import {
-	dealOperations,
 	dealFields,
+	dealOperations,
 } from './DealDescription';
 
 import {
-	formOperations,
 	formFields,
+	formOperations,
  } from './FormDescription';
 
  import {
-	ticketOperations,
 	ticketFields,
+	ticketOperations,
 } from './TicketDescription';
 
 import {
@@ -46,8 +46,8 @@ import {
 } from './FormInterface';
 
 import {
-	IDeal,
 	IAssociation,
+	IDeal,
 } from './DealInterface';
 
 import {

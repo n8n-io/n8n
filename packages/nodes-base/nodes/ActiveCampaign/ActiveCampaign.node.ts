@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -18,33 +18,33 @@ import {
 } from './GenericFunctions';
 
 import {
+	contactFields,
 	contactOperations,
-	contactFields
 } from './ContactDescription';
 
 import {
+	dealFields,
 	dealOperations,
-	dealFields
 } from './DealDescription';
 
 import {
+	ecomOrderFields,
 	ecomOrderOperations,
-	ecomOrderFields
 } from './EcomOrderDescription';
 
 import {
+	ecomCustomerFields,
 	ecomCustomerOperations,
-	ecomCustomerFields
 } from './EcomCustomerDescription';
 
 import {
+	ecomOrderProductsFields,
 	ecomOrderProductsOperations,
-	ecomOrderProductsFields
 } from './EcomOrderProductsDescription';
 
 import {
+	connectionFields,
 	connectionOperations,
-	connectionFields
 } from './ConnectionDescription';
 
 import {

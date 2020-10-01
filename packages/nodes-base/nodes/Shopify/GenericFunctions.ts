@@ -3,11 +3,11 @@ import {
 } from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {

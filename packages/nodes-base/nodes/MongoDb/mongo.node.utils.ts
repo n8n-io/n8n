@@ -1,12 +1,12 @@
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodeExecutionData,
-	ICredentialDataDecryptedObject
 } from 'n8n-workflow';
 import {
+	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
-	IMongoCredentials
 } from './mongo.node.types';
 
 /**

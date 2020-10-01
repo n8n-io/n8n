@@ -1,12 +1,12 @@
 import { OptionsWithUri } from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 	IWebhookFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import {

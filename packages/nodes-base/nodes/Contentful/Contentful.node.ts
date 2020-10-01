@@ -10,8 +10,8 @@ import {
 } from 'n8n-workflow';
 
 import {
-	contentfulApiRequest,
 	contenfulApiRequestAllItems,
+	contentfulApiRequest,
 } from './GenericFunctions';
 
 import * as SpaceDescription from './SpaceDescription';

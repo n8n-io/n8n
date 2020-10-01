@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -33,8 +33,8 @@ import {
 } from './UserDescription';
 
 import {
-	ITicket,
 	IComment,
+	ITicket,
  } from './TicketInterface';
 
 export class Zendesk implements INodeType {

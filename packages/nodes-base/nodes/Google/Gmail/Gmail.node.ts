@@ -4,8 +4,8 @@ import {
 
 import {
 	IBinaryKeyData,
-	ILoadOptionsFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -21,23 +21,23 @@ import {
 } from './GenericFunctions';
 
 import {
-	messageOperations,
 	messageFields,
+	messageOperations,
 } from './MessageDescription';
 
 import {
-	messageLabelOperations,
 	messageLabelFields,
+	messageLabelOperations,
 } from './MessageLabelDescription';
 
 import {
-	labelOperations,
 	labelFields,
+	labelOperations,
 } from './LabelDescription';
 
 import {
-	draftOperations,
 	draftFields,
+	draftOperations,
 } from './DraftDescription';
 
 import {

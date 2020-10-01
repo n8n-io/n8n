@@ -1,7 +1,7 @@
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
 import {
@@ -9,7 +9,6 @@ import {
 } from 'n8n-workflow';
 
 import {OptionsWithUri} from 'request';
-import {Url} from "url";
 
 interface ScriptsOptions {
 	script?: any; //tslint:disable-line:no-any

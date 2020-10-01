@@ -1,9 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
