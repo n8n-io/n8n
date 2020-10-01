@@ -1,7 +1,7 @@
 
 import {
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -613,7 +613,7 @@ export class GoogleSheets implements INodeType {
 			range = this.getNodeParameter('range', 0) as string;
 			if (range.includes('!')) {
 				const [sheet, ranges] = range.split('!');
-				range =	`${encodeURIComponent(sheet)}!${ranges}`;
+				range = `${encodeURIComponent(sheet)}!${ranges}`;
 			}
 		}
 

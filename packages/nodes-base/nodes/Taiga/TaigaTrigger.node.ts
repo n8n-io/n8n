@@ -14,8 +14,8 @@ import {
 } from 'n8n-core';
 
 import {
-	taigaApiRequest,
 	getAutomaticSecret,
+	taigaApiRequest,
 } from './GenericFunctions';
 
 // import {

@@ -17,8 +17,8 @@ import {
 } from './GenericFunctions';
 
 import {
-	meetingOperations,
 	meetingFields,
+	meetingOperations,
 } from './MeetingDescription';
 
 // import {

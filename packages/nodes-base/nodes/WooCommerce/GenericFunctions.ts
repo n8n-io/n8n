@@ -10,14 +10,14 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 import {
+	ICredentialDataDecryptedObject,
 	IDataObject,
-	ICredentialDataDecryptedObject
 } from 'n8n-workflow';
 import {
-	 IShoppingLine,
-	 IFeeLine,
-	 ILineItem,
-	 ICouponLine
+	ICouponLine,
+	IFeeLine,
+	ILineItem,
+	IShoppingLine,
 } from './OrderInterface';
 
 export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -33,7 +33,7 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials.url}/wp-json/wc/v3${resource}`,
+		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
 		json: true
 	};
 	if (!Object.keys(body).length) {
@@ -67,7 +67,7 @@ export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | IL
 	query.per_page = 100;
 	do {
 		responseData = await woocommerceApiRequest.call(this, method, endpoint, body, query, uri, { resolveWithFullResponse: true });
-		uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>','');
+		uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
 		returnData.push.apply(returnData, responseData.body);
 	} while (
 		responseData.headers['link'] !== undefined &&

@@ -5,13 +5,13 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-	apiRequest,
 	addAdditionalFields,
+	apiRequest,
 } from './GenericFunctions';
 
 

@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -61,7 +61,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -80,7 +80,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject) : Promise<IDataObject> {
+function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -93,25 +93,25 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	const signature = jwt.sign(
 		{
-		  'iss': credentials.email as string,
-		  'sub': credentials.email as string,
-		  'scope': scopes.join(' '),
-		  'aud': `https://oauth2.googleapis.com/token`,
-		  'iat': now,
-		  'exp': now + 3600,
+			'iss': credentials.email as string,
+			'sub': credentials.email as string,
+			'scope': scopes.join(' '),
+			'aud': `https://oauth2.googleapis.com/token`,
+			'iat': now,
+			'exp': now + 3600,
 		},
 		credentials.privateKey as string,
 		{
-		  algorithm: 'RS256',
-		  header: {
-			'kid': credentials.privateKey as string,
-			'typ': 'JWT',
-			'alg': 'RS256',
-		  },
+			algorithm: 'RS256',
+			header: {
+				'kid': credentials.privateKey as string,
+				'typ': 'JWT',
+				'alg': 'RS256',
+			},
 		}
-	  );
+	);
 
-	  const options: OptionsWithUri = {
+	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

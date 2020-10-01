@@ -4,9 +4,9 @@ import {
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 

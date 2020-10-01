@@ -1,6 +1,6 @@
 import {
-	IExecuteFunctions,
 	BINARY_ENCODING,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
@@ -28,8 +28,8 @@ import {
 } from './PlaylistDescription';
 
 import {
-	playlistItemOperations,
 	playlistItemFields,
+	playlistItemOperations,
 } from './PlaylistItemDescription';
 
 import {

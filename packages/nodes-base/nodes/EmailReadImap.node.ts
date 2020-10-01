@@ -9,7 +9,13 @@ import {
 	ITriggerResponse,
 } from 'n8n-workflow';
 
-import { connect as imapConnect, ImapSimple, ImapSimpleOptions, getParts, Message } from 'imap-simple';
+import {
+	connect as imapConnect,
+	getParts,
+	ImapSimple,
+	ImapSimpleOptions,
+	Message,
+} from 'imap-simple';
 import {
 	simpleParser,
 	Source as ParserSource,

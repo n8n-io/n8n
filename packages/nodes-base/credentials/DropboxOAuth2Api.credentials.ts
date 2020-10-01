@@ -25,8 +25,8 @@ export class DropboxOAuth2Api implements ICredentialType {
 			type: 'hidden' as NodePropertyTypes,
 			default: 'https://api.dropboxapi.com/oauth2/token',
 			required: true,
-        },
-        {
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,

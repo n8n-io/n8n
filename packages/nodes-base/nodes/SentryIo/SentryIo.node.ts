@@ -4,21 +4,21 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
-	eventOperations,
 	eventFields,
+	eventOperations,
 } from './EventDescription';
 
 import {
-	issueOperations,
 	issueFields,
+	issueOperations,
 } from './IssueDescription';
 
 import {
@@ -27,23 +27,23 @@ import {
 } from './OrganizationDescription';
 
 import {
-	projectOperations,
 	projectFields,
+	projectOperations,
 } from './ProjectDescription';
 
 import {
-	releaseOperations,
 	releaseFields,
+	releaseOperations,
 } from './ReleaseDescription';
 
 import {
-	teamOperations,
 	teamFields,
+	teamOperations,
 } from './TeamDescription';
 
 import {
-	sentryIoApiRequest,
 	sentryApiRequestAllItems,
+	sentryIoApiRequest,
 } from './GenericFunctions';
 
 import {

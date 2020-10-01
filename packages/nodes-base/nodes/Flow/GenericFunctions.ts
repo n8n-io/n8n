@@ -1,9 +1,9 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 

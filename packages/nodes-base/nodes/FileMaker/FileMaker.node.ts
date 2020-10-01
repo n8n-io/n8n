@@ -9,17 +9,17 @@ import {
 
 import {OptionsWithUri} from 'request';
 import {
-	layoutsApiRequest,
 	getFields,
 	getPortals,
 	getScripts,
 	getToken,
-	parseSort,
+	layoutsApiRequest,
+	logout,
+	parseFields,
 	parsePortals,
 	parseQuery,
 	parseScripts,
-	parseFields,
-	logout
+	parseSort,
 } from "./GenericFunctions";
 
 export class FileMaker implements INodeType {

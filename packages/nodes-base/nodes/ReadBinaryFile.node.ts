@@ -1,8 +1,8 @@
 import { IExecuteSingleFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {

@@ -3,15 +3,15 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
-	leadOpeations,
 	leadFields,
+	leadOpeations,
 } from './LeadDescription';
 import {
 	intercomApiRequest,
@@ -19,13 +19,22 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 import {
+	IAvatar,
 	ILead,
 	ILeadCompany,
-	IAvatar,
  } from './LeadInterface';
-import { userOpeations, userFields } from './UserDescription';
-import { IUser, IUserCompany } from './UserInterface';
-import { companyOperations, companyFields } from './CompanyDescription';
+import {
+	userFields,
+	userOpeations,
+} from './UserDescription';
+import {
+	IUser,
+	IUserCompany,
+} from './UserInterface';
+import {
+	companyFields,
+	companyOperations,
+} from './CompanyDescription';
 import { ICompany } from './CompanyInteface';
 
 export class Intercom implements INodeType {

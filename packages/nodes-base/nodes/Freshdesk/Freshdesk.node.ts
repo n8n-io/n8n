@@ -1,10 +1,10 @@
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -12,10 +12,10 @@ import {
 } from 'n8n-core';
 
 import {
+	capitalize,
 	freshdeskApiRequest,
 	freshdeskApiRequestAllItems,
 	// validateJSON,
-	capitalize
 } from './GenericFunctions';
 
 import {
@@ -26,9 +26,6 @@ import {
 	contactFields,
 	contactOperations,
 } from './ContactDescription';
-
-import * as moment from 'moment-timezone';
-import { response } from 'express';
 
 enum Status {
 	Open = 2,

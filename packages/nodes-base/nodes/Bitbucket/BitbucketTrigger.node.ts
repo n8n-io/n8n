@@ -6,9 +6,9 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	INodePropertyOptions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 

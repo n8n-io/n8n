@@ -3,15 +3,30 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
-import { customerIoApiRequest, validateJSON } from './GenericFunctions';
-import { campaignOperations, campaignFields } from './CampaignDescription';
-import { customerOperations, customerFields } from './CustomerDescription';
-import { eventOperations, eventFields } from './EventDescription';
-import { segmentOperations, segmentFields } from './SegmentDescription';
+import {
+	customerIoApiRequest,
+	validateJSON,
+} from './GenericFunctions';
+import {
+	campaignFields,
+	campaignOperations,
+} from './CampaignDescription';
+import {
+	customerFields,
+	customerOperations,
+} from './CustomerDescription';
+import {
+	eventFields,
+	eventOperations,
+} from './EventDescription';
+import {
+	segmentFields,
+	segmentOperations,
+} from './SegmentDescription';
 
 
 export class CustomerIo implements INodeType {

@@ -1,10 +1,10 @@
 import * as cheerio from 'cheerio';
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
 } from 'n8n-workflow';
 
 type Cheerio = ReturnType<typeof cheerio>;
