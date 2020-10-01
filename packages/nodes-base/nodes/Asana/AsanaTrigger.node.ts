@@ -7,8 +7,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -17,9 +17,9 @@ import {
 	getWorkspaces,
 } from './GenericFunctions';
 
-import {
-	createHmac,
-} from 'crypto';
+// import {
+// 	createHmac,
+// } from 'crypto';
 
 export class AsanaTrigger implements INodeType {
 	description: INodeTypeDescription = {

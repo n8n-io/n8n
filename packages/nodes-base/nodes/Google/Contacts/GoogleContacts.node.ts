@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -19,8 +19,8 @@ import {
 } from './GenericFunctions';
 
 import {
-	contactOperations,
 	contactFields,
+	contactOperations,
 } from './ContactDescription';
 
 import * as moment from 'moment';

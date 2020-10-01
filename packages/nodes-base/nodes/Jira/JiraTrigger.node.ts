@@ -5,16 +5,16 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
-	jiraSoftwareCloudApiRequest,
+	allEvents,
 	eventExists,
 	getId,
-	allEvents,
+	jiraSoftwareCloudApiRequest,
 } from './GenericFunctions';
 
 import * as queryString from 'querystring';

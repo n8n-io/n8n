@@ -5,10 +5,10 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeTypeDescription,
-	INodePropertyOptions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {

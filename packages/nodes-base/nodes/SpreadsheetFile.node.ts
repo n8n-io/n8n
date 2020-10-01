@@ -4,18 +4,18 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
 } from 'n8n-workflow';
 
 import {
 	read as xlsxRead,
 	utils as xlsxUtils,
+	WorkBook,
 	write as xlsxWrite,
 	WritingOptions,
-	WorkBook,
 } from 'xlsx';
 
 

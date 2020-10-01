@@ -1,63 +1,63 @@
 import {
 	IHookFunctions,
 	IWebhookFunctions,
-  } from 'n8n-core';
+} from 'n8n-core';
 
-  import {
+import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-  } from 'n8n-workflow';
-  import {
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
+import {
 	payPalApiRequest,
 	upperFist
- } from './GenericFunctions';
+} from './GenericFunctions';
 
-  export class PayPalTrigger implements INodeType {
+export class PayPalTrigger implements INodeType {
 	description: INodeTypeDescription = {
-	  displayName: 'PayPal Trigger',
-	  name: 'payPalTrigger',
-	  icon: 'file:paypal.png',
-	  group: ['trigger'],
-	  version: 1,
-	  description: 'Handle PayPal events via webhooks',
-	  defaults: {
-		name: 'PayPal Trigger',
-		color: '#32325d',
-	  },
-	  inputs: [],
-	  outputs: ['main'],
-	  credentials: [
-			  {
-				  name: 'payPalApi',
-				  required: true,
-			  }
-		  ],
-	  webhooks: [
-		{
-		  name: 'default',
-		  httpMethod: 'POST',
-		  reponseMode: 'onReceived',
-		  path: 'webhook',
+		displayName: 'PayPal Trigger',
+		name: 'payPalTrigger',
+		icon: 'file:paypal.png',
+		group: ['trigger'],
+		version: 1,
+		description: 'Handle PayPal events via webhooks',
+		defaults: {
+			name: 'PayPal Trigger',
+			color: '#32325d',
 		},
-	  ],
-	  properties: [
-		{
-			displayName: 'Events',
-			name: 'events',
-			type: 'multiOptions',
-			required: true,
-			default: [],
-			description: 'The event to listen to.',
-			typeOptions: {
-				loadOptionsMethod: 'getEvents'
+		inputs: [],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'payPalApi',
+				required: true,
+			}
+		],
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				reponseMode: 'onReceived',
+				path: 'webhook',
 			},
-			options: [],
-		},
-	  ],
+		],
+		properties: [
+			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'multiOptions',
+				required: true,
+				default: [],
+				description: 'The event to listen to.',
+				typeOptions: {
+					loadOptionsMethod: 'getEvents'
+				},
+				options: [],
+			},
+		],
 	};
 
 	methods = {
@@ -126,7 +126,7 @@ import {
 					url: webhookUrl,
 					event_types: events.map(event => {
 						return { name: event };
-					 }),
+					}),
 				};
 				const endpoint = '/notifications/webhooks';
 				try {
@@ -157,7 +157,7 @@ import {
 				return true;
 			},
 		},
-	  };
+	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		let webhook;
@@ -168,10 +168,10 @@ import {
 		const endpoint = '/notifications/verify-webhook-signature';
 
 		if (headerData['PAYPAL-AUTH-ALGO'] !== undefined
-		&& headerData['PAYPAL-CERT-URL'] !== undefined
-		&& headerData['PAYPAL-TRANSMISSION-ID'] !== undefined
-		&& headerData['PAYPAL-TRANSMISSION-SIG'] !== undefined
-		&& headerData['PAYPAL-TRANSMISSION-TIME'] !== undefined) {
+			&& headerData['PAYPAL-CERT-URL'] !== undefined
+			&& headerData['PAYPAL-TRANSMISSION-ID'] !== undefined
+			&& headerData['PAYPAL-TRANSMISSION-SIG'] !== undefined
+			&& headerData['PAYPAL-TRANSMISSION-TIME'] !== undefined) {
 			const body = {
 				auth_algo: headerData['PAYPAL-AUTH-ALGO'],
 				cert_url: headerData['PAYPAL-CERT-URL'],
@@ -198,4 +198,4 @@ import {
 			],
 		};
 	}
-  }
+}

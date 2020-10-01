@@ -1,14 +1,20 @@
-import { IExecuteFunctions, BINARY_ENCODING } from 'n8n-core';
+import {
+	BINARY_ENCODING,
+	IExecuteFunctions,
+} from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import { linkedInApiRequest } from './GenericFunctions';
-import { postOperations, postFields } from './PostDescription';
+import {
+	postFields,
+	postOperations,
+} from './PostDescription';
 
 export class LinkedIn implements INodeType {
 	description: INodeTypeDescription = {

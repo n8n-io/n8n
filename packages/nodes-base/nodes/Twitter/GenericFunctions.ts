@@ -3,9 +3,9 @@ import {
 } from 'request';
 
 import {
-	IHookFunctions,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
@@ -74,5 +74,3 @@ export function chunks (buffer: Buffer, chunkSize: number) {
 
 	return result;
 }
-
-

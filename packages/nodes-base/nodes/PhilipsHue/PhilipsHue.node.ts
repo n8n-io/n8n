@@ -4,21 +4,21 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-	philipsHueApiRequest,
 	getUser,
+	philipsHueApiRequest,
 } from './GenericFunctions';
 
 import {
-	lightOperations,
 	lightFields,
+	lightOperations,
 } from './LightDescription';
 
 export class PhilipsHue implements INodeType {

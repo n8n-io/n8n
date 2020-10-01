@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -18,18 +18,18 @@ import {
 } from './GenericFunctions';
 
 import {
-	workbookOperations,
 	workbookFields,
+	workbookOperations,
 } from './WorkbookDescription';
 
 import {
-	worksheetOperations,
 	worksheetFields,
+	worksheetOperations,
 } from './WorksheetDescription';
 
 import {
-	tableOperations,
 	tableFields,
+	tableOperations,
 } from './TableDescription';
 
 export class MicrosoftExcel implements INodeType {

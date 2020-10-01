@@ -3,22 +3,52 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { clientOperations, clientFields } from './ClientDescription';
-import { contactOperations, contactFields } from './ContactDescription';
+import {
+	clientFields,
+	clientOperations,
+} from './ClientDescription';
+import {
+	contactFields,
+	contactOperations,
+} from './ContactDescription';
 import { companyOperations } from './CompanyDescription';
-import { estimateOperations, estimateFields } from './EstimateDescription';
-import { expenseOperations, expenseFields } from './ExpenseDescription';
-import { harvestApiRequest, harvestApiRequestAllItems } from './GenericFunctions';
-import { invoiceOperations, invoiceFields } from './InvoiceDescription';
-import { projectOperations, projectFields } from './ProjectDescription';
-import { taskOperations, taskFields } from './TaskDescription';
-import { timeEntryOperations, timeEntryFields } from './TimeEntryDescription';
-import { userOperations, userFields } from './UserDescription';
+import {
+	estimateFields,
+	estimateOperations,
+} from './EstimateDescription';
+import {
+	expenseFields,
+	expenseOperations,
+} from './ExpenseDescription';
+import {
+	harvestApiRequest,
+	harvestApiRequestAllItems,
+} from './GenericFunctions';
+import {
+	invoiceFields,
+	invoiceOperations,
+} from './InvoiceDescription';
+import {
+	projectFields,
+	projectOperations,
+} from './ProjectDescription';
+import {
+	taskFields,
+	taskOperations,
+} from './TaskDescription';
+import {
+	timeEntryFields,
+	timeEntryOperations,
+} from './TimeEntryDescription';
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
 
 /**
  * fetch All resource using paginated calls

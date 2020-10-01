@@ -17,8 +17,8 @@ import {
 } from './GenericFunctions';
 
 import {
-	taskOperations,
 	taskFields,
+	taskOperations,
 } from './TaskDescription';
 
 export class GoogleTasks implements INodeType {

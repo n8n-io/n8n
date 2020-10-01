@@ -5,13 +5,13 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-	githubApiRequest,
 	getFileSha,
+	githubApiRequest,
 } from './GenericFunctions';
 
 export class Github implements INodeType {

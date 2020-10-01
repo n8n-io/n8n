@@ -3,11 +3,9 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {

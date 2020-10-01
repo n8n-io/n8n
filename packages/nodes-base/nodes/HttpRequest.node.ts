@@ -3,11 +3,11 @@ import {
 	IExecuteFunctions,
 } from 'n8n-core';
 import {
+	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IBinaryData,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';

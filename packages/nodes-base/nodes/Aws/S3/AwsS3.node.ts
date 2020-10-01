@@ -1,7 +1,7 @@
 
 import {
-	snakeCase,
 	paramCase,
+	snakeCase,
 } from 'change-case';
 
 import {

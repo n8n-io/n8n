@@ -18,6 +18,6 @@ export class WufooApi implements ICredentialType {
 			name: 'subdomain',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-        }
+		},
 	];
 }

@@ -7,10 +7,10 @@ const fsReadFileAsync = promisify(fsReadFile);
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IExecuteWorkflowInfo,
 	IWorkflowBase,
 } from 'n8n-workflow';
 

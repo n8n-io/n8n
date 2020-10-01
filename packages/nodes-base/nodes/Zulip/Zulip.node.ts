@@ -5,10 +5,10 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeTypeDescription,
 	INodeExecutionData,
-	INodeType,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	zulipApiRequest,
@@ -21,9 +21,18 @@ import {
 	IMessage,
 } from './MessageInterface';
 import { snakeCase } from 'change-case';
-import { streamFields, streamOperations } from './StreamDescription';
-import { userOperations, userFields } from './UserDescription';
-import { IStream, IPrincipal } from './StreamInterface';
+import {
+	streamFields,
+	streamOperations,
+} from './StreamDescription';
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+import {
+	IPrincipal,
+	IStream,
+} from './StreamInterface';
 import { validateJSON } from './GenericFunctions';
 import { IUser } from './UserInterface';
 

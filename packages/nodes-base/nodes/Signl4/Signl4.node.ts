@@ -1,6 +1,6 @@
 import {
-	IExecuteFunctions,
 	BINARY_ENCODING,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
