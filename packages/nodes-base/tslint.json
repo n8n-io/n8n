@@ -46,6 +46,7 @@
 		"forin": true,
 		"jsdoc-format": true,
 		"label-position": true,
+		"indent": [true, "tabs", 2],
 		"member-access": [
 			true,
 			"no-public"
@@ -60,6 +61,10 @@
 		"no-default-export": true,
 		"no-duplicate-variable": true,
 		"no-inferrable-types": true,
+		"ordered-imports": [true, {
+			"import-sources-order": "any",
+			"named-imports-order": "case-insensitive"
+		  }],
 		"no-namespace": [
 			true,
 			"allow-declarations"
