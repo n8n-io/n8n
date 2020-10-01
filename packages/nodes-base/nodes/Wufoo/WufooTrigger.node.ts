@@ -80,25 +80,25 @@ export class WufooTrigger implements INodeType {
 		loadOptions: {
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const body : IFormQuery = {includeTodayCount: true};
+				const body: IFormQuery = { includeTodayCount: true };
 				// https://wufoo.github.io/docs/#all-forms
 				const formObject = await wufooApiRequest.call(this, 'GET', 'forms.json', body);
 				for (const form of formObject.Forms) {
 					const name = form.Name;
-					const hash = form.Hash;
+					const value = form.Hash;
 					returnData.push({
 						name,
-						value: hash,
+						value,
 					});
 				}
 				// Entries submitted on the same day are present in separate property in data object
 				if (formObject.EntryCountToday) {
 					for (const form of formObject.EntryCountToday) {
 						const name = form.Name;
-						const hash = form.Hash;
+						const value = form.Hash;
 						returnData.push({
 							name,
-							value: hash,
+							value,
 						});
 					}
 				}
@@ -141,7 +141,7 @@ export class WufooTrigger implements INodeType {
 				const endpoint = `forms/${formHash}/webhooks/${webhookData.webhookId}.json`;
 				try {
 					await wufooApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;
@@ -156,8 +156,8 @@ export class WufooTrigger implements INodeType {
 		const body = this.getBodyData();
 		const webhookData = this.getWorkflowStaticData('node');
 		const onlyAnswers = this.getNodeParameter('onlyAnswers') as boolean;
-		const entries : IDataObject = {};
-		let returnObject : IDataObject = {};
+		const entries: IDataObject = {};
+		let returnObject: IDataObject = {};
 
 		if (req.body.HandshakeKey !== webhookData.handshakeKey) {
 			return {};
@@ -165,7 +165,7 @@ export class WufooTrigger implements INodeType {
 
 		const fieldsObject = JSON.parse(req.body.FieldStructure);
 
-		fieldsObject.Fields.map((field : IField) => {
+		fieldsObject.Fields.map((field: IField) => {
 
 			// TODO
 			// Handle docusign field

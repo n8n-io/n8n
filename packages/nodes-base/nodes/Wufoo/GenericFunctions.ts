@@ -25,7 +25,7 @@ export async function wufooApiRequest(this: IHookFunctions | IExecuteFunctions |
 			password: '',
 		},
 		method,
-		form : body,
+		form: body,
 		body,
 		qs,
 		uri: `https://${credentials!.subdomain}.wufoo.com/api/v3/${resource}`,

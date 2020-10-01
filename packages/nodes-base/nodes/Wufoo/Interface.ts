@@ -1,13 +1,11 @@
-import { IDataObject } from "n8n-workflow";
-
 export interface IFormQuery {
-		includeTodayCount?: boolean;
+	includeTodayCount?: boolean;
 }
 
 export interface IWebhook {
-		url: string;
-		handshakeKey?: string;
-		metadata?: boolean;
+	url: string;
+	handshakeKey?: string;
+	metadata?: boolean;
 }
 
 interface ISubField {
@@ -17,13 +15,13 @@ interface ISubField {
 }
 
 export interface IField {
-		Title: string;
-		Instructions: string;
-		IsRequired: number;
-		ClassNames: string;
-		DefaultVal: string;
-		Page: number;
-		Type: string;
-		ID: string;
-		SubFields: [ISubField];
+	Title: string;
+	Instructions: string;
+	IsRequired: number;
+	ClassNames: string;
+	DefaultVal: string;
+	Page: number;
+	Type: string;
+	ID: string;
+	SubFields: [ISubField];
 }
