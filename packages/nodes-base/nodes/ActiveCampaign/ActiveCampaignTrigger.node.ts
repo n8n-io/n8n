@@ -142,7 +142,7 @@ export class ActiveCampaignTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
 					await activeCampaignApiRequest.call(this, 'DELETE', `/api/3/webhooks/${webhookData.webhookId}`, {});
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;

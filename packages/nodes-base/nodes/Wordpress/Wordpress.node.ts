@@ -115,7 +115,6 @@ export class Wordpress implements INodeType {
 			async getAuthors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const authors = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, { who: 'authors' });
-				console.log(authors);
 				for (const author of authors) {
 					const authorName = author.name;
 					const authorId = author.id;

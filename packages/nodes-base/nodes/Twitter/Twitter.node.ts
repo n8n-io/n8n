@@ -112,6 +112,7 @@ export class Twitter implements INodeType {
 
 					if (additionalFields.inReplyToStatusId) {
 						body.in_reply_to_status_id = additionalFields.inReplyToStatusId as string;
+						body.auto_populate_reply_metadata = true;
 					}
 
 					if (additionalFields.attachments) {
@@ -230,7 +231,6 @@ export class Twitter implements INodeType {
 						}
 					}
 
-					console.log(body);
 					responseData = await twitterApiRequest.call(this, 'POST', '/statuses/update.json', body);
 				}
 				// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets

@@ -235,7 +235,7 @@ export default mixins(
 		oAuthCallbackUrl (): string {
 			const types = this.parentTypes(this.credentialTypeData.name);
 			const oauthType = (this.credentialTypeData.name === 'oAuth2Api' || types.includes('oAuth2Api')) ? 'oauth2' : 'oauth1';
-			return this.$store.getters.getWebhookBaseUrl + `rest/${oauthType}-credential/callback`;
+			return this.$store.getters.oauthCallbackUrls[oauthType];
 		},
 		requiredPropertiesFilled (): boolean {
 			for (const property of this.credentialProperties) {
@@ -404,10 +404,11 @@ export default mixins(
 						message: 'Connected successfully!',
 						type: 'success',
 					});
+
+					// Make sure that the event gets removed again
+					window.removeEventListener('message', receiveMessage, false);
 				}
 
-				// Make sure that the event gets removed again
-				window.removeEventListener('message', receiveMessage, false);
 			};
 
 			window.addEventListener('message', receiveMessage, false);

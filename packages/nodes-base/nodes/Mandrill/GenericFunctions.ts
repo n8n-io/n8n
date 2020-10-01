@@ -33,8 +33,6 @@ export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunction
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		console.error(error);
-
 		const errorMessage = error.response.body.message || error.response.body.Message;
 		if (error.name === 'Invalid_Key') {
 			throw new Error('The provided API key is not a valid Mandrill API key');

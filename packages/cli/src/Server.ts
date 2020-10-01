@@ -20,7 +20,7 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
-import { compare } from 'bcrypt';
+import { compare } from 'bcryptjs';
 
 import {
 	ActiveExecutions,
@@ -121,7 +121,7 @@ class App {
 	push: Push.Push;
 	versions: IPackageVersions | undefined;
 	restEndpoint: string;
-
+	frontendSettings: IN8nUISettings;
 	protocol: string;
 	sslKey: string;
 	sslCert: string;
@@ -155,6 +155,25 @@ class App {
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
+
+		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+
+		this.frontendSettings = {
+			endpointWebhook: this.endpointWebhook,
+			endpointWebhookTest: this.endpointWebhookTest,
+			saveDataErrorExecution: this.saveDataErrorExecution,
+			saveDataSuccessExecution: this.saveDataSuccessExecution,
+			saveManualExecutions: this.saveManualExecutions,
+			executionTimeout: this.executionTimeout,
+			maxExecutionTimeout: this.maxExecutionTimeout,
+			timezone: this.timezone,
+			urlBaseWebhook,
+			versionCli: '',
+			oauthCallbackUrls: {
+				'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
+				'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
+			}
+		};
 	}
 
 
@@ -172,8 +191,16 @@ class App {
 	async config(): Promise<void> {
 
 		this.versions = await GenericHelpers.getVersions();
-		const ignoredEndpoints = _(['healthz', this.endpointWebhook, this.endpointWebhookTest, this.endpointPresetCredentials]).compact().join('|');
-		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints})\/?.*$`);
+		this.frontendSettings.versionCli = this.versions.cli;
+
+		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
+
+		const excludeEndpoints = config.get('security.excludeEndpoints') as string;
+
+		const ignoredEndpoints = ['healthz', this.endpointWebhook, this.endpointWebhookTest, this.endpointPresetCredentials];
+		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
+
+		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
@@ -1296,7 +1323,7 @@ class App {
 
 			const oAuth2Parameters = {
 				clientId: _.get(oauthCredentials, 'clientId') as string,
-				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
+				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string | undefined,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
@@ -1612,18 +1639,7 @@ class App {
 
 		// Returns the settings which are needed in the UI
 		this.app.get(`/${this.restEndpoint}/settings`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-			return {
-				endpointWebhook: this.endpointWebhook,
-				endpointWebhookTest: this.endpointWebhookTest,
-				saveDataErrorExecution: this.saveDataErrorExecution,
-				saveDataSuccessExecution: this.saveDataSuccessExecution,
-				saveManualExecutions: this.saveManualExecutions,
-				executionTimeout: this.executionTimeout,
-				maxExecutionTimeout: this.maxExecutionTimeout,
-				timezone: this.timezone,
-				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
-				versionCli: this.versions!.cli,
-			};
+			return this.frontendSettings;
 		}));
 
 
