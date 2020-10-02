@@ -114,6 +114,10 @@ export class Mailchimp implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Campaign',
+						value: 'campaign'
+					},
+					{
 						name: 'List Group',
 						value: 'listGroup',
 					},
@@ -125,10 +129,6 @@ export class Mailchimp implements INodeType {
 						name: 'Member Tag',
 						value: 'memberTag',
 					},
-					{
-						name: 'Campaign',
-						value: 'campaign'
-					}
 				],
 				default: 'member',
 				required: true,
@@ -239,6 +239,16 @@ export class Mailchimp implements INodeType {
 
 				},
 				options: [
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a campaign'
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a campaign'
+					},
 					{
 						name: 'Get All',
 						value: 'getAll',
@@ -1688,7 +1698,9 @@ export class Mailchimp implements INodeType {
 							'campaign'
 						],
 						operation: [
-							'send'
+							'send',
+							'get',
+							'delete'
 						]
 					}
 				},
@@ -1697,11 +1709,6 @@ export class Mailchimp implements INodeType {
 				description: 'List of Campaigns',
 				options:[],
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 campaign:create                            */
-/* -------------------------------------------------------------------------- */
-
-
 		],
 	};
 
@@ -2144,6 +2151,19 @@ export class Mailchimp implements INodeType {
 				if (operation === 'send') {
 					const campaignId = this.getNodeParameter('campaignId', i) as string;
 					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {})
+				}
+				if (operation === 'get') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					if(!campaignId){
+						// TODO
+						// Display error message.
+						throw new Error("Campaign ID is required");
+					}
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'GET', {})
+				}
+				if (operation === 'delete') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'Delete', {})
 				}
 			}
 
