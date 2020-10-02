@@ -154,7 +154,7 @@ export const projectFields = [
 				displayName: 'Is Public',
 				name: 'isPublic',
 				type: 'boolean',
-				default: false,
+				default: true,
 			},
 			{
 				displayName: 'Note',
