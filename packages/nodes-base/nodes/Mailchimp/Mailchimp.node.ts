@@ -240,69 +240,14 @@ export class Mailchimp implements INodeType {
 				},
 				options: [
 					{
-						name: 'Create',
-						value: 'create',
-						description: 'Create a new campaign'
-					},
-					{
-						name: 'Delete',
-						value: 'delete',
-						description: 'Delete a campaign'
-					},
-					{
-						name: 'Get',
-						value: 'get',
-						description: 'Get a campaign'
-					},
-					{
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get all the campaigns'
 					},
 					{
-						name: 'Schedule',
-						value: 'schedule',
-						description: 'Schedule a campaign'
-					},
-					{
-						name: 'Pause RSS',
-						value: 'pauseRss',
-						description: 'Pause an RSS-driven campaign'
-					},
-					{
-						name: 'Replicate',
-						value: 'replicate',
-						description: 'Replicate a campaign in saved or send status'
-					},
-					{
-						name: 'Resend',
-						value: 'resend',
-						description: 'Creates a Resend to Non-Openers version of this campaign.'
-					},
-					{
-						name: 'Resume RSS',
-						value: 'resumeRss',
-						description: 'Resume an RSS-driven campaign'
-					},
-					{
 						name: 'Send',
 						value: 'send',
 						description: 'Send a campaign'
-					},
-					{
-						name: 'Send Test Email',
-						value: 'sendTestEmail',
-						description: 'Send a test email'
-					},
-					{
-						name: 'Unschedule',
-						value: 'unschedule',
-						description: 'Unschedule a scheduled campaign'
-					},
-					{
-						name: 'Update',
-						value: 'update',
-						description: 'Update a campaign'
 					},
 				],
 				default: 'getAll',
