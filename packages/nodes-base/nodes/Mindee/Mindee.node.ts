@@ -13,9 +13,9 @@ import {
 } from 'n8n-workflow';
 
 import {
+	cleanData,
 	mindeeApiRequest,
 } from './GenericFunctions';
-import { response } from 'express';
 
 export class Mindee implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,9 +34,27 @@ export class Mindee implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'mindeeApi',
+				name: 'mindeeReceiptApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						resource: [
+							'receipt',
+						],
+					},
+				},
+			},
+			{
+				name: 'mindeeInvoiceApi',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'invoice',
+						],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -47,6 +65,10 @@ export class Mindee implements INodeType {
 					{
 						name: 'Receipt',
 						value: 'receipt',
+					},
+					{
+						name: 'Invoice',
+						value: 'invoice',
 					},
 				],
 				default: 'receipt',
@@ -78,6 +100,7 @@ export class Mindee implements INodeType {
 						],
 						resource: [
 							'receipt',
+							'invoice',
 						],
 					},
 				},
@@ -140,16 +163,49 @@ export class Mindee implements INodeType {
 					);
 
 					if (rawData === false) {
-						const newData: IDataObject = {};
+						responseData = cleanData(responseData.predictions);
+					}
+				}
+			}
 
-						for (const key of Object.keys(responseData.predictions[0])) {
+			if (resource === 'invoice') {
+				if (operation === 'predict') {
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
-							const data = responseData.predictions[0][key];
+					const rawData = this.getNodeParameter('rawData', i) as boolean;
 
-							newData[key] = data.value || data.name || data.raw || data.degrees || data.amount || data.degrees;
-						}
+					if (items[i].binary === undefined) {
+						throw new Error('No binary data exists on item!');
+					}
 
-						responseData = newData;
+					const item = items[i].binary as IBinaryKeyData;
+
+					const binaryData = item[binaryPropertyName] as IBinaryData;
+
+					if (binaryData === undefined) {
+						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+					}
+
+					responseData = await mindeeApiRequest.call(
+						this,
+						'POST',
+						`/invoices/v1/predict`,
+						{},
+						{},
+						{
+							formData: {
+								file: {
+									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									options: {
+										filename: binaryData.fileName,
+									}
+								},
+							},
+						},
+					);
+
+					if (rawData === false) {
+						responseData = cleanData(responseData.predictions);
 					}
 				}
 			}

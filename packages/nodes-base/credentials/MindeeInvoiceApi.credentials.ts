@@ -3,9 +3,9 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-export class MindeeApi implements ICredentialType {
-	name = 'mindeeApi';
-	displayName = 'Mindee API';
+export class MindeeInvoiceApi implements ICredentialType {
+	name = 'mindeeInvoiceApi';
+	displayName = 'Mindee Invoice API';
 	properties = [
 		{
 			displayName: 'API Key',

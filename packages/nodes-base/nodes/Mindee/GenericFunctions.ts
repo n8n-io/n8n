@@ -12,9 +12,17 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
+export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
 
-	const credentials = this.getCredentials('mindeeApi') as IDataObject;
+	const resource = this.getNodeParameter('resource', 0) as string;
+
+	let credentials;
+
+	if (resource === 'receipt') {
+		credentials = this.getCredentials('mindeeReceiptApi') as IDataObject;
+	} else {
+		credentials = this.getCredentials('mindeeInvoiceApi') as IDataObject;
+	}
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -23,7 +31,7 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		method,
 		body,
 		qs,
-		uri: `https://api.mindee.net/products${resource}`,
+		uri: `https://api.mindee.net/products${path}`,
 		json: true,
 	};
 	try {
@@ -51,4 +59,26 @@ export async function mindeeApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 		throw error;
 	}
+}
+
+export function cleanData(predictions: IDataObject[]) {
+
+	const newData: IDataObject = {};
+
+	for (const key of Object.keys(predictions[0])) {
+
+		const data = predictions[0][key] as IDataObject | IDataObject[];
+
+		if (key === 'taxes' && data.length) {
+			newData[key] = {
+				amount: (data as IDataObject[])[0].amount,
+				rate: (data as IDataObject[])[0].rate,
+			};
+		} else {
+			//@ts-ignore
+			newData[key] = data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
+		}
+	}
+
+	return newData;
 }
