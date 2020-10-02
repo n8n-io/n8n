@@ -24,7 +24,7 @@ export class Cron implements INodeType {
 		icon: 'fa:calendar',
 		group: ['trigger'],
 		version: 1,
-		description: 'Triggers the workflow at a specific time',
+		description: 'Triggers the workflow at a specific time. Note: cron execution times depend on timezone configured in workflow settings.',
 		defaults: {
 			name: 'Cron',
 			color: '#00FF00',
