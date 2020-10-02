@@ -20,6 +20,7 @@ import {
 import {
 	snakeCase,
 } from 'change-case';
+import auth = require('basic-auth');
 
 export class Mattermost implements INodeType {
 	description: INodeTypeDescription = {
@@ -989,23 +990,23 @@ export class Mattermost implements INodeType {
 			// ----------------------------------
 			//         user:create
 			// ----------------------------------
-			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				required: true,
-				displayOptions: {
-					show: {
-						resource: [
-							'user',
-						],
-						operation: [
-							'create',
-						],
-					},
-				},
-				default: '',
-			},
+			// {
+			// 	displayName: 'Email',
+			// 	name: 'email',
+			// 	type: 'string',
+			// 	required: true,
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'user',
+			// 			],
+			// 			operation: [
+			// 				'create',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: '',
+			// },
 			{
 				displayName: 'Username',
 				name: 'username',
@@ -1024,6 +1025,111 @@ export class Mattermost implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Auth Service',
+				name: 'auth_service',
+				type: 'options',
+				options: [
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'Gitlab',
+						value: 'gitlab',
+					},
+					{
+						name: 'LDAP',
+						value: 'ldap',
+					},
+					{
+						name: 'SAML',
+						value: 'saml',
+					},
+					{
+						name: 'Office365',
+						value: 'office365',
+					},
+					{
+						name: 'Google',
+						value: 'google',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Auth Data',
+				name: 'auth_data',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+					hide: {
+						auth_service: [
+							'email',
+						],
+					},
+				},
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+						auth_service: [
+							'email',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				typeOptions: {
+					password: true,
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+						auth_service: [
+							'email',
+						],
+					},
+				},
+				default: '',
+				description: 'The password used for email authentication.'
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -1040,44 +1146,6 @@ export class Mattermost implements INodeType {
 				},
 				default: {},
 				options: [
-					{
-						displayName: 'Auth Data',
-						name: 'auth_data',
-						type: 'string',
-						default: '',
-					},
-					{
-						displayName: 'Auth Service',
-						name: 'auth_service',
-						type: 'options',
-						options: [
-							{
-								name: 'Email',
-								value: 'email',
-							},
-							{
-								name: 'Gitlab',
-								value: 'gitlab',
-							},
-							{
-								name: 'ldap',
-								value: 'ldap',
-							},
-							{
-								name: 'Saml',
-								value: 'saml',
-							},
-							{
-								name: 'Office365',
-								value: 'office365',
-							},
-							{
-								name: 'Google',
-								value: 'google',
-							},
-						],
-						default: '',
-					},
 					{
 						displayName: 'First Name',
 						name: 'first_name',
@@ -1200,15 +1268,6 @@ export class Mattermost implements INodeType {
 								],
 							},
 						],
-					},
-					{
-						displayName: 'Password',
-						name: 'password',
-						type: 'string',
-						typeOptions: {
-							password: true,
-						},
-						default: '',
 					},
 				],
 			},
@@ -1769,13 +1828,21 @@ export class Mattermost implements INodeType {
 					// ----------------------------------
 					//          user:create
 					// ----------------------------------
-					const email = this.getNodeParameter('email', i) as string;
 
 					const username = this.getNodeParameter('username', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const authService = this.getNodeParameter('auth_service', i) as string;
 
-					body.email = email;
+					body.auth_service = authService;
+
+					if (authService === 'email') {
+						body.email = this.getNodeParameter('email', i) as string;
+						body.password = this.getNodeParameter('password', i) as string;
+					} else {
+						body.auth_data = this.getNodeParameter('auth_data', i) as string;
+					}
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					body.username = username;
 
