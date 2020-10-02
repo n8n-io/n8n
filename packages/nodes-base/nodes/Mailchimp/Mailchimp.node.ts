@@ -125,6 +125,10 @@ export class Mailchimp implements INodeType {
 						name: 'Member Tag',
 						value: 'memberTag',
 					},
+					{
+						name: 'Campaign',
+						value: 'campaign'
+					}
 				],
 				default: 'member',
 				required: true,
@@ -220,6 +224,89 @@ export class Mailchimp implements INodeType {
 				],
 				default: 'getAll',
 				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type:'options',
+				required: true,
+				displayOptions : {
+					show: {
+						resource: [
+							'campaign',
+						],
+					},
+
+				},
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new campaign'
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a campaign'
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a campaign'
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all the campaigns'
+					},
+					{
+						name: 'Schedule',
+						value: 'schedule',
+						description: 'Schedule a campaign'
+					},
+					{
+						name: 'Pause RSS',
+						value: 'pauseRss',
+						description: 'Pause an RSS-driven campaign'
+					},
+					{
+						name: 'Replicate',
+						value: 'replicate',
+						description: 'Replicate a campaign in saved or send status'
+					},
+					{
+						name: 'Resend',
+						value: 'resend',
+						description: 'Creates a Resend to Non-Openers version of this campaign.'
+					},
+					{
+						name: 'Resume RSS',
+						value: 'resumeRss',
+						description: 'Resume an RSS-driven campaign'
+					},
+					{
+						name: 'Send',
+						value: 'send',
+						description: 'Send a campaign'
+					},
+					{
+						name: 'Send Test Email',
+						value: 'sendTestEmail',
+						description: 'Send a test email'
+					},
+					{
+						name: 'Unschedule',
+						value: 'unschedule',
+						description: 'Unschedule a scheduled campaign'
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a campaign'
+					},
+				],
+				default: 'getAll',
+				description: 'The operation to perform.'
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:create                              */
@@ -1500,6 +1587,176 @@ export class Mailchimp implements INodeType {
 				default: 500,
 				description: 'How many results to return.',
 			},
+/* -------------------------------------------------------------------------- */
+/*                                 campaign:getAll                            */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 10,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource:[
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Before Create Time',
+						name: 'beforeCreateTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns created before the set time.',
+					},
+					{
+						displayName: 'Before Send Time',
+						name: 'beforeSendTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns sent before the set time.',
+					},
+					{
+						displayName: 'Exclude Fields',
+						name: 'excludeFields',
+						type: 'string',
+						default: '',
+						description: 'A comma-separated list of fields to exclude.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: '',
+						description: 'A comma-separated list of fields to return.',
+					},
+					{
+						displayName: 'List ID',
+						name: 'listId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getLists',
+						},
+						default: '',
+						description: 'List of lists'
+					},
+					{
+						displayName: 'Since Create Time',
+						name: 'sinceCreateTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns created after the set time.',
+					},
+					{
+						displayName: 'Since Send Time',
+						name: 'sinceSendTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns sent after the set time.',
+					},
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'Save',
+								value: 'save',
+							},
+							{
+								name: 'Sending',
+								value: 'sending',
+							},
+							{
+								name: 'Sent',
+								value: 'sent',
+							},
+							{
+								name: 'Schedule',
+								value: 'schedule',
+							},
+						],
+						default: '',
+						description: 'The status of the campaign.',
+					},
+				],
+			},
+/* -------------------------------------------------------------------------- */
+/*                                 campaign:send                              */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Campaign ID',
+				name: 'campaignId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCampaigns',
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign'
+						],
+						operation: [
+							'send'
+						]
+					}
+				},
+				required: true,
+				default: '',
+				description: 'List of Campaigns',
+				options:[],
+			},
+/* -------------------------------------------------------------------------- */
+/*                                 campaign:create                            */
+/* -------------------------------------------------------------------------- */
+
+
 		],
 	};
 
@@ -1556,6 +1813,21 @@ export class Mailchimp implements INodeType {
 				}
 				return returnData;
 			},
+
+			// Get all the available campaigns to display them to users so that they can select them easily
+			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const campaigns = await mailchimpApiRequestAllItems.call(this, '/campaigns', 'GET', 'campaigns');
+				for (const campaign of campaigns) {
+					const campaignName = campaign.settings.title;
+					const campaignId = campaign.id;
+					returnData.push({
+						name: campaignName,
+						value: campaignId,
+					});
+				}
+				return returnData				
+			}
 		}
 	};
 
@@ -1882,6 +2154,51 @@ export class Mailchimp implements INodeType {
 					}
 					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/tags`, 'POST', body);
 					responseData = { success: true };
+				}
+			}
+			if (resource === 'campaign') {
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					if (options.status) {
+						qs.status = options.status as string;
+					}
+					if (options.beforeCreateTime) {
+						qs.beforeCreateTime = options.beforeCreateTime as string;
+					}
+					if (options.beforeSendTime) {
+						qs.beforeSendTime = options.beforeSendTime as string;
+					}
+					// TODO
+					// Figure out how to make excludeFields and fileds work
+					// if (options.excludeFields) {
+					// 	qs.excludeFields = options.excludeFields as string;
+					// }
+					// if (options.fields) {
+					// 	qs.fields = options.fields as string;
+					// }
+					if (options.listId) {
+						qs.listId = options.listId as string;
+					}
+					if (options.sinceCreateTime) {
+						qs.sinceCreateTime = options.sinceCreateTime as string;
+					}
+					if (options.sinceSendTime) {
+						qs.sinceSendTime = options.sinceSendTime as string;
+					}
+					// TODO
+					// Make the options work when returnAll is false
+					if (returnAll === true) {
+						responseData = await mailchimpApiRequestAllItems.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs)
+					} else {
+						qs.count = this.getNodeParameter('limit', i) as number;
+						responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs)
+						responseData = responseData.campaigns
+					}
+				}
+				if (operation === 'send') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {})
 				}
 			}
 
