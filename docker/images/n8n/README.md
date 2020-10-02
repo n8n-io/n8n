@@ -107,7 +107,7 @@ docker run -it --rm \
 ### Start with other Database
 
 By default n8n uses SQLite to save credentials, past executions and workflows.
-n8n however also supports MongoDB and PostgresDB. To use them simply a few
+n8n however also supports MongoDB, PostgresDB and MySQL. To use them simply a few
 environment variables have to be set.
 
 It is important to still persist the data in the `/root/.n8` folder. The reason
