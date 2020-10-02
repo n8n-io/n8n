@@ -182,7 +182,7 @@ export class ClickUp implements INodeType {
 						value: 'taskDependency',
 					},
 					{
-						name: 'Time Traking',
+						name: 'Time Tracking',
 						value: 'timeTracking',
 					},
 				],
@@ -310,8 +310,19 @@ export class ClickUp implements INodeType {
 			// select them easily
 			async getAssignees(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const listId = this.getCurrentNodeParameter('list') as string;
+				const taskId = this.getCurrentNodeParameter('task') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { members } = await clickupApiRequest.call(this, 'GET', `/list/${listId}/member`);
+				var url: string;
+				if (listId) {
+					url = `/list/${listId}/member`;
+				}
+				else if (taskId) {
+					url = `/task/${taskId}/member`;
+				} else {
+					return returnData;
+				}
+
+				const { members } = await clickupApiRequest.call(this, 'GET', url);
 				for (const member of members) {
 					const memberName = member.username;
 					const menberId = member.id;
@@ -369,6 +380,24 @@ export class ClickUp implements INodeType {
 						value: fieldId,
 					});
 				}
+				return returnData;
+			},
+
+			// Get all the available lists to display them to user so that he can
+			// select them easily
+			async getTasks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const listId = this.getCurrentNodeParameter('list') as string;
+				const archived = this.getCurrentNodeParameter('archived') as string;
+				const returnData: INodePropertyOptions[] = [];
+				const { tasks } = await clickupApiRequest.call(this, 'GET', `/list/${listId}/task?archived=${archived}`);
+				for (const task of tasks) {
+					const taskName = task.name;
+					const taskId = task.id;
+					returnData.push({
+						name: taskName,
+						value: taskId,
+					});
+				} 
 				return returnData;
 			},
 		},
@@ -1028,6 +1057,120 @@ export class ClickUp implements INodeType {
 					}
 					responseData = await clickupApiRequest.call(this, 'PUT', `/task/${taskId}/time/${intervalId}`, body);
 					responseData = { success: true };
+				}
+				if (operation === 'getWithinRange') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const params = [];
+					if (additionalFields.start) {
+						params.push('start_date=' + new Date(additionalFields.start as string).getTime());
+					}
+					if (additionalFields.end) {
+						params.push('end_date=' + new Date(additionalFields.end as string).getTime());
+					}
+					const getParams = params.join('&');
+					responseData = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/time_entries?${getParams}`);
+				}
+				if (operation === 'getSingular') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const timerId = this.getNodeParameter('timer', i) as string;
+					responseData = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/time_entries/${timerId}`)
+				}
+				if (operation === 'getRunning') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					responseData = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/time_entries/current`);
+				}
+				if (operation === 'create') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IDataObject = {};
+					if (updateFields.start) {
+						body.start = new Date(updateFields.start as string).getTime();
+					}
+					if (updateFields.minutes) {
+						const minutes = updateFields.minutes as number;
+						body.duration = minutes * 60000;
+					}
+					if (updateFields.description) {
+						body.description = updateFields.description as string;
+					}
+					if (updateFields.assignees) {
+						body.assignee = parseInt(updateFields.assignee as string, 10);
+					}
+					if (updateFields.billable) {
+						body.billable = updateFields.billable as boolean;
+					}
+					body.tid = this.getNodeParameter('task', i) as string;
+					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries`, body);
+				}
+				if (operation === 'removeTags') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const timerId = this.getNodeParameter('timer', i) as string;
+					const tags = this.getNodeParameter('tags', i) as string;
+					const body: IDataObject = {};
+					body.time_entry_ids = timerId.split(',');
+					body.tags = tags.split(',');
+					responseData = await clickupApiRequest.call(this, 'DELETE', `/team/${teamId}/time_entries/tags`, body);
+				}
+				if (operation === 'getAllTags') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					responseData = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/time_entries/tags`);
+				}
+				if (operation === 'addTags') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const timerId = this.getNodeParameter('timer', i) as string;
+					const tags = this.getNodeParameter('tags', i) as string;
+					const body: IDataObject = {};
+					body.time_entry_ids = timerId.split(',');
+					body.tags = tags.split(',');
+					console.log(body);
+					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries/tags`, body);
+				}
+				if (operation === 'changeTagName') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {};
+					if (additionalFields.name) {
+						body.name = additionalFields.name as string;
+					}
+					if (additionalFields.new_name) {
+						body.new_name = additionalFields.new_name as string;
+					}
+					if (additionalFields.tag_bg) {
+						body.tag_bg = additionalFields.tag_bg as string;
+					}
+					if (additionalFields.tag_fg) {
+						body.tag_fg = additionalFields.tag_fg as string;
+					}
+					responseData = await clickupApiRequest.call(this, 'PUT', `/team/${teamId}/time_entries/tags`, body);
+				}
+				if (operation === 'start') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const taskId = this.getNodeParameter('task', i) as string;
+					const body: IDataObject = {};
+					body.tid = taskId;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (additionalFields.billable) {
+						body.billable = additionalFields.billable as boolean;
+					}
+					if (additionalFields.description) {
+						body.description = additionalFields.description as string;
+					}
+					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries/start`, body);
+				}
+				if (operation === 'stop') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries/stop`);
+				}
+				if (operation === 'deleteV2') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const timerId = this.getNodeParameter('timer', i) as string;
+					responseData = await clickupApiRequest.call(this, 'DELETE', `/team/${teamId}/time_entries/${timerId}`);
+				}
+				if (operation === 'updateV2') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const timerId = this.getNodeParameter('timer', i) as string;
+					responseData = await clickupApiRequest.call(this, 'PUT', `/team/${teamId}/time_entries/${timerId}`);					
 				}
 			}
 			if (resource === 'list') {
