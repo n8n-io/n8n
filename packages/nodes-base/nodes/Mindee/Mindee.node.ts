@@ -21,7 +21,7 @@ export class Mindee implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mindee',
 		name: 'mindee',
-		icon: 'file:mindee.png',
+		icon: 'file:mindee.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
@@ -63,12 +63,12 @@ export class Mindee implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Receipt',
-						value: 'receipt',
-					},
-					{
 						name: 'Invoice',
 						value: 'invoice',
+					},
+					{
+						name: 'Receipt',
+						value: 'receipt',
 					},
 				],
 				default: 'receipt',
