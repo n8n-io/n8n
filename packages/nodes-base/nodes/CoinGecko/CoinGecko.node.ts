@@ -3,22 +3,22 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeExecutionData,
+	IDataObject,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
 } from 'n8n-workflow';
 
 import {
-	coinOperations,
 	coinFields,
+	coinOperations,
 } from './CoinDescription';
 
 import {
-	eventOperations,
 	eventFields,
+	eventOperations,
 } from './EventDescription';
 
 import {
@@ -441,7 +441,7 @@ export class CoinGecko implements INodeType {
 
 					for (let idx = 0; idx < responseData.length; idx++) {
 						const [time, open, high, low, close] = responseData[idx];
-						responseData[idx] = {time: moment(time).toISOString(), open, high, low, close} as IDataObject;
+						responseData[idx] = { time: moment(time).toISOString(), open, high, low, close } as IDataObject;
 					}
 				}
 			}
@@ -490,7 +490,7 @@ export class CoinGecko implements INodeType {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					qs.ids = ids,
-					qs.vs_currencies = currencies.join(',');
+						qs.vs_currencies = currencies.join(',');
 
 					Object.assign(qs, options);
 
