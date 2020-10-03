@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -17,8 +17,8 @@ import {
 } from './GenericFunctions';
 
 import {
-	userOperations,
 	userFields,
+	userOperations,
 } from './UserDescription';
 
 export class GSuiteAdmin implements INodeType {
@@ -310,6 +310,7 @@ export class GSuiteAdmin implements INodeType {
 					}
 
 					if (Object.keys(body.name).length === 0) {
+						//@ts-ignore
 						delete body.name;
 					}
 
