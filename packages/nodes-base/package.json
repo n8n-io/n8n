@@ -220,6 +220,7 @@
       "dist/nodes/Clockify/ClockifyTrigger.node.js",
       "dist/nodes/Cockpit/Cockpit.node.js",
       "dist/nodes/Coda/Coda.node.js",
+      "dist/nodes/CoinGecko/CoinGecko.node.js",
       "dist/nodes/Contentful/Contentful.node.js",
       "dist/nodes/ConvertKit/ConvertKit.node.js",
       "dist/nodes/ConvertKit/ConvertKitTrigger.node.js",
