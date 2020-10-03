@@ -1,6 +1,6 @@
 import {
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -20,7 +20,6 @@ import {
 import {
 	snakeCase,
 } from 'change-case';
-import auth = require('basic-auth');
 
 export class Mattermost implements INodeType {
 	description: INodeTypeDescription = {
@@ -990,23 +989,6 @@ export class Mattermost implements INodeType {
 			// ----------------------------------
 			//         user:create
 			// ----------------------------------
-			// {
-			// 	displayName: 'Email',
-			// 	name: 'email',
-			// 	type: 'string',
-			// 	required: true,
-			// 	displayOptions: {
-			// 		show: {
-			// 			resource: [
-			// 				'user',
-			// 			],
-			// 			operation: [
-			// 				'create',
-			// 			],
-			// 		},
-			// 	},
-			// 	default: '',
-			// },
 			{
 				displayName: 'Username',
 				name: 'username',
@@ -1026,7 +1008,7 @@ export class Mattermost implements INodeType {
 			},
 			{
 				displayName: 'Auth Service',
-				name: 'auth_service',
+				name: 'authService',
 				type: 'options',
 				options: [
 					{
@@ -1038,20 +1020,20 @@ export class Mattermost implements INodeType {
 						value: 'gitlab',
 					},
 					{
-						name: 'LDAP',
-						value: 'ldap',
+						name: 'Google',
+						value: 'google',
 					},
 					{
-						name: 'SAML',
-						value: 'saml',
+						name: 'LDAP',
+						value: 'ldap',
 					},
 					{
 						name: 'Office365',
 						value: 'office365',
 					},
 					{
-						name: 'Google',
-						value: 'google',
+						name: 'SAML',
+						value: 'saml',
 					},
 				],
 				displayOptions: {
@@ -1068,7 +1050,7 @@ export class Mattermost implements INodeType {
 			},
 			{
 				displayName: 'Auth Data',
-				name: 'auth_data',
+				name: 'authData',
 				displayOptions: {
 					show: {
 						resource: [
@@ -1079,7 +1061,7 @@ export class Mattermost implements INodeType {
 						],
 					},
 					hide: {
-						auth_service: [
+						authService: [
 							'email',
 						],
 					},
@@ -1100,7 +1082,7 @@ export class Mattermost implements INodeType {
 						operation: [
 							'create',
 						],
-						auth_service: [
+						authService: [
 							'email',
 						],
 					},
@@ -1121,7 +1103,7 @@ export class Mattermost implements INodeType {
 						operation: [
 							'create',
 						],
-						auth_service: [
+						authService: [
 							'email',
 						],
 					},
@@ -1185,34 +1167,11 @@ export class Mattermost implements INodeType {
 								name: 'notificationValues',
 								values: [
 									{
-										displayName: 'Email',
-										name: 'email',
+										displayName: 'Channel',
+										name: 'channel',
 										type: 'boolean',
-										default: false,
-										description: `Set to "true" to enable email notifications, "false" to disable. Defaults to "true".`
-									},
-									{
-										displayName: 'Push',
-										name: 'push',
-										type: 'options',
-										options: [
-											{
-												name: 'All',
-												value: 'all',
-												description: 'Notifications for all activity',
-											},
-											{
-												name: 'Mention',
-												value: 'mention',
-												description: 'Mentions and direct messages only',
-											},
-											{
-												name: 'None',
-												value: 'none',
-												description: 'Mentions and direct messages only',
-											},
-										],
-										default: 'mention',
+										default: true,
+										description: `Set to "true" to enable channel-wide notifications (@channel, @all, etc.), "false" to disable. Defaults to "true".`,
 									},
 									{
 										displayName: 'Desktop',
@@ -1245,18 +1204,11 @@ export class Mattermost implements INodeType {
 										description: `Set to "true" to enable sound on desktop notifications, "false" to disable. Defaults to "true".`,
 									},
 									{
-										displayName: 'Mention Keys',
-										name: 'mention_keys',
-										type: 'string',
-										default: '',
-										description: `A comma-separated list of words to count as mentions. Defaults to username and @username.`,
-									},
-									{
-										displayName: 'Channel',
-										name: 'channel',
+										displayName: 'Email',
+										name: 'email',
 										type: 'boolean',
-										default: true,
-										description: `Set to "true" to enable channel-wide notifications (@channel, @all, etc.), "false" to disable. Defaults to "true".`,
+										default: false,
+										description: `Set to "true" to enable email notifications, "false" to disable. Defaults to "true".`
 									},
 									{
 										displayName: 'First Name',
@@ -1264,6 +1216,36 @@ export class Mattermost implements INodeType {
 										type: 'boolean',
 										default: false,
 										description: `Set to "true" to enable mentions for first name. Defaults to "true" if a first name is set, "false" otherwise.`,
+									},
+									{
+										displayName: 'Mention Keys',
+										name: 'mention_keys',
+										type: 'string',
+										default: '',
+										description: `A comma-separated list of words to count as mentions. Defaults to username and @username.`,
+									},
+									{
+										displayName: 'Push',
+										name: 'push',
+										type: 'options',
+										options: [
+											{
+												name: 'All',
+												value: 'all',
+												description: 'Notifications for all activity',
+											},
+											{
+												name: 'Mention',
+												value: 'mention',
+												description: 'Mentions and direct messages only',
+											},
+											{
+												name: 'None',
+												value: 'none',
+												description: 'Mentions and direct messages only',
+											},
+										],
+										default: 'mention',
 									},
 								],
 							},
@@ -1768,6 +1750,7 @@ export class Mattermost implements INodeType {
 								attachment.fields = attachment.fields.item;
 							} else {
 								// If it does not have any items set remove it
+								// @ts-ignore
 								delete attachment.fields;
 							}
 						}
@@ -1780,6 +1763,7 @@ export class Mattermost implements INodeType {
 								attachment.actions = attachment.actions.item;
 							} else {
 								// If it does not have any items set remove it
+								// @ts-ignore
 								delete attachment.actions;
 							}
 						}
@@ -1831,7 +1815,7 @@ export class Mattermost implements INodeType {
 
 					const username = this.getNodeParameter('username', i) as string;
 
-					const authService = this.getNodeParameter('auth_service', i) as string;
+					const authService = this.getNodeParameter('authService', i) as string;
 
 					body.auth_service = authService;
 
@@ -1839,7 +1823,7 @@ export class Mattermost implements INodeType {
 						body.email = this.getNodeParameter('email', i) as string;
 						body.password = this.getNodeParameter('password', i) as string;
 					} else {
-						body.auth_data = this.getNodeParameter('auth_data', i) as string;
+						body.auth_data = this.getNodeParameter('authData', i) as string;
 					}
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -1905,27 +1889,27 @@ export class Mattermost implements INodeType {
 					};
 
 					if (additionalFields.sort) {
-						if (additionalFields.inTeam !== undefined || additionalFields.inChannel !== undefined)  {
+						if (additionalFields.inTeam !== undefined || additionalFields.inChannel !== undefined) {
 
 							if (additionalFields.inTeam !== undefined
-							&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
+								&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
 								throw new Error(`When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
 							}
 							if (additionalFields.inChannel !== undefined
-							&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
-									throw new Error(`When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
+								&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
+								throw new Error(`When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
 							}
 							if (additionalFields.inChannel !== undefined
-							&& additionalFields.inChannel === ''
-							&& additionalFields.sort !== 'username') {
+								&& additionalFields.inChannel === ''
+								&& additionalFields.sort !== 'username') {
 								throw new Error('When sort is different than username In Channel must be set');
 							}
 
 							if (additionalFields.inTeam !== undefined
 								&& additionalFields.inTeam === ''
 								&& additionalFields.sort !== 'username') {
-									throw new Error('When sort is different than username In Team must be set');
-								}
+								throw new Error('When sort is different than username In Team must be set');
+							}
 
 						} else {
 							throw new Error(`When sort is defined either 'in team' or 'in channel' must be defined`);
@@ -2005,7 +1989,7 @@ export class Mattermost implements INodeType {
 							userIds.push(data.user_id);
 						}
 						if (userIds.length > 0) {
-							responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds , qs);
+							responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds, qs);
 						}
 					}
 				}
