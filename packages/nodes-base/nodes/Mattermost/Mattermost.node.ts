@@ -20,6 +20,7 @@ import {
 import {
 	snakeCase,
 } from 'change-case';
+import auth = require('basic-auth');
 
 export class Mattermost implements INodeType {
 	description: INodeTypeDescription = {
@@ -953,6 +954,11 @@ export class Mattermost implements INodeType {
 				},
 				options: [
 					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new user',
+					},
+					{
 						name: 'Deactive',
 						value: 'deactive',
 						description: 'Deactivates the user and revokes all its sessions by archiving its user object.',
@@ -972,10 +978,300 @@ export class Mattermost implements INodeType {
 						value: 'getById',
 						description: 'Get a user by id',
 					},
+					{
+						name: 'Invite',
+						value: 'invite',
+						description: 'Invite user to team',
+					},
 				],
 				default: '',
 				description: 'The operation to perform.',
 			},
+			// ----------------------------------
+			//         user:create
+			// ----------------------------------
+			// {
+			// 	displayName: 'Email',
+			// 	name: 'email',
+			// 	type: 'string',
+			// 	required: true,
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'user',
+			// 			],
+			// 			operation: [
+			// 				'create',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: '',
+			// },
+			{
+				displayName: 'Username',
+				name: 'username',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Auth Service',
+				name: 'auth_service',
+				type: 'options',
+				options: [
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'Gitlab',
+						value: 'gitlab',
+					},
+					{
+						name: 'LDAP',
+						value: 'ldap',
+					},
+					{
+						name: 'SAML',
+						value: 'saml',
+					},
+					{
+						name: 'Office365',
+						value: 'office365',
+					},
+					{
+						name: 'Google',
+						value: 'google',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Auth Data',
+				name: 'auth_data',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+					hide: {
+						auth_service: [
+							'email',
+						],
+					},
+				},
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+						auth_service: [
+							'email',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				typeOptions: {
+					password: true,
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+						auth_service: [
+							'email',
+						],
+					},
+				},
+				default: '',
+				description: 'The password used for email authentication.'
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'First Name',
+						name: 'first_name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Last Name',
+						name: 'last_name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Locale',
+						name: 'locale',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Nickname',
+						name: 'nickname',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Notification Settings',
+						name: 'notificationUi',
+						type: 'fixedCollection',
+						placeholder: 'Add Notification Setting',
+						default: {},
+						typeOptions: {
+							multipleValues: false,
+						},
+						options: [
+							{
+								displayName: 'Notify',
+								name: 'notificationValues',
+								values: [
+									{
+										displayName: 'Email',
+										name: 'email',
+										type: 'boolean',
+										default: false,
+										description: `Set to "true" to enable email notifications, "false" to disable. Defaults to "true".`
+									},
+									{
+										displayName: 'Push',
+										name: 'push',
+										type: 'options',
+										options: [
+											{
+												name: 'All',
+												value: 'all',
+												description: 'Notifications for all activity',
+											},
+											{
+												name: 'Mention',
+												value: 'mention',
+												description: 'Mentions and direct messages only',
+											},
+											{
+												name: 'None',
+												value: 'none',
+												description: 'Mentions and direct messages only',
+											},
+										],
+										default: 'mention',
+									},
+									{
+										displayName: 'Desktop',
+										name: 'desktop',
+										type: 'options',
+										options: [
+											{
+												name: 'All',
+												value: 'all',
+												description: 'Notifications for all activity',
+											},
+											{
+												name: 'Mention',
+												value: 'mention',
+												description: 'Mentions and direct messages only',
+											},
+											{
+												name: 'None',
+												value: 'none',
+												description: 'Mentions and direct messages only',
+											},
+										],
+										default: 'all',
+									},
+									{
+										displayName: 'Desktop Sound',
+										name: 'desktop_sound',
+										type: 'boolean',
+										default: true,
+										description: `Set to "true" to enable sound on desktop notifications, "false" to disable. Defaults to "true".`,
+									},
+									{
+										displayName: 'Mention Keys',
+										name: 'mention_keys',
+										type: 'string',
+										default: '',
+										description: `A comma-separated list of words to count as mentions. Defaults to username and @username.`,
+									},
+									{
+										displayName: 'Channel',
+										name: 'channel',
+										type: 'boolean',
+										default: true,
+										description: `Set to "true" to enable channel-wide notifications (@channel, @all, etc.), "false" to disable. Defaults to "true".`,
+									},
+									{
+										displayName: 'First Name',
+										name: 'first_name',
+										type: 'boolean',
+										default: false,
+										description: `Set to "true" to enable mentions for first name. Defaults to "true" if a first name is set, "false" otherwise.`,
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+
 			// ----------------------------------
 			//         user:deactivate
 			// ----------------------------------
@@ -996,6 +1292,48 @@ export class Mattermost implements INodeType {
 				},
 				default: '',
 				description: 'User GUID'
+			},
+
+			// ----------------------------------
+			//         user:invite
+			// ----------------------------------
+			{
+				displayName: 'Team ID',
+				name: 'teamId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTeams',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'invite',
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Emails',
+				name: 'emails',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'invite',
+						],
+					},
+				},
+				default: '',
+				description: `User's email. Multiple can be set separated by comma.`,
 			},
 
 			// ----------------------------------
@@ -1485,6 +1823,40 @@ export class Mattermost implements INodeType {
 					Object.assign(body, otherOptions);
 				}
 			} else if (resource === 'user') {
+
+				if (operation === 'create') {
+					// ----------------------------------
+					//          user:create
+					// ----------------------------------
+
+					const username = this.getNodeParameter('username', i) as string;
+
+					const authService = this.getNodeParameter('auth_service', i) as string;
+
+					body.auth_service = authService;
+
+					if (authService === 'email') {
+						body.email = this.getNodeParameter('email', i) as string;
+						body.password = this.getNodeParameter('password', i) as string;
+					} else {
+						body.auth_data = this.getNodeParameter('auth_data', i) as string;
+					}
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					body.username = username;
+
+					Object.assign(body, additionalFields);
+
+					if (body.notificationUi) {
+						body.notify_props = (body.notificationUi as IDataObject).notificationValues;
+					}
+
+					requestMethod = 'POST';
+
+					endpoint = 'users';
+				}
+
 				// TODO: Remove the "deactive" again in the future. In here temporary
 				//       to not break workflows for people which set the option before
 				//       typo got fixed. JO 2020-01-17
@@ -1598,6 +1970,22 @@ export class Mattermost implements INodeType {
 					//@ts-ignore
 					body = userIds;
 
+				}
+
+				if (operation === 'invite') {
+					// ----------------------------------
+					//          user:invite
+					// ----------------------------------
+					const teamId = this.getNodeParameter('teamId', i) as string;
+
+					const emails = (this.getNodeParameter('emails', i) as string).split(',');
+
+					//@ts-ignore
+					body = emails;
+
+					requestMethod = 'POST';
+
+					endpoint = `teams/${teamId}/invite/email`;
 				}
 			}
 			else {
