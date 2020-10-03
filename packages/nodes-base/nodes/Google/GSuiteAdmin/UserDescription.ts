@@ -665,14 +665,14 @@ export const userFields = [
 				type: 'string',
 				default: '',
 				description: `Free text search terms to find users that match these terms in any field, except for extended properties.</br>
-				For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>`,
+				For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users" target="_blank">Search for Users</a>`,
 			},
 			{
 				displayName: 'Show Deleted',
 				name: 'showDeleted',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to include deleted users (with status equals "cancelled") in the result.',
+				description: 'If set to true, retrieves the list of deleted users.',
 			},
 			{
 				displayName: 'Sort Order',
