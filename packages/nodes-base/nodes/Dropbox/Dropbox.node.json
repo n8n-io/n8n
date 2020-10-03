@@ -1,0 +1,14 @@
+{
+  "node": "n8n-nodes-base.dropbox",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Data & Storage"],
+  "resources": {
+    "credentialDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/credentials/dropbox" }
+    ],
+    "primaryDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.dropbox/" }
+    ]
+  }
+}

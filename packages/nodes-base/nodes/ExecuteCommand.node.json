@@ -1,0 +1,11 @@
+{
+  "node": "n8n-nodes-base.executeCommand",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Development", "Utility"],
+  "resources": {
+    "primaryDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.executeCommand/" }
+    ]
+  }
+}

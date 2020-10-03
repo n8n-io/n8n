@@ -1,0 +1,26 @@
+{
+  "node": "n8n-nodes-base.slack",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Communication"],
+  "resources": {
+    "credentialDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/credentials/slack" }
+    ],
+    "primaryDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.slack/" }
+    ],
+    "generic": [
+      {
+        "label": "Nathan: Your n8n Virtual Assistant",
+        "icon": "👦",
+        "url": "https://medium.com/n8n-io/nathan-your-n8n-virtual-assistant-98ac611ee7a7"
+      },
+      {
+        "label": "Giving kudos to contributors with GitHub, Slack, and n8n",
+        "icon": "👏",
+        "url": "https://medium.com/n8n-io/giving-kudos-to-contributors-with-github-slack-and-n8n-b3f5f4a653a6"
+      }
+    ]
+  }
+}

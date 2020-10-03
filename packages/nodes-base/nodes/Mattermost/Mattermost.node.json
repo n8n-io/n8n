@@ -1,0 +1,36 @@
+{
+  "node": "n8n-nodes-base.mattermost",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Communication"],
+  "resources": {
+    "credentialDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/credentials/mattermost" }
+    ],
+    "primaryDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.mattermost/" }
+    ],
+    "generic": [
+      {
+        "label": "Effortless video collaboration with Whereby, Mattermost, and n8n",
+        "icon": "📹",
+        "url": "https://medium.com/n8n-io/effortless-video-collaboration-with-whereby-mattermost-and-n8n-8fc397feb9cb"
+      },
+      {
+        "label": "Creating Error Workflows in n8n",
+        "icon": "🌪",
+        "url": "https://medium.com/n8n-io/creating-error-workflows-in-n8n-6e03c9ecbc0f"
+      },
+      {
+        "label": "Creating Custom Incident Response Workflows with n8n",
+        "icon": "🚨",
+        "url": "https://medium.com/n8n-io/creating-custom-incident-response-workflows-with-n8n-9baef0bbedb9"
+      },
+      {
+        "label": "Webhooks Fun with n8n and Mattermost",
+        "icon": "🍸",
+        "url": "https://medium.com/n8n-io/webhooks-fun-with-n8n-and-mattermost-4ebf7e2b4d2a"
+      }
+    ]
+  }
+}
