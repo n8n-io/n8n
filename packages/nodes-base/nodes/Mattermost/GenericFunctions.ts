@@ -6,13 +6,13 @@ import {
 
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export interface IAttachment  {
+export interface IAttachment {
 	fields: {
 		item?: object[];
 	};
