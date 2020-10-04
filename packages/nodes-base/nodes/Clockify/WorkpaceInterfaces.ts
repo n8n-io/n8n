@@ -1,7 +1,7 @@
 import { IHourlyRateDto, IMembershipDto } from './CommonDtos';
 
 enum AdminOnlyPagesEnum {
-	PROJECT ='PROJECT',
+	PROJECT = 'PROJECT',
 	TEAM = 'TEAM',
 	REPORTS = 'REPORTS',
 }
@@ -70,7 +70,7 @@ export interface IWorkspaceDto {
 	hourlyRate: IHourlyRateDto;
 	id: string;
 	imageUrl: string;
-	memberships:  IMembershipDto[];
+	memberships: IMembershipDto[];
 	name: string;
 	workspaceSettings: IWorkspaceSettingsDto;
 }

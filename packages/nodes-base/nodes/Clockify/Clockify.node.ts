@@ -3,12 +3,12 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
 } from 'n8n-workflow';
 
 import {
@@ -30,13 +30,13 @@ import {
 } from './ProjectInterfaces';
 
 import {
-	projectOperations,
 	projectFields,
+	projectOperations,
 } from './ProjectDescription';
 
 import {
-	tagOperations,
 	tagFields,
+	tagOperations,
 } from './TagDescription';
 
 import {
@@ -45,7 +45,6 @@ import {
 } from './TimeEntryDescription';
 
 import * as moment from 'moment-timezone';
-import { boardColumnFields } from '../MondayCom/BoardColumnDescription';
 
 export class Clockify implements INodeType {
 	description: INodeTypeDescription = {
@@ -359,14 +358,12 @@ export class Clockify implements INodeType {
 						body,
 						qs
 					);
-
-					responseData = { success: true };
 				}
 			}
 
 			if (resource === 'tag') {
 
-				if (operation === 'add') {
+				if (operation === 'create') {
 
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
@@ -456,8 +453,6 @@ export class Clockify implements INodeType {
 						body,
 						qs
 					);
-
-					responseData = { success: true };
 				}
 			}
 
@@ -573,8 +568,6 @@ export class Clockify implements INodeType {
 						body,
 						qs
 					);
-
-					responseData = { success: true };
 				}
 			}
 		}

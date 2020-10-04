@@ -16,9 +16,9 @@ export const tagOperations = [
 		},
 		options: [
 			{
-				name: 'Add',
-				value: 'add',
-				description: 'Add a tag',
+				name: 'Create',
+				value: 'create',
+				description: 'Create a tag',
 			},
 			{
 				name: 'Delete',
@@ -59,7 +59,7 @@ export const tagFields = [
 					'tag',
 				],
 				operation: [
-					'add',
+					'create',
 				],
 			},
 		},

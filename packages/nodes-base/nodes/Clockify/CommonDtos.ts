@@ -20,7 +20,7 @@ export interface IMembershipDto {
 
 export interface ITagDto {
 	id: string;
-	name: any;
+	name: any; // tslint:disable-line:no-any
 	workspaceId: string;
 	archived: boolean;
 }
