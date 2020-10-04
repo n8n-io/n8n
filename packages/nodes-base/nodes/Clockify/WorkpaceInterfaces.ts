@@ -74,3 +74,9 @@ export interface IWorkspaceDto {
 	name: string;
 	workspaceSettings: IWorkspaceSettingsDto;
 }
+
+export interface IClientDto {
+	id: string;
+	name: string;
+	workspaceId: string;
+}

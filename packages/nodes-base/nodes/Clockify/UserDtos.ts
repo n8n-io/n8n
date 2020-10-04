@@ -7,7 +7,7 @@ enum UserStatusEnum {
 interface IUserSettingsDto {
 }
 
-export interface ICurrentUserDto {
+export interface IUserDto {
 	activeWorkspace: string;
 	defaultWorkspace: string;
 	email: string;

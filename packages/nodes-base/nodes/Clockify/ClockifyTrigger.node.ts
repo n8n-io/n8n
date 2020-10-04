@@ -15,7 +15,7 @@ import {
 } from './GenericFunctions';
 
 import { EntryTypeEnum } from './EntryTypeEnum';
-import { ICurrentUserDto } from './UserDtos';
+import { IUserDto } from './UserDtos';
 import { IWorkspaceDto } from './WorkpaceInterfaces';
 
 
@@ -29,7 +29,7 @@ export class ClockifyTrigger implements INodeType {
 		description: 'Watches Clockify For Events',
 		defaults: {
 			name: 'Clockify Trigger',
-			color: '#00FF00',
+			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -93,7 +93,7 @@ export class ClockifyTrigger implements INodeType {
 
 		if (!webhookData.userId) {
 			// Cache the user-id that we do not have to request it every time
-			const userInfo: ICurrentUserDto = await clockifyApiRequest.call(this, 'GET', 'user');
+			const userInfo: IUserDto = await clockifyApiRequest.call(this, 'GET', 'user');
 			webhookData.userId = userInfo.id;
 		}
 
@@ -118,8 +118,7 @@ export class ClockifyTrigger implements INodeType {
 
 		if (Array.isArray(result) && result.length !== 0) {
 			result = [this.helpers.returnJsonArray(result)];
-			return result;
 		}
-		return null;
+		return result;
 	}
 }
