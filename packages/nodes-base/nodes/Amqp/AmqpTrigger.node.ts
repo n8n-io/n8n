@@ -75,6 +75,13 @@ export class AmqpTrigger implements INodeType {
 						default: false,
 						description: 'Parse the body to an object.',
 					},
+					{
+						displayName: 'Convert JSON Body content from Byte Array to string',
+						name: 'jsonConvertByteArrayToString',
+						type: 'boolean',
+						default: false,
+						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string - Azure Service Bus',
+					},
 				],
 			},
 		]
@@ -106,28 +113,42 @@ export class AmqpTrigger implements INodeType {
 		const container = require('rhea');
 		const connectOptions: ContainerOptions = {
 			host: credentials.hostname,
+			hostname: credentials.hostname,
 			port: credentials.port,
 			reconnect: true,		// this id the default anyway
 			reconnect_limit: 50,	// try for max 50 times, based on a back-off algorithm
 			container_id: (durable ? clientname : null)
 		};
+
 		if (credentials.username || credentials.password) {
 			container.options.username = credentials.username;
 			container.options.password = credentials.password;
+			// Azure Service Bus credentials in Object
+			connectOptions.username = credentials.username;
+			connectOptions.password = credentials.password;
+		}
+
+		if (credentials.transportType) {
+			connectOptions.transport = credentials.transportType;
 		}
 
 		let lastMsgId: number | undefined = undefined;
 		const self = this;
 
 		container.on('message', (context: any) => { // tslint:disable-line:no-any
+			// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
 			if (context.message.message_id && context.message.message_id === lastMsgId) {
-				// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
-				lastMsgId = context.message.message_id;
 				return;
 			}
+			lastMsgId = context.message.message_id;
 
 			let data = context.message;
 
+			if(options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+				// The buffer is not ready... Stringify and parse back to load it.
+				let cont = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null,JSON.parse(cont).data);	
+			}
 			if (options.jsonParseBody === true) {
 				data.body = JSON.parse(data.body);
 			}

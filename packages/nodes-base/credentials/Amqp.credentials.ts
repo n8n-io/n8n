@@ -36,5 +36,11 @@ export class Amqp implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Transport Type',
+			name: 'transportType',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
 	];
 }

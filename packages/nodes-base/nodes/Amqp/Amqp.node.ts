@@ -86,7 +86,8 @@ export class Amqp implements INodeType {
 		const container = require('rhea');
 
 		const connectOptions: ContainerOptions = {
-			host: credentials.hostname,
+			host: credentials.hostname,			
+			hostname: credentials.hostname,
 			port: credentials.port,
 			reconnect: true,		// this id the default anyway
 			reconnect_limit: 50, 	// try for max 50 times, based on a back-off algorithm
@@ -94,6 +95,11 @@ export class Amqp implements INodeType {
 		if (credentials.username || credentials.password) {
 			container.options.username = credentials.username;
 			container.options.password = credentials.password;
+			connectOptions.username = credentials.username;
+			connectOptions.password = credentials.password;
+		}
+		if (credentials.transportType) {
+			connectOptions.transport = credentials.transportType;
 		}
 
 		const allSent = new Promise(( resolve ) => {
