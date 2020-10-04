@@ -1,4 +1,4 @@
-import {ITimeIntervalDto} from "./CommonDtos";
+import { ITimeIntervalDto } from './CommonDtos';
 
 interface ITimeEntriesDurationRequest {
 	start: string;
@@ -18,7 +18,7 @@ export interface ITimeEntryRequest {
 	timeInterval: ITimeEntriesDurationRequest;
 	workspaceId: string;
 	isLocked: boolean;
-};
+}
 
 export interface ITimeEntryDto {
 	billable: boolean;
@@ -32,4 +32,3 @@ export interface ITimeEntryDto {
 	userId: string;
 	workspaceId: string;
 }
-
