@@ -1421,6 +1421,11 @@ export default mixins(
 					[0, 150],
 				);
 
+				if (newNodeData.webhookId) {
+					// Make sure that the node gets a new unique webhook-ID
+					newNodeData.webhookId = uuidv4();
+				}
+
 				await this.addNodes([newNodeData]);
 
 				// Automatically deselect all nodes and select the current one and also active
