@@ -1,5 +1,4 @@
-import {IHourlyRateDto, IMembershipDto} from "./CommonDtos";
-import { INodeExecutionData } from "n8n-workflow";
+import { IHourlyRateDto, IMembershipDto } from './CommonDtos';
 
 enum EstimateEnum {
 	AUTO = "AUTO",
@@ -11,7 +10,7 @@ interface IEstimateDto {
 	type: EstimateEnum;
 }
 
-export interface IProjectDto{
+export interface IProjectDto {
 	archived: boolean;
 	billable: boolean;
 	clientId: string;

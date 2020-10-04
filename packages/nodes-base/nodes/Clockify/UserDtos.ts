@@ -12,7 +12,7 @@ export interface IUserDto {
 	defaultWorkspace: string;
 	email: string;
 	id: string;
-	memberships:  IMembershipDto [];
+	memberships: IMembershipDto[];
 	name: string;
 	profilePicture: string;
 	settings: IUserSettingsDto;
