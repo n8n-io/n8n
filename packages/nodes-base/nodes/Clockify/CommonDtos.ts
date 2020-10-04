@@ -17,3 +17,16 @@ export interface IMembershipDto {
 	targetId: string;
 	userId: string;
 }
+
+export interface ITagDto {
+	id: string;
+	name: any;
+	workspaceId: string;
+	archived: boolean;
+}
+
+export interface ITimeIntervalDto {
+	duration: string;
+	end: string;
+	start: string;
+}
