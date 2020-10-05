@@ -255,6 +255,16 @@ export class Mailchimp implements INodeType {
 						description: 'Get all the campaigns'
 					},
 					{
+						name: 'Replicate',
+						value: 'replicate',
+						description: 'Replicate a campaign'
+					},
+					{
+						name: 'Resend',
+						value: 'resend',
+						description: 'Creates a Resend to Non-Openers version of this campaign'
+					},
+					{
 						name: 'Send',
 						value: 'send',
 						description: 'Send a campaign'
@@ -1700,7 +1710,9 @@ export class Mailchimp implements INodeType {
 						operation: [
 							'send',
 							'get',
-							'delete'
+							'delete',
+							'replicate',
+							'resend'
 						]
 					}
 				},
@@ -2109,6 +2121,7 @@ export class Mailchimp implements INodeType {
 				}
 			}
 			if (resource === 'campaign') {
+				//https://mailchimp.com/developer/api/marketing/campaigns/list-campaigns/
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const options = this.getNodeParameter('options', i) as IDataObject;
@@ -2148,22 +2161,33 @@ export class Mailchimp implements INodeType {
 						responseData = responseData.campaigns
 					}
 				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/send-campaign/
 				if (operation === 'send') {
 					const campaignId = this.getNodeParameter('campaignId', i) as string;
 					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {})
 				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/get-campaign-info/
 				if (operation === 'get') {
 					const campaignId = this.getNodeParameter('campaignId', i) as string;
 					if(!campaignId){
-						// TODO
-						// Display error message.
 						throw new Error("Campaign ID is required");
 					}
 					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'GET', {})
 				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/delete-campaign/
 				if (operation === 'delete') {
 					const campaignId = this.getNodeParameter('campaignId', i) as string;
-					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'Delete', {})
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'DELETE', {})
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/replicate-campaign/
+				if (operation === 'replicate') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/replicate`, 'POST', {})
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/resend-campaign/
+				if (operation === 'resend') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/create-resend`, 'POST', {})
 				}
 			}
 
