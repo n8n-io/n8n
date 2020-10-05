@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	campaignFieldsMetadata,
 	mailchimpApiRequest,
 	mailchimpApiRequestAllItems,
 	validateJSON,
@@ -1630,15 +1631,23 @@ export class Mailchimp implements INodeType {
 					{
 						displayName: 'Exclude Fields',
 						name: 'excludeFields',
-						type: 'string',
-						default: '',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getCampaignsFields',
+						},
+						default: [],
 						description: 'A comma-separated list of fields to exclude.',
 					},
 					{
 						displayName: 'Fields',
 						name: 'fields',
-						type: 'string',
-						default: '',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getCampaignsFields',
+						},
+						default: [
+							'campaigns.id',
+						],
 						description: 'A comma-separated list of fields to return.',
 					},
 					{
@@ -1664,6 +1673,40 @@ export class Mailchimp implements INodeType {
 						type: 'dateTime',
 						default: '',
 						description: 'Restrict the response to campaigns sent after the set time.',
+					},
+					{
+						displayName: 'Sort Direction',
+						name: 'sortDirection',
+						type: 'options',
+						options: [
+							{
+								name: 'ASC',
+								value: 'ASC',
+							},
+							{
+								name: 'DESC',
+								value: 'DESC',
+							},
+						],
+						default: '',
+						description: 'Determines the order direction for sorted results.',
+					},
+					{
+						displayName: 'Sort Field',
+						name: 'sortField',
+						type: 'options',
+						options: [
+							{
+								name: 'Create Time',
+								value: 'create_time',
+							},
+							{
+								name: 'Send Time',
+								value: 'send_time',
+							},
+						],
+						default: '',
+						description: 'Returns files sorted by the specified field.',
 					},
 					{
 						displayName: 'Status',
@@ -1698,10 +1741,7 @@ export class Mailchimp implements INodeType {
 			{
 				displayName: 'Campaign ID',
 				name: 'campaignId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getCampaigns',
-				},
+				type: 'string',
 				displayOptions: {
 					show: {
 						resource: [
@@ -1790,9 +1830,21 @@ export class Mailchimp implements INodeType {
 						value: campaignId,
 					});
 				}
-				return returnData				
+				return returnData;
+			},
+
+			// Get all the available fields to display them to users so that they can select them easily
+			async getCampaignsFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const campaignFields of campaignFieldsMetadata) {
+					returnData.push({
+						name: campaignFields,
+						value: campaignFields,
+					});
+				}
+				return returnData;
 			}
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -2129,65 +2181,72 @@ export class Mailchimp implements INodeType {
 						qs.status = options.status as string;
 					}
 					if (options.beforeCreateTime) {
-						qs.beforeCreateTime = options.beforeCreateTime as string;
+						qs.before_create_time = options.beforeCreateTime as string;
 					}
 					if (options.beforeSendTime) {
-						qs.beforeSendTime = options.beforeSendTime as string;
+						qs.before_send_time = options.beforeSendTime as string;
 					}
-					// TODO
-					// Figure out how to make excludeFields and fileds work
-					// if (options.excludeFields) {
-					// 	qs.excludeFields = options.excludeFields as string;
-					// }
-					// if (options.fields) {
-					// 	qs.fields = options.fields as string;
-					// }
+					if (options.excludeFields) {
+						qs.exclude_fields = (options.exclude_fields as string[]).join(',');
+					}
+					if (options.fields) {
+						qs.fields = (options.fields as string[]).join(',');
+						if ((options.fields as string[]).includes('*')) {
+							qs.fields = campaignFieldsMetadata.join(',');
+						}
+					} else {
+						qs.fields = 'campaigns.id';
+					}
+
 					if (options.listId) {
-						qs.listId = options.listId as string;
+						qs.list_id = options.listId as string;
 					}
 					if (options.sinceCreateTime) {
-						qs.sinceCreateTime = options.sinceCreateTime as string;
+						qs.since_create_time = options.sinceCreateTime as string;
 					}
 					if (options.sinceSendTime) {
-						qs.sinceSendTime = options.sinceSendTime as string;
+						qs.since_send_time = options.sinceSendTime as string;
 					}
-					// TODO
-					// Make the options work when returnAll is false
+					if (options.sortDirection) {
+						qs.sort_dir = options.sortDirection as string;
+					}
+					if (options.sortField) {
+						qs.sort_field = options.sortField as string;
+					}
 					if (returnAll === true) {
-						responseData = await mailchimpApiRequestAllItems.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs)
+						responseData = await mailchimpApiRequestAllItems.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs);
 					} else {
 						qs.count = this.getNodeParameter('limit', i) as number;
-						responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs)
-						responseData = responseData.campaigns
+						responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
+						responseData = responseData.campaigns;
 					}
 				}
 				//https://mailchimp.com/developer/api/marketing/campaigns/send-campaign/
 				if (operation === 'send') {
 					const campaignId = this.getNodeParameter('campaignId', i) as string;
-					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {})
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {});
+					responseData = { success: true };
 				}
 				//https://mailchimp.com/developer/api/marketing/campaigns/get-campaign-info/
 				if (operation === 'get') {
 					const campaignId = this.getNodeParameter('campaignId', i) as string;
-					if(!campaignId){
-						throw new Error("Campaign ID is required");
-					}
-					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'GET', {})
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'GET', {});
 				}
 				//https://mailchimp.com/developer/api/marketing/campaigns/delete-campaign/
 				if (operation === 'delete') {
 					const campaignId = this.getNodeParameter('campaignId', i) as string;
-					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'DELETE', {})
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'DELETE', {});
+					responseData = { success: true };
 				}
 				//https://mailchimp.com/developer/api/marketing/campaigns/replicate-campaign/
 				if (operation === 'replicate') {
 					const campaignId = this.getNodeParameter('campaignId', i) as string;
-					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/replicate`, 'POST', {})
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/replicate`, 'POST', {});
 				}
 				//https://mailchimp.com/developer/api/marketing/campaigns/resend-campaign/
 				if (operation === 'resend') {
 					const campaignId = this.getNodeParameter('campaignId', i) as string;
-					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/create-resend`, 'POST', {})
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/create-resend`, 'POST', {});
 				}
 			}
 
