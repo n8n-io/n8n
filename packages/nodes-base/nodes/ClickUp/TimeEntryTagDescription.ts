@@ -143,16 +143,14 @@ export const timeEntryTagFields = [
 		required: true,
 	},
 	{
-		displayName: 'Tag Names',
-		name: 'tagNames',
-		type: 'multiOptions',
+		displayName: 'Tags',
+		name: 'tagsUi',
+		type: 'fixedCollection',
+		placeholder: 'Add Tag',
 		typeOptions: {
-			loadOptionsMethod: 'getTimeEntryTags',
-			loadOptionsDependsOn: [
-				'teamId',
-			],
+			multipleValues: true,
 		},
-		default: [],
+		default: {},
 		displayOptions: {
 			show: {
 				resource: [
@@ -163,7 +161,32 @@ export const timeEntryTagFields = [
 				],
 			},
 		},
-		required: true,
+		options: [
+			{
+				displayName: 'Tag',
+				name: 'tagsValues',
+				values: [
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Background Color',
+						name: 'tag_bg',
+						type: 'color',
+						default: '#ff0000',
+					},
+					{
+						displayName: 'Foreground Color',
+						name: 'tag_fg',
+						type: 'color',
+						default: '#ff0000',
+					},
+				],
+			},
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                timeEntryTag:remove                         */

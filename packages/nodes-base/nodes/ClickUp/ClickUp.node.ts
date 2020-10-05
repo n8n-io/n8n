@@ -1108,6 +1108,7 @@ export class ClickUp implements INodeType {
 				}
 				if (operation === 'create') {
 					const teamId = this.getNodeParameter('team', i) as string;
+					const taskId = this.getNodeParameter('task', i) as string;
 					const start = this.getNodeParameter('start', i) as string;
 					const duration = this.getNodeParameter('duration', i) as number;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -1115,13 +1116,10 @@ export class ClickUp implements INodeType {
 					const body: IDataObject = {
 						start: moment.tz(start, timezone).valueOf(),
 						duration:  duration * 60000,
+						tid: taskId,
 					};
 					Object.assign(body, additionalFields);
 
-					if (body.task) {
-						body.tid = body.task;
-						body.custom_task_ids = true;
-					}
 					if (body.tags) {
 						body.tags = (body.tags as string[]).map((tag) => (JSON.parse(tag)));
 					}
@@ -1155,10 +1153,16 @@ export class ClickUp implements INodeType {
 				if (operation === 'add') {
 					const teamId = this.getNodeParameter('team', i) as string;
 					const timeEntryIds = this.getNodeParameter('timeEntryIds', i) as string;
-					const tagNames = this.getNodeParameter('tagNames', i) as string[];
+					const tagsUi = this.getNodeParameter('tagsUi', i) as IDataObject;
 					const body: IDataObject = {};
 					body.time_entry_ids = timeEntryIds.split(',');
-					body.tags = tagNames.map((tag) => (JSON.parse(tag)));
+					if (tagsUi) {
+						const tags = (tagsUi as IDataObject).tagsValues as IDataObject[];
+						if (tags.length  === 0) {
+							throw new Error('At least one tag must be set');
+						}
+						body.tags = tags;
+					}
 					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries/tags`, body);
 					responseData = { success: true };
 				}
@@ -1181,7 +1185,7 @@ export class ClickUp implements INodeType {
 					const tagNames = this.getNodeParameter('tagNames', i) as string[];
 					const body: IDataObject = {};
 					body.time_entry_ids = timeEntryIds.split(',');
-					body.tags = tagNames.map((tag) => ( { name: JSON.parse(tag).name }));
+					body.tags = tagNames.map((tag) => ( JSON.parse(tag).name ));
 					responseData = await clickupApiRequest.call(this, 'DELETE', `/team/${teamId}/time_entries/tags`, body);
 					responseData = { success: true };
 				}

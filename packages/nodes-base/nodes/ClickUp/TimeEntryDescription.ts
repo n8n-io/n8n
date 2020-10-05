@@ -23,7 +23,7 @@ export const timeEntryOperations = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description:'Delete a time Entry',
+				description:'Delete a time entry',
 			},
 			{
 				name: 'Get',
@@ -38,37 +38,17 @@ export const timeEntryOperations = [
 			{
 				name: 'Start',
 				value: 'start',
-				description:'Start a time Entry',
+				description:'Start a time entry',
 			},
 			{
 				name: 'Stop',
 				value: 'stop',
-				description:'Stop a time Entry',
+				description:'Stop the current running timer',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description:'Update a time Entry',
-			},
-			{
-				name: 'Remove tags',
-				value: 'removeTags',
-				description:'Remove tags from time entries',
-			},
-			{
-				name: 'Get all tags',
-				value: 'getAllTags',
-				description:'Get all tags from time entries',
-			},
-			{
-				name: 'Add tags',
-				value: 'addTags',
-				description:'Add tags from time entries',
-			},
-			{
-				name: 'Change tag name',
-				value: 'changeTagName',
-				description:'Change tag name from time entries',
 			},
 		],
 		default: 'create',
@@ -410,6 +390,28 @@ export const timeEntryFields = [
 		description: 'Duration in minutes',
 	},
 	{
+		displayName: 'Task ID',
+		name: 'task',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'timeEntry',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getTasks',
+			loadOptionsDependsOn: [
+				'list',
+			],
+		},
+		default: '',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -462,18 +464,6 @@ export const timeEntryFields = [
 					loadOptionsMethod: 'getTimeEntryTags'
 				},
 				default: [],
-			},
-			{
-				displayName: 'Task ID',
-				name: 'task',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTasks',
-					loadOptionsDependsOn: [
-						'list',
-					],
-				},
-				default: '',
 			},
 		],
 	},
