@@ -6,6 +6,7 @@ import {
 export class WufooApi implements ICredentialType {
 	name = 'wufooApi';
 	displayName = 'Wufoo API';
+	documentationUrl = 'wufoo';
 	properties = [
 		{
 			displayName: 'API Key',
