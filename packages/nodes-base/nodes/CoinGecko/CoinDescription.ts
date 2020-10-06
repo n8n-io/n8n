@@ -114,6 +114,50 @@ export const coinFields = [
 		description: 'Coin ID',
 	},
 	{
+		displayName: 'Base Currency',
+		name: 'baseCurrency',
+		required: true,
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCoins',
+		},
+		displayOptions: {
+			show: {
+
+				operation: [
+					'candlestick',
+				],
+				resource: [
+					'coin',
+				],
+			},
+		},
+		default: '',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
+	},
+	{
+		displayName: 'Base Currency',
+		name: 'baseCurrency',
+		required: true,
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getCurrencies',
+		},
+		displayOptions: {
+			show: {
+
+				operation: [
+					'market',
+				],
+				resource: [
+					'coin',
+				],
+			},
+		},
+		default: '',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
+	},
+	{
 		displayName: 'Coin ID',
 		name: 'coinId',
 		required: true,
@@ -126,7 +170,6 @@ export const coinFields = [
 				operation: [
 					'ticker',
 					'history',
-					'candlestick',
 				],
 				resource: [
 					'coin',
@@ -138,8 +181,8 @@ export const coinFields = [
 		description: 'Coin ID',
 	},
 	{
-		displayName: 'Coin IDs',
-		name: 'coinIds',
+		displayName: 'Base Currencies',
+		name: 'baseCurrencies',
 		required: true,
 		type: 'multiOptions',
 		typeOptions: {
@@ -160,7 +203,7 @@ export const coinFields = [
 		},
 		default: [],
 		placeholder: 'bitcoin',
-		description: 'ID of coins, comma-separated. Refers to Coin / GetAll.',
+		description: 'The first currency in the pair. For BTC:ETH this is BTC.',
 	},
 	{
 		displayName: 'Platform ID',
@@ -272,9 +315,8 @@ export const coinFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'market',
-					'marketChart',
 					'candlestick',
+					'marketChart',
 				],
 				resource: [
 					'coin',
@@ -285,8 +327,8 @@ export const coinFields = [
 		description: 'The second currency in the pair. For BTC:ETH this is ETH.',
 	},
 	{
-		displayName: 'Currencies',
-		name: 'currencies',
+		displayName: 'Quote Currencies',
+		name: 'quoteCurrencies',
 		type: 'multiOptions',
 		typeOptions: {
 			loadOptionsMethod: 'getCurrencies',
@@ -303,10 +345,10 @@ export const coinFields = [
 			},
 		},
 		default: [],
-		description: 'Currencies of coin.',
+		description: 'The second currency in the pair. For BTC:ETH this is ETH.',
 	},
 	{
-		displayName: 'Historical Range (days)',
+		displayName: 'Range (days)',
 		name: 'days',
 		required: true,
 		type: 'options',
