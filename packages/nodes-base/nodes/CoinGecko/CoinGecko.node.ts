@@ -238,10 +238,10 @@ export class CoinGecko implements INodeType {
 				if (operation === 'market') {
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const quoteCurrency = this.getNodeParameter('quoteCurrency', i) as string;
+					const baseCurrency = this.getNodeParameter('baseCurrency', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
-					qs.vs_currency = quoteCurrency;
+					qs.vs_currency = baseCurrency;
 
 					Object.assign(qs, options);
 
@@ -278,17 +278,17 @@ export class CoinGecko implements INodeType {
 				if (operation === 'price') {
 
 					const searchBy = this.getNodeParameter('searchBy', i) as string;
-					const currencies = this.getNodeParameter('currencies', i) as string[];
+					const quoteCurrencies = this.getNodeParameter('quoteCurrencies', i) as string[];
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
-					qs.vs_currencies = currencies.join(',');
+					qs.vs_currencies = quoteCurrencies.join(',');
 
 					Object.assign(qs, options);
 
 					if (searchBy === 'coinId') {
-						const coinIds = this.getNodeParameter('coinIds', i) as string[];
+						const baseCurrencies = this.getNodeParameter('baseCurrencies', i) as string[];
 
-						qs.ids = coinIds.join(',');
+						qs.ids = baseCurrencies.join(',');
 
 						responseData = await coinGeckoApiRequest.call(
 							this,
@@ -424,7 +424,7 @@ export class CoinGecko implements INodeType {
 				//https://www.coingecko.com/api/documentations/v3#/coins/get_coins__id__ohlc
 				if (operation === 'candlestick') {
 
-					const coinId = this.getNodeParameter('coinId', i) as string;
+					const baseCurrency = this.getNodeParameter('baseCurrency', i) as string;
 					const quoteCurrency = this.getNodeParameter('quoteCurrency', i) as string;
 					const days = this.getNodeParameter('days', i) as string;
 
@@ -434,7 +434,7 @@ export class CoinGecko implements INodeType {
 					responseData = await coinGeckoApiRequest.call(
 						this,
 						'GET',
-						`/coins/${coinId}/ohlc`,
+						`/coins/${baseCurrency}/ohlc`,
 						{},
 						qs
 					);
