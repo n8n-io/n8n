@@ -6,6 +6,7 @@ import {
 export class MindeeReceiptApi implements ICredentialType {
 	name = 'mindeeReceiptApi';
 	displayName = 'Mindee Receipt API';
+	documentationUrl = 'mindee';
 	properties = [
 		{
 			displayName: 'API Key',
