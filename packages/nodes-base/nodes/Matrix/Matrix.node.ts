@@ -44,6 +44,7 @@ export class Matrix implements INodeType {
 		group: ['output'],
 		version: 1,
 		description: 'Consume Matrix API',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Matrix',
 			color: '#772244',

@@ -189,7 +189,7 @@ export const roomFields = [
     },
     {
         displayName: 'Exclude membership',
-        name: 'not_membership',
+        name: 'notMembership',
         type: 'options',
         displayOptions: {
             show: {

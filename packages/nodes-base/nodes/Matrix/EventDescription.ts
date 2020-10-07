@@ -14,12 +14,12 @@ export const eventOperations = [
 		},
 		options: [
 			{
-				name: 'Fetch a room event by ID',
-				value: 'getById',
+				name: 'Get a single event',
+				value: 'get',
 				description: 'Get information about an event',
 			},
 		],
-		default: 'getById',
+		default: 'get',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -41,7 +41,7 @@ export const eventFields = [
         displayOptions: {
             show: {
                 operation: [
-                    'getById',
+                    'get',
                 ],
                 resource: [
                     'event',
@@ -61,7 +61,7 @@ export const eventFields = [
         displayOptions: {
             show: {
                 operation: [
-                    'getById',
+                    'get',
                 ],
                 resource: [
                     'event',

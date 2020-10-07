@@ -14,17 +14,22 @@ export const messageOperations = [
 		},
 		options: [
 			{
-				name: 'Read',
-				value: 'read',
+				name: 'Create',
+				value: 'create',
+				description: 'Send a message into a room',
+			},
+			{
+				name: 'Get',
+				value: 'get',
 				description: 'Reads messages from a room',
 			},
 			{
-				name: 'Send',
-				value: 'send',
-				description: 'Send a message into a room',
+				name: 'Get all',
+				value: 'getAll',
+				description: 'Reads all messages from a room',
 			},
 		],
-		default: 'send',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -32,7 +37,7 @@ export const messageOperations = [
 export const messageFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                message:send                                */
+/*                              message:create                                */
 /* -------------------------------------------------------------------------- */
     
     
@@ -45,7 +50,7 @@ export const messageFields = [
 				displayOptions: {
 					show: {
 						operation: [
-							'send',
+							'create',
 						],
 						resource: [
 							'message',
@@ -66,7 +71,7 @@ export const messageFields = [
 				displayOptions: {
 					show: {
 						operation: [
-							'send',
+							'create',
 						],
 						resource: [
 							'message',
@@ -90,7 +95,7 @@ export const messageFields = [
 					'message',
 				],
 				operation: [
-					'read',
+					'get',
 				]
 			},
 		},
@@ -108,11 +113,35 @@ export const messageFields = [
 					'message',
 				],
 				operation: [
-					'read',
+					'get',
 				]
 			},
 		},
 		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API',
 		required: true,
 	},
+
+	
+/* ----------------------------------------------------------------------- */
+/*                                message:readAll                          */
+/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Room ID',
+		name: 'roomId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getAll',
+				]
+			},
+		},
+		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API',
+		required: true,
+	},
+
 ] as INodeProperties[];
