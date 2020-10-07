@@ -1158,7 +1158,7 @@ export class ClickUp implements INodeType {
 					body.time_entry_ids = timeEntryIds.split(',');
 					if (tagsUi) {
 						const tags = (tagsUi as IDataObject).tagsValues as IDataObject[];
-						if (tags.length  === 0) {
+						if (tags === undefined) {
 							throw new Error('At least one tag must be set');
 						}
 						body.tags = tags;
