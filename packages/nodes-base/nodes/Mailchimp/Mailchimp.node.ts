@@ -1647,6 +1647,11 @@ export class Mailchimp implements INodeType {
 						},
 						default: [
 							'campaigns.id',
+							'campaigns.status',
+							'campaigns.tracking',
+							'campaigns.settings.from_name',
+							'campaigns.settings.reply_to',
+							'campaigns.settings.title',
 						],
 						description: 'A comma-separated list of fields to return.',
 					},
@@ -2195,7 +2200,14 @@ export class Mailchimp implements INodeType {
 							qs.fields = campaignFieldsMetadata.join(',');
 						}
 					} else {
-						qs.fields = 'campaigns.id';
+						qs.fields = [
+							'campaigns.id',
+							'campaigns.status',
+							'campaigns.tracking',
+							'campaigns.settings.from_name',
+							'campaigns.settings.title',
+							'campaigns.settings.reply_to',
+						].join(',');
 					}
 
 					if (options.listId) {
