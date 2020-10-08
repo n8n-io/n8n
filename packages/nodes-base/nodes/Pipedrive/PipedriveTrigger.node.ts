@@ -187,12 +187,13 @@ export class PipedriveTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
+
 				const webhookData = this.getWorkflowStaticData('node');
 
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
+				const eventAction = this.getNodeParameter('action') as string;
+
+				const eventObject = this.getNodeParameter('object') as string;
 
 				// Webhook got created before so check if it still exists
 				const endpoint = `/webhooks`;
@@ -204,8 +205,11 @@ export class PipedriveTrigger implements INodeType {
 				}
 
 				for (const existingData of responseData.data) {
-					if (existingData.id === webhookData.webhookId) {
+					if (existingData.subscription_url === webhookUrl
+						&& existingData.event_action === eventAction
+						&& existingData.event_object === eventObject) {
 						// The webhook exists already
+						webhookData.webhookId = existingData.id;
 						return true;
 					}
 				}
