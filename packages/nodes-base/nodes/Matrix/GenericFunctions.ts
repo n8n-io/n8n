@@ -60,7 +60,7 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, item: IDataObject, resource: string, operation: string): Promise<any> {
+export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, item: IDataObject, index: number, resource: string, operation: string): Promise<any> {
 
 	if (resource === 'account') {
 		if (operation === 'whoami') {
@@ -69,18 +69,18 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 	}
 	else if (resource === 'room') {
 		if (operation === 'listMembers') {
-			const roomId = this.getNodeParameter('roomId', 0) as string;
-			const membership = this.getNodeParameter('membership', 0) as string;
-			const notMembership = this.getNodeParameter('notMembership', 0) as string;
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const membership = this.getNodeParameter('membership', index) as string;
+			const notMembership = this.getNodeParameter('notMembership', index) as string;
 			const qs: IDataObject = {
 				membership,
 				not_membership: notMembership,
 			};
 			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/members`, {}, qs);
 		} else if (operation === 'create') {
-			const name = this.getNodeParameter('roomName', 0) as string;
-			const preset = this.getNodeParameter('preset', 0) as string;
-			const roomAlias = this.getNodeParameter('roomAlias', 0) as string;
+			const name = this.getNodeParameter('roomName', index) as string;
+			const preset = this.getNodeParameter('preset', index) as string;
+			const roomAlias = this.getNodeParameter('roomAlias', index) as string;
 			const body: IDataObject = {
 				name,
 				preset,
@@ -88,22 +88,22 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			};
 			return await matrixApiRequest.call(this, 'POST', `/createRoom`, body);
 		} else if (operation === 'join') {
-			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', 0) as string;
+			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
 			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
 		} else if (operation === 'leave') {
-			const roomId = this.getNodeParameter('roomId', 0) as string;
+			const roomId = this.getNodeParameter('roomId', index) as string;
 			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/leave`);
 		} else if (operation === 'invite') {
-			const roomId = this.getNodeParameter('roomId', 0) as string;
-			const userId = this.getNodeParameter('userId', 0) as string;
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const userId = this.getNodeParameter('userId', index) as string;
 			const body: IDataObject = {
 				user_id: userId
 			};
 			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/invite`, body);
 		} else if (operation === 'kick') {
-			const roomId = this.getNodeParameter('roomId', 0) as string;
-			const userId = this.getNodeParameter('userId', 0) as string;
-			const reason = this.getNodeParameter('reason', 0) as string;
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const userId = this.getNodeParameter('userId', index) as string;
+			const reason = this.getNodeParameter('reason', index) as string;
 			const body: IDataObject = {
 				user_id: userId,
 				reason,
@@ -112,8 +112,8 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 		}
 	} else if (resource === 'message') {
 		if (operation === 'create') {
-			const roomId = this.getNodeParameter('roomId', 0) as string;
-			const text = this.getNodeParameter('text', 0) as string;
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const text = this.getNodeParameter('text', index) as string;
 			const body: IDataObject = {
 				msgtype: 'm.text',
 				body: text,
@@ -121,14 +121,14 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			const messageId = uuid()
 			return await matrixApiRequest.call(this, 'PUT', `/rooms/${roomId}/send/m.room.message/${messageId}`, body);
 		} else if (operation === 'get') {
-			const roomId = this.getNodeParameter('roomId', 0) as string;
-			const from = this.getNodeParameter('from', 0) as string;
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const from = this.getNodeParameter('from', index) as string;
 			const qs: IDataObject = {
 				from,
 			};
 			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
 		} else if (operation === 'getAll') {
-			const roomId = this.getNodeParameter('roomId', 0) as string;
+			const roomId = this.getNodeParameter('roomId', index) as string;
 			const qs: IDataObject = {
 				filter: JSON.stringify({
 					room: {
@@ -140,15 +140,15 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 		}
 	} else if (resource === 'event') {
 		if (operation === 'get') {
-			const roomId = this.getNodeParameter('roomId', 0) as string;
-			const eventId = this.getNodeParameter('eventId', 0) as string;
+			const roomId = this.getNodeParameter('roomId', indexd) as string;
+			const eventId = this.getNodeParameter('eventId', index) as string;
 			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/event/${eventId}`);
 		}
 	} else if (resource === 'sync') {
 		if (operation === 'get') {
-			const fullState = this.getNodeParameter('fullState', 0) as boolean;
-			const since = fullState === false ? this.getNodeParameter('since', 0) : '' as string;
-			const filter = this.getNodeParameter('filter', 0) as string;
+			const fullState = this.getNodeParameter('fullState', index) as boolean;
+			const since = fullState === false ? this.getNodeParameter('since', index) : '' as string;
+			const filter = this.getNodeParameter('filter', index) as string;
 
 			const body: IDataObject = {
 				full_state: fullState,
