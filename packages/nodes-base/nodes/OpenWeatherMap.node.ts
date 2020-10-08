@@ -188,6 +188,16 @@ export class OpenWeatherMap implements INodeType {
 				description: 'The id of city to return the weather of. List can be downloaded here: http://bulk.openweathermap.org/sample/',
 			},
 
+			{
+				displayName: 'Language',
+				name: 'language',
+				type: 'string',
+				default: '',
+				placeholder: 'en',
+				required: false,
+				description: 'The two letter language code to get your output in (eg. en, de, ...).',
+			},
+
 		],
 	};
 
@@ -206,6 +216,7 @@ export class OpenWeatherMap implements INodeType {
 
 		let endpoint = '';
 		let locationSelection;
+		let language;
 
 		let qs: IDataObject;
 
@@ -231,6 +242,11 @@ export class OpenWeatherMap implements INodeType {
 				throw new Error(`The locationSelection "${locationSelection}" is not known!`);
 			}
 
+			// Get the language
+			language = this.getNodeParameter('language', i) as string;
+			if (language) {
+				qs.lang = language;
+			}
 
 			if (operation === 'currentWeather') {
 				// ----------------------------------
