@@ -11,24 +11,28 @@ import {
 } from './GenericFunctions';
 
 import {
-	messageOperations,
-	messageFields,
-} from './MessageDescription'
-
-import {
 	accountOperations
 } from './AccountDescription'
-
-
-import {
-	roomOperations,
-	roomFields,
-} from './RoomDescription'
 
 import {
 	eventOperations,
 	eventFields,
 } from './EventDescription'
+
+import {
+	mediaFields,
+	mediaOperations,
+} from './MediaDescription'
+
+import {
+	messageOperations,
+	messageFields,
+} from './MessageDescription'
+
+import {
+	roomOperations,
+	roomFields,
+} from './RoomDescription'
 
 import {
 	syncOperations,
@@ -93,6 +97,10 @@ export class Matrix implements INodeType {
 						value: 'event',
 					},
 					{
+						name: 'Media',
+						value: 'media',
+					},
+					{
 						name: 'Message',
 						value: 'message',
 					},
@@ -117,6 +125,8 @@ export class Matrix implements INodeType {
 			...eventFields,
 			...syncOperations,
 			...syncFields,
+			...mediaOperations,
+			...mediaFields,
 
 		]
 	};
@@ -129,14 +139,14 @@ export class Matrix implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		
-		await Promise.all(items.map(async (item, index) => {
-			let responseData = await handleMatrixCall.call(this, item, index, resource, operation);
+		for (let i = 0; i < items.length; i++) {
+			let responseData = await handleMatrixCall.call(this, items[i], i, resource, operation);
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}
-		}));
+		}
 
 
 		return [this.helpers.returnJsonArray(returnData)];

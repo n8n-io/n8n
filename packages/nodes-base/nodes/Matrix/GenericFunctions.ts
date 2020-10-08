@@ -5,6 +5,7 @@ import {
 import { IDataObject } from 'n8n-workflow';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
@@ -13,7 +14,7 @@ import {
 import * as _ from 'lodash';
 import * as uuid from 'uuid/v4';
 
-export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
+export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: string | object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {
@@ -21,8 +22,10 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		},
 		body,
 		qs: query,
-		uri: `https://matrix.org/_matrix/client/r0${resource}`,
-		json: true
+		// Override URL when working with media only. All other endpoints use client.
+		//@ts-ignore
+		uri: option.hasOwnProperty('overridePrefix') ? `https://matrix.org/_matrix/${option.overridePrefix}/r0${resource}`: `https://matrix.org/_matrix/client/r0${resource}`,
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(body).length === 0) {
@@ -43,7 +46,10 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		response = await this.helpers.request(options);
 		
-		return response;
+		// When working with images, the request cannot be JSON (it's raw binary data)
+		// But the output is JSON so we have to parse it manually.
+		//@ts-ignore
+		return options.overridePrefix === 'media' ? JSON.parse(response) : response;
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error
@@ -140,7 +146,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 		}
 	} else if (resource === 'event') {
 		if (operation === 'get') {
-			const roomId = this.getNodeParameter('roomId', indexd) as string;
+			const roomId = this.getNodeParameter('roomId', index) as string;
 			const eventId = this.getNodeParameter('eventId', index) as string;
 			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/event/${eventId}`);
 		}
@@ -157,6 +163,50 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			};
 			
 			return await matrixApiRequest.call(this, 'GET', `/sync`, body);
+		}
+	} else if (resource === 'media') {
+		if (operation === 'upload') {
+			const binaryData = this.getNodeParameter('binaryData', index) as boolean;
+			let body;
+			const qs: IDataObject = {};
+			const headers: IDataObject = {};
+
+			if (binaryData) {
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
+				if (item.binary === undefined
+					//@ts-ignore
+					|| item.binary[binaryPropertyName] === undefined) {
+					throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+				}
+				
+				//@ts-ignore
+				qs.filename = item.binary[binaryPropertyName].filename;
+				//@ts-ignore
+				body = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING)
+				//@ts-ignore
+				headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
+				headers['accept'] = 'application/json,text/*;q=0.99';
+			} else {
+				const fileContent = this.getNodeParameter('fileContent', index) as string;
+				body = fileContent;
+			}
+			
+			return await matrixApiRequest.call(this, 'POST', `/upload`, body, qs, headers, {
+				overridePrefix: 'media',
+				json: false,
+			});
+		} else if (operation === 'post') {
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const mediaUrl = this.getNodeParameter('mediaUrl', index) as string;
+			const mediaType = this.getNodeParameter('mediaType', index) as string;
+			const filename = this.getNodeParameter('filename', index) as string;
+			const body: IDataObject = {
+				msgtype: `m.${mediaType}`,
+				body: filename,
+				url: mediaUrl,
+			};
+			const messageId = uuid()
+			return await matrixApiRequest.call(this, 'PUT', `/rooms/${roomId}/send/m.room.message/${messageId}`, body);
 		}
 	}
 
