@@ -1420,6 +1420,7 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'create',
+							'getAll'
 						],
 						resource: [
 							'note',
@@ -2516,13 +2517,25 @@ export class Pipedrive implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'GET';
+					endpoint = `/notes`;
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					endpoint = `/notes`;
+					if (additionalFields.deal_id) {
+						qs.deal_id = parseInt(additionalFields.deal_id as string, 10);
+					}
+
+					if (additionalFields.org_id) {
+						qs.org_id = parseInt(additionalFields.org_id as string, 10);
+					}
+
+					if (additionalFields.person_id) {
+						qs.person_id = parseInt(additionalFields.person_id as string, 10);
+					}
 
 				} else if (operation === 'update') {
 					// ----------------------------------
