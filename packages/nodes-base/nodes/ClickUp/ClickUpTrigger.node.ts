@@ -34,7 +34,7 @@ export class ClickUpTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'clickupApi',
+				name: 'clickUpApi',
 				required: true,
 				displayOptions: {
 					show: {
