@@ -167,9 +167,13 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 	} else if (resource === 'media') {
 		if (operation === 'upload') {
 			const binaryData = this.getNodeParameter('binaryData', index) as boolean;
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const mediaType = this.getNodeParameter('mediaType', index) as string;
 			let body;
 			const qs: IDataObject = {};
 			const headers: IDataObject = {};
+			
+			let filename;
 
 			if (binaryData) {
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
@@ -180,7 +184,10 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 				}
 				
 				//@ts-ignore
-				qs.filename = item.binary[binaryPropertyName].filename;
+				qs.filename = item.binary[binaryPropertyName].fileName;
+				//@ts-ignore
+				filename = item.binary[binaryPropertyName].fileName;
+				
 				//@ts-ignore
 				body = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING)
 				//@ts-ignore
@@ -189,25 +196,24 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			} else {
 				const fileContent = this.getNodeParameter('fileContent', index) as string;
 				body = fileContent;
+				filename = this.getNodeParameter('filename', index) as string;
+				headers['Content-Type'] = 'text/plain';
 			}
-			
-			return await matrixApiRequest.call(this, 'POST', `/upload`, body, qs, headers, {
+
+			const uploadRequestResult = await matrixApiRequest.call(this, 'POST', `/upload`, body, qs, headers, {
 				overridePrefix: 'media',
 				json: false,
 			});
-		} else if (operation === 'post') {
-			const roomId = this.getNodeParameter('roomId', index) as string;
-			const mediaUrl = this.getNodeParameter('mediaUrl', index) as string;
-			const mediaType = this.getNodeParameter('mediaType', index) as string;
-			const filename = this.getNodeParameter('filename', index) as string;
-			const body: IDataObject = {
+
+			body = {
 				msgtype: `m.${mediaType}`,
 				body: filename,
-				url: mediaUrl,
+				url: uploadRequestResult.content_uri,
 			};
 			const messageId = uuid()
 			return await matrixApiRequest.call(this, 'PUT', `/rooms/${roomId}/send/m.room.message/${messageId}`, body);
-		}
+			
+		} 
 	}
 
 

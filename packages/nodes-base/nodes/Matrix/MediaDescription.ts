@@ -18,11 +18,6 @@ export const mediaOperations = [
 				value: 'upload',
 				description: 'Upload media',
 			},
-			{
-				name: 'Post',
-				value: 'post',
-				description: 'Post an uploaded media to a channel',
-			},
 		],
 		default: 'upload',
 		description: 'The operation to perform.',
@@ -32,7 +27,7 @@ export const mediaOperations = [
 export const mediaFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                              meedia create                                 */
+/*                               media upload                                 */
 /* -------------------------------------------------------------------------- */
     
     
@@ -60,11 +55,11 @@ export const mediaFields = [
         default: '',
         displayOptions: {
             show: {
-                operation: [
-                    'upload'
-                ],
                 resource: [
                     'media',
+                ],
+                operation: [
+                    'upload'
                 ],
                 binaryData: [
                     false
@@ -83,11 +78,11 @@ export const mediaFields = [
         required: true,
         displayOptions: {
             show: {
-                operation: [
-                    'upload'
-                ],
                 resource: [
                     'media',
+                ],
+                operation: [
+                    'upload'
                 ],
                 binaryData: [
                     true
@@ -95,11 +90,7 @@ export const mediaFields = [
             },
 
         },
-    },
-
-/* ----------------------------------------------------------------------- */
-/*                                meedia post                              */
-/* ----------------------------------------------------------------------- */
+	},
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
@@ -111,49 +102,11 @@ export const mediaFields = [
 					'media',
 				],
 				operation: [
-					'post',
+					'upload',
 				]
 			},
 		},
 		description: 'Room ID to post ',
-		required: true,
-	},
-	{
-		displayName: 'Media URL',
-		name: 'mediaUrl',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'post',
-				]
-			},
-		},
-        description: '',
-        placeholder: 'mxc://matrix.org/uploaded-media-uri',
-		required: true,
-	},
-	{
-		displayName: 'File name',
-		name: 'filename',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'post',
-				]
-			},
-		},
-        description: 'Name of the uploaded file',
-        placeholder: 'mxc://matrix.org/uploaded-media-uri',
 		required: true,
 	},
 	{
@@ -167,7 +120,7 @@ export const mediaFields = [
 					'media',
 				],
 				operation: [
-					'post',
+					'upload',
 				]
 			},
         },
@@ -185,6 +138,28 @@ export const mediaFields = [
 		],
         description: 'Name of the uploaded file',
         placeholder: 'mxc://matrix.org/uploaded-media-uri',
+		required: true,
+	},
+	{
+		displayName: 'File name',
+		name: 'filename',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'media',
+				],
+				operation: [
+					'upload',
+				],
+				binaryData: [
+                    false
+                ],
+			},
+        },
+        description: 'File name to be displayed',
+        placeholder: 'some-file-name.txt',
 		required: true,
 	},
 
