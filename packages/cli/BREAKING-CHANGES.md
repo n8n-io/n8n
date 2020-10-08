@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.84.0
+
+### What changed?
+
+In the AWS SES node, we added the field resource to be easily extendable in the future.
+
+### When is action necessary?
+
+When the operation `Send Email` is used.
+
+### How to upgrade:
+
+Open the node and set the parameters resource/operation to email/send
+
 ## 0.83.0
 
 ### What changed?
