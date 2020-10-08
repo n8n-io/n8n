@@ -2524,18 +2524,7 @@ export class Pipedrive implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					if (additionalFields.deal_id) {
-						qs.deal_id = parseInt(additionalFields.deal_id as string, 10);
-					}
-
-					if (additionalFields.org_id) {
-						qs.org_id = parseInt(additionalFields.org_id as string, 10);
-					}
-
-					if (additionalFields.person_id) {
-						qs.person_id = parseInt(additionalFields.person_id as string, 10);
-					}
+					addAdditionalFields(qs, additionalFields);
 
 				} else if (operation === 'update') {
 					// ----------------------------------
