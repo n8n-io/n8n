@@ -92,9 +92,7 @@ export class Sendy implements INodeType {
 
 					const subject = this.getNodeParameter('subject', i) as string;
 
-					const isTextHtml = this.getNodeParameter('isTextHtml', i) as boolean;
-
-					const text = this.getNodeParameter('text', i) as string;
+					const htmlText = this.getNodeParameter('htmlText', i) as boolean;
 
 					const sendCampaign = this.getNodeParameter('sendCampaign', i) as boolean;
 
@@ -107,12 +105,11 @@ export class Sendy implements INodeType {
 						title,
 						subject,
 						send_campaign: sendCampaign,
+						html_text: htmlText,
 					};
 
-					if (isTextHtml) {
-						body.html_text = text;
-					} else {
-						body.plain_text = text;
+					if (additionalFields.plainText) {
+						body.plain_text = additionalFields.plainText;
 					}
 
 					if (additionalFields.listIds) {
@@ -153,6 +150,17 @@ export class Sendy implements INodeType {
 						'/api/campaigns/create.php',
 						body,
 					);
+
+					const success = [
+						'Campaign created',
+						'Campaign created and now sending',
+					];
+
+					if (success.includes(responseData)) {
+						responseData = { message: responseData };
+					} else {
+						throw new Error(`Sendy error response [${400}]: ${responseData}`);
+					}
 				}
 			}
 
@@ -179,8 +187,40 @@ export class Sendy implements INodeType {
 						body,
 					);
 
-					if (responseData === 1) {
+					if (responseData === '1') {
 						responseData = { success: true };
+					} else {
+						throw new Error(`Sendy error response [${400}]: ${responseData}`);
+					}
+				}
+
+				if (operation === 'count') {
+
+					const listId = this.getNodeParameter('listId', i) as string;
+
+					const body: IDataObject = {
+						list_id: listId,
+					};
+
+					responseData = await sendyApiRequest.call(
+						this,
+						'POST',
+						'/api/subscribers/active-subscriber-count.php',
+						body,
+					);
+
+					const errors = [
+						'No data passed',
+						'API key not passed',
+						'Invalid API key',
+						'List ID not passed',
+						'List does not exist',
+					];
+
+					if (!errors.includes(responseData)) {
+						responseData = { count: responseData };
+					} else {
+						throw new Error(`Sendy error response [${400}]: ${responseData}`);
 					}
 				}
 
@@ -202,8 +242,10 @@ export class Sendy implements INodeType {
 						body,
 					);
 
-					if (responseData === 1) {
+					if (responseData === '1') {
 						responseData = { success: true };
+					} else {
+						throw new Error(`Sendy error response [${400}]: ${responseData}`);
 					}
 				}
 
@@ -225,8 +267,10 @@ export class Sendy implements INodeType {
 						body,
 					);
 
-					if (responseData === 1) {
+					if (responseData === '1') {
 						responseData = { success: true };
+					} else {
+						throw new Error(`Sendy error response [${400}]: ${responseData}`);
 					}
 				}
 
@@ -248,8 +292,19 @@ export class Sendy implements INodeType {
 						body,
 					);
 
-					if (responseData === 1) {
-						responseData = { success: true };
+					const status = [
+						'Subscribed',
+						'Unsubscribed',
+						'Unconfirmed',
+						'Bounced',
+						'Soft bounced',
+						'Complained',
+					];
+
+					if (status.includes(responseData)) {
+						responseData = { status: responseData };
+					} else {
+						throw new Error(`Sendy error response [${400}]: ${responseData}`);
 					}
 				}
 			}

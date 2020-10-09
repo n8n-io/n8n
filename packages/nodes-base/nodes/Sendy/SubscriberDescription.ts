@@ -21,14 +21,19 @@ export const subscriberOperations = [
 				description: 'Add a subscriber to a list',
 			},
 			{
+				name: 'Count',
+				value: 'count',
+				description: 'Count subscribers',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a subscriber',
+				description: 'Delete a subscriber from a list',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: 'Remove a subscriber from a list',
+				description: 'Unsubscribe user from a list',
 			},
 			{
 				name: 'Status',
@@ -148,6 +153,27 @@ export const subscriberFields = [
 				description: `Set to "true" if your list is 'Double opt-in' but you want to bypass that and signup the user to the list as 'Single Opt-in instead' (optional)`,
 			},
 		],
+	},
+/* -------------------------------------------------------------------------- */
+/*                                subscriber:count                            */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'List ID',
+		name: 'listId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'subscriber',
+				],
+				operation: [
+					'count',
+				],
+			},
+		},
+		default: '',
+		description: `The list id you want to subscribe a user to.<br>
+		This encrypted & hashed id can be found under View all lists section named ID.`,
 	},
 /* -------------------------------------------------------------------------- */
 /*                                subscriber:delete                           */

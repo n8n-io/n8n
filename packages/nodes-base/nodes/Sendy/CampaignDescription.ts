@@ -117,24 +117,8 @@ export const campaignFields = [
 		description: `The 'Subject' of your campaign`,
 	},
 	{
-		displayName: 'Is Text HTML?',
-		name: 'isTextHtml',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: false,
-	},
-	{
-		displayName: 'Text',
-		name: 'text',
+		displayName: 'HTML Text',
+		name: 'htmlText',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -215,6 +199,13 @@ export const campaignFields = [
 				type: 'string',
 				default: '',
 				description: `List IDs should be single or comma-separated`,
+			},
+			{
+				displayName: 'Plain Text',
+				name: 'plainText',
+				type: 'string',
+				default: '',
+				description: `The 'Plain text version' of your campaign`
 			},
 			{
 				displayName: 'Querystring',
