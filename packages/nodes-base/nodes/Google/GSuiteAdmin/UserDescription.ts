@@ -636,30 +636,6 @@ export const userFields = [
 				description: 'Property to use for sorting results.',
 			},
 			{
-				displayName: 'Projection',
-				name: 'projection',
-				type: 'options',
-				options: [
-					{
-						name: 'Basic',
-						value: 'basic',
-						description: 'Do not include any custom fields for the user',
-					},
-					{
-						name: 'Custom',
-						value: 'custom',
-						description: 'Include custom fields from schemas requested in customField',
-					},
-					{
-						name: 'Full',
-						value: 'full',
-						description: 'Include all fields associated with this user',
-					},
-				],
-				default: 'basic',
-				description: 'Property to use for sorting results.',
-			},
-			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
