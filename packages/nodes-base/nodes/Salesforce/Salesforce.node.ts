@@ -53,6 +53,11 @@ import {
 } from './ContactInterface';
 
 import {
+	flowFields,
+	flowOperations,
+} from './FlowDescription';
+
+import {
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
 } from './GenericFunctions';
@@ -145,6 +150,11 @@ export class Salesforce implements INodeType {
 						description: 'Represents a contact, which is an individual associated with an account.',
 					},
 					{
+						name: 'Flow',
+						value: 'flow',
+						description: 'Represents an autolaunched flow.',
+					},
+					{
 						name: 'Lead',
 						value: 'lead',
 						description: 'Represents a prospect or potential .',
@@ -184,6 +194,8 @@ export class Salesforce implements INodeType {
 			...attachmentFields,
 			...userOperations,
 			...userFields,
+			...flowOperations,
+			...flowFields,
 		],
 	};
 
@@ -1942,6 +1954,32 @@ export class Salesforce implements INodeType {
 					} catch(err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
+				}
+			}
+			if (resource === 'flow') {
+				//https://developer.salesforce.com/docs/atlas.en-us.api_action.meta/api_action/actions_obj_flow.htm
+				if (operation === 'invoke') {
+					const apiName = this.getNodeParameter('apiName', i) as string;
+					const jsonInputVariables = this.getNodeParameter('jsonInputVariables', i) as boolean;
+					let inputVariables = {}
+					if (jsonInputVariables) {
+						inputVariables = this.getNodeParameter('inputVariables', i);
+					} else {
+						// Input variables are defined in UI
+						const setInputVariable = this.getNodeParameter('inputVariablesUi', i, {}) as IDataObject;
+						if (setInputVariable!.inputVariable !== undefined) {
+							for (const inputVariableData of setInputVariable!.inputVariable as IDataObject[]) {
+								// @ts-ignore
+								inputVariables[inputVariableData!.name as string] = inputVariableData!.value;
+							}
+						}
+					}
+					const body = { inputs : [ inputVariables ] };
+					responseData = await salesforceApiRequest.call(this, 'POST', `/actions/custom/flow/${apiName}`, body);
+				}
+				//https://developer.salesforce.com/docs/atlas.en-us.api_action.meta/api_action/actions_obj_flow.htm
+				if (operation === 'list') {
+					responseData = await salesforceApiRequest.call(this, 'GET', '/actions/custom/flow');
 				}
 			}
 			if (Array.isArray(responseData)) {
