@@ -38,13 +38,8 @@ export const roomOperations = [
 				value: 'leave',
 				description: 'Leave a room',
 			},
-			{
-				name: 'List members',
-				value: 'listMembers',
-				description: 'List current members of a room',
-			},
 		],
-		default: 'listMembers',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -52,7 +47,7 @@ export const roomOperations = [
 
 export const roomFields = [
 /* -------------------------------------------------------------------------- */
-/*                                room create                                 */
+/*                                room:create                                 */
 /* -------------------------------------------------------------------------- */
 
     {
@@ -72,6 +67,7 @@ export const roomFields = [
         default: '',    
         placeholder: 'My new room',
         description: 'The operation to perform.',
+        required: true,
     },
     {
         displayName: 'Preset',
@@ -102,6 +98,7 @@ export const roomFields = [
         default: 'public_chat',
         placeholder: 'My new room',
         description: 'The operation to perform.',
+        required: true,
     },
     {
         displayName: 'Room alias',
@@ -122,117 +119,7 @@ export const roomFields = [
         description: 'The operation to perform.',
     },
 /* -------------------------------------------------------------------------- */
-/*                              room list members                             */
-/* -------------------------------------------------------------------------- */
-
-    {
-        displayName: 'Room ID',
-        name: 'roomId',
-        type: 'string',
-        displayOptions: {
-            show: {
-                resource: [
-                    'room',
-                ],
-                operation: [
-                    'listMembers',
-                ],
-            },
-        },
-        default: '',    
-        description: 'Room ID',
-        required: true,
-    },    
-    {
-        displayName: 'Membership',
-        name: 'membership',
-        type: 'options',
-        displayOptions: {
-            show: {
-                resource: [
-                    'room',
-                ],
-                operation: [
-                    'listMembers',
-                ],
-            },
-        },
-        default: '',    
-        description: 'Displays users only with selected membership status (uses OR filter with exclude membership)',
-        options: [
-			{
-				name: '',
-				value: '',
-				description: 'Any user membership',
-			},
-			{
-				name: 'Ban',
-				value: 'ban',
-				description: 'Users removed from the room',
-			},
-			{
-				name: 'Invite',
-				value: 'invite',
-				description: 'Users invited to join',
-			},
-			{
-				name: 'Join',
-				value: 'join',
-				description: 'Users currently in the room',
-			},
-			{
-				name: 'Leave',
-				value: 'leave',
-				description: 'Users who left',
-			},
-		],
-    },
-    {
-        displayName: 'Exclude membership',
-        name: 'notMembership',
-        type: 'options',
-        displayOptions: {
-            show: {
-                resource: [
-                    'room',
-                ],
-                operation: [
-                    'listMembers',
-                ],
-            },
-        },
-        default: '',    
-        description: 'Displays users whose membership is other than selected (uses OR filter with membership)',
-        options: [
-			{
-				name: '',
-				value: '',
-				description: 'Any user membership',
-			},
-			{
-				name: 'Ban',
-				value: 'ban',
-				description: 'Users removed from the room',
-			},
-			{
-				name: 'Invite',
-				value: 'invite',
-				description: 'Users invited to join',
-			},
-			{
-				name: 'Join',
-				value: 'join',
-				description: 'Users currently in the room',
-			},
-			{
-				name: 'Leave',
-				value: 'leave',
-				description: 'Users who left',
-			},
-		],
-    },
-/* -------------------------------------------------------------------------- */
-/*                                  room join                                 */
+/*                                  room:join                                 */
 /* -------------------------------------------------------------------------- */
     
     {
@@ -255,13 +142,16 @@ export const roomFields = [
     },
     
 /* -------------------------------------------------------------------------- */
-/*                                  room leave                                */
+/*                                  room:leave                                */
 /* -------------------------------------------------------------------------- */
     
     {
         displayName: 'Room ID',
         name: 'roomId',
-        type: 'string',
+        type: 'options',
+        typeOptions: {
+            loadOptionsMethod: 'getChannels',
+        },
         displayOptions: {
             show: {
                 resource: [
@@ -278,13 +168,16 @@ export const roomFields = [
     },  
 
 /* -------------------------------------------------------------------------- */
-/*                                 room invite                                */
+/*                                 room:invite                                */
 /* -------------------------------------------------------------------------- */
     
     {
         displayName: 'Room ID',
         name: 'roomId',
-        type: 'string',
+        type: 'options',
+        typeOptions: {
+            loadOptionsMethod: 'getChannels',
+        },
         displayOptions: {
             show: {
                 resource: [
@@ -322,13 +215,16 @@ export const roomFields = [
 
 
 /* -------------------------------------------------------------------------- */
-/*                                  room kick                                 */
+/*                                  room:kick                                 */
 /* -------------------------------------------------------------------------- */
     
     {
         displayName: 'Room ID',
         name: 'roomId',
-        type: 'string',
+        type: 'options',
+        typeOptions: {
+            loadOptionsMethod: 'getChannels',
+        },
         displayOptions: {
             show: {
                 resource: [

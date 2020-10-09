@@ -14,12 +14,12 @@ export const accountOperations = [
 		},
 		options: [
 			{
-				name: 'Who am I',
-				value: 'whoami',
-				description: 'Get information about current user',
+				name: 'Me',
+				value: 'me',
+				description: "Get current user's account information",
 			},
 		],
-		default: 'whoami',
+		default: 'me',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];

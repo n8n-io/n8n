@@ -1,13 +1,16 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-	handleMatrixCall,
+	handleMatrixCall, 
+	matrixApiRequest,
 } from './GenericFunctions';
 
 import {
@@ -35,10 +38,9 @@ import {
 } from './RoomDescription'
 
 import {
-	syncOperations,
-	syncFields,
-} from './SyncDescription'
-
+	roomMembersFields,
+	roomMembersOperations,
+} from './RoomMembersDescription'
 
 export class Matrix implements INodeType {
 	description: INodeTypeDescription = {
@@ -59,29 +61,9 @@ export class Matrix implements INodeType {
 			{
 				name: 'matrixApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'accessToken',
-						],
-					},
-				},
 			},
 		],
 		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Access Token',
-						value: 'accessToken',
-					},
-				],
-				default: 'accessToken',
-				description: 'The resource to operate on.',
-			},
 
 			{
 				displayName: 'Resource',
@@ -109,26 +91,53 @@ export class Matrix implements INodeType {
 						value: 'room',
 					},
 					{
-						name: 'Sync',
-						value: 'sync',
+						name: 'Room Members',
+						value: 'roomMembers',
 					},
 				],
 				default: 'message',
 				description: 'The resource to operate on.',
 			},
-			...messageOperations,
-			...messageFields,
 			...accountOperations,
-			...roomOperations,
-			...roomFields,
 			...eventOperations,
 			...eventFields,
-			...syncOperations,
-			...syncFields,
 			...mediaOperations,
 			...mediaFields,
+			...messageOperations,
+			...messageFields,
+			...roomOperations,
+			...roomFields,
+			...roomMembersOperations,
+			...roomMembersFields,
 
 		]
+	};
+
+	
+	methods = {
+		loadOptions: {
+			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const joinedRoomsResponse = await matrixApiRequest.call(this, 'GET', '/joined_rooms');
+
+				await Promise.all(joinedRoomsResponse.joined_rooms.map(async (roomId: string) => {
+					const roomNameResponse = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/state/m.room.name`);
+					returnData.push({
+						name: roomNameResponse.name,
+						value: roomId,
+					});
+				}))
+
+				
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
+				return returnData;
+			},
+		}
 	};
 
 

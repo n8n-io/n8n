@@ -14,9 +14,9 @@ export const eventOperations = [
 		},
 		options: [
 			{
-				name: 'Get a single event',
+				name: 'Get an event information',
 				value: 'get',
-				description: 'Get information about an event',
+				description: 'Get single event by ID',
 			},
 		],
 		default: 'get',
@@ -28,7 +28,7 @@ export const eventOperations = [
 export const eventFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                              event get by id                               */
+/*                                 event:get                                  */
 /* -------------------------------------------------------------------------- */
     
         

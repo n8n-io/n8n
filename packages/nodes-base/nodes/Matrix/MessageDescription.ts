@@ -16,17 +16,12 @@ export const messageOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Send a message into a room',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Reads messages from a room',
+				description: 'Send a message to a room',
 			},
 			{
 				name: 'Get all',
 				value: 'getAll',
-				description: 'Reads all messages from a room',
+				description: 'Gets all messages from a room',
 			},
 		],
 		default: 'create',
@@ -41,95 +36,62 @@ export const messageFields = [
 /* -------------------------------------------------------------------------- */
     
     
-			{
-				displayName: 'Room ID',
-				name: 'roomId',
-				type: 'string',
-				default: '',
-				placeholder: '!123abc:matrix.org',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'message',
-						],
-					},
-				},
-				required: true,
-				description: 'The channel to send the message to.',
-			},
-			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: 'Hello from n8n!',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'message',
-						],
-					},
-				},
-				description: 'The text to send.',
-			},
-
-/* ----------------------------------------------------------------------- */
-/*                                 message:read                          */
-/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
 		default: '',
+		placeholder: '!123abc:matrix.org',
 		displayOptions: {
 			show: {
+				operation: [
+					'create',
+				],
 				resource: [
 					'message',
 				],
-				operation: [
-					'get',
-				]
 			},
 		},
-		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API',
 		required: true,
+		description: 'The channel to send the message to.',
 	},
 	{
-		displayName: 'From Token',
-		name: 'from',
+		displayName: 'Text',
+		name: 'text',
 		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
 		default: '',
+		placeholder: 'Hello from n8n!',
 		displayOptions: {
 			show: {
+				operation: [
+					'create',
+				],
 				resource: [
 					'message',
 				],
-				operation: [
-					'get',
-				]
 			},
 		},
-		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API',
-		required: true,
+		description: 'The text to send.',
 	},
 
 	
 /* ----------------------------------------------------------------------- */
-/*                                message:readAll                          */
+/*                                message:getAll                          */
 /* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
-		type: 'string',
+		type: 'options',
 		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -142,6 +104,48 @@ export const messageFields = [
 		},
 		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API',
 		required: true,
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getAll',
+				]
+			},
+		},
+		description: 'If all results should be returned or only up to a given limit.',
+		required: true,
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 
 ] as INodeProperties[];

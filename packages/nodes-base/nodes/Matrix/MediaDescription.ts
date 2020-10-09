@@ -14,9 +14,9 @@ export const mediaOperations = [
 		},
 		options: [
 			{
-				name: 'Create',
+				name: 'Upload',
 				value: 'upload',
-				description: 'Upload media',
+				description: 'Send media to a chat room',
 			},
 		],
 		default: 'upload',
@@ -27,49 +27,9 @@ export const mediaOperations = [
 export const mediaFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                               media upload                                 */
+/*                               media:upload                                 */
 /* -------------------------------------------------------------------------- */
     
-    
-    {
-        displayName: 'Binary Data',
-        name: 'binaryData',
-        type: 'boolean',
-        default: false,
-        displayOptions: {
-            show: {
-                operation: [
-                    'upload'
-                ],
-                resource: [
-                    'media',
-                ],
-            },
-        },
-        description: 'If the data to upload should be taken from binary field.',
-    },
-    {
-        displayName: 'File Content',
-        name: 'fileContent',
-        type: 'string',
-        default: '',
-        displayOptions: {
-            show: {
-                resource: [
-                    'media',
-                ],
-                operation: [
-                    'upload'
-                ],
-                binaryData: [
-                    false
-                ],
-            },
-
-        },
-        placeholder: '',
-        description: 'The text content of the file to upload.',
-    },
     {
         displayName: 'Binary Property',
         name: 'binaryPropertyName',
@@ -84,9 +44,6 @@ export const mediaFields = [
                 operation: [
                     'upload'
                 ],
-                binaryData: [
-                    true
-                ],
             },
 
         },
@@ -94,7 +51,10 @@ export const mediaFields = [
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
-		type: 'string',
+        type: 'options',
+        typeOptions: {
+            loadOptionsMethod: 'getChannels',
+        },
 		default: '',
 		displayOptions: {
 			show: {
@@ -138,28 +98,6 @@ export const mediaFields = [
 		],
         description: 'Name of the uploaded file',
         placeholder: 'mxc://matrix.org/uploaded-media-uri',
-		required: true,
-	},
-	{
-		displayName: 'File name',
-		name: 'filename',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'upload',
-				],
-				binaryData: [
-                    false
-                ],
-			},
-        },
-        description: 'File name to be displayed',
-        placeholder: 'some-file-name.txt',
 		required: true,
 	},
 

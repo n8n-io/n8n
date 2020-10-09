@@ -14,6 +14,20 @@ import {
 import * as _ from 'lodash';
 import * as uuid from 'uuid/v4';
 
+
+interface MessageResponse {
+	chunk: Message[];
+}
+
+interface Message {
+	content: object;
+	room_id: string;
+	sender: string;
+	type: string;
+	user_id: string;
+
+}
+
 export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: string | object = {}, query: object = {}, headers: {} | undefined = undefined, option: {} = {}): Promise<any> { // tslint:disable-line:no-any
 	let options: OptionsWithUri = {
 		method,
@@ -69,29 +83,22 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, item: IDataObject, index: number, resource: string, operation: string): Promise<any> {
 
 	if (resource === 'account') {
-		if (operation === 'whoami') {
+		if (operation === 'me') {
 			return await matrixApiRequest.call(this, 'GET', '/account/whoami');
 		}
 	}
 	else if (resource === 'room') {
-		if (operation === 'listMembers') {
-			const roomId = this.getNodeParameter('roomId', index) as string;
-			const membership = this.getNodeParameter('membership', index) as string;
-			const notMembership = this.getNodeParameter('notMembership', index) as string;
-			const qs: IDataObject = {
-				membership,
-				not_membership: notMembership,
-			};
-			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/members`, {}, qs);
-		} else if (operation === 'create') {
+		if (operation === 'create') {
 			const name = this.getNodeParameter('roomName', index) as string;
 			const preset = this.getNodeParameter('preset', index) as string;
 			const roomAlias = this.getNodeParameter('roomAlias', index) as string;
 			const body: IDataObject = {
 				name,
 				preset,
-				room_alias_name: roomAlias,
 			};
+			if (roomAlias) {
+				body.room_alias_name =  roomAlias;
+			}
 			return await matrixApiRequest.call(this, 'POST', `/createRoom`, body);
 		} else if (operation === 'join') {
 			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
@@ -126,23 +133,34 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			};
 			const messageId = uuid()
 			return await matrixApiRequest.call(this, 'PUT', `/rooms/${roomId}/send/m.room.message/${messageId}`, body);
-		} else if (operation === 'get') {
-			const roomId = this.getNodeParameter('roomId', index) as string;
-			const from = this.getNodeParameter('from', index) as string;
-			const qs: IDataObject = {
-				from,
-			};
-			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
 		} else if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			const qs: IDataObject = {
-				filter: JSON.stringify({
-					room: {
-						rooms: [roomId]
-					},
-				}),
-			};
-			return await matrixApiRequest.call(this, 'GET', `/sync`, {}, qs);
+			const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+			const returnData: IDataObject[] = [];
+
+			if (returnAll) {
+				let responseData;
+				let from;
+				do {
+					const qs: IDataObject = {
+						dir: 'b', // Get latest messages first - doesn't return anything if we use f without a previous token.
+						from: from,
+					}
+					responseData = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
+					returnData.push.apply(returnData, responseData.chunk);
+					from = responseData.end
+				} while (responseData.chunk.length > 0);
+			} else {
+				const limit = this.getNodeParameter('limit', index) as number;
+				const qs: IDataObject = {
+					dir: 'b', // Get latest messages first - doesn't return anything if we use f without a previous token.
+					limit,
+				}
+				const responseData = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
+				returnData.push.apply(returnData, responseData.chunk);
+			}
+			
+			return returnData;
 		}
 	} else if (resource === 'event') {
 		if (operation === 'get') {
@@ -150,55 +168,33 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			const eventId = this.getNodeParameter('eventId', index) as string;
 			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/event/${eventId}`);
 		}
-	} else if (resource === 'sync') {
-		if (operation === 'get') {
-			const fullState = this.getNodeParameter('fullState', index) as boolean;
-			const since = fullState === false ? this.getNodeParameter('since', index) : '' as string;
-			const filter = this.getNodeParameter('filter', index) as string;
-
-			const body: IDataObject = {
-				full_state: fullState,
-				since,
-				filter,
-			};
-			
-			return await matrixApiRequest.call(this, 'GET', `/sync`, body);
-		}
 	} else if (resource === 'media') {
 		if (operation === 'upload') {
-			const binaryData = this.getNodeParameter('binaryData', index) as boolean;
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
+
 			let body;
 			const qs: IDataObject = {};
 			const headers: IDataObject = {};
-			
 			let filename;
 
-			if (binaryData) {
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
-				if (item.binary === undefined
-					//@ts-ignore
-					|| item.binary[binaryPropertyName] === undefined) {
-					throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
-				}
-				
+			if (item.binary === undefined
 				//@ts-ignore
-				qs.filename = item.binary[binaryPropertyName].fileName;
-				//@ts-ignore
-				filename = item.binary[binaryPropertyName].fileName;
-				
-				//@ts-ignore
-				body = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING)
-				//@ts-ignore
-				headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
-				headers['accept'] = 'application/json,text/*;q=0.99';
-			} else {
-				const fileContent = this.getNodeParameter('fileContent', index) as string;
-				body = fileContent;
-				filename = this.getNodeParameter('filename', index) as string;
-				headers['Content-Type'] = 'text/plain';
+				|| item.binary[binaryPropertyName] === undefined) {
+				throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
 			}
+			
+			//@ts-ignore
+			qs.filename = item.binary[binaryPropertyName].fileName;
+			//@ts-ignore
+			filename = item.binary[binaryPropertyName].fileName;
+			
+			//@ts-ignore
+			body = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING)
+			//@ts-ignore
+			headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
+			headers['accept'] = 'application/json,text/*;q=0.99';
 
 			const uploadRequestResult = await matrixApiRequest.call(this, 'POST', `/upload`, body, qs, headers, {
 				overridePrefix: 'media',
@@ -214,6 +210,17 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			return await matrixApiRequest.call(this, 'PUT', `/rooms/${roomId}/send/m.room.message/${messageId}`, body);
 			
 		} 
+	} else if (resource === 'roomMembers') {
+		if (operation === 'getAll') {
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const filterOptions = this.getNodeParameter('filterOptions', index) as IDataObject;
+			const qs: IDataObject = {
+				membership: filterOptions.membership ? filterOptions.membership : '',
+				not_membership:  filterOptions.notMembership ? filterOptions.notMembership : '',
+			};
+			const roomMembersResponse = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/members`, {}, qs);
+			return roomMembersResponse.chunk;
+		}
 	}
 
 
