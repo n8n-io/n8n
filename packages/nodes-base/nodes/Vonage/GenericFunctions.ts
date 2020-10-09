@@ -27,6 +27,7 @@ export async function vonageApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		uri: `https://rest.nexmo.com${path}`,
 		json: true,
 	};
+
 	try {
 		if (Object.keys(body).length === 0) {
 			delete options.body;
