@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const flowOperations = [
 	{
@@ -14,14 +16,14 @@ export const flowOperations = [
 		},
 		options: [
 			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all flows',
+			},
+			{
 				name: 'Invoke',
 				value: 'invoke',
 				description: 'Invoke a flow',
-            },
-            {
-				name: 'List',
-				value: 'list',
-				description: 'List flows',
 			},
 		],
 		default: 'invoke',
@@ -31,6 +33,50 @@ export const flowOperations = [
 
 export const flowFields = [
 
+/* -------------------------------------------------------------------------- */
+/*                                flow:getAll                                 */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'flow',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'flow',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
 /* -------------------------------------------------------------------------- */
 /*                                flow:invoke                                 */
 /* -------------------------------------------------------------------------- */
@@ -53,8 +99,8 @@ export const flowFields = [
 		description: 'Required. API name of the flow.',
 	},
 	{
-		displayName: 'JSON/RAW Inputs',
-		name: 'jsonInputVariables',
+		displayName: 'JSON Parameters',
+		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
@@ -70,8 +116,8 @@ export const flowFields = [
 		description: 'If the input variables should be set via the value-key pair UI or JSON/RAW.',
 	},
 	{
-		displayName: 'Input Variables',
-		name: 'inputVariables',
+		displayName: 'Variables',
+		name: 'variablesJson',
 		type: 'json',
 		displayOptions: {
 			show: {
@@ -81,7 +127,7 @@ export const flowFields = [
 				operation: [
 					'invoke'
 				],
-				jsonInputVariables: [
+				jsonParameters: [
 					true,
 				],
 			},
@@ -90,9 +136,9 @@ export const flowFields = [
 		description: 'Input variables as JSON object',
 	},
 	{
-		displayName: 'Input Variables',
-		name: 'inputVariablesUi',
-		placeholder: 'Add Input Variable',
+		displayName: 'Variables',
+		name: 'variablesUi',
+		placeholder: 'Add Variable',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -105,7 +151,7 @@ export const flowFields = [
 				operation: [
 					'invoke'
 				],
-				jsonInputVariables: [
+				jsonParameters: [
 					false,
 				],
 			},
@@ -114,8 +160,8 @@ export const flowFields = [
 		default: {},
 		options: [
 			{
-				name: 'inputVariable',
-				displayName: 'Input Variable',
+				displayName: 'Variable',
+				name: 'variablesValues',
 				values: [
 					{
 						displayName: 'Name',

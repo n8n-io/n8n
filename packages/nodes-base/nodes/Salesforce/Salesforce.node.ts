@@ -1960,26 +1960,36 @@ export class Salesforce implements INodeType {
 				//https://developer.salesforce.com/docs/atlas.en-us.api_action.meta/api_action/actions_obj_flow.htm
 				if (operation === 'invoke') {
 					const apiName = this.getNodeParameter('apiName', i) as string;
-					const jsonInputVariables = this.getNodeParameter('jsonInputVariables', i) as boolean;
-					let inputVariables = {}
-					if (jsonInputVariables) {
-						inputVariables = this.getNodeParameter('inputVariables', i);
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					let variables = {};
+					if (jsonParameters) {
+						variables = this.getNodeParameter('variablesJson', i);
 					} else {
 						// Input variables are defined in UI
-						const setInputVariable = this.getNodeParameter('inputVariablesUi', i, {}) as IDataObject;
+						const setInputVariable = this.getNodeParameter('variablesUi', i, {}) as IDataObject;
 						if (setInputVariable!.inputVariable !== undefined) {
-							for (const inputVariableData of setInputVariable!.inputVariable as IDataObject[]) {
+							for (const inputVariableData of setInputVariable!.variablesValues as IDataObject[]) {
 								// @ts-ignore
-								inputVariables[inputVariableData!.name as string] = inputVariableData!.value;
+								variables[inputVariableData!.name as string] = inputVariableData!.value;
 							}
 						}
 					}
-					const body = { inputs : [ inputVariables ] };
+					const body = {
+						inputs: [
+							variables,
+						],
+					};
 					responseData = await salesforceApiRequest.call(this, 'POST', `/actions/custom/flow/${apiName}`, body);
 				}
 				//https://developer.salesforce.com/docs/atlas.en-us.api_action.meta/api_action/actions_obj_flow.htm
-				if (operation === 'list') {
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					responseData = await salesforceApiRequest.call(this, 'GET', '/actions/custom/flow');
+					responseData = responseData.actions;
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
 				}
 			}
 			if (Array.isArray(responseData)) {
