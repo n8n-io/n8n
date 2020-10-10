@@ -74,6 +74,11 @@ export function cleanData(predictions: IDataObject[]) {
 				amount: (data as IDataObject[])[0].amount,
 				rate: (data as IDataObject[])[0].rate,
 			};
+		} else if (key === 'locale') {
+				//@ts-ignore
+				newData['currency'] = data.currency;
+				//@ts-ignore
+				newData['locale'] = data.value;
 		} else {
 			//@ts-ignore
 			newData[key] = data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
