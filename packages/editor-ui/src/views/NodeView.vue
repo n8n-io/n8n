@@ -1715,6 +1715,10 @@ export default mixins(
 					for (type of Object.keys(currentConnections[sourceNode])) {
 						connection[type] = [];
 						for (sourceIndex = 0; sourceIndex < currentConnections[sourceNode][type].length; sourceIndex++) {
+							if (!currentConnections[sourceNode][type][sourceIndex]) {
+								// There is so something wrong with the data so ignore
+								continue;
+							}
 							const nodeSourceConnections = [];
 							for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
 								const nodeConnection: NodeInputConnections = [];
