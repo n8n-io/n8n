@@ -79,13 +79,13 @@ import {
 
 import {
 	ITask,
- } from './TaskInterface';
+} from './TaskInterface';
 
- import {
+import {
 	IList,
- } from './ListInterface';
+} from './ListInterface';
 
- import * as moment from 'moment-timezone';
+import * as moment from 'moment-timezone';
 
 export class ClickUp implements INodeType {
 	description: INodeTypeDescription = {
@@ -688,9 +688,9 @@ export class ClickUp implements INodeType {
 						}
 					}
 					if (type === 'number' || type === 'percentaje'
-					|| type === 'automatic' || type === 'currency' ) {
-						if (additionalFields.stepsStart  === undefined
-						|| !additionalFields.stepsEnd === undefined) {
+						|| type === 'automatic' || type === 'currency') {
+						if (additionalFields.stepsStart === undefined
+							|| !additionalFields.stepsEnd === undefined) {
 							throw new Error('Steps start and steps end fields must be set');
 						}
 					}
@@ -805,7 +805,7 @@ export class ClickUp implements INodeType {
 					const name = this.getNodeParameter('name', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: ITask = {
-							name,
+						name,
 					};
 					if (additionalFields.customFieldsJson) {
 						const customFields = validateJSON(additionalFields.customFieldsJson as string);
@@ -1115,7 +1115,7 @@ export class ClickUp implements INodeType {
 					const timezone = this.getTimezone();
 					const body: IDataObject = {
 						start: moment.tz(start, timezone).valueOf(),
-						duration:  duration * 60000,
+						duration: duration * 60000,
 						tid: taskId,
 					};
 					Object.assign(body, additionalFields);
@@ -1140,7 +1140,12 @@ export class ClickUp implements INodeType {
 				if (operation === 'stop') {
 					const teamId = this.getNodeParameter('team', i) as string;
 					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries/stop`);
-					responseData = responseData.data;
+
+					if (responseData.data) {
+						responseData = responseData.data;
+					} else {
+						throw new Error('There seems to be nothing to stop.');
+					}
 				}
 				if (operation === 'delete') {
 					const teamId = this.getNodeParameter('team', i) as string;
@@ -1185,7 +1190,7 @@ export class ClickUp implements INodeType {
 					const tagNames = this.getNodeParameter('tagNames', i) as string[];
 					const body: IDataObject = {};
 					body.time_entry_ids = timeEntryIds.split(',');
-					body.tags = tagNames.map((tag) => ( JSON.parse(tag).name ));
+					body.tags = tagNames.map((tag) => (JSON.parse(tag).name));
 					responseData = await clickupApiRequest.call(this, 'DELETE', `/team/${teamId}/time_entries/tags`, body);
 					responseData = { success: true };
 				}
