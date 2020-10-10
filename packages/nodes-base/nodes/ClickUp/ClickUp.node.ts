@@ -63,9 +63,14 @@ import {
 } from './TaskDependencyDescription';
 
 import {
-	timeTrackingFields,
-	timeTrackingOperations,
-} from './TimeTrackingDescription';
+	timeEntryFields,
+	timeEntryOperations,
+} from './TimeEntryDescription';
+
+import {
+	timeEntryTagFields,
+	timeEntryTagOperations,
+} from './TimeEntryTagDescription';
 
 import {
 	listFields,
@@ -79,6 +84,8 @@ import {
  import {
 	IList,
  } from './ListInterface';
+
+ import * as moment from 'moment-timezone';
 
 export class ClickUp implements INodeType {
 	description: INodeTypeDescription = {
@@ -182,8 +189,12 @@ export class ClickUp implements INodeType {
 						value: 'taskDependency',
 					},
 					{
-						name: 'Time Traking',
-						value: 'timeTracking',
+						name: 'Time Entry',
+						value: 'timeEntry',
+					},
+					{
+						name: 'Time Entry Tag',
+						value: 'timeEntryTag',
 					},
 				],
 				default: 'task',
@@ -216,9 +227,13 @@ export class ClickUp implements INodeType {
 			// TASK DEPENDENCY
 			...taskDependencyOperations,
 			...taskDependencyFields,
-			// TIME TRACKING
-			...timeTrackingOperations,
-			...timeTrackingFields,
+			// TIME ENTRY
+			...timeEntryOperations,
+			...timeEntryFields,
+			...taskDependencyFields,
+			// TIME ENTRY TAG
+			...timeEntryTagOperations,
+			...timeEntryTagFields,
 			// LIST
 			...listOperations,
 			...listFields,
@@ -310,8 +325,19 @@ export class ClickUp implements INodeType {
 			// select them easily
 			async getAssignees(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const listId = this.getCurrentNodeParameter('list') as string;
+				const taskId = this.getCurrentNodeParameter('task') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { members } = await clickupApiRequest.call(this, 'GET', `/list/${listId}/member`);
+				let url: string;
+				if (listId) {
+					url = `/list/${listId}/member`;
+				}
+				else if (taskId) {
+					url = `/task/${taskId}/member`;
+				} else {
+					return returnData;
+				}
+
+				const { members } = await clickupApiRequest.call(this, 'GET', url);
 				for (const member of members) {
 					const memberName = member.username;
 					const menberId = member.id;
@@ -329,8 +355,25 @@ export class ClickUp implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const { tags } = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
 				for (const tag of tags) {
+					console.log(tag);
 					const tagName = tag.name;
 					const tagId = tag.name;
+					returnData.push({
+						name: tagName,
+						value: tagId,
+					});
+				}
+				return returnData;
+			},
+			// Get all the available tags to display them to user so that he can
+			// select them easily
+			async getTimeEntryTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const teamId = this.getCurrentNodeParameter('team') as string;
+				const returnData: INodePropertyOptions[] = [];
+				const { data: tags } = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/time_entries/tags`);
+				for (const tag of tags) {
+					const tagName = tag.name;
+					const tagId = JSON.stringify(tag);
 					returnData.push({
 						name: tagName,
 						value: tagId,
@@ -367,6 +410,24 @@ export class ClickUp implements INodeType {
 					returnData.push({
 						name: fieldName,
 						value: fieldId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the available lists to display them to user so that he can
+			// select them easily
+			async getTasks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const listId = this.getCurrentNodeParameter('list') as string;
+				const archived = this.getCurrentNodeParameter('archived') as string;
+				const returnData: INodePropertyOptions[] = [];
+				const { tasks } = await clickupApiRequest.call(this, 'GET', `/list/${listId}/task?archived=${archived}`);
+				for (const task of tasks) {
+					const taskName = task.name;
+					const taskId = task.id;
+					returnData.push({
+						name: taskName,
+						value: taskId,
 					});
 				}
 				return returnData;
@@ -983,52 +1044,152 @@ export class ClickUp implements INodeType {
 					responseData = { success: true };
 				}
 			}
-			if (resource === 'timeTracking') {
-				if (operation === 'log') {
-					const taskId = this.getNodeParameter('task', i) as string;
-					const type = this.getNodeParameter('type', i) as string;
+			if (resource === 'timeEntry') {
+				if (operation === 'update') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const timeEntryId = this.getNodeParameter('timeEntry', i) as string;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const timezone = this.getTimezone();
 					const body: IDataObject = {};
-					if (type === 'fromTo') {
-						const from = new Date(this.getNodeParameter('from', i) as string).getTime();
-						const to = new Date(this.getNodeParameter('to', i) as string).getTime();
-						body.from = from;
-						body.to = to;
-					} else {
-						const minutes = this.getNodeParameter('minutes', i) as number;
-						body.time = minutes * 60000;
+					Object.assign(body, updateFields);
+
+					if (body.start) {
+						body.start = moment.tz(body.start, timezone).valueOf();
 					}
-					responseData = await clickupApiRequest.call(this, 'POST', `/task/${taskId}/time`, body);
+
+					if (body.duration) {
+						body.duration = body.duration as number * 60000;
+					}
+
+					if (body.task) {
+						body.tid = body.task;
+						body.custom_task_ids = true;
+					}
+
+					responseData = await clickupApiRequest.call(this, 'PUT', `/team/${teamId}/time_entries/${timeEntryId}`, body);
+					responseData = responseData.data;
+				}
+				if (operation === 'getAll') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const timezone = this.getTimezone();
+					Object.assign(qs, filters);
+
+					if (filters.start_date) {
+						qs.start_date = moment.tz(qs.start_date, timezone).valueOf();
+					}
+					if (filters.end_date) {
+						qs.end_date = moment.tz(qs.end_date, timezone).valueOf();
+					}
+					responseData = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/time_entries`, {}, qs);
+
+					responseData = responseData.data;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
+					}
+
+				}
+				if (operation === 'get') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const running = this.getNodeParameter('running', i) as boolean;
+
+					let endpoint = `/team/${teamId}/time_entries/current`;
+
+					if (running === false) {
+						const timeEntryId = this.getNodeParameter('timeEntry', i) as string;
+						endpoint = `/team/${teamId}/time_entries/${timeEntryId}`;
+					}
+
+					responseData = await clickupApiRequest.call(this, 'GET', endpoint);
+					responseData = responseData.data;
+				}
+				if (operation === 'create') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const taskId = this.getNodeParameter('task', i) as string;
+					const start = this.getNodeParameter('start', i) as string;
+					const duration = this.getNodeParameter('duration', i) as number;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const timezone = this.getTimezone();
+					const body: IDataObject = {
+						start: moment.tz(start, timezone).valueOf(),
+						duration:  duration * 60000,
+						tid: taskId,
+					};
+					Object.assign(body, additionalFields);
+
+					if (body.tags) {
+						body.tags = (body.tags as string[]).map((tag) => (JSON.parse(tag)));
+					}
+
+					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries`, body);
+					responseData = responseData.data;
+				}
+				if (operation === 'start') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const taskId = this.getNodeParameter('task', i) as string;
+					const body: IDataObject = {};
+					body.tid = taskId;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
+					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries/start`, body);
+					responseData = responseData.data;
+				}
+				if (operation === 'stop') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries/stop`);
+					responseData = responseData.data;
 				}
 				if (operation === 'delete') {
-					const taskId = this.getNodeParameter('task', i) as string;
-					const intervalId = this.getNodeParameter('interval', i) as string;
-					responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}/time/${intervalId}`);
+					const teamId = this.getNodeParameter('team', i) as string;
+					const timeEntryId = this.getNodeParameter('timeEntry', i) as string;
+					responseData = await clickupApiRequest.call(this, 'DELETE', `/team/${teamId}/time_entries/${timeEntryId}`);
+					responseData = responseData.data;
+				}
+			}
+			if (resource === 'timeEntryTag') {
+				if (operation === 'add') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const timeEntryIds = this.getNodeParameter('timeEntryIds', i) as string;
+					const tagsUi = this.getNodeParameter('tagsUi', i) as IDataObject;
+					const body: IDataObject = {};
+					body.time_entry_ids = timeEntryIds.split(',');
+					if (tagsUi) {
+						const tags = (tagsUi as IDataObject).tagsValues as IDataObject[];
+						if (tags === undefined) {
+							throw new Error('At least one tag must be set');
+						}
+						body.tags = tags;
+					}
+					responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/time_entries/tags`, body);
 					responseData = { success: true };
 				}
 				if (operation === 'getAll') {
-					const taskId = this.getNodeParameter('task', i) as string;
-					qs.limit = this.getNodeParameter('limit', i) as number;
-					responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}/time`, {}, qs);
+					const teamId = this.getNodeParameter('team', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					responseData = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/time_entries/tags`);
+
 					responseData = responseData.data;
-					responseData = responseData.splice(0, qs.limit);
-				}
-				if (operation === 'update') {
-					const taskId = this.getNodeParameter('task', i) as string;
-					const intervalId = this.getNodeParameter('interval', i) as string;
-					const type = this.getNodeParameter('type', i) as string;
-					const body: IDataObject = {};
-					if (type === 'fromTo') {
-						const from = new Date(this.getNodeParameter('from', i) as string).getTime();
-						const to = new Date(this.getNodeParameter('to', i) as string).getTime();
-						body.from = from;
-						body.to = to;
-					} else {
-						const minutes = this.getNodeParameter('minutes', i) as number;
-						body.time = minutes * 60000;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
 					}
-					responseData = await clickupApiRequest.call(this, 'PUT', `/task/${taskId}/time/${intervalId}`, body);
+
+				}
+				if (operation === 'remove') {
+					const teamId = this.getNodeParameter('team', i) as string;
+					const timeEntryIds = this.getNodeParameter('timeEntryIds', i) as string;
+					const tagNames = this.getNodeParameter('tagNames', i) as string[];
+					const body: IDataObject = {};
+					body.time_entry_ids = timeEntryIds.split(',');
+					body.tags = tagNames.map((tag) => ( JSON.parse(tag).name ));
+					responseData = await clickupApiRequest.call(this, 'DELETE', `/team/${teamId}/time_entries/tags`, body);
 					responseData = { success: true };
 				}
+
 			}
 			if (resource === 'list') {
 				if (operation === 'create') {
