@@ -264,7 +264,7 @@ export class Vonage implements INodeType {
 						],
 					},
 				},
-				description: 'The availability for an SMS in milliseconds',
+				description: 'The availability for an SMS in minutes',
 			},
 			{
 				displayName: 'Message',
@@ -490,7 +490,7 @@ export class Vonage implements INodeType {
 					Object.assign(body, additionalFields);
 
 					if (body.ttl) {
-						// transform minutes to miliseconds
+						// transform minutes to milliseconds
 						body.ttl = (body.ttl as number) * 60000;
 					}
 
