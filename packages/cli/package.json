@@ -84,7 +84,7 @@
         "basic-auth": "^2.0.1",
         "bcryptjs": "^2.4.3",
         "body-parser": "^1.18.3",
-        "body-parser-xml": "^1.1.0",
+        "body-parser-xml": "^2.0.0",
         "client-oauth2": "^4.2.5",
         "compression": "^1.7.4",
         "connect-history-api-fallback": "^1.6.0",
