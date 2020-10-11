@@ -137,6 +137,19 @@ export class Postgres implements INodeType {
 			//         update
 			// ----------------------------------
 			{
+				displayName: 'Schema',
+				name: 'schema',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['update'],
+					},
+				},
+				default: 'public',
+				required: true,
+				description: 'Name of the schema the table belongs to',
+			},
+			{
 				displayName: 'Table',
 				name: 'table',
 				type: 'string',
@@ -189,15 +202,22 @@ export class Postgres implements INodeType {
 
 		const pgp = pgPromise();
 
-		const config = {
+		const config: IDataObject = {
 			host: credentials.host as string,
 			port: credentials.port as number,
 			database: credentials.database as string,
 			user: credentials.user as string,
 			password: credentials.password as string,
-			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
-			sslmode: (credentials.ssl as string) || 'disable',
 		};
+
+		if (credentials.allowUnauthorizedCerts === true) {
+			config.ssl = {
+				rejectUnauthorized: false,
+			};
+		} else {
+			config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
+			config.sslmode = (credentials.ssl as string) || 'disable';
+		}
 
 		const db = pgp(config);
 

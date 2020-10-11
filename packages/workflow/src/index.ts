@@ -1,4 +1,5 @@
 export * from './Interfaces';
+export * from './Expression';
 export * from './Workflow';
 export * from './WorkflowDataProxy';
 export * from './WorkflowHooks';

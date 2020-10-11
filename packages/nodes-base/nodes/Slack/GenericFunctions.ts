@@ -35,6 +35,9 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		delete options.qs;
 	}
 	try {
+
+		let response: any; // tslint:disable-line:no-any
+
 		if (authenticationMethod === 'accessToken') {
 			const credentials = this.getCredentials('slackApi');
 			if (credentials === undefined) {
@@ -42,7 +45,7 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 			}
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 			//@ts-ignore
-			return await this.helpers.request(options);
+			response = await this.helpers.request(options);
 		} else {
 
 			const oAuth2Options: IOAuth2Options = {
@@ -50,8 +53,14 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 				property: 'authed_user.access_token',
 			};
 			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'slackOAuth2Api', options, oAuth2Options);
+			response = await this.helpers.requestOAuth2.call(this, 'slackOAuth2Api', options, oAuth2Options);
 		}
+
+		if (response.ok === false) {
+			throw new Error('Slack error response: ' + JSON.stringify(response));
+		}
+
+		return response;
 	} catch (error) {
 		if (error.statusCode === 401) {
 			// Return a clear error

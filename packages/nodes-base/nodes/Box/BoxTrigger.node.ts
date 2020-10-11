@@ -4,8 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -274,8 +274,6 @@ export class BoxTrigger implements INodeType {
 				// one that is supposed to get created.
 				const endpoint = '/webhooks';
 				const webhooks = await boxApiRequestAllItems.call(this, 'entries', 'GET', endpoint, {});
-
-				console.log(webhooks);
 
 				for (const webhook of webhooks) {
 					if (webhook.address === webhookUrl &&

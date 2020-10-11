@@ -212,6 +212,7 @@ export class WorkflowRunner {
 
 		let nodeTypeData: ITransferNodeTypes;
 		let credentialTypeData: ICredentialsTypeData;
+		let credentialsOverwrites = this.credentialsOverwrites;
 
 		if (loadAllNodeTypes === true) {
 			// Supply all nodeTypes and credentialTypes
@@ -219,15 +220,22 @@ export class WorkflowRunner {
 			const credentialTypes = CredentialTypes();
 			credentialTypeData = credentialTypes.credentialTypes;
 		} else {
-			// Supply only nodeTypes and credentialTypes which the workflow needs
+			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
 			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
 			credentialTypeData = WorkflowHelpers.getCredentialsData(data.credentials);
+
+			credentialsOverwrites = {};
+			for (const credentialName of Object.keys(credentialTypeData)) {
+				if (this.credentialsOverwrites[credentialName] !== undefined) {
+					credentialsOverwrites[credentialName] = this.credentialsOverwrites[credentialName];
+				}
+			}
 		}
 
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = this.credentialsOverwrites;
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite = credentialsOverwrites;
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData = credentialTypeData; // TODO: Still needs correct value
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);

@@ -2,6 +2,48 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.83.0
+
+### What changed?
+
+In the Active Campaign Node, we have changed how the `getAll` operation works with various resources for the sake of consistency. To achieve this, a new parameter called 'Simple' has been added.
+
+### When is action necessary?
+
+When one of the following resources/operations is used:
+
+| Resource | Operation |
+|--|--|
+| Deal | Get All |
+| Connector | Get All |
+|  E-commerce Order | Get All |
+|  E-commerce Customer | Get All |
+|  E-commerce Order Products | Get All |
+
+### How to upgrade:
+
+Open the affected resource/operation and set the parameter `Simple` to false.
+
+## 0.79.0
+
+### What changed?
+
+We have renamed the operations in the Todoist Node for consistency with the codebase. We also deleted the `close_match` and `delete_match` operations as these can be accomplished using the following operations: `getAll`, `close`, and `delete`.
+
+### When is action necessary?
+
+When one of the following operations is used:
+
+- close_by
+- close_match
+- delete_id
+- delete_match
+
+### How to upgrade:
+
+After upgrading, open all workflows which contain the Todoist Node. Set the corresponding operation, and then save the workflow.
+
+If the operations `close_match` or `delete_match` are used, recreate them using the operations: `getAll`, `delete`, and `close`.
 
 ## 0.69.0
 

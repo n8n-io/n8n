@@ -2,9 +2,9 @@ import { get } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 export class Discord implements INodeType {

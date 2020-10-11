@@ -1,7 +1,7 @@
 
 import {
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -611,6 +611,10 @@ export class GoogleSheets implements INodeType {
 		let range = '';
 		if (operation !== 'delete') {
 			range = this.getNodeParameter('range', 0) as string;
+			if (range.includes('!')) {
+				const [sheet, ranges] = range.split('!');
+				range = `${encodeURIComponent(sheet)}!${ranges}`;
+			}
 		}
 
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;

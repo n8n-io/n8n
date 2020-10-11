@@ -8,8 +8,8 @@ import {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {

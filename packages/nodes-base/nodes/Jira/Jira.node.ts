@@ -18,8 +18,8 @@ import {
 } from './GenericFunctions';
 
 import {
-	issueOperations,
 	issueFields,
+	issueOperations,
 } from './IssueDescription';
 
 import {
@@ -153,7 +153,7 @@ export class Jira implements INodeType {
 					}
 				} else {
 					for (const issueType of issueTypes) {
-						if (issueType.scope.project.id === projectId) {
+						if (issueType.scope === undefined || issueType.scope.project.id === projectId) {
 							const issueTypeName = issueType.name;
 							const issueTypeId = issueType.id;
 

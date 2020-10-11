@@ -115,6 +115,8 @@ import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
+
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
@@ -165,6 +167,7 @@ export default mixins(
 	moveNodeWorkflow,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
 	workflowRun,
 )
@@ -937,7 +940,7 @@ export default mixins(
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = this.getNewNodePosition(
-						[lastSelectedNode.position[0] + 150, lastSelectedNode.position[1]],
+						[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1]],
 						[100, 0],
 					);
 				} else {
@@ -1324,6 +1327,8 @@ export default mixins(
 					}
 
 					if (workflowId !== null) {
+						const workflow = await this.restApi().getWorkflow(workflowId);
+						this.$titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
 						await this.openWorkflow(workflowId);
 					} else {
@@ -1415,6 +1420,11 @@ export default mixins(
 					[node.position[0], node.position[1] + 150],
 					[0, 150],
 				);
+
+				if (newNodeData.webhookId) {
+					// Make sure that the node gets a new unique webhook-ID
+					newNodeData.webhookId = uuidv4();
+				}
 
 				await this.addNodes([newNodeData]);
 
@@ -1705,6 +1715,10 @@ export default mixins(
 					for (type of Object.keys(currentConnections[sourceNode])) {
 						connection[type] = [];
 						for (sourceIndex = 0; sourceIndex < currentConnections[sourceNode][type].length; sourceIndex++) {
+							if (!currentConnections[sourceNode][type][sourceIndex]) {
+								// There is so something wrong with the data so ignore
+								continue;
+							}
 							const nodeSourceConnections = [];
 							for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
 								const nodeConnection: NodeInputConnections = [];
@@ -1868,6 +1882,7 @@ export default mixins(
 				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
+				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();

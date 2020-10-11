@@ -4,9 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -14,7 +13,7 @@ import {
 	apiRequest,
 } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+// import { createHmac } from 'crypto';
 
 
 export class TrelloTrigger implements INodeType {

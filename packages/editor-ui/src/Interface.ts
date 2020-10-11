@@ -399,6 +399,10 @@ export interface IN8nUISettings {
 	timezone: string;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
+	oauthCallbackUrls: {
+		oauth1: string;
+		oauth2: string;
+	};
 	urlBaseWebhook: string;
 	versionCli: string;
 }
@@ -417,3 +421,5 @@ export interface ITimeoutHMS {
 	minutes: number;
 	seconds: number;
 }
+
+export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';

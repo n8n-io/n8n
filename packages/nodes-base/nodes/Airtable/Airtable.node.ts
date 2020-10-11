@@ -3,11 +3,9 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -107,7 +105,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all fields should be send to Airtable or only specific ones.',
+				description: 'If all fields should be sent to Airtable or only specific ones.',
 			},
 			{
 				displayName: 'Fields',
@@ -130,7 +128,7 @@ export class Airtable implements INodeType {
 				default: [],
 				placeholder: 'Name',
 				required: true,
-				description: 'The name of fields of which the data should be send to Airtable.',
+				description: 'The name of fields for which data should be sent to Airtable.',
 			},
 
 			// ----------------------------------
@@ -188,7 +186,7 @@ export class Airtable implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Number of results to return.',
 			},
 
 			{
@@ -331,7 +329,7 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: true,
-				description: 'If all fields should be send to Airtable or only specific ones.',
+				description: 'If all fields should be sent to Airtable or only specific ones.',
 			},
 			{
 				displayName: 'Fields',
@@ -354,7 +352,35 @@ export class Airtable implements INodeType {
 				default: [],
 				placeholder: 'Name',
 				required: true,
-				description: 'The name of fields of which the data should be send to Airtable.',
+				description: 'The name of fields for which data should be sent to Airtable.',
+			},
+
+			// ----------------------------------
+			//         append + update
+			// ----------------------------------
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				displayOptions: {
+					show: {
+						operation: [
+							'append',
+							'update',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Typecast',
+						name: 'typecast',
+						type: 'boolean',
+						default: false,
+						description: 'If the Airtable API should attempt mapping of string values for linked records & select options.',
+					},
+				],
 			},
 		],
 	};
@@ -367,7 +393,7 @@ export class Airtable implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		const application = this.getNodeParameter('application', 0) as string;
-		const table = this.getNodeParameter('table', 0) as string;
+		const table = encodeURI(this.getNodeParameter('table', 0) as string);
 
 		let returnAll = false;
 		let endpoint = '';
@@ -386,8 +412,11 @@ export class Airtable implements INodeType {
 
 			let addAllFields: boolean;
 			let fields: string[];
+			let options: IDataObject;
+
 			for (let i = 0; i < items.length; i++) {
 				addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
+				options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 				if (addAllFields === true) {
 					// Add all the fields the item has
@@ -402,6 +431,10 @@ export class Airtable implements INodeType {
 						// @ts-ignore
 						body.fields[fieldName] = items[i].json[fieldName];
 					}
+				}
+
+				if (options.typecast === true) {
+					body['typecast'] = true;
 				}
 
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -494,8 +527,11 @@ export class Airtable implements INodeType {
 			let id: string;
 			let updateAllFields: boolean;
 			let fields: string[];
+			let options: IDataObject;
+
 			for (let i = 0; i < items.length; i++) {
 				updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
+				options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 				if (updateAllFields === true) {
 					// Update all the fields the item has
@@ -510,6 +546,10 @@ export class Airtable implements INodeType {
 						// @ts-ignore
 						body.fields[fieldName] = items[i].json[fieldName];
 					}
+				}
+
+				if (options.typecast === true) {
+					body['typecast'] = true;
 				}
 
 				id = this.getNodeParameter('id', i) as string;

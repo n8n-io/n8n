@@ -15,8 +15,8 @@ import {
 	companyOperations,
 } from './CompanyDescription';
 import {
-	personOperations,
 	personFields,
+	personOperations,
 } from './PersonDescription';
 
 export class Clearbit implements INodeType {

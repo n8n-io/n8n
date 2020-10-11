@@ -12,14 +12,15 @@
 							<font-awesome-icon icon="check" class="execution-icon success" v-if="executionFinished" title="Execution was successful" />
 							<font-awesome-icon icon="times" class="execution-icon error" v-else title="Execution did fail" />
 						</span>
-							of Workflow
+							of 
 						<span class="workflow-name clickable" title="Open Workflow">
 							<span @click="openWorkflow(workflowExecution.workflowId)">"{{workflowName}}"</span>
 						</span>
+						workflow
 					</span>
 					<span index="workflow-name" class="current-workflow" v-if="!isReadOnly">
 						<span v-if="currentWorkflow">Workflow: <span class="workflow-name">{{workflowName}}</span></span>
-						<span v-else class="workflow-not-saved">Workflow not saved!</span>
+						<span v-else class="workflow-not-saved">Workflow was not saved!</span>
 					</span>
 
 					<span class="saving-workflow" v-if="isWorkflowSaving">
@@ -32,9 +33,9 @@
 				<div class="push-connection-lost" v-if="!isPushConnectionActive">
 					<el-tooltip placement="bottom-end" effect="light">
 						<div slot="content">
-							Server connection could not be established.<br />
-							The server is down or there is a connection problem.<br />
-							It will reconnect automatically as soon as the backend can be reached.
+							Cannot connect to server.<br />
+							It is either down or you have a connection issue. <br />
+							It should reconnect automatically once the issue is resolved.
 						</div>
 						<span>
 							<font-awesome-icon icon="exclamation-triangle" />&nbsp;
@@ -50,9 +51,8 @@
 				<div class="read-only" v-if="isReadOnly">
 					<el-tooltip placement="bottom-end" effect="light">
 						<div slot="content">
-							A past execution gets displayed. For that reason no data<br />
-							can be changed. To make changes or to execute it again open<br />
-							the workflow by clicking on it`s name on the left.
+							You're viewing the log of a previous execution. You cannot<br />
+							make changes since this execution already occured. Make changes<br /> to this workflow by clicking on it`s name on the left.
 						</div>
 						<span>
 							<font-awesome-icon icon="exclamation-triangle" />
@@ -84,6 +84,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { pushConnection } from '@/components/mixins/pushConnection';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import { saveAs } from 'file-saver';
@@ -95,6 +96,7 @@ export default mixins(
 	pushConnection,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
 )
 	.extend({
@@ -155,6 +157,7 @@ export default mixins(
 		},
 		methods: {
 			async openWorkflow (workflowId: string) {
+				this.$titleSet(this.workflowName, 'IDLE');
 				// Change to other workflow
 				this.$router.push({
 					name: 'NodeViewExisting',
@@ -162,7 +165,6 @@ export default mixins(
 				});
 			},
 		},
-
 		async mounted () {
 			// Initialize the push connection
 			this.pushConnect();

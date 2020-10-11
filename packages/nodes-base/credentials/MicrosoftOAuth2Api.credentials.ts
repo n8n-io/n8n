@@ -11,17 +11,19 @@ export class MicrosoftOAuth2Api implements ICredentialType {
 	displayName = 'Microsoft OAuth2 API';
 	documentationUrl = 'microsoft';
 	properties = [
+		//info about the tenantID
+		//https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols#endpoints
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'string' as NodePropertyTypes,
-			default: 'https://login.microsoftonline.com/{yourtenantid}/oauth2/v2.0/authorize',
+			default: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'string' as NodePropertyTypes,
-			default: 'https://login.microsoftonline.com/{yourtenantid}/oauth2/v2.0/token',
+			default: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

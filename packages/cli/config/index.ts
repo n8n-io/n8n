@@ -300,6 +300,12 @@ const config = convict({
 	},
 
 	security: {
+		excludeEndpoints: {
+			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
+			format: String,
+			default: '',
+			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS'
+		},
 		basicAuth: {
 			active: {
 				format: 'Boolean',
@@ -319,6 +325,12 @@ const config = convict({
 				env: 'N8N_BASIC_AUTH_PASSWORD',
 				doc: 'The password of the basic auth user'
 			},
+			hash: {
+				format: 'Boolean',
+				default: false,
+				env: 'N8N_BASIC_AUTH_HASH',
+				doc: 'If password for basic auth is hashed'
+			}
 		},
 		jwtAuth: {
 			active: {

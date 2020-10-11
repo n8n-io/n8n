@@ -22,9 +22,9 @@ import {
 import {
 	IAnswer,
 	IChoice,
+	IOther,
 	IQuestion,
 	IRow,
-	IOther,
 } from './Interfaces';
 
 import {

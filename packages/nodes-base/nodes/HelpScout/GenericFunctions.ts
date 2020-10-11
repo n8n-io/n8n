@@ -1,8 +1,8 @@
 import { OptionsWithUri } from 'request';
 import {
-	IHookFunctions,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 import {
