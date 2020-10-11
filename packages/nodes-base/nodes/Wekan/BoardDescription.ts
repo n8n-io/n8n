@@ -201,10 +201,7 @@ export const boardFields = [
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBoards',
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -226,10 +223,7 @@ export const boardFields = [
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBoards',
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -268,6 +262,47 @@ export const boardFields = [
 			},
 		},
 		description: 'The ID of the user that boards are attached.',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'board',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'board',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 200,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 
 ] as INodeProperties[];

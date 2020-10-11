@@ -119,6 +119,9 @@ export const listFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
@@ -165,15 +168,13 @@ export const listFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'get',
@@ -209,6 +210,47 @@ export const listFields = [
 			},
 		},
 		description: 'ID of the board where the lists are in'
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'list',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 200,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 
 ] as INodeProperties[];

@@ -31,12 +31,12 @@ export const cardOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get the data of a card',
+				description: 'Get a card',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all list cards',
+				description: 'Get all cards',
 			},
 			{
 				name: 'Update',
@@ -80,15 +80,13 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'create',
@@ -125,15 +123,13 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getSwimlanes',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'create',
@@ -243,15 +239,13 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'delete',
@@ -269,18 +263,14 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
+			loadOptionsDependsOn: [
+				'boardId',
+				'listId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-				listId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'delete',
@@ -323,15 +313,13 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'get',
@@ -349,18 +337,14 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
+			loadOptionsDependsOn: [
+				'boardId',
+				'listId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-				listId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'get',
@@ -398,7 +382,7 @@ export const cardFields = [
 		description: 'The ID of the board that list belongs to.'
 	},
 	{
-		displayName: 'From object',
+		displayName: 'From Object',
 		name: 'fromObject',
 		type: 'options',
 		required: true,
@@ -431,15 +415,13 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				fromObject: [
 					'list',
@@ -460,14 +442,12 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getSwimlanes',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				fromObject: [
 					'swimlane',
@@ -481,6 +461,47 @@ export const cardFields = [
 			},
 		},
 		description: 'The ID of the swimlane that card belongs to.'
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'card',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'card',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 200,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 
 	// ----------------------------------
@@ -513,15 +534,13 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'update',
@@ -539,18 +558,14 @@ export const cardFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
+			loadOptionsDependsOn: [
+				'boardId',
+				'listId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-				listId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'update',
@@ -604,31 +619,106 @@ export const cardFields = [
 				name: 'color',
 				type: 'options',
 				options: [
-					{value: 'white', name: 'White'},
-					{value: 'green', name: 'Green'},
-					{value: 'yellow', name: 'Yellow'},
-					{value: 'orange', name: 'Orange'},
-					{value: 'red', name: 'Red'},
-					{value: 'purple', name: 'Purple'},
-					{value: 'blue', name: 'Blue'},
-					{value: 'sky', name: 'Sky'},
-					{value: 'lime', name: 'Lime'},
-					{value: 'pink', name: 'Pink'},
-					{value: 'black', name: 'Black'},
-					{value: 'silver', name: 'Silver'},
-					{value: 'peachpuff', name: 'Peachpuff'},
-					{value: 'crimson', name: 'Crimson'},
-					{value: 'plum', name: 'Plum'},
-					{value: 'darkgreen', name: 'Darkgreen'},
-					{value: 'slateblue', name: 'Slateblue'},
-					{value: 'magenta', name: 'Magenta'},
-					{value: 'gold', name: 'Gold'},
-					{value: 'navy', name: 'Navy'},
-					{value: 'gray', name: 'Gray'},
-					{value: 'saddlebrown', name: 'Saddlebrown'},
-					{value: 'paleturquoise', name: 'Paleturquoise'},
-					{value: 'mistyrose', name: 'Mistyrose'},
-					{value: 'indigo', name: 'Indigo'},
+					{
+						value: 'white',
+						name: 'White',
+					},
+					{
+						value: 'green',
+						name: 'Green',
+					},
+					{
+						value: 'yellow',
+						name: 'Yellow',
+					},
+					{
+						value: 'orange',
+						name: 'Orange',
+					},
+					{
+						value: 'red',
+						name: 'Red',
+					},
+					{
+						value: 'purple',
+						name: 'Purple',
+					},
+					{
+						value: 'blue',
+						name: 'Blue',
+					},
+					{
+						value: 'sky',
+						name: 'Sky',
+					},
+					{
+						value: 'lime',
+						name: 'Lime'
+					},
+					{
+						value: 'pink',
+						name: 'Pink',
+					},
+					{
+						value: 'black',
+						name: 'Black',
+					},
+					{
+						value: 'silver',
+						name: 'Silver',
+					},
+					{
+						value: 'peachpuff',
+						name: 'Peachpuff'
+					},
+					{
+						value: 'crimson',
+						name: 'Crimson',
+					},
+					{
+						value: 'plum',
+						name: 'Plum'
+					},
+					{
+						value: 'darkgreen',
+						name: 'Darkgreen',
+					},
+					{
+						value: 'slateblue',
+						name: 'Slateblue'
+					},
+					{
+						value: 'magenta',
+						name: 'Magenta',
+					},
+					{
+						value: 'gold',
+						name: 'Gold',
+					},
+					{
+						value: 'navy',
+						name: 'Navy',
+					},
+					{
+						value: 'gray',
+						name: 'Gray',
+					},
+					{
+						value: 'saddlebrown',
+						name: 'Saddlebrown',
+					},
+					{
+						value: 'paleturquoise',
+						name: 'Paleturquoise'
+					},
+					{
+						value: 'mistyrose',
+						name: 'Mistyrose',
+					},
+					{
+						value: 'indigo',
+						name: 'Indigo',
+					},
 				],
 				default: '',
 				description: 'The new color of the card.',
@@ -657,7 +747,7 @@ export const cardFields = [
 			{
 				displayName: 'Label IDs',
 				name: 'labelIds',
-				type: 'multiOptions',
+				type: 'string',
 				default: '',
 				description: 'The label IDs attached to the card.',
 			},
@@ -667,6 +757,9 @@ export const cardFields = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getLists',
+					loadOptionsDependsOn: [
+						'boardId',
+					],
 				},
 				default: '',
 				description: 'The new list ID of the card (move operation).',
@@ -694,6 +787,10 @@ export const cardFields = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCards',
+					loadOptionsDependsOn: [
+						'boardId',
+						'listId',
+					],
 				},
 				default: '',
 				description: 'The parent of the card.',
@@ -728,6 +825,9 @@ export const cardFields = [
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getSwimlanes',
+					loadOptionsDependsOn: [
+						'boardId',
+					],
 				},
 				default: '',
 				description: 'The new swimlane ID of the card.',

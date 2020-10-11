@@ -2,9 +2,9 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const checklistOperations = [
+export const checklistItemOperations = [
 	// ----------------------------------
-	//         checklist
+	//         checklistItem
 	// ----------------------------------
 	{
 		displayName: 'Operation',
@@ -13,30 +13,25 @@ export const checklistOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new checklist',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a checklist',
+				description: 'Delete a checklist item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get the data of a checklist',
+				description: 'Get a checklist item',
 			},
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Returns all checklists for the card',
+				name: 'update',
+				value: 'update',
+				description: 'Update a checklist item',
 			},
 		],
 		default: 'getAll',
@@ -45,122 +40,9 @@ export const checklistOperations = [
 
 ] as INodeProperties[];
 
-export const checklistFields = [
+export const checklistItemFields = [
 	// ----------------------------------
-	//         checklist:create
-	// ----------------------------------
-	{
-		displayName: 'Board ID',
-		name: 'boardId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBoards',
-		},
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'checklist',
-				],
-			},
-		},
-		description: 'The ID of the board where the card is in.'
-	},
-	{
-		displayName: 'List ID',
-		name: 'listId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getLists',
-			loadOptionsDependsOn: [
-				'boardId',
-			],
-		},
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'checklist',
-				],
-			},
-		},
-		description: 'The ID of the list that card belongs to.',
-	},
-	{
-		displayName: 'Card ID',
-		name: 'cardId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCards',
-			loadOptionsDependsOn: [
-				'boardId',
-				'listId',
-			],
-		},
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'checklist',
-				],
-			},
-		},
-		description: 'The ID of the card to add checklist to.',
-	},
-	{
-		displayName: 'Title',
-		name: 'title',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'checklist',
-				],
-			},
-		},
-		description: 'The title of the checklist to add.',
-	},
-	{
-		displayName: 'Items',
-		name: 'items',
-		type: 'string',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add Item',
-		},
-		displayOptions: {
-			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'checklist',
-				],
-			},
-		},
-		default: [],
-		description: 'Items to be added to the checklist',
-	},
-
-	// ----------------------------------
-	//         checklist:delete
+	//         checklistItem:delete
 	// ----------------------------------
 	{
 		displayName: 'Board ID',
@@ -177,7 +59,7 @@ export const checklistFields = [
 					'delete',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
@@ -201,7 +83,7 @@ export const checklistFields = [
 					'delete',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
@@ -226,11 +108,11 @@ export const checklistFields = [
 					'delete',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
-		description: 'The ID of the card that checklist belongs to.',
+		description: 'The ID of the card that checklistItem belongs to.'
 	},
 	{
 		displayName: 'Checklist ID',
@@ -251,15 +133,41 @@ export const checklistFields = [
 					'delete',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
-		description: 'The ID of the checklist to delete.',
+		description: 'The ID of the checklistItem that card belongs to.',
+	},
+	{
+		displayName: 'Checklist Item ID',
+		name: 'checklistItemId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChecklistItems',
+			loadOptionsDependsOn: [
+				'boardId',
+				'cardId',
+				'checklistId',
+			],
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+				resource: [
+					'checklistItem',
+				],
+			},
+		},
+		description: 'The ID of the checklistItem item to get.',
 	},
 
 	// ----------------------------------
-	//         checklist:get
+	//         checklistItem:get
 	// ----------------------------------
 	{
 		displayName: 'Board ID',
@@ -276,7 +184,7 @@ export const checklistFields = [
 					'get',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
@@ -300,7 +208,7 @@ export const checklistFields = [
 					'get',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
@@ -325,11 +233,11 @@ export const checklistFields = [
 					'get',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
-		description: 'The ID of the card that checklist belongs to.'
+		description: 'The ID of the card that checklistItem belongs to.'
 	},
 	{
 		displayName: 'Checklist ID',
@@ -350,15 +258,41 @@ export const checklistFields = [
 					'get',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
-		description: 'The ID of the checklist to get.',
+		description: 'The ID of the checklistItem that card belongs to.',
+	},
+	{
+		displayName: 'Checklist Item ID',
+		name: 'checklistItemId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChecklistItems',
+			loadOptionsDependsOn: [
+				'boardId',
+				'cardId',
+				'checklistId',
+			],
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'checklistItem',
+				],
+			},
+		},
+		description: 'The ID of the checklistItem item to get.',
 	},
 
 	// ----------------------------------
-	//         checklist:getAll
+	//         checklistItem:update
 	// ----------------------------------
 	{
 		displayName: 'Board ID',
@@ -372,14 +306,14 @@ export const checklistFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getAll',
+					'update',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.'
+		description: 'The ID of the board that card belongs to.'
 	},
 	{
 		displayName: 'List ID',
@@ -396,10 +330,10 @@ export const checklistFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getAll',
+					'update',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
@@ -421,54 +355,98 @@ export const checklistFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getAll',
+					'update',
 				],
 				resource: [
-					'checklist',
+					'checklistItem',
 				],
 			},
 		},
-		description: 'The ID of the card to get checklists.',
+		description: 'The ID of the card that checklistItem belongs to.'
 	},
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'checklist',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'checklist',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
+		displayName: 'CheckList ID',
+		name: 'checklistId',
+		type: 'options',
 		typeOptions: {
-			minValue: 1,
-			maxValue: 200,
+			loadOptionsMethod: 'getChecklists',
+			loadOptionsDependsOn: [
+				'boardId',
+				'cardId',
+			],
 		},
-		default: 100,
-		description: 'How many results to return.',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'checklistItem',
+				],
+			},
+		},
+		description: 'The ID of the checklistItem that card belongs to.',
 	},
+	{
+		displayName: 'Checklist Item ID',
+		name: 'checklistItemId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChecklistItems',
+			loadOptionsDependsOn: [
+				'boardId',
+				'cardId',
+				'checklistId',
+			],
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'checklistItem',
+				],
+			},
+		},
+		description: 'The ID of the checklistItem item to update.',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'checklistItem',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'The new title for the checklistItem item.',
+			},
+			{
+				displayName: 'Finished',
+				name: 'isFinished',
+				type: 'boolean',
+				default: false,
+				description: 'Item is checked',
+			},
+		],
+	},
+
 ] as INodeProperties[];

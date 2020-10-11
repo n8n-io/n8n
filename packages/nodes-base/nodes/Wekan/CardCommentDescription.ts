@@ -72,15 +72,13 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'create',
@@ -98,18 +96,14 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
+			loadOptionsDependsOn: [
+				'boardId',
+				'listId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-				listId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'create',
@@ -191,15 +185,13 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'delete',
@@ -217,18 +209,14 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
+			loadOptionsDependsOn: [
+				'boardId',
+				'listId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-				listId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'delete',
@@ -246,18 +234,14 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getComments',
+			loadOptionsDependsOn: [
+				'boardId',
+				'cardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-				cardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'delete',
@@ -300,15 +284,13 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'get',
@@ -326,18 +308,14 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
+			loadOptionsDependsOn: [
+				'boardId',
+				'listId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-				listId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'get',
@@ -355,18 +333,14 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getComments',
+			loadOptionsDependsOn: [
+				'boardId',
+				'cardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-				cardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'get',
@@ -409,15 +383,13 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getLists',
+			loadOptionsDependsOn: [
+				'boardId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'getAll',
@@ -435,18 +407,14 @@ export const cardCommentFields = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getCards',
+			loadOptionsDependsOn: [
+				'boardId',
+				'listId',
+			],
 		},
 		default: '',
 		required: true,
 		displayOptions: {
-			hide: {
-				boardId: [
-					'',
-				],
-				listId: [
-					'',
-				],
-			},
 			show: {
 				operation: [
 					'getAll',
@@ -457,5 +425,46 @@ export const cardCommentFields = [
 			},
 		},
 		description: 'The ID of the card.',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'cardComment',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'cardComment',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 200,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 ] as INodeProperties[];

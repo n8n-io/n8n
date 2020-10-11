@@ -37,7 +37,7 @@ export async function getAuthorization(
 	try {
 		const response = await this.helpers.request!(options);
 
-		return {token: response.token, userId: response.id};
+		return { token: response.token, userId: response.id };
 	} catch (error) {
 		throw new Error('Wekan Error: ' + error.error.reason);
 	}
@@ -52,7 +52,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 
 	query = query || {};
 
-	const {token, userId} = await getAuthorization.call(this, credentials);
+	const { token } = await getAuthorization.call(this, credentials);
 
 	const options: OptionsWithUri = {
 		headers: {
