@@ -1,6 +1,14 @@
-import { sign } from 'aws4';
-import { OptionsWithUri } from 'request';
-import { parseString } from 'xml2js';
+import {
+	sign,
+} from 'aws4';
+
+import {
+	OptionsWithUri,
+} from 'request';
+
+import {
+	parseString,
+} from 'xml2js';
 
 import {
 	IExecuteFunctions,
@@ -9,6 +17,13 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
+import {
+	IDataObject,
+} from 'n8n-workflow';
+
+import {
+	get,
+} from 'lodash';
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
@@ -28,8 +43,6 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		uri: `https://${endpoint}${signOpts.path}`,
 		body: signOpts.body,
 	};
-
-	console.log(options);
 
 	try {
 		return await this.helpers.request!(options);
@@ -71,4 +84,33 @@ export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions
 	} catch (e) {
 		return response;
 	}
+}
+
+
+export async function awsApiRequestSOAPAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, propertyName: string, service: string, method: string, path: string, body?: string, query: IDataObject = {}, headers: IDataObject = {},  option: IDataObject = {}, region?: string): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	const propertyNameArray = propertyName.split('.');
+
+	do {
+		responseData = await awsApiRequestSOAP.call(this, service, method, path, body, query);
+
+		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`)) {
+			query['NextToken'] = get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`);
+		}
+		if (get(responseData, propertyName)) {
+			if (Array.isArray(get(responseData, propertyName))) {
+				returnData.push.apply(returnData, get(responseData, propertyName));
+			} else {
+				returnData.push(get(responseData, propertyName));
+			}
+		}
+	} while (
+		get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`) !== undefined
+	);
+
+	return returnData;
 }
