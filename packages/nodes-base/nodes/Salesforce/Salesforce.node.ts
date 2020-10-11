@@ -1967,7 +1967,7 @@ export class Salesforce implements INodeType {
 					} else {
 						// Input variables are defined in UI
 						const setInputVariable = this.getNodeParameter('variablesUi', i, {}) as IDataObject;
-						if (setInputVariable!.inputVariable !== undefined) {
+						if (setInputVariable!.variablesValues !== undefined) {
 							for (const inputVariableData of setInputVariable!.variablesValues as IDataObject[]) {
 								// @ts-ignore
 								variables[inputVariableData!.name as string] = inputVariableData!.value;
