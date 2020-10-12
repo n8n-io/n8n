@@ -12,6 +12,7 @@ import {
 
 import {
 	read as xlsxRead,
+	Sheet2JSONOpts,
 	utils as xlsxUtils,
 	WorkBook,
 	write as xlsxWrite,
@@ -234,6 +235,20 @@ export class SpreadsheetFile implements INodeType {
 						description: 'In some cases and file formats, it is necessary to read<br />specifically as string else some special character get interpreted wrong.',
 					},
 					{
+						displayName: 'Range',
+						name: 'range',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile'
+								],
+							},
+						},
+						default: '',
+						description: 'The range to read from the table.<br />If set to a number it will be the starting row.<br />If set to string it will be used as A1-style bounded range.',
+					},
+					{
 						displayName: 'Sheet Name',
 						name: 'sheetName',
 						type: 'string',
@@ -317,7 +332,16 @@ export class SpreadsheetFile implements INodeType {
 				}
 
 				// Convert it to json
-				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName]);
+				const sheetToJsonOptions: Sheet2JSONOpts = {};
+				if (options.range) {
+					if (isNaN(options.range as number)) {
+						sheetToJsonOptions.range = options.range;
+					} else {
+						sheetToJsonOptions.range = parseInt(options.range as string, 10);
+					}
+				}
+
+				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
 
 				// Check if data could be found in file
 				if (sheetJson.length === 0) {
