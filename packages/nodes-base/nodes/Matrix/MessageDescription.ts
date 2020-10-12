@@ -33,9 +33,9 @@ export const messageOperations = [
 
 export const messageFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                              message:create                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                              message:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
@@ -81,9 +81,9 @@ export const messageFields = [
 	},
 
 
-/* ----------------------------------------------------------------------- */
-/*                                message:getAll                          */
-/* ----------------------------------------------------------------------- */
+	/* ----------------------------------------------------------------------- */
+	/*                                message:getAll                          */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
@@ -152,27 +152,27 @@ export const messageFields = [
 		name: 'otherOptions',
 		type: 'collection',
 		displayOptions: {
-            show: {
-                resource: [
-                    'message',
-                ],
-                operation: [
-                    'getAll',
-                ],
-            },
-        },
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
 		default: {},
 		description: 'Other options',
 		placeholder: 'Add options',
 		options: [
-            {
-                displayName: 'Filter',
-                name: 'filter',
-                type: 'string',
-                default: '',    
-				description: 'A JSON RoomEventFilter to filter returned events with.',
+			{
+				displayName: 'Filter',
+				name: 'filter',
+				type: 'string',
+				default: '',
+				description: 'A JSON RoomEventFilter to filter returned events with. More information can be found on this <a href="https://matrix.org/docs/spec/client_server/r0.6.0" target="_blank">page</a>.',
 				placeholder: '{"contains_url":true,"types":["m.room.message", "m.sticker"]}',
-            },
+			},
 		],
 	},
 

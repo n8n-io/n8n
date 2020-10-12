@@ -28,27 +28,9 @@ export const mediaOperations = [
 
 export const mediaFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                               media:upload                                 */
-/* -------------------------------------------------------------------------- */
-
-	{
-		displayName: 'Binary Property',
-		name: 'binaryPropertyName',
-		type: 'string',
-		default: 'data',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'upload',
-				],
-			},
-		},
-	},
+	/* -------------------------------------------------------------------------- */
+	/*                               media:upload                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
@@ -69,6 +51,23 @@ export const mediaFields = [
 		},
 		description: 'Room ID to post ',
 		required: true,
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'media',
+				],
+				operation: [
+					'upload',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Media type',

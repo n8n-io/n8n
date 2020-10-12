@@ -236,5 +236,4 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 
 
 	throw new Error('Not implemented yet');
-
 }

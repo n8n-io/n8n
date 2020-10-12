@@ -120,16 +120,24 @@ export class Matrix implements INodeType {
 		loadOptions: {
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+
 				const joinedRoomsResponse = await matrixApiRequest.call(this, 'GET', '/joined_rooms');
 
 				await Promise.all(joinedRoomsResponse.joined_rooms.map(async (roomId: string) => {
-					const roomNameResponse = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/state/m.room.name`);
-					returnData.push({
-						name: roomNameResponse.name,
-						value: roomId,
-					});
+					try {
+						const roomNameResponse = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/state/m.room.name`);
+						returnData.push({
+							name: roomNameResponse.name,
+							value: roomId,
+						});
+					} catch (e) {
+						// TODO: Check, there is probably another way to get the name of this private-chats
+						returnData.push({
+							name: `Unknown: ${roomId}`,
+							value: roomId,
+						});
+					}
 				}));
-
 
 				returnData.sort((a, b) => {
 					if (a.name < b.name) { return -1; }
@@ -159,8 +167,6 @@ export class Matrix implements INodeType {
 			}
 		}
 
-
 		return [this.helpers.returnJsonArray(returnData)];
-
 	}
 }
