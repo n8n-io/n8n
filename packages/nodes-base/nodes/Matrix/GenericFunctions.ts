@@ -38,7 +38,7 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		qs: query,
 		// Override URL when working with media only. All other endpoints use client.
 		//@ts-ignore
-		uri: option.hasOwnProperty('overridePrefix') ? `https://matrix.org/_matrix/${option.overridePrefix}/r0${resource}`: `https://matrix.org/_matrix/client/r0${resource}`,
+		uri: option.hasOwnProperty('overridePrefix') ? `https://matrix.org/_matrix/${option.overridePrefix}/r0${resource}` : `https://matrix.org/_matrix/client/r0${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -97,7 +97,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 				preset,
 			};
 			if (roomAlias) {
-				body.room_alias_name =  roomAlias;
+				body.room_alias_name = roomAlias;
 			}
 			return await matrixApiRequest.call(this, 'POST', `/createRoom`, body);
 		} else if (operation === 'join') {
@@ -136,6 +136,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 		} else if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+			const otherOptions = this.getNodeParameter('otherOptions', index) as IDataObject;
 			const returnData: IDataObject[] = [];
 
 			if (returnAll) {
@@ -146,6 +147,11 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 						dir: 'b', // Get latest messages first - doesn't return anything if we use f without a previous token.
 						from,
 					};
+
+					if (otherOptions.filter) {
+						qs.filter = otherOptions.filter;
+					}
+
 					responseData = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
 					returnData.push.apply(returnData, responseData.chunk);
 					from = responseData.end;
@@ -156,6 +162,11 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 					dir: 'b', // Get latest messages first - doesn't return anything if we use f without a previous token.
 					limit,
 				};
+
+				if (otherOptions.filter) {
+					qs.filter = otherOptions.filter;
+				}
+
 				const responseData = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
 				returnData.push.apply(returnData, responseData.chunk);
 			}
@@ -216,7 +227,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			const filters = this.getNodeParameter('filters', index) as IDataObject;
 			const qs: IDataObject = {
 				membership: filters.membership ? filters.membership : '',
-				not_membership:  filters.notMembership ? filters.notMembership : '',
+				not_membership: filters.notMembership ? filters.notMembership : '',
 			};
 			const roomMembersResponse = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/members`, {}, qs);
 			return roomMembersResponse.chunk;
@@ -224,6 +235,6 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 	}
 
 
-	throw new Error ('Not implemented yet');
+	throw new Error('Not implemented yet');
 
 }
