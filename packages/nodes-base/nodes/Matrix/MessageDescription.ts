@@ -147,5 +147,34 @@ export const messageFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
+	{
+		displayName: 'Other Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+            show: {
+                resource: [
+                    'message',
+                ],
+                operation: [
+                    'getAll',
+                ],
+            },
+        },
+		default: {},
+		description: 'Other options',
+		placeholder: 'Add options',
+		options: [
+            {
+                displayName: 'Filter',
+                name: 'filter',
+                type: 'string',
+                default: '',    
+				description: 'A JSON RoomEventFilter to filter returned events with.',
+				placeholder: '{"contains_url":true,"types":["m.room.message", "m.sticker"]}',
+            },
+		],
+	},
+
 
 ] as INodeProperties[];

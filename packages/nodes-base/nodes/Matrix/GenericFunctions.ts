@@ -136,6 +136,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 		} else if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+			const otherOptions = this.getNodeParameter('otherOptions', index) as IDataObject;
 			const returnData: IDataObject[] = [];
 
 			if (returnAll) {
@@ -145,6 +146,9 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 					const qs: IDataObject = {
 						dir: 'b', // Get latest messages first - doesn't return anything if we use f without a previous token.
 						from: from,
+					}
+					if (otherOptions.filter) {
+						qs.filter = otherOptions.filter;
 					}
 					responseData = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
 					returnData.push.apply(returnData, responseData.chunk);
@@ -156,6 +160,10 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 					dir: 'b', // Get latest messages first - doesn't return anything if we use f without a previous token.
 					limit,
 				}
+				if (otherOptions.filter) {
+					qs.filter = otherOptions.filter;
+				}
+				console.log(qs);
 				const responseData = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
 				returnData.push.apply(returnData, responseData.chunk);
 			}
