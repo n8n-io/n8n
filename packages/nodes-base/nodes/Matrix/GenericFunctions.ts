@@ -80,7 +80,7 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, item: IDataObject, index: number, resource: string, operation: string): Promise<any> {
+export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, item: IDataObject, index: number, resource: string, operation: string): Promise<any> { // tslint:disable-line:no-any
 
 	if (resource === 'account') {
 		if (operation === 'me') {
