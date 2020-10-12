@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const mediaOperations = [
 	{
@@ -29,32 +31,31 @@ export const mediaFields = [
 /* -------------------------------------------------------------------------- */
 /*                               media:upload                                 */
 /* -------------------------------------------------------------------------- */
-    
-    {
-        displayName: 'Binary Property',
-        name: 'binaryPropertyName',
-        type: 'string',
-        default: 'data',
-        required: true,
-        displayOptions: {
-            show: {
-                resource: [
-                    'media',
-                ],
-                operation: [
-                    'upload'
-                ],
-            },
 
-        },
+	{
+		displayName: 'Binary Property',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'media',
+				],
+				operation: [
+					'upload',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
-        type: 'options',
-        typeOptions: {
-            loadOptionsMethod: 'getChannels',
-        },
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -63,7 +64,7 @@ export const mediaFields = [
 				],
 				operation: [
 					'upload',
-				]
+				],
 			},
 		},
 		description: 'Room ID to post ',
@@ -81,10 +82,10 @@ export const mediaFields = [
 				],
 				operation: [
 					'upload',
-				]
+				],
 			},
-        },
-        options: [
+		},
+		options: [
 			{
 				name: 'File',
 				value: 'file',
@@ -96,10 +97,8 @@ export const mediaFields = [
 				description: 'Image media type',
 			},
 		],
-        description: 'Name of the uploaded file',
-        placeholder: 'mxc://matrix.org/uploaded-media-uri',
+		description: 'Name of the uploaded file',
+		placeholder: 'mxc://matrix.org/uploaded-media-uri',
 		required: true,
 	},
-
-
 ] as INodeProperties[];

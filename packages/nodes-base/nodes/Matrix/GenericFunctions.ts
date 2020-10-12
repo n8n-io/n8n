@@ -59,7 +59,7 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 		//@ts-ignore
 		response = await this.helpers.request(options);
-		
+
 		// When working with images, the request cannot be JSON (it's raw binary data)
 		// But the output is JSON so we have to parse it manually.
 		//@ts-ignore
@@ -131,7 +131,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 				msgtype: 'm.text',
 				body: text,
 			};
-			const messageId = uuid()
+			const messageId = uuid();
 			return await matrixApiRequest.call(this, 'PUT', `/rooms/${roomId}/send/m.room.message/${messageId}`, body);
 		} else if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
@@ -144,22 +144,22 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 				do {
 					const qs: IDataObject = {
 						dir: 'b', // Get latest messages first - doesn't return anything if we use f without a previous token.
-						from: from,
-					}
+						from,
+					};
 					responseData = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
 					returnData.push.apply(returnData, responseData.chunk);
-					from = responseData.end
+					from = responseData.end;
 				} while (responseData.chunk.length > 0);
 			} else {
 				const limit = this.getNodeParameter('limit', index) as number;
 				const qs: IDataObject = {
 					dir: 'b', // Get latest messages first - doesn't return anything if we use f without a previous token.
 					limit,
-				}
+				};
 				const responseData = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/messages`, {}, qs);
 				returnData.push.apply(returnData, responseData.chunk);
 			}
-			
+
 			return returnData;
 		}
 	} else if (resource === 'event') {
@@ -184,14 +184,14 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 				|| item.binary[binaryPropertyName] === undefined) {
 				throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
 			}
-			
+
 			//@ts-ignore
 			qs.filename = item.binary[binaryPropertyName].fileName;
 			//@ts-ignore
 			filename = item.binary[binaryPropertyName].fileName;
-			
+
 			//@ts-ignore
-			body = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING)
+			body = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
 			//@ts-ignore
 			headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
 			headers['accept'] = 'application/json,text/*;q=0.99';
@@ -206,17 +206,17 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 				body: filename,
 				url: uploadRequestResult.content_uri,
 			};
-			const messageId = uuid()
+			const messageId = uuid();
 			return await matrixApiRequest.call(this, 'PUT', `/rooms/${roomId}/send/m.room.message/${messageId}`, body);
-			
-		} 
-	} else if (resource === 'roomMembers') {
+
+		}
+	} else if (resource === 'roomMember') {
 		if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			const filterOptions = this.getNodeParameter('filterOptions', index) as IDataObject;
+			const filters = this.getNodeParameter('filters', index) as IDataObject;
 			const qs: IDataObject = {
-				membership: filterOptions.membership ? filterOptions.membership : '',
-				not_membership:  filterOptions.notMembership ? filterOptions.notMembership : '',
+				membership: filters.membership ? filters.membership : '',
+				not_membership:  filters.notMembership ? filters.notMembership : '',
 			};
 			const roomMembersResponse = await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/members`, {}, qs);
 			return roomMembersResponse.chunk;
@@ -225,5 +225,5 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 
 
 	throw new Error ('Not implemented yet');
-	
+
 }

@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const messageOperations = [
 	{
@@ -19,7 +21,7 @@ export const messageOperations = [
 				description: 'Send a message to a room',
 			},
 			{
-				name: 'Get all',
+				name: 'Get All',
 				value: 'getAll',
 				description: 'Gets all messages from a room',
 			},
@@ -34,8 +36,6 @@ export const messageFields = [
 /* -------------------------------------------------------------------------- */
 /*                              message:create                                */
 /* -------------------------------------------------------------------------- */
-    
-    
 	{
 		displayName: 'Room ID',
 		name: 'roomId',
@@ -80,7 +80,7 @@ export const messageFields = [
 		description: 'The text to send.',
 	},
 
-	
+
 /* ----------------------------------------------------------------------- */
 /*                                message:getAll                          */
 /* ----------------------------------------------------------------------- */
@@ -99,7 +99,7 @@ export const messageFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		description: 'The token to start returning events from. This token can be obtained from a prev_batch token returned for each room by the sync API',
@@ -117,7 +117,7 @@ export const messageFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		description: 'If all results should be returned or only up to a given limit.',

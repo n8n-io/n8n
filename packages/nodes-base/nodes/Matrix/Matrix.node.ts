@@ -1,4 +1,7 @@
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -9,38 +12,38 @@ import {
 } from 'n8n-workflow';
 
 import {
-	handleMatrixCall, 
+	handleMatrixCall,
 	matrixApiRequest,
 } from './GenericFunctions';
 
 import {
 	accountOperations
-} from './AccountDescription'
+} from './AccountDescription';
 
 import {
-	eventOperations,
 	eventFields,
-} from './EventDescription'
+	eventOperations,
+} from './EventDescription';
 
 import {
 	mediaFields,
 	mediaOperations,
-} from './MediaDescription'
+} from './MediaDescription';
 
 import {
-	messageOperations,
 	messageFields,
-} from './MessageDescription'
+	messageOperations,
+} from './MessageDescription';
 
 import {
-	roomOperations,
 	roomFields,
-} from './RoomDescription'
+	roomOperations,
+} from './RoomDescription';
 
 import {
-	roomMembersFields,
-	roomMembersOperations,
-} from './RoomMembersDescription'
+	roomMemberFields,
+	roomMemberOperations,
+} from './RoomMemberDescription';
 
 export class Matrix implements INodeType {
 	description: INodeTypeDescription = {
@@ -91,8 +94,8 @@ export class Matrix implements INodeType {
 						value: 'room',
 					},
 					{
-						name: 'Room Members',
-						value: 'roomMembers',
+						name: 'Room Member',
+						value: 'roomMember',
 					},
 				],
 				default: 'message',
@@ -107,13 +110,12 @@ export class Matrix implements INodeType {
 			...messageFields,
 			...roomOperations,
 			...roomFields,
-			...roomMembersOperations,
-			...roomMembersFields,
-
+			...roomMemberOperations,
+			...roomMemberFields,
 		]
 	};
 
-	
+
 	methods = {
 		loadOptions: {
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -126,9 +128,9 @@ export class Matrix implements INodeType {
 						name: roomNameResponse.name,
 						value: roomId,
 					});
-				}))
+				}));
 
-				
+
 				returnData.sort((a, b) => {
 					if (a.name < b.name) { return -1; }
 					if (a.name > b.name) { return 1; }
@@ -147,9 +149,9 @@ export class Matrix implements INodeType {
 		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		
+
 		for (let i = 0; i < items.length; i++) {
-			let responseData = await handleMatrixCall.call(this, items[i], i, resource, operation);
+			const responseData = await handleMatrixCall.call(this, items[i], i, resource, operation);
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
