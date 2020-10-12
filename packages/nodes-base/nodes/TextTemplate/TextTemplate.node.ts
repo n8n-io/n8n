@@ -62,7 +62,7 @@ export class TextTemplate implements INodeType {
 		const templateEngine = this.getNodeParameter('templateengine', '') as string;
 
 		let rend = "";
-		if (templateEngine == "handlebars") {
+		if (templateEngine == "mustache") {
 			rend = Mustache.render(template, item);
 		} else if (templateEngine == "handlebars") {
 			
