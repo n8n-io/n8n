@@ -102,49 +102,49 @@ export class Vonage implements INodeType {
 				default: '',
 				description: `The number that the message should be sent to. Numbers are specified in E.164 format.`,
 			},
-			{
-				displayName: 'Type',
-				name: 'type',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Binary',
-						value: 'binary',
-					},
-					{
-						name: 'Text',
-						value: 'text',
-					},
-					{
-						name: 'Wappush',
-						value: 'wappush',
-					},
-					{
-						name: 'Unicode',
-						value: 'unicode',
-					},
-					{
-						name: 'VCAL',
-						value: 'vcal',
-					},
-					{
-						name: 'VCARD',
-						value: 'vcard',
-					},
-				],
-				default: 'text',
-				description: 'The format of the message body',
-			},
+			// {
+			// 	displayName: 'Type',
+			// 	name: 'type',
+			// 	type: 'options',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'sms',
+			// 			],
+			// 			operation: [
+			// 				'send',
+			// 			],
+			// 		},
+			// 	},
+			// 	options: [
+			// 		{
+			// 			name: 'Binary',
+			// 			value: 'binary',
+			// 		},
+			// 		{
+			// 			name: 'Text',
+			// 			value: 'text',
+			// 		},
+			// 		{
+			// 			name: 'Wappush',
+			// 			value: 'wappush',
+			// 		},
+			// 		{
+			// 			name: 'Unicode',
+			// 			value: 'unicode',
+			// 		},
+			// 		{
+			// 			name: 'VCAL',
+			// 			value: 'vcal',
+			// 		},
+			// 		{
+			// 			name: 'VCARD',
+			// 			value: 'vcard',
+			// 		},
+			// 	],
+			// 	default: 'text',
+			// 	description: 'The format of the message body',
+			// },
 			// {
 			// 	displayName: 'Binary Property',
 			// 	name: 'binaryPropertyName',
@@ -166,106 +166,106 @@ export class Vonage implements INodeType {
 			// 	description: 'Object property name which holds binary data.',
 			// 	required: true,
 			// },
-			{
-				displayName: 'Body',
-				name: 'body',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
-						type: [
-							'binary',
-						],
-					},
-				},
-				default: '',
-				description: 'Hex encoded binary data',
-			},
-			{
-				displayName: 'UDH',
-				name: 'udh',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
-						type: [
-							'binary',
-						],
-					},
-				},
-				default: '',
-				description: 'Your custom Hex encoded User Data Header',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				displayOptions: {
-					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
-						type: [
-							'wappush',
-						],
-					},
-				},
-				type: 'string',
-				default: '',
-				description: 'The title for a wappush SMS',
-			},
-			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
-						type: [
-							'wappush',
-						],
-					},
-				},
-				default: '',
-				description: 'The URL of your website',
-			},
-			{
-				displayName: 'Validity (in minutes)',
-				name: 'validity',
-				type: 'number',
-				default: 0,
-				displayOptions: {
-					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
-						type: [
-							'wappush',
-						],
-					},
-				},
-				description: 'The availability for an SMS in minutes',
-			},
+			// {
+			// 	displayName: 'Body',
+			// 	name: 'body',
+			// 	type: 'string',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'sms',
+			// 			],
+			// 			operation: [
+			// 				'send',
+			// 			],
+			// 			type: [
+			// 				'binary',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: '',
+			// 	description: 'Hex encoded binary data',
+			// },
+			// {
+			// 	displayName: 'UDH',
+			// 	name: 'udh',
+			// 	type: 'string',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'sms',
+			// 			],
+			// 			operation: [
+			// 				'send',
+			// 			],
+			// 			type: [
+			// 				'binary',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: '',
+			// 	description: 'Your custom Hex encoded User Data Header',
+			// },
+			// {
+			// 	displayName: 'Title',
+			// 	name: 'title',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'sms',
+			// 			],
+			// 			operation: [
+			// 				'send',
+			// 			],
+			// 			type: [
+			// 				'wappush',
+			// 			],
+			// 		},
+			// 	},
+			// 	type: 'string',
+			// 	default: '',
+			// 	description: 'The title for a wappush SMS',
+			// },
+			// {
+			// 	displayName: 'URL',
+			// 	name: 'url',
+			// 	type: 'string',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'sms',
+			// 			],
+			// 			operation: [
+			// 				'send',
+			// 			],
+			// 			type: [
+			// 				'wappush',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: '',
+			// 	description: 'The URL of your website',
+			// },
+			// {
+			// 	displayName: 'Validity (in minutes)',
+			// 	name: 'validity',
+			// 	type: 'number',
+			// 	default: 0,
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'sms',
+			// 			],
+			// 			operation: [
+			// 				'send',
+			// 			],
+			// 			type: [
+			// 				'wappush',
+			// 			],
+			// 		},
+			// 	},
+			// 	description: 'The availability for an SMS in minutes',
+			// },
 			{
 				displayName: 'Message',
 				name: 'message',
@@ -278,55 +278,55 @@ export class Vonage implements INodeType {
 						operation: [
 							'send',
 						],
-						type: [
-							'text',
-							'unicode',
-						],
+						// type: [
+						// 	'text',
+						// 	'unicode',
+						// ],
 					},
 				},
 				default: '',
 				description: `The body of the message being sent`,
 			},
-			{
-				displayName: 'VCard',
-				name: 'vcard',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
-						type: [
-							'vcard',
-						],
-					},
-				},
-				default: '',
-				description: 'A business card in vCard format',
-			},
-			{
-				displayName: 'VCal',
-				name: 'vcal',
-				type: 'string',
-				displayOptions: {
-					show: {
-						resource: [
-							'sms',
-						],
-						operation: [
-							'send',
-						],
-						type: [
-							'vcal',
-						],
-					},
-				},
-				default: '',
-				description: 'A calendar event in vCal format',
-			},
+			// {
+			// 	displayName: 'VCard',
+			// 	name: 'vcard',
+			// 	type: 'string',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'sms',
+			// 			],
+			// 			operation: [
+			// 				'send',
+			// 			],
+			// 			type: [
+			// 				'vcard',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: '',
+			// 	description: 'A business card in vCard format',
+			// },
+			// {
+			// 	displayName: 'VCal',
+			// 	name: 'vcal',
+			// 	type: 'string',
+			// 	displayOptions: {
+			// 		show: {
+			// 			resource: [
+			// 				'sms',
+			// 			],
+			// 			operation: [
+			// 				'send',
+			// 			],
+			// 			type: [
+			// 				'vcal',
+			// 			],
+			// 		},
+			// 	},
+			// 	default: '',
+			// 	description: 'A calendar event in vCal format',
+			// },
 			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
@@ -434,7 +434,7 @@ export class Vonage implements INodeType {
 
 					const to = this.getNodeParameter('to', i) as string;
 
-					const type = this.getNodeParameter('type', i) as string;
+					const type = this.getNodeParameter('type', i, 'text') as string;
 
 					const body: IDataObject = {
 						from,
@@ -456,7 +456,6 @@ export class Vonage implements INodeType {
 						body.udh = udh;
 
 						body.body = data;
-
 					}
 
 					if (type === 'wappush') {
