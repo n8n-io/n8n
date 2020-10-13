@@ -369,9 +369,9 @@ export class AwsRekognition implements INodeType {
 
 					responseData = await awsApiRequestREST.call(this, 'rekognition', 'POST', '', JSON.stringify(body), {}, { 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' });
 
-					if (property !== undefined) {
-						responseData = responseData[property as string];
-					}
+					// if (property !== undefined) {
+					// 	responseData = responseData[property as string];
+					// }
 				}
 			}
 
