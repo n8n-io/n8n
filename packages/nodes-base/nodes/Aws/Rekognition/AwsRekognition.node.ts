@@ -278,7 +278,7 @@ export class AwsRekognition implements INodeType {
 				if (operation === 'analyze') {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					let action;
+					let action, property = undefined;
 
 					let body: IDataObject = {};
 
@@ -287,6 +287,8 @@ export class AwsRekognition implements INodeType {
 					if (type === 'detectModerationLabels') {
 						action = 'RekognitionService.DetectModerationLabels';
 
+						// property = 'ModerationLabels';
+
 						if (additionalFields.minConfidence) {
 							body['MinConfidence'] = additionalFields.minConfidence as number;
 						}
@@ -294,6 +296,8 @@ export class AwsRekognition implements INodeType {
 
 					if (type === 'detectFaces') {
 						action = 'RekognitionService.DetectFaces';
+
+						property = 'FaceDetails';
 
 						if (additionalFields.attributes) {
 							body['Attributes'] = additionalFields.attributes as string;
@@ -360,6 +364,10 @@ export class AwsRekognition implements INodeType {
 					}
 
 					responseData = await awsApiRequestREST.call(this, 'rekognition', 'POST', '', JSON.stringify(body), {}, { 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+
+					if (property !== undefined) {
+						responseData = responseData[property as string];
+					}
 				}
 			}
 
