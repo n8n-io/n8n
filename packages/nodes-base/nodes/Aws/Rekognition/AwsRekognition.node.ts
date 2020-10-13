@@ -297,7 +297,11 @@ export class AwsRekognition implements INodeType {
 					if (type === 'detectFaces') {
 						action = 'RekognitionService.DetectFaces';
 
-						property = 'FaceDetails';
+						// TODO: Add a later point make it possible to activate via option.
+						//       If activated add an index to each of the found faces/tages/...
+						//       to not loose the reference to the image it got found on if
+						//       multilpe ones got supplied.
+						// property = 'FaceDetails';
 
 						if (additionalFields.attributes) {
 							body['Attributes'] = additionalFields.attributes as string;
