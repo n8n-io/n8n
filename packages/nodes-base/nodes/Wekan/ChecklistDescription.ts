@@ -156,7 +156,7 @@ export const checklistFields = [
 			},
 		},
 		default: [],
-		description: 'Items to be added to the checklist',
+		description: 'Items to be added to the checklist.',
 	},
 
 	// ----------------------------------
