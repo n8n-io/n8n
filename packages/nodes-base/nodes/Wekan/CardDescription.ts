@@ -115,7 +115,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The title of the card',
+		description: 'The title of the card.',
 	},
 	{
 		displayName: 'Swimlane ID',
@@ -139,7 +139,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The swimlane ID of the new card',
+		description: 'The swimlane ID of the new card.',
 	},
 	{
 		displayName: 'Author ID',
@@ -160,7 +160,7 @@ export const cardFields = [
 				],
 			},
 		},
-		description: 'The author ID',
+		description: 'The author ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -334,14 +334,7 @@ export const cardFields = [
 	{
 		displayName: 'Card ID',
 		name: 'cardId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCards',
-			loadOptionsDependsOn: [
-				'boardId',
-				'listId',
-			],
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {

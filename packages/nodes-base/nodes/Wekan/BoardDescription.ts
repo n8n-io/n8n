@@ -66,7 +66,7 @@ export const boardFields = [
 				],
 			},
 		},
-		description: 'The title of the board',
+		description: 'The title of the board.',
 	},
 	{
 		displayName: 'Owner',
@@ -87,7 +87,7 @@ export const boardFields = [
 				],
 			},
 		},
-		description: 'The user ID in Wekan',
+		description: 'The user ID in Wekan.',
 	},
 	{
 		displayName: 'Additional Fields',

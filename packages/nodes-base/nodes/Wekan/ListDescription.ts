@@ -86,7 +86,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'The title of the list'
+		description: 'The title of the list.'
 	},
 
 	// ----------------------------------
@@ -165,13 +165,7 @@ export const listFields = [
 	{
 		displayName: 'List ID',
 		name: 'listId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getLists',
-			loadOptionsDependsOn: [
-				'boardId',
-			],
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -209,7 +203,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'ID of the board where the lists are in'
+		description: 'ID of the board where the lists are in.'
 	},
 	{
 		displayName: 'Return All',
