@@ -260,10 +260,7 @@ export const cardCommentFields = [
 	{
 		displayName: 'Board ID',
 		name: 'boardId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBoards',
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -330,14 +327,7 @@ export const cardCommentFields = [
 	{
 		displayName: 'Comment ID',
 		name: 'commentId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getComments',
-			loadOptionsDependsOn: [
-				'boardId',
-				'cardId',
-			],
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {

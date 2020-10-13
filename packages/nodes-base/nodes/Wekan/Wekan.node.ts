@@ -528,7 +528,7 @@ export class Wekan implements INodeType {
 
 					body.title = this.getNodeParameter('title', i) as string;
 
-					body.items =  this.getNodeParameter('items', i) as string[];
+					body.items = this.getNodeParameter('items', i) as string[];
 
 				} else if (operation === 'delete') {
 					// ----------------------------------

@@ -242,14 +242,7 @@ export const checklistItemFields = [
 	{
 		displayName: 'Checklist ID',
 		name: 'checklistId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getChecklists',
-			loadOptionsDependsOn: [
-				'boardId',
-				'cardId',
-			],
-		},
+		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
