@@ -1411,47 +1411,6 @@ export class Pipedrive implements INodeType {
 				},
 				description: 'The content of the note to create',
 			},
-			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
-				type: 'collection',
-				placeholder: 'Add Field',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-							'getAll'
-						],
-						resource: [
-							'note',
-						],
-					},
-				},
-				default: {},
-				options: [
-					{
-						displayName: 'Deal ID',
-						name: 'deal_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the deal this note will be associated with',
-					},
-					{
-						displayName: 'Organization ID',
-						name: 'org_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the organization this note will be associated with.',
-					},
-					{
-						displayName: 'Person ID',
-						name: 'person_id',
-						type: 'number',
-						default: 0,
-						description: 'ID of the person this note will be associated with.',
-					},
-				],
-			},
 
 			// ----------------------------------
 			//         note:delete
@@ -2203,6 +2162,51 @@ export class Pipedrive implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: `Returns the data exactly in the way it got received from the API.`,
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         note:create/getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+							'getAll'
+						],
+						resource: [
+							'note',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Deal ID',
+						name: 'deal_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the deal this note will be associated with',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'org_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the organization this note will be associated with.',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person this note will be associated with.',
 					},
 				],
 			},
