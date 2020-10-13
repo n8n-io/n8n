@@ -29,7 +29,7 @@ export const checklistItemOperations = [
 				description: 'Get a checklist item',
 			},
 			{
-				name: 'update',
+				name: 'Update',
 				value: 'update',
 				description: 'Update a checklist item',
 			},
