@@ -101,7 +101,7 @@ export class Automizy implements INodeType {
 				);
 				for (const tag of tags) {
 					const tagName = tag.name;
-					const tagId = tag.id;
+					const tagId = tag.name;
 					returnData.push({
 						name: tagName,
 						value: tagId
@@ -131,28 +131,6 @@ export class Automizy implements INodeType {
 				}
 				return returnData;
 			},
-			// // Get all the lists to display them to user so that he can
-			// // select them easily
-			// async getLists(
-			// 	this: ILoadOptionsFunctions
-			// ): Promise<INodePropertyOptions[]> {
-			// 	const returnData: INodePropertyOptions[] = [];
-			// 	const lists = await automizyApiRequestAllItems.call(
-			// 		this,
-			// 		'smartLists',
-			// 		'GET',
-			// 		'/smart-lists',
-			// 	);
-			// 	for (const list of lists) {
-			// 		const listName = list.name;
-			// 		const listId = list.id;
-			// 		returnData.push({
-			// 			name: listName,
-			// 			value: listId
-			// 		});
-			// 	}
-			// 	return returnData;
-			// },
 		},
 	};
 
