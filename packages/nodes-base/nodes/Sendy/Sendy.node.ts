@@ -104,7 +104,7 @@ export class Sendy implements INodeType {
 						reply_to: replyTo,
 						title,
 						subject,
-						send_campaign: sendCampaign,
+						send_campaign: sendCampaign ? 1 : 0,
 						html_text: htmlText,
 					};
 
@@ -137,11 +137,11 @@ export class Sendy implements INodeType {
 					}
 
 					if (additionalFields.trackOpens) {
-						body.track_opens = additionalFields.trackOpens as boolean;
+						body.track_opens = additionalFields.trackOpens as boolean ? 1 : 0;
 					}
 
 					if (additionalFields.trackClicks) {
-						body.track_clicks = additionalFields.trackClicks as boolean;
+						body.track_clicks = additionalFields.trackClicks as boolean ? 1 : 0;
 					}
 
 					responseData = await sendyApiRequest.call(

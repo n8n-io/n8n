@@ -111,7 +111,7 @@ export const subscriberFields = [
 				description: `User's 2 letter country code`,
 			},
 			{
-				displayName: 'GDRP',
+				displayName: 'GDPR',
 				name: 'gdpr',
 				type: 'boolean',
 				default: false,
