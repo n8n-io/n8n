@@ -25,7 +25,7 @@ export class FunctionItem implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Function',
+				displayName: 'JavaScript Code',
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
