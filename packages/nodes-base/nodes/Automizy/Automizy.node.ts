@@ -17,11 +17,6 @@ import {
 } from './GenericFunctions';
 
 import {
-	contactListFields,
-	contactListOperations,
-} from './ContactListDescription';
-
-import {
 	contactFields,
 	contactOperations,
 } from './ContactDescription';
@@ -63,10 +58,6 @@ export class Automizy implements INodeType {
 						value: 'contact',
 					},
 					{
-						name: 'Contact List',
-						value: 'contactList',
-					},
-					{
 						name: 'List',
 						value: 'list',
 					},
@@ -74,8 +65,6 @@ export class Automizy implements INodeType {
 				default: 'contactList',
 				description: 'The resource to operate on.'
 			},
-			...contactListOperations,
-			...contactListFields,
 
 			...contactOperations,
 			...contactFields,
@@ -89,6 +78,24 @@ export class Automizy implements INodeType {
 		loadOptions: {
 			// Get all the tags to display them to user so that he can
 			// select them easily
+			async getLists(
+				this: ILoadOptionsFunctions
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const lists = await automizyApiRequestAllItems.call(
+					this,
+					'smartLists',
+					'GET',
+					`/smart-lists`,
+				);
+				for (const list of lists) {
+					returnData.push({
+						name: list.name,
+						value: list.id
+					});
+				}
+				return returnData;
+			},
 			async getTags(
 				this: ILoadOptionsFunctions
 			): Promise<INodePropertyOptions[]> {
@@ -100,17 +107,13 @@ export class Automizy implements INodeType {
 					'/contacts/tag-manager'
 				);
 				for (const tag of tags) {
-					const tagName = tag.name;
-					const tagId = tag.name;
 					returnData.push({
-						name: tagName,
-						value: tagId
+						name: tag.name,
+						value: tag.name
 					});
 				}
 				return returnData;
 			},
-			// Get all the custom fields to display them to user so that he can
-			// select them easily
 			async getCustomFields(
 				this: ILoadOptionsFunctions
 			): Promise<INodePropertyOptions[]> {
@@ -122,11 +125,9 @@ export class Automizy implements INodeType {
 					'/custom-fields',
 				);
 				for (const customField of customFields) {
-					const customFieldName = customField.name;
-					const customFieldId = customField.id;
 					returnData.push({
-						name: customFieldName,
-						value: customFieldId
+						name: customField.name,
+						value: customField.id
 					});
 				}
 				return returnData;
@@ -144,9 +145,9 @@ export class Automizy implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
 
-			if (resource === 'contactList') {
+			if (resource === 'contact') {
 
-				if (operation === 'add') {
+				if (operation === 'create') {
 					const listId = this.getNodeParameter('listId', i) as string;
 
 					const email = this.getNodeParameter('email', i) as string;
@@ -160,7 +161,7 @@ export class Automizy implements INodeType {
 					Object.assign(body, additionalFields);
 
 					if (body.customFieldsUi) {
-						const customFieldsValues= (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						const customFieldsValues = (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 
 						body.customFields = {};
 
@@ -181,6 +182,28 @@ export class Automizy implements INodeType {
 					);
 				}
 
+				if (operation === 'delete') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+
+					responseData = await automizyApiRequest.call(
+						this,
+						'DELETE',
+						`/contacts/${contactId}`,
+					);
+
+					responseData = { success: true };
+				}
+
+				if (operation === 'get') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+
+					responseData = await automizyApiRequest.call(
+						this,
+						'GET',
+						`/contacts/${contactId}`,
+					);
+				}
+
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
@@ -189,7 +212,7 @@ export class Automizy implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (additionalFields.direction && additionalFields.sortBy) {
-						qs.order = `${additionalFields.sortBy}:${additionalFields.direction }`;
+						qs.order = `${additionalFields.sortBy}:${additionalFields.direction}`;
 					}
 
 					if (additionalFields.fields) {
@@ -221,31 +244,6 @@ export class Automizy implements INodeType {
 						responseData = responseData.contacts;
 					}
 				}
-			}
-
-			if (resource === 'contact') {
-
-				if (operation === 'delete') {
-					const contactId = this.getNodeParameter('contactId', i) as string;
-
-					responseData = await automizyApiRequest.call(
-						this,
-						'DELETE',
-						`/contacts/${contactId}`,
-					);
-
-					responseData = { success: true };
-				}
-
-				if (operation === 'get') {
-					const contactId = this.getNodeParameter('contactId', i) as string;
-
-					responseData = await automizyApiRequest.call(
-						this,
-						'GET',
-						`/contacts/${contactId}`,
-					);
-				}
 
 				if (operation === 'update') {
 					const email = this.getNodeParameter('email', i) as string;
@@ -257,7 +255,7 @@ export class Automizy implements INodeType {
 					Object.assign(body, updateFields);
 
 					if (body.customFieldsUi) {
-						const customFieldsValues= (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						const customFieldsValues = (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
 
 						body.customFields = {};
 
@@ -324,7 +322,7 @@ export class Automizy implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					if (additionalFields.direction && additionalFields.sortBy) {
-						qs.order = `${additionalFields.sortBy}:${additionalFields.direction }`;
+						qs.order = `${additionalFields.sortBy}:${additionalFields.direction}`;
 					}
 
 					if (additionalFields.fields) {
