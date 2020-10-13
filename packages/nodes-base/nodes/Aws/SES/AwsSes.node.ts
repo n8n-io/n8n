@@ -664,7 +664,7 @@ export class AwsSes implements INodeType {
 						}
 					}
 
-					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=send&' + params.join('&'));
+					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=SendEmail&' + params.join('&'));
 				}
 
 				if (operation === 'sendTemplate') {
@@ -726,11 +726,13 @@ export class AwsSes implements INodeType {
 					if (templateDataUi) {
 						const templateDataValues = (templateDataUi as IDataObject).templateDataValues as IDataObject[];
 						const templateData: IDataObject = {};
-						for (const key of Object.keys(templateDataValues)) {
-							//@ts-ignore
-							templateData[key]= templateDataValues[key];
+						if (templateDataValues !== undefined) {
+							for (const key of Object.keys(templateDataValues)) {
+								//@ts-ignore
+								templateData[key]= templateDataValues[key];
+							}
+							params.push(`TemplateData=${JSON.stringify(templateData)}`);
 						}
-						params.push(`TemplateData=${JSON.stringify(templateData)}`);
 					}
 
 					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=SendTemplatedEmail&' + params.join('&'));
