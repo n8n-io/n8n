@@ -278,7 +278,7 @@ export class AwsRekognition implements INodeType {
 				if (operation === 'analyze') {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-					let action, property = undefined;
+					let action = undefined;
 
 					let body: IDataObject = {};
 
