@@ -46,7 +46,7 @@ export const campaignFields = [
 			},
 		},
 		default: '',
-		description: `The 'From name' of your campaign`,
+		description: `The 'From name' of your campaign.`,
 	},
 	{
 		displayName: 'From Email',
@@ -63,7 +63,7 @@ export const campaignFields = [
 			},
 		},
 		default: '',
-		description: `The 'From email' of your campaign`,
+		description: `The 'From email' of your campaign.`,
 	},
 	{
 		displayName: 'Reply To',
@@ -80,7 +80,7 @@ export const campaignFields = [
 			},
 		},
 		default: '',
-		description: `The 'Reply to' of your campaign`,
+		description: `The 'Reply to' of your campaign.`,
 	},
 	{
 		displayName: 'Title',
@@ -97,7 +97,7 @@ export const campaignFields = [
 			},
 		},
 		default: '',
-		description: `The 'Title' of your campaign`,
+		description: `The 'Title' of your campaign.`,
 	},
 	{
 		displayName: 'Subject',
@@ -114,7 +114,7 @@ export const campaignFields = [
 			},
 		},
 		default: '',
-		description: `The 'Subject' of your campaign`,
+		description: `The 'Subject' of your campaign.`,
 	},
 	{
 		displayName: 'HTML Text',
@@ -131,6 +131,7 @@ export const campaignFields = [
 			},
 		},
 		default: '',
+		description: `The 'HTML version' of your campaign.`,
 	},
 	{
 		displayName: 'Send Campaign',
@@ -150,6 +151,26 @@ export const campaignFields = [
 		description: `Set to true if you want to send the campaign as well and not just create a draft. Default is false.`,
 	},
 	{
+		displayName: 'Brand ID',
+		name: 'brandId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'campaign',
+				],
+				sendCampaign: [
+					false,
+				],
+			},
+		},
+		required: true,
+		default: '',
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -166,19 +187,6 @@ export const campaignFields = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Brand ID',
-				name: 'brandId',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/sendCampaign': [
-							false,
-						],
-					},
-				},
-				default: '',
-			},
 			{
 				displayName: 'Exclude List IDs',
 				name: 'excludeListIds',
@@ -198,21 +206,21 @@ export const campaignFields = [
 				name: 'listIds',
 				type: 'string',
 				default: '',
-				description: `List IDs should be single or comma-separated`,
+				description: `List IDs should be single or comma-separated.`,
 			},
 			{
 				displayName: 'Plain Text',
 				name: 'plainText',
 				type: 'string',
 				default: '',
-				description: `The 'Plain text version' of your campaign`
+				description: `The 'Plain text version' of your campaign.`
 			},
 			{
 				displayName: 'Querystring',
 				name: 'queryString',
 				type: 'string',
 				default: '',
-				description: `Google Analytics tags`,
+				description: `Google Analytics tags.`,
 			},
 			{
 				displayName: 'Segment IDs',
