@@ -629,6 +629,7 @@ class App {
 			}
 
 			await Db.collections.Workflow!.delete(id);
+			await this.externalHooks.run('workflow.afterDelete', [id]);
 
 			return true;
 		}));
