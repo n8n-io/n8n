@@ -70,6 +70,9 @@ export class Start extends Command {
 	static async stopProcess() {
 		console.log(`\nStopping n8n...`);
 
+		const externalHooks = ExternalHooks();
+		await externalHooks.run('n8n.stop', []);
+
 		setTimeout(() => {
 			// In case that something goes wrong with shutdown we
 			// kill after max. 30 seconds no matter what
