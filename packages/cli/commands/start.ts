@@ -71,7 +71,11 @@ export class Start extends Command {
 		console.log(`\nStopping n8n...`);
 
 		const externalHooks = ExternalHooks();
-		await externalHooks.run('n8n.stop', []);
+		try {
+			await externalHooks.run('n8n.stop', []);
+		} catch (error) {
+			console.error('There was an error in the "n8n.stop" hook.', error);
+		}
 
 		setTimeout(() => {
 			// In case that something goes wrong with shutdown we
