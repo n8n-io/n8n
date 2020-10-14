@@ -19,6 +19,11 @@ import {
 	certificateFields,
 } from './CertificateDescription';
 
+import {
+	policyOperations,
+	policyFields,
+} from './PolicyDescription';
+
 export class VenafiTpp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Venafi TPP',
@@ -50,12 +55,18 @@ export class VenafiTpp implements INodeType {
 						name: 'Certificate',
 						value: 'certificate',
 					},
+					{
+						name: 'Policy',
+						value: 'policy',
+					},
 				],
 				default: 'certificate',
 				description: 'The resource to operate on.'
 			},
 			...certificateOperations,
 			...certificateFields,
+			...policyOperations,
+			...policyFields,
 		],
 	};
 
@@ -68,12 +79,9 @@ export class VenafiTpp implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-
 			if (resource === 'certificate') {
-
 				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-POST-Certificates-request.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7CPOST%20Certificates%2FRequest%7C_____0
 				if (operation === 'create') {
-
 					const policyDN = this.getNodeParameter('PolicyDN', i) as string;
 
 					const subject = this.getNodeParameter('Subject', i) as string;
@@ -105,7 +113,6 @@ export class VenafiTpp implements INodeType {
 
 				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-DELETE-Certificates-Guid.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____9
 				if (operation === 'delete') {
-
 					const certificateId = this.getNodeParameter('certificateId', i) as string;
 
 					responseData = await venafiApiRequest.call(
@@ -119,7 +126,6 @@ export class VenafiTpp implements INodeType {
 
 				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-GET-Certificates-guid.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____10
 				if (operation === 'get') {
-
 					const certificateId = this.getNodeParameter('certificateId', i) as string;
 
 					responseData = await venafiApiRequest.call(
@@ -133,7 +139,6 @@ export class VenafiTpp implements INodeType {
 
 				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-GET-Certificates.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____4
 				if (operation === 'getAll') {
-
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const options = this.getNodeParameter('options', i) as IDataObject;
@@ -169,7 +174,6 @@ export class VenafiTpp implements INodeType {
 
 				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-POST-Certificates-renew.htm?tocpath=Topics%20by%20Guide%7CDeveloper%27s%20Guide%7CWeb%20SDK%20reference%7CCertificates%20programming%20interface%7C_____16
 				if (operation === 'renew') {
-
 					const certificateDN = this.getNodeParameter('certificateDN', i) as string;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -189,13 +193,34 @@ export class VenafiTpp implements INodeType {
 					);
 				}
 			}
+
+			if (resource === 'policy') {
+				//https://uvo1je0v1xszoaesyia.env.cloudshare.com/vedadmin/documentation/help/Content/SDK/WebSDK/r-SDK-POST-Certificates-CheckPolicy.htm
+				if (operation === 'get') {
+					const policy = this.getNodeParameter('policyDn', i) as string;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {
+						PolicyDN: policy,
+					};
+
+					Object.assign(body, additionalFields);
+
+					responseData = await venafiApiRequest.call(
+						this,
+						'POST',
+						`/vedsdk/Certificates/CheckPolicy`,
+						body,
+						qs
+					);
+				}
+			}
 		}
 		if (Array.isArray(responseData)) {
-
 			returnData.push.apply(returnData, responseData as IDataObject[]);
 
 		} else if (responseData !== undefined) {
-
 			returnData.push(responseData as IDataObject);
 		}
 
