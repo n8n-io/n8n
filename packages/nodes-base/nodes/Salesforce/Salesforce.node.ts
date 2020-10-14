@@ -121,9 +121,44 @@ export class Salesforce implements INodeType {
 			{
 				name: 'salesforceOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
+			{
+				name: 'salesforceJwtApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'jwt',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth 2.0 Web Server Flow',
+						value: 'oAuth2',
+					},
+					{
+						name: 'OAuth 2.0 JWT Bearer Flow',
+						value: 'jwt',
+					},
+				],
+				default: 'oAuth2',
+				description: 'OAuth Authorization Flow',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
