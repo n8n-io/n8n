@@ -70,43 +70,44 @@ export class Start extends Command {
 	static async stopProcess() {
 		console.log(`\nStopping n8n...`);
 
-		const externalHooks = ExternalHooks();
 		try {
+			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
-		} catch (error) {
-			console.error('There was an error in the "n8n.stop" hook.', error);
-		}
 
-		setTimeout(() => {
-			// In case that something goes wrong with shutdown we
-			// kill after max. 30 seconds no matter what
-			process.exit(processExistCode);
-		}, 30000);
+			setTimeout(() => {
+				// In case that something goes wrong with shutdown we
+				// kill after max. 30 seconds no matter what
+				process.exit(processExistCode);
+			}, 30000);
 
-		const removePromises = [];
-		if (activeWorkflowRunner !== undefined) {
-			removePromises.push(activeWorkflowRunner.removeAll());
-		}
-
-		// Remove all test webhooks
-		const testWebhooks = TestWebhooks.getInstance();
-		removePromises.push(testWebhooks.removeAll());
-
-		await Promise.all(removePromises);
-
-		// Wait for active workflow executions to finish
-		const activeExecutionsInstance = ActiveExecutions.getInstance();
-		let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-
-		let count = 0;
-		while (executingWorkflows.length !== 0) {
-			if (count++ % 4 === 0) {
-				console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+			const removePromises = [];
+			if (activeWorkflowRunner !== undefined) {
+				removePromises.push(activeWorkflowRunner.removeAll());
 			}
-			await new Promise((resolve) => {
-				setTimeout(resolve, 500);
-			});
-			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
+
+			// Remove all test webhooks
+			const testWebhooks = TestWebhooks.getInstance();
+			removePromises.push(testWebhooks.removeAll());
+
+			await Promise.all(removePromises);
+
+			// Wait for active workflow executions to finish
+			const activeExecutionsInstance = ActiveExecutions.getInstance();
+			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
+
+			let count = 0;
+			while (executingWorkflows.length !== 0) {
+				if (count++ % 4 === 0) {
+					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
+				}
+				await new Promise((resolve) => {
+					setTimeout(resolve, 500);
+				});
+				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
+			}
+
+		} catch (error) {
+			console.error('There was an error shutting down n8n.', error);
 		}
 
 		process.exit(processExistCode);
