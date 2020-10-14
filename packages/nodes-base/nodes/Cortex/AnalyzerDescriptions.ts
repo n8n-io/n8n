@@ -50,7 +50,7 @@ export const analyzerFields: INodeProperties[] =[
 				],
 			},
 		},
-		description: 'choose the analyzer',
+		description: 'Choose the analyzer',
 		default: '',
 	},
 	{
@@ -108,7 +108,7 @@ export const analyzerFields: INodeProperties[] =[
 			},
 		},
 		default: '',
-		description: 'enter the observable value',
+		description: 'Enter the observable value',
 	},
 	{
 		displayName: 'Binary Property',

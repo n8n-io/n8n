@@ -30,7 +30,7 @@ export const respondersOperations = [
 
 export const responderFields:INodeProperties[] = [
 	{
-		displayName: 'Responder type',
+		displayName: 'Responder Type',
 		name: 'responder',
 		type: 'options',
 		required: true,
@@ -48,7 +48,7 @@ export const responderFields:INodeProperties[] = [
 		description: 'choose the responder',
 	},
 	{
-		displayName: 'Data type',
+		displayName: 'Data Type',
 		name: 'dataType',
 		type: 'options',
 		required: true,

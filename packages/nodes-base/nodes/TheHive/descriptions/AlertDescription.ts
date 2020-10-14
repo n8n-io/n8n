@@ -467,7 +467,7 @@ export const alertFields = [
 	// optional attributs (Create, Promote operations)
 	{
 		displayName: 'Additional Fields',
-		name: 'AdditionalFields',
+		name: 'additionalFields',
 		placeholder: 'Add Field',
 		type: 'collection',
 		required: false,

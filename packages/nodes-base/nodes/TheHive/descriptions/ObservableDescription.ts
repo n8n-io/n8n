@@ -1,40 +1,70 @@
-import { INodeProperties } from 'n8n-workflow';
-import {TLP} from '../interfaces/AlertInterface';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+import {
+	TLP,
+} from '../interfaces/AlertInterface';
 
 export const observableOperations = [
-    {
-        displayName:'Operation',
-        name:'operation',
-        type:'options',
-        required:true,
-        default:'getAll',
-        displayOptions:{
-            show:{
-                resource:['observable']
-            }
-        },
-        typeOptions:{
-            loadOptionsDependsOn:['resource'],
-            loadOptionsMethod:'loadObservableOptions'
-        },
-        
-    },
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		required: true,
+		default: 'getAll',
+		displayOptions: {
+			show: {
+				resource: [
+					'observable',
+				],
+			},
+		},
+		typeOptions: {
+			loadOptionsDependsOn: [
+				'resource',
+			],
+			loadOptionsMethod: 'loadObservableOptions',
+		},
+	},
 ] as INodeProperties[];
 
 export const observableFields = [
+	{
+		displayName: 'Case ID',
+		name: 'caseId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+					'getAll',
+				],
+			},
+		},
+	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['getAll', 'search'],
-				resource: ['observable'],
+				operation: [
+					'getAll',
+					'search',
+				],
+				resource: [
+					'observable',
+				],
 			},
 		},
 		default: false,
-		description:
-			'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -42,9 +72,16 @@ export const observableFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['getAll', 'search'],
-				resource: ['observable'],
-				returnAll: [false],
+				operation: [
+					'getAll',
+					'search',
+				],
+				resource: [
+					'observable',
+				],
+				returnAll: [
+					false,
+				],
 			},
 		},
 		typeOptions: {
@@ -56,72 +93,121 @@ export const observableFields = [
 	},
 	// required attributs
 	{
+		displayName: 'Observable ID',
 		name: 'id',
-		displayName: 'Observable Id',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['update', 'executeResponder', 'executeAnalyzer', 'get'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'update',
+					'executeResponder',
+					'executeAnalyzer',
+					'get',
+				],
 			},
 		},
 	},
 	{
-		name: 'caseId',
-		displayName: 'Case Id',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['observable'],
-				operation: ['create', 'getAll'],
-			},
-		},
-	},
-	{
-		name: 'dataType',
 		displayName: 'Data Type',
+		name: 'dataType',
 		type: 'options',
 		required: true,
 		default: '',
 		options: [
-			{ name: 'domain', value: 'domain' },
-			{ name: 'file', value: 'file' },
-			{ name: 'filename', value: 'filename' },
-			{ name: 'fqdn', value: 'fqdn' },
-			{ name: 'hash', value: 'hash' },
-			{ name: 'ip', value: 'ip' },
-			{ name: 'mail', value: 'mail' },
-			{ name: 'mail_subject', value: 'mail_subject' },
-			{ name: 'other', value: 'other' },
-			{ name: 'regexp', value: 'regexp' },
-			{ name: 'registry', value: 'registry' },
-			{ name: 'uri_path', value: 'uri_path' },
-			{ name: 'url', value: 'url' },
-			{ name: 'user-agent', value: 'user-agent' },
+			{
+				name: 'domain',
+				value: 'domain',
+			},
+			{
+				name: 'file',
+				value: 'file'
+			},
+			{
+				name: 'filename',
+				value: 'filename'
+			},
+			{
+				name: 'fqdn',
+				value: 'fqdn'
+			},
+			{
+				name: 'hash',
+				value: 'hash'
+			},
+			{
+				name: 'ip',
+				value: 'ip'
+			},
+			{
+				name: 'mail',
+				value: 'mail'
+			},
+			{
+				name: 'mail_subject',
+				value: 'mail_subject'
+			},
+			{
+				name: 'other',
+				value: 'other'
+			},
+			{
+				name: 'regexp',
+				value: 'regexp'
+			},
+			{
+				name: 'registry',
+				value: 'registry'
+			},
+			{
+				name: 'uri_path',
+				value: 'uri_path'
+			},
+			{
+				name: 'url',
+				value: 'url'
+			},
+			{
+				name: 'user-agent',
+				value: 'user-agent'
+			},
 		],
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create', 'executeAnalyzer'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+					'executeAnalyzer',
+				],
 			},
 		},
 	},
 	{
-		name: 'data',
 		displayName: 'Data',
+		name: 'data',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+				],
 			},
-			hide: { dataType: ['file'] },
+			hide: {
+				dataType: [
+					'file',
+				],
+			},
 		},
 	},
 	{
@@ -133,48 +219,66 @@ export const observableFields = [
 		description: 'Binary Property that represent the attachment file',
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create'],
-				dataType: ['file'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+				],
+				dataType: [
+					'file',
+				],
 			},
 		},
 	},
 	{
-		name: 'message',
 		displayName: 'Message',
+		name: 'message',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create'],
+				resource: [
+					'observable'
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
 	{
-		name: 'startDate',
 		displayName: 'Start Date',
+		name: 'startDate',
 		type: 'dateTime',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
 	{
-		name: 'tlp',
 		displayName: 'TLP',
+		name: 'tlp',
 		type: 'options',
 		required: true,
 		default: 2,
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		options: [
@@ -197,94 +301,144 @@ export const observableFields = [
 		],
 	},
 	{
-		name: 'ioc',
 		displayName: 'IOC',
+		name: 'ioc',
 		description: 'Indicator of compromise',
 		type: 'boolean',
 		required: true,
 		default: false,
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
 	{
-		name: 'sighted',
 		displayName: 'Sighted',
-		description: 'sighted previously',
+		name: 'sighted',
 		type: 'boolean',
 		required: true,
 		default: false,
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
+		description: 'Sighted previously',
 	},
 	{
-		name: 'status',
 		displayName: 'Status',
+		name: 'status',
 		type: 'options',
 		required: true,
 		default: '',
 		options: [
-			{ name: 'Ok', value: 'Ok' },
-			{ name: 'Deleted', value: 'Deleted' },
+			{
+				name: 'Ok',
+				value: 'Ok',
+			},
+			{
+				name: 'Deleted',
+				value: 'Deleted',
+			},
 		],
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
 	// required for analyzer execution
 	{
-		name: 'analyzers',
 		displayName: 'Analyzer',
+		name: 'analyzers',
 		type: 'multiOptions',
 		required: true,
-        default: [],
+		default: [],
 		typeOptions: {
-			loadOptionsDependsOn: ['id', 'dataType'],
+			loadOptionsDependsOn: [
+				'id',
+				'dataType',
+			],
 			loadOptionsMethod: 'loadAnalyzers',
 		},
 		displayOptions: {
-			show: { resource: ['observable'], operation: ['executeAnalyzer'] },
-			hide: { id: [''] },
+			show: {
+				resource: [
+					'observable',
+				],
+				operation: [
+					'executeAnalyzer',
+				],
+			},
+			hide: {
+				id: [
+					'',
+				],
+			},
 		},
 	},
 
 	// required for responder execution
 	{
-		name: 'responders',
 		displayName: 'Responders',
+		name: 'responders',
 		type: 'multiOptions',
 		required: true,
 		default: [],
 		typeOptions: {
-			loadOptionsDependsOn: ['id'],
+			loadOptionsDependsOn: [
+				'id',
+			],
 			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
-			show: { resource: ['observable'], operation: ['executeResponder'] },
-			hide: { id: [''] },
+			show: {
+				resource: [
+					'observable',
+				],
+				operation: [
+					'executeResponder',
+				],
+			},
+			hide: {
+				id: [
+					'',
+				],
+			},
 		},
 	},
 	// Optional attributes (Create operation)
 	{
-		displayName: 'Optional attribute',
-		name: 'optionals',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
+		placeholder: 'Add Option',
 		required: false,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['create'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 		options: [
@@ -300,21 +454,25 @@ export const observableFields = [
 	},
 	// Optional attributes (Update operation)
 	{
-		displayName: 'Optional attribute',
-		name: 'optionals',
+		displayName: 'Update Fields',
+		name: 'updateFields',
 		type: 'collection',
 		required: false,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['observable'],
-				operation: ['update'],
+				resource: [
+					'observable',
+				],
+				operation: [
+					'update',
+				],
 			},
 		},
 		options: [
 			{
-				name: 'message',
 				displayName: 'Message',
+				name: 'message',
 				required: false,
 				type: 'string',
 				default: '',
@@ -328,8 +486,8 @@ export const observableFields = [
 				placeholder: 'tag1,tag2',
 			},
 			{
-				name: 'tlp',
 				displayName: 'TLP',
+				name: 'tlp',
 				type: 'options',
 				required: false,
 				default: 2,
@@ -353,30 +511,36 @@ export const observableFields = [
 				],
 			},
 			{
-				name: 'ioc',
 				displayName: 'IOC',
+				name: 'ioc',
 				description: 'Indicator of compromise',
 				type: 'boolean',
 				required: false,
 				default: false,
 			},
 			{
-				name: 'sighted',
 				displayName: 'Sighted',
+				name: 'sighted',
 				description: 'sighted previously',
 				type: 'boolean',
 				required: false,
 				default: false,
 			},
 			{
-				name: 'status',
 				displayName: 'Status',
+				name: 'status',
 				type: 'options',
 				required: false,
 				default: '',
 				options: [
-					{ name: 'Ok', value: 'Ok' },
-					{ name: 'Deleted', value: 'Deleted' },
+					{
+						name: 'Ok',
+						value: 'Ok',
+					},
+					{
+						name: 'Deleted',
+						value: 'Deleted',
+					},
 				],
 			},
 		],
@@ -387,8 +551,13 @@ export const observableFields = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: ['getAll', 'search'],
-				resource: ['observable'],
+				operation: [
+					'getAll',
+					'search',
+				],
+				resource: [
+					'observable',
+				],
 			},
 		},
 		type: 'collection',
@@ -414,7 +583,15 @@ export const observableFields = [
 		default: '',
 		placeholder: 'Add Filter',
 		displayOptions: {
-			show: { resource: ['observable'], operation: ['search', 'count'] },
+			show: {
+				resource: [
+					'observable',
+				],
+				operation: [
+					'search',
+					'count',
+				],
+			},
 		},
 		options: [
 			{
@@ -440,8 +617,14 @@ export const observableFields = [
 				required: false,
 				default: '',
 				options: [
-					{ name: 'Ok', value: 'Ok' },
-					{ name: 'Deleted', value: 'Deleted' },
+					{
+						name: 'Ok',
+						value: 'Ok',
+					},
+					{
+						name: 'Deleted',
+						value: 'Deleted',
+					},
 				],
 			},
 			{
@@ -453,8 +636,8 @@ export const observableFields = [
 				placeholder: 'tag1,tag2',
 			},
 			{
-				name: 'tlp',
 				displayName: 'TLP',
+				name: 'tlp',
 				type: 'options',
 				required: false,
 				default: 2,
@@ -478,54 +661,96 @@ export const observableFields = [
 				],
 			},
 			{
-				name: 'ioc',
 				displayName: 'IOC',
+				name: 'ioc',
 				description: 'Indicator of compromise',
 				type: 'boolean',
 				required: false,
 				default: false,
 			},
 			{
-				name: 'sighted',
 				displayName: 'Sighted',
+				name: 'sighted',
 				type: 'boolean',
 				required: false,
 				default: false,
 			},
 			{
-				name: 'data',
 				displayName: 'Value',
+				name: 'data',
 				type: 'string',
 				required: false,
 				default: '',
 				placeholder: 'example.com; 8.8.8.8',
 			},
 			{
-				name: 'dataType',
 				displayName: 'Data Type',
+				name: 'dataType',
 				type: 'multiOptions',
 				required: false,
-				default: '',
+				default: [],
 				options: [
-					{ name: 'domain', value: 'domain' },
-					{ name: 'file', value: 'file' },
-					{ name: 'filename', value: 'filename' },
-					{ name: 'fqdn', value: 'fqdn' },
-					{ name: 'hash', value: 'hash' },
-					{ name: 'ip', value: 'ip' },
-					{ name: 'mail', value: 'mail' },
-					{ name: 'mail_subject', value: 'mail_subject' },
-					{ name: 'other', value: 'other' },
-					{ name: 'regexp', value: 'regexp' },
-					{ name: 'registry', value: 'registry' },
-					{ name: 'uri_path', value: 'uri_path' },
-					{ name: 'url', value: 'url' },
-					{ name: 'user-agent', value: 'user-agent' },
+					{
+						name: 'domain',
+						value: 'domain'
+					},
+					{
+						name: 'file',
+						value: 'file'
+					},
+					{
+						name: 'filename',
+						value: 'filename'
+					},
+					{
+						name: 'fqdn',
+						value: 'fqdn'
+					},
+					{
+						name: 'hash',
+						value: 'hash'
+					},
+					{
+						name: 'ip',
+						value: 'ip'
+					},
+					{
+						name: 'mail',
+						value: 'mail'
+					},
+					{
+						name: 'mail_subject',
+						value: 'mail_subject'
+					},
+					{
+						name: 'other',
+						value: 'other'
+					},
+					{
+						name: 'regexp',
+						value: 'regexp'
+					},
+					{
+						name: 'registry',
+						value: 'registry'
+					},
+					{
+						name: 'uri_path',
+						value: 'uri_path'
+					},
+					{
+						name: 'url',
+						value: 'url'
+					},
+					{
+						name: 'user-agent',
+						value: 'user-agent'
+					},
 				],
 			},
 			{
-				name: 'message',
 				displayName: 'Message',
+				name: 'message',
 				type: 'string',
 				required: false,
 				default: '',

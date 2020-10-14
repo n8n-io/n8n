@@ -1,20 +1,29 @@
-import { INodeProperties } from 'n8n-workflow';
-import { TLP } from '../interfaces/AlertInterface';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+import {
+	TLP,
+} from '../interfaces/AlertInterface';
 
 export const caseOperations = [
 	{
-		default: 'getAll',
 		displayName: 'Operation',
 		name: 'operation',
+		default: 'getAll',
 		type: 'options',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['case'],
+				resource: [
+					'case',
+				],
 			},
 		},
 		typeOptions: {
-			loadOptionsDependsOn: ['resource'],
+			loadOptionsDependsOn: [
+				'resource',
+			],
 			loadOptionsMethod: 'loadCaseOptions',
 		},
 	},
@@ -27,13 +36,16 @@ export const caseFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['case'],
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'case',
+				],
 			},
 		},
 		default: false,
-		description:
-			'If all results should be returned or only up to a given limit.',
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -41,9 +53,15 @@ export const caseFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['case'],
-				returnAll: [false],
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'case',
+				],
+				returnAll: [
+					false,
+				],
 			},
 		},
 		typeOptions: {
@@ -55,15 +73,21 @@ export const caseFields = [
 	},
 	// Required fields
 	{
-		displayName: 'Case Id',
+		displayName: 'Case ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['case'],
-				operation: ['update', 'executeResponder', 'get'],
+				resource: [
+					'case',
+				],
+				operation: [
+					'update',
+					'executeResponder',
+					'get',
+				],
 			},
 		},
 	},
@@ -74,7 +98,14 @@ export const caseFields = [
 		default: '',
 		required: true,
 		displayOptions: {
-			show: { resource: ['case'], operation: ['create'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
 	},
 	{
@@ -84,7 +115,14 @@ export const caseFields = [
 		required: true,
 		default: '',
 		displayOptions: {
-			show: { resource: ['case'], operation: ['create'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
 	},
 	{
@@ -92,14 +130,30 @@ export const caseFields = [
 		name: 'severity',
 		type: 'options',
 		options: [
-			{ name: 'Low', value: 1 },
-			{ name: 'Medium', value: 2 },
-			{ name: 'High', value: 3 },
+			{
+				name: 'Low',
+				value: 1,
+			},
+			{
+				name: 'Medium',
+				value: 2,
+			},
+			{
+				name: 'High',
+				value: 3,
+			},
 		],
 		required: true,
 		default: 2,
 		displayOptions: {
-			show: { resource: ['case'], operation: ['create'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
 	},
 	{
@@ -109,7 +163,14 @@ export const caseFields = [
 		required: true,
 		default: '',
 		displayOptions: {
-			show: { resource: ['case'], operation: ['create'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
 	},
 	{
@@ -119,7 +180,14 @@ export const caseFields = [
 		default: '',
 		required: true,
 		displayOptions: {
-			show: { resource: ['case'], operation: ['create'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
 	},
 	{
@@ -129,7 +197,14 @@ export const caseFields = [
 		required: true,
 		default: false,
 		displayOptions: {
-			show: { resource: ['case'], operation: ['create'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
 	},
 	{
@@ -157,7 +232,14 @@ export const caseFields = [
 			},
 		],
 		displayOptions: {
-			show: { resource: ['case'], operation: ['create'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
 	},
 	{
@@ -167,32 +249,60 @@ export const caseFields = [
 		required: true,
 		default: '',
 		displayOptions: {
-			show: { resource: ['case'], operation: ['create'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
 	},
 	// required for responder execution
 	{
-		name: 'responders',
 		displayName: 'Responders',
+		name: 'responders',
 		type: 'multiOptions',
 		default: '',
 		required: true,
 		typeOptions: {
-			loadOptionsDependsOn: ['id'],
+			loadOptionsDependsOn: [
+				'id',
+			],
 			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
-			show: { resource: ['case'], operation: ['executeResponder'] },
-			hide: { id: [''] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'executeResponder',
+				],
+			},
+			hide: {
+				id: [
+					'',
+				],
+			},
 		},
 	},
 	// Optional fields (Create operation)
 	{
+		displayName: 'Options',
 		type: 'collection',
-		displayName: 'Optional attributs',
-		name: 'optionals',
+		name: 'options',
+		placeholder: 'Add options',
 		displayOptions: {
-			show: { resource: ['case'], operation: ['create'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
 		required: false,
 		default: '',
@@ -204,11 +314,26 @@ export const caseFields = [
 				required: false,
 				default: '',
 				options: [
-					{ value: 'Indeterminate', name: 'Indeterminate' },
-					{ value: 'FalsePositive', name: 'FalsePositive' },
-					{ value: 'TruePositive', name: 'TruePositive' },
-					{ value: 'Other', name: 'Other' },
-					{ value: 'Duplicated', name: 'Duplicated' },
+					{
+						value: 'Indeterminate',
+						name: 'Indeterminate'
+					},
+					{
+						value: 'FalsePositive',
+						name: 'FalsePositive'
+					},
+					{
+						value: 'TruePositive',
+						name: 'TruePositive'
+					},
+					{
+						value: 'Other',
+						name: 'Other'
+					},
+					{
+						value: 'Duplicated',
+						name: 'Duplicated'
+					},
 				],
 			},
 			{
@@ -218,9 +343,18 @@ export const caseFields = [
 				required: false,
 				default: '',
 				options: [
-					{ name: 'NoImpact', value: 'NoImpact' },
-					{ name: 'WithImpact', value: 'WithImpact' },
-					{ name: 'NotApplicable', value: 'NotApplicable' },
+					{
+						name: 'NoImpact',
+						value: 'NoImpact'
+					},
+					{
+						name: 'WithImpact',
+						value: 'WithImpact'
+					},
+					{
+						name: 'NotApplicable',
+						value: 'NotApplicable'
+					},
 				],
 			},
 			{
@@ -248,11 +382,19 @@ export const caseFields = [
 	},
 	// Optional fields (Update operations)
 	{
+		displayName: 'Update Fields',
 		type: 'collection',
-		displayName: 'Optional attributs',
-		name: 'optionals',
+		name: 'updateFields',
+		placeholder: 'Add Field',
 		displayOptions: {
-			show: { resource: ['case'], operation: ['update'] },
+			show: {
+				resource: [
+					'case',
+				],
+				operation: [
+					'update',
+				],
+			},
 		},
 		required: false,
 		default: '',
@@ -276,9 +418,18 @@ export const caseFields = [
 				name: 'severity',
 				type: 'options',
 				options: [
-					{ name: 'Low', value: 1 },
-					{ name: 'Medium', value: 2 },
-					{ name: 'High', value: 3 },
+					{
+						name: 'Low',
+						value: 1
+					},
+					{
+						name: 'Medium',
+						value: 2
+					},
+					{
+						name: 'High',
+						value: 3
+					},
 				],
 				required: false,
 				default: 2,
@@ -288,10 +439,19 @@ export const caseFields = [
 				name: 'status',
 				type: 'options',
 				options: [
-					{ name: 'Open', value: 'Open' },
-					{ name: 'Resolved', value: 'Resolved' },
-					{ name: 'Deleted', value: 'Deleted' },
-				],
+					{
+						name: 'Open',
+						value: 'Open',
+					},
+					{
+						name: 'Resolved',
+						value: 'Resolved',
+					},
+					{
+						name: 'Deleted',
+						value: 'Deleted',
+					},
+			],
 				required: false,
 				default: 'Open',
 			},
@@ -355,11 +515,26 @@ export const caseFields = [
 				required: false,
 				default: '',
 				options: [
-					{ value: 'Indeterminate', name: 'Indeterminate' },
-					{ value: 'FalsePositive', name: 'FalsePositive' },
-					{ value: 'TruePositive', name: 'TruePositive' },
-					{ value: 'Other', name: 'Other' },
-					{ value: 'Duplicated', name: 'Duplicated' },
+					{
+						value: 'Indeterminate',
+						name: 'Indeterminate'
+					},
+					{
+						value: 'FalsePositive',
+						name: 'FalsePositive'
+					},
+					{
+						value: 'TruePositive',
+						name: 'TruePositive'
+					},
+					{
+						value: 'Other',
+						name: 'Other'
+					},
+					{
+						value: 'Duplicated',
+						name: 'Duplicated'
+					},
 				],
 			},
 			{
@@ -369,9 +544,18 @@ export const caseFields = [
 				required: false,
 				default: '',
 				options: [
-					{ name: 'NoImpact', value: 'NoImpact' },
-					{ name: 'WithImpact', value: 'WithImpact' },
-					{ name: 'NotApplicable', value: 'NotApplicable' },
+					{
+						name: 'NoImpact',
+						value: 'NoImpact'
+					},
+					{
+						name: 'WithImpact',
+						value: 'WithImpact'
+					},
+					{
+						name: 'NotApplicable',
+						value: 'NotApplicable'
+					},
 				],
 			},
 			{
@@ -403,8 +587,12 @@ export const caseFields = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['case'],
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'case',
+				],
 			},
 		},
 		type: 'collection',
@@ -430,7 +618,15 @@ export const caseFields = [
 		default: {},
 		placeholder: 'Add a Filter',
 		displayOptions: {
-			show: { resource: ['case'], operation: ['getAll', 'count'] },
+			show: {
+				resource: [
+					'case'
+				],
+				operation: [
+					'getAll',
+					'count',
+				],
+			},
 		},
 		options: [
 			{
@@ -466,9 +662,18 @@ export const caseFields = [
 				name: 'severity',
 				type: 'options',
 				options: [
-					{ name: 'Low', value: 1 },
-					{ name: 'Medium', value: 2 },
-					{ name: 'High', value: 3 },
+					{
+						name: 'Low',
+						value: 1
+					},
+					{
+						name: 'Medium',
+						value: 2
+					},
+					{
+						name: 'High',
+						value: 3
+					},
 				],
 				required: false,
 				default: 2,
@@ -478,9 +683,18 @@ export const caseFields = [
 				name: 'status',
 				type: 'options',
 				options: [
-					{ name: 'Open', value: 'Open' },
-					{ name: 'Resolved', value: 'Resolved' },
-					{ name: 'Deleted', value: 'Deleted' },
+					{
+						name: 'Open',
+						value: 'Open',
+					},
+					{
+						name: 'Resolved',
+						value: 'Resolved',
+					},
+					{
+						name: 'Deleted',
+						value: 'Deleted',
+					},
 				],
 				required: false,
 				default: 'Open',
@@ -546,11 +760,26 @@ export const caseFields = [
 				required: false,
 				default: '',
 				options: [
-					{ value: 'Indeterminate', name: 'Indeterminate' },
-					{ value: 'FalsePositive', name: 'FalsePositive' },
-					{ value: 'TruePositive', name: 'TruePositive' },
-					{ value: 'Other', name: 'Other' },
-					{ value: 'Duplicated', name: 'Duplicated' },
+					{
+						value: 'Indeterminate',
+						name: 'Indeterminate',
+					},
+					{
+						value: 'FalsePositive',
+						name: 'FalsePositive',
+					},
+					{
+						value: 'TruePositive',
+						name: 'TruePositive',
+					},
+					{
+						value: 'Other',
+						name: 'Other',
+					},
+					{
+						value: 'Duplicated',
+						name: 'Duplicated',
+					},
 				],
 			},
 			{
@@ -560,9 +789,18 @@ export const caseFields = [
 				required: false,
 				default: '',
 				options: [
-					{ name: 'NoImpact', value: 'NoImpact' },
-					{ name: 'WithImpact', value: 'WithImpact' },
-					{ name: 'NotApplicable', value: 'NotApplicable' },
+					{
+						name: 'NoImpact',
+						value: 'NoImpact',
+					},
+					{
+						name: 'WithImpact',
+						value: 'WithImpact',
+					},
+					{
+						name: 'NotApplicable',
+						value: 'NotApplicable',
+					},
 				],
 			},
 		],

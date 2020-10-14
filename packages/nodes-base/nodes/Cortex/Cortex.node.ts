@@ -29,7 +29,7 @@ import {
 
 import {
 	jobFields,
-	jobsOperations,
+	jobOperations,
 } from './JobDescription';
 
 import {
@@ -90,7 +90,7 @@ export class Cortex implements INodeType {
 			...analyzerFields,
 			...respondersOperations,
 			...responderFields,
-			...jobsOperations,
+			...jobOperations,
 			...jobFields
 		],
 	};
