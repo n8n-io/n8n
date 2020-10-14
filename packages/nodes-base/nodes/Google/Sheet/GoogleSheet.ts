@@ -15,6 +15,8 @@ import {
 	utils as xlsxUtils,
 } from 'xlsx';
 
+import { get } from 'lodash';
+
 export interface ISheetOptions {
 	scope: string[];
 }
@@ -229,8 +231,8 @@ export class GoogleSheet {
 	}
 
 
-	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption): Promise<string[][]> {
-		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex);
+	async appendSheetData(inputData: IDataObject[], range: string, keyRowIndex: number, valueInputMode: ValueInputOption, usePathForKeyRow: boolean): Promise<string[][]> {
+		const data = await this.convertStructuredDataToArray(inputData, range, keyRowIndex, usePathForKeyRow);
 		return this.appendData(range, data, valueInputMode);
 	}
 
@@ -424,7 +426,7 @@ export class GoogleSheet {
 	}
 
 
-	async convertStructuredDataToArray(inputData: IDataObject[], range: string, keyRowIndex: number): Promise<string[][]> {
+	async convertStructuredDataToArray(inputData: IDataObject[], range: string, keyRowIndex: number, usePathForKeyRow: boolean): Promise<string[][]> {
 		let startColumn, endColumn;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
@@ -453,7 +455,9 @@ export class GoogleSheet {
 		inputData.forEach((item) => {
 			rowData = [];
 			keyColumnOrder.forEach((key) => {
-				if (item.hasOwnProperty(key) && item[key]) {
+				if (usePathForKeyRow && (get(item, key) != undefined)) { //match by key path 
+					rowData.push(get(item, key)!.toString());
+				} else if (!usePathForKeyRow && (item.hasOwnProperty(key) && (item[key] != undefined))) { //match by exact key name
 					rowData.push(item[key]!.toString());
 				} else {
 					rowData.push('');
