@@ -10,11 +10,11 @@ The link.fish node got removed because the service is shutting down.
 
 ### When is action necessary?
 
-If you are are activly using the link.fish node.
+If you are are actively using the link.fish node.
 
 ### How to upgrade:
 
-Sadly not possible. Look for an alternative service.
+Unfortunately, that's not possible. We'd recommend you to look for an alternative service.
 
 
 ## 0.83.0
