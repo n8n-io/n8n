@@ -611,10 +611,6 @@ export class GoogleSheets implements INodeType {
 		let range = '';
 		if (operation !== 'delete') {
 			range = this.getNodeParameter('range', 0) as string;
-			if (range.includes('!')) {
-				const [sheet, ranges] = range.split('!');
-				range = `${encodeURIComponent(sheet)}!${ranges}`;
-			}
 		}
 
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
@@ -636,7 +632,7 @@ export class GoogleSheets implements INodeType {
 			});
 
 			// Convert data into array format
-			const data = await sheet.appendSheetData(setData, range, keyRow, valueInputMode);
+			const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode);
 
 			// TODO: Should add this data somewhere
 			// TODO: Should have something like add metadata which does not get passed through
@@ -647,7 +643,7 @@ export class GoogleSheets implements INodeType {
 			//         clear
 			// ----------------------------------
 
-			await sheet.clearData(range);
+			await sheet.clearData(sheet.encodeRange(range));
 
 			const items = this.getInputData();
 			return this.prepareOutputData(items);
@@ -691,7 +687,7 @@ export class GoogleSheets implements INodeType {
 			//         lookup
 			// ----------------------------------
 
-			const sheetData = await sheet.getData(range, valueRenderMode);
+			const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
 			if (sheetData === undefined) {
 				return [];
@@ -726,7 +722,7 @@ export class GoogleSheets implements INodeType {
 
 			const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
-			const sheetData = await sheet.getData(range, valueRenderMode);
+			const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
 			let returnData: IDataObject[];
 			if (!sheetData) {
