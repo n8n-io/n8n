@@ -727,9 +727,9 @@ export class AwsSes implements INodeType {
 						const templateDataValues = (templateDataUi as IDataObject).templateDataValues as IDataObject[];
 						const templateData: IDataObject = {};
 						if (templateDataValues !== undefined) {
-							for (const key of Object.keys(templateDataValues)) {
+							for (const templateDataValue of templateDataValues) {
 								//@ts-ignore
-								templateData[key]= templateDataValues[key];
+								templateData[templateDataValue.key] = templateDataValue.value;
 							}
 							params.push(`TemplateData=${JSON.stringify(templateData)}`);
 						}
