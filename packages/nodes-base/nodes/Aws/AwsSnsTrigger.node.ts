@@ -110,11 +110,18 @@ export class AwsSnsTrigger implements INodeType {
 					'Version=2010-03-31',
 				];
 				const data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListSubscriptionsByTopic&' + params.join('&'));
-				let subscriptions = get(data, 'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions.member');
-				if (!Array.isArray(subscriptions)) {
-					subscriptions = [subscriptions];
+				const subscriptions = get(data, 'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions');
+				if (!subscriptions || !subscriptions.member) {
+					return false;
 				}
-				for (const subscription of subscriptions) {
+
+				let subscriptionMembers = subscriptions.member;
+
+				if (!Array.isArray(subscriptionMembers)) {
+					subscriptionMembers = [subscriptionMembers];
+				}
+
+				for (const subscription of subscriptionMembers) {
 					if (webhookData.webhookId === subscription.SubscriptionArn) {
 						return true;
 					}
