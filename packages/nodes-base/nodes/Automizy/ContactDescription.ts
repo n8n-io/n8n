@@ -41,7 +41,7 @@ export const contactOperations = [
 				description: 'Update a contact',
 			},
 		],
-		default: 'get',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
