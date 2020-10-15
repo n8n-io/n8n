@@ -660,7 +660,7 @@ export class HttpRequest implements INodeType {
 				let optionData: OptionData;
 				for (const parameterName of Object.keys(jsonParameters)) {
 					optionData = jsonParameters[parameterName] as OptionData;
-					const tempValue = this.getNodeParameter(parameterName, itemIndex, {}) as string | object;
+					const tempValue = this.getNodeParameter(parameterName, itemIndex, '') as string | object;
 					if (tempValue === '') {
 						// Paramter is empty so skip it
 						continue;
