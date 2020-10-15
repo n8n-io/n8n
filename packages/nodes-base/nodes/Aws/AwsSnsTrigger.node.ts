@@ -15,7 +15,9 @@ import {
 	awsApiRequestSOAP,
 } from './GenericFunctions';
 
-import { get } from 'lodash';
+import {
+	get,
+} from 'lodash';
 
 export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +38,7 @@ export class AwsSnsTrigger implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -108,7 +110,10 @@ export class AwsSnsTrigger implements INodeType {
 					'Version=2010-03-31',
 				];
 				const data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListSubscriptionsByTopic&' + params.join('&'));
-				const subscriptions = get(data, 'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions.member');
+				let subscriptions = get(data, 'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions.member');
+				if (!Array.isArray(subscriptions)) {
+					subscriptions = [subscriptions];
+				}
 				for (const subscription of subscriptions) {
 					if (webhookData.webhookId === subscription.SubscriptionArn) {
 						return true;
