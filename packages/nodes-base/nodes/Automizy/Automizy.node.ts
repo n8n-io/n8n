@@ -62,7 +62,7 @@ export class Automizy implements INodeType {
 						value: 'list',
 					},
 				],
-				default: 'contactList',
+				default: 'contact',
 				description: 'The resource to operate on.'
 			},
 
