@@ -15,5 +15,11 @@ export class MatrixApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'Homeserver URL',
+			name: 'homeserverUrl',
+			type: 'string' as NodePropertyTypes,
+			default: 'https://matrix-client.matrix.org',
+		},
 	];
 }
