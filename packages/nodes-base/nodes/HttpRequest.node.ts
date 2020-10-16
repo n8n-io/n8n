@@ -661,10 +661,6 @@ export class HttpRequest implements INodeType {
 				for (const parameterName of Object.keys(jsonParameters)) {
 					optionData = jsonParameters[parameterName] as OptionData;
 					const tempValue = this.getNodeParameter(parameterName, itemIndex, '') as string | object;
-					if (tempValue === '') {
-						// Paramter is empty so skip it
-						continue;
-					}
 					const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 
 					if (optionData.name === 'body' && parametersAreJson === true) {
@@ -727,6 +723,11 @@ export class HttpRequest implements INodeType {
 							}
 							continue;
 						}
+					}
+
+					if (tempValue === '') {
+						// Paramter is empty so skip it
+						continue;
 					}
 
 					// @ts-ignore
