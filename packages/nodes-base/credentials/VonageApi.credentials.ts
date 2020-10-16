@@ -6,6 +6,7 @@ import {
 export class VonageApi implements ICredentialType {
 	name = 'vonageApi';
 	displayName = 'Vonage API';
+	documentationUrl = 'vonage';
 	properties = [
 		{
 			displayName: 'API Key',
