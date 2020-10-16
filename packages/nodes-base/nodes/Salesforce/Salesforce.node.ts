@@ -259,12 +259,6 @@ export class Salesforce implements INodeType {
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/lead/describe');
 
-				for (const aja of fields as IDataObject[]) {
-					if (aja.custom === true) {
-						console.log(aja);
-					}
-				}
-
 				for (const field of fields) {
 					if (field.name === 'LeadSource') {
 						for (const pickValue of field.picklistValues) {
