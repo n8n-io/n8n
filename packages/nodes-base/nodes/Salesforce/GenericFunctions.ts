@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,7 +9,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject
+	IDataObject,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -51,4 +52,21 @@ export async function salesforceApiRequestAllItems(this: IExecuteFunctions | ILo
 	);
 
 	return returnData;
+}
+
+
+
+/**
+ * Sorts the given options alphabetically
+ *
+ * @export
+ * @param {INodePropertyOptions[]} options
+ * @returns {INodePropertyOptions[]}
+ */
+export function sortOptions(options: INodePropertyOptions[]): void {
+	options.sort((a, b) => {
+		if (a.name < b.name) { return -1; }
+		if (a.name > b.name) { return 1; }
+		return 0;
+	});
 }
