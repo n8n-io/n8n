@@ -65,6 +65,7 @@ import {
 import {
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
+	sortOptions,
 } from './GenericFunctions';
 
 import {
@@ -229,6 +230,7 @@ export class Salesforce implements INodeType {
 						value: statusId,
 					});
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the users to display them to user so that he can
@@ -247,6 +249,7 @@ export class Salesforce implements INodeType {
 						value: userId,
 					});
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the lead sources to display them to user so that he can
@@ -274,6 +277,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the lead custom fields to display them to user so that he can
@@ -293,6 +297,7 @@ export class Salesforce implements INodeType {
 						});
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the accounts to display them to user so that he can
@@ -311,6 +316,7 @@ export class Salesforce implements INodeType {
 						value: accountId,
 					});
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the campaigns to display them to user so that he can
@@ -329,6 +335,7 @@ export class Salesforce implements INodeType {
 						value: campaignId,
 					});
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the stages to display them to user so that he can
@@ -349,6 +356,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the stages to display them to user so that he can
@@ -369,6 +377,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the account sources to display them to user so that he can
@@ -389,6 +398,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case types to display them to user so that he can
@@ -409,6 +419,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case statuses to display them to user so that he can
@@ -429,6 +440,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case reasons to display them to user so that he can
@@ -449,6 +461,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case origins to display them to user so that he can
@@ -469,6 +482,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case priorities to display them to user so that he can
@@ -489,6 +503,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task statuses to display them to user so that he can
@@ -509,6 +524,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task subjects to display them to user so that he can
@@ -529,6 +545,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task call types to display them to user so that he can
@@ -549,6 +566,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task call priorities to display them to user so that he can
@@ -569,6 +587,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task recurrence types to display them to user so that he can
@@ -589,6 +608,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task recurrence instances to display them to user so that he can
@@ -609,6 +629,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 
@@ -628,6 +649,7 @@ export class Salesforce implements INodeType {
 						});
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 
@@ -646,6 +668,7 @@ export class Salesforce implements INodeType {
 						value: fieldId,
 					});
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 		},
