@@ -6,6 +6,7 @@ import {
 export class AutomizyApi implements ICredentialType {
 	name = 'automizyApi';
 	displayName = 'Automizy API';
+	documentationUrl = 'automizy';
 	properties = [
 		{
 			displayName: 'API Token',
