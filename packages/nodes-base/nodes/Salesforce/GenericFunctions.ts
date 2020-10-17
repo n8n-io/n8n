@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,14 +9,13 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject
+	IDataObject,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import * as moment from 'moment-timezone';
 
 import * as jwt from 'jsonwebtoken';
-import { conversationOperations } from '../HelpScout/ConversationDescription';
-import { stringify } from 'querystring';
 
 export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
@@ -69,13 +68,28 @@ export async function salesforceApiRequestAllItems(this: IExecuteFunctions | ILo
 	return returnData;
 }
 
+/**
+ * Sorts the given options alphabetically
+ *
+ * @export
+ * @param {INodePropertyOptions[]} options
+ * @returns {INodePropertyOptions[]}
+ */
+export function sortOptions(options: INodePropertyOptions[]): void {
+	options.sort((a, b) => {
+		if (a.name < b.name) { return -1; }
+		if (a.name > b.name) { return 1; }
+		return 0;
+	});
+}
+
 function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any, qs: IDataObject, instanceUrl: string): OptionsWithUri {
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
-		body: method === "GET" ? undefined : body,
+		body: method === 'GET' ? undefined : body,
 		qs,
 		uri: `${instanceUrl}/services/data/v39.0${endpoint}`,
 		json: true

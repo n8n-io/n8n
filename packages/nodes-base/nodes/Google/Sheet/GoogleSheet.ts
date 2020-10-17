@@ -66,6 +66,22 @@ export class GoogleSheet {
 
 
 	/**
+	 * Encodes the range that also none latin character work
+	 *
+	 * @param {string} range
+	 * @returns {string}
+	 * @memberof GoogleSheet
+	 */
+	encodeRange(range: string): string {
+		if (range.includes('!')) {
+			const [sheet, ranges] = range.split('!');
+			range = `${encodeURIComponent(sheet)}!${ranges}`;
+		}
+		return range;
+	}
+
+
+	/**
 	 * Clears values from a sheet
 	 *
 	 * @param {string} range
@@ -167,7 +183,7 @@ export class GoogleSheet {
 	async appendData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 
 		const body = {
-			range,
+			range: decodeURIComponent(range),
 			values: data,
 		};
 
@@ -254,12 +270,14 @@ export class GoogleSheet {
 	 */
 	async updateSheetData(inputData: IDataObject[], indexKey: string, range: string, keyRowIndex: number, dataStartRowIndex: number, valueInputMode: ValueInputOption, valueRenderMode: ValueRenderOption): Promise<string[][]> {
 		// Get current data in Google Sheet
-		let rangeStart: string, rangeEnd: string;
+		let rangeStart: string, rangeEnd: string, rangeFull: string;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
-			[sheet, range] = range.split('!');
+			[sheet, rangeFull] = range.split('!');
+		} else {
+			rangeFull = range;
 		}
-		[rangeStart, rangeEnd] = range.split(':');
+		[rangeStart, rangeEnd] = rangeFull.split(':');
 
 		const rangeStartSplit = rangeStart.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
 		const rangeEndSplit = rangeEnd.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
@@ -270,7 +288,7 @@ export class GoogleSheet {
 
 		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${dataStartRowIndex}:${rangeEndSplit[1]}${dataStartRowIndex}`;
 
-		const sheetDatakeyRow = await this.getData(keyRowRange, valueRenderMode);
+		const sheetDatakeyRow = await this.getData(this.encodeRange(keyRowRange), valueRenderMode);
 
 		if (sheetDatakeyRow === undefined) {
 			throw new Error('Could not retrieve the key row!');
@@ -290,7 +308,7 @@ export class GoogleSheet {
 		const keyColumn = this.getColumnWithOffset(rangeStartSplit[1], keyIndex);
 		const keyColumnRange = `${sheet ? sheet + '!' : ''}${keyColumn}${startRowIndex}:${keyColumn}${endRowIndex}`;
 
-		const sheetDataKeyColumn = await this.getData(keyColumnRange, valueRenderMode);
+		const sheetDataKeyColumn = await this.getData(this.encodeRange(keyColumnRange), valueRenderMode);
 
 		if (sheetDataKeyColumn === undefined) {
 			throw new Error('Could not retrieve the key column!');

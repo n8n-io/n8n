@@ -413,7 +413,7 @@ export class ActiveWorkflowRunner {
 			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(workflow, node, additionalData, mode);
 			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
 				WorkflowHelpers.saveStaticData(workflow);
-				this.runWorkflow(workflowData, node, data, additionalData, mode);
+				this.runWorkflow(workflowData, node, data, additionalData, mode).catch((err) => console.error(err));
 			};
 			return returnFunctions;
 		});

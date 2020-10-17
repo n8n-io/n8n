@@ -454,10 +454,9 @@ export class Gmail implements INodeType {
 
 					let nodeExecutionData: INodeExecutionData;
 					if (format === 'resolved') {
-						const messageEncoded = Buffer.from(responseData.raw, 'base64').toString('utf8');
 						const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
 
-						nodeExecutionData = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
+						nodeExecutionData = await parseRawEmail.call(this, responseData, dataPropertyNameDownload);
 					} else  {
 						nodeExecutionData = {
 							json: responseData,
@@ -525,9 +524,9 @@ export class Gmail implements INodeType {
 							);
 
 							if (format === 'resolved') {
-								const messageEncoded = Buffer.from(responseData[i].raw, 'base64').toString('utf8');
 								const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
-								responseData[i] = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
+
+								responseData[i] = await parseRawEmail.call(this, responseData[i], dataPropertyNameDownload);
 							}
 						}
 					}
@@ -654,10 +653,13 @@ export class Gmail implements INodeType {
 
 					let nodeExecutionData: INodeExecutionData;
 					if (format === 'resolved') {
-						const messageEncoded = Buffer.from(responseData.message.raw, 'base64').toString('utf8');
 						const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
 
-						nodeExecutionData = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
+						nodeExecutionData = await parseRawEmail.call(this, responseData.message, dataPropertyNameDownload);
+
+						// Add the draft-id
+						nodeExecutionData.json.messageId = nodeExecutionData.json.id;
+						nodeExecutionData.json.id = responseData.id;
 					} else {
 						nodeExecutionData = {
 							json: responseData,
@@ -728,9 +730,13 @@ export class Gmail implements INodeType {
 							);
 
 							if (format === 'resolved') {
-								const messageEncoded = Buffer.from(responseData[i].message.raw, 'base64').toString('utf8');
 								const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
-								responseData[i] = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
+								const id = responseData[i].id;
+								responseData[i] = await parseRawEmail.call(this, responseData[i].message, dataPropertyNameDownload);
+
+								// Add the draft-id
+								responseData[i].json.messageId = responseData[i].json.id;
+								responseData[i].json.id = id;
 							}
 						}
 					}
