@@ -110,7 +110,7 @@ export class ApacheKafka implements INodeType {
 		let body = JSON.stringify(item.json);
 		let timeout = options.timeout as number;
 
-		await producer.send({
+		const response = await producer.send({
 			topic: sink,
 			compression: compressionType,
 			timeout: timeout,
@@ -122,6 +122,6 @@ export class ApacheKafka implements INodeType {
 
 		await producer.disconnect()
 
-		return { json: { success: 'true' } } as INodeExecutionData;
+		return { json: { response: response }} as INodeExecutionData;
 	}
 }
