@@ -1,4 +1,4 @@
-import { IHeaders, Kafka } from 'kafkajs';
+import { IHeaders, Kafka, CompressionTypes } from 'kafkajs';
 
 import { IExecuteSingleFunctions } from 'n8n-core';
 import {
@@ -42,12 +42,30 @@ export class ApacheKafka implements INodeType {
 				default: '',
 				description: 'Header parameters as JSON (flat object)',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				description: 'Properties of the task comment',
+				placeholder: 'Add Option',
+				options: [
+					{
+						displayName: 'Compression',
+						name: 'compression',
+						type: 'boolean',
+						default: false,
+						description: 'Send the data in a compressed format using the GZIP codec',
+					},
+				],
+			},
 		]
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
 		const item = this.getInputData();
 		const applicationProperties = this.getNodeParameter('headerParametersJson', {}) as IHeaders;
+		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		let headerProperties = applicationProperties;
 		if (typeof applicationProperties === 'string' && applicationProperties !== '') {
@@ -66,6 +84,11 @@ export class ApacheKafka implements INodeType {
 			throw new Error('Topic name required!');
 		}
 
+		let compressionType = undefined;
+		if (options.compression === true) {
+			compressionType = CompressionTypes.GZIP;
+		}
+
 		const broker = credentials.hostname + ':' + credentials.port;
 		const clientId = credentials.clientId.toString();
 
@@ -82,6 +105,7 @@ export class ApacheKafka implements INodeType {
 
 		await producer.send({
 			topic: sink,
+			compression: compressionType,
 			messages: [{
 				 value: body,
 				 headers: headerProperties,
