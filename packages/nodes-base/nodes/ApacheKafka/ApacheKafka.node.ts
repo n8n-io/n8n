@@ -57,6 +57,13 @@ export class ApacheKafka implements INodeType {
 						default: false,
 						description: 'Send the data in a compressed format using the GZIP codec',
 					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						type: 'number',
+						default: 30000,
+						description: 'The time to await a response in ms',
+					},
 				],
 			},
 		]
@@ -84,7 +91,7 @@ export class ApacheKafka implements INodeType {
 			throw new Error('Topic name required!');
 		}
 
-		let compressionType = undefined;
+		let compressionType = CompressionTypes.None;
 		if (options.compression === true) {
 			compressionType = CompressionTypes.GZIP;
 		}
@@ -102,10 +109,12 @@ export class ApacheKafka implements INodeType {
 		await producer.connect();
 
 		let body = JSON.stringify(item.json);
+		let timeout = options.timeout as number;
 
 		await producer.send({
 			topic: sink,
 			compression: compressionType,
+			timeout: timeout,
 			messages: [{
 				 value: body,
 				 headers: headerProperties,
