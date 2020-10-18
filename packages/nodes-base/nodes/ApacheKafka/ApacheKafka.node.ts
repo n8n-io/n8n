@@ -47,7 +47,6 @@ export class ApacheKafka implements INodeType {
 				name: 'options',
 				type: 'collection',
 				default: {},
-				description: 'Properties of the task comment',
 				placeholder: 'Add Option',
 				options: [
 					{
