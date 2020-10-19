@@ -1,4 +1,4 @@
-import { IHeaders, Kafka as apacheKafka, CompressionTypes } from 'kafkajs';
+import { IHeaders, Kafka as apacheKafka, CompressionTypes, Message } from 'kafkajs';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -71,8 +71,17 @@ export class Kafka implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
-		const returnData: IDataObject[] = [];
+
+		const topicMessages = [];
 		let responseData;
+
+		const options = this.getNodeParameter('options', 0) as IDataObject;
+
+		let timeout = options.timeout as number;
+		let compression = CompressionTypes.None;
+		if (options.compression === true) {
+			compression = CompressionTypes.GZIP;
+		}
 
 		const credentials = this.getCredentials('kafka');
 		if (!credentials) {
@@ -92,11 +101,10 @@ export class Kafka implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			const applicationProperties = this.getNodeParameter('headerParametersJson', i) as IHeaders;
-			const options = this.getNodeParameter('options', i) as IDataObject;
 
-			let headerProperties = applicationProperties;
+			let headers = applicationProperties;
 			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
-				headerProperties = JSON.parse(applicationProperties);
+				headers = JSON.parse(applicationProperties);
 			}
 
 			const topic = this.getNodeParameter('topic', i) as string;
@@ -105,33 +113,15 @@ export class Kafka implements INodeType {
 				throw new Error('Topic name required!');
 			}
 
-			let compressionType = CompressionTypes.None;
-			if (options.compression === true) {
-				compressionType = CompressionTypes.GZIP;
-			}
+			let messages = [];
+			messages.push({value: JSON.stringify(items[i].json), headers: headers})
 
-			let body = JSON.stringify(items[i].json);
-			let timeout = options.timeout as number;
-
-			responseData = await producer.send({
-				topic,
-				compression: compressionType,
-				timeout,
-				messages: [{
-				 	value: body,
-				 	headers: headerProperties,
-				}],
-			});
-
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
+			topicMessages.push({topic, messages});
 		}
-		
+
+		responseData = await producer.sendBatch({topicMessages, timeout, compression});
 		await producer.disconnect()
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [this.helpers.returnJsonArray(responseData)];
 	}
 }
