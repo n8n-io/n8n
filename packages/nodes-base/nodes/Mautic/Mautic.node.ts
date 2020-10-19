@@ -133,7 +133,7 @@ export class Mautic implements INodeType {
 				for (const company of companies) {
 					returnData.push({
 						name: company.fields.all.companyname,
-						value: company.id,
+						value: company.fields.all.companyname,
 					});
 				}
 				return returnData;
@@ -458,10 +458,6 @@ export class Mautic implements INodeType {
 					}
 					if (updateFields.website) {
 						body.website = updateFields.website as string;
-					}
-					if (options.rawData === false) {
-						// @ts-ignore
-						responseData = responseData.map(item => item.fields.all);
 					}
 					responseData = await mauticApiRequest.call(this, 'PATCH', `/contacts/${contactId}/edit`, body);
 					responseData = [responseData.contact];
