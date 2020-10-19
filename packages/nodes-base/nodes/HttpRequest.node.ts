@@ -772,6 +772,19 @@ export class HttpRequest implements INodeType {
 				}
 			}
 
+			if (responseFormat === 'file') {
+				requestOptions.encoding = null;
+				requestOptions.body = JSON.stringify(requestOptions.body);
+				if (requestOptions.headers === undefined) {
+					requestOptions.headers = {};
+				}
+				requestOptions.headers['Content-Type'] = 'application/json';
+			} else if (options.bodyContentType === 'raw') {
+				requestOptions.json = false;
+			} else {
+				requestOptions.json = true;
+			}
+
 			// Add Content Type if any are set
 			if (options.bodyContentCustomMimeType) {
 				if(requestOptions.headers === undefined) {
@@ -806,14 +819,6 @@ export class HttpRequest implements INodeType {
 				} else {
 					requestOptions.headers!['accept'] = 'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
 				}
-			}
-
-			if (responseFormat === 'file') {
-				requestOptions.encoding = null;
-			} else if(options.bodyContentType === 'raw') {
-				requestOptions.json = false;
-			} else {
-				requestOptions.json = true;
 			}
 
 			// Now that the options are all set make the actual http request
