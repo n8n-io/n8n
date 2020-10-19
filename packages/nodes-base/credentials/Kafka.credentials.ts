@@ -4,9 +4,9 @@ import {
 } from 'n8n-workflow';
 
 
-export class ApacheKafka implements ICredentialType {
+export class Kafka implements ICredentialType {
 	name = 'kafka';
-	displayName = 'Apache Kafka';
+	displayName = 'Kafka';
 	documentationUrl = 'kafka';
 	properties = [
 		{
