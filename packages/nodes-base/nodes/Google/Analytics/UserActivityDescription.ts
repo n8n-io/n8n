@@ -1,0 +1,123 @@
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+export const userActivityOperations = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'userActivity',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Returns User Activity data.',
+			},
+		],
+		default: 'search',
+		description: 'The operation to perform',
+	},
+] as INodeProperties[];
+
+export const userActivityFields = [
+	{
+		displayName: 'View ID',
+		name: 'viewId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'userActivity',
+				],
+				operation: [
+					'search',
+				]
+			},
+		},
+		placeholder: '123456',
+		description: 'The View ID of Google Analytics',
+	},
+	{
+		displayName: 'User ID',
+		name: 'userId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'userActivity',
+				],
+				operation: [
+					'search',
+				]
+			},
+		},
+		placeholder: '123456',
+		description: 'User ID of a user',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'userActivity',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Activity Types',
+				name: 'activityTypes',
+				type: 'multiOptions',
+				options: [
+					{
+						name:'Ecommerce',
+						value:'ECOMMERCE'
+					},
+					{
+						name:'Event',
+						value:'EVENT'
+					},
+					{
+						name:'Goal',
+						value:'GOAL'
+					},
+					{
+						name:'Pageview',
+						value:'PAGEVIEW'
+					},
+					{
+						name:'Screenview',
+						value:'SCREENVIEW'
+					},
+				],
+				description:'Type of activites requested',
+				default:'',
+			},
+			{
+				displayName: 'Page Size',
+				name: 'pageSize',
+				type:'number',
+				default:1000,
+				description: 'Specifies the maximum number of returned rows'
+			}
+		]
+	}
+] as INodeProperties[];
