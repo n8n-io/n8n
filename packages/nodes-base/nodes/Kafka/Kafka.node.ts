@@ -1,4 +1,4 @@
-import { IHeaders, Kafka as apacheKafka, CompressionTypes, Message } from 'kafkajs';
+import { IHeaders, Kafka as apacheKafka, CompressionTypes } from 'kafkajs';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
