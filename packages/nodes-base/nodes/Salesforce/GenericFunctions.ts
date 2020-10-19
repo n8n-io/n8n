@@ -25,7 +25,6 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_jwt_flow.htm&type=5
 			const credentialsType = 'salesforceJwtApi';
 			const credentials = this.getCredentials(credentialsType);
-			// const { instance_url, access_token } = await getAccessToken.call(this, credentials as IDataObject);
 			const response = await getAccessToken.call(this, credentials as IDataObject);
 			const { instance_url, access_token } = response;
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, instance_url as string);
@@ -34,7 +33,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 			return await this.helpers.request(options);
 		} else {
 			// https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
-			const credentialsType = 'salesforceOAuth2Api'
+			const credentialsType = 'salesforceOAuth2Api';
 			const credentials = this.getCredentials(credentialsType);
 			const subdomain = ((credentials!.accessTokenUrl as string).match(/https:\/\/(.+).salesforce\.com/) || [])[1];
 			const options = getOptions.call(this, method, (uri || endpoint), body, qs, `https://${subdomain}.salesforce.com`);
@@ -101,7 +100,7 @@ function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOpt
 
 function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IDataObject): Promise<IDataObject> {
 	const now = moment().unix();
-	const authUrl = credentials.environment == 'sandbox' ? 'https://test.salesforce.com' : 'https://login.salesforce.com'
+	const authUrl = credentials.environment === 'sandbox' ? 'https://test.salesforce.com' : 'https://login.salesforce.com';
 
 	const signature = jwt.sign(
 		{

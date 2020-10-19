@@ -154,11 +154,11 @@ export class Salesforce implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'OAuth 2.0 Web Server Flow',
+						name: 'OAuth2',
 						value: 'oAuth2',
 					},
 					{
-						name: 'OAuth 2.0 JWT Bearer Flow',
+						name: 'OAuth2 JWT',
 						value: 'jwt',
 					},
 				],
