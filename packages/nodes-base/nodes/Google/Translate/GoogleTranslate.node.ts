@@ -4,7 +4,9 @@ import {
 } from 'n8n-core';
 
 import {
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -108,7 +110,10 @@ export class GoogleTranslate implements INodeType {
 			{
 				displayName: 'Translate To',
 				name: 'translateTo',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLanguages',
+				},
 				default: '',
 				description: 'The language to use for translation of the input text, set to one of the<br/> language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>',
 				required: true,
@@ -121,6 +126,28 @@ export class GoogleTranslate implements INodeType {
 				},
 			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getLanguages(
+				this: ILoadOptionsFunctions
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data: { languages } } = await googleApiRequest.call(
+					this,
+					'GET',
+					'/language/translate/v2/languages'
+				);
+				for (const language of languages) {
+					returnData.push({
+						name: language.language.toUpperCase(),
+						value: language.language
+					});
+				}
+				return returnData;
+			},
+		}
 	};
 
 
