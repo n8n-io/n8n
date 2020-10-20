@@ -55,7 +55,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
-			throw new Error(`Google Sheet error response [${error.statusCode}]: ${error.response.body.message}`);
+			throw new Error(`Google Slides error response [${error.statusCode}]: ${error.response.body.message}`);
 		}
 		throw error;
 	}

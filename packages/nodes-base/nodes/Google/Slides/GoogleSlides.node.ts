@@ -25,10 +25,11 @@ export class GoogleSlides implements INodeType {
 		icon: 'file:googleslides.svg',
 		group: ['input', 'output'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Read data from Google Slides',
 		defaults: {
 			name: 'Google Slides',
-			color: '#0aa55c',
+			color: '#edba25',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -79,15 +80,15 @@ export class GoogleSlides implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Presentations',
-						value: 'presentations',
+						name: 'Presentation',
+						value: 'presentation',
 					},
 					{
-						name: 'Pages',
-						value: 'pages',
+						name: 'Page',
+						value: 'page',
 					},
 				],
-				default: 'presentations',
+				default: 'presentation',
 				description: 'The resource to operate on',
 			},
 			{
@@ -109,7 +110,7 @@ export class GoogleSlides implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'presentations',
+							'presentation',
 						],
 					},
 				},
@@ -135,7 +136,7 @@ export class GoogleSlides implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'pages',
+							'page',
 						],
 					},
 				},
@@ -158,7 +159,7 @@ export class GoogleSlides implements INodeType {
 							'create',
 						],
 						resource: [
-							'presentations',
+							'presentation',
 						],
 					},
 				},
@@ -176,8 +177,8 @@ export class GoogleSlides implements INodeType {
 							'getThumbnail'
 						],
 						resource: [
-							'presentations',
-							'pages',
+							'presentation',
+							'page',
 						],
 					},
 				},
@@ -195,7 +196,7 @@ export class GoogleSlides implements INodeType {
 							'getThumbnail',
 						],
 						resource: [
-							'pages',
+							'page',
 						],
 					},
 				},
@@ -213,7 +214,7 @@ export class GoogleSlides implements INodeType {
 		const responseData = [];
 
 		for (let i=0; i < length; i++) {
-			if (resource === 'presentations') {
+			if (resource === 'presentation') {
 				if (operation === 'create') {
 					const title = this.getNodeParameter('title', i) as string;
 					let body = {
@@ -228,7 +229,7 @@ export class GoogleSlides implements INodeType {
 					const response = await googleApiRequest.call(this, 'GET', `/v1/presentations/${presentationId}`, {});
 					responseData.push(response);
 			 	}
-			} else if (resource === 'pages') {
+			} else if (resource === 'page') {
 				if (operation === 'get') {
 					const presentationId = this.getNodeParameter('presentationId', i) as string;
 					const pageObjectId = this.getNodeParameter('pageObjectId', i) as string;
