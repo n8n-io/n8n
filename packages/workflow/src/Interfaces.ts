@@ -539,7 +539,7 @@ export interface INodeTypeDescription {
 	inputNames?: string[];
 	outputs: string[];
 	outputNames?: string[];
-	properties: INodeProperties[];
+	properties?: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: boolean;
