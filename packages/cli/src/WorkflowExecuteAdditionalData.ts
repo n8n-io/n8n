@@ -406,6 +406,8 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	const workflowExecute = new WorkflowExecute(additionalDataIntegrated, mode, runExecutionData);
 	const data = await workflowExecute.processRunExecutionData(workflow);
 
+	await externalHooks.run('workflow.postExecute', [data, workflowData]);
+
 	if (data.finished === true) {
 		// Workflow did finish successfully
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
