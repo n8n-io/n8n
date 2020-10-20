@@ -40,6 +40,11 @@ export const documentOperations = [
 				value: 'update',
 				description: 'Update a document',
 			},
+			{
+				name: 'Query',
+				value: 'query',
+				description: 'Runs a query against your documents',
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform.'
@@ -505,5 +510,72 @@ export const documentFields = [
 		},
 		placeholder: '{"fields": {"name": {"stringValue": "John Doe"}, "age": {"integerValue": 34}, "hobbies": {"arrayValue": {"values": [{"stringValue": "Board Games"}]}}}}',
 	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                              document:query                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Project ID',
+		name: 'projectId',
+		type: 'options',
+		default: '',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'query',
+				],
+			},
+		},
+		description: 'As displayed in firebase console URL',
+		required: true,
+	},
+	{
+		displayName: 'Database',
+		name: 'database',
+		type: 'string',
+		default: '(default)',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'query',
+				],
+			},
+		},
+		description: 'Usually the provided default value will work',
+		required: true,
+	},
+	{
+		displayName: 'Query JSON',
+		name: 'query',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'query',
+				],
+			},
+		},
+		description: 'JSON query to execute',
+		required: true,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		placeholder: '{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL",	"value": {"integerValue": 28}}},"from": [{"collectionId": "users-collection"}]}}',
+	},
+
+
 	
 ] as INodeProperties[];

@@ -129,6 +129,7 @@ export class CloudFirestore implements INodeType {
 						'GET',
 						`/${projectId}/databases/${database}/documents/${collection}/${documentId}`,
 					);
+					returnData.push(responseData);
 				} else if (operation === 'create') {
 					const projectId = this.getNodeParameter('projectId', i) as string;
 					const database = this.getNodeParameter('database', i) as string;
@@ -140,6 +141,7 @@ export class CloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents/${collection}`,
 						JSON.parse(documentData),
 					);
+					returnData.push(responseData);
 				} else if (operation === 'getAll') {
 					const projectId = this.getNodeParameter('projectId', i) as string;
 					const database = this.getNodeParameter('database', i) as string;
@@ -164,6 +166,7 @@ export class CloudFirestore implements INodeType {
 						) as IDataObject;
 						responseData = getAllResponse.documents;
 					}
+					returnData.push.apply(returnData, responseData);
 				} else if (operation === 'delete') {
 					const projectId = this.getNodeParameter('projectId', i) as string;
 					const database = this.getNodeParameter('database', i) as string;
@@ -179,6 +182,7 @@ export class CloudFirestore implements INodeType {
 						'DELETE',
 						`/${projectId}/databases/${database}/documents/${collection}/${documentId}`,
 					));
+					returnData.push(responseData);
 				} else if (operation === 'update') {
 					
 					const projectId = this.getNodeParameter('projectId', i) as string;
@@ -192,6 +196,18 @@ export class CloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents/${collection}/${documentId}`,
 						JSON.parse(documentData),
 					);
+					returnData.push(responseData);
+				} else if (operation === 'query') {
+					const projectId = this.getNodeParameter('projectId', i) as string;
+					const database = this.getNodeParameter('database', i) as string;
+					const query = this.getNodeParameter('query', i) as string;
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						`/${projectId}/databases/${database}/documents:runQuery`,
+						JSON.parse(query),
+					);
+					returnData.push.apply(returnData, responseData);
 				}
 			} else if (resource === 'collection') {
 				if (operation === 'getAll') {
@@ -220,10 +236,11 @@ export class CloudFirestore implements INodeType {
 						// @ts-ignore
 						responseData = getAllResponse.collectionIds.map(o => ({name: o}));
 					}
+					returnData.push.apply(returnData, responseData);
 				}
 			}
 		}
 
-		return [this.helpers.returnJsonArray(responseData)];
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

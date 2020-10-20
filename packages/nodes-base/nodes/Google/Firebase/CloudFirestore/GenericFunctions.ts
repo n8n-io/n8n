@@ -25,7 +25,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		uri: uri || `https://firestore.googleapis.com/v1/projects${resource}`,
 		json: true
 	};
-	console.log(options);
 	try {
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
