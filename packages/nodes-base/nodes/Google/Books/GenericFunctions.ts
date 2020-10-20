@@ -46,16 +46,31 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
+			console.log(options);
 			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
+			console.log(this.getCredentials('googleBooksOAuth2Api'));
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'googleBooksOAuth2Api', options);
 		}
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
+		if (error.response && error.response.body && error.response.body.error) {
+
+			let errors;
+
+			if (error.response.body.error.errors) {
+				errors = error.response.body.error.errors;
+
+				errors = errors.map((e: IDataObject) => e.message).join('|');
+
+			} else {
+				errors = error.response.body.error.message;
+			}
 			// Try to return the error prettier
-			throw new Error(`Google Books error response [${error.statusCode}]: ${error.response.body.message}`);
+			throw new Error(
+				`Google Books error response [${error.statusCode}]: ${errors}`
+			);
 		}
 		throw error;
 	}
@@ -66,15 +81,13 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query.maxResults = 100;
+	query.maxResults = 40;
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['nextPageToken'];
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] || []);
 	} while (
-		responseData['nextPageToken'] !== undefined &&
-		responseData['nextPageToken'] !== ''
+		returnData.length < responseData.totalItems
 	);
 
 	return returnData;

@@ -4,6 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -11,6 +12,7 @@ import {
 
 import {
 	googleApiRequest,
+	googleApiRequestAllItems,
 } from './GenericFunctions';
 
 export interface IGoogleAuthCredentials {
@@ -26,9 +28,10 @@ export class GoogleBooks implements INodeType {
 		group: ['input', 'output'],
 		version: 1,
 		description: 'Read data from Google Books',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Google Books',
-			color: '#0aa55c',
+			color: '#4198e6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -81,17 +84,14 @@ export class GoogleBooks implements INodeType {
 					{
 						name: 'Bookshelf',
 						value: 'bookshelf',
-						description: 'This resource allows you to view bookshelf metadata as well as to modify the contents of a bookshelf',
 					},
 					{
-						name: 'My Library',
-						value: 'library',
-						description: 'This resource allows you to view and modify the contents of an authenticated users own bookshelf',
+						name: 'Bookshelf Volume',
+						value: 'bookshelfVolume',
 					},
 					{
 						name: 'Volume',
 						value: 'volume',
-						description: 'This resource is used to perform a search or listing the contents of a bookshelf and to retrieve volumes from another users public bookshelves',
 					},
 				],
 				default: 'bookshelf',
@@ -104,18 +104,13 @@ export class GoogleBooks implements INodeType {
 				options: [
 					{
 						name: 'Get',
-						value: 'getShelf',
+						value: 'get',
 						description: 'Retrieve a specific bookshelf resource for the specified user',
 					},
 					{
-						name: 'List',
-						value: 'listShelves',
-						description: 'Retrieve a list of public bookshelf resource for the specified user',
-					},
-					{
-						name: 'Get volumes',
-						value: 'getVolumes',
-						description: 'Retrieve volumes in a specific bookshelf for the specified user',
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all public bookshelf resource for the specified user',
 					},
 				],
 				displayOptions: {
@@ -125,7 +120,7 @@ export class GoogleBooks implements INodeType {
 						],
 					},
 				},
-				default: 'getShelf',
+				default: 'get',
 				description: 'The operation to perform',
 			},
 			{
@@ -134,49 +129,39 @@ export class GoogleBooks implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Add Volume',
-						value: 'addVolume',
-						description: 'Adds a volume to a bookshelf',
+						name: 'Add',
+						value: 'add',
+						description: 'Add a volume to a bookshelf',
 					},
 					{
-						name: 'Clear Volumes',
-						value: 'clearVolumes',
-						description: 'Clear all volumes from a bookshelf',
+						name: 'Clear',
+						value: 'clear',
+						description: 'Clears all volumes from a bookshelf',
 					},
 					{
-						name: 'Get',
-						value: 'getMyShelf',
-						description: 'Retrieve metadata for a specific bookshelf belonging to the authenticated user',
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all volumes in a specific bookshelf for the specified user',
 					},
 					{
-						name: 'List',
-						value: 'listMyShelves',
-						description: 'Retrieve a list of bookshelves belonging to the authenticated user',
+						name: 'Move',
+						value: 'move',
+						description: 'Moves a volume within a bookshelf',
 					},
 					{
-						name: 'Move Volume',
-						value: 'moveVolume',
-						description: 'Move a volume within a bookshelf',
-					},
-					{
-						name: 'Remove Volume',
-						value: 'removeVolume',
-						description: 'Remove a volume from a bookshelf',
-					},
-					{
-						name: 'List Volumes',
-						value: 'listVolumes',
-						description: 'Get volume information for volumes on a bookshelf',
+						name: 'Remove',
+						value: 'remove',
+						description: 'Removes a volume from a bookshelf',
 					},
 				],
 				displayOptions: {
 					show: {
 						resource: [
-							'library',
+							'bookshelfVolume',
 						],
 					},
 				},
-				default: 'addVolume',
+				default: 'getAll',
 				description: 'The operation to perform',
 			},
 			{
@@ -186,13 +171,13 @@ export class GoogleBooks implements INodeType {
 				options: [
 					{
 						name: 'Get',
-						value: 'getVolume',
-						description: 'Retrieve a Volume resource based on ID',
+						value: 'get',
+						description: 'Get a volume resource based on ID',
 					},
 					{
-						name: 'List',
-						value: 'bookSearch',
-						description: 'Perform a book search',
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all volumes filtered by query',
 					},
 				],
 				displayOptions: {
@@ -202,8 +187,27 @@ export class GoogleBooks implements INodeType {
 						],
 					},
 				},
-				default: 'getVolume',
+				default: 'get',
 				description: 'The operation to perform',
+			},
+			{
+				displayName: 'My Library',
+				name: 'myLibrary',
+				type: 'boolean',
+				default: false,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+							'getAll',
+						],
+						resource: [
+							'bookshelf',
+							'bookshelfVolume'
+						],
+					},
+				},
 			},
 
 			// ----------------------------------
@@ -219,7 +223,7 @@ export class GoogleBooks implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'bookSearch',
+							'getAll',
 						],
 						resource: [
 							'volume',
@@ -237,12 +241,17 @@ export class GoogleBooks implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'getShelf',
-							'listShelves',
-							'getVolumes',
+							'get',
+							'getAll',
 						],
 						resource: [
 							'bookshelf',
+							'bookshelfVolume',
+						],
+					},
+					hide: {
+						myLibrary: [
+							true,
 						],
 					},
 				},
@@ -257,18 +266,15 @@ export class GoogleBooks implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'getShelf',
-							'getVolumes',
-							'addVolume',
-							'clearVolumes',
-							'getMyShelf',
-							'moveVolume',
-							'removeVolume',
-							'listVolumes',
+							'get',
+							'add',
+							'clear',
+							'move',
+							'remove',
 						],
 						resource: [
 							'bookshelf',
-							'library',
+							'bookshelfVolume'
 						],
 					},
 				},
@@ -283,15 +289,13 @@ export class GoogleBooks implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'getVolume',
-							'addVolume',
-							'moveVolume',
-							'removeVolume',
+							'add',
+							'move',
+							'remove',
+							'get',
 						],
 						resource: [
-							'bookshelf',
-							'library',
-							'volume',
+							'bookshelfVolume',
 						],
 					},
 				},
@@ -306,97 +310,171 @@ export class GoogleBooks implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'moveVolume',
+							'move',
 						],
 						resource: [
-							'library',
+							'bookshelfVolume',
 						],
 					},
 				},
 			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 40,
+				},
+				default: 40,
+				description: 'How many results to return.',
+			},
 		],
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
-
+		const returnData: IDataObject[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const responseData = [];
+		const qs: IDataObject = {};
+		let responseData;
 
-		for (let i=0; i < length; i++) {
+		for (let i = 0; i < length; i++) {
 			if (resource === 'volume') {
-				if (operation === 'getVolume') {
+				if (operation === 'get') {
 					const volumeId = this.getNodeParameter('volumeId', i) as string;
-
-					const response = await googleApiRequest.call(this, 'GET', `v1/volumes/${volumeId}`, {});
-					responseData.push(response);
-		 		} else if (operation === 'bookSearch') {
+					responseData = await googleApiRequest.call(this, 'GET', `v1/volumes/${volumeId}`, {});
+		 		} else if (operation === 'getAll') {
 					const searchQuery = this.getNodeParameter('searchQuery', i) as string;
-
-					const response = await googleApiRequest.call(this, 'GET', `v1/volumes?q=${searchQuery}`, {});
-					responseData.push(response);
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll) {
+						responseData = await googleApiRequestAllItems.call(this, 'items', 'GET', `v1/volumes?q=${searchQuery}`, {});
+					} else {
+						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						responseData = await googleApiRequest.call(this, 'GET', `v1/volumes?q=${searchQuery}`, {}, qs);
+						responseData = responseData.items || [];
+					}
 				 }
-			} else if (resource === 'bookshelf') {
-				if (operation === 'getShelf') {
-					const userId = this.getNodeParameter('userId', i) as string;
+			}
+
+			if (resource === 'bookshelf') {
+				if (operation === 'get') {
 					const shelfId = this.getNodeParameter('shelfId', i) as string;
+					const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
+					let endpoint;
+					if (myLibrary === false) {
+						const userId = this.getNodeParameter('userId', i) as string;
+						endpoint = `v1/users/${userId}/bookshelves/${shelfId}`;
+					} else {
+						endpoint = `v1/mylibrary/bookshelves/${shelfId}`;
+					}
 
-					const response = await googleApiRequest.call(this, 'GET', `v1/users/${userId}/bookshelves/${shelfId}`, {});
-					responseData.push(response);
-				} else if (operation === 'listShelves') {
-					const userId = this.getNodeParameter('userId', i) as string;
-
-					const response = await googleApiRequest.call(this, 'GET', `v1/users/${userId}/bookshelves`, {});
-					responseData.push(response);	
-				} else if (operation === 'getVolumes') {
-					const userId = this.getNodeParameter('userId', i) as string;
-					const shelfId = this.getNodeParameter('shelfId', i) as string;
-
-					const response = await googleApiRequest.call(this, 'GET', `v1/users/${userId}/bookshelves/${shelfId}/volumes`, {});
-					responseData.push(response);	
+					responseData = await googleApiRequest.call(this, 'GET', endpoint, {});
+				} else if (operation === 'getAll') {
+					const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					let endpoint;
+					if (myLibrary === false) {
+						const userId = this.getNodeParameter('userId', i) as string;
+						endpoint = `v1/users/${userId}/bookshelves`;
+					} else {
+						endpoint = `v1/mylibrary/bookshelves`;
+					}
+					if (returnAll) {
+						responseData = await googleApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
+					} else {
+						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.items || [];
+					}
 				}
-			} else if (resource === 'library') {
-				if (operation === 'addVolume') {
+			}
+
+			if (resource === 'bookshelfVolume') {
+				if (operation === 'add') {
 					const shelfId = this.getNodeParameter('shelfId', i) as string;
 					const volumeId = this.getNodeParameter('volumeId', i) as string;
-
-					const response = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/addVolume`, {volumeId});
-					responseData.push(response);	
-				} else if (operation === 'clearVolumes') {
-					const shelfId = this.getNodeParameter('shelfId', i) as string;
-
-					const response = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/clearVolumes`, {});
-					responseData.push(response);
-				} else if (operation === 'getMyShelf') {
-					const shelfId = this.getNodeParameter('shelfId', i) as string;
-
-					const response = await googleApiRequest.call(this, 'GET', `v1/mylibrary/bookshelves/${shelfId}`, {});
-					responseData.push(response);
-				} else if (operation === 'listMyShelves') {
-					const response = await googleApiRequest.call(this, 'GET', `v1/mylibrary/bookshelves`, {});
-					responseData.push(response);
-				} else if (operation === 'moveVolume') {
-					const shelfId = this.getNodeParameter('shelfId', i) as string;
-					const volumeId = this.getNodeParameter('volumeId', i) as string;
-					const volumePosition = this.getNodeParameter('volumePosition', i) as string;
-
-					const response = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/moveVolume`, {shelfId, volumeId, volumePosition});
-					responseData.push(response);
-				} else if (operation === 'removeVolume') {
-					const shelfId = this.getNodeParameter('shelfId', i) as string;
-					const volumeId = this.getNodeParameter('volumeId', i) as string;
-
-					const response = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/removeVolume`, {shelfId, volumeId});
-					responseData.push(response);	
-				} else if (operation === 'listVolumes') {
-					const shelfId = this.getNodeParameter('shelfId', i) as string;
-
-					const response = await googleApiRequest.call(this, 'GET', `v1/mylibrary/bookshelves/${shelfId}/volumes`, {});
-					responseData.push(response);
+					const body: IDataObject = {
+						volumeId,
+					};
+					responseData = await googleApiRequest.call(this, 'POST', `mylibrary/bookshelves/${shelfId}/addVolume`, body);
 				}
+
+				if (operation === 'clear') {
+					const shelfId = this.getNodeParameter('shelfId', i) as string;
+					responseData = await googleApiRequest.call(this, 'POST', `mylibrary/bookshelves/${shelfId}/clearVolumes`);
+				}
+
+				 if (operation === 'getAll') {
+					const shelfId = this.getNodeParameter('shelfId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const myLibrary = this.getNodeParameter('myLibrary', i) as boolean;
+					let endpoint;
+					if (myLibrary === false) {
+						const userId = this.getNodeParameter('userId', i) as string;
+						endpoint = `v1/users/${userId}/bookshelves/${shelfId}/volumes`;
+					} else {
+						endpoint = `v1/mylibrary/bookshelves/${shelfId}/volumes`;
+					}
+					if (returnAll) {
+						responseData = await googleApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
+					} else {
+						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
+						responseData = responseData.items || [];
+					}
+				}
+
+				if (operation === 'move') {
+					const shelfId = this.getNodeParameter('shelfId', i) as string;
+					const volumeId = this.getNodeParameter('volumeId', i) as string;
+					const volumePosition = this.getNodeParameter('volumePosition', i) as number;
+					const body: IDataObject = {
+						volumeId,
+						volumePosition,
+					};
+					responseData = await googleApiRequest.call(this, 'POST', `mylibrary/bookshelves/${shelfId}/moveVolume`, body);
+				}
+
+				if (operation === 'move') {
+					const shelfId = this.getNodeParameter('shelfId', i) as string;
+					const volumeId = this.getNodeParameter('volumeId', i) as string;
+					const body: IDataObject = {
+						volumeId,
+					};
+					responseData = await googleApiRequest.call(this, 'POST', `mylibrary/bookshelves/${shelfId}/removeVolume`, body);
+				}
+			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
 			}
 		}
 		return [this.helpers.returnJsonArray(responseData)];
