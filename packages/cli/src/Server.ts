@@ -101,6 +101,7 @@ import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
 import { OptionsWithUrl } from 'request-promise-native';
+import { getDataLastExecutedNodeData } from './WorkflowHelpers';
 
 class App {
 
@@ -715,10 +716,23 @@ class App {
 			const allNodes = nodeTypes.getAll();
 
 			allNodes.forEach((nodeData) => {
-				returnData.push(nodeData.description);
+				let nodeInfo: INodeTypeDescription = nodeData.description;
+				if (!['true', '1'].includes(req.query.includeProperties as string)) {
+					delete nodeInfo.properties;
+				}
+				returnData.push(nodeInfo);
 			});
 
 			return returnData;
+		}));
+
+
+		// Returns node information baesd on namese
+		this.app.get(`/${this.restEndpoint}/node-types/:nodeNames`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
+			const nodeNames = req.params.nodeNames.split(',');
+			const nodeTypes = NodeTypes();
+			const allNodes = nodeTypes.getAll();
+			return allNodes.filter(node => nodeNames.includes(node.description.name)).map(node => node.description);
 		}));
 
 
