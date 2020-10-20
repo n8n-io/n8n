@@ -26,7 +26,7 @@
     ],
     "devDependencies": {
         "@types/cron": "^1.7.1",
-        "@types/crypto-js": "^3.1.43",
+        "@types/crypto-js": "^4.0.1",
         "@types/express": "^4.17.6",
         "@types/jest": "^26.0.13",
         "@types/lodash.get": "^4.4.6",
@@ -42,7 +42,7 @@
     "dependencies": {
         "client-oauth2": "^4.2.5",
         "cron": "^1.7.2",
-        "crypto-js": "3.1.9-1",
+        "crypto-js": "4.0.0",
         "file-type": "^14.6.2",
         "lodash.get": "^4.4.2",
         "mime-types": "^2.1.27",
