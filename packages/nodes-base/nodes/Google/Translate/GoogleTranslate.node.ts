@@ -28,6 +28,7 @@ export class GoogleTranslate implements INodeType {
 		group: ['input', 'output'],
 		version: 1,
 		description: 'Translate data using Google Translate',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Google Translate',
 			color: '#5390f5',
@@ -76,9 +77,29 @@ export class GoogleTranslate implements INodeType {
 				default: 'serviceAccount',
 			},
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Language',
+						value: 'language',
+					},
+				],
+				default: 'language',
+				description: 'The operation to perform',
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'language',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'Translate',
@@ -150,21 +171,22 @@ export class GoogleTranslate implements INodeType {
 		}
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
 
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const responseData = [];
+		for (let i = 0; i < length; i++) {
+			if (resource === 'language') {
+				if (operation === 'translate') {
+					const query = this.getNodeParameter('query', i) as string;
+					const translateTo = this.getNodeParameter('translateTo', i) as string;
 
-		for (let i=0; i < length; i++) {
-			if (operation === 'translate') {
-				const query = this.getNodeParameter('query', i) as string;
-				const translateTo = this.getNodeParameter('translateTo', i) as string;
-
-				const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, {q:query, target:translateTo});
-				responseData.push(response.data.translations[0]);
+					const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, { q: query, target: translateTo });
+					responseData.push(response.data.translations[0]);
+				}
 			}
 		}
 		return [this.helpers.returnJsonArray(responseData)];

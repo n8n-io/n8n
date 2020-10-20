@@ -5,7 +5,6 @@ import {
 
 const scopes = [
 	'https://www.googleapis.com/auth/cloud-translation',
-	'https://www.googleapis.com/auth/cloud-platform',
 ];
 
 export class GoogleTranslateOAuth2Api implements ICredentialType {
