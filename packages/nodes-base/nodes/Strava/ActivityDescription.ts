@@ -34,7 +34,7 @@ export const activityOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all activitys',
+				description: 'Get all activities',
 			},
 			{
 				name: 'Kudoers',
@@ -42,7 +42,7 @@ export const activityOperations = [
 				description: 'Get all activity kudoers',
 			},
 			{
-				name: 'lap',
+				name: 'Lap',
 				value: 'lap',
 				description: 'Get all activity laps',
 			},

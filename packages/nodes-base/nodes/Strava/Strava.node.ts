@@ -152,7 +152,7 @@ export class Strava implements INodeType {
 
 					Object.assign(body, updateFields);
 
-					responseData = await stravaApiRequest.call(this, 'PUT', `/activities/${activityId}`);
+					responseData = await stravaApiRequest.call(this, 'PUT', `/activities/${activityId}`, body);
 				}
 			}
 		}
