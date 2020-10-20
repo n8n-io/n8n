@@ -178,6 +178,37 @@ export const eventFields = [
 				description: 'The color of the event.',
 			},
 			{
+				displayName: 'Conference Data',
+				name: 'conferenceDataUi',
+				placeholder: 'Add Conference',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Conference Link',
+						name: 'conferenceDataValues',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'conferenceSolution',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getConferenceSolutations',
+									loadOptionsDependsOn: [
+										'calendar',
+									],
+								},
+								default: '',
+							},
+						],
+					},
+				],
+				description: 'Creates a conference link (Hangouts, Meet etc) and attachs it to the event',
+			},
+			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
