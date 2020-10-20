@@ -104,11 +104,25 @@ export class WorkflowRunner {
 		await externalHooks.run('workflow.execute', [data.workflowData, data.executionMode]);
 
 		const executionsProcess = config.get('executions.process') as string;
+
+		let executionId: string;
 		if (executionsProcess === 'main') {
-			return this.runMainProcess(data, loadStaticData);
+			executionId = await this.runMainProcess(data, loadStaticData);
+		} else {
+			executionId = await this.runSubprocess(data, loadStaticData);
 		}
 
-		return this.runSubprocess(data, loadStaticData);
+		if (externalHooks.exists('workflow.postExecute')) {
+			this.activeExecutions.getPostExecutePromise(executionId)
+				.then(async (executionData) => {
+					await externalHooks.run('workflow.postExecute', [executionData, data.workflowData]);
+				})
+				.catch(error => {
+					console.error('There was a problem running hook "workflow.postExecute"', error);
+				});
+		}
+
+		return executionId;
 	}
 
 
