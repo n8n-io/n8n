@@ -728,8 +728,8 @@ class App {
 
 
 		// Returns node information baesd on namese
-		this.app.get(`/${this.restEndpoint}/node-types/:nodeNames`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-			const nodeNames = req.params.nodeNames.split(',');
+		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
+			const nodeNames = _.get(req, 'body.nodeNames', []);
 			const nodeTypes = NodeTypes();
 			const allNodes = nodeTypes.getAll();
 			return allNodes.filter(node => nodeNames.includes(node.description.name)).map(node => node.description);
