@@ -152,8 +152,8 @@ export class EmailSend implements INodeType {
 		if(credentials.user || credentials.password) {
 			// @ts-ignore
 			connectionOptions.auth = {
-				user: credentials.user,
-				pass: credentials.password
+				user: credentials.user as string,
+				pass: credentials.password as string,
 			};
 		}
 
