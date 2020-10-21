@@ -258,16 +258,19 @@ export class ActiveWorkflowRunner {
 				await Db.collections.Webhook?.insert(webhook);
 
 				const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, false);
-				if (webhookExists === false) {
+				if (webhookExists !== true) {
 					// If webhook does not exist yet create it
 					await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, false);
 				}
 
 			} catch (error) {
+				try {
+					await this.removeWorkflowWebhooks(workflow.id as string);
+				} catch (error) {
+					console.error(`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error.message}"`);
+				}
 
 				let errorMessage = '';
-
-				await Db.collections.Webhook?.delete({ workflowId: workflow.id });
 
 				// if it's a workflow from the the insert
 				// TODO check if there is standard error code for deplicate key violation that works
