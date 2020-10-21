@@ -181,8 +181,9 @@ export class ActiveWorkflowRunner {
 	 * @returns {string[]}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	getActiveWorkflows(): Promise<IWorkflowDb[]> {
-		return Db.collections.Workflow?.find({ where: { active: true }, select: ['id'] }) as Promise<IWorkflowDb[]>;
+	async getActiveWorkflows(): Promise<IWorkflowDb[]> {
+		const activeWorkflows = await Db.collections.Workflow?.find({ where: { active: true }, select: ['id'] }) as IWorkflowDb[];
+		return activeWorkflows.filter(workflow => this.activationErrors[workflow.id.toString()] === undefined);
 	}
 
 
