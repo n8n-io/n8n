@@ -7,11 +7,11 @@ import {
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -51,7 +51,7 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: 'message',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -71,7 +71,7 @@ export class Pushover implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'User Key',
@@ -90,7 +90,7 @@ export class Pushover implements INodeType {
 				},
 				default: '',
 				description: `The user/group key (not e-mail address) of your user (or you),<br>
-				viewable when logged into our <a href="https://pushover.net/">dashboard</a> (often referred to as USER_KEY in our <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries"></a> and code examples)`
+				viewable when logged into our <a href="https://pushover.net/" target="_blank">dashboard</a> (often referred to as USER_KEY in our <a href="https://support.pushover.net/i44-example-code-and-pushover-libraries" target="_blank"></a> and code examples)`,
 			},
 			{
 				displayName: 'Message',
@@ -108,7 +108,7 @@ export class Pushover implements INodeType {
 					},
 				},
 				default: '',
-				description: `Your message`
+				description: `Your message`,
 			},
 			{
 				displayName: 'Priority',
@@ -175,7 +175,7 @@ export class Pushover implements INodeType {
 				},
 				default: 30,
 				description: `Specifies how often (in seconds) the Pushover servers will send the same notification to the user.<br>
-				This parameter must have a value of at least 30 seconds between retries.`
+				This parameter must have a value of at least 30 seconds between retries.`,
 			},
 			{
 				displayName: 'Expire (seconds)',
@@ -200,7 +200,7 @@ export class Pushover implements INodeType {
 					},
 				},
 				default: 30,
-				description: `Specifies how many seconds your notification will continue to be retried for (every retry seconds)`
+				description: `Specifies how many seconds your notification will continue to be retried for (every retry seconds)`,
 			},
 			{
 				displayName: 'Additional Fields',
