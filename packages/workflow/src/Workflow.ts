@@ -215,7 +215,7 @@ export class Workflow {
 					typeUnknown: true,
 				};
 			} else {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties, node);
+				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties!, node);
 			}
 
 			if (nodeIssues !== null) {

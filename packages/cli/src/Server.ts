@@ -716,7 +716,10 @@ class App {
 			const allNodes = nodeTypes.getAll();
 
 			allNodes.forEach((nodeData) => {
-				let nodeInfo: INodeTypeDescription = nodeData.description;
+				// Make a copy of the object. If we don't do this, then when 
+				// The method below is called the properties are removed for good
+				// This happens because nodes are returned as reference.
+				let nodeInfo: INodeTypeDescription = {...nodeData.description};
 				if (!['true', '1'].includes(req.query.includeProperties as string)) {
 					delete nodeInfo.properties;
 				}
