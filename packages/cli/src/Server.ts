@@ -101,7 +101,6 @@ import * as timezones from 'google-timezones-json';
 import * as parseUrl from 'parseurl';
 import * as querystring from 'querystring';
 import { OptionsWithUrl } from 'request-promise-native';
-import { getDataLastExecutedNodeData } from './WorkflowHelpers';
 
 class App {
 
