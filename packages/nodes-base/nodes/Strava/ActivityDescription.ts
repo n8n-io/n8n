@@ -17,11 +17,6 @@ export const activityOperations = [
 		},
 		options: [
 			{
-				name: 'Comment',
-				value: 'comment',
-				description: 'Get all activity comments',
-			},
-			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new activity',
@@ -37,24 +32,29 @@ export const activityOperations = [
 				description: 'Get all activities',
 			},
 			{
-				name: 'Kudoers',
-				value: 'kudo',
+				name: 'Get Comments',
+				value: 'getComments',
+				description: 'Get all activity comments',
+			},
+			{
+				name: 'Get Kudoers',
+				value: 'getKudoers',
 				description: 'Get all activity kudoers',
 			},
 			{
-				name: 'Lap',
-				value: 'lap',
+				name: 'Get Laps',
+				value: 'getLaps',
 				description: 'Get all activity laps',
+			},
+			{
+				name: 'Get Zones',
+				value: 'getZones',
+				description: 'Get all activity zones',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an activity',
-			},
-			{
-				name: 'Zone',
-				value: 'zone',
-				description: 'Get all activity zones',
 			},
 		],
 		default: 'create',
@@ -328,10 +328,10 @@ export const activityFields = [
 					'activity',
 				],
 				operation: [
-					'comment',
-					'lap',
-					'kudo',
-					'zone',
+					'getComments',
+					'getLaps',
+					'getKudoers',
+					'getZones',
 				],
 			},
 		},
@@ -348,10 +348,10 @@ export const activityFields = [
 					'activity',
 				],
 				operation: [
-					'comment',
-					'lap',
-					'kudo',
-					'zone',
+					'getComments',
+					'getLaps',
+					'getKudoers',
+					'getZones',
 				],
 				returnAll: [
 					false,

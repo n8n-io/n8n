@@ -31,7 +31,7 @@ export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 
-		if (this.getNode().type.includes('Trigger') && resource === '/push_subscriptions') {
+		if (this.getNode().type.includes('Trigger') && resource.includes('/push_subscriptions')) {
 			const credentials = this.getCredentials('stravaOAuth2Api') as IDataObject;
 			if (method === 'GET') {
 				qs.client_id = credentials.clientId;
@@ -52,7 +52,8 @@ export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (error.statusCode === 402) {
 			throw new Error(
 				`Strava error response [${error.statusCode}]: Payment Required`
-			);		}
+			);
+		}
 
 		if (error.response && error.response.body && error.response.body.errors) {
 

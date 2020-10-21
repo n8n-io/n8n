@@ -109,12 +109,20 @@ export class Strava implements INodeType {
 
 					responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}`);
 				}
-				if (['lap', 'zone', 'kudo', 'comment'].includes(operation)) {
+				if (['getLaps', 'getZones', 'getKudoers', 'getComments'].includes(operation)) {
+
+					const path: IDataObject = {
+						'getComments': 'comments',
+						'getZones': 'zones',
+						'getKudoers': 'kudoers',
+						'getLaps': 'laps',
+					};
+
 					const activityId  = this.getNodeParameter('activityId', i) as string;
 
 					const returnAll  = this.getNodeParameter('returnAll', i) as boolean;
 
-					responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/${operation}s`);
+					responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/${path[operation]}`);
 
 					if (returnAll === false) {
 						const limit  = this.getNodeParameter('limit', i) as number;

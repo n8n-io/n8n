@@ -104,6 +104,23 @@ export class StravaTrigger implements INodeType {
 				default: true,
 				description: 'By default the webhook-data only contain the Object ID. If this option gets activated it<br />will resolve the data automatically.',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Delete If Exist',
+						name: 'deleteIfExist',
+						type: 'boolean',
+						default: false,
+						description: `Strava allows just one subscription at all times. If you want to delete the current subscription to make<br>
+						room for a new subcription with the current parameters, set this parameter to true. Keep in mind this is a destructive operation.`,
+					},
+				],
+			},
 		],
 	};
 
@@ -116,6 +133,7 @@ export class StravaTrigger implements INodeType {
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const endpoint = '/push_subscriptions';
+
 				const webhooks = await stravaApiRequest.call(this, 'GET', endpoint, {});
 
 				for (const webhook of webhooks) {
@@ -138,7 +156,36 @@ export class StravaTrigger implements INodeType {
 					verify_token: randomBytes(20).toString('hex') as string,
 				};
 
-				const responseData = await stravaApiRequest.call(this, 'POST', endpoint, body);
+				let responseData;
+
+				try {
+					responseData = await stravaApiRequest.call(this, 'POST', endpoint, body);
+				} catch (error) {
+					const errors = error.response.body.errors;
+					for (error of errors) {
+						// if there is a subscription already created
+						if (error.resource === 'PushSubscription' && error.code === 'already exists') {
+							const options = this.getNodeParameter('options') as IDataObject;
+							//get the current subscription
+							const webhooks = await stravaApiRequest.call(this, 'GET', `/push_subscriptions`, {});
+
+							if (options.deleteIfExist) {
+								// delete the subscription
+								await stravaApiRequest.call(this, 'DELETE', `/push_subscriptions/${webhooks[0].id}`);
+								// now there is room create a subscription with the n8n data
+								const body = {
+									callback_url: webhookUrl,
+									verify_token: randomBytes(20).toString('hex') as string,
+								};
+
+								responseData = await stravaApiRequest.call(this, 'POST', `/push_subscriptions`, body);
+							} else {
+								throw new Error(`A subscription already exist [${webhooks[0].callback_url}].
+								If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`);
+							}
+						}
+					}
+				}
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
