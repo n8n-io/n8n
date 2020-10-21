@@ -16,14 +16,14 @@ import {
 
 export class MailerLiteTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Mailer Lite Trigger',
+		displayName: 'MailerLite Trigger',
 		name: 'mailerLiteTrigger',
 		icon: 'file:mailerLite.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a Github events occurs.',
+		description: 'Starts the workflow when a MailerLite events occurs.',
 		defaults: {
-			name: 'Mailer Lite Trigger',
+			name: 'MailerLite Trigger',
 			color: '#58be72',
 		},
 		inputs: [],

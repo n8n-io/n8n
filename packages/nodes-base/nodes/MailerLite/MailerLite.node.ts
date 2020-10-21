@@ -23,7 +23,7 @@ import {
 
 export class MailerLite implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Mailer Lite',
+		displayName: 'MailerLite',
 		name: 'marilerLite',
 		icon: 'file:mailerLite.png',
 		group: ['input'],
@@ -31,7 +31,7 @@ export class MailerLite implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Mailer Lite API.',
 		defaults: {
-			name: 'Mailer Lite',
+			name: 'MailerLite',
 			color: '#58be72',
 		},
 		inputs: ['main'],
