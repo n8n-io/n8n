@@ -47,7 +47,7 @@ export class PushcutTrigger implements INodeType {
 				displayName: 'Action Name',
 				name: 'actionName',
 				type: 'string',
-				description: 'A unique name to identify the online action.',
+				description: 'Choose any name you would like. It will show up as a server action in the app',
 				default: '',
 			},
 		],

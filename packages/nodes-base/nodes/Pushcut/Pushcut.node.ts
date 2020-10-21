@@ -197,7 +197,7 @@ export class Pushcut implements INodeType {
 					responseData = await pushcutApiRequest.call(
 						this,
 						'POST',
-						`/notifications/${notificationName}`,
+						`/notifications/${encodeURI(notificationName)}`,
 						body,
 					);
 				}
