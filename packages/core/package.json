@@ -47,6 +47,7 @@
         "lodash.get": "^4.4.2",
         "mime-types": "^2.1.27",
         "n8n-workflow": "~0.42.0",
+        "oauth-1.0a": "^2.2.6",
         "p-cancelable": "^2.0.0",
         "request": "^2.88.2",
         "request-promise-native": "^1.0.7"
