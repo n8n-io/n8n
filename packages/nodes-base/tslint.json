@@ -87,6 +87,18 @@
 			"ignore-bound-class-methods"
 		],
 		"switch-default": true,
+		"trailing-comma": [
+			true,
+			{
+			"multiline": {
+				"objects": "always",
+				"arrays": "always",
+				"functions": "never",
+				"typeLiterals": "ignore"
+			},
+			"esSpecCompliant": true
+			}
+		],
 		"triple-equals": [
 			true,
 			"allow-null-check"
