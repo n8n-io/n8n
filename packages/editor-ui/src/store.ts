@@ -562,6 +562,14 @@ export const store = new Vuex.Store({
 				Vue.set(state.workflow, 'settings', {});
 			}
 		},
+
+		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+			const updatedNodeNames = nodeTypes.map(node => node.name) as string[];
+			const oldNodesNotChanged = state.nodeTypes.filter(node => !updatedNodeNames.includes(node.name));
+			const updatedNodes = [...oldNodesNotChanged, ...nodeTypes];
+			Vue.set(state, 'nodeTypes', updatedNodes);
+			state.nodeTypes = updatedNodes;
+		},
 	},
 	getters: {
 
