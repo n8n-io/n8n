@@ -58,8 +58,9 @@ export async function paddleApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	do {
 		responseData = await paddleApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
+		body.page++;
 	} while (
-		responseData[propertyName].length !== 0
+		responseData[propertyName].length !== 0 && responseData[propertyName].length === body.results_per_page
 	);
 
 	return returnData;
