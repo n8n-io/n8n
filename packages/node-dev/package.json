@@ -60,6 +60,7 @@
         "inquirer": "^7.0.1",
         "n8n-core": "^0.44.0",
         "n8n-workflow": "^0.39.0",
+        "oauth-1.0a": "^2.2.6",
         "replace-in-file": "^6.0.0",
         "request": "^2.88.2",
         "tmp-promise": "^2.0.2",
