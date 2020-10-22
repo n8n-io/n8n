@@ -44,7 +44,7 @@ function buildMongoConnectionParams(
 		) {
 			return {
 				connectionString: credentials.connectionString.trim(),
-				database: sanitizedDbName
+				database: sanitizedDbName,
 			};
 		} else {
 			throw new Error(
@@ -54,7 +54,7 @@ function buildMongoConnectionParams(
 	} else {
 		return {
 			connectionString: buildParameterizedConnString(credentials),
-			database: sanitizedDbName
+			database: sanitizedDbName,
 		};
 	}
 }
@@ -71,7 +71,7 @@ export function validateAndResolveMongoCredentials(
 		throw new Error('No credentials got returned!');
 	} else {
 		return buildMongoConnectionParams(
-			credentials as unknown as IMongoCredentialsType,
+			credentials as unknown as IMongoCredentialsType
 		);
 	}
 }

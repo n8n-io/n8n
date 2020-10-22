@@ -26,15 +26,18 @@ import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
+	CredentialsOverwrites,
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
 	IActivationError,
-	ICustomRequest,
 	ICredentialsDb,
 	ICredentialsDecryptedDb,
 	ICredentialsDecryptedResponse,
+	ICredentialsOverwrite,
 	ICredentialsResponse,
+	ICustomRequest,
 	IExecutionDeleteFilter,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
@@ -47,21 +50,18 @@ import {
 	IN8nUISettings,
 	IPackageVersions,
 	IWorkflowBase,
-	IWorkflowShortResponse,
-	IWorkflowResponse,
 	IWorkflowExecutionDataProcess,
+	IWorkflowResponse,
+	IWorkflowShortResponse,
+	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
 	ResponseHelper,
 	TestWebhooks,
-	WorkflowCredentials,
 	WebhookHelpers,
+	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowRunner,
-	GenericHelpers,
-	CredentialsOverwrites,
-	ICredentialsOverwrite,
-	LoadNodesAndCredentials,
 } from './';
 
 import {
@@ -75,9 +75,9 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
-	INodeTypeDescription,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeTypeDescription,
 	IRunData,
 	IWorkflowCredentials,
 	Workflow,
@@ -172,7 +172,7 @@ class App {
 			oauthCallbackUrls: {
 				'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
 				'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
-			}
+			},
 		};
 	}
 
@@ -313,7 +313,7 @@ class App {
 
 				const jwtVerifyOptions: jwt.VerifyOptions = {
 					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
-					ignoreExpiration: false
+					ignoreExpiration: false,
 				};
 
 				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
@@ -355,7 +355,7 @@ class App {
 			limit: '16mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		// Support application/xml type post data
@@ -365,14 +365,14 @@ class App {
 				normalize: true,     // Trim whitespace inside text nodes
 				normalizeTags: true, // Transform tags to lowercase
 				explicitArray: false, // Only put properties in array if length > 1
-			}
+			},
 		}));
 
 		this.app.use(bodyParser.text({
 			limit: '16mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		// Make sure that Vue history mode works properly
@@ -382,9 +382,9 @@ class App {
 					from: new RegExp(`^\/(${this.restEndpoint}|healthz|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`),
 					to: (context) => {
 						return context.parsedUrl!.pathname!.toString();
-					}
-				}
-			]
+					},
+				},
+			],
 		}));
 
 		//support application/x-www-form-urlencoded post data
@@ -392,7 +392,7 @@ class App {
 			verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		if (process.env['NODE_ENV'] !== 'production') {
@@ -1074,7 +1074,7 @@ class App {
 			};
 
 			const oauthRequestData = {
-				oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`
+				oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`,
 			};
 
 			await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
@@ -1153,7 +1153,7 @@ class App {
 				qs: {
 					oauth_token,
 					oauth_verifier,
-				}
+				},
 			};
 
 			let oauthToken;
@@ -1329,7 +1329,7 @@ class App {
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
-				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
+				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
 
 			if (_.get(oauthCredentials, 'authentication', 'header') as string === 'body') {
@@ -1877,7 +1877,7 @@ class App {
 					// got used
 					res.setHeader('Last-Modified', startTime);
 				}
-			}
+			},
 		}));
 	}
 

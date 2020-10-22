@@ -144,7 +144,7 @@ export class SpreadsheetFile implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'toFile'
+							'toFile',
 						],
 					},
 				},
@@ -213,7 +213,7 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -227,7 +227,7 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -241,7 +241,7 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -283,7 +283,7 @@ export class SpreadsheetFile implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -373,7 +373,7 @@ export class SpreadsheetFile implements INodeType {
 
 			const wopts: WritingOptions = {
 				bookSST: false,
-				type: 'buffer'
+				type: 'buffer',
 			};
 
 			if (fileFormat === 'csv') {
@@ -402,7 +402,7 @@ export class SpreadsheetFile implements INodeType {
 				SheetNames: [sheetName],
 				Sheets: {
 					[sheetName]: ws,
-				}
+				},
 			};
 			const wbout = xlsxWrite(wb, wopts);
 

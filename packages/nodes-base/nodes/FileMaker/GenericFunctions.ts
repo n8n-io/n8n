@@ -48,7 +48,7 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -100,7 +100,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // 
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -137,7 +137,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -172,7 +172,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { //
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -204,7 +204,7 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		uri: url,
 		headers: {},
 		method: 'POST',
-		json: true
+		json: true,
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 	requestOptions.auth = {
@@ -216,9 +216,9 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 			{
 				"database": host,
 				"username": login as string,
-				"password": password as string
-			}
-		]
+				"password": password as string,
+			},
+		],
 	};
 
 	try {
@@ -262,7 +262,7 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 		uri: url,
 		headers: {},
 		method: 'DELETE',
-		json: true
+		json: true,
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 
@@ -300,7 +300,7 @@ export function parseSort(this: IExecuteFunctions, i: number): object | null {
 				// @ts-ignore
 				sort.push({
 					'fieldName': parameterData!.name as string,
-					'sortOrder': parameterData!.value
+					'sortOrder': parameterData!.value,
 				});
 			}
 		}

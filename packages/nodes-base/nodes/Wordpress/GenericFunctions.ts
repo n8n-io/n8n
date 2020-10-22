@@ -31,7 +31,7 @@ export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSing
 		qs,
 		body,
 		uri: uri || `${credentials!.url}/wp-json/wp/v2${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

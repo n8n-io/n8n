@@ -75,19 +75,19 @@ export class PhilipsHue implements INodeType {
 				const lights = await philipsHueApiRequest.call(
 					this,
 					'GET',
-					`/bridge/${user}/lights`,
+					`/bridge/${user}/lights`
 				);
 				for (const light of Object.keys(lights)) {
 					const lightName = lights[light].name;
 					const lightId = light;
 					returnData.push({
 						name: lightName,
-						value: lightId
+						value: lightId,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -132,7 +132,7 @@ export class PhilipsHue implements INodeType {
 						this,
 						'PUT',
 						`/bridge/${user}/lights/${lightId}/state`,
-						body,
+						body
 					);
 
 					responseData = {};

@@ -19,12 +19,12 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
 		},
 		body,
 		qs: query,
 		uri: `https://api.zoom.us/v2${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(body).length === 0) {

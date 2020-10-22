@@ -46,7 +46,7 @@ export class GoogleCalendar implements INodeType {
 			{
 				name: 'googleCalendarOAuth2Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -60,7 +60,7 @@ export class GoogleCalendar implements INodeType {
 					},
 				],
 				default: 'event',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...eventOperations,
 			...eventFields,
@@ -86,7 +86,7 @@ export class GoogleCalendar implements INodeType {
 					const calendarId = calendar.id;
 					returnData.push({
 						name: calendarName,
-						value: calendarId
+						value: calendarId,
 					});
 				}
 				return returnData;
@@ -107,7 +107,7 @@ export class GoogleCalendar implements INodeType {
 					const colorId = key;
 					returnData.push({
 						name: `${colorName}`,
-						value: colorId
+						value: colorId,
 					});
 				}
 				return returnData;
@@ -123,12 +123,12 @@ export class GoogleCalendar implements INodeType {
 					const timezoneId = timezone;
 					returnData.push({
 						name: timezoneName,
-						value: timezoneId
+						value: timezoneId,
 					});
 				}
 				return returnData;
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -166,12 +166,12 @@ export class GoogleCalendar implements INodeType {
 					const body: IEvent = {
 						start: {
 							dateTime: start,
-							timeZone: additionalFields.timeZone || this.getTimezone()
+							timeZone: additionalFields.timeZone || this.getTimezone(),
 						},
 						end: {
 							dateTime: end,
-							timeZone: additionalFields.timeZone || this.getTimezone()
-						}
+							timeZone: additionalFields.timeZone || this.getTimezone(),
+						},
 					};
 					if (additionalFields.attendees) {
 						body.attendees = (additionalFields.attendees as string[]).map(
@@ -216,7 +216,7 @@ export class GoogleCalendar implements INodeType {
 							i
 						) as IDataObject).remindersValues as IDataObject[];
 						body.reminders = {
-							useDefault: false
+							useDefault: false,
 						};
 						if (reminders) {
 							body.reminders.overrides = reminders;
@@ -226,12 +226,12 @@ export class GoogleCalendar implements INodeType {
 						body.start = {
 							date: moment(start)
 								.utc()
-								.format('YYYY-MM-DD')
+								.format('YYYY-MM-DD'),
 						};
 						body.end = {
 							date: moment(end)
 								.utc()
-								.format('YYYY-MM-DD')
+								.format('YYYY-MM-DD'),
 						};
 					}
 					//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
@@ -392,13 +392,13 @@ export class GoogleCalendar implements INodeType {
 					if (updateFields.start) {
 						body.start = {
 							dateTime: updateFields.start,
-							timeZone: updateFields.timeZone || this.getTimezone()
+							timeZone: updateFields.timeZone || this.getTimezone(),
 						};
 					}
 					if (updateFields.end) {
 						body.end = {
 							dateTime: updateFields.end,
-							timeZone: updateFields.timeZone || this.getTimezone()
+							timeZone: updateFields.timeZone || this.getTimezone(),
 						};
 					}
 					if (updateFields.attendees) {
@@ -444,7 +444,7 @@ export class GoogleCalendar implements INodeType {
 							i
 						) as IDataObject).remindersValues as IDataObject[];
 						body.reminders = {
-							useDefault: false
+							useDefault: false,
 						};
 						if (reminders) {
 							body.reminders.overrides = reminders;
@@ -454,12 +454,12 @@ export class GoogleCalendar implements INodeType {
 						body.start = {
 							date: moment(updateFields.start as string)
 								.utc()
-								.format('YYYY-MM-DD')
+								.format('YYYY-MM-DD'),
 						};
 						body.end = {
 							date: moment(updateFields.end as string)
 								.utc()
-								.format('YYYY-MM-DD')
+								.format('YYYY-MM-DD'),
 						};
 					}
 					//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z

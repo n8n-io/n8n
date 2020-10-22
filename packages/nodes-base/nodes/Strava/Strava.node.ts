@@ -54,7 +54,7 @@ export class Strava implements INodeType {
 					},
 				],
 				default: 'activity',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...activityOperations,
 			...activityFields,

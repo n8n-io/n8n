@@ -31,7 +31,7 @@ export class Airtable implements INodeType {
 			{
 				name: 'airtableApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -47,22 +47,22 @@ export class Airtable implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete data from a table'
+						description: 'Delete data from a table',
 					},
 					{
 						name: 'List',
 						value: 'list',
-						description: 'List data from a table'
+						description: 'List data from a table',
 					},
 					{
 						name: 'Read',
 						value: 'read',
-						description: 'Read data from a table'
+						description: 'Read data from a table',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update data in a table'
+						description: 'Update data in a table',
 					},
 				],
 				default: 'read',
@@ -196,7 +196,7 @@ export class Airtable implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list'
+							'list',
 						],
 					},
 				},
@@ -259,13 +259,13 @@ export class Airtable implements INodeType {
 											{
 												name: 'DESC',
 												value: 'desc',
-												description: 'Sort in descending order (large -> small)'
+												description: 'Sort in descending order (large -> small)',
 											},
 										],
 										default: 'asc',
 										description: 'The sort direction.',
 									},
-								]
+								],
 							},
 						],
 					},

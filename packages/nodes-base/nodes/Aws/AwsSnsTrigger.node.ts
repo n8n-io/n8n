@@ -93,7 +93,7 @@ export class AwsSnsTrigger implements INodeType {
 					});
 				}
 				return returnData;
-			}
+			},
 		},
 	};
 	// @ts-ignore

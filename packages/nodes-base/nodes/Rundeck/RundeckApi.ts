@@ -37,7 +37,7 @@ export class RundeckApi {
 			qs: query,
 			uri: this.credentials.url + endpoint,
 			body,
-			json: true
+			json: true,
 		};
 
 		try {
@@ -64,7 +64,7 @@ export class RundeckApi {
 		}
 
 		const body = {
-			argString: params
+			argString: params,
 		};
 
 		return this.request('POST', `/api/14/job/${jobId}/run`, body, {});

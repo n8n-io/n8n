@@ -59,7 +59,7 @@ export class Amqp implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
@@ -107,7 +107,7 @@ export class Amqp implements INodeType {
 
 				const message = {
 					application_properties: headerProperties,
-					body
+					body,
 				};
 
 				const sendResult = context.sender.send(message);

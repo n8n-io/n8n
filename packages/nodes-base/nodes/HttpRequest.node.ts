@@ -102,27 +102,27 @@ export class HttpRequest implements INodeType {
 				options: [
 					{
 						name: 'Basic Auth',
-						value: 'basicAuth'
+						value: 'basicAuth',
 					},
 					{
 						name: 'Digest Auth',
-						value: 'digestAuth'
+						value: 'digestAuth',
 					},
 					{
 						name: 'Header Auth',
-						value: 'headerAuth'
+						value: 'headerAuth',
 					},
 					{
 						name: 'OAuth1',
-						value: 'oAuth1'
+						value: 'oAuth1',
 					},
 					{
 						name: 'OAuth2',
-						value: 'oAuth2'
+						value: 'oAuth2',
 					},
 					{
 						name: 'None',
-						value: 'none'
+						value: 'none',
 					},
 				],
 				default: 'none',
@@ -135,27 +135,27 @@ export class HttpRequest implements INodeType {
 				options: [
 					{
 						name: 'DELETE',
-						value: 'DELETE'
+						value: 'DELETE',
 					},
 					{
 						name: 'GET',
-						value: 'GET'
+						value: 'GET',
 					},
 					{
 						name: 'HEAD',
-						value: 'HEAD'
+						value: 'HEAD',
 					},
 					{
 						name: 'PATCH',
-						value: 'PATCH'
+						value: 'PATCH',
 					},
 					{
 						name: 'POST',
-						value: 'POST'
+						value: 'POST',
 					},
 					{
 						name: 'PUT',
-						value: 'PUT'
+						value: 'PUT',
 					},
 				],
 				default: 'GET',
@@ -184,15 +184,15 @@ export class HttpRequest implements INodeType {
 				options: [
 					{
 						name: 'File',
-						value: 'file'
+						value: 'file',
 					},
 					{
 						name: 'JSON',
-						value: 'json'
+						value: 'json',
 					},
 					{
 						name: 'String',
-						value: 'string'
+						value: 'string',
 					},
 				],
 				default: 'json',
@@ -260,19 +260,19 @@ export class HttpRequest implements INodeType {
 						options: [
 							{
 								name: 'JSON',
-								value: 'json'
+								value: 'json',
 							},
 							{
 								name: 'RAW/Custom',
-								value: 'raw'
+								value: 'raw',
 							},
 							{
 								name: 'Form-Data Multipart',
-								value: 'multipart-form-data'
+								value: 'multipart-form-data',
 							},
 							{
 								name: 'Form Urlencoded',
-								value: 'form-urlencoded'
+								value: 'form-urlencoded',
 							},
 						],
 						default: 'json',
@@ -455,7 +455,7 @@ export class HttpRequest implements INodeType {
 								default: '',
 								description: 'Value of the parameter.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -511,7 +511,7 @@ export class HttpRequest implements INodeType {
 								default: '',
 								description: 'Value to set for the header.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -567,11 +567,11 @@ export class HttpRequest implements INodeType {
 								default: '',
 								description: 'Value of the parameter.',
 							},
-						]
+						],
 					},
 				],
 			},
-		]
+		],
 	};
 
 

@@ -55,7 +55,7 @@ export class Zulip implements INodeType {
 			{
 				name: 'zulipApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -89,7 +89,7 @@ export class Zulip implements INodeType {
 
 			// USER
 			...userOperations,
-			...userFields
+			...userFields,
 
 		],
 	};
@@ -225,8 +225,8 @@ export class Zulip implements INodeType {
 								filename: items[i].binary[binaryProperty].fileName,
 								//@ts-ignore
 								contentType: items[i].binary[binaryProperty].mimeType,
-							}
-						}
+							},
+						},
 					};
 					responseData = await zulipApiRequest.call(this, 'POST', '/user_uploads', {}, {}, undefined, { formData });
 					responseData.uri = `${credentials!.url}${responseData.uri}`;

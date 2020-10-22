@@ -114,7 +114,7 @@ export class Mandrill implements INodeType {
 			{
 				name: 'mandrillApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -221,7 +221,7 @@ export class Mandrill implements INodeType {
 						operation: [
 							'sendHtml',
 							'sendTemplate',
-						]
+						],
 					},
 				},
 			},
@@ -647,9 +647,9 @@ export class Mandrill implements INodeType {
 				displayOptions: {
 					show: {
 						jsonParameters: [
-							true
-						]
-					}
+							true,
+						],
+					},
 				},
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -692,7 +692,7 @@ export class Mandrill implements INodeType {
 								description: '',
 							},
 						],
-					}
+					},
 				],
 				description: 'Optional extra headers to add to the message (most headers are allowed).',
 			},
@@ -722,7 +722,7 @@ export class Mandrill implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 

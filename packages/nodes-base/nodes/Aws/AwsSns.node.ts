@@ -29,7 +29,7 @@ export class AwsSns implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -133,7 +133,7 @@ export class AwsSns implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 

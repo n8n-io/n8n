@@ -233,7 +233,7 @@ export const trackFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -281,11 +281,11 @@ export const trackFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
@@ -380,7 +380,7 @@ export const trackFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -428,7 +428,7 @@ export const trackFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -486,7 +486,7 @@ export const trackFields = [
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
@@ -562,21 +562,21 @@ export const trackFields = [
 							numberPrecision: 2,
 						},
 						default: 1,
-						description: 'Amount of revenue an event resulted in. This should be a decimal value, so a shirt worth $19.99 would result in a revenue of 19.99.'
+						description: 'Amount of revenue an event resulted in. This should be a decimal value, so a shirt worth $19.99 would result in a revenue of 19.99.',
 					},
 					{
 						displayName: 'Currency',
 						name: 'currency',
 						type: 'string',
 						default: '',
-						description: 'Currency of the revenue an event resulted in <p>This should be sent in the ISO 4127 format. If this is not set, we assume the revenue to be in US dollars.</p>'
+						description: 'Currency of the revenue an event resulted in <p>This should be sent in the ISO 4127 format. If this is not set, we assume the revenue to be in US dollars.</p>',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'number',
 						default: '',
-						description: 'An abstract “value” to associate with an event. This is typically used in situations where the event doesn’t generate real-dollar revenue, but has an intrinsic value to a marketing team, like newsletter signups.'
+						description: 'An abstract “value” to associate with an event. This is typically used in situations where the event doesn’t generate real-dollar revenue, but has an intrinsic value to a marketing team, like newsletter signups.',
 					},
 				],
 			},
@@ -780,7 +780,7 @@ export const trackFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -828,11 +828,11 @@ export const trackFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
@@ -927,7 +927,7 @@ export const trackFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -975,7 +975,7 @@ export const trackFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -1033,7 +1033,7 @@ export const trackFields = [
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
@@ -1106,49 +1106,49 @@ export const trackFields = [
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Name of the page. This is reserved for future use.'
+						description: 'Name of the page. This is reserved for future use.',
 					},
 					{
 						displayName: 'Path',
 						name: 'path',
 						type: 'string',
 						default: '',
-						description: 'Path portion of the URL of the page. Equivalent to canonical path which defaults to location.pathname from the DOM API.'
+						description: 'Path portion of the URL of the page. Equivalent to canonical path which defaults to location.pathname from the DOM API.',
 					},
 					{
 						displayName: 'Referrer',
 						name: 'referrer',
 						type: 'string',
 						default: '',
-						description: 'Full URL of the previous page. Equivalent to document.referrer from the DOM API.'
+						description: 'Full URL of the previous page. Equivalent to document.referrer from the DOM API.',
 					},
 					{
 						displayName: 'Search',
 						name: 'search',
 						type: 'string',
 						default: '',
-						description: 'Query string portion of the URL of the page. Equivalent to location.search from the DOM API.'
+						description: 'Query string portion of the URL of the page. Equivalent to location.search from the DOM API.',
 					},
 					{
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
 						default: '',
-						description: 'Title of the page. Equivalent to document.title from the DOM API.'
+						description: 'Title of the page. Equivalent to document.title from the DOM API.',
 					},
 					{
 						displayName: 'URL',
 						name: 'url',
 						type: 'string',
 						default: '',
-						description: 'Full URL of the page. First we look for the canonical url. If the canonical url is not provided, we use location.href from the DOM API.'
+						description: 'Full URL of the page. First we look for the canonical url. If the canonical url is not provided, we use location.href from the DOM API.',
 					},
 					{
 						displayName: 'Keywords',
 						name: 'keywords',
 						type: 'string',
 						default: '',
-						description: 'A list/array of keywords describing the content of the page. The keywords would most likely be the same as, or similar to, the keywords you would find in an html meta tag for SEO purposes.'
+						description: 'A list/array of keywords describing the content of the page. The keywords would most likely be the same as, or similar to, the keywords you would find in an html meta tag for SEO purposes.',
 					},
 				],
 			},

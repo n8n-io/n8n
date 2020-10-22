@@ -463,7 +463,7 @@ export class Github implements INodeType {
 								default: '',
 								description: 'The email of the author of the commit.',
 							},
-						]
+						],
 					},
 					{
 						name: 'branch',
@@ -476,7 +476,7 @@ export class Github implements INodeType {
 								default: '',
 								description: 'The branch to commit to. If not set the repository’s default branch (usually master) is used.',
 							},
-						]
+						],
 					},
 					{
 						name: 'committer',
@@ -496,7 +496,7 @@ export class Github implements INodeType {
 								default: '',
 								description: 'The email of the committer of the commit.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -999,7 +999,7 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'getIssues'
+							'getIssues',
 						],
 						resource: [
 							'repository',
