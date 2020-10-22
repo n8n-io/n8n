@@ -29,7 +29,7 @@ export class StravaOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'activity:read_all,activity:write',
-			required: true
+			required: true,
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

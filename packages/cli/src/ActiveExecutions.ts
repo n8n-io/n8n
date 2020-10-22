@@ -7,8 +7,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IExecutionsCurrentSummary,
 	IExecutingWorkflowData,
+	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
 } from '.';
 

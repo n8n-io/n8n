@@ -19,7 +19,7 @@ export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingle
 		body,
 		qs,
 		url: uri || `https://api.twitter.com/1.1${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(option).length !== 0) {

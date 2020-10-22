@@ -129,7 +129,7 @@ export class Medium implements INodeType {
 					},
 				},
 				default: false,
-				description: 'Are you posting for a publication?'
+				description: 'Are you posting for a publication?',
 			},
 			{
 				displayName: 'Publication ID',
@@ -407,7 +407,7 @@ export class Medium implements INodeType {
 				const user = await mediumApiRequest.call(
 					this,
 					'GET',
-					`/me`,
+					`/me`
 				);
 
 				const userId = user.data.id;
@@ -415,7 +415,7 @@ export class Medium implements INodeType {
 				const publications = await mediumApiRequest.call(
 					this,
 					'GET',
-					`/users/${userId}/publications`,
+					`/users/${userId}/publications`
 				);
 				const publicationsList = publications.data;
 				for (const publication of publicationsList) {
@@ -547,7 +547,7 @@ export class Medium implements INodeType {
 					const user = await mediumApiRequest.call(
 						this,
 						'GET',
-						`/me`,
+						`/me`
 					);
 
 					const userId = user.data.id;
@@ -555,7 +555,7 @@ export class Medium implements INodeType {
 					responseData = await mediumApiRequest.call(
 						this,
 						'GET',
-						`/users/${userId}/publications`,
+						`/users/${userId}/publications`
 					);
 
 					responseData = responseData.data;

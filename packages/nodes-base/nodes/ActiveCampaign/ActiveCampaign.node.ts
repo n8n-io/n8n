@@ -142,7 +142,7 @@ export class ActiveCampaign implements INodeType {
 					},
 					{
 						name: 'Connection',
-						value: 'connection'
+						value: 'connection',
 					},
 					{
 						name: 'Deal',
@@ -158,7 +158,7 @@ export class ActiveCampaign implements INodeType {
 					},
 					{
 						name: 'E-commerce Order Products',
-						value: 'ecommerceOrderProducts'
+						value: 'ecommerceOrderProducts',
 					},
 					{
 						name: 'Tag',

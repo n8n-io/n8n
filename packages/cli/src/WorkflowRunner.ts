@@ -24,8 +24,8 @@ import {
 	IExecutionError,
 	IRun,
 	Workflow,
-	WorkflowHooks,
 	WorkflowExecuteMode,
+	WorkflowHooks,
 } from 'n8n-workflow';
 
 import * as config from '../config';

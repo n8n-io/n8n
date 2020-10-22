@@ -10,10 +10,10 @@ import {
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 	ResponseHelper,
-	WorkflowHelpers,
-	WorkflowRunner,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
+	WorkflowRunner,
 } from './';
 
 import {
@@ -252,7 +252,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 				data: {
 					main: webhookResultData.workflowData,
 				},
-			},
+			}
 		);
 
 		const runExecutionData: IRunExecutionData = {

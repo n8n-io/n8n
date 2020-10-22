@@ -32,15 +32,15 @@ export class GoogleTasks implements INodeType {
 		description: 'Consume Google Tasks API.',
 		defaults: {
 			name: 'Google Tasks',
-			color: '#3E87E4'
+			color: '#3E87E4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
 				name: 'googleTasksOAuth2Api',
-				required: true
-			}
+				required: true,
+			},
 		],
 		properties: [
 			{
@@ -50,15 +50,15 @@ export class GoogleTasks implements INodeType {
 				options: [
 					{
 						name: 'Task',
-						value: 'task'
-					}
+						value: 'task',
+					},
 				],
 				default: 'task',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...taskOperations,
-			...taskFields
-		]
+			...taskFields,
+		],
 	};
 	methods = {
 		loadOptions: {
@@ -79,12 +79,12 @@ export class GoogleTasks implements INodeType {
 					const taskId = task.id;
 					returnData.push({
 						name: taskName,
-						value: taskId
+						value: taskId,
 					});
 				}
 				return returnData;
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

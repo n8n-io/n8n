@@ -224,7 +224,7 @@ export const taskFields = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'getTaskRecurrenceTypes'
+					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
 				description: 'Recurrence Type of the task.',
 			},
@@ -278,52 +278,52 @@ export const taskFields = [
 				options: [
 					{
 						name: 'January',
-						value: 'January'
+						value: 'January',
 					},
 					{
 						name: 'February',
-						value: 'February'
+						value: 'February',
 					},
 					{
 						name: 'March',
-						value: 'March'
+						value: 'March',
 					},
 					{
 						name: 'April',
-						value: 'April'
+						value: 'April',
 					},
 					{
 						name: 'May',
-						value: 'May'
+						value: 'May',
 					},
 					{
 						name: 'June',
-						value: 'June'
+						value: 'June',
 					},
 					{
 						name: 'July',
-						value: 'July'
+						value: 'July',
 					},
 					{
 						name: 'August',
-						value: 'August'
+						value: 'August',
 					},
 					{
 						name: 'September',
-						value: 'September'
+						value: 'September',
 					},
 					{
 						name: 'October',
-						value: 'October'
+						value: 'October',
 					},
 					{
 						name: 'November',
-						value: 'November'
+						value: 'November',
 					},
 					{
 						name: 'December',
-						value: 'December'
-					}
+						value: 'December',
+					},
 				],
 				default: '',
 				description: 'The month of the year in which the task repeats.',
@@ -336,16 +336,16 @@ export const taskFields = [
 				options: [
 					{
 						name: 'After due date',
-						value: 'RecurrenceRegenerateAfterDueDate'
+						value: 'RecurrenceRegenerateAfterDueDate',
 					},
 					{
 						name: 'After date completed',
-						value: 'RecurrenceRegenerateAfterToday'
+						value: 'RecurrenceRegenerateAfterToday',
 					},
 					{
 						name: '(Task Closed)',
-						value: 'RecurrenceRegenerated'
-					}
+						value: 'RecurrenceRegenerated',
+					},
 				],
 				description: `Represents what triggers a repeating task to repeat.<br/>
 				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
@@ -405,7 +405,7 @@ export const taskFields = [
 				description: `The WhoId represents a human such as a lead or a contact.<br/>
 				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 task:update                                */
@@ -423,7 +423,7 @@ export const taskFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of task that needs to be fetched',
@@ -639,52 +639,52 @@ export const taskFields = [
 				options: [
 					{
 						name: 'January',
-						value: 'January'
+						value: 'January',
 					},
 					{
 						name: 'February',
-						value: 'February'
+						value: 'February',
 					},
 					{
 						name: 'March',
-						value: 'March'
+						value: 'March',
 					},
 					{
 						name: 'April',
-						value: 'April'
+						value: 'April',
 					},
 					{
 						name: 'May',
-						value: 'May'
+						value: 'May',
 					},
 					{
 						name: 'June',
-						value: 'June'
+						value: 'June',
 					},
 					{
 						name: 'July',
-						value: 'July'
+						value: 'July',
 					},
 					{
 						name: 'August',
-						value: 'August'
+						value: 'August',
 					},
 					{
 						name: 'September',
-						value: 'September'
+						value: 'September',
 					},
 					{
 						name: 'October',
-						value: 'October'
+						value: 'October',
 					},
 					{
 						name: 'November',
-						value: 'November'
+						value: 'November',
 					},
 					{
 						name: 'December',
-						value: 'December'
-					}
+						value: 'December',
+					},
 				],
 				default: '',
 				description: 'The month of the year in which the task repeats.',
@@ -705,16 +705,16 @@ export const taskFields = [
 				options: [
 					{
 						name: 'After due date',
-						value: 'RecurrenceRegenerateAfterDueDate'
+						value: 'RecurrenceRegenerateAfterDueDate',
 					},
 					{
 						name: 'After date completed',
-						value: 'RecurrenceRegenerateAfterToday'
+						value: 'RecurrenceRegenerateAfterToday',
 					},
 					{
 						name: '(Task Closed)',
-						value: 'RecurrenceRegenerated'
-					}
+						value: 'RecurrenceRegenerated',
+					},
 				],
 				description: `Represents what triggers a repeating task to repeat.<br/>
 				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
@@ -727,7 +727,7 @@ export const taskFields = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'getTaskRecurrenceTypes'
+					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
 				description: 'Website for the task.',
 			},
@@ -766,7 +766,7 @@ export const taskFields = [
 				description: `The WhoId represents a human such as a lead or a contact.<br/>
 				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -785,7 +785,7 @@ export const taskFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of task that needs to be fetched',
@@ -806,7 +806,7 @@ export const taskFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of task that needs to be fetched',
@@ -879,6 +879,6 @@ export const taskFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

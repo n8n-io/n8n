@@ -4,11 +4,11 @@ import {
 	IConnections,
 	IGetExecuteTriggerFunctions,
 	INode,
-	INodes,
 	INodeExecuteFunctions,
 	INodeExecutionData,
 	INodeIssues,
 	INodeParameters,
+	INodes,
 	INodeType,
 	INodeTypes,
 	IPollFunctions,
@@ -129,7 +129,7 @@ export class Workflow {
 						returnConnection[connectionInfo.node][connectionInfo.type][connectionInfo.index].push({
 							node: sourceNode,
 							type,
-							index: parseInt(inputIndex, 10)
+							index: parseInt(inputIndex, 10),
 						});
 					}
 				}

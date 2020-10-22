@@ -51,7 +51,7 @@ export class Twitter implements INodeType {
 			{
 				name: 'twitterOAuth1Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -239,7 +239,7 @@ export class Twitter implements INodeType {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const qs: IDataObject = {
-						q
+						q,
 					};
 
 					if (additionalFields.includeEntities) {

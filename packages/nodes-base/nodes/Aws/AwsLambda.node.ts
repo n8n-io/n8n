@@ -29,7 +29,7 @@ export class AwsLambda implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -145,7 +145,7 @@ export class AwsLambda implements INodeType {
 					});
 				}
 				return returnData;
-			}
+			},
 		},
 	};
 
@@ -173,7 +173,7 @@ export class AwsLambda implements INodeType {
 					{
 						'X-Amz-Invocation-Type': params.InvocationType,
 						'Content-Type': 'application/x-amz-json-1.0',
-					},
+					}
 				);
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);

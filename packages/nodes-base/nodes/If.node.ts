@@ -53,11 +53,11 @@ export class If implements INodeType {
 								options: [
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 								],
 								default: 'equal',
@@ -90,27 +90,27 @@ export class If implements INodeType {
 								options: [
 									{
 										name: 'Smaller',
-										value: 'smaller'
+										value: 'smaller',
 									},
 									{
 										name: 'Smaller Equal',
-										value: 'smallerEqual'
+										value: 'smallerEqual',
 									},
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 									{
 										name: 'Larger',
-										value: 'larger'
+										value: 'larger',
 									},
 									{
 										name: 'Larger Equal',
-										value: 'largerEqual'
+										value: 'largerEqual',
 									},
 								],
 								default: 'smaller',
@@ -143,23 +143,23 @@ export class If implements INodeType {
 								options: [
 									{
 										name: 'Contains',
-										value: 'contains'
+										value: 'contains',
 									},
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Contains',
-										value: 'notContains'
+										value: 'notContains',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 									{
 										name: 'Regex',
-										value: 'regex'
+										value: 'regex',
 									},
 								],
 								default: 'equal',
@@ -206,12 +206,12 @@ export class If implements INodeType {
 					{
 						name: 'ALL',
 						description: 'Only if all conditions are meet it goes into "true" branch.',
-						value: 'all'
+						value: 'all',
 					},
 					{
 						name: 'ANY',
 						description: 'If any of the conditions is meet it goes into "true" branch.',
-						value: 'any'
+						value: 'any',
 					},
 				],
 				default: 'all',

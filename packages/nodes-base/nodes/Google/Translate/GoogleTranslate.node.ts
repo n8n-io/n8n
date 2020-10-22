@@ -163,12 +163,12 @@ export class GoogleTranslate implements INodeType {
 				for (const language of languages) {
 					returnData.push({
 						name: language.language.toUpperCase(),
-						value: language.language
+						value: language.language,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

@@ -24,11 +24,11 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 	const options: OptionsWithUri = {
 		method,
 		headers: {
-			'content-type': 'application/json'
+			'content-type': 'application/json',
 		},
 		uri: `https://vendors.paddle.com/api${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	body['vendor_id'] = credentials.vendorId;

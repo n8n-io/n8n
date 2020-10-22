@@ -169,26 +169,26 @@ export class PostmarkTrigger implements INodeType {
 					Triggers: {
 						Open:{
 							Enabled: false,
-							PostFirstOpenOnly: false
+							PostFirstOpenOnly: false,
 						},
 						Click:{
-							Enabled: false
+							Enabled: false,
 						},
 						Delivery:{
-							Enabled: false
+							Enabled: false,
 						},
 						Bounce:{
 							Enabled: false,
-							IncludeContent: false
+							IncludeContent: false,
 						},
 						SpamComplaint:{
 							Enabled: false,
-							IncludeContent: false
+							IncludeContent: false,
 						},
 						SubscriptionChange: {
-							Enabled: false
-						}
-					}
+							Enabled: false,
+						},
+					},
 				};
 
 				const events = this.getNodeParameter('events') as string[];
@@ -255,7 +255,7 @@ export class PostmarkTrigger implements INodeType {
 		const req = this.getRequestObject();
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

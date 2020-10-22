@@ -268,10 +268,10 @@ export class MicrosoftSql implements INodeType {
 							return pool
 								.request()
 								.query(
-									`INSERT INTO ${table}(${columnString}) VALUES ${values};`,
+									`INSERT INTO ${table}(${columnString}) VALUES ${values};`
 								);
 						});
-					},
+					}
 				);
 
 				returnItems = items;
@@ -281,13 +281,13 @@ export class MicrosoftSql implements INodeType {
 				// ----------------------------------
 
 				const updateKeys = items.map(
-					(item, index) => this.getNodeParameter('updateKey', index) as string,
+					(item, index) => this.getNodeParameter('updateKey', index) as string
 				);
 				const tables = createTableStruct(
 					this.getNodeParameter,
 					items,
 					['updateKey'].concat(updateKeys),
-					'updateKey',
+					'updateKey'
 				);
 				await executeQueryQueue(
 					tables,
@@ -308,14 +308,14 @@ export class MicrosoftSql implements INodeType {
 							const setValues = extractUpdateSet(item, columns);
 							const condition = extractUpdateCondition(
 								item,
-								item.updateKey as string,
+								item.updateKey as string
 							);
 
 							return pool
 								.request()
 								.query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
 						});
-					},
+					}
 				);
 
 				returnItems = items;
@@ -343,9 +343,9 @@ export class MicrosoftSql implements INodeType {
 							deleteKey => {
 								const deleteItemsList = chunk(
 									tables[table][deleteKey].map(item =>
-										copyInputItem(item as INodeExecutionData, [deleteKey]),
+										copyInputItem(item as INodeExecutionData, [deleteKey])
 									),
-									1000,
+									1000
 								);
 								const queryQueue = deleteItemsList.map(deleteValues => {
 									return pool
@@ -353,21 +353,21 @@ export class MicrosoftSql implements INodeType {
 										.query(
 											`DELETE FROM ${table} WHERE ${deleteKey} IN ${extractDeleteValues(
 												deleteValues,
-												deleteKey,
-											)};`,
+												deleteKey
+											)};`
 										);
 								});
 								return Promise.all(queryQueue);
-							},
+							}
 						);
 						return Promise.all(deleteKeyResults);
-					}),
+					})
 				);
 
 				const rowsDeleted = flatten(queriesResults).reduce(
 					(acc: number, resp: mssql.IResult<object>): number =>
 						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-					0,
+					0
 				);
 
 				returnItems = this.helpers.returnJsonArray({

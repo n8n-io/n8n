@@ -295,7 +295,7 @@ export class MessageBird implements INodeType {
 					bodyRequest = {
 						recipients: [],
 						originator,
-						body
+						body,
 					};
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',

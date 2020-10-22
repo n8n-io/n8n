@@ -62,7 +62,7 @@ export const personFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The first name of the person.',
@@ -80,7 +80,7 @@ export const personFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The last name of the person.',
@@ -130,7 +130,7 @@ export const personFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		placeholder: 'info@example.com',
@@ -152,7 +152,7 @@ export const personFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the person.',
@@ -198,7 +198,7 @@ export const personFields = [
 				default: [],
 				description: 'Organizations that the person is associated with.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Emails',
@@ -216,7 +216,7 @@ export const personFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		placeholder: 'info@example.com',
@@ -238,7 +238,7 @@ export const personFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the person.',
@@ -267,7 +267,7 @@ export const personFields = [
 				default: false,
 				description: 'When true, interaction dates will be present on the returned resources.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 person:getAll                              */
@@ -344,7 +344,7 @@ export const personFields = [
 				default: false,
 				description: 'When true, interaction dates will be present on the returned resources.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 person:delete                              */
@@ -362,7 +362,7 @@ export const personFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the person.',

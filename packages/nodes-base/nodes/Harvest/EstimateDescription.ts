@@ -147,8 +147,8 @@ export const estimateFields = [
 			},
 			default: 1,
 			description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
-		}
-	]
+		},
+	],
 },
 
 /* -------------------------------------------------------------------------- */
@@ -230,63 +230,63 @@ export const estimateFields = [
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Discount',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Issue Date',
 				name: 'issue_date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the invoice was issued. Defaults to today’s date.'
+				description: 'Date the invoice was issued. Defaults to today’s date.',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Any additional notes to include on the estimate.'
+				description: 'Any additional notes to include on the estimate.',
 			},
 			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
-				description: 'If no value is set, the number will be automatically generated.'
+				description: 'If no value is set, the number will be automatically generated.',
 			},
 			{
 				displayName: 'Purchase Order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
-				description: 'The purchase order number.'
+				description: 'The purchase order number.',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'The estimate subject.'
+				description: 'The estimate subject.',
 			},
 			{
 				displayName: 'Tax',
 				name: 'tax',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Tax2',
 				name: 'tax2',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 		],
 	},
@@ -337,63 +337,63 @@ export const estimateFields = [
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies'
+				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Discount',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Issue Date',
 				name: 'issue_date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the invoice was issued. Defaults to today’s date.'
+				description: 'Date the invoice was issued. Defaults to today’s date.',
 			},
 			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
-				description: 'If no value is set, the number will be automatically generated.'
+				description: 'If no value is set, the number will be automatically generated.',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Any additional notes to include on the estimate.'
+				description: 'Any additional notes to include on the estimate.',
 			},
 			{
 				displayName: 'Purchase Order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
-				description: 'The purchase order number.'
+				description: 'The purchase order number.',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'The estimate subject.'
+				description: 'The estimate subject.',
 			},
 			{
 				displayName: 'Tax',
 				name: 'tax',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Tax2',
 				name: 'tax2',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 		],
 	},

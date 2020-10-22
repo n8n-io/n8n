@@ -21,7 +21,7 @@ export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		form: body,
 		qs,
 		uri: uri || `https://www.strava.com/api/v3${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {

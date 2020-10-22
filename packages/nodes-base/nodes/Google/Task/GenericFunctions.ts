@@ -23,13 +23,13 @@ export async function googleApiRequest(
 ): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
 		headers: {
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${resource}`,
-		json: true
+		json: true,
 	};
 
 	try {

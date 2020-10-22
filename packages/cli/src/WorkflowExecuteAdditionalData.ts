@@ -25,8 +25,8 @@ import {
 	IExecuteData,
 	IExecuteWorkflowInfo,
 	INode,
-	INodeParameters,
 	INodeExecutionData,
+	INodeParameters,
 	IRun,
 	IRunExecutionData,
 	ITaskData,
@@ -74,7 +74,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 			workflow: {
 				id: workflowData.id !== undefined ? workflowData.id.toString() as string : undefined,
 				name: workflowData.name,
-			}
+			},
 		};
 		// Run the error workflow
 		WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
@@ -191,13 +191,13 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id as string,
 					workflowName: this.workflowData.name,
 				});
-			}
+			},
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
 				pushExecutionFinished(this.mode, fullRunData, this.executionId, undefined, this.retryOf);
 			},
-		]
+		],
 	};
 }
 
@@ -298,7 +298,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 				}
 			},
-		]
+		],
 	};
 }
 
@@ -374,8 +374,8 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [
 		{
-			json: {}
-		}
+			json: {},
+		},
 	];
 
 	// Initialize the incoming data
@@ -386,7 +386,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 			data: {
 				main: [inputData],
 			},
-		},
+		}
 	);
 
 	const runExecutionData: IRunExecutionData = {

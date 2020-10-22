@@ -125,7 +125,7 @@ export const taskFields = [
 				default: '',
 				description: 'Only return tasks belonging to the task with the given ID.',
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -207,28 +207,28 @@ export const taskFields = [
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: '',
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.'
+				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
 				type: 'string',
 				default: '0',
-				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.'
+				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
 				displayName: 'Is Default',
 				name: 'is_default',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this task should be automatically added to future projects. Defaults to false.'
+				description: 'Whether this task should be automatically added to future projects. Defaults to false.',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this task is active or archived. Defaults to true'
+				description: 'Whether this task is active or archived. Defaults to true',
 			},
 		],
 	},
@@ -256,35 +256,35 @@ export const taskFields = [
 				name: 'billable_by_default',
 				type: 'boolean',
 				default: '',
-				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.'
+				description: 'Used in determining whether default tasks should be marked billable when creating a new project. Defaults to true.',
 			},
 			{
 				displayName: 'Default Hourly Rate',
 				name: 'default_hourly_rate',
 				type: 'string',
 				default: '0',
-				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.'
+				description: 'The default hourly rate to use for this task when it is added to a project. Defaults to 0.',
 			},
 			{
 				displayName: 'Is Active',
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this task is active or archived. Defaults to true'
+				description: 'Whether this task is active or archived. Defaults to true',
 			},
 			{
 				displayName: 'Is Default',
 				name: 'is_default',
 				type: 'boolean',
 				default: false,
-				description: 'Whether this task should be automatically added to future projects. Defaults to false.'
+				description: 'Whether this task should be automatically added to future projects. Defaults to false.',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Name of the task.'
+				description: 'Name of the task.',
 			},
 		],
 	},

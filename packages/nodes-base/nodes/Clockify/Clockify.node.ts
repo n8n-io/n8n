@@ -75,15 +75,15 @@ export class Clockify implements INodeType {
 				options: [
 					{
 						name: 'Project',
-						value: 'project'
+						value: 'project',
 					},
 					{
 						name: 'Tag',
-						value: 'tag'
+						value: 'tag',
 					},
 					{
 						name: 'Time Entry',
-						value: 'timeEntry'
+						value: 'timeEntry',
 					},
 				],
 				default: 'project',

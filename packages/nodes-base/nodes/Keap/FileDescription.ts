@@ -48,7 +48,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -66,7 +66,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -182,7 +182,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -276,7 +276,7 @@ export const fileFields = [
 				name: 'contactId',
 				type: 'number',
 				typeOptions: {
-					minValue: 0
+					minValue: 0,
 				},
 				default: 0,
 				description: 'Filter based on Contact Id, if user has permission to see Contact files.',

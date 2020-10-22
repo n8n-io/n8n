@@ -21,7 +21,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		options = Object.assign({}, options, option);

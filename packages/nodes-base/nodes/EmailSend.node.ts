@@ -30,7 +30,7 @@ export class EmailSend implements INodeType {
 			{
 				name: 'smtp',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			// TODO: Add choice for text as text or html  (maybe also from name)
@@ -159,7 +159,7 @@ export class EmailSend implements INodeType {
 
 		if (options.allowUnauthorizedCerts === true) {
 			connectionOptions.tls = {
-				rejectUnauthorized: false
+				rejectUnauthorized: false,
 			};
 		}
 

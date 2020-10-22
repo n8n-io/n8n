@@ -20,7 +20,7 @@ export async function todoistApiRequest(
 	method: string,
 	resource: string,
 	body: any = {}, // tslint:disable-line:no-any
-	qs: IDataObject = {},
+	qs: IDataObject = {}
 ): Promise<any> { // tslint:disable-line:no-any
 	const authentication = this.getNodeParameter('authentication', 0, 'apiKey');
 
