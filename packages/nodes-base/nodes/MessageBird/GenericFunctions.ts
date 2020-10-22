@@ -25,7 +25,7 @@ export async function messageBirdApiRequest(
 	method: string,
 	resource: string,
 	body: IDataObject,
-	query: IDataObject = {}
+	query: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('messageBirdApi');
 	if (credentials === undefined) {

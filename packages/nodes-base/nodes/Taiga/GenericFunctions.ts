@@ -21,7 +21,7 @@ import {
 
 export async function getAuthorization(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	credentials?: ICredentialDataDecryptedObject
+	credentials?: ICredentialDataDecryptedObject,
 ): Promise<string> {
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
@@ -56,7 +56,7 @@ export async function taigaApiRequest(
 	body = {},
 	query = {},
 	uri?: string | undefined,
-	option = {}
+	option = {},
 ): Promise<any> { // tslint:disable-line:no-any
 
 	const version = this.getNodeParameter('version', 0, 'cloud') as string;

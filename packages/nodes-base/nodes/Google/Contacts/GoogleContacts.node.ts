@@ -70,14 +70,14 @@ export class GoogleContacts implements INodeType {
 			// Get all the calendars to display them to user so that he can
 			// select them easily
 			async getGroups(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const groups = await googleApiRequestAllItems.call(
 					this,
 					'contactGroups',
 					'GET',
-					`/contactGroups`
+					`/contactGroups`,
 				);
 				for (const group of groups) {
 					const groupName = group.name;
@@ -219,7 +219,7 @@ export class GoogleContacts implements INodeType {
 						'POST',
 						`/people:createContact`,
 						body,
-						qs
+						qs,
 					);
 
 					responseData.contactId = responseData.resourceName.split('/')[1];
@@ -232,7 +232,7 @@ export class GoogleContacts implements INodeType {
 						this,
 						'DELETE',
 						`/people/${contactId}:deleteContact`,
-						{}
+						{},
 					);
 					responseData = { success: true };
 				}
@@ -253,7 +253,7 @@ export class GoogleContacts implements INodeType {
 						'GET',
 						`/people/${contactId}`,
 						{},
-						qs
+						qs,
 					);
 
 					if (!rawData) {
@@ -286,7 +286,7 @@ export class GoogleContacts implements INodeType {
 							'GET',
 							`/people/me/connections`,
 							{},
-							qs
+							qs,
 						);
 					} else {
 						qs.pageSize = this.getNodeParameter('limit', i) as number;
@@ -295,7 +295,7 @@ export class GoogleContacts implements INodeType {
 							'GET',
 							`/people/me/connections`,
 							{},
-							qs
+							qs,
 						);
 						responseData = responseData.connections;
 					}
@@ -331,7 +331,7 @@ export class GoogleContacts implements INodeType {
 							'GET',
 							`/people/${contactId}`,
 							{},
-							{ personFields: 'Names' }
+							{ personFields: 'Names' },
 						);
 
 						etag = data.etag;
@@ -479,7 +479,7 @@ export class GoogleContacts implements INodeType {
 						'PATCH',
 						`/people/${contactId}:updateContact`,
 						body,
-						qs
+						qs,
 					);
 
 					responseData.contactId = responseData.resourceName.split('/')[1];

@@ -152,7 +152,7 @@ export class Zoom implements INodeType {
 		loadOptions: {
 			// Get all the timezones to display them to user so that he can select them easily
 			async getTimezones(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				for (const timezone of moment.tz.names()) {
@@ -186,7 +186,7 @@ export class Zoom implements INodeType {
 					const meetingId = this.getNodeParameter('meetingId', i) as string;
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
-						i
+						i,
 					) as IDataObject;
 
 					if (additionalFields.showPreviousOccurrences) {
@@ -202,7 +202,7 @@ export class Zoom implements INodeType {
 						'GET',
 						`/meetings/${meetingId}`,
 						{},
-						qs
+						qs,
 					);
 				}
 				if (operation === 'getAll') {
@@ -211,7 +211,7 @@ export class Zoom implements INodeType {
 
 					const filters = this.getNodeParameter(
 						'filters',
-						i
+						i,
 					) as IDataObject;
 					if (filters.type) {
 						qs.type = filters.type as string;
@@ -231,7 +231,7 @@ export class Zoom implements INodeType {
 					const meetingId = this.getNodeParameter('meetingId', i) as string;
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
-						i
+						i,
 					) as IDataObject;
 					if (additionalFields.scheduleForReminder) {
 						qs.schedule_for_reminder = additionalFields.scheduleForReminder as boolean;
@@ -246,7 +246,7 @@ export class Zoom implements INodeType {
 						'DELETE',
 						`/meetings/${meetingId}`,
 						{},
-						qs
+						qs,
 					);
 					responseData = { success: true };
 				}
@@ -347,7 +347,7 @@ export class Zoom implements INodeType {
 						'POST',
 						`/users/me/meetings`,
 						body,
-						qs
+						qs,
 					);
 				}
 				if (operation === 'update') {
@@ -355,7 +355,7 @@ export class Zoom implements INodeType {
 					const meetingId = this.getNodeParameter('meetingId', i) as string;
 					const updateFields = this.getNodeParameter(
 						'updateFields',
-						i
+						i,
 					) as IDataObject;
 
 					const body: IDataObject = {};
@@ -448,7 +448,7 @@ export class Zoom implements INodeType {
 						'PATCH',
 						`/meetings/${meetingId}`,
 						body,
-						qs
+						qs,
 					);
 
 					responseData = { success: true };

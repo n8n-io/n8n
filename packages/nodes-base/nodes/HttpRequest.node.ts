@@ -850,7 +850,7 @@ export class HttpRequest implements INodeType {
 							json: {
 								error: response.reason,
 							},
-						}
+						},
 					);
 					continue;
 				}

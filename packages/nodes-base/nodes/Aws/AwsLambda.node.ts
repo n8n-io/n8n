@@ -173,7 +173,7 @@ export class AwsLambda implements INodeType {
 					{
 						'X-Amz-Invocation-Type': params.InvocationType,
 						'Content-Type': 'application/x-amz-json-1.0',
-					}
+					},
 				);
 			} catch (err) {
 				throw new Error(`AWS Error: ${err}`);

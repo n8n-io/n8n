@@ -71,7 +71,7 @@ export async function zoomApiRequestAllItems(
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
-	query: IDataObject = {}
+	query: IDataObject = {},
 ): Promise<any> {  // tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -82,7 +82,7 @@ export async function zoomApiRequestAllItems(
 			method,
 			endpoint,
 			body,
-			query
+			query,
 		);
 		query.page_number++;
 		returnData.push.apply(returnData, responseData[propertyName]);
