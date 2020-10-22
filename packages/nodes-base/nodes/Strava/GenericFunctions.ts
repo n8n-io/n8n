@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -89,4 +89,3 @@ export async function stravaApiRequestAllItems(this: IHookFunctions | ILoadOptio
 
 	return returnData;
 }
-

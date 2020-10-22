@@ -1,7 +1,7 @@
 
 import {
 	INodeProperties,
-} from "n8n-workflow";
+} from 'n8n-workflow';
 
 export const activityOperations = [
 	{
@@ -37,9 +37,9 @@ export const activityOperations = [
 				description: 'Get all activity comments',
 			},
 			{
-				name: 'Get Kudoers',
-				value: 'getKudoers',
-				description: 'Get all activity kudoers',
+				name: 'Get Kudos',
+				value: 'getKudos',
+				description: 'Get all activity kudos',
 			},
 			{
 				name: 'Get Laps',
@@ -64,9 +64,9 @@ export const activityOperations = [
 
 export const activityFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                activity:create                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                activity:create                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -78,7 +78,7 @@ export const activityFields = [
 					'activity',
 				],
 				operation: [
-					'create'
+					'create',
 				]
 			},
 		},
@@ -96,7 +96,7 @@ export const activityFields = [
 					'activity',
 				],
 				operation: [
-					'create'
+					'create',
 				]
 			},
 		},
@@ -124,14 +124,14 @@ export const activityFields = [
 		displayName: 'Elapsed Time (Seconds)',
 		name: 'elapsedTime',
 		type: 'number',
-		required :true,
+		required: true,
 		displayOptions: {
 			show: {
 				resource: [
 					'activity',
 				],
 				operation: [
-					'create'
+					'create',
 				]
 			},
 		},
@@ -191,9 +191,10 @@ export const activityFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                activity:update                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                activity:update                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Activity ID',
 		name: 'activityId',
@@ -273,9 +274,10 @@ export const activityFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  activity:get                              */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  activity:get                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Activity ID',
 		name: 'activityId',
@@ -294,9 +296,10 @@ export const activityFields = [
 		default: '',
 		description: 'ID or email of activity',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  activity                                  */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  activity                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Activity ID',
 		name: 'activityId',
@@ -308,10 +311,10 @@ export const activityFields = [
 					'activity',
 				],
 				operation: [
-					'comment',
-					'lap',
-					'kudo',
-					'zone',
+					'getComments',
+					'getLaps',
+					'getKudos',
+					'getZones',
 				],
 			},
 		},
@@ -330,7 +333,7 @@ export const activityFields = [
 				operation: [
 					'getComments',
 					'getLaps',
-					'getKudoers',
+					'getKudos',
 					'getZones',
 				],
 			},
@@ -350,7 +353,7 @@ export const activityFields = [
 				operation: [
 					'getComments',
 					'getLaps',
-					'getKudoers',
+					'getKudos',
 					'getZones',
 				],
 				returnAll: [
@@ -365,9 +368,10 @@ export const activityFields = [
 		default: 50,
 		description: 'How many results to return.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  activity:getAll                           */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  activity:getAll                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
