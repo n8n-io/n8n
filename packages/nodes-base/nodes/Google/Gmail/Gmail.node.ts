@@ -136,14 +136,14 @@ export class Gmail implements INodeType {
 			// Get all the labels to display them to user so that he can
 			// select them easily
 			async getLabels(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const labels = await googleApiRequestAllItems.call(
 					this,
 					'labels',
 					'GET',
-					'/gmail/v1/users/me/labels'
+					'/gmail/v1/users/me/labels',
 				);
 				for (const label of labels) {
 					const labelName = label.name;
@@ -216,7 +216,7 @@ export class Gmail implements INodeType {
 						'GET',
 						`/gmail/v1/users/me/labels`,
 						{},
-						qs
+						qs,
 					);
 
 					responseData = responseData.labels;
@@ -486,7 +486,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/messages`,
 							{},
-							qs
+							qs,
 						);
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
@@ -495,7 +495,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/messages`,
 							{},
-							qs
+							qs,
 						);
 						responseData = responseData.messages;
 					}
@@ -520,7 +520,7 @@ export class Gmail implements INodeType {
 								'GET',
 								`/gmail/v1/users/me/messages/${responseData[i].id}`,
 								body,
-								qs
+								qs,
 							);
 
 							if (format === 'resolved') {
@@ -692,7 +692,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/drafts`,
 							{},
-							qs
+							qs,
 						);
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
@@ -701,7 +701,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/drafts`,
 							{},
-							qs
+							qs,
 						);
 						responseData = responseData.drafts;
 					}
@@ -726,7 +726,7 @@ export class Gmail implements INodeType {
 								'GET',
 								`/gmail/v1/users/me/drafts/${responseData[i].id}`,
 								body,
-								qs
+								qs,
 							);
 
 							if (format === 'resolved') {

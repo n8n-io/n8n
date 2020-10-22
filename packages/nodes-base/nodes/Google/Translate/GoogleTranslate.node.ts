@@ -152,13 +152,13 @@ export class GoogleTranslate implements INodeType {
 	methods = {
 		loadOptions: {
 			async getLanguages(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { data: { languages } } = await googleApiRequest.call(
 					this,
 					'GET',
-					'/language/translate/v2/languages'
+					'/language/translate/v2/languages',
 				);
 				for (const language of languages) {
 					returnData.push({

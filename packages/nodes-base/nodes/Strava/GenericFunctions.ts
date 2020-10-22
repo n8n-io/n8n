@@ -51,7 +51,7 @@ export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 		if (error.statusCode === 402) {
 			throw new Error(
-				`Strava error response [${error.statusCode}]: Payment Required`
+				`Strava error response [${error.statusCode}]: Payment Required`,
 			);
 		}
 
@@ -62,7 +62,7 @@ export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			errors = errors.map((e: IDataObject) => `${e.code} -> ${e.field}`);
 			// Try to return the error prettier
 			throw new Error(
-				`Strava error response [${error.statusCode}]: ${errors.join('|')}`
+				`Strava error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;

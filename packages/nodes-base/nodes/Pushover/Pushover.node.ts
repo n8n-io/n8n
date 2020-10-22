@@ -380,7 +380,7 @@ export class Pushover implements INodeType {
 						this,
 						'POST',
 						`/messages.json`,
-						body
+						body,
 					);
 				}
 			}

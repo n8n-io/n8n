@@ -407,7 +407,7 @@ export class Medium implements INodeType {
 				const user = await mediumApiRequest.call(
 					this,
 					'GET',
-					`/me`
+					`/me`,
 				);
 
 				const userId = user.data.id;
@@ -415,7 +415,7 @@ export class Medium implements INodeType {
 				const publications = await mediumApiRequest.call(
 					this,
 					'GET',
-					`/users/${userId}/publications`
+					`/users/${userId}/publications`,
 				);
 				const publicationsList = publications.data;
 				for (const publication of publicationsList) {
@@ -510,7 +510,7 @@ export class Medium implements INodeType {
 							'POST',
 							`/publications/${publicationId}/posts`,
 							bodyRequest,
-							qs
+							qs,
 						);
 					}
 					else {
@@ -519,7 +519,7 @@ export class Medium implements INodeType {
 							'GET',
 							'/me',
 							{},
-							qs
+							qs,
 						);
 
 						const authorId = responseAuthorId.data.id;
@@ -528,7 +528,7 @@ export class Medium implements INodeType {
 							'POST',
 							`/users/${authorId}/posts`,
 							bodyRequest,
-							qs
+							qs,
 						);
 
 						responseData = responseData.data;
@@ -547,7 +547,7 @@ export class Medium implements INodeType {
 					const user = await mediumApiRequest.call(
 						this,
 						'GET',
-						`/me`
+						`/me`,
 					);
 
 					const userId = user.data.id;
@@ -555,7 +555,7 @@ export class Medium implements INodeType {
 					responseData = await mediumApiRequest.call(
 						this,
 						'GET',
-						`/users/${userId}/publications`
+						`/users/${userId}/publications`,
 					);
 
 					responseData = responseData.data;

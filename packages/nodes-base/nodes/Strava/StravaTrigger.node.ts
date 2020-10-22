@@ -197,7 +197,7 @@ export class StravaTrigger implements INodeType {
 						}
 
 						throw new Error(
-							`Strava error response [${error.statusCode}]: ${errorMessage}`
+							`Strava error response [${error.statusCode}]: ${errorMessage}`,
 						);
 					}
 				}

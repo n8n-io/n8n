@@ -261,7 +261,7 @@ export class Clockify implements INodeType {
 						'POST',
 						`/workspaces/${workspaceId}/projects`,
 						body,
-						qs
+						qs,
 					);
 				}
 
@@ -276,7 +276,7 @@ export class Clockify implements INodeType {
 						'DELETE',
 						`/workspaces/${workspaceId}/projects/${projectId}`,
 						{},
-						qs
+						qs,
 					);
 
 					responseData = { success: true };
@@ -293,7 +293,7 @@ export class Clockify implements INodeType {
 						'GET',
 						`/workspaces/${workspaceId}/projects/${projectId}`,
 						{},
-						qs
+						qs,
 					);
 				}
 
@@ -313,7 +313,7 @@ export class Clockify implements INodeType {
 							'GET',
 							`/workspaces/${workspaceId}/projects`,
 							{},
-							qs
+							qs,
 						);
 
 					} else {
@@ -325,7 +325,7 @@ export class Clockify implements INodeType {
 							'GET',
 							`/workspaces/${workspaceId}/projects`,
 							{},
-							qs
+							qs,
 						);
 
 						responseData = responseData.splice(0, qs.limit);
@@ -356,7 +356,7 @@ export class Clockify implements INodeType {
 						'PUT',
 						`/workspaces/${workspaceId}/projects/${projectId}`,
 						body,
-						qs
+						qs,
 					);
 				}
 			}
@@ -378,7 +378,7 @@ export class Clockify implements INodeType {
 						'POST',
 						`/workspaces/${workspaceId}/tags`,
 						body,
-						qs
+						qs,
 					);
 				}
 
@@ -393,7 +393,7 @@ export class Clockify implements INodeType {
 						'DELETE',
 						`/workspaces/${workspaceId}/tags/${tagId}`,
 						{},
-						qs
+						qs,
 					);
 
 					responseData = { success: true };
@@ -415,7 +415,7 @@ export class Clockify implements INodeType {
 							'GET',
 							`/workspaces/${workspaceId}/tags`,
 							{},
-							qs
+							qs,
 						);
 
 					} else {
@@ -427,7 +427,7 @@ export class Clockify implements INodeType {
 							'GET',
 							`/workspaces/${workspaceId}/tags`,
 							{},
-							qs
+							qs,
 						);
 
 						responseData = responseData.splice(0, qs.limit);
@@ -451,7 +451,7 @@ export class Clockify implements INodeType {
 						'PUT',
 						`/workspaces/${workspaceId}/tags/${tagId}`,
 						body,
-						qs
+						qs,
 					);
 				}
 			}
@@ -490,7 +490,7 @@ export class Clockify implements INodeType {
 						'POST',
 						`/workspaces/${workspaceId}/time-entries`,
 						body,
-						qs
+						qs,
 					);
 				}
 
@@ -505,7 +505,7 @@ export class Clockify implements INodeType {
 						'DELETE',
 						`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 						{},
-						qs
+						qs,
 					);
 
 					responseData = { success: true };
@@ -522,7 +522,7 @@ export class Clockify implements INodeType {
 						'GET',
 						`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 						{},
-						qs
+						qs,
 					);
 				}
 
@@ -555,7 +555,7 @@ export class Clockify implements INodeType {
 							'GET',
 							`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 							{},
-							qs
+							qs,
 						);
 
 						body.start = start;
@@ -566,7 +566,7 @@ export class Clockify implements INodeType {
 						'PUT',
 						`/workspaces/${workspaceId}/time-entries/${timeEntryId}`,
 						body,
-						qs
+						qs,
 					);
 				}
 			}

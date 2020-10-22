@@ -13,7 +13,7 @@ export async function harvestApiRequest(
 		qs: IDataObject = {},
 		uri: string,
 		body: IDataObject = {},
-		option: IDataObject = {}
+		option: IDataObject = {},
 	): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('harvestApi') as IDataObject;
@@ -82,7 +82,7 @@ export async function harvestApiRequestAllItems(
 		uri: string,
 		resource: string,
 		body: IDataObject = {},
-		option: IDataObject = {}
+		option: IDataObject = {},
 	): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];

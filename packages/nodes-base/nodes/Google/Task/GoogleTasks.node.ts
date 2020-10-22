@@ -65,14 +65,14 @@ export class GoogleTasks implements INodeType {
 			// Get all the tasklists to display them to user so that he can select them easily
 
 			async getTasks(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tasks = await googleApiRequestAllItems.call(
 					this,
 					'items',
 					'GET',
-					'/tasks/v1/users/@me/lists'
+					'/tasks/v1/users/@me/lists',
 				);
 				for (const task of tasks) {
 					const taskName = task.title;
@@ -105,7 +105,7 @@ export class GoogleTasks implements INodeType {
 					body.title = this.getNodeParameter('title', i) as string;
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
-						i
+						i,
 					) as IDataObject;
 
 					if (additionalFields.parent) {
@@ -139,7 +139,7 @@ export class GoogleTasks implements INodeType {
 						'POST',
 						`/tasks/v1/lists/${taskId}/tasks`,
 						body,
-						qs
+						qs,
 					);
 				}
 				if (operation === 'delete') {
@@ -151,7 +151,7 @@ export class GoogleTasks implements INodeType {
 						this,
 						'DELETE',
 						`/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
-						{}
+						{},
 					);
 					responseData = { success: true };
 				}
@@ -164,7 +164,7 @@ export class GoogleTasks implements INodeType {
 						'GET',
 						`/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
 						{},
-						qs
+						qs,
 					);
 				}
 				if (operation === 'getAll') {
@@ -173,7 +173,7 @@ export class GoogleTasks implements INodeType {
 					const taskListId = this.getNodeParameter('task', i) as string;
 					const options = this.getNodeParameter(
 						'additionalFields',
-						i
+						i,
 					) as IDataObject;
 					if (options.completedMax) {
 						qs.completedMax = options.completedMax as string;
@@ -207,7 +207,7 @@ export class GoogleTasks implements INodeType {
 							'GET',
 							`/tasks/v1/lists/${taskListId}/tasks`,
 							{},
-							qs
+							qs,
 						);
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
@@ -216,7 +216,7 @@ export class GoogleTasks implements INodeType {
 							'GET',
 							`/tasks/v1/lists/${taskListId}/tasks`,
 							{},
-							qs
+							qs,
 						);
 						responseData = responseData.items;
 					}
@@ -228,7 +228,7 @@ export class GoogleTasks implements INodeType {
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					const updateFields = this.getNodeParameter(
 						'updateFields',
-						i
+						i,
 					) as IDataObject;
 
 					if (updateFields.previous) {
@@ -264,7 +264,7 @@ export class GoogleTasks implements INodeType {
 						'PATCH',
 						`/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
 						body,
-						qs
+						qs,
 					);
 				}
 			}

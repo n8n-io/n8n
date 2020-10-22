@@ -346,7 +346,7 @@ export function displayParameterPath(nodeValues: INodeParameters, parameter: INo
 	if (path !== '') {
 		resolvedNodeValues = get(
 			nodeValues,
-			path
+			path,
 		) as INodeParameters;
 	}
 
@@ -355,7 +355,7 @@ export function displayParameterPath(nodeValues: INodeParameters, parameter: INo
 	if (path && path.split('.').indexOf('parameters') === 0) {
 		nodeValuesRoot = get(
 			nodeValues,
-			'parameters'
+			'parameters',
 		) as INodeParameters;
 	}
 
@@ -998,7 +998,7 @@ export function addToIssuesIfMissing(foundIssues: INodeIssues, nodeProperties: I
 export function getParameterValueByPath(nodeValues: INodeParameters, parameterName: string, path: string) {
 	return get(
 		nodeValues,
-		path ? path + '.' + parameterName : parameterName
+		path ? path + '.' + parameterName : parameterName,
 	);
 }
 

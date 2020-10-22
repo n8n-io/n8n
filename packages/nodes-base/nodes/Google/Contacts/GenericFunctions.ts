@@ -50,7 +50,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 			// Try to return the error prettier
 			throw new Error(
-				`Google Contacts error response [${error.statusCode}]: ${errors}`
+				`Google Contacts error response [${error.statusCode}]: ${errors}`,
 			);
 		}
 		throw error;
