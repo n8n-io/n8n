@@ -374,6 +374,23 @@ export class Airtable implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Ignore Fields',
+						name: 'ignoreFields',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'update',
+								],
+								'/updateAllFields': [
+									true,
+								],
+							},
+						},
+						default: '',
+						description: 'Comma separated list of fields to ignore.',
+					},
+					{
 						displayName: 'Typecast',
 						name: 'typecast',
 						type: 'boolean',
@@ -536,6 +553,16 @@ export class Airtable implements INodeType {
 				if (updateAllFields === true) {
 					// Update all the fields the item has
 					body.fields = items[i].json;
+
+					if (options.ignoreFields && options.ignoreFields !== '') {
+						const ignoreFields = (options.ignoreFields as string).split(',').map(field => field.trim()).filter(field => !!field);
+						if (ignoreFields.length) {
+							// From: https://stackoverflow.com/questions/17781472/how-to-get-a-subset-of-a-javascript-objects-properties
+							body.fields = Object.entries(items[i].json)
+								.filter(([key]) => !ignoreFields.includes(key))
+								.reduce((obj, [key, val]) => Object.assign(obj, { [key]: val }), {});
+						}
+					}
 				} else {
 					// Update only the specified fields
 					body.fields = {} as IDataObject;
