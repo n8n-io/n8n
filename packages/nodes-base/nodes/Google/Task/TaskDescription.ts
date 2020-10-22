@@ -39,11 +39,11 @@ export const taskOperations = [
 				name: 'Update',
 				value: 'update',
 				description: 'Update a task',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
-	}
+	},
 ] as INodeProperties[];
 
 export const taskFields = [
@@ -91,7 +91,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -148,7 +148,7 @@ export const taskFields = [
 					{
 						name: 'Completed',
 						value: 'completed',
-					}
+					},
 				],
 				default: '',
 				description: 'Current status of the task.',
@@ -215,7 +215,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		default: '',
 	},
@@ -295,7 +295,7 @@ export const taskFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100
+			maxValue: 100,
 		},
 		default: 20,
 		description: 'How many results to return.',
@@ -373,7 +373,7 @@ export const taskFields = [
 				default: '',
 				description: 'Lower bound for a task last modification time (as a RFC 3339 timestamp) to filter by.',
 			},
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 task:update                                */
@@ -429,7 +429,7 @@ export const taskFields = [
 				resource: [
 					'task',
 				],
-			}
+			},
 		},
 		options: [
 			{
@@ -476,7 +476,7 @@ export const taskFields = [
 					{
 						name: 'Completed',
 						value: 'completed',
-					}
+					},
 				],
 				default: '',
 				description: 'Current status of the task.',

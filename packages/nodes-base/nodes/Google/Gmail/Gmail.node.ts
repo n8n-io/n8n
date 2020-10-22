@@ -150,12 +150,12 @@ export class Gmail implements INodeType {
 					const labelId = label.id;
 					returnData.push({
 						name: labelName,
-						value: labelId
+						value: labelId,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

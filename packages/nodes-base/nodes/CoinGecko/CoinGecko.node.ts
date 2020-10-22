@@ -336,7 +336,7 @@ export class CoinGecko implements INodeType {
 							'GET',
 							`/coins/${coinId}/tickers`,
 							{},
-							qs,
+							qs
 						);
 					} else {
 						const limit = this.getNodeParameter('limit', i) as number;

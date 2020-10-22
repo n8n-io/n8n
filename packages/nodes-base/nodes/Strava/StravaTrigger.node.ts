@@ -281,7 +281,7 @@ export class StravaTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(body)
+				this.helpers.returnJsonArray(body),
 			],
 		};
 	}

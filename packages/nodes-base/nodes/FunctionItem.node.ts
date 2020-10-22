@@ -70,7 +70,7 @@ export class FunctionItem implements INodeType {
 			require: {
 				external: false as boolean | { modules: string[] },
 				builtin: [] as string[],
-			}
+			},
 		};
 
 		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
@@ -101,7 +101,7 @@ export class FunctionItem implements INodeType {
 		}
 
 		const returnItem: INodeExecutionData = {
-			json: jsonData
+			json: jsonData,
 		};
 
 		if (item.binary) {

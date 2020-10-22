@@ -63,7 +63,7 @@ export class Automizy implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 
 			...contactOperations,
@@ -86,12 +86,12 @@ export class Automizy implements INodeType {
 					this,
 					'smartLists',
 					'GET',
-					`/smart-lists`,
+					`/smart-lists`
 				);
 				for (const list of lists) {
 					returnData.push({
 						name: list.name,
-						value: list.id
+						value: list.id,
 					});
 				}
 				return returnData;
@@ -109,7 +109,7 @@ export class Automizy implements INodeType {
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
-						value: tag.name
+						value: tag.name,
 					});
 				}
 				return returnData;
@@ -122,12 +122,12 @@ export class Automizy implements INodeType {
 					this,
 					'customFields',
 					'GET',
-					'/custom-fields',
+					'/custom-fields'
 				);
 				for (const customField of customFields) {
 					returnData.push({
 						name: customField.name,
-						value: customField.id
+						value: customField.id,
 					});
 				}
 				return returnData;
@@ -178,7 +178,7 @@ export class Automizy implements INodeType {
 						this,
 						'POST',
 						`/smart-lists/${listId}/contacts`,
-						body,
+						body
 					);
 				}
 
@@ -188,7 +188,7 @@ export class Automizy implements INodeType {
 					responseData = await automizyApiRequest.call(
 						this,
 						'DELETE',
-						`/contacts/${contactId}`,
+						`/contacts/${contactId}`
 					);
 
 					responseData = { success: true };
@@ -200,7 +200,7 @@ export class Automizy implements INodeType {
 					responseData = await automizyApiRequest.call(
 						this,
 						'GET',
-						`/contacts/${contactId}`,
+						`/contacts/${contactId}`
 					);
 				}
 
@@ -227,7 +227,7 @@ export class Automizy implements INodeType {
 							'GET',
 							`/smart-lists/${listId}/contacts`,
 							{},
-							qs,
+							qs
 						);
 
 					} else {
@@ -238,7 +238,7 @@ export class Automizy implements INodeType {
 							'GET',
 							`/smart-lists/${listId}/contacts`,
 							{},
-							qs,
+							qs
 						);
 
 						responseData = responseData.contacts;
@@ -272,7 +272,7 @@ export class Automizy implements INodeType {
 						this,
 						'PATCH',
 						`/contacts/${email}`,
-						body,
+						body
 					);
 				}
 			}
@@ -290,7 +290,7 @@ export class Automizy implements INodeType {
 						this,
 						'POST',
 						`/smart-lists`,
-						body,
+						body
 					);
 				}
 
@@ -300,7 +300,7 @@ export class Automizy implements INodeType {
 					responseData = await automizyApiRequest.call(
 						this,
 						'DELETE',
-						`/smart-lists/${listId}`,
+						`/smart-lists/${listId}`
 					);
 
 					responseData = { success: true };
@@ -312,7 +312,7 @@ export class Automizy implements INodeType {
 					responseData = await automizyApiRequest.call(
 						this,
 						'GET',
-						`/smart-lists/${listId}`,
+						`/smart-lists/${listId}`
 					);
 				}
 
@@ -337,7 +337,7 @@ export class Automizy implements INodeType {
 							'GET',
 							`/smart-lists`,
 							{},
-							qs,
+							qs
 						);
 
 					} else {
@@ -348,7 +348,7 @@ export class Automizy implements INodeType {
 							'GET',
 							`/smart-lists`,
 							{},
-							qs,
+							qs
 						);
 
 						responseData = responseData.smartLists;
@@ -368,7 +368,7 @@ export class Automizy implements INodeType {
 						this,
 						'PATCH',
 						`/smart-lists/${listId}`,
-						body,
+						body
 					);
 				}
 			}

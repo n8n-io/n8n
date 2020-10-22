@@ -24,7 +24,7 @@ export const planOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all plans.',
-			}
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform.',

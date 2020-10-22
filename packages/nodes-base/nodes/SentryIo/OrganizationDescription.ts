@@ -29,7 +29,7 @@ export const organizationOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all organizations',
-			}
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform',
@@ -112,7 +112,7 @@ export const organizationFields = [
 				default: true,
 				description: 'Restrict results to organizations which you are the owner',
 			},
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                organization:get                            */
@@ -200,6 +200,6 @@ export const organizationFields = [
 				default: '',
 				description: 'The unique URL slug for this organization. If this is not provided a slug is automatically generated based on the name',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

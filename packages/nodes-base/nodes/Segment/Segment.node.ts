@@ -74,7 +74,7 @@ export class Segment implements INodeType {
 					{
 						name: 'Identify',
 						value: 'identify',
-						description: 'Identify lets you tie a user to their actions'
+						description: 'Identify lets you tie a user to their actions',
 					},
 					{
 						name: 'Track',

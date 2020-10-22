@@ -54,7 +54,7 @@ export class GSuiteAdmin implements INodeType {
 					},
 				],
 				default: 'user',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...userOperations,
 			...userFields,
@@ -80,7 +80,7 @@ export class GSuiteAdmin implements INodeType {
 					const domainId = domain.domainName;
 					returnData.push({
 						name: domainName,
-						value: domainId
+						value: domainId,
 					});
 				}
 				return returnData;
@@ -102,7 +102,7 @@ export class GSuiteAdmin implements INodeType {
 					const schemaId = schema.schemaName;
 					returnData.push({
 						name: schemaName,
-						value: schemaId
+						value: schemaId,
 					});
 				}
 				return returnData;
@@ -182,7 +182,7 @@ export class GSuiteAdmin implements INodeType {
 							this,
 							'POST',
 							`/directory/v1/users/${responseData.id}/makeAdmin`,
-							{ status: true },
+							{ status: true }
 						);
 
 						responseData.isAdmin = true;

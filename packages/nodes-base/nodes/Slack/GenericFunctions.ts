@@ -20,12 +20,12 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {
-			'Content-Type': 'application/json; charset=utf-8'
+			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
 		qs: query,
 		uri: `https://slack.com/api${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(body).length === 0) {

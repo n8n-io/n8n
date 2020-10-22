@@ -38,7 +38,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		qs: query,
 		uri: uri || `/api${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	try {

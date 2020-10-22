@@ -45,7 +45,7 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Video Uploads',
 						value: 'graph-video.facebook.com',
-					}
+					},
 				],
 				default: 'graph.facebook.com',
 				description: 'The Host URL of the request. Almost all requests are passed to the graph.facebook.com host URL. The single exception is video uploads, which use graph-video.facebook.com.',
@@ -265,7 +265,7 @@ export class FacebookGraphApi implements INodeType {
 						placeholder: '{\"field_name\": \"field_value\"}',
 						description: 'The query parameters to send, defined as a JSON object',
 						required: false,
-					}
+					},
 				],
 			},
 		],

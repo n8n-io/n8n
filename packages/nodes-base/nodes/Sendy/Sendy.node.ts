@@ -60,7 +60,7 @@ export class Sendy implements INodeType {
 					},
 				],
 				default: 'subscriber',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...campaignOperations,
 			...campaignFields,
@@ -148,7 +148,7 @@ export class Sendy implements INodeType {
 						this,
 						'POST',
 						'/api/campaigns/create.php',
-						body,
+						body
 					);
 
 					const success = [
@@ -184,7 +184,7 @@ export class Sendy implements INodeType {
 						this,
 						'POST',
 						'/subscribe',
-						body,
+						body
 					);
 
 					if (responseData === '1') {
@@ -206,7 +206,7 @@ export class Sendy implements INodeType {
 						this,
 						'POST',
 						'/api/subscribers/active-subscriber-count.php',
-						body,
+						body
 					);
 
 					const errors = [
@@ -239,7 +239,7 @@ export class Sendy implements INodeType {
 						this,
 						'POST',
 						'/api/subscribers/delete.php',
-						body,
+						body
 					);
 
 					if (responseData === '1') {
@@ -264,7 +264,7 @@ export class Sendy implements INodeType {
 						this,
 						'POST',
 						'/unsubscribe',
-						body,
+						body
 					);
 
 					if (responseData === '1') {
@@ -289,7 +289,7 @@ export class Sendy implements INodeType {
 						this,
 						'POST',
 						'/api/subscribers/subscription-status.php',
-						body,
+						body
 					);
 
 					const status = [

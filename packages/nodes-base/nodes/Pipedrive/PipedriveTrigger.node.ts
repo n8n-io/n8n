@@ -83,11 +83,11 @@ export class PipedriveTrigger implements INodeType {
 				options: [
 					{
 						name: 'Basic Auth',
-						value: 'basicAuth'
+						value: 'basicAuth',
 					},
 					{
 						name: 'None',
-						value: 'none'
+						value: 'none',
 					},
 				],
 				default: 'none',
@@ -106,22 +106,22 @@ export class PipedriveTrigger implements INodeType {
 					{
 						name: 'Added',
 						value: 'added',
-						description: 'Data got added'
+						description: 'Data got added',
 					},
 					{
 						name: 'Deleted',
 						value: 'deleted',
-						description: 'Data got deleted'
+						description: 'Data got deleted',
 					},
 					{
 						name: 'Merged',
 						value: 'merged',
-						description: 'Data got merged'
+						description: 'Data got merged',
 					},
 					{
 						name: 'Updated',
 						value: 'updated',
-						description: 'Data got updated'
+						description: 'Data got updated',
 					},
 				],
 				default: '*',
@@ -311,7 +311,7 @@ export class PipedriveTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

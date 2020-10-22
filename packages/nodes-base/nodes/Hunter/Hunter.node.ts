@@ -31,7 +31,7 @@ export class Hunter implements INodeType {
 			{
 				name: 'hunterApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -150,7 +150,7 @@ export class Hunter implements INodeType {
 								name: 'Generic',
 								value: 'generic',
 							},
-						]
+						],
 					},
 					{
 						displayName: 'Seniority',
@@ -170,7 +170,7 @@ export class Hunter implements INodeType {
 								name: 'Executive',
 								value: 'executive',
 							},
-						]
+						],
 					},
 					{
 						displayName: 'Department',
@@ -218,7 +218,7 @@ export class Hunter implements INodeType {
 								name: 'Communication',
 								value: 'communication',
 							},
-						]
+						],
 					},
 				],
 			},

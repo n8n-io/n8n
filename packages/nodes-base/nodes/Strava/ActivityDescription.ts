@@ -79,7 +79,7 @@ export const activityFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		default: '',
@@ -97,7 +97,7 @@ export const activityFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		default: '',
@@ -114,8 +114,8 @@ export const activityFields = [
 					'activity',
 				],
 				operation: [
-					'create'
-				]
+					'create',
+				],
 			},
 		},
 		description: 'ISO 8601 formatted date time.',
@@ -132,7 +132,7 @@ export const activityFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		typeOptions: {

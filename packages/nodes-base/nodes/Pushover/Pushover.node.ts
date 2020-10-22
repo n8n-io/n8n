@@ -369,7 +369,7 @@ export class Pushover implements INodeType {
 								value: Buffer.from(binaryData.data, BINARY_ENCODING),
 								options: {
 									filename: binaryData.fileName,
-								}
+								},
 							};
 
 							delete body.attachmentsUi;
@@ -380,7 +380,7 @@ export class Pushover implements INodeType {
 						this,
 						'POST',
 						`/messages.json`,
-						body,
+						body
 					);
 				}
 			}

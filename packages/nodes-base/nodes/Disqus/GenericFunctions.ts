@@ -13,7 +13,7 @@ export async function disqusApiRequest(
 		qs: IDataObject = {},
 		uri?: string,
 		body: IDataObject = {},
-		option: IDataObject = {},
+		option: IDataObject = {}
 	): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('disqusApi') as IDataObject;
@@ -38,7 +38,7 @@ export async function disqusApiRequest(
 		method,
 		body,
 		uri: `https://disqus.com/api/3.0/${uri}?${queryStringElements.join('&')}`,
-		json: true
+		json: true,
 	};
 
 	options = Object.assign({}, options, option);
@@ -74,7 +74,7 @@ export async function disqusApiRequestAllItems(
 		qs: IDataObject = {},
 		uri?: string,
 		body: IDataObject = {},
-		option: IDataObject = {},
+		option: IDataObject = {}
 	): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];

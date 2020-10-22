@@ -1,7 +1,7 @@
 import {
 	Db,
-	IExternalHooksFunctions,
 	IExternalHooksClass,
+	IExternalHooksFunctions,
 } from './';
 
 import * as config from '../config';

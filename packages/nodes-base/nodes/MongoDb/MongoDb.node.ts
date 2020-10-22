@@ -22,7 +22,7 @@ export class MongoDb implements INodeType {
 
 		const client: MongoClient = await MongoClient.connect(connectionString, {
 			useNewUrlParser: true,
-			useUnifiedTopology: true
+			useUnifiedTopology: true,
 		});
 
 		const mdb = client.db(database as string);
@@ -76,8 +76,8 @@ export class MongoDb implements INodeType {
 				returnItems.push({
 					json: {
 						...insertItems[parseInt(i, 10)],
-						id: insertedIds[parseInt(i, 10)] as string
-					}
+						id: insertedIds[parseInt(i, 10)] as string,
+					},
 				});
 			}
 		} else if (operation === 'update') {

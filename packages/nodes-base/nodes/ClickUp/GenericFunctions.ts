@@ -24,7 +24,7 @@ export async function clickupApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs,
 		body,
 		uri: uri ||`https://api.clickup.com/api/v2${resource}`,
-		json: true
+		json: true,
 	};
 
 	try {
