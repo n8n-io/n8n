@@ -21,7 +21,7 @@ import {
 export class StravaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Strava Trigger',
-		name: 'stravTrigger',
+		name: 'stravaTrigger',
 		icon: 'file:strava.svg',
 		group: ['trigger'],
 		version: 1,
