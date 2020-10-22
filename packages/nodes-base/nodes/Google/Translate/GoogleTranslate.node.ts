@@ -114,8 +114,8 @@ export class GoogleTranslate implements INodeType {
 			//         All
 			// ----------------------------------
 			{
-				displayName: 'Query',
-				name: 'query',
+				displayName: 'Text',
+				name: 'text',
 				type: 'string',
 				default: '',
 				description: 'The input text to translate',
@@ -181,10 +181,10 @@ export class GoogleTranslate implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'language') {
 				if (operation === 'translate') {
-					const query = this.getNodeParameter('query', i) as string;
+					const text = this.getNodeParameter('text', i) as string;
 					const translateTo = this.getNodeParameter('translateTo', i) as string;
 
-					const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, { q: query, target: translateTo });
+					const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, { q: text, target: translateTo });
 					responseData.push(response.data.translations[0]);
 				}
 			}
