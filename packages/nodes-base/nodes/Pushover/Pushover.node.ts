@@ -336,7 +336,7 @@ export class Pushover implements INodeType {
 						user: userKey,
 						message,
 						priority,
-					}
+					};
 
 					if (priority === 2) {
 						body.retry = this.getNodeParameter('retry', i) as number;
