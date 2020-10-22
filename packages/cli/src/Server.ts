@@ -715,11 +715,12 @@ class App {
 			const allNodes = nodeTypes.getAll();
 
 			allNodes.forEach((nodeData) => {
-				// Make a copy of the object. If we don't do this, then when 
+				// Make a copy of the object. If we don't do this, then when
 				// The method below is called the properties are removed for good
 				// This happens because nodes are returned as reference.
-				let nodeInfo: INodeTypeDescription = {...nodeData.description};
-				if (!['true', '1'].includes(req.query.includeProperties as string)) {
+				const nodeInfo: INodeTypeDescription = {...nodeData.description};
+				if (req.query.includeProperties !== 'true') {
+					// @ts-ignore
 					delete nodeInfo.properties;
 				}
 				returnData.push(nodeInfo);
@@ -731,10 +732,16 @@ class App {
 
 		// Returns node information baesd on namese
 		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-			const nodeNames = _.get(req, 'body.nodeNames', []);
+			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
 			const nodeTypes = NodeTypes();
-			const allNodes = nodeTypes.getAll();
-			return allNodes.filter(node => nodeNames.includes(node.description.name)).map(node => node.description);
+
+			return nodeNames.map(name => {
+				try {
+					return nodeTypes.getByName(name);
+				} catch (e) {
+					return undefined;
+				}
+			}).filter(nodeData => !!nodeData).map(nodeData => nodeData!.description);
 		}));
 
 
