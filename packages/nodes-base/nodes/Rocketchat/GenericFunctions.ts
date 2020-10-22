@@ -21,7 +21,7 @@ export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFuncti
 		method,
 		body,
 		uri: `${credentials.domain}/api/v1${resource}.${operation}`,
-		json: true
+		json: true,
 	};
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;

@@ -3,8 +3,8 @@ import {
 	Db,
 	ICredentialsTypeData,
 	ITransferNodeTypes,
-	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
+	IWorkflowExecutionDataProcess,
 	NodeTypes,
 	WorkflowCredentials,
 	WorkflowRunner,
@@ -120,12 +120,12 @@ export async function executeErrorWorkflow(workflowId: string, workflowErrorData
 					main: [
 						[
 							{
-								json: workflowErrorData
-							}
-						]
+								json: workflowErrorData,
+							},
+						],
 					],
 				},
-			},
+			}
 		);
 
 		const runExecutionData: IRunExecutionData = {

@@ -74,7 +74,7 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Name of the account. Maximum size is 255 characters.',
@@ -328,7 +328,7 @@ export const accountFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of account that needs to be fetched',
@@ -590,7 +590,7 @@ export const accountFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of account that needs to be fetched',
@@ -611,7 +611,7 @@ export const accountFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of account that needs to be fetched',
@@ -684,7 +684,7 @@ export const accountFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                             account:addNote                                */
@@ -702,7 +702,7 @@ export const accountFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Id of account that needs to be fetched',
@@ -720,7 +720,7 @@ export const accountFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Title of the note.',
@@ -769,6 +769,6 @@ export const accountFields = [
 				default: '',
 				description: 'ID of the user who owns the note.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

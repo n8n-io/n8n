@@ -95,7 +95,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -109,7 +109,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -123,7 +123,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -137,7 +137,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -151,7 +151,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -168,7 +168,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -191,7 +191,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'blur'
+							'blur',
 						],
 					},
 				},
@@ -209,7 +209,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'blur'
+							'blur',
 						],
 					},
 				},
@@ -228,7 +228,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'border'
+							'border',
 						],
 					},
 				},
@@ -242,7 +242,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'border'
+							'border',
 						],
 					},
 				},
@@ -256,7 +256,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'border'
+							'border',
 						],
 					},
 				},
@@ -275,7 +275,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'crop'
+							'crop',
 						],
 					},
 				},
@@ -289,7 +289,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'crop'
+							'crop',
 						],
 					},
 				},
@@ -303,7 +303,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'crop'
+							'crop',
 						],
 					},
 				},
@@ -317,7 +317,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'crop'
+							'crop',
 						],
 					},
 				},
@@ -335,7 +335,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'resize'
+							'resize',
 						],
 					},
 				},
@@ -349,7 +349,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'resize'
+							'resize',
 						],
 					},
 				},
@@ -390,7 +390,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'resize'
+							'resize',
 						],
 					},
 				},
@@ -412,7 +412,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'rotate'
+							'rotate',
 						],
 					},
 				},
@@ -426,7 +426,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'rotate'
+							'rotate',
 						],
 					},
 				},
@@ -506,7 +506,7 @@ export class EditImage implements INodeType {
 
 				],
 			},
-		]
+		],
 	};
 
 

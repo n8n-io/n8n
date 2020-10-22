@@ -279,7 +279,7 @@ export class Jira implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -524,7 +524,7 @@ export class Jira implements INodeType {
 								// @ts-ignore
 								notificationRecipients.users = notificationRecipientsValues.users.map(user => {
 									return {
-										accountId: user
+										accountId: user,
 									};
 								});
 							}
@@ -533,7 +533,7 @@ export class Jira implements INodeType {
 								// @ts-ignore
 								notificationRecipients.groups = notificationRecipientsValues.groups.map(group => {
 									return {
-										name: group
+										name: group,
 									};
 								});
 							}
@@ -547,7 +547,7 @@ export class Jira implements INodeType {
 								// @ts-ignore
 								notificationRecipientsRestrictions.groups = notificationRecipientsRestrictionsValues.groups.map(group => {
 									return {
-										name: group
+										name: group,
 									};
 								});
 							}

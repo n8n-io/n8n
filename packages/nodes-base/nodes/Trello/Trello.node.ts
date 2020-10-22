@@ -77,7 +77,7 @@ export class Trello implements INodeType {
 				options: [
 					{
 						name: 'Attachment',
-						value: 'attachment'
+						value: 'attachment',
 					},
 					{
 						name: 'Board',
@@ -97,7 +97,7 @@ export class Trello implements INodeType {
 					},
 					{
 						name: 'Label',
-						value: 'label'
+						value: 'label',
 					},
 					{
 						name: 'List',
@@ -128,7 +128,7 @@ export class Trello implements INodeType {
 			...cardCommentFields,
 			...checklistFields,
 			...labelFields,
-			...listFields
+			...listFields,
 
 		],
 	};
@@ -582,7 +582,7 @@ export class Trello implements INodeType {
 					Object.assign(qs, {
 						idBoard,
 						name,
-						color
+						color,
 					});
 
 					endpoint = 'labels';

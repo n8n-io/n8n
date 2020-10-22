@@ -58,7 +58,7 @@ export class GoogleContacts implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...contactOperations,
 			...contactFields,
@@ -77,19 +77,19 @@ export class GoogleContacts implements INodeType {
 					this,
 					'contactGroups',
 					'GET',
-					`/contactGroups`,
+					`/contactGroups`
 				);
 				for (const group of groups) {
 					const groupName = group.name;
 					const groupId = group.resourceName;
 					returnData.push({
 						name: groupName,
-						value: groupId
+						value: groupId,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -177,9 +177,9 @@ export class GoogleContacts implements INodeType {
 								date: {
 									day,
 									month,
-									year
-								}
-							}
+									year,
+								},
+							},
 						];
 					}
 
@@ -206,8 +206,8 @@ export class GoogleContacts implements INodeType {
 						const memberships = (additionalFields.group as string[]).map((groupId: string) => {
 							return {
 								contactGroupMembership: {
-									contactGroupResourceName: groupId
-								}
+									contactGroupResourceName: groupId,
+								},
 							};
 						});
 
@@ -253,7 +253,7 @@ export class GoogleContacts implements INodeType {
 						'GET',
 						`/people/${contactId}`,
 						{},
-						qs,
+						qs
 					);
 
 					if (!rawData) {
@@ -286,7 +286,7 @@ export class GoogleContacts implements INodeType {
 							'GET',
 							`/people/me/connections`,
 							{},
-							qs,
+							qs
 						);
 					} else {
 						qs.pageSize = this.getNodeParameter('limit', i) as number;
@@ -295,7 +295,7 @@ export class GoogleContacts implements INodeType {
 							'GET',
 							`/people/me/connections`,
 							{},
-							qs,
+							qs
 						);
 						responseData = responseData.connections;
 					}
@@ -331,7 +331,7 @@ export class GoogleContacts implements INodeType {
 							'GET',
 							`/people/${contactId}`,
 							{},
-							{ personFields: 'Names' },
+							{ personFields: 'Names' }
 						);
 
 						etag = data.etag;
@@ -425,9 +425,9 @@ export class GoogleContacts implements INodeType {
 								date: {
 									day,
 									month,
-									year
-								}
-							}
+									year,
+								},
+							},
 						];
 
 						updatePersonFields.push('birthdays');
@@ -459,8 +459,8 @@ export class GoogleContacts implements INodeType {
 						const memberships = (updateFields.group as string[]).map((groupId: string) => {
 							return {
 								contactGroupMembership: {
-									contactGroupResourceName: groupId
-								}
+									contactGroupResourceName: groupId,
+								},
 							};
 						});
 

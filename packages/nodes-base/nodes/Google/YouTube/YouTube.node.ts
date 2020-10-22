@@ -95,7 +95,7 @@ export class YouTube implements INodeType {
 					},
 				],
 				default: 'channel',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...channelOperations,
 			...channelFields,
@@ -126,14 +126,14 @@ export class YouTube implements INodeType {
 					this,
 					'items',
 					'GET',
-					'/youtube/v3/i18nLanguages',
+					'/youtube/v3/i18nLanguages'
 				);
 				for (const language of languages) {
 					const languageName = language.id.toUpperCase();
 					const languageId = language.id;
 					returnData.push({
 						name: languageName,
-						value: languageId
+						value: languageId,
 					});
 				}
 				return returnData;
@@ -169,14 +169,14 @@ export class YouTube implements INodeType {
 					'GET',
 					'/youtube/v3/videoCategories',
 					{},
-					qs,
+					qs
 				);
 				for (const category of categories) {
 					const categoryName = category.snippet.title;
 					const categoryId = category.id;
 					returnData.push({
 						name: categoryName,
-						value: categoryId
+						value: categoryId,
 					});
 				}
 				return returnData;
@@ -196,19 +196,19 @@ export class YouTube implements INodeType {
 					'GET',
 					'/youtube/v3/playlists',
 					{},
-					qs,
+					qs
 				);
 				for (const playlist of playlists) {
 					const playlistName = playlist.snippet.title;
 					const playlistId = playlist.id;
 					returnData.push({
 						name: playlistName,
-						value: playlistId
+						value: playlistId,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -452,7 +452,7 @@ export class YouTube implements INodeType {
 								},
 							},
 						},
-						qs,
+						qs
 					);
 				}
 			}
@@ -649,7 +649,7 @@ export class YouTube implements INodeType {
 						this,
 						'DELETE',
 						'/youtube/v3/playlists',
-						body,
+						body
 					);
 
 					responseData = { success: true };
@@ -801,7 +801,7 @@ export class YouTube implements INodeType {
 						this,
 						'DELETE',
 						'/youtube/v3/playlistItems',
-						body,
+						body
 					);
 
 					responseData = { success: true };
@@ -999,7 +999,7 @@ export class YouTube implements INodeType {
 						'PUT',
 						`/youtube/v3/videos`,
 						data,
-						qs,
+						qs
 					);
 				}
 				//https://developers.google.com/youtube/v3/docs/playlists/update
@@ -1098,7 +1098,7 @@ export class YouTube implements INodeType {
 						this,
 						'DELETE',
 						'/youtube/v3/videos',
-						body,
+						body
 					);
 
 					responseData = { success: true };
@@ -1117,7 +1117,7 @@ export class YouTube implements INodeType {
 						this,
 						'POST',
 						'/youtube/v3/videos/rate',
-						body,
+						body
 					);
 
 					responseData = { success: true };

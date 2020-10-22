@@ -122,7 +122,7 @@ export class Signl4 implements INodeType {
 							{
 								name: 'Single ACK',
 								value: 'single_ack',
-								description: 'In case only one person needs to confirm this Signl.'
+								description: 'In case only one person needs to confirm this Signl.',
 							},
 							{
 								name: 'Multi ACK',
@@ -207,7 +207,7 @@ export class Signl4 implements INodeType {
 										default: '',
 									},
 								],
-							}
+							},
 						],
 					},
 					{
@@ -336,7 +336,7 @@ export class Signl4 implements INodeType {
 						data,
 						{},
 						endpoint,
-						{},
+						{}
 					);
 				}
 				// Resolve alert
@@ -359,7 +359,7 @@ export class Signl4 implements INodeType {
 						data,
 						{},
 						endpoint,
-						{},
+						{}
 					);
 				}
 			}

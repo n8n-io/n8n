@@ -13,7 +13,7 @@ export async function harvestApiRequest(
 		qs: IDataObject = {},
 		uri: string,
 		body: IDataObject = {},
-		option: IDataObject = {},
+		option: IDataObject = {}
 	): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('harvestApi') as IDataObject;
@@ -42,8 +42,8 @@ export async function harvestApiRequest(
 		uri: `https://api.harvestapp.com/v2/${uri}?${queryStringElements.join('&')}`,
 		json: true,
 		headers: {
-			"User-Agent": "Harvest API"
-		}
+			"User-Agent": "Harvest API",
+		},
 	};
 
 	options = Object.assign({}, options, option);
@@ -82,7 +82,7 @@ export async function harvestApiRequestAllItems(
 		uri: string,
 		resource: string,
 		body: IDataObject = {},
-		option: IDataObject = {},
+		option: IDataObject = {}
 	): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];

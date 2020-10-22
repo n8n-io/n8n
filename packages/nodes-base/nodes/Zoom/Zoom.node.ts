@@ -61,7 +61,7 @@ export class Zoom implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Zoom',
-			color: '#0B6CF9'
+			color: '#0B6CF9',
 		},
 		icon: 'file:zoom.png',
 		inputs: ['main'],
@@ -120,7 +120,7 @@ export class Zoom implements INodeType {
 				options: [
 					{
 						name: 'Meeting',
-						value: 'meeting'
+						value: 'meeting',
 					},
 					// {
 					// 	name: 'Meeting Registrant',
@@ -132,7 +132,7 @@ export class Zoom implements INodeType {
 					// }
 				],
 				default: 'meeting',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			//MEETINGS
 			...meetingOperations,
@@ -145,7 +145,7 @@ export class Zoom implements INodeType {
 			// 	//WEBINARS
 			// 	...webinarOperations,
 			// 	...webinarFields,
-		]
+		],
 
 	};
 	methods = {
@@ -160,12 +160,12 @@ export class Zoom implements INodeType {
 					const timezoneId = timezone;
 					returnData.push({
 						name: timezoneName,
-						value: timezoneId
+						value: timezoneId,
 					});
 				}
 				return returnData;
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

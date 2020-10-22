@@ -65,7 +65,7 @@ export class MailchimpTrigger implements INodeType {
 				httpMethod: 'POST',
 				reponseMode: 'onReceived',
 				path: 'webhook',
-			}
+			},
 		],
 		properties: [
 			{
@@ -93,7 +93,7 @@ export class MailchimpTrigger implements INodeType {
 				default: '',
 				description: 'The list that is gonna fire the event.',
 				typeOptions: {
-					loadOptionsMethod: 'getLists'
+					loadOptionsMethod: 'getLists',
 				},
 				options: [],
 			},
@@ -161,7 +161,7 @@ export class MailchimpTrigger implements INodeType {
 						description: `Whether the webhook is triggered by actions initiated via the API.`,
 					},
 				],
-			}
+			},
 		],
 	};
 
@@ -291,7 +291,7 @@ export class MailchimpTrigger implements INodeType {
 		}
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

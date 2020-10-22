@@ -48,7 +48,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		qs: query,
 		uri: uri || `${domain}/rest${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	try {

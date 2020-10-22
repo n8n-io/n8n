@@ -25,12 +25,12 @@ export async function postmarkApiRequest(this: IExecuteFunctions | IWebhookFunct
 		headers: {
 			'Content-Type': 'application/json',
 			'Accept': 'application/json',
-			'X-Postmark-Server-Token' : credentials.serverToken
+			'X-Postmark-Server-Token' : credentials.serverToken,
 		},
 		method,
 		body,
 		uri: 'https://api.postmarkapp.com' + endpoint,
-		json: true
+		json: true,
 	};
 	if (body === {}) {
 		delete options.body;

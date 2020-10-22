@@ -129,7 +129,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			assertion: signature,
 		},
 		uri: `${authUrl}/services/oauth2/token`,
-		json: true
+		json: true,
 	};
 
 	//@ts-ignore

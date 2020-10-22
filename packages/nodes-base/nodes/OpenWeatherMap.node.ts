@@ -28,7 +28,7 @@ export class OpenWeatherMap implements INodeType {
 			{
 				name: 'openWeatherMapApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -224,7 +224,7 @@ export class OpenWeatherMap implements INodeType {
 			// Set base data
 			qs = {
 				APPID: credentials.accessToken,
-				units: this.getNodeParameter('format', i) as string
+				units: this.getNodeParameter('format', i) as string,
 			};
 
 			// Get the location

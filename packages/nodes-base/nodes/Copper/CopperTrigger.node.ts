@@ -33,7 +33,7 @@ export class CopperTrigger implements INodeType {
 			{
 				name: 'copperApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{

@@ -17,7 +17,7 @@ import {
 
 export async function getAuthorization(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	credentials?: ICredentialDataDecryptedObject,
+	credentials?: ICredentialDataDecryptedObject
 ): Promise<IDataObject> {
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');

@@ -59,7 +59,7 @@ export class Switch implements INodeType {
 				displayOptions: {
 					show: {
 						mode: [
-							'expression'
+							'expression',
 						],
 					},
 				},
@@ -110,7 +110,7 @@ export class Switch implements INodeType {
 				displayOptions: {
 					show: {
 						dataType: [
-							'boolean'
+							'boolean',
 						],
 						mode: [
 							'rules',
@@ -131,7 +131,7 @@ export class Switch implements INodeType {
 				displayOptions: {
 					show: {
 						dataType: [
-							'boolean'
+							'boolean',
 						],
 						mode: [
 							'rules',
@@ -152,11 +152,11 @@ export class Switch implements INodeType {
 								options: [
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 								],
 								default: 'equal',
@@ -195,7 +195,7 @@ export class Switch implements INodeType {
 				displayOptions: {
 					show: {
 						dataType: [
-							'number'
+							'number',
 						],
 						mode: [
 							'rules',
@@ -216,7 +216,7 @@ export class Switch implements INodeType {
 				displayOptions: {
 					show: {
 						dataType: [
-							'number'
+							'number',
 						],
 						mode: [
 							'rules',
@@ -237,27 +237,27 @@ export class Switch implements INodeType {
 								options: [
 									{
 										name: 'Smaller',
-										value: 'smaller'
+										value: 'smaller',
 									},
 									{
 										name: 'Smaller Equal',
-										value: 'smallerEqual'
+										value: 'smallerEqual',
 									},
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 									{
 										name: 'Larger',
-										value: 'larger'
+										value: 'larger',
 									},
 									{
 										name: 'Larger Equal',
-										value: 'largerEqual'
+										value: 'largerEqual',
 									},
 								],
 								default: 'smaller',
@@ -296,7 +296,7 @@ export class Switch implements INodeType {
 				displayOptions: {
 					show: {
 						dataType: [
-							'string'
+							'string',
 						],
 						mode: [
 							'rules',
@@ -317,7 +317,7 @@ export class Switch implements INodeType {
 				displayOptions: {
 					show: {
 						dataType: [
-							'string'
+							'string',
 						],
 						mode: [
 							'rules',
@@ -338,23 +338,23 @@ export class Switch implements INodeType {
 								options: [
 									{
 										name: 'Contains',
-										value: 'contains'
+										value: 'contains',
 									},
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Contains',
-										value: 'notContains'
+										value: 'notContains',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 									{
 										name: 'Regex',
-										value: 'regex'
+										value: 'regex',
 									},
 								],
 								default: 'equal',

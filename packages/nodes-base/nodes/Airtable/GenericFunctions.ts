@@ -98,6 +98,6 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 	);
 
 	return {
-		records: returnData
+		records: returnData,
 	};
 }

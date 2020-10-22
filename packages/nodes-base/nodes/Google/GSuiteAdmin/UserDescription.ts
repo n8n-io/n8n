@@ -42,8 +42,8 @@ export const userOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const userFields = [
@@ -75,14 +75,14 @@ export const userFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create'
+					'create',
 				],
 				resource: [
-					'user'
+					'user',
 				],
 			},
 		},
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Password',
@@ -103,7 +103,7 @@ export const userFields = [
 			},
 		},
 		default: '',
-		description: 'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.'
+		description: 'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
 	},
 	{
 		displayName: 'Domain',
@@ -140,7 +140,7 @@ export const userFields = [
 			},
 		},
 		default: '',
-		description: `The username that will be set to the user. Example: If you domain is example.com and you set the username to jhon then the user's final email address will be jhon@example.com.`
+		description: `The username that will be set to the user. Example: If you domain is example.com and you set the username to jhon then the user's final email address will be jhon@example.com.`,
 	},
 	{
 		displayName: 'Make Admin',
@@ -750,14 +750,14 @@ export const userFields = [
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
-				default: ''
+				default: '',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
 				default: '',
-				description: 'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.'
+				description: 'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
 			},
 			{
 				displayName: 'Phones',

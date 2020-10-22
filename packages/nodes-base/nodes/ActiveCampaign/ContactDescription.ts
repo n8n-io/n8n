@@ -138,7 +138,7 @@ export const contactFields = [
 								default: '',
 								description: 'Value of the field to set.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -237,7 +237,7 @@ export const contactFields = [
 								default: '',
 								description: 'Value of the field to set.',
 							},
-						]
+						],
 					},
 				],
 			},

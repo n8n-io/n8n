@@ -134,7 +134,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			assertion: signature,
 		},
 		uri: 'https://oauth2.googleapis.com/token',
-		json: true
+		json: true,
 	};
 
 	//@ts-ignore

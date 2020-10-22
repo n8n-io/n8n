@@ -47,7 +47,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier for the customer.',
@@ -64,7 +64,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'Name of the event to track.',
@@ -125,7 +125,7 @@ export const eventFields = [
 				],
 				jsonParameters: [
 					false,
-				]
+				],
 			},
 		},
 		options: [
@@ -163,7 +163,7 @@ export const eventFields = [
 							},
 						],
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Type',
@@ -190,7 +190,7 @@ export const eventFields = [
 				],
 				operation: [
 					'trackAnonymous',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier for the customer.',
@@ -251,7 +251,7 @@ export const eventFields = [
 				],
 				jsonParameters: [
 					false,
-				]
+				],
 			},
 		},
 		options: [
@@ -288,7 +288,7 @@ export const eventFields = [
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},

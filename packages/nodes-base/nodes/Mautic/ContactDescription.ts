@@ -80,7 +80,7 @@ export const contactFields = [
 				],
 				jsonParameters: [
 					false,
-				]
+				],
 			},
 		},
 		default: '',
@@ -100,7 +100,7 @@ export const contactFields = [
 				],
 				jsonParameters: [
 					false,
-				]
+				],
 			},
 		},
 		default: '',
@@ -1162,7 +1162,7 @@ export const contactFields = [
 				description: `By default only the data of the fields get returned. If this<br />
 							  options gets set the RAW response with all data gets returned.`,
 			},
-		]
+		],
 	},
 
 ] as INodeProperties[];

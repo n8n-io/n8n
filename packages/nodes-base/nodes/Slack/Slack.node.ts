@@ -251,7 +251,7 @@ export class Slack implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -833,7 +833,7 @@ export class Slack implements INodeType {
 								filename: items[i].binary[binaryPropertyName].fileName,
 								//@ts-ignore
 								contentType: items[i].binary[binaryPropertyName].mimeType,
-							}
+							},
 						};
 						responseData = await slackApiRequest.call(this, 'POST', '/files.upload', {}, qs, { 'Content-Type': 'multipart/form-data' }, { formData: body });
 						responseData = responseData.file;

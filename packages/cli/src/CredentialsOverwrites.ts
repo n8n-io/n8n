@@ -4,8 +4,8 @@ import {
 
 import {
 	CredentialTypes,
-	ICredentialsOverwrite,
 	GenericHelpers,
+	ICredentialsOverwrite,
 } from './';
 
 
