@@ -33,7 +33,7 @@ export const companyOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get data of all companys',
+				description: 'Get data of all companies',
 			},
 			{
 				name: 'Update',
@@ -42,7 +42,7 @@ export const companyOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
+		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 

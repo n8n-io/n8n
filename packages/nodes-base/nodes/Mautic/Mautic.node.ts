@@ -101,14 +101,17 @@ export class Mautic implements INodeType {
 					{
 						name: 'Company',
 						value: 'company',
+						description: 'Create or modify a company'
 					},
 					{
 						name: 'Contact',
 						value: 'contact',
+						description: 'Create & modify contacts'
 					},
 					{
-						name: 'Contact Company',
+						name: 'Contact <> Company',
 						value: 'contactCompany',
+						description: 'Add/ remove contacts from a company'
 					},
 				],
 				default: 'contact',
