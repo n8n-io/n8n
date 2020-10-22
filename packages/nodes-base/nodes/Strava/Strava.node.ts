@@ -74,13 +74,13 @@ export class Strava implements INodeType {
 			if (resource === 'activity') {
 				//https://developers.strava.com/docs/reference/#api-Activities-createActivity
 				if (operation === 'create') {
-					const name  = this.getNodeParameter('name', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
 
-					const type  = this.getNodeParameter('type', i) as string;
+					const type = this.getNodeParameter('type', i) as string;
 
-					const startDate  = this.getNodeParameter('startDate', i) as string;
+					const startDate = this.getNodeParameter('startDate', i) as string;
 
-					const elapsedTime  = this.getNodeParameter('elapsedTime', i) as number;
+					const elapsedTime = this.getNodeParameter('elapsedTime', i) as number;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -105,33 +105,33 @@ export class Strava implements INodeType {
 				}
 				//https://developers.strava.com/docs/reference/#api-Activities-getActivityById
 				if (operation === 'get') {
-					const activityId  = this.getNodeParameter('activityId', i) as string;
+					const activityId = this.getNodeParameter('activityId', i) as string;
 
 					responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}`);
 				}
-				if (['getLaps', 'getZones', 'getKudoers', 'getComments'].includes(operation)) {
+				if (['getLaps', 'getZones', 'getKudos', 'getComments'].includes(operation)) {
 
 					const path: IDataObject = {
 						'getComments': 'comments',
 						'getZones': 'zones',
-						'getKudoers': 'kudoers',
+						'getKudos': 'kudos',
 						'getLaps': 'laps',
 					};
 
-					const activityId  = this.getNodeParameter('activityId', i) as string;
+					const activityId = this.getNodeParameter('activityId', i) as string;
 
-					const returnAll  = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					responseData = await stravaApiRequest.call(this, 'GET', `/activities/${activityId}/${path[operation]}`);
 
 					if (returnAll === false) {
-						const limit  = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
 					}
 				}
 				//https://developers.mailerlite.com/reference#subscribers
 				if (operation === 'getAll') {
-					const returnAll  = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					if (returnAll) {
 
@@ -144,7 +144,7 @@ export class Strava implements INodeType {
 				}
 				//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
 				if (operation === 'update') {
-					const activityId  = this.getNodeParameter('activityId', i) as string;
+					const activityId = this.getNodeParameter('activityId', i) as string;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
