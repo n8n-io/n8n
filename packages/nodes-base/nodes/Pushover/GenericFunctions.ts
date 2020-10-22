@@ -43,7 +43,7 @@ export async function pushoverApiRequest(this: IExecuteFunctions | IExecuteSingl
 			errors = errors.map((e: IDataObject) => e);
 			// Try to return the error prettier
 			throw new Error(
-				`PushOver error response [${error.statusCode}]: ${errors.join('|')}`
+				`PushOver error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;

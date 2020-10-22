@@ -66,14 +66,14 @@ export class GSuiteAdmin implements INodeType {
 			// Get all the domains to display them to user so that he can
 			// select them easily
 			async getDomains(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const domains = await googleApiRequestAllItems.call(
 					this,
 					'domains',
 					'GET',
-					'/directory/v1/customer/my_customer/domains'
+					'/directory/v1/customer/my_customer/domains',
 				);
 				for (const domain of domains) {
 					const domainName = domain.domainName;
@@ -88,14 +88,14 @@ export class GSuiteAdmin implements INodeType {
 			// Get all the schemas to display them to user so that he can
 			// select them easily
 			async getSchemas(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const schemas = await googleApiRequestAllItems.call(
 					this,
 					'schemas',
 					'GET',
-					'/directory/v1/customer/my_customer/schemas'
+					'/directory/v1/customer/my_customer/schemas',
 				);
 				for (const schema of schemas) {
 					const schemaName = schema.displayName;
@@ -173,7 +173,7 @@ export class GSuiteAdmin implements INodeType {
 						'POST',
 						`/directory/v1/users`,
 						body,
-						qs
+						qs,
 					);
 
 					if (makeAdmin) {
@@ -182,7 +182,7 @@ export class GSuiteAdmin implements INodeType {
 							this,
 							'POST',
 							`/directory/v1/users/${responseData.id}/makeAdmin`,
-							{ status: true }
+							{ status: true },
 						);
 
 						responseData.isAdmin = true;
@@ -198,7 +198,7 @@ export class GSuiteAdmin implements INodeType {
 						this,
 						'DELETE',
 						`/directory/v1/users/${userId}`,
-						{}
+						{},
 					);
 
 					responseData = { success: true };
@@ -230,7 +230,7 @@ export class GSuiteAdmin implements INodeType {
 						'GET',
 						`/directory/v1/users/${userId}`,
 						{},
-						qs
+						qs,
 					);
 				}
 
@@ -267,7 +267,7 @@ export class GSuiteAdmin implements INodeType {
 							'GET',
 							`/directory/v1/users`,
 							{},
-							qs
+							qs,
 						);
 
 					} else {
@@ -279,7 +279,7 @@ export class GSuiteAdmin implements INodeType {
 							'GET',
 							`/directory/v1/users`,
 							{},
-							qs
+							qs,
 						);
 
 						responseData = responseData.users;
@@ -342,7 +342,7 @@ export class GSuiteAdmin implements INodeType {
 						'PUT',
 						`/directory/v1/users/${userId}`,
 						body,
-						qs
+						qs,
 					);
 				}
 			}

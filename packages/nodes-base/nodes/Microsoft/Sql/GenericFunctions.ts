@@ -11,7 +11,7 @@ import { ITables } from './TableInterface';
  */
 export function copyInputItem(
 	item: INodeExecutionData,
-	properties: string[]
+	properties: string[],
 ): IDataObject {
 	// Prepare the data to insert and copy it to be returned
 	const newItem: IDataObject = {};
@@ -36,7 +36,7 @@ export function createTableStruct(
 	getNodeParam: Function,
 	items: INodeExecutionData[],
 	additionalProperties: string[] = [],
-	keyName?: string
+	keyName?: string,
 ): ITables {
 	return items.reduce((tables, item, index) => {
 		const table = getNodeParam('table', index) as string;
@@ -69,7 +69,7 @@ export function createTableStruct(
  */
 export function executeQueryQueue(
 	tables: ITables,
-	buildQueryQueue: Function
+	buildQueryQueue: Function,
 ): Promise<any[]> { // tslint:disable-line:no-any
 	return Promise.all(
 		Object.keys(tables).map(table => {
@@ -79,11 +79,11 @@ export function executeQueryQueue(
 						table,
 						columnString,
 						items: tables[table][columnString],
-					})
+					}),
 				);
 			});
 			return Promise.all(columnsResults);
-		})
+		}),
 	);
 }
 
@@ -112,7 +112,7 @@ export function extractUpdateSet(item: IDataObject, columns: string[]): string {
 			column =>
 				`${column} = ${
 					typeof item[column] === 'string' ? `'${item[column]}'` : item[column]
-				}`
+				}`,
 		)
 		.join(',');
 }

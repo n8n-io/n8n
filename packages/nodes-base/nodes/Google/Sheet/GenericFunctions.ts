@@ -108,7 +108,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},
-		}
+		},
 	);
 
 	const options: OptionsWithUri = {

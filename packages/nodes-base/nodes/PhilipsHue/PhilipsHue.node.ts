@@ -66,7 +66,7 @@ export class PhilipsHue implements INodeType {
 			// Get all the lights to display them to user so that he can
 			// select them easily
 			async getLights(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
@@ -75,7 +75,7 @@ export class PhilipsHue implements INodeType {
 				const lights = await philipsHueApiRequest.call(
 					this,
 					'GET',
-					`/bridge/${user}/lights`
+					`/bridge/${user}/lights`,
 				);
 				for (const light of Object.keys(lights)) {
 					const lightName = lights[light].name;
@@ -132,7 +132,7 @@ export class PhilipsHue implements INodeType {
 						this,
 						'PUT',
 						`/bridge/${user}/lights/${lightId}/state`,
-						body
+						body,
 					);
 
 					responseData = {};

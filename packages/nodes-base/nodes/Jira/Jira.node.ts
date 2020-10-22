@@ -216,7 +216,7 @@ export class Jira implements INodeType {
 					const users = await jiraSoftwareCloudApiRequest.call(this, '/api/2/user/search', 'GET', {},
 						{
 							username: "'",
-						}
+						},
 					);
 					for (const user of users) {
 						const userName = user.displayName;

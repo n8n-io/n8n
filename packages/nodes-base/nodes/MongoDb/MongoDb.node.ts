@@ -17,7 +17,7 @@ export class MongoDb implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const { database, connectionString } = validateAndResolveMongoCredentials(
-			this.getCredentials('mongoDb')
+			this.getCredentials('mongoDb'),
 		);
 
 		const client: MongoClient = await MongoClient.connect(connectionString, {

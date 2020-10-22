@@ -110,7 +110,7 @@ export class ExecuteCommand implements INodeType {
 						stderr,
 						stdout,
 					},
-				}
+				},
 			);
 		}
 

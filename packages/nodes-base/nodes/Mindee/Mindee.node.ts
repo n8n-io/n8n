@@ -159,7 +159,7 @@ export class Mindee implements INodeType {
 									},
 								},
 							},
-						}
+						},
 					);
 
 					if (rawData === false) {
@@ -201,7 +201,7 @@ export class Mindee implements INodeType {
 									},
 								},
 							},
-						}
+						},
 					);
 
 					if (rawData === false) {

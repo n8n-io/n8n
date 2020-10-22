@@ -336,7 +336,7 @@ export class Signl4 implements INodeType {
 						data,
 						{},
 						endpoint,
-						{}
+						{},
 					);
 				}
 				// Resolve alert
@@ -359,7 +359,7 @@ export class Signl4 implements INodeType {
 						data,
 						{},
 						endpoint,
-						{}
+						{},
 					);
 				}
 			}

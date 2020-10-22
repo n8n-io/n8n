@@ -483,7 +483,7 @@ export class GithubTrigger implements INodeType {
 				body: bodyData,
 				headers: this.getHeaderData(),
 				query: this.getQueryData(),
-			}
+			},
 		);
 
 		return {

@@ -40,7 +40,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
 			throw new Error(
-				`G Suite Admin error response [${error.statusCode}]: ${errors.join('|')}`
+				`G Suite Admin error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;
