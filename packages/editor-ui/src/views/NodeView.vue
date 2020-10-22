@@ -1563,6 +1563,11 @@ export default mixins(
 					return;
 				}
 
+				// Before proceeding we must check if all nodes contain the `properties` attribute.
+				// Nodes are loaded without this information so we must make sure that all nodes
+				// being added have this information.
+				await this.loadNodesProperties(nodes.map(node => node.type));
+
 				// Add the node to the node-list
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
@@ -1673,6 +1678,9 @@ export default mixins(
 				let oldName: string;
 				let newName: string;
 				const createNodes: INode[] = [];
+
+				await this.loadNodesProperties(data.nodes.map(node => node.type));
+				
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
 						if (nodeTypesCount[node.type].exist >= nodeTypesCount[node.type].max) {
@@ -1895,6 +1903,17 @@ export default mixins(
 			async loadCredentials (): Promise<void> {
 				const credentials = await this.restApi().getAllCredentials();
 				this.$store.commit('setCredentials', credentials);
+			},
+			async loadNodesProperties(nodeNames: string[]): Promise<void> {
+				const allNodes = this.$store.getters.allNodeTypes;
+				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => nodeNames.includes(node.name) && !node.hasOwnProperty('properties')).map((node: INodeTypeDescription) => node.name) as string[];
+				if (nodesToBeFetched.length > 0) {
+					// Only call API if node information is actually missing
+					this.startLoading();
+					const nodeInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
+					this.$store.commit('updateNodeTypes', nodeInfo);
+					this.stopLoading();
+				}
 			},
 		},
 
