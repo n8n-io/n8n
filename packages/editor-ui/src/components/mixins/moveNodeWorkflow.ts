@@ -1,4 +1,5 @@
 import mixins from 'vue-typed-mixins';
+import normalizeWheel from 'normalize-wheel';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
@@ -96,9 +97,10 @@ export const moveNodeWorkflow = mixins(
 			this.moveWorkflow(e);
 		},
 		wheelMoveWorkflow (e: WheelEvent) {
+			const normalized = normalizeWheel(e);
 			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-			const nodeViewOffsetPositionX = offsetPosition[0] - e.deltaX;
-			const nodeViewOffsetPositionY = offsetPosition[1] - e.deltaY;
+			const nodeViewOffsetPositionX = offsetPosition[0] - normalized.pixelX;
+			const nodeViewOffsetPositionY = offsetPosition[1] - normalized.pixelY;
 			this.$store.commit('setNodeViewOffsetPosition', [nodeViewOffsetPositionX, nodeViewOffsetPositionY]);
 		},
 	},
