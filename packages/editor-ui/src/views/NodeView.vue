@@ -7,7 +7,7 @@
 			@touchend="mouseUp"
 			@touchmove="mouseMoveNodeWorkflow"
 			@mousedown="mouseDown"
-			v-touch:tap="mouseDown"
+			v-touch:tap="touchTap"
 			@mouseup="mouseUp"
 			@wheel="wheelScroll"
 			>
@@ -340,9 +340,12 @@ export default mixins(
 
 				await this.addNodes(data.nodes, data.connections);
 			},
+			touchTap (e: MouseEvent | TouchEvent) {
+				if (this.isTouchDevice) {
+					this.mouseDown(e);
+				}
+			},
 			mouseDown (e: MouseEvent | TouchEvent) {
-				console.log('mouseDown');
-
 				// Save the location of the mouse click
 				const position = this.getMousePosition(e);
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;

@@ -1,6 +1,6 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition">
-		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:end="mouseLeftClick">
+		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<el-tooltip placement="top" effect="light">
 					<div slot="content" v-html="nodeIssues"></div>
