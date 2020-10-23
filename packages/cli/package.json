@@ -28,6 +28,7 @@
         "start:windows": "cd bin && n8n",
         "test": "jest",
         "tslint": "tslint -p tsconfig.json -c tslint.json",
+        "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
         "watch": "tsc --watch",
         "typeorm": "ts-node ./node_modules/typeorm/cli.js"
     },
