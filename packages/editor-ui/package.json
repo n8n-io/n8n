@@ -24,10 +24,7 @@
     "test:e2e": "vue-cli-service test:e2e",
     "test:unit": "vue-cli-service test:unit"
   },
-  "dependencies": {
-    "uuid": "^8.1.0",
-    "vue2-touch-events": "^2.3.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@beyonk/google-fonts-webpack-plugin": "^1.2.3",
     "@fortawesome/fontawesome-svg-core": "^1.2.19",
@@ -70,6 +67,7 @@
     "lodash.set": "^4.3.2",
     "n8n-workflow": "~0.42.0",
     "node-sass": "^4.12.0",
+    "normalize-wheel": "^1.0.1",
     "prismjs": "^1.17.1",
     "quill": "^2.0.0-dev.3",
     "quill-autoformat": "^0.1.1",
@@ -78,6 +76,7 @@
     "ts-jest": "^26.3.0",
     "tslint": "^6.1.2",
     "typescript": "~3.9.7",
+    "uuid": "^8.1.0",
     "vue": "^2.6.9",
     "vue-cli-plugin-webpack-bundle-analyzer": "^2.0.0",
     "vue-json-tree": "^0.4.1",
@@ -85,6 +84,7 @@
     "vue-router": "^3.0.6",
     "vue-template-compiler": "^2.5.17",
     "vue-typed-mixins": "^0.2.0",
+    "vue2-touch-events": "^2.3.2",
     "vuex": "^3.1.1"
   }
 }
