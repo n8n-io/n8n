@@ -20,6 +20,7 @@
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vue-cli-service serve",
     "test": "npm run test:unit",
     "tslint": "tslint -p tsconfig.json -c tslint.json",
+    "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
     "test:e2e": "vue-cli-service test:e2e",
     "test:unit": "vue-cli-service test:unit"
   },

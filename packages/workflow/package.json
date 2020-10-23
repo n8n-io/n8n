@@ -18,6 +18,7 @@
         "dev": "npm run watch",
         "build": "tsc",
         "tslint": "tslint -p tsconfig.json -c tslint.json",
+        "tslintfix": "tslint --fix -p tsconfig.json -c tslint.json",
         "watch": "tsc --watch",
         "test": "jest"
     },
