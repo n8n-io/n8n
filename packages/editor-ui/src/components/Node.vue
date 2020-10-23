@@ -1,6 +1,6 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition">
-		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick">
+		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:end="mouseLeftClick">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<el-tooltip placement="top" effect="light">
 					<div slot="content" v-html="nodeIssues"></div>
@@ -13,19 +13,19 @@
 				<font-awesome-icon icon="sync-alt" spin />
 			</div>
 			<div class="node-options" v-if="!isReadOnly">
-				<div @click.stop.left="deleteNode" class="option" title="Delete Node" >
+				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
 					<font-awesome-icon icon="trash" />
 				</div>
-				<div @click.stop.left="disableNode" class="option" title="Activate/Deactivate Node" >
+				<div v-touch:tap="disableNode" v-touch-options="{disableClick: true}" class="option" title="Activate/Deactivate Node" >
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div @click.stop.left="duplicateNode" class="option" title="Duplicate Node" >
+				<div v-touch:tap="duplicateNode" class="option" title="Duplicate Node" >
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div @click.stop.left="setNodeActive" class="option touch" title="Edit Node" v-if="!isReadOnly">
+				<div v-touch:tap="setNodeActive" class="option touch" title="Edit Node" v-if="!isReadOnly">
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div @click.stop.left="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
+				<div v-touch:tap="executeNode" class="option" title="Execute Node" v-if="!isReadOnly && !workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>

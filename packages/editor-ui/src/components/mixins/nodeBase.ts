@@ -2,19 +2,19 @@ import { IConnectionsUi, IEndpointOptions, INodeUi, XYPositon } from '@/Interfac
 
 import mixins from 'vue-typed-mixins';
 
+import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
 import { NODE_NAME_PREFIX } from '@/constants';
 
-export const nodeBase = mixins(nodeIndex).extend({
+export const nodeBase = mixins(
+	deviceSupportHelpers,
+	nodeIndex,
+).extend({
 	mounted () {
 		// Initialize the node
 		if (this.data !== null) {
 			this.__addNode(this.data);
 		}
-	},
-	data () {
-		return {
-		};
 	},
 	computed: {
 		data (): INodeUi {
@@ -25,9 +25,6 @@ export const nodeBase = mixins(nodeIndex).extend({
 				return true;
 			}
 			return false;
-		},
-		isMacOs (): boolean {
-			return /(ipad|iphone|ipod|mac)/i.test(navigator.platform);
 		},
 		nodeName (): string {
 			return NODE_NAME_PREFIX + this.nodeIndex;
@@ -335,13 +332,6 @@ export const nodeBase = mixins(nodeIndex).extend({
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			});
 
-		},
-
-		isCtrlKeyPressed (e: MouseEvent | KeyboardEvent): boolean {
-			if (this.isMacOs) {
-				return e.metaKey;
-			}
-			return e.ctrlKey;
 		},
 
 		mouseLeftClick (e: MouseEvent) {

@@ -25,7 +25,8 @@
     "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
-    "uuid": "^8.1.0"
+    "uuid": "^8.1.0",
+    "vue2-touch-events": "^2.3.2"
   },
   "devDependencies": {
     "@beyonk/google-fonts-webpack-plugin": "^1.2.3",
