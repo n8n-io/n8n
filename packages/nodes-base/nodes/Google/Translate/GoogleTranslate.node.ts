@@ -24,7 +24,7 @@ export class GoogleTranslate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Translate',
 		name: 'googleTranslate',
-		icon: 'file:googletranslate.svg',
+		icon: 'file:googletranslate.png',
 		group: ['input', 'output'],
 		version: 1,
 		description: 'Translate data using Google Translate',
