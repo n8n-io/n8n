@@ -81,7 +81,7 @@ export class GoogleCalendar implements INodeType {
 			// Get all the calendars to display them to user so that he can
 			// select them easily
 			async getConferenceSolutations(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const calendar = this.getCurrentNodeParameter('calendar') as string;
@@ -310,7 +310,7 @@ export class GoogleCalendar implements INodeType {
 									requestId: uuid(),
 									conferenceSolution: {
 										type: conferenceData.conferenceSolution as string,
-									}
+									},
 								},
 							};
 						}
