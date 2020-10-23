@@ -42,8 +42,8 @@ export const groupOperations = [
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const groupFields = [
@@ -122,7 +122,7 @@ export const groupFields = [
 			},
 		},
 		default: '',
-		description: `Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.`
+		description: `Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.`,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:get                                  */
@@ -143,7 +143,7 @@ export const groupFields = [
 			},
 		},
 		default: '',
-		description: `Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.`
+		description: `Identifies the group in the API request. The value can be the group's email address, group alias, or the unique group ID.`,
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 group:getAll                               */

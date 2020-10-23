@@ -159,7 +159,7 @@ export class GSuiteAdmin implements INodeType {
 						this,
 						'DELETE',
 						`/directory/v1/groups/${groupId}`,
-						{}
+						{},
 					);
 
 					responseData = { success: true };
@@ -196,7 +196,7 @@ export class GSuiteAdmin implements INodeType {
 							'GET',
 							`/directory/v1/groups`,
 							{},
-							qs
+							qs,
 						);
 
 					} else {
@@ -207,7 +207,7 @@ export class GSuiteAdmin implements INodeType {
 							'GET',
 							`/directory/v1/groups`,
 							{},
-							qs
+							qs,
 						);
 
 						responseData = responseData.groups;
