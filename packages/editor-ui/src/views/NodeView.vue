@@ -210,6 +210,21 @@ export default mixins(
 				deep: true,
 			},
 		},
+		async beforeRouteLeave(to, from, next) {
+			const result = this.$store.getters.getStateIsDirty;
+			if(result) {
+				const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+				if (importConfirm === false) {
+					next(false);
+				} else {
+					// Prevent other popups from displaying
+					this.$store.commit('setStateDirty', false);
+					next();
+				}
+			} else {
+				next();
+			}
+		},
 		computed: {
 			activeNode (): INodeUi | null {
 				return this.$store.getters.activeNode;
@@ -353,6 +368,8 @@ export default mixins(
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 
 				await this.addNodes(data.nodes, data.connections);
+
+				this.$store.commit('setStateDirty', false);
 
 				return data;
 			},
@@ -1329,6 +1346,8 @@ export default mixins(
 				];
 
 				await this.addNodes(defaultNodes);
+				this.$store.commit('setStateDirty', false);
+
 			},
 			async initView (): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
@@ -1341,9 +1360,17 @@ export default mixins(
 				if (this.$route.name === 'ExecutionById') {
 					// Load an execution
 					const executionId = this.$route.params.id;
-
 					await this.openExecution(executionId);
 				} else {
+
+					const result = this.$store.getters.getStateIsDirty;
+					if(result) {
+						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+						if (importConfirm === false) {
+							return Promise.resolve();
+						}
+					}
+
 					// Load a workflow
 					let workflowId = null as string | null;
 					if (this.$route.params.name) {
