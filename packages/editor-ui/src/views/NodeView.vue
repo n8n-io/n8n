@@ -3,11 +3,15 @@
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
+			@touchstart="mouseDown"
+			@touchend="mouseUp"
+			@touchmove="mouseMoveNodeWorkflow"
 			@mousedown="mouseDown"
+			v-touch:tap="mouseDown"
 			@mouseup="mouseUp"
 			@wheel="wheelScroll"
 			>
-			<div class="node-view-background" :style="backgroundStyle"></div>
+			<div id="node-view-background" class="node-view-background" :style="backgroundStyle"></div>
 			<div id="node-view" class="node-view" :style="workflowStyle">
 				<node
 				v-for="nodeData in nodes"
@@ -336,14 +340,17 @@ export default mixins(
 
 				await this.addNodes(data.nodes, data.connections);
 			},
-			mouseDown (e: MouseEvent) {
-				// Save the location of the mouse click
-				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-				this.lastClickPosition[0] = e.pageX - offsetPosition[0];
-				this.lastClickPosition[1] = e.pageY - offsetPosition[1];
+			mouseDown (e: MouseEvent | TouchEvent) {
+				console.log('mouseDown');
 
-				this.mouseDownMouseSelect(e);
-				this.mouseDownMoveWorkflow(e);
+				// Save the location of the mouse click
+				const position = this.getMousePosition(e);
+				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
+				this.lastClickPosition[0] = position.x - offsetPosition[0];
+				this.lastClickPosition[1] = position.y - offsetPosition[1];
+
+				this.mouseDownMouseSelect(e as MouseEvent);
+				this.mouseDownMoveWorkflow(e as MouseEvent);
 
 				// Hide the node-creator
 				this.createNodeActive = false;
@@ -1680,7 +1687,7 @@ export default mixins(
 				const createNodes: INode[] = [];
 
 				await this.loadNodesProperties(data.nodes.map(node => node.type));
-				
+
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
 						if (nodeTypesCount[node.type].exist >= nodeTypesCount[node.type].max) {
