@@ -33,9 +33,9 @@ export const contactCompanyOperations = [
 
 export const contactCompanyFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                contactCompany:add                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                contactCompany:add                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -47,12 +47,12 @@ export const contactCompanyFields = [
 				],
 				operation: [
 					'add',
-					'remove'
+					'remove',
 				],
 			},
 		},
 		default: '',
-		description: 'Contact ID',
+		description: 'The ID of the contact.',
 	},
 	{
 		displayName: 'Company ID',
@@ -70,6 +70,6 @@ export const contactCompanyFields = [
 			},
 		},
 		default: '',
-		description: 'Company ID',
+		description: 'The ID of the company.',
 	},
 ] as INodeProperties[];

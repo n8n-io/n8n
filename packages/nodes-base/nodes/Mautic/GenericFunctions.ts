@@ -50,7 +50,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 		if (authenticationMethod === 'credentials') {
 			const credentials = this.getCredentials('mauticApi') as IDataObject;
 
-			const base64Key =  Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
+			const base64Key = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
 
 			options.headers!.Authorization = `Basic ${base64Key}`;
 
@@ -105,7 +105,7 @@ export async function mauticApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	} while (
 		responseData.total !== undefined &&
 		((query.limit * query.start) - parseInt(responseData.total, 10)) < 0
-		);
+	);
 
 	return returnData;
 }

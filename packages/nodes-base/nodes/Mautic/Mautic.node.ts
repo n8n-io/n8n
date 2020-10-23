@@ -35,7 +35,7 @@ import {
 
 import {
 	snakeCase,
- } from 'change-case';
+} from 'change-case';
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
@@ -101,17 +101,17 @@ export class Mautic implements INodeType {
 					{
 						name: 'Company',
 						value: 'company',
-						description: 'Create or modify a company'
+						description: 'Create or modify a company',
 					},
 					{
 						name: 'Contact',
 						value: 'contact',
-						description: 'Create & modify contacts'
+						description: 'Create & modify contacts',
 					},
 					{
 						name: 'Contact <> Company',
 						value: 'contactCompany',
-						description: 'Add/ remove contacts from a company'
+						description: 'Add/ remove contacts from a company',
 					},
 				],
 				default: 'contact',
@@ -203,7 +203,7 @@ export class Mautic implements INodeType {
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDataObject = {
-						companyname:  name,
+						companyname: name,
 					};
 					Object.assign(body, additionalFields);
 					responseData = await mauticApiRequest.call(this, 'POST', '/companies/new', body);

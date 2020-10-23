@@ -48,9 +48,9 @@ export const companyOperations = [
 
 export const companyFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                company:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                company:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company Name',
 		name: 'name',
@@ -66,7 +66,7 @@ export const companyFields = [
 			},
 		},
 		default: '',
-		description: 'Company name',
+		description: 'The name of the company to create.',
 	},
 	{
 		displayName: 'Simple',
@@ -118,9 +118,9 @@ export const companyFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                               company:update                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               company:update                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
@@ -136,7 +136,7 @@ export const companyFields = [
 			},
 		},
 		default: '',
-		description: 'company ID',
+		description: 'The ID of the company to update.',
 	},
 	{
 		displayName: 'Simple',
@@ -195,9 +195,9 @@ export const companyFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 company:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
@@ -213,7 +213,7 @@ export const companyFields = [
 			},
 		},
 		default: '',
-		description: 'Company ID',
+		description: 'The ID of the company to return.',
 	},
 	{
 		displayName: 'Simple',
@@ -233,9 +233,9 @@ export const companyFields = [
 		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                company:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                company:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -347,9 +347,9 @@ export const companyFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                               company:delete                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               company:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
 		name: 'companyId',
@@ -365,7 +365,7 @@ export const companyFields = [
 			},
 		},
 		default: '',
-		description: 'Company ID',
+		description: 'The ID of the company to delete.',
 	},
 	{
 		displayName: 'Simple',
