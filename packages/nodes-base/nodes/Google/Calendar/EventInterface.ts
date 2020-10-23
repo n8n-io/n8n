@@ -7,6 +7,15 @@ export interface IReminder {
 	overrides?: IDataObject[];
 }
 
+export interface IConferenceData {
+	createRequest?: {
+		requestId: string,
+		conferenceSolution: {
+			type: string,
+		}
+	};
+}
+
 export interface IEvent {
 	attendees?: IDataObject[];
 	colorId?: string;
@@ -25,4 +34,5 @@ export interface IEvent {
 	summary?: string;
 	transparency?: string;
 	visibility?: string;
+	conferenceData?: IConferenceData;
 }
