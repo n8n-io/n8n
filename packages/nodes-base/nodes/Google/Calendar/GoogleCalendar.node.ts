@@ -27,6 +27,8 @@ import {
 
 import * as moment from 'moment-timezone';
 
+import * as uuid from 'uuid/v4';
+
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Calendar',
@@ -69,6 +71,38 @@ export class GoogleCalendar implements INodeType {
 
 	methods = {
 		loadOptions: {
+
+
+			// "conferenceProperties": {
+			// 	"allowedConferenceSolutionTypes": [
+			// 	 "hangoutsMeet"
+			// 	]
+
+			// Get all the calendars to display them to user so that he can
+			// select them easily
+			async getConferenceSolutations(
+				this: ILoadOptionsFunctions
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const calendar = this.getCurrentNodeParameter('calendar') as string;
+				const posibleSolutions: IDataObject = {
+					'eventHangout': 'Google Hangout',
+					'eventNamedHangout': 'Google Hangout Classic',
+					'hangoutsMeet': 'Google Meet',
+				};
+				const { conferenceProperties: { allowedConferenceSolutionTypes } } = await googleApiRequest.call(
+					this,
+					'GET',
+					`/calendar/v3/users/me/calendarList/${calendar}`,
+				);
+				for (const solution of allowedConferenceSolutionTypes) {
+					returnData.push({
+						name: posibleSolutions[solution] as string,
+						value: solution,
+					});
+				}
+				return returnData;
+			},
 			// Get all the calendars to display them to user so that he can
 			// select them easily
 			async getCalendars(
@@ -265,6 +299,23 @@ export class GoogleCalendar implements INodeType {
 					if (body.recurrence.length !== 0) {
 						body.recurrence = [`RRULE:${body.recurrence.join('')}`];
 					}
+
+					if (additionalFields.conferenceDataUi) {
+						const conferenceData = (additionalFields.conferenceDataUi as IDataObject).conferenceDataValues as IDataObject;
+						if (conferenceData) {
+
+							qs.conferenceDataVersion = 1;
+							body.conferenceData = {
+								createRequest: {
+									requestId: uuid(),
+									conferenceSolution: {
+										type: conferenceData.conferenceSolution as string,
+									}
+								},
+							};
+						}
+					}
+
 					responseData = await googleApiRequest.call(
 						this,
 						'POST',
