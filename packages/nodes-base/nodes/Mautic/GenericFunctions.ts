@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -53,6 +55,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 			options.headers!.Authorization = `Basic ${base64Key}`;
 
 			options.uri = `${credentials.url}${options.uri}`;
+
 			//@ts-ignore
 			returnData = await this.helpers.request(options);
 		} else {

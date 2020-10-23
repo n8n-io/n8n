@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const contactOperations = [
 	{
@@ -19,9 +21,9 @@ export const contactOperations = [
 				description: 'Create a new contact',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a contact',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a contact',
 			},
 			{
 				name: 'Get',
@@ -34,9 +36,9 @@ export const contactOperations = [
 				description: 'Get data of all contacts',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a contact',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a contact',
 			},
 		],
 		default: 'create',
@@ -1158,7 +1160,7 @@ export const contactFields = [
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description: `By default only the data of the fields get returned. If this<br />
 							  options gets set the RAW response with all data gets returned.`,
 			},
