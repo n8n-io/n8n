@@ -92,7 +92,8 @@ export class MauticTrigger implements INodeType {
 					loadOptionsMethod: 'getEvents',
 				},
 				default: [],
-			},	{
+			},
+			{
 				displayName: 'Events Order',
 				name: 'eventsOrder',
 				type: 'options',
@@ -170,7 +171,7 @@ export class MauticTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
 					await mauticApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}/delete`);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;
