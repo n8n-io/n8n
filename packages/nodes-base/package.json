@@ -452,7 +452,7 @@
     "lodash.set": "^4.3.2",
     "lodash.unset": "^4.5.2",
     "mailparser": "^2.8.1",
-    "moment": "2.24.0",
+    "moment": "2.28.0",
     "moment-timezone": "^0.5.28",
     "mongodb": "^3.5.5",
     "mqtt": "^4.2.0",
@@ -471,7 +471,7 @@
     "ssh2-sftp-client": "^5.2.1",
     "uuid": "^3.4.0",
     "vm2": "^3.6.10",
-    "xlsx": "^0.14.3",
+    "xlsx": "^0.16.7",
     "xml2js": "^0.4.22"
   },
   "jest": {
