@@ -32,7 +32,7 @@ export async function pushbulletApiRequest(this: IExecuteFunctions | ILoadOption
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error) {
 
-			const message = error.response.body.error;
+			const message = error.response.body.error.message;
 
 			// Try to return the error prettier
 			throw new Error(

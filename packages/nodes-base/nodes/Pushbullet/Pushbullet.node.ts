@@ -6,7 +6,9 @@ import {
 import {
 	IBinaryKeyData,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -219,11 +221,6 @@ export class Pushbullet implements INodeType {
 						description: 'Send the push to all subscribers to your channel that has this tag',
 					},
 					{
-						name: 'Client ID',
-						value: 'client_iden',
-						description: 'Send the push to all users who have granted access to your OAuth client that has this iden'
-					},
-					{
 						name: 'Default',
 						value: 'default',
 						description: `Broadcast it to all of the user's devices`,
@@ -251,6 +248,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: 'default',
+				description: 'Define the medium that will be used to send the push',
 			},
 			{
 				displayName: 'Value',
@@ -269,10 +267,37 @@ export class Pushbullet implements INodeType {
 					hide: {
 						target: [
 							'default',
+							'device_iden',
 						],
 					},
 				},
 				default: '',
+				description: '',
+			},
+			{
+				displayName: 'Value',
+				name: 'value',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDevices',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'push',
+						],
+						operation: [
+							'create',
+						],
+						target: [
+							'device_iden',
+						],
+					},
+				},
+				default: `The value to be set depending on the target selected.
+				For example, if the target selected is email then this field would take the email address
+				of the person you are trying to send the push to.`,
 			},
 			{
 				displayName: 'Push ID',
@@ -402,6 +427,23 @@ export class Pushbullet implements INodeType {
 			},
 		],
 	};
+
+	methods = {
+		loadOptions: {
+			async getDevices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { devices } = await pushbulletApiRequest.call(this, 'GET', '/devices');
+				for (const device of devices) {
+					returnData.push({
+						name: device.nickname,
+						value: device.iden,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
+
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -533,6 +575,8 @@ export class Pushbullet implements INodeType {
 						'DELETE',
 						`/pushes/${pushId}`,
 					);
+
+					responseData = { success: true };
 				}
 
 				if (operation === 'update') {
