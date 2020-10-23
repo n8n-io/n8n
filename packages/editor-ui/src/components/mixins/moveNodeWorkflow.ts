@@ -1,6 +1,6 @@
 import mixins from 'vue-typed-mixins';
+// @ts-ignore
 import normalizeWheel from 'normalize-wheel';
-
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
 
