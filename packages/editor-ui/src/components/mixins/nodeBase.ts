@@ -333,19 +333,27 @@ export const nodeBase = mixins(
 			});
 
 		},
-
-		mouseLeftClick (e: MouseEvent) {
-			if (this.$store.getters.isActionActive('dragActive')) {
-				this.$store.commit('removeActiveAction', 'dragActive');
-			} else {
-				if (this.isCtrlKeyPressed(e) === false) {
-					this.$emit('deselectAllNodes');
+		touchEnd(e: MouseEvent) {
+			if (this.isTouchDevice) {
+				if (this.$store.getters.isActionActive('dragActive')) {
+					this.$store.commit('removeActiveAction', 'dragActive');
 				}
-
-				if (this.$store.getters.isNodeSelected(this.data.name)) {
-					this.$emit('deselectNode', this.name);
+			}
+		},
+		mouseLeftClick (e: MouseEvent) {
+			if (!this.isTouchDevice) {
+				if (this.$store.getters.isActionActive('dragActive')) {
+					this.$store.commit('removeActiveAction', 'dragActive');
 				} else {
-					this.$emit('nodeSelected', this.name);
+					if (this.isCtrlKeyPressed(e) === false) {
+						this.$emit('deselectAllNodes');
+					}
+
+					if (this.$store.getters.isNodeSelected(this.data.name)) {
+						this.$emit('deselectNode', this.name);
+					} else {
+						this.$emit('nodeSelected', this.name);
+					}
 				}
 			}
 		},
