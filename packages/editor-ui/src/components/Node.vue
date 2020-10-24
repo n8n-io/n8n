@@ -1,6 +1,6 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition">
-		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:end="touchEnd">
+		<div class="node-default" :ref="data.name" :style="nodeStyle" :class="nodeClass" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 			<div v-if="hasIssues" class="node-info-icon node-issues">
 				<el-tooltip placement="top" effect="light">
 					<div slot="content" v-html="nodeIssues"></div>
@@ -16,7 +16,7 @@
 				<div v-touch:tap="deleteNode" class="option" title="Delete Node" >
 					<font-awesome-icon icon="trash" />
 				</div>
-				<div v-touch:tap="disableNode" v-touch-options="{disableClick: true}" class="option" title="Activate/Deactivate Node" >
+				<div v-touch:tap="disableNode" class="option" title="Activate/Deactivate Node" >
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
 				<div v-touch:tap="duplicateNode" class="option" title="Duplicate Node" >
@@ -110,6 +110,10 @@ export default mixins(nodeBase, workflowHelpers).extend({
 				classes.push('is-touch-device');
 			}
 
+			if (this.isTouchActive) {
+				classes.push('touch-active');
+			}
+
 			return classes;
 		},
 		nodeIssues (): string {
@@ -174,7 +178,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 	},
 	data () {
 		return {
-			isTouchDevice: 'ontouchstart' in window || navigator.msMaxTouchPoints,
+			isTouchActive: false,
 		};
 	},
 	methods: {
@@ -198,6 +202,14 @@ export default mixins(nodeBase, workflowHelpers).extend({
 		},
 		setNodeActive () {
 			this.$store.commit('setActiveNode', this.data.name);
+		},
+		touchStart () {
+			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
+				this.isTouchActive = true;
+				setTimeout(() => {
+					this.isTouchActive = false;
+				}, 2000);
+			}
 		},
 	},
 });
@@ -268,6 +280,7 @@ export default mixins(nodeBase, workflowHelpers).extend({
 			}
 		}
 
+		&.touch-active,
 		&:hover {
 			.node-execute {
 				display: initial;
