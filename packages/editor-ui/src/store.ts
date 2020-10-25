@@ -53,6 +53,7 @@ export const store = new Vuex.Store({
 		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
 		timezone: 'America/New_York',
+		stateIsDirty: false,
 		executionTimeout: -1,
 		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
 		versionCli: '0.0.0',
@@ -85,6 +86,7 @@ export const store = new Vuex.Store({
 				state.activeActions.push(action);
 			}
 		},
+
 		removeActiveAction (state, action: string) {
 			const actionIndex = state.activeActions.indexOf(action);
 			if (actionIndex !== -1) {
@@ -94,6 +96,7 @@ export const store = new Vuex.Store({
 
 		// Active Executions
 		addActiveExecution (state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
+			state.stateIsDirty = true;
 			// Check if the execution exists already
 			const activeExecution = state.activeExecutions.find(execution => {
 				return execution.idActive === newActiveExecution.idActive;
@@ -110,6 +113,7 @@ export const store = new Vuex.Store({
 			state.activeExecutions.unshift(newActiveExecution);
 		},
 		finishActiveExecution (state, finishedActiveExecution: IPushDataExecutionFinished) {
+			state.stateIsDirty = true;
 			// Find the execution to set to finished
 			const activeExecution = state.activeExecutions.find(execution => {
 				return execution.idActive === finishedActiveExecution.executionIdActive;
@@ -128,6 +132,7 @@ export const store = new Vuex.Store({
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
 		},
 		setActiveExecutions (state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
+			state.stateIsDirty = true;
 			Vue.set(state, 'activeExecutions', newActiveExecutions);
 		},
 
@@ -136,16 +141,23 @@ export const store = new Vuex.Store({
 			state.activeWorkflows = newActiveWorkflows;
 		},
 		setWorkflowActive (state, workflowId: string) {
+			state.stateIsDirty = true;
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index === -1) {
 				state.activeWorkflows.push(workflowId);
 			}
 		},
 		setWorkflowInactive (state, workflowId: string) {
+			state.stateIsDirty = true;
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
 				state.selectedNodes.splice(index, 1);
 			}
+		},
+		// Set state condition dirty or not
+		// ** Dirty: if current workflow state has been synchronized with database AKA has it been saved
+		setStateDirty (state, dirty : boolean) {
+			state.stateIsDirty = dirty;
 		},
 
 		// Selected Nodes
@@ -153,6 +165,7 @@ export const store = new Vuex.Store({
 			state.selectedNodes.push(node);
 		},
 		removeNodeFromSelection (state, node: INodeUi) {
+			state.stateIsDirty = true;
 			let index;
 			for (index in state.selectedNodes) {
 				if (state.selectedNodes[index].name === node.name) {
@@ -176,6 +189,10 @@ export const store = new Vuex.Store({
 				// All connections need two entries
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
+			}
+
+			if (data.setStateDirty === true) {
+				state.stateIsDirty = true;
 			}
 
 			const sourceData: IConnection = data.connection[0];
@@ -213,6 +230,7 @@ export const store = new Vuex.Store({
 			if (connectionExists === false) {
 				state.workflow.connections[sourceData.node][sourceData.type][sourceData.index].push(destinationData);
 			}
+
 		},
 		removeConnection (state, data) {
 			const sourceData = data.connection[0];
@@ -228,6 +246,8 @@ export const store = new Vuex.Store({
 				return;
 			}
 
+			state.stateIsDirty = true;
+
 			const connections = state.workflow.connections[sourceData.node][sourceData.type][sourceData.index];
 			for (const index in connections) {
 				if (connections[index].node === destinationData.node && connections[index].type === destinationData.type && connections[index].index === destinationData.index) {
@@ -235,11 +255,16 @@ export const store = new Vuex.Store({
 					connections.splice(parseInt(index, 10), 1);
 				}
 			}
+
 		},
-		removeAllConnections (state) {
+		removeAllConnections (state, data) {
+			if (data.setStateDirty === true) {
+				state.stateIsDirty = true;
+			}
 			state.workflow.connections = {};
 		},
 		removeAllNodeConnection (state, node: INodeUi) {
+			state.stateIsDirty = true;
 			// Remove all source connections
 			if (state.workflow.connections.hasOwnProperty(node.name)) {
 				delete state.workflow.connections[node.name];
@@ -277,6 +302,7 @@ export const store = new Vuex.Store({
 			if (state.credentials === null) {
 				return;
 			}
+
 			for (let i = 0; i < state.credentials.length; i++) {
 				if (state.credentials[i].id === credentialData.id) {
 					state.credentials.splice(i, 1);
@@ -288,6 +314,7 @@ export const store = new Vuex.Store({
 			if (state.credentials === null) {
 				return;
 			}
+
 			for (let i = 0; i < state.credentials.length; i++) {
 				if (state.credentials[i].id === credentialData.id) {
 					state.credentials[i] = credentialData;
@@ -303,6 +330,7 @@ export const store = new Vuex.Store({
 		},
 
 		renameNodeSelectedAndExecution (state, nameData) {
+			state.stateIsDirty = true;
 			// If node has any WorkflowResultData rename also that one that the data
 			// does still get displayed also after node got renamed
 			if (state.workflowExecutionData !== null && state.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
@@ -320,10 +348,12 @@ export const store = new Vuex.Store({
 			state.workflow.nodes.forEach((node) => {
 				node.issues = undefined;
 			});
+
 			return true;
 		},
 
 		setNodeIssue (state, nodeIssueData: INodeIssueData) {
+
 			const node = state.workflow.nodes.find(node => {
 				return node.name === nodeIssueData.node;
 			});
@@ -347,6 +377,7 @@ export const store = new Vuex.Store({
 
 				// Set/Overwrite the value
 				Vue.set(node.issues!, nodeIssueData.type, nodeIssueData.value);
+				state.stateIsDirty = true;
 			}
 
 			return true;
@@ -358,8 +389,11 @@ export const store = new Vuex.Store({
 		},
 
 		// Name
-		setWorkflowName (state, newName: string) {
-			state.workflow.name = newName;
+		setWorkflowName (state, data) {
+			if (data.setStateDirty === true) {
+				state.stateIsDirty = true;
+			}
+			state.workflow.name = data.newName;
 		},
 
 		// Nodes
@@ -376,11 +410,15 @@ export const store = new Vuex.Store({
 			for (let i = 0; i < state.workflow.nodes.length; i++) {
 				if (state.workflow.nodes[i].name === node.name) {
 					state.workflow.nodes.splice(i, 1);
+					state.stateIsDirty = true;
 					return;
 				}
 			}
 		},
-		removeAllNodes (state) {
+		removeAllNodes (state, data) {
+			if (data.setStateDirty === true) {
+				state.stateIsDirty = true;
+			}
 			state.workflow.nodes.splice(0, state.workflow.nodes.length);
 		},
 		updateNodeProperties (state, updateInformation: INodeUpdatePropertiesInformation) {
@@ -391,6 +429,7 @@ export const store = new Vuex.Store({
 
 			if (node) {
 				for (const key of Object.keys(updateInformation.properties)) {
+					state.stateIsDirty = true;
 					Vue.set(node, key, updateInformation.properties[key]);
 				}
 			}
@@ -405,6 +444,7 @@ export const store = new Vuex.Store({
 				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
 			}
 
+			state.stateIsDirty = true;
 			Vue.set(node, updateInformation.key, updateInformation.value);
 		},
 		setNodeParameters (state, updateInformation: IUpdateInformation) {
@@ -417,6 +457,7 @@ export const store = new Vuex.Store({
 				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
 			}
 
+			state.stateIsDirty = true;
 			Vue.set(node, 'parameters', updateInformation.value);
 		},
 
@@ -425,6 +466,7 @@ export const store = new Vuex.Store({
 			state.nodeIndex.push(nodeName);
 		},
 		setNodeIndex (state, newData: { index: number, name: string | null}) {
+			state.stateIsDirty = true;
 			state.nodeIndex[newData.index] = newData.name;
 		},
 		resetNodeIndex (state) {
@@ -435,8 +477,11 @@ export const store = new Vuex.Store({
 		setNodeViewMoveInProgress (state, value: boolean) {
 			state.nodeViewMoveInProgress = value;
 		},
-		setNodeViewOffsetPosition (state, newOffset: XYPositon) {
-			state.nodeViewOffsetPosition = newOffset;
+		setNodeViewOffsetPosition (state, data) {
+			if (data.setStateDirty === true) {
+				state.stateIsDirty = true;
+			}
+			state.nodeViewOffsetPosition = data.newOffset;
 		},
 
 		// Node-Types
@@ -502,7 +547,7 @@ export const store = new Vuex.Store({
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
 			}
-
+			state.stateIsDirty = true;
 			state.nodeTypes.push(typeData);
 		},
 
@@ -528,7 +573,7 @@ export const store = new Vuex.Store({
 			if (state.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
 				Vue.set(state.workflowExecutionData.data.resultData.runData, pushData.nodeName, []);
 			}
-
+			state.stateIsDirty = true;
 			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
 		},
 
@@ -599,6 +644,10 @@ export const store = new Vuex.Store({
 		},
 		getWebhookTestUrl: (state): string => {
 			return `${state.urlBaseWebhook}${state.endpointWebhookTest}`;
+		},
+
+		getStateIsDirty: (state) : boolean => {
+			return state.stateIsDirty;
 		},
 
 		saveDataErrorExecution: (state): string => {
