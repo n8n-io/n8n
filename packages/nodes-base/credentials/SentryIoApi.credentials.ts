@@ -6,6 +6,7 @@ import {
 export class SentryIoApi implements ICredentialType {
 	name = 'sentryIoApi';
 	displayName = 'Sentry.io API';
+	documentationUrl = 'sentryIo';
 	properties = [
 		{
 			displayName: 'Token',

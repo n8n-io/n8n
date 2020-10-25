@@ -162,7 +162,7 @@ export const expenseFields = [
 			default: '',
 			description: 'Only return time entries belonging to the user with the given ID.',
 		},
-	]
+	],
 },
 
 /* -------------------------------------------------------------------------- */
@@ -276,35 +276,35 @@ export const expenseFields = [
 				name: 'billable',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this expense is billable or not. Defaults to true.'
+				description: 'Whether this expense is billable or not. Defaults to true.',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the expense.'
+				description: 'Notes about the expense.',
 			},
 			{
 				displayName: 'Total Cost',
 				name: 'total_cost',
 				type: 'string',
 				default: '',
-				description: 'The total amount of the expense.'
+				description: 'The total amount of the expense.',
 			},
 			{
 				displayName: 'Units',
 				name: 'units',
 				type: 'string',
 				default: '',
-				description: 'The quantity of units to use in calculating the total_cost of the expense.'
+				description: 'The quantity of units to use in calculating the total_cost of the expense.',
 			},
 			{
 				displayName: 'User Id',
 				name: 'user_id',
 				type: 'boolean',
 				default: true,
-				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.'
+				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
 			},
 		],
 	},
@@ -348,7 +348,7 @@ export const expenseFields = [
 				name: 'billable',
 				type: 'boolean',
 				default: true,
-				description: 'Whether this expense is billable or not. Defaults to true.'
+				description: 'Whether this expense is billable or not. Defaults to true.',
 			},
 			{
 				displayName: 'Expense Category Id',
@@ -362,7 +362,7 @@ export const expenseFields = [
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the expense.'
+				description: 'Notes about the expense.',
 			},
 			{
 				displayName: 'Project Id',
@@ -383,21 +383,21 @@ export const expenseFields = [
 				name: 'total_cost',
 				type: 'string',
 				default: '',
-				description: 'The total amount of the expense.'
+				description: 'The total amount of the expense.',
 			},
 			{
 				displayName: 'Units',
 				name: 'units',
 				type: 'string',
 				default: '',
-				description: 'The quantity of units to use in calculating the total_cost of the expense.'
+				description: 'The quantity of units to use in calculating the total_cost of the expense.',
 			},
 			{
 				displayName: 'User Id',
 				name: 'user_id',
 				type: 'boolean',
 				default: true,
-				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.'
+				description: 'The ID of the user associated with this expense. Defaults to the ID of the currently authenticated user.',
 			},
 		],
 	},

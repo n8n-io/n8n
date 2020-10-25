@@ -5,9 +5,9 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -20,15 +20,15 @@ import {
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'NextCloud',
+		displayName: 'Nextcloud',
 		name: 'nextCloud',
 		icon: 'file:nextcloud.png',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Access data on NextCloud',
+		description: 'Access data on Nextcloud',
 		defaults: {
-			name: 'NextCloud',
+			name: 'Nextcloud',
 			color: '#1cafff',
 		},
 		inputs: ['main'],
@@ -170,7 +170,7 @@ export class NextCloud implements INodeType {
 					{
 						name: 'List',
 						value: 'list',
-						description: 'Return the files and folders in a given folder',
+						description: 'Return the contents of a given folder',
 					},
 					{
 						name: 'Move',
@@ -200,7 +200,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'copy'
+							'copy',
 						],
 						resource: [
 							'file',
@@ -220,7 +220,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'copy'
+							'copy',
 						],
 						resource: [
 							'file',
@@ -244,7 +244,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 						resource: [
 							'file',
@@ -268,7 +268,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'move'
+							'move',
 						],
 						resource: [
 							'file',
@@ -288,7 +288,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'move'
+							'move',
 						],
 						resource: [
 							'file',
@@ -312,7 +312,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -331,7 +331,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -353,7 +353,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -372,7 +372,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -389,10 +389,10 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						binaryDataUpload: [
-							false
+							false,
 						],
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -412,10 +412,10 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						binaryDataUpload: [
-							true
+							true,
 						],
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -445,7 +445,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'folder',
@@ -467,7 +467,7 @@ export class NextCloud implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list'
+							'list',
 						],
 						resource: [
 							'folder',

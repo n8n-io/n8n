@@ -228,7 +228,7 @@ export const groupFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -276,11 +276,11 @@ export const groupFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
@@ -375,7 +375,7 @@ export const groupFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -423,7 +423,7 @@ export const groupFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -481,7 +481,7 @@ export const groupFields = [
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},

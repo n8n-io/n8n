@@ -33,7 +33,7 @@ export async function zulipApiRequest(this: IExecuteFunctions | IWebhookFunction
 		form: body,
 		qs: query,
 		uri: uri || `${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.form;

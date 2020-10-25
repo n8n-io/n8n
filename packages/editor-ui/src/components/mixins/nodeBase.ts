@@ -2,19 +2,19 @@ import { IConnectionsUi, IEndpointOptions, INodeUi, XYPositon } from '@/Interfac
 
 import mixins from 'vue-typed-mixins';
 
+import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
 import { NODE_NAME_PREFIX } from '@/constants';
 
-export const nodeBase = mixins(nodeIndex).extend({
+export const nodeBase = mixins(
+	deviceSupportHelpers,
+	nodeIndex,
+).extend({
 	mounted () {
 		// Initialize the node
 		if (this.data !== null) {
 			this.__addNode(this.data);
 		}
-	},
-	data () {
-		return {
-		};
 	},
 	computed: {
 		data (): INodeUi {
@@ -25,9 +25,6 @@ export const nodeBase = mixins(nodeIndex).extend({
 				return true;
 			}
 			return false;
-		},
-		isMacOs (): boolean {
-			return /(ipad|iphone|ipod|mac)/i.test(navigator.platform);
 		},
 		nodeName (): string {
 			return NODE_NAME_PREFIX + this.nodeIndex;
@@ -336,26 +333,27 @@ export const nodeBase = mixins(nodeIndex).extend({
 			});
 
 		},
-
-		isCtrlKeyPressed (e: MouseEvent | KeyboardEvent): boolean {
-			if (this.isMacOs) {
-				return e.metaKey;
-			}
-			return e.ctrlKey;
-		},
-
-		mouseLeftClick (e: MouseEvent) {
-			if (this.$store.getters.isActionActive('dragActive')) {
-				this.$store.commit('removeActiveAction', 'dragActive');
-			} else {
-				if (this.isCtrlKeyPressed(e) === false) {
-					this.$emit('deselectAllNodes');
+		touchEnd(e: MouseEvent) {
+			if (this.isTouchDevice) {
+				if (this.$store.getters.isActionActive('dragActive')) {
+					this.$store.commit('removeActiveAction', 'dragActive');
 				}
-
-				if (this.$store.getters.isNodeSelected(this.data.name)) {
-					this.$emit('deselectNode', this.name);
+			}
+		},
+		mouseLeftClick (e: MouseEvent) {
+			if (!this.isTouchDevice) {
+				if (this.$store.getters.isActionActive('dragActive')) {
+					this.$store.commit('removeActiveAction', 'dragActive');
 				} else {
-					this.$emit('nodeSelected', this.name);
+					if (this.isCtrlKeyPressed(e) === false) {
+						this.$emit('deselectAllNodes');
+					}
+
+					if (this.$store.getters.isNodeSelected(this.data.name)) {
+						this.$emit('deselectNode', this.name);
+					} else {
+						this.$emit('nodeSelected', this.name);
+					}
 				}
 			}
 		},

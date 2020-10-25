@@ -15,8 +15,8 @@ import {
 	ITaskDataConnections,
 	IWaitingForExecution,
 	IWorkflowExecuteAdditionalData,
-	WorkflowExecuteMode,
 	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	NodeExecuteFunctions,
@@ -84,7 +84,7 @@ export class WorkflowExecute {
 						],
 					],
 				},
-			}
+			},
 		];
 
 		this.runExecutionData = {
@@ -137,8 +137,8 @@ export class WorkflowExecute {
 				// If it has no incoming data add the default empty data
 				incomingData.push([
 					{
-						json: {}
-					}
+						json: {},
+					},
 				]);
 			} else {
 				// Get the data of the incoming connections
@@ -156,7 +156,7 @@ export class WorkflowExecute {
 				node: workflow.getNode(startNode) as INode,
 				data: {
 					main: incomingData,
-				}
+				},
 			};
 
 			nodeExecutionStack.push(executeData);
@@ -252,7 +252,7 @@ export class WorkflowExecute {
 			if (this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex] === undefined) {
 				// Node does not have data for runIndex yet so create also empty one and init it
 				this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex] = {
-					main: []
+					main: [],
 				};
 				for (let i = 0; i < workflow.connectionsByDestinationNode[connectionData.node]['main'].length; i++) {
 					this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex].main.push(null);
@@ -282,7 +282,7 @@ export class WorkflowExecute {
 				// So add it to the execution stack
 				this.runExecutionData.executionData!.nodeExecutionStack.push({
 					node: workflow.nodes[connectionData.node],
-					data: this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex]
+					data: this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex],
 				});
 
 				// Remove the data from waiting
@@ -426,15 +426,15 @@ export class WorkflowExecute {
 				this.runExecutionData.executionData!.waitingExecution[connectionData.node] = {};
 			}
 			this.runExecutionData.executionData!.waitingExecution[connectionData.node][runIndex] = {
-				main: connectionDataArray
+				main: connectionDataArray,
 			};
 		} else {
 			// All data is there so add it directly to stack
 			this.runExecutionData.executionData!.nodeExecutionStack.push({
 				node: workflow.nodes[connectionData.node],
 				data: {
-					main: connectionDataArray
-				}
+					main: connectionDataArray,
+				},
 			});
 		}
 	}
@@ -608,7 +608,7 @@ export class WorkflowExecute {
 									nodeSuccessData[0] = [
 										{
 											json: {},
-										}
+										},
 									];
 								}
 							}
@@ -622,6 +622,8 @@ export class WorkflowExecute {
 
 							break;
 						} catch (error) {
+							this.runExecutionData.resultData.lastNodeExecuted = executionData.node.name;
+
 							executionError = {
 								message: error.message,
 								stack: error.stack,
@@ -637,7 +639,7 @@ export class WorkflowExecute {
 					}
 					taskData = {
 						startTime,
-						executionTime: (new Date().getTime()) - startTime
+						executionTime: (new Date().getTime()) - startTime,
 					};
 
 					if (executionError !== undefined) {
@@ -667,7 +669,7 @@ export class WorkflowExecute {
 
 					// Node executed successfully. So add data and go on.
 					taskData.data = ({
-						'main': nodeSuccessData
+						'main': nodeSuccessData,
 					} as ITaskDataConnections);
 
 					this.executeHook('nodeExecuteAfter', [executionNode.name, taskData]);
@@ -698,7 +700,10 @@ export class WorkflowExecute {
 										return Promise.reject(new Error(`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`));
 									}
 
-									this.addNodeToBeExecuted(workflow, connectionData, parseInt(outputIndex, 10), executionNode.name, nodeSuccessData!, runIndex);
+									if (nodeSuccessData![outputIndex] && nodeSuccessData![outputIndex].length !== 0) {
+										// Add the node only if there is data for it to process
+										this.addNodeToBeExecuted(workflow, connectionData, parseInt(outputIndex, 10), executionNode.name, nodeSuccessData!, runIndex);
+									}
 								}
 							}
 						}

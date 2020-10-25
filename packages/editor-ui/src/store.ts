@@ -8,6 +8,7 @@ import {
 	IConnection,
 	IConnections,
 	ICredentialType,
+	IDataObject,
 	INodeConnections,
 	INodeIssueData,
 	INodeTypeDescription,
@@ -56,6 +57,7 @@ export const store = new Vuex.Store({
 		executionTimeout: -1,
 		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
 		versionCli: '0.0.0',
+		oauthCallbackUrls: {},
 		workflowExecutionData: null as IExecutionResponse | null,
 		lastSelectedNode: null as string | null,
 		lastSelectedNodeOutputIndex: null as number | null,
@@ -535,6 +537,9 @@ export const store = new Vuex.Store({
 		setVersionCli (state, version: string) {
 			Vue.set(state, 'versionCli', version);
 		},
+		setOauthCallbackUrls(state, urls: IDataObject) {
+			Vue.set(state, 'oauthCallbackUrls', urls);
+		},
 
 		addNodeType (state, typeData: INodeTypeDescription) {
 			if (!typeData.hasOwnProperty('name')) {
@@ -602,6 +607,14 @@ export const store = new Vuex.Store({
 				Vue.set(state.workflow, 'settings', {});
 			}
 		},
+
+		updateNodeTypes (state, nodeTypes: INodeTypeDescription[]) {
+			const updatedNodeNames = nodeTypes.map(node => node.name) as string[];
+			const oldNodesNotChanged = state.nodeTypes.filter(node => !updatedNodeNames.includes(node.name));
+			const updatedNodes = [...oldNodesNotChanged, ...nodeTypes];
+			Vue.set(state, 'nodeTypes', updatedNodes);
+			state.nodeTypes = updatedNodes;
+		},
 	},
 	getters: {
 
@@ -657,6 +670,9 @@ export const store = new Vuex.Store({
 		},
 		versionCli: (state): string => {
 			return state.versionCli;
+		},
+		oauthCallbackUrls: (state): object => {
+			return state.oauthCallbackUrls;
 		},
 
 		// Push Connection

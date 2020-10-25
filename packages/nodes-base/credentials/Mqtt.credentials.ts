@@ -7,6 +7,7 @@ import {
 export class Mqtt implements ICredentialType {
 	name = 'mqtt';
 	displayName = 'MQTT';
+	documentationUrl = 'mqtt';
 	properties = [
 		// The credentials to get from user and save encrypted.
 		// Properties can be defined exactly in the same way
@@ -14,8 +15,8 @@ export class Mqtt implements ICredentialType {
 		{
 			displayName: 'Protocol',
 			name: 'protocol',
-      type: 'options' as NodePropertyTypes,
-      options: [
+			type: 'options' as NodePropertyTypes,
+			options: [
 				{
 					name: 'mqtt',
 					value: 'mqtt',
@@ -56,4 +57,3 @@ export class Mqtt implements ICredentialType {
 		},
 	];
 }
-

@@ -3,8 +3,8 @@ import {
 } from 'request';
 
 import {
+	ParsedMail,
 	simpleParser,
-	Source as ParserSource,
 } from 'mailparser';
 
 import {
@@ -71,11 +71,13 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 }
 
 
-export async function parseRawEmail(this: IExecuteFunctions, messageEncoded: ParserSource, dataPropertyNameDownload: string): Promise<INodeExecutionData> {
+export async function parseRawEmail(this: IExecuteFunctions, messageData: any, dataPropertyNameDownload: string): Promise<INodeExecutionData> { // tslint:disable-line:no-any
 
-	const responseData = await simpleParser(messageEncoded);
+	const messageEncoded = Buffer.from(messageData.raw, 'base64').toString('utf8');
+	let responseData = await simpleParser(messageEncoded);
 
 	const headers: IDataObject = {};
+	// @ts-ignore
 	for (const header of responseData.headerLines) {
 		headers[header.key] = header.line;
 	}
@@ -95,6 +97,22 @@ export async function parseRawEmail(this: IExecuteFunctions, messageEncoded: Par
 		// @ts-ignore
 		responseData.attachments = undefined;
 	}
+
+	const mailBaseData: IDataObject = {};
+
+	const resolvedModeAddProperties = [
+		'id',
+		'threadId',
+		'labelIds',
+		'sizeEstimate',
+	];
+
+	for (const key of resolvedModeAddProperties) {
+		// @ts-ignore
+		mailBaseData[key] = messageData[key];
+	}
+
+	responseData = Object.assign(mailBaseData, responseData);
 
 	return {
 		json: responseData as unknown as IDataObject,

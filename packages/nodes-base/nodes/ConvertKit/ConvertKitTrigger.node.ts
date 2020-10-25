@@ -7,8 +7,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -254,7 +254,7 @@ export class ConvertKitTrigger implements INodeType {
 
 				return returnData;
 			},
-		}
+		},
 	};
 
 	// @ts-ignore (because of request)
@@ -290,7 +290,7 @@ export class ConvertKitTrigger implements INodeType {
 				const body: IDataObject = {
 					target_url: webhookUrl as string,
 					event: {
-						name: event
+						name: event,
 					},
 				};
 

@@ -3,17 +3,17 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	flowApiRequest,
 	FlowApiRequestAllItems,
 } from './GenericFunctions';
 import {
-	taskOpeations,
 	taskFields,
+	taskOpeations,
 } from './TaskDescription';
 import {
 	ITask, TaskInfo,
@@ -38,7 +38,7 @@ export class Flow implements INodeType {
 			{
 				name: 'flowApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -87,7 +87,7 @@ export class Flow implements INodeType {
 					};
 					const task: TaskInfo = {
 						name,
-						workspace_id: parseInt(workspaceId, 10)
+						workspace_id: parseInt(workspaceId, 10),
 					};
 					if (additionalFields.ownerId) {
 						task.owner_id = parseInt(additionalFields.ownerId as string, 10);

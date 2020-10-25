@@ -3,11 +3,15 @@
 		<div
 			class="node-view-wrapper"
 			:class="workflowClasses"
+			@touchstart="mouseDown"
+			@touchend="mouseUp"
+			@touchmove="mouseMoveNodeWorkflow"
 			@mousedown="mouseDown"
+			v-touch:tap="touchTap"
 			@mouseup="mouseUp"
 			@wheel="wheelScroll"
 			>
-			<div class="node-view-background" :style="backgroundStyle"></div>
+			<div id="node-view-background" class="node-view-background" :style="backgroundStyle"></div>
 			<div id="node-view" class="node-view" :style="workflowStyle">
 				<node
 				v-for="nodeData in nodes"
@@ -356,14 +360,20 @@ export default mixins(
 
 				return data;
 			},
-			mouseDown (e: MouseEvent) {
+			touchTap (e: MouseEvent | TouchEvent) {
+				if (this.isTouchDevice) {
+					this.mouseDown(e);
+				}
+			},
+			mouseDown (e: MouseEvent | TouchEvent) {
 				// Save the location of the mouse click
+				const position = this.getMousePosition(e);
 				const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-				this.lastClickPosition[0] = e.pageX - offsetPosition[0];
-				this.lastClickPosition[1] = e.pageY - offsetPosition[1];
+				this.lastClickPosition[0] = position.x - offsetPosition[0];
+				this.lastClickPosition[1] = position.y - offsetPosition[1];
 
-				this.mouseDownMouseSelect(e);
-				this.mouseDownMoveWorkflow(e);
+				this.mouseDownMouseSelect(e as MouseEvent);
+				this.mouseDownMoveWorkflow(e as MouseEvent);
 
 				// Hide the node-creator
 				this.createNodeActive = false;
@@ -962,7 +972,7 @@ export default mixins(
 					// If a node is active then add the new node directly after the current one
 					// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 					newNodeData.position = this.getNewNodePosition(
-						[lastSelectedNode.position[0] + 150, lastSelectedNode.position[1]],
+						[lastSelectedNode.position[0] + 200, lastSelectedNode.position[1]],
 						[100, 0],
 					);
 				} else {
@@ -1456,6 +1466,11 @@ export default mixins(
 					[0, 150],
 				);
 
+				if (newNodeData.webhookId) {
+					// Make sure that the node gets a new unique webhook-ID
+					newNodeData.webhookId = uuidv4();
+				}
+
 				await this.addNodes([newNodeData]);
 
 				// Automatically deselect all nodes and select the current one and also active
@@ -1593,6 +1608,11 @@ export default mixins(
 					return;
 				}
 
+				// Before proceeding we must check if all nodes contain the `properties` attribute.
+				// Nodes are loaded without this information so we must make sure that all nodes
+				// being added have this information.
+				await this.loadNodesProperties(nodes.map(node => node.type));
+
 				// Add the node to the node-list
 				let nodeType: INodeTypeDescription | null;
 				let foundNodeIssues: INodeIssues | null;
@@ -1703,6 +1723,9 @@ export default mixins(
 				let oldName: string;
 				let newName: string;
 				const createNodes: INode[] = [];
+
+				await this.loadNodesProperties(data.nodes.map(node => node.type));
+
 				data.nodes.forEach(node => {
 					if (nodeTypesCount[node.type] !== undefined) {
 						if (nodeTypesCount[node.type].exist >= nodeTypesCount[node.type].max) {
@@ -1745,6 +1768,10 @@ export default mixins(
 					for (type of Object.keys(currentConnections[sourceNode])) {
 						connection[type] = [];
 						for (sourceIndex = 0; sourceIndex < currentConnections[sourceNode][type].length; sourceIndex++) {
+							if (!currentConnections[sourceNode][type][sourceIndex]) {
+								// There is so something wrong with the data so ignore
+								continue;
+							}
 							const nodeSourceConnections = [];
 							for (connectionIndex = 0; connectionIndex < currentConnections[sourceNode][type][sourceIndex].length; connectionIndex++) {
 								const nodeConnection: NodeInputConnections = [];
@@ -1908,6 +1935,7 @@ export default mixins(
 				this.$store.commit('setExecutionTimeout', settings.executionTimeout);
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
+				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -1920,6 +1948,17 @@ export default mixins(
 			async loadCredentials (): Promise<void> {
 				const credentials = await this.restApi().getAllCredentials();
 				this.$store.commit('setCredentials', credentials);
+			},
+			async loadNodesProperties(nodeNames: string[]): Promise<void> {
+				const allNodes = this.$store.getters.allNodeTypes;
+				const nodesToBeFetched = allNodes.filter((node: INodeTypeDescription) => nodeNames.includes(node.name) && !node.hasOwnProperty('properties')).map((node: INodeTypeDescription) => node.name) as string[];
+				if (nodesToBeFetched.length > 0) {
+					// Only call API if node information is actually missing
+					this.startLoading();
+					const nodeInfo = await this.restApi().getNodesInformation(nodesToBeFetched);
+					this.$store.commit('updateNodeTypes', nodeInfo);
+					this.stopLoading();
+				}
 			},
 		},
 

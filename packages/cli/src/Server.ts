@@ -20,20 +20,24 @@ import { RequestOptions } from 'oauth-1.0a';
 import * as csrf from 'csrf';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
+import { compare } from 'bcryptjs';
 
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
+	CredentialsOverwrites,
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
 	IActivationError,
-	ICustomRequest,
 	ICredentialsDb,
 	ICredentialsDecryptedDb,
 	ICredentialsDecryptedResponse,
+	ICredentialsOverwrite,
 	ICredentialsResponse,
+	ICustomRequest,
 	IExecutionDeleteFilter,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
@@ -46,21 +50,18 @@ import {
 	IN8nUISettings,
 	IPackageVersions,
 	IWorkflowBase,
-	IWorkflowShortResponse,
-	IWorkflowResponse,
 	IWorkflowExecutionDataProcess,
+	IWorkflowResponse,
+	IWorkflowShortResponse,
+	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
 	ResponseHelper,
 	TestWebhooks,
-	WorkflowCredentials,
 	WebhookHelpers,
+	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowRunner,
-	GenericHelpers,
-	CredentialsOverwrites,
-	ICredentialsOverwrite,
-	LoadNodesAndCredentials,
 } from './';
 
 import {
@@ -74,9 +75,9 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
-	INodeTypeDescription,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeTypeDescription,
 	IRunData,
 	IWorkflowCredentials,
 	Workflow,
@@ -120,7 +121,7 @@ class App {
 	push: Push.Push;
 	versions: IPackageVersions | undefined;
 	restEndpoint: string;
-
+	frontendSettings: IN8nUISettings;
 	protocol: string;
 	sslKey: string;
 	sslCert: string;
@@ -154,6 +155,25 @@ class App {
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.get('credentials.overwrite.endpoint') as string;
+
+		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+
+		this.frontendSettings = {
+			endpointWebhook: this.endpointWebhook,
+			endpointWebhookTest: this.endpointWebhookTest,
+			saveDataErrorExecution: this.saveDataErrorExecution,
+			saveDataSuccessExecution: this.saveDataSuccessExecution,
+			saveManualExecutions: this.saveManualExecutions,
+			executionTimeout: this.executionTimeout,
+			maxExecutionTimeout: this.maxExecutionTimeout,
+			timezone: this.timezone,
+			urlBaseWebhook,
+			versionCli: '',
+			oauthCallbackUrls: {
+				'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
+				'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
+			},
+		};
 	}
 
 
@@ -171,7 +191,16 @@ class App {
 	async config(): Promise<void> {
 
 		this.versions = await GenericHelpers.getVersions();
-		const authIgnoreRegex = new RegExp(`^\/(healthz|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`);
+		this.frontendSettings.versionCli = this.versions.cli;
+
+		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
+
+		const excludeEndpoints = config.get('security.excludeEndpoints') as string;
+
+		const ignoredEndpoints = ['healthz', this.endpointWebhook, this.endpointWebhookTest, this.endpointPresetCredentials];
+		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
+
+		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.get('security.basicAuth.active') as boolean;
@@ -186,7 +215,11 @@ class App {
 				throw new Error('Basic auth is activated but no password got defined. Please set one!');
 			}
 
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+			const basicAuthHashEnabled = await GenericHelpers.getConfigValue('security.basicAuth.hash') as boolean;
+
+			let validPassword: null | string = null;
+
+			this.app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
 				if (req.url.match(authIgnoreRegex)) {
 					return next();
 				}
@@ -198,12 +231,27 @@ class App {
 					return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization is required!');
 				}
 
-				if (basicAuthData.name !== basicAuthUser || basicAuthData.pass !== basicAuthPassword) {
-					// Provided authentication data is wrong
-					return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization data is wrong!');
+				if (basicAuthData.name === basicAuthUser) {
+					if (basicAuthHashEnabled === true) {
+						if (validPassword === null && await compare(basicAuthData.pass, basicAuthPassword)) {
+							// Password is valid so save for future requests
+							validPassword = basicAuthData.pass;
+						}
+
+						if (validPassword === basicAuthData.pass && validPassword !== null) {
+							// Provided hash is correct
+							return next();
+						}
+					} else {
+						if (basicAuthData.pass === basicAuthPassword) {
+							// Provided password is correct
+							return next();
+						}
+					}
 				}
 
-				next();
+				// Provided authentication data is wrong
+				return ResponseHelper.basicAuthAuthorizationError(res, realm, 'Authorization data is wrong!');
 			});
 		}
 
@@ -265,7 +313,7 @@ class App {
 
 				const jwtVerifyOptions: jwt.VerifyOptions = {
 					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
-					ignoreExpiration: false
+					ignoreExpiration: false,
 				};
 
 				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
@@ -307,7 +355,7 @@ class App {
 			limit: '16mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		// Support application/xml type post data
@@ -317,14 +365,14 @@ class App {
 				normalize: true,     // Trim whitespace inside text nodes
 				normalizeTags: true, // Transform tags to lowercase
 				explicitArray: false, // Only put properties in array if length > 1
-			}
+			},
 		}));
 
 		this.app.use(bodyParser.text({
 			limit: '16mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		// Make sure that Vue history mode works properly
@@ -334,9 +382,9 @@ class App {
 					from: new RegExp(`^\/(${this.restEndpoint}|healthz|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`),
 					to: (context) => {
 						return context.parsedUrl!.pathname!.toString();
-					}
-				}
-			]
+					},
+				},
+			],
 		}));
 
 		//support application/x-www-form-urlencoded post data
@@ -344,7 +392,7 @@ class App {
 			verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		if (process.env['NODE_ENV'] !== 'production') {
@@ -532,6 +580,7 @@ class App {
 			newWorkflowData.updatedAt = this.getCurrentDate();
 
 			await Db.collections.Workflow!.update(id, newWorkflowData);
+			await this.externalHooks.run('workflow.afterUpdate', [newWorkflowData]);
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
@@ -580,6 +629,7 @@ class App {
 			}
 
 			await Db.collections.Workflow!.delete(id);
+			await this.externalHooks.run('workflow.afterDelete', [id]);
 
 			return true;
 		}));
@@ -665,10 +715,33 @@ class App {
 			const allNodes = nodeTypes.getAll();
 
 			allNodes.forEach((nodeData) => {
-				returnData.push(nodeData.description);
+				// Make a copy of the object. If we don't do this, then when
+				// The method below is called the properties are removed for good
+				// This happens because nodes are returned as reference.
+				const nodeInfo: INodeTypeDescription = {...nodeData.description};
+				if (req.query.includeProperties !== 'true') {
+					// @ts-ignore
+					delete nodeInfo.properties;
+				}
+				returnData.push(nodeInfo);
 			});
 
 			return returnData;
+		}));
+
+
+		// Returns node information baesd on namese
+		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
+			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
+			const nodeTypes = NodeTypes();
+
+			return nodeNames.map(name => {
+				try {
+					return nodeTypes.getByName(name);
+				} catch (e) {
+					return undefined;
+				}
+			}).filter(nodeData => !!nodeData).map(nodeData => nodeData!.description);
 		}));
 
 
@@ -1009,7 +1082,7 @@ class App {
 
 			const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
 
-			const oauth = new clientOAuth1({
+			const oAuthOptions: clientOAuth1.Options = {
 				consumer: {
 					key: _.get(oauthCredentials, 'consumerKey') as string,
 					secret: _.get(oauthCredentials, 'consumerSecret') as string,
@@ -1021,16 +1094,20 @@ class App {
 						.update(base)
 						.digest('base64');
 				},
-			});
+			};
 
-			const callback = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`;
+			const oauthRequestData = {
+				oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`,
+			};
+
+			await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
+
+			const oauth = new clientOAuth1(oAuthOptions);
 
 			const options: RequestOptions = {
 				method: 'POST',
 				url: (_.get(oauthCredentials, 'requestTokenUrl') as string),
-				data: {
-					oauth_callback: callback,
-				},
+				data: oauthRequestData,
 			};
 
 			const data = oauth.toHeader(oauth.authorize(options as RequestOptions));
@@ -1099,7 +1176,7 @@ class App {
 				qs: {
 					oauth_token,
 					oauth_verifier,
-				}
+				},
 			};
 
 			let oauthToken;
@@ -1169,11 +1246,11 @@ class App {
 			const csrfSecret = token.secretSync();
 			const state = {
 				token: token.create(csrfSecret),
-				cid: req.query.id
+				cid: req.query.id,
 			};
 			const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64') as string;
 
-			const oAuthObj = new clientOAuth2({
+			const oAuthOptions: clientOAuth2.Options = {
 				clientId: _.get(oauthCredentials, 'clientId') as string,
 				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
@@ -1181,7 +1258,11 @@ class App {
 				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
 				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 				state: stateEncodedStr,
-			});
+			};
+
+			await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+
+			const oAuthObj = new clientOAuth2(oAuthOptions);
 
 			// Encrypt the data
 			const credentials = new Credentials(result.name, result.type, result.nodesAccess);
@@ -1267,11 +1348,11 @@ class App {
 
 			const oAuth2Parameters = {
 				clientId: _.get(oauthCredentials, 'clientId') as string,
-				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string,
+				clientSecret: _.get(oauthCredentials, 'clientSecret', '') as string | undefined,
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
-				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
+				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
 
 			if (_.get(oauthCredentials, 'authentication', 'header') as string === 'body') {
@@ -1283,13 +1364,14 @@ class App {
 				};
 				delete oAuth2Parameters.clientSecret;
 			}
-			const redirectUri = `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`;
+
+			await this.externalHooks.run('oauth2.callback', [oAuth2Parameters]);
 
 			const oAuthObj = new clientOAuth2(oAuth2Parameters);
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
-			const oauthToken = await oAuthObj.code.getToken(`${redirectUri}?${queryParameters}`, options);
+			const oauthToken = await oAuthObj.code.getToken(`${oAuth2Parameters.redirectUri}?${queryParameters}`, options);
 
 			if (oauthToken === undefined) {
 				const errorResponse = new ResponseHelper.ResponseError('Unable to get access tokens!', undefined, 404);
@@ -1582,18 +1664,7 @@ class App {
 
 		// Returns the settings which are needed in the UI
 		this.app.get(`/${this.restEndpoint}/settings`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-			return {
-				endpointWebhook: this.endpointWebhook,
-				endpointWebhookTest: this.endpointWebhookTest,
-				saveDataErrorExecution: this.saveDataErrorExecution,
-				saveDataSuccessExecution: this.saveDataSuccessExecution,
-				saveManualExecutions: this.saveManualExecutions,
-				executionTimeout: this.executionTimeout,
-				maxExecutionTimeout: this.maxExecutionTimeout,
-				timezone: this.timezone,
-				urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
-				versionCli: this.versions!.cli,
-			};
+			return this.frontendSettings;
 		}));
 
 
@@ -1829,7 +1900,7 @@ class App {
 					// got used
 					res.setHeader('Last-Modified', startTime);
 				}
-			}
+			},
 		}));
 	}
 
@@ -1860,5 +1931,7 @@ export async function start(): Promise<void> {
 		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
+
+		await app.externalHooks.run('n8n.ready', [app]);
 	});
 }

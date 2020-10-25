@@ -5,14 +5,14 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
-	woocommerceApiRequest,
 	getAutomaticSecret,
+	woocommerceApiRequest,
 } from './GenericFunctions';
 
 import { createHmac } from 'crypto';
@@ -35,7 +35,7 @@ export class WooCommerceTrigger implements INodeType {
 			{
 				name: 'wooCommerceApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{

@@ -1,8 +1,8 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
 	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 
@@ -21,7 +21,7 @@ export async function veroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 			...body,
 		},
 		uri: uri ||`https://api.getvero.com/api/v2${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

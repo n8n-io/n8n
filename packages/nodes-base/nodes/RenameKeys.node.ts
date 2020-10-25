@@ -62,11 +62,11 @@ export class RenameKeys implements INodeType {
 								placeholder: 'newKey',
 								description: 'the name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey"',
 							},
-						]
+						],
 					},
 				],
-			}
-		]
+			},
+		],
 	};
 
 

@@ -7,8 +7,8 @@ import {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
-	INodeTypes,
 	INodeTypeData,
+	INodeTypes,
 	IRun,
 	ITaskData,
 	IWorkflowBase,
@@ -87,7 +87,7 @@ class NodeTypesClass implements INodeTypes {
 							displayOptions: {
 								show: {
 									mode: [
-										'passThrough'
+										'passThrough',
 									],
 								},
 							},
@@ -104,7 +104,7 @@ class NodeTypesClass implements INodeTypes {
 							default: 'input1',
 							description: 'Defines of which input the data should be used as output of node.',
 						},
-					]
+					],
 				},
 				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					// const itemsInput2 = this.getInputData(1);
@@ -131,7 +131,7 @@ class NodeTypesClass implements INodeTypes {
 					}
 
 					return [returnData];
-				}
+				},
 			},
 		},
 		'n8n-nodes-base.set': {
@@ -186,11 +186,11 @@ class NodeTypesClass implements INodeTypes {
 											default: 0,
 											description: 'The number value to write in the property.',
 										},
-									]
+									],
 								},
 							],
 						},
-					]
+					],
 				},
 				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
@@ -213,7 +213,7 @@ class NodeTypesClass implements INodeTypes {
 					}
 
 					return this.prepareOutputData(returnData);
-				}
+				},
 			},
 		},
 		'n8n-nodes-base.start': {
@@ -231,7 +231,7 @@ class NodeTypesClass implements INodeTypes {
 					},
 					inputs: [],
 					outputs: ['main'],
-					properties: []
+					properties: [],
 				},
 				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();

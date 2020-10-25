@@ -6,6 +6,7 @@ import {
 export class PaddleApi implements ICredentialType {
 	name = 'paddleApi';
 	displayName = 'Paddle API';
+	documentationUrl = 'paddle';
 	properties = [
 		{
 			displayName: 'Vendor Auth Code',

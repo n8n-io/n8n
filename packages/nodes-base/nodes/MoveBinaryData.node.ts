@@ -230,7 +230,7 @@ export class MoveBinaryData implements INodeType {
 									'binaryToJson',
 								],
 								'/setAllData': [
-									false
+									false,
 								],
 							},
 						},
@@ -301,7 +301,7 @@ export class MoveBinaryData implements INodeType {
 						description: 'Use data as is and do not JSON.stringify it.',
 					},
 				],
-			}
+			},
 		],
 	};
 
