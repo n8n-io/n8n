@@ -22,7 +22,7 @@ if (process.argv.length === 2) {
 	process.argv.push('start');
 }
 
-const nodeVersion = process.versions.node.split('.');
+var nodeVersion = process.versions.node.split('.');
 
 if (parseInt(nodeVersion[0], 10) < 12 || parseInt(nodeVersion[0], 10) === 12 && parseInt(nodeVersion[1], 10) < 9) {
 	console.log(`\nYour Node.js version (${process.versions.node}) is too old to run n8n.\nPlease update to version 12.9 or later!\n`);
