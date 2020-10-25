@@ -132,7 +132,7 @@ import RunData from '@/components/RunData.vue';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuidv4} from 'uuid';
-import { debounce, isEqual } from 'lodash';
+import { debounce } from 'lodash';
 import axios from 'axios';
 import {
 	IConnection,
