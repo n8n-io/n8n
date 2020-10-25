@@ -398,7 +398,7 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('setWorkflowName', {newName: workflowName, setStateDirty: true});
+					this.$store.commit('setWorkflowName', {newName: workflowName, setStateDirty: false});
 
 					this.$showMessage({
 						title: 'Workflow renamed',
@@ -452,6 +452,7 @@ export default mixins(
 					if(result) {
 						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
 						if (importConfirm === true) {
+							this.$store.commit('setStateDirty', false);
 							this.$router.push({ name: 'NodeViewNew' });
 
 							this.$showMessage({
