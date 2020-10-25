@@ -16,7 +16,7 @@ export class GitlabOAuth2Api implements ICredentialType {
 			displayName: 'Gitlab Server',
 			name: 'server',
 			type: 'string' as NodePropertyTypes,
-			default: 'https://gitlab.com'
+			default: 'https://gitlab.com',
 		},
 		{
 			displayName: 'Authorization URL',

@@ -65,7 +65,7 @@ export class Rocketchat implements INodeType {
 			{
 				name: 'rocketchatApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 				{
@@ -113,8 +113,8 @@ export class Rocketchat implements INodeType {
 							'chat',
 						],
 						operation: [
-							'postMessage'
-						]
+							'postMessage',
+						],
 					},
 				},
 				default: '',
@@ -130,8 +130,8 @@ export class Rocketchat implements INodeType {
 							'chat',
 						],
 						operation: [
-							'postMessage'
-						]
+							'postMessage',
+						],
 					},
 				},
 				default: '',
@@ -146,11 +146,11 @@ export class Rocketchat implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'chat'
+							'chat',
 						],
 						operation: [
 							'postMessage',
-						]
+						],
 					},
 				},
 			},
@@ -191,8 +191,8 @@ export class Rocketchat implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'This will cause the message’s name to appear as the given alias, but your username will still display.',
-					}
-				]
+					},
+				],
 			},
 			{
 				displayName: 'Attachments',
@@ -214,7 +214,7 @@ export class Rocketchat implements INodeType {
 							'postMessage',
 						],
 						jsonParameters: [
-							false
+							false,
 						],
 					},
 				},
@@ -346,27 +346,27 @@ export class Rocketchat implements INodeType {
 										name: 'short',
 										type: 'boolean',
 										default: false,
-										description: 'Whether this field should be a short field.'
+										description: 'Whether this field should be a short field.',
 									},
 									{
 										displayName: 'Title',
 										name: 'title',
 										type: 'string',
 										default: '',
-										description: 'The title of this field.'
+										description: 'The title of this field.',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-										description: 'The value of this field, displayed underneath the title value.'
+										description: 'The value of this field, displayed underneath the title value.',
 									},
 								],
 							},
 						],
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Attachments',
@@ -378,21 +378,21 @@ export class Rocketchat implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'chat'
+							'chat',
 						],
 						operation: [
-							'postMessage'
+							'postMessage',
 						],
 						jsonParameters: [
-							true
+							true,
 						],
 					},
 				},
 				default: '',
 				required: false,
 				description: '',
-			}
-		]
+			},
+		],
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
@@ -494,7 +494,7 @@ export class Rocketchat implements INodeType {
 		}
 
 		return {
-			json: response
+			json: response,
 		};
 	}
 }

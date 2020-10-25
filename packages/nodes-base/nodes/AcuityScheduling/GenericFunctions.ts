@@ -20,7 +20,7 @@ export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecute
 		qs,
 		body,
 		uri: uri ||`https://acuityscheduling.com/api/v1${resource}`,
-		json: true
+		json: true,
 	};
 
 	try {

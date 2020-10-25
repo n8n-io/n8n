@@ -90,7 +90,7 @@ export class Pipedrive implements INodeType {
 				options: [
 					{
 						name: 'API Token',
-						value: 'apiToken'
+						value: 'apiToken',
 					},
 					{
 						name: 'OAuth2',
@@ -591,7 +591,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -631,7 +631,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'activity',
@@ -653,7 +653,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'activity',
@@ -672,7 +672,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'activity',
@@ -782,7 +782,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -964,7 +964,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -1025,7 +1025,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'deal',
@@ -1047,7 +1047,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'deal',
@@ -1066,7 +1066,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'deal',
@@ -1206,7 +1206,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -1231,7 +1231,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'file',
@@ -1349,7 +1349,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -1369,7 +1369,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'file',
@@ -1420,7 +1420,7 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'create',
-							'getAll'
+							'getAll',
 						],
 						resource: [
 							'note',
@@ -1485,7 +1485,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'note',
@@ -1507,7 +1507,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'note',
@@ -1526,7 +1526,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'note',
@@ -1659,7 +1659,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -1827,7 +1827,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -1997,7 +1997,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -2219,7 +2219,7 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'create',
-							'getAll'
+							'getAll',
 						],
 						resource: [
 							'note',
@@ -2271,7 +2271,7 @@ export class Pipedrive implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 
@@ -2485,7 +2485,7 @@ export class Pipedrive implements INodeType {
 						options: {
 							contentType: item.binary[binaryPropertyName].mimeType,
 							filename: item.binary[binaryPropertyName].fileName,
-						}
+						},
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;

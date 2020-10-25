@@ -188,7 +188,7 @@ export class MicrosoftTeams implements INodeType {
 						body: {
 							contentType: messageType,
 							content: message,
-						}
+						},
 					};
 					responseData = await microsoftApiRequest.call(this, 'POST', `/beta/teams/${teamId}/channels/${channelId}/messages`, body);
 				}

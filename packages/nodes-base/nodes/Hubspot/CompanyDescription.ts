@@ -138,7 +138,7 @@ export const companyFields = [
 				name: 'companyDomainName',
 				type: 'string',
 				default: '',
-				description: 'The domain name of the company or organization'
+				description: 'The domain name of the company or organization',
 			},
 			{
 				displayName: 'Company Owner',
@@ -155,7 +155,7 @@ export const companyFields = [
 				name: 'countryRegion',
 				type: 'string',
 				default: '',
-				description: 'The country/region in which the company or organization is located.'
+				description: 'The country/region in which the company or organization is located.',
 			},
 			{
 				displayName: 'Description',
@@ -186,7 +186,7 @@ export const companyFields = [
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getCompanyIndustries'
+					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
 				description: 'The type of business the company performs.',
@@ -357,7 +357,7 @@ export const companyFields = [
 				name: 'webTechnologies',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getCompanyWebTechnologies'
+					loadOptionsMethod: 'getCompanyWebTechnologies',
 				},
 				default: '',
 				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights.',
@@ -376,7 +376,7 @@ export const companyFields = [
 				default: '',
 				description: 'The year the company was created. Powered by HubSpot Insights.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 company:update                             */
@@ -454,7 +454,7 @@ export const companyFields = [
 				name: 'companyDomainName',
 				type: 'string',
 				default: '',
-				description: 'The domain name of the company or organization'
+				description: 'The domain name of the company or organization',
 			},
 			{
 				displayName: 'Company Owmer',
@@ -471,7 +471,7 @@ export const companyFields = [
 				name: 'countryRegion',
 				type: 'string',
 				default: '',
-				description: 'The country/region in which the company or organization is located.'
+				description: 'The country/region in which the company or organization is located.',
 			},
 			{
 				displayName: 'Description',
@@ -502,7 +502,7 @@ export const companyFields = [
 				name: 'industry',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getCompanyIndustries'
+					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
 				description: 'The type of business the company performs.',
@@ -679,7 +679,7 @@ export const companyFields = [
 				name: 'webTechnologies',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getCompanyWebTechnologies'
+					loadOptionsMethod: 'getCompanyWebTechnologies',
 				},
 				default: '',
 				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights.',
@@ -698,7 +698,7 @@ export const companyFields = [
 				default: '',
 				description: 'The year the company was created. Powered by HubSpot Insights.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  company:get                               */
@@ -745,7 +745,7 @@ export const companyFields = [
 				default: false,
 				description: `Returns any merge history if the company has been previously merged with another company record. Defaults to false.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 company:getAll                             */
@@ -836,7 +836,7 @@ export const companyFields = [
 				description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
 				instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 company:delete                             */
@@ -937,7 +937,7 @@ export const companyFields = [
 				description: `By default, you will only get data for the most recent version of a property in the "versions" data.<br/>
 				If you include this parameter, you will get data for all previous versions.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                            company:searchByDomain                          */
@@ -1030,6 +1030,6 @@ export const companyFields = [
 				Including this parameter will include the data for the specified property in the results.<br/>
 				You can include this parameter multiple times to request multiple properties separed by ,.`,
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

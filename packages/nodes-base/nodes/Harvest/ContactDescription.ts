@@ -116,8 +116,8 @@ export const contactFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'Only return clients that have been updated since the given date and time.',
-			}
-		]
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -215,42 +215,42 @@ export const contactFields = [
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'The last name of the contact.'
+				description: 'The last name of the contact.',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'The title of the contact.'
+				description: 'The title of the contact.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'The contact’s email address.'
+				description: 'The contact’s email address.',
 			},
 			{
 				displayName: 'Phone Office',
 				name: 'phone_office',
 				type: 'string',
 				default: '',
-				description: 'The contact’s office phone number.'
+				description: 'The contact’s office phone number.',
 			},
 			{
 				displayName: 'Phone Mobile',
 				name: 'phone_mobile',
 				type: 'string',
 				default: '',
-				description: 'The contact’s mobile phone number.'
+				description: 'The contact’s mobile phone number.',
 			},
 			{
 				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
 				default: '',
-				description: 'The contact’s fax number.'
+				description: 'The contact’s fax number.',
 			},
 		],
 	},
@@ -308,42 +308,42 @@ export const contactFields = [
 				name: 'last_name',
 				type: 'string',
 				default: '',
-				description: 'The last name of the contact.'
+				description: 'The last name of the contact.',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'The title of the contact.'
+				description: 'The title of the contact.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: 'The contact’s email address.'
+				description: 'The contact’s email address.',
 			},
 			{
 				displayName: 'Phone Office',
 				name: 'phone_office',
 				type: 'string',
 				default: '',
-				description: 'The contact’s office phone number.'
+				description: 'The contact’s office phone number.',
 			},
 			{
 				displayName: 'Phone Mobile',
 				name: 'phone_mobile',
 				type: 'string',
 				default: '',
-				description: 'The contact’s mobile phone number.'
+				description: 'The contact’s mobile phone number.',
 			},
 			{
 				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
 				default: '',
-				description: 'The contact’s fax number.'
+				description: 'The contact’s fax number.',
 			},
 		],
 	},

@@ -25,7 +25,7 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 		qs,
 		body,
 		uri: uri ||`https://sentry.io${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;

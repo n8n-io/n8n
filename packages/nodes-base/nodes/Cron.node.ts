@@ -234,21 +234,21 @@ export class Cron implements INodeType {
 								options: [
 									{
 										name: 'Minutes',
-										value: 'minutes'
+										value: 'minutes',
 									},
 									{
 										name: 'Hours',
-										value: 'hours'
+										value: 'hours',
 									},
 								],
 								default: 'hours',
 								description: 'If it should trigger all X minutes or hours.',
 							},
-						]
+						],
 					},
 				],
-			}
-		]
+			},
+		],
 	};
 
 

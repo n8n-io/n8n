@@ -40,7 +40,7 @@ export class Mattermost implements INodeType {
 			{
 				name: 'mattermostApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -165,7 +165,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -183,7 +183,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -202,7 +202,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -219,7 +219,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -257,7 +257,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 						resource: [
 							'channel',
@@ -388,7 +388,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'restore'
+							'restore',
 						],
 						resource: [
 							'channel',
@@ -415,7 +415,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addUser'
+							'addUser',
 						],
 						resource: [
 							'channel',
@@ -437,7 +437,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addUser'
+							'addUser',
 						],
 						resource: [
 							'channel',
@@ -464,7 +464,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'statistics'
+							'statistics',
 						],
 						resource: [
 							'channel',
@@ -516,7 +516,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -536,7 +536,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -556,7 +556,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -606,7 +606,7 @@ export class Mattermost implements INodeType {
 										displayOptions: {
 											show: {
 												type: [
-													'select'
+													'select',
 												],
 											},
 										},
@@ -640,10 +640,10 @@ export class Mattermost implements INodeType {
 										displayOptions: {
 											show: {
 												data_source: [
-													'custom'
+													'custom',
 												],
 												type: [
-													'select'
+													'select',
 												],
 											},
 										},
@@ -668,7 +668,7 @@ export class Mattermost implements INodeType {
 														default: '',
 														description: 'Value of the option.',
 													},
-												]
+												],
 											},
 										],
 									},
@@ -732,15 +732,15 @@ export class Mattermost implements INodeType {
 																		default: '',
 																		description: 'Value of the property to set.',
 																	},
-																]
+																],
 															},
 														],
 													},
-												]
+												],
 											},
 										],
 									},
-								]
+								],
 							},
 						],
 					},
@@ -824,7 +824,7 @@ export class Mattermost implements INodeType {
 										default: true,
 										description: 'If items can be displayed next to each other.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -917,7 +917,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -1109,7 +1109,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				default: '',
-				description: 'The password used for email authentication.'
+				description: 'The password used for email authentication.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1208,7 +1208,7 @@ export class Mattermost implements INodeType {
 										name: 'email',
 										type: 'boolean',
 										default: false,
-										description: `Set to "true" to enable email notifications, "false" to disable. Defaults to "true".`
+										description: `Set to "true" to enable email notifications, "false" to disable. Defaults to "true".`,
 									},
 									{
 										displayName: 'First Name',
@@ -1273,7 +1273,7 @@ export class Mattermost implements INodeType {
 					},
 				},
 				default: '',
-				description: 'User GUID'
+				description: 'User GUID',
 			},
 
 			// ----------------------------------

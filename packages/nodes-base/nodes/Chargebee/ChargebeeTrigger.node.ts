@@ -216,7 +216,7 @@ export class ChargebeeTrigger implements INodeType {
 						value: 'card_deleted',
 						description: 'Triggered when a card is deleted for a customer.',
 					},
-				]
+				],
 			},
 		],
 
@@ -238,7 +238,7 @@ export class ChargebeeTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

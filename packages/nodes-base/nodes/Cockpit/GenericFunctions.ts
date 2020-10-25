@@ -20,11 +20,11 @@ export async function cockpitApiRequest(this: IExecuteFunctions | IExecuteSingle
 		},
 		method,
 		qs: {
-			token: credentials!.accessToken
+			token: credentials!.accessToken,
 		},
 		body,
 		uri: uri || `${credentials!.url}/api${resource}`,
-		json: true
+		json: true,
 	};
 
 	options = Object.assign({}, options, option);

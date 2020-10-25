@@ -21,7 +21,7 @@ export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSin
 		body: method === 'GET' ? undefined : body,
 		qs,
 		uri: `https://${subdomain}.salesforce.com/services/data/v39.0${uri || endpoint}`,
-		json: true
+		json: true,
 	};
 	try {
 		//@ts-ignore
