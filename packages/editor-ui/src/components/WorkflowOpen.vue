@@ -100,7 +100,7 @@ export default mixins(
 						title: 'Already open',
 						message: 'This is the current workflow',
 						type: 'error',
-						duration: 800,
+						duration: 1500,
 					});
 					// Do nothing if current workflow is the one user chose to open
 					return;
