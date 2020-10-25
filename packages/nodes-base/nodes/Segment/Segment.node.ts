@@ -14,8 +14,8 @@ import {
 } from './GenericFunctions';
 
 import {
-	groupOperations,
 	groupFields,
+	groupOperations,
 } from './GroupDescription';
 
 import {
@@ -28,12 +28,13 @@ import {
 } from './IdentifyInterface';
 
 import {
-	trackOperations,
 	trackFields,
+	trackOperations,
 } from './TrackDescription';
 
 import {
-	ITrack, IGroup,
+	IGroup,
+	ITrack,
 } from './TrackInterface';
 
 import * as uuid from 'uuid/v4';
@@ -73,7 +74,7 @@ export class Segment implements INodeType {
 					{
 						name: 'Identify',
 						value: 'identify',
-						description: 'Identify lets you tie a user to their actions'
+						description: 'Identify lets you tie a user to their actions',
 					},
 					{
 						name: 'Track',

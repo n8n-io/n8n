@@ -5,10 +5,10 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeTypeDescription,
 	INodeExecutionData,
-	INodeType,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -28,10 +28,10 @@ import {
 } from './ProductDescription';
 
 import {
-	IOrder,
-	IDiscountCode,
 	IAddress,
+	IDiscountCode,
 	ILineItem,
+	IOrder,
 } from './OrderInterface';
 
 import {

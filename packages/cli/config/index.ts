@@ -10,58 +10,58 @@ const config = convict({
 			doc: 'Type of database to use',
 			format: ['sqlite', 'mariadb', 'mongodb', 'mysqldb', 'postgresdb'],
 			default: 'sqlite',
-			env: 'DB_TYPE'
+			env: 'DB_TYPE',
 		},
 		mongodb: {
 			connectionUrl: {
 				doc: 'MongoDB Connection URL',
 				format: '*',
 				default: 'mongodb://user:password@localhost:27017/database',
-				env: 'DB_MONGODB_CONNECTION_URL'
-			}
+				env: 'DB_MONGODB_CONNECTION_URL',
+			},
 		},
 		tablePrefix: {
 			doc: 'Prefix for table names',
 			format: '*',
 			default: '',
-			env: 'DB_TABLE_PREFIX'
+			env: 'DB_TABLE_PREFIX',
 		},
 		postgresdb: {
 			database: {
 				doc: 'PostgresDB Database',
 				format: String,
 				default: 'n8n',
-				env: 'DB_POSTGRESDB_DATABASE'
+				env: 'DB_POSTGRESDB_DATABASE',
 			},
 			host: {
 				doc: 'PostgresDB Host',
 				format: String,
 				default: 'localhost',
-				env: 'DB_POSTGRESDB_HOST'
+				env: 'DB_POSTGRESDB_HOST',
 			},
 			password: {
 				doc: 'PostgresDB Password',
 				format: String,
 				default: '',
-				env: 'DB_POSTGRESDB_PASSWORD'
+				env: 'DB_POSTGRESDB_PASSWORD',
 			},
 			port: {
 				doc: 'PostgresDB Port',
 				format: Number,
 				default: 5432,
-				env: 'DB_POSTGRESDB_PORT'
+				env: 'DB_POSTGRESDB_PORT',
 			},
 			user: {
 				doc: 'PostgresDB User',
 				format: String,
 				default: 'root',
-				env: 'DB_POSTGRESDB_USER'
+				env: 'DB_POSTGRESDB_USER',
 			},
 			schema: {
 				doc: 'PostgresDB Schema',
 				format: String,
 				default: 'public',
-				env: 'DB_POSTGRESDB_SCHEMA'
+				env: 'DB_POSTGRESDB_SCHEMA',
 			},
 
 			ssl: {
@@ -89,7 +89,7 @@ const config = convict({
 					default: true,
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
-			}
+			},
 
 		},
 		mysqldb: {
@@ -97,31 +97,31 @@ const config = convict({
 				doc: 'MySQL Database',
 				format: String,
 				default: 'n8n',
-				env: 'DB_MYSQLDB_DATABASE'
+				env: 'DB_MYSQLDB_DATABASE',
 			},
 			host: {
 				doc: 'MySQL Host',
 				format: String,
 				default: 'localhost',
-				env: 'DB_MYSQLDB_HOST'
+				env: 'DB_MYSQLDB_HOST',
 			},
 			password: {
 				doc: 'MySQL Password',
 				format: String,
 				default: '',
-				env: 'DB_MYSQLDB_PASSWORD'
+				env: 'DB_MYSQLDB_PASSWORD',
 			},
 			port: {
 				doc: 'MySQL Port',
 				format: Number,
 				default: 3306,
-				env: 'DB_MYSQLDB_PORT'
+				env: 'DB_MYSQLDB_PORT',
 			},
 			user: {
 				doc: 'MySQL User',
 				format: String,
 				default: 'root',
-				env: 'DB_MYSQLDB_USER'
+				env: 'DB_MYSQLDB_USER',
 			},
 		},
 	},
@@ -136,7 +136,7 @@ const config = convict({
 				doc: 'Overwrites for credentials',
 				format: '*',
 				default: '{}',
-				env: 'CREDENTIALS_OVERWRITE_DATA'
+				env: 'CREDENTIALS_OVERWRITE_DATA',
 			},
 			endpoint: {
 				doc: 'Fetch credentials from API',
@@ -156,7 +156,7 @@ const config = convict({
 			doc: 'In what process workflows should be executed',
 			format: ['main', 'own'],
 			default: 'own',
-			env: 'EXECUTIONS_PROCESS'
+			env: 'EXECUTIONS_PROCESS',
 		},
 
 		// A Workflow times out and gets canceled after this time (seconds).
@@ -174,13 +174,13 @@ const config = convict({
 			doc: 'Max run time (seconds) before stopping the workflow execution',
 			format: Number,
 			default: -1,
-			env: 'EXECUTIONS_TIMEOUT'
+			env: 'EXECUTIONS_TIMEOUT',
 		},
 		maxTimeout: {
 			doc: 'Max execution time (seconds) that can be set for a workflow individually',
 			format: Number,
 			default: 3600,
-			env: 'EXECUTIONS_TIMEOUT_MAX'
+			env: 'EXECUTIONS_TIMEOUT_MAX',
 		},
 
 		// If a workflow executes all the data gets saved by default. This
@@ -193,13 +193,13 @@ const config = convict({
 			doc: 'What workflow execution data to save on error',
 			format: ['all', 'none'],
 			default: 'all',
-			env: 'EXECUTIONS_DATA_SAVE_ON_ERROR'
+			env: 'EXECUTIONS_DATA_SAVE_ON_ERROR',
 		},
 		saveDataOnSuccess: {
 			doc: 'What workflow execution data to save on success',
 			format: ['all', 'none'],
 			default: 'all',
-			env: 'EXECUTIONS_DATA_SAVE_ON_SUCCESS'
+			env: 'EXECUTIONS_DATA_SAVE_ON_SUCCESS',
 		},
 
 		// If the executions of workflows which got started via the editor
@@ -211,7 +211,7 @@ const config = convict({
 			doc: 'Save data of executions when started manually via editor',
 			format: 'Boolean',
 			default: false,
-			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS'
+			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
 
 		// To not exceed the database's capacity and keep its size moderate
@@ -223,19 +223,19 @@ const config = convict({
 			doc: 'Delete data of past executions on a rolling basis',
 			format: 'Boolean',
 			default: false,
-			env: 'EXECUTIONS_DATA_PRUNE'
+			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
 			doc: 'How old (hours) the execution data has to be to get deleted',
 			format: Number,
 			default: 336,
-			env: 'EXECUTIONS_DATA_MAX_AGE'
+			env: 'EXECUTIONS_DATA_MAX_AGE',
 		},
 		pruneDataTimeout: {
 			doc: 'Timeout (seconds) after execution data has been pruned',
 			format: Number,
 			default: 3600,
-			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT'
+			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
 		},
 	},
 
@@ -248,7 +248,7 @@ const config = convict({
 			doc: 'The timezone to use',
 			format: '*',
 			default: 'America/New_York',
-			env: 'GENERIC_TIMEZONE'
+			env: 'GENERIC_TIMEZONE',
 		},
 	},
 
@@ -258,66 +258,78 @@ const config = convict({
 		default: '/',
 		arg: 'path',
 		env: 'N8N_PATH',
-		doc: 'Path n8n is deployed to'
+		doc: 'Path n8n is deployed to',
 	},
 	host: {
 		format: String,
 		default: 'localhost',
 		arg: 'host',
 		env: 'N8N_HOST',
-		doc: 'Host name n8n can be reached'
+		doc: 'Host name n8n can be reached',
 	},
 	port: {
 		format: Number,
 		default: 5678,
 		arg: 'port',
 		env: 'N8N_PORT',
-		doc: 'HTTP port n8n can be reached'
+		doc: 'HTTP port n8n can be reached',
 	},
 	listen_address: {
 		format: String,
 		default: '0.0.0.0',
 		env: 'N8N_LISTEN_ADDRESS',
-		doc: 'IP address n8n should listen on'
+		doc: 'IP address n8n should listen on',
 	},
 	protocol: {
 		format: ['http', 'https'],
 		default: 'http',
 		env: 'N8N_PROTOCOL',
-		doc: 'HTTP Protocol via which n8n can be reached'
+		doc: 'HTTP Protocol via which n8n can be reached',
 	},
 	ssl_key: {
 		format: String,
 		default: '',
 		env: 'N8N_SSL_KEY',
-		doc: 'SSL Key for HTTPS Protocol'
+		doc: 'SSL Key for HTTPS Protocol',
 	},
 	ssl_cert: {
 		format: String,
 		default: '',
 		env: 'N8N_SSL_CERT',
-		doc: 'SSL Cert for HTTPS Protocol'
+		doc: 'SSL Cert for HTTPS Protocol',
 	},
 
 	security: {
+		excludeEndpoints: {
+			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
+			format: String,
+			default: '',
+			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
+		},
 		basicAuth: {
 			active: {
 				format: 'Boolean',
 				default: false,
 				env: 'N8N_BASIC_AUTH_ACTIVE',
-				doc: 'If basic auth should be activated for editor and REST-API'
+				doc: 'If basic auth should be activated for editor and REST-API',
 			},
 			user: {
 				format: String,
 				default: '',
 				env: 'N8N_BASIC_AUTH_USER',
-				doc: 'The name of the basic auth user'
+				doc: 'The name of the basic auth user',
 			},
 			password: {
 				format: String,
 				default: '',
 				env: 'N8N_BASIC_AUTH_PASSWORD',
-				doc: 'The password of the basic auth user'
+				doc: 'The password of the basic auth user',
+			},
+			hash: {
+				format: 'Boolean',
+				default: false,
+				env: 'N8N_BASIC_AUTH_HASH',
+				doc: 'If password for basic auth is hashed',
 			},
 		},
 		jwtAuth: {
@@ -325,49 +337,49 @@ const config = convict({
 				format: 'Boolean',
 				default: false,
 				env: 'N8N_JWT_AUTH_ACTIVE',
-				doc: 'If JWT auth should be activated for editor and REST-API'
+				doc: 'If JWT auth should be activated for editor and REST-API',
 			},
 			jwtHeader: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_AUTH_HEADER',
-				doc: 'The request header containing a signed JWT'
+				doc: 'The request header containing a signed JWT',
 			},
 			jwtHeaderValuePrefix: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_AUTH_HEADER_VALUE_PREFIX',
-				doc: 'The request header value prefix to strip (optional)'
+				doc: 'The request header value prefix to strip (optional)',
 			},
 			jwksUri: {
 				format: String,
 				default: '',
 				env: 'N8N_JWKS_URI',
-				doc: 'The URI to fetch JWK Set for JWT authentication'
+				doc: 'The URI to fetch JWK Set for JWT authentication',
 			},
 			jwtIssuer: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_ISSUER',
-				doc: 'JWT issuer to expect (optional)'
+				doc: 'JWT issuer to expect (optional)',
 			},
 			jwtNamespace: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_NAMESPACE',
-				doc: 'JWT namespace to expect (optional)'
+				doc: 'JWT namespace to expect (optional)',
 			},
 			jwtAllowedTenantKey: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_ALLOWED_TENANT_KEY',
-				doc: 'JWT tenant key name to inspect within JWT namespace (optional)'
+				doc: 'JWT tenant key name to inspect within JWT namespace (optional)',
 			},
 			jwtAllowedTenant: {
 				format: String,
 				default: '',
 				env: 'N8N_JWT_ALLOWED_TENANT',
-				doc: 'JWT tenant to allow (optional)'
+				doc: 'JWT tenant to allow (optional)',
 			},
 		},
 	},
@@ -377,19 +389,19 @@ const config = convict({
 			format: String,
 			default: 'rest',
 			env: 'N8N_ENDPOINT_REST',
-			doc: 'Path for rest endpoint'
+			doc: 'Path for rest endpoint',
 		},
 		webhook: {
 			format: String,
 			default: 'webhook',
 			env: 'N8N_ENDPOINT_WEBHOOK',
-			doc: 'Path for webhook endpoint'
+			doc: 'Path for webhook endpoint',
 		},
 		webhookTest: {
 			format: String,
 			default: 'webhook-test',
 			env: 'N8N_ENDPOINT_WEBHOOK_TEST',
-			doc: 'Path for test-webhook endpoint'
+			doc: 'Path for test-webhook endpoint',
 		},
 	},
 
@@ -397,7 +409,7 @@ const config = convict({
 		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
 		format: String,
 		default: '',
-		env: 'EXTERNAL_HOOK_FILES'
+		env: 'EXTERNAL_HOOK_FILES',
 	},
 
 	nodes: {
@@ -421,13 +433,13 @@ const config = convict({
 				}
 			},
 			default: '[]',
-			env: 'NODES_EXCLUDE'
+			env: 'NODES_EXCLUDE',
 		},
 		errorTriggerType: {
 			doc: 'Node Type to use as Error Trigger',
 			format: String,
 			default: 'n8n-nodes-base.errorTrigger',
-			env: 'NODES_ERROR_TRIGGER_TYPE'
+			env: 'NODES_ERROR_TRIGGER_TYPE',
 		},
 	},
 

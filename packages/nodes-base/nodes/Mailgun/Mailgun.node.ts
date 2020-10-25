@@ -4,9 +4,9 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 
@@ -28,7 +28,7 @@ export class Mailgun implements INodeType {
 			{
 				name: 'mailgunApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -128,7 +128,7 @@ export class Mailgun implements INodeType {
 			to: toEmail,
 			subject,
 			text,
-			html
+			html,
 		};
 
 		if (ccEmail.length !== 0) {
@@ -154,7 +154,7 @@ export class Mailgun implements INodeType {
 					options: {
 						filename: item.binary[propertyName].fileName || 'unknown',
 
-					}
+					},
 				});
 			}
 

@@ -99,7 +99,7 @@ export const clientFields = [
 				type: 'string',
 				default: '',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Billing Address',

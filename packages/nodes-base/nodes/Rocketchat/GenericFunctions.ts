@@ -1,9 +1,9 @@
 import { OptionsWithUri } from 'request';
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 } from 'n8n-core';
 
 export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, operation: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
@@ -21,7 +21,7 @@ export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFuncti
 		method,
 		body,
 		uri: `${credentials.domain}/api/v1${resource}.${operation}`,
-		json: true
+		json: true,
 	};
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;

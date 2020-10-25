@@ -27,7 +27,7 @@ export async function contentfulApiRequest(this: IExecuteFunctions | IExecuteSin
 		qs,
 		body,
 		uri: uri ||`https://${isPreview ? 'preview' : 'cdn'}.contentful.com${resource}`,
-		json: true
+		json: true,
 	};
 
 	if (isPreview) {

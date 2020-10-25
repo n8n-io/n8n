@@ -28,7 +28,7 @@ export const boardGroupOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: `Get board's groups`,
+				description: `Get list of groups in a board`,
 			},
 		],
 		default: 'create',

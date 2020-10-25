@@ -4,9 +4,9 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -295,11 +295,11 @@ export class MessageBird implements INodeType {
 					bodyRequest = {
 						recipients: [],
 						originator,
-						body
+						body,
 					};
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
-						i
+						i,
 					) as IDataObject;
 
 					if (additionalFields.groupIds) {
@@ -353,7 +353,7 @@ export class MessageBird implements INodeType {
 				requestMethod,
 				'/messages',
 				bodyRequest,
-				qs
+				qs,
 			);
 
 			returnData.push(responseData as IDataObject);

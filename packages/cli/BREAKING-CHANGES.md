@@ -2,6 +2,43 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.87.0
+
+### What changed?
+
+The link.fish node got removed because the service is shutting down.
+
+### When is action necessary?
+
+If you are are actively using the link.fish node.
+
+### How to upgrade:
+
+Unfortunately, that's not possible. We'd recommend you to look for an alternative service.
+
+
+## 0.83.0
+
+### What changed?
+
+In the Active Campaign Node, we have changed how the `getAll` operation works with various resources for the sake of consistency. To achieve this, a new parameter called 'Simple' has been added.
+
+### When is action necessary?
+
+When one of the following resources/operations is used:
+
+| Resource | Operation |
+|--|--|
+| Deal | Get All |
+| Connector | Get All |
+|  E-commerce Order | Get All |
+|  E-commerce Customer | Get All |
+|  E-commerce Order Products | Get All |
+
+### How to upgrade:
+
+Open the affected resource/operation and set the parameter `Simple` to false.
+
 ## 0.79.0
 
 ### What changed?

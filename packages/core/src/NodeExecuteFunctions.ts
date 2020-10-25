@@ -1,9 +1,9 @@
 import {
+	BINARY_ENCODING,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IResponseError,
 	IWorkflowSettings,
-	BINARY_ENCODING,
 } from './';
 
 import {
@@ -19,6 +19,7 @@ import {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
+	IOAuth2Options,
 	IPollFunctions,
 	IRunExecutionData,
 	ITaskDataConnections,
@@ -34,7 +35,6 @@ import {
 	Workflow,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	IOAuth2Options,
 } from 'n8n-workflow';
 
 import * as clientOAuth1 from 'oauth-1.0a';
@@ -43,7 +43,7 @@ import * as clientOAuth2 from 'client-oauth2';
 import { get } from 'lodash';
 import * as express from 'express';
 import * as path from 'path';
-import { OptionsWithUrl, OptionsWithUri } from 'request';
+import { OptionsWithUri, OptionsWithUrl } from 'request';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
@@ -91,7 +91,7 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		// TODO: Should program it in a way that it does not have to converted to base64
 		//       It should only convert to and from base64 when saved in database because
 		//       of for example an error or when there is a wait node.
-		data: binaryData.toString(BINARY_ENCODING)
+		data: binaryData.toString(BINARY_ENCODING),
 	};
 
 	if (filePath) {
@@ -152,11 +152,16 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
 
+	// If keep bearer is false remove the it from the authorization header
+	if (oAuth2Options?.keepBearer === false) {
+		//@ts-ignore
+		newRequestOptions?.headers?.Authorization = newRequestOptions?.headers?.Authorization.split(' ')[1];
+	}
+
 	return this.helpers.request!(newRequestOptions)
 		.catch(async (error: IResponseError) => {
 			// TODO: Check if also other codes are possible
 			if (error.statusCode === 401) {
-				// TODO: Whole refresh process is not tested yet
 				// Token is probably not valid anymore. So try refresh it.
 
 				const tokenRefreshOptions: IDataObject = {};
@@ -388,7 +393,7 @@ export function getNodeParameter(workflow: Workflow, runExecutionData: IRunExecu
 
 	let returnData;
 	try {
-		returnData = workflow.getParameterValue(value, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+		returnData = workflow.expression.getParameterValue(value, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
 	} catch (e) {
 		e.message += ` [Error in parameter: "${parameterName}"]`;
 		throw e;
@@ -434,12 +439,12 @@ export function getNodeWebhookUrl(name: string, workflow: Workflow, node: INode,
 		return undefined;
 	}
 
-	const path = workflow.getSimpleParameterValue(node, webhookDescription['path']);
+	const path = workflow.expression.getSimpleParameterValue(node, webhookDescription['path']);
 	if (path === undefined) {
 		return undefined;
 	}
 
-	const isFullPath: boolean = workflow.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
+	const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
 	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
 }
 
@@ -654,7 +659,7 @@ export function getExecuteFunctions(workflow: Workflow, runExecutionData: IRunEx
 				return continueOnFail(node);
 			},
 			evaluateExpression: (expression: string, itemIndex: number) => {
-				return workflow.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, itemIndex, node.name, connectionInputData);
 			},
 			async executeWorkflow(workflowInfo: IExecuteWorkflowInfo, inputData?: INodeExecutionData[]): Promise<any> { // tslint:disable-line:no-any
 				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
@@ -752,7 +757,7 @@ export function getExecuteSingleFunctions(workflow: Workflow, runExecutionData: 
 			},
 			evaluateExpression: (expression: string, evaluateItemIndex: number | undefined) => {
 				evaluateItemIndex = evaluateItemIndex === undefined ? itemIndex : evaluateItemIndex;
-				return workflow.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData);
+				return workflow.expression.resolveSimpleParameterValue('=' + expression, runExecutionData, runIndex, evaluateItemIndex, node.name, connectionInputData);
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);

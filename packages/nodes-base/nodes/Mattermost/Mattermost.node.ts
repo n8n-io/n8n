@@ -1,14 +1,14 @@
 import {
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeTypeDescription,
-	INodePropertyOptions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -40,7 +40,7 @@ export class Mattermost implements INodeType {
 			{
 				name: 'mattermostApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -165,7 +165,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -183,7 +183,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -202,7 +202,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -219,7 +219,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'channel',
@@ -257,7 +257,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 						resource: [
 							'channel',
@@ -388,7 +388,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'restore'
+							'restore',
 						],
 						resource: [
 							'channel',
@@ -415,7 +415,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addUser'
+							'addUser',
 						],
 						resource: [
 							'channel',
@@ -437,7 +437,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'addUser'
+							'addUser',
 						],
 						resource: [
 							'channel',
@@ -464,7 +464,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'statistics'
+							'statistics',
 						],
 						resource: [
 							'channel',
@@ -516,7 +516,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -536,7 +536,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -556,7 +556,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -606,7 +606,7 @@ export class Mattermost implements INodeType {
 										displayOptions: {
 											show: {
 												type: [
-													'select'
+													'select',
 												],
 											},
 										},
@@ -640,10 +640,10 @@ export class Mattermost implements INodeType {
 										displayOptions: {
 											show: {
 												data_source: [
-													'custom'
+													'custom',
 												],
 												type: [
-													'select'
+													'select',
 												],
 											},
 										},
@@ -668,7 +668,7 @@ export class Mattermost implements INodeType {
 														default: '',
 														description: 'Value of the option.',
 													},
-												]
+												],
 											},
 										],
 									},
@@ -732,15 +732,15 @@ export class Mattermost implements INodeType {
 																		default: '',
 																		description: 'Value of the property to set.',
 																	},
-																]
+																],
 															},
 														],
 													},
-												]
+												],
 											},
 										],
 									},
-								]
+								],
 							},
 						],
 					},
@@ -824,7 +824,7 @@ export class Mattermost implements INodeType {
 										default: true,
 										description: 'If items can be displayed next to each other.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -917,7 +917,7 @@ export class Mattermost implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'post'
+							'post',
 						],
 						resource: [
 							'message',
@@ -953,6 +953,11 @@ export class Mattermost implements INodeType {
 				},
 				options: [
 					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new user',
+					},
+					{
 						name: 'Deactive',
 						value: 'deactive',
 						description: 'Deactivates the user and revokes all its sessions by archiving its user object.',
@@ -972,10 +977,283 @@ export class Mattermost implements INodeType {
 						value: 'getById',
 						description: 'Get a user by id',
 					},
+					{
+						name: 'Invite',
+						value: 'invite',
+						description: 'Invite user to team',
+					},
 				],
 				default: '',
 				description: 'The operation to perform.',
 			},
+			// ----------------------------------
+			//         user:create
+			// ----------------------------------
+			{
+				displayName: 'Username',
+				name: 'username',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Auth Service',
+				name: 'authService',
+				type: 'options',
+				options: [
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'Gitlab',
+						value: 'gitlab',
+					},
+					{
+						name: 'Google',
+						value: 'google',
+					},
+					{
+						name: 'LDAP',
+						value: 'ldap',
+					},
+					{
+						name: 'Office365',
+						value: 'office365',
+					},
+					{
+						name: 'SAML',
+						value: 'saml',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Auth Data',
+				name: 'authData',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+					},
+					hide: {
+						authService: [
+							'email',
+						],
+					},
+				},
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+						authService: [
+							'email',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				typeOptions: {
+					password: true,
+				},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'create',
+						],
+						authService: [
+							'email',
+						],
+					},
+				},
+				default: '',
+				description: 'The password used for email authentication.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'user',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'First Name',
+						name: 'first_name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Last Name',
+						name: 'last_name',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Locale',
+						name: 'locale',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Nickname',
+						name: 'nickname',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Notification Settings',
+						name: 'notificationUi',
+						type: 'fixedCollection',
+						placeholder: 'Add Notification Setting',
+						default: {},
+						typeOptions: {
+							multipleValues: false,
+						},
+						options: [
+							{
+								displayName: 'Notify',
+								name: 'notificationValues',
+								values: [
+									{
+										displayName: 'Channel',
+										name: 'channel',
+										type: 'boolean',
+										default: true,
+										description: `Set to "true" to enable channel-wide notifications (@channel, @all, etc.), "false" to disable. Defaults to "true".`,
+									},
+									{
+										displayName: 'Desktop',
+										name: 'desktop',
+										type: 'options',
+										options: [
+											{
+												name: 'All',
+												value: 'all',
+												description: 'Notifications for all activity',
+											},
+											{
+												name: 'Mention',
+												value: 'mention',
+												description: 'Mentions and direct messages only',
+											},
+											{
+												name: 'None',
+												value: 'none',
+												description: 'Mentions and direct messages only',
+											},
+										],
+										default: 'all',
+									},
+									{
+										displayName: 'Desktop Sound',
+										name: 'desktop_sound',
+										type: 'boolean',
+										default: true,
+										description: `Set to "true" to enable sound on desktop notifications, "false" to disable. Defaults to "true".`,
+									},
+									{
+										displayName: 'Email',
+										name: 'email',
+										type: 'boolean',
+										default: false,
+										description: `Set to "true" to enable email notifications, "false" to disable. Defaults to "true".`,
+									},
+									{
+										displayName: 'First Name',
+										name: 'first_name',
+										type: 'boolean',
+										default: false,
+										description: `Set to "true" to enable mentions for first name. Defaults to "true" if a first name is set, "false" otherwise.`,
+									},
+									{
+										displayName: 'Mention Keys',
+										name: 'mention_keys',
+										type: 'string',
+										default: '',
+										description: `A comma-separated list of words to count as mentions. Defaults to username and @username.`,
+									},
+									{
+										displayName: 'Push',
+										name: 'push',
+										type: 'options',
+										options: [
+											{
+												name: 'All',
+												value: 'all',
+												description: 'Notifications for all activity',
+											},
+											{
+												name: 'Mention',
+												value: 'mention',
+												description: 'Mentions and direct messages only',
+											},
+											{
+												name: 'None',
+												value: 'none',
+												description: 'Mentions and direct messages only',
+											},
+										],
+										default: 'mention',
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+
 			// ----------------------------------
 			//         user:deactivate
 			// ----------------------------------
@@ -995,7 +1273,49 @@ export class Mattermost implements INodeType {
 					},
 				},
 				default: '',
-				description: 'User GUID'
+				description: 'User GUID',
+			},
+
+			// ----------------------------------
+			//         user:invite
+			// ----------------------------------
+			{
+				displayName: 'Team ID',
+				name: 'teamId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getTeams',
+				},
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'invite',
+						],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Emails',
+				name: 'emails',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'invite',
+						],
+					},
+				},
+				default: '',
+				description: `User's email. Multiple can be set separated by comma.`,
 			},
 
 			// ----------------------------------
@@ -1430,6 +1750,7 @@ export class Mattermost implements INodeType {
 								attachment.fields = attachment.fields.item;
 							} else {
 								// If it does not have any items set remove it
+								// @ts-ignore
 								delete attachment.fields;
 							}
 						}
@@ -1442,6 +1763,7 @@ export class Mattermost implements INodeType {
 								attachment.actions = attachment.actions.item;
 							} else {
 								// If it does not have any items set remove it
+								// @ts-ignore
 								delete attachment.actions;
 							}
 						}
@@ -1485,6 +1807,40 @@ export class Mattermost implements INodeType {
 					Object.assign(body, otherOptions);
 				}
 			} else if (resource === 'user') {
+
+				if (operation === 'create') {
+					// ----------------------------------
+					//          user:create
+					// ----------------------------------
+
+					const username = this.getNodeParameter('username', i) as string;
+
+					const authService = this.getNodeParameter('authService', i) as string;
+
+					body.auth_service = authService;
+
+					if (authService === 'email') {
+						body.email = this.getNodeParameter('email', i) as string;
+						body.password = this.getNodeParameter('password', i) as string;
+					} else {
+						body.auth_data = this.getNodeParameter('authData', i) as string;
+					}
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					body.username = username;
+
+					Object.assign(body, additionalFields);
+
+					if (body.notificationUi) {
+						body.notify_props = (body.notificationUi as IDataObject).notificationValues;
+					}
+
+					requestMethod = 'POST';
+
+					endpoint = 'users';
+				}
+
 				// TODO: Remove the "deactive" again in the future. In here temporary
 				//       to not break workflows for people which set the option before
 				//       typo got fixed. JO 2020-01-17
@@ -1533,27 +1889,27 @@ export class Mattermost implements INodeType {
 					};
 
 					if (additionalFields.sort) {
-						if (additionalFields.inTeam !== undefined || additionalFields.inChannel !== undefined)  {
+						if (additionalFields.inTeam !== undefined || additionalFields.inChannel !== undefined) {
 
 							if (additionalFields.inTeam !== undefined
-							&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
+								&& !validRules.inTeam.includes(snakeCase(additionalFields.sort as string))) {
 								throw new Error(`When In Team is set the only valid values for sorting are ${validRules.inTeam.join(',')}`);
 							}
 							if (additionalFields.inChannel !== undefined
-							&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
-									throw new Error(`When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
+								&& !validRules.inChannel.includes(snakeCase(additionalFields.sort as string))) {
+								throw new Error(`When In Channel is set the only valid values for sorting are ${validRules.inChannel.join(',')}`);
 							}
 							if (additionalFields.inChannel !== undefined
-							&& additionalFields.inChannel === ''
-							&& additionalFields.sort !== 'username') {
+								&& additionalFields.inChannel === ''
+								&& additionalFields.sort !== 'username') {
 								throw new Error('When sort is different than username In Channel must be set');
 							}
 
 							if (additionalFields.inTeam !== undefined
 								&& additionalFields.inTeam === ''
 								&& additionalFields.sort !== 'username') {
-									throw new Error('When sort is different than username In Team must be set');
-								}
+								throw new Error('When sort is different than username In Team must be set');
+							}
 
 						} else {
 							throw new Error(`When sort is defined either 'in team' or 'in channel' must be defined`);
@@ -1599,6 +1955,22 @@ export class Mattermost implements INodeType {
 					body = userIds;
 
 				}
+
+				if (operation === 'invite') {
+					// ----------------------------------
+					//          user:invite
+					// ----------------------------------
+					const teamId = this.getNodeParameter('teamId', i) as string;
+
+					const emails = (this.getNodeParameter('emails', i) as string).split(',');
+
+					//@ts-ignore
+					body = emails;
+
+					requestMethod = 'POST';
+
+					endpoint = `teams/${teamId}/invite/email`;
+				}
 			}
 			else {
 				throw new Error(`The resource "${resource}" is not known!`);
@@ -1617,7 +1989,7 @@ export class Mattermost implements INodeType {
 							userIds.push(data.user_id);
 						}
 						if (userIds.length > 0) {
-							responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds , qs);
+							responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds, qs);
 						}
 					}
 				}

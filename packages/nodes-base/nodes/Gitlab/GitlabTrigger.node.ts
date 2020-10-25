@@ -5,8 +5,8 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -110,43 +110,43 @@ export class GitlabTrigger implements INodeType {
 					{
 						name: 'Comment',
 						value: 'note',
-						description: 'Triggered when a new comment is made on commits, merge requests, issues, and code snippets.'
+						description: 'Triggered when a new comment is made on commits, merge requests, issues, and code snippets.',
 					},
 					{
 						name: 'Issue',
 						value: 'issues',
-						description: 'Triggered when a new issue is created or an existing issue was updated/closed/reopened.'
+						description: 'Triggered when a new issue is created or an existing issue was updated/closed/reopened.',
 					},
 					{
 						name: 'Job',
 						value: 'job',
-						description: 'Triggered on status change of a job.'
+						description: 'Triggered on status change of a job.',
 					},
 					{
 						name: 'Merge Request',
 						value: 'merge_requests',
-						description: 'Triggered when a new merge request is created, an existing merge request was updated/merged/closed or a commit is added in the source branch.'
+						description: 'Triggered when a new merge request is created, an existing merge request was updated/merged/closed or a commit is added in the source branch.',
 					},
 					{
 						name: 'Pipeline',
 						value: 'pipeline',
-						description: 'Triggered on status change of Pipeline.'
+						description: 'Triggered on status change of Pipeline.',
 					},
 					{
 						name: 'Push',
 						value: 'push',
-						description: 'Triggered when you push to the repository except when pushing tags.'
+						description: 'Triggered when you push to the repository except when pushing tags.',
 					},
 					{
 						name: 'Tag',
 						value: 'tag_push',
-						description: 'Triggered when you create (or delete) tags to the repository.'
+						description: 'Triggered when you create (or delete) tags to the repository.',
 					},
 					{
 						name: 'Wiki Page',
 						value: 'wiki_page',
-						description: 'Triggered when a wiki page is created, updated or deleted.'
-					}
+						description: 'Triggered when a wiki page is created, updated or deleted.',
+					},
 				],
 				required: true,
 				default: [],
@@ -287,12 +287,12 @@ export class GitlabTrigger implements INodeType {
 				body: bodyData,
 				headers: this.getHeaderData(),
 				query: this.getQueryData(),
-			}
+			},
 		);
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(returnData)
+				this.helpers.returnJsonArray(returnData),
 			],
 		};
 	}

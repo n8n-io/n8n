@@ -19,12 +19,12 @@ export async function zoomApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
 		},
 		body,
 		qs: query,
 		uri: `https://api.zoom.us/v2${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(body).length === 0) {
@@ -71,7 +71,7 @@ export async function zoomApiRequestAllItems(
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
-	query: IDataObject = {}
+	query: IDataObject = {},
 ): Promise<any> {  // tslint:disable-line:no-any
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -82,7 +82,7 @@ export async function zoomApiRequestAllItems(
 			method,
 			endpoint,
 			body,
-			query
+			query,
 		);
 		query.page_number++;
 		returnData.push.apply(returnData, responseData[propertyName]);

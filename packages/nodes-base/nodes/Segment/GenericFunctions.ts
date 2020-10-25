@@ -23,7 +23,7 @@ export async function segmentApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs,
 		body,
 		uri: uri ||`https://api.segment.io/v1${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;

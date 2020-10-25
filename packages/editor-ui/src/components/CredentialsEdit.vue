@@ -4,7 +4,7 @@
 			<div name="title" class="title-container" slot="title">
 				<div class="title-left">{{title}}</div>
 				<div class="title-right">
-					<div v-if="credentialType" class="docs-container">
+					<div v-if="credentialType && documentationUrl" class="docs-container">
 						<svg class="help-logo" target="_blank" width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 							<title>Node Documentation</title>
 							<g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
@@ -20,7 +20,7 @@
 								</g>
 							</g>
 						</svg>
-						<span v-if="credentialType" class="doc-link-text">Need help? <a class="doc-hyperlink" :href="'https://docs.n8n.io/credentials/' + documentationUrl + '/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal'" target="_blank">Open credential docs</a></span>
+						<span class="doc-link-text">Need help? <a class="doc-hyperlink" :href="'https://docs.n8n.io/credentials/' + documentationUrl + '/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal'" target="_blank">Open credential docs</a></span>
 					</div>
 				</div>
 			</div>
@@ -109,27 +109,19 @@ export default mixins(
 				}
 			}
 		},
-		documentationUrl (): string {
+		documentationUrl (): string | undefined {
+			let credentialTypeName = '';
 			if (this.editCredentials) {
-				const credentialType = this.$store.getters.credentialType(this.editCredentials.type);
-				if (credentialType.documentationUrl === undefined) {
-					return credentialType.name;
-				} else {
-					return `${credentialType.documentationUrl}`;
-				}
+				credentialTypeName = this.editCredentials.type as string;
 			} else {
-				if (this.credentialType) {
-					const credentialType = this.$store.getters.credentialType(this.credentialType);
-
-					if (credentialType.documentationUrl === undefined) {
-						return credentialType.name;
-					} else {
-						return `${credentialType.documentationUrl}`;
-					}
-				} else {
-					return '';
-				}
+				credentialTypeName = this.credentialType as string;
 			}
+
+			const credentialType = this.$store.getters.credentialType(credentialTypeName);
+			if (credentialType.documentationUrl !== undefined) {
+				return `${credentialType.documentationUrl}`;
+			}
+			return undefined;
 		},
 		node (): INodeUi {
 			return this.$store.getters.activeNode;

@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const opportunityOperations = [
 	{
@@ -72,7 +74,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Required. Last name of the opportunity. Limited to 80 characters.',
@@ -90,7 +92,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Required. Date when the opportunity is expected to close.',
@@ -100,7 +102,7 @@ export const opportunityFields = [
 		name: 'stageName',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getStages'
+			loadOptionsMethod: 'getStages',
 		},
 		required: true,
 		default: '',
@@ -111,7 +113,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Required. Date when the opportunity is expected to close.',
@@ -162,6 +164,42 @@ export const opportunityFields = [
 				},
 				default: '',
 				description: 'Id of the campaign that needs to be fetched',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getLeadCustomFields',
+								},
+								default: '',
+								description: 'The ID of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Description',
@@ -263,7 +301,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of opportunity that needs to be fetched',
@@ -321,6 +359,42 @@ export const opportunityFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'Required. Date when the opportunity is expected to close.',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getLeadCustomFields',
+								},
+								default: '',
+								description: 'The ID of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Description',
@@ -399,7 +473,7 @@ export const opportunityFields = [
 				name: 'stageName',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getStages'
+					loadOptionsMethod: 'getStages',
 				},
 				default: '',
 				description: 'Required. Date when the opportunity is expected to close.',
@@ -440,7 +514,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of opportunity that needs to be fetched',
@@ -461,7 +535,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of opportunity that needs to be fetched',
@@ -534,7 +608,7 @@ export const opportunityFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -553,7 +627,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Id of opportunity that needs to be fetched',
@@ -571,7 +645,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Title of the note.',
@@ -620,6 +694,6 @@ export const opportunityFields = [
 				default: '',
 				description: 'ID of the user who owns the note.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

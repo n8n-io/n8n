@@ -3,11 +3,11 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
 	codaApiRequest,
@@ -49,7 +49,7 @@ export class Coda implements INodeType {
 			{
 				name: 'codaApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -299,7 +299,7 @@ export class Coda implements INodeType {
 					} else {
 						returnData.push({
 							id: responseData.id,
-							...responseData.values
+							...responseData.values,
 						});
 					}
 				}
@@ -348,7 +348,7 @@ export class Coda implements INodeType {
 					for (const item of responseData) {
 						returnData.push({
 							id: item.id,
-							...item.values
+							...item.values,
 						});
 					}
 					return [this.helpers.returnJsonArray(returnData)];
@@ -624,7 +624,7 @@ export class Coda implements INodeType {
 						});
 					}
 					body.row = {
-						cells
+						cells,
 					};
 					await codaApiRequest.call(this, 'PUT', endpoint, body, qs);
 				}

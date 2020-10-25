@@ -2,9 +2,9 @@ import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
 import {
@@ -26,7 +26,7 @@ export async function intercomApiRequest(this: IHookFunctions | IExecuteFunction
 		qs: query,
 		uri: uri || `https://api.intercom.io${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	try {

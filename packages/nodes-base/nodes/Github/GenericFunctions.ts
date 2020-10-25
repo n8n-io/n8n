@@ -28,7 +28,7 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 		body,
 		qs: query,
 		uri: '',
-		json: true
+		json: true,
 	};
 
 	try {

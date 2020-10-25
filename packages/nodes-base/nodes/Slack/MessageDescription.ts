@@ -84,7 +84,7 @@ export const messageFields = [
 					'accessToken',
 				],
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -121,7 +121,7 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -318,10 +318,10 @@ export const messageFields = [
 								default: true,
 								description: 'If items can be displayed next to each other.',
 							},
-						]
+						],
 					},
 				],
-			}
+			},
 		],
 	},
 	{
@@ -331,7 +331,7 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -349,10 +349,10 @@ export const messageFields = [
 				displayOptions: {
 					show: {
 						'/as_user': [
-							false
+							false,
 						],
 						'/operation': [
-							'post'
+							'post',
 						],
 						'/resource': [
 							'message',
@@ -369,10 +369,10 @@ export const messageFields = [
 				displayOptions: {
 					show: {
 						'/as_user': [
-							false
+							false,
 						],
 						'/operation': [
-							'post'
+							'post',
 						],
 						'/resource': [
 							'message',
@@ -445,7 +445,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Channel containing the message to be updated.',
@@ -463,7 +463,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: `New text for the message, using the default formatting rules. It's not required when presenting attachments.`,
@@ -481,7 +481,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: `Timestamp of the message to be updated.`,
@@ -497,7 +497,7 @@ export const messageFields = [
 					'accessToken',
 				],
 				operation: [
-					'update'
+					'update',
 				],
 				resource: [
 					'message',
@@ -564,7 +564,7 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -1487,7 +1487,7 @@ export const messageFields = [
 					false,
 				],
 				operation: [
-					'update'
+					'update',
 				],
 				resource: [
 					'message',
@@ -1665,10 +1665,10 @@ export const messageFields = [
 								default: true,
 								description: 'If items can be displayed next to each other.',
 							},
-						]
+						],
 					},
 				],
-			}
+			},
 		],
 	},
 ] as INodeProperties[];

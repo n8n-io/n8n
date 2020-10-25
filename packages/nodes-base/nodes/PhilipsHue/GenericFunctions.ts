@@ -20,7 +20,7 @@ export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOption
 		body,
 		qs,
 		uri: uri || `https://api.meethue.com${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -44,7 +44,7 @@ export async function philipsHueApiRequest(this: IExecuteFunctions | ILoadOption
 
 			// Try to return the error prettier
 			throw new Error(
-				`Philip Hue error response [${error.statusCode}]: ${errorMessage}`
+				`Philip Hue error response [${error.statusCode}]: ${errorMessage}`,
 			);
 		}
 		throw error;

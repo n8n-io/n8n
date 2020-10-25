@@ -8,12 +8,12 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IDataObject,
-	INodePropertyOptions,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -97,7 +97,7 @@ export class ZendeskTrigger implements INodeType {
 					{
 						name: 'Support',
 						value: 'support',
-					}
+					},
 				],
 				default: 'support',
 				description: '',
@@ -109,7 +109,7 @@ export class ZendeskTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						service: [
-							'support'
+							'support',
 						],
 					},
 				},
@@ -150,7 +150,7 @@ export class ZendeskTrigger implements INodeType {
 							{
 								name: 'Via',
 								value: 'ticket.via',
-								description: `Ticket's source`
+								description: `Ticket's source`,
 							},
 							{
 								name: 'Status',
@@ -363,9 +363,9 @@ export class ZendeskTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						service: [
-							'support'
+							'support',
 						],
-					}
+					},
 				},
 				description: 'The condition to set.',
 				default: {},
@@ -429,7 +429,7 @@ export class ZendeskTrigger implements INodeType {
 				});
 				return returnData;
 			},
-		}
+		},
 	};
 	// @ts-ignore
 	webhookMethods = {
@@ -620,7 +620,7 @@ export class ZendeskTrigger implements INodeType {
 		const req = this.getRequestObject();
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

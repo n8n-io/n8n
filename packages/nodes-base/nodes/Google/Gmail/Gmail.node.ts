@@ -4,8 +4,8 @@ import {
 
 import {
 	IBinaryKeyData,
-	ILoadOptionsFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -21,23 +21,23 @@ import {
 } from './GenericFunctions';
 
 import {
-	messageOperations,
 	messageFields,
+	messageOperations,
 } from './MessageDescription';
 
 import {
-	messageLabelOperations,
 	messageLabelFields,
+	messageLabelOperations,
 } from './MessageLabelDescription';
 
 import {
-	labelOperations,
 	labelFields,
+	labelOperations,
 } from './LabelDescription';
 
 import {
-	draftOperations,
 	draftFields,
+	draftOperations,
 } from './DraftDescription';
 
 import {
@@ -136,26 +136,26 @@ export class Gmail implements INodeType {
 			// Get all the labels to display them to user so that he can
 			// select them easily
 			async getLabels(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const labels = await googleApiRequestAllItems.call(
 					this,
 					'labels',
 					'GET',
-					'/gmail/v1/users/me/labels'
+					'/gmail/v1/users/me/labels',
 				);
 				for (const label of labels) {
 					const labelName = label.name;
 					const labelId = label.id;
 					returnData.push({
 						name: labelName,
-						value: labelId
+						value: labelId,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -216,7 +216,7 @@ export class Gmail implements INodeType {
 						'GET',
 						`/gmail/v1/users/me/labels`,
 						{},
-						qs
+						qs,
 					);
 
 					responseData = responseData.labels;
@@ -454,10 +454,9 @@ export class Gmail implements INodeType {
 
 					let nodeExecutionData: INodeExecutionData;
 					if (format === 'resolved') {
-						const messageEncoded = Buffer.from(responseData.raw, 'base64').toString('utf8');
 						const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
 
-						nodeExecutionData = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
+						nodeExecutionData = await parseRawEmail.call(this, responseData, dataPropertyNameDownload);
 					} else  {
 						nodeExecutionData = {
 							json: responseData,
@@ -487,7 +486,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/messages`,
 							{},
-							qs
+							qs,
 						);
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
@@ -496,7 +495,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/messages`,
 							{},
-							qs
+							qs,
 						);
 						responseData = responseData.messages;
 					}
@@ -521,13 +520,13 @@ export class Gmail implements INodeType {
 								'GET',
 								`/gmail/v1/users/me/messages/${responseData[i].id}`,
 								body,
-								qs
+								qs,
 							);
 
 							if (format === 'resolved') {
-								const messageEncoded = Buffer.from(responseData[i].raw, 'base64').toString('utf8');
 								const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
-								responseData[i] = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
+
+								responseData[i] = await parseRawEmail.call(this, responseData[i], dataPropertyNameDownload);
 							}
 						}
 					}
@@ -654,10 +653,13 @@ export class Gmail implements INodeType {
 
 					let nodeExecutionData: INodeExecutionData;
 					if (format === 'resolved') {
-						const messageEncoded = Buffer.from(responseData.message.raw, 'base64').toString('utf8');
 						const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
 
-						nodeExecutionData = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
+						nodeExecutionData = await parseRawEmail.call(this, responseData.message, dataPropertyNameDownload);
+
+						// Add the draft-id
+						nodeExecutionData.json.messageId = nodeExecutionData.json.id;
+						nodeExecutionData.json.id = responseData.id;
 					} else {
 						nodeExecutionData = {
 							json: responseData,
@@ -690,7 +692,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/drafts`,
 							{},
-							qs
+							qs,
 						);
 					} else {
 						qs.maxResults = this.getNodeParameter('limit', i) as number;
@@ -699,7 +701,7 @@ export class Gmail implements INodeType {
 							'GET',
 							`/gmail/v1/users/me/drafts`,
 							{},
-							qs
+							qs,
 						);
 						responseData = responseData.drafts;
 					}
@@ -724,13 +726,17 @@ export class Gmail implements INodeType {
 								'GET',
 								`/gmail/v1/users/me/drafts/${responseData[i].id}`,
 								body,
-								qs
+								qs,
 							);
 
 							if (format === 'resolved') {
-								const messageEncoded = Buffer.from(responseData[i].message.raw, 'base64').toString('utf8');
 								const dataPropertyNameDownload = additionalFields.dataPropertyAttachmentsPrefixName as string || 'attachment_';
-								responseData[i] = await parseRawEmail.call(this, messageEncoded, dataPropertyNameDownload);
+								const id = responseData[i].id;
+								responseData[i] = await parseRawEmail.call(this, responseData[i].message, dataPropertyNameDownload);
+
+								// Add the draft-id
+								responseData[i].json.messageId = responseData[i].json.id;
+								responseData[i].json.id = id;
 							}
 						}
 					}

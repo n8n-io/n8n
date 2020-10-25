@@ -5,11 +5,11 @@ import {
 import {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	googleApiRequest,
- } from './GenericFunctions';
+} from './GenericFunctions';
 
 import {
 	utils as xlsxUtils,
@@ -66,6 +66,22 @@ export class GoogleSheet {
 
 
 	/**
+	 * Encodes the range that also none latin character work
+	 *
+	 * @param {string} range
+	 * @returns {string}
+	 * @memberof GoogleSheet
+	 */
+	encodeRange(range: string): string {
+		if (range.includes('!')) {
+			const [sheet, ranges] = range.split('!');
+			range = `${encodeURIComponent(sheet)}!${ranges}`;
+		}
+		return range;
+	}
+
+
+	/**
 	 * Clears values from a sheet
 	 *
 	 * @param {string} range
@@ -84,9 +100,9 @@ export class GoogleSheet {
 		return response;
 	}
 
-    /**
-     * Returns the cell values
-     */
+	/**
+	 * Returns the cell values
+	 */
 	async getData(range: string, valueRenderMode: ValueRenderOption): Promise<string[][] | undefined> {
 
 		const query = {
@@ -120,7 +136,7 @@ export class GoogleSheet {
 	async spreadsheetBatchUpdate(requests: IDataObject[]) { // tslint:disable-line:no-any
 
 		const body = {
-			requests
+			requests,
 		};
 
 		const response = await googleApiRequest.call(this.executeFunctions, 'POST', `/v4/spreadsheets/${this.id}:batchUpdate`, body);
@@ -129,9 +145,9 @@ export class GoogleSheet {
 	}
 
 
-    /**
-     * Sets the cell values
-     */
+	/**
+	 * Sets the cell values
+	 */
 	async batchUpdate(updateData: ISheetUpdateData[], valueInputMode: ValueInputOption) {
 
 		const body = {
@@ -145,9 +161,9 @@ export class GoogleSheet {
 	}
 
 
-    /**
-     * Sets the cell values
-     */
+	/**
+	 * Sets the cell values
+	 */
 	async setData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 
 		const body = {
@@ -161,13 +177,13 @@ export class GoogleSheet {
 	}
 
 
-    /**
-     * Appends the cell values
-     */
+	/**
+	 * Appends the cell values
+	 */
 	async appendData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 
 		const body = {
-			range,
+			range: decodeURIComponent(range),
 			values: data,
 		};
 
@@ -180,9 +196,9 @@ export class GoogleSheet {
 		return response;
 	}
 
-    /**
-     * Returns the given sheet data in a structured way
-     */
+	/**
+	 * Returns the given sheet data in a structured way
+	 */
 	structureData(inputData: string[][], startRow: number, keys: string[], addEmpty?: boolean): IDataObject[] {
 		const returnData = [];
 
@@ -207,10 +223,10 @@ export class GoogleSheet {
 	}
 
 
-    /**
-     * Returns the given sheet data in a structured way using
-     * the startRow as the one with the name of the key
-     */
+	/**
+	 * Returns the given sheet data in a structured way using
+	 * the startRow as the one with the name of the key
+	 */
 	structureArrayDataByColumn(inputData: string[][], keyRow: number, dataStartRow: number): IDataObject[] {
 
 		const keys: string[] = [];
@@ -235,7 +251,7 @@ export class GoogleSheet {
 	}
 
 
-	getColumnWithOffset (startColumn: string, offset: number): string {
+	getColumnWithOffset(startColumn: string, offset: number): string {
 		const columnIndex = xlsxUtils.decode_col(startColumn) + offset;
 		return xlsxUtils.encode_col(columnIndex);
 	}
@@ -254,12 +270,14 @@ export class GoogleSheet {
 	 */
 	async updateSheetData(inputData: IDataObject[], indexKey: string, range: string, keyRowIndex: number, dataStartRowIndex: number, valueInputMode: ValueInputOption, valueRenderMode: ValueRenderOption): Promise<string[][]> {
 		// Get current data in Google Sheet
-		let rangeStart: string, rangeEnd: string;
+		let rangeStart: string, rangeEnd: string, rangeFull: string;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
-			[sheet, range] = range.split('!');
+			[sheet, rangeFull] = range.split('!');
+		} else {
+			rangeFull = range;
 		}
-		[rangeStart, rangeEnd] = range.split(':');
+		[rangeStart, rangeEnd] = rangeFull.split(':');
 
 		const rangeStartSplit = rangeStart.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
 		const rangeEndSplit = rangeEnd.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
@@ -270,7 +288,7 @@ export class GoogleSheet {
 
 		const keyRowRange = `${sheet ? sheet + '!' : ''}${rangeStartSplit[1]}${dataStartRowIndex}:${rangeEndSplit[1]}${dataStartRowIndex}`;
 
-		const sheetDatakeyRow = await this.getData(keyRowRange, valueRenderMode);
+		const sheetDatakeyRow = await this.getData(this.encodeRange(keyRowRange), valueRenderMode);
 
 		if (sheetDatakeyRow === undefined) {
 			throw new Error('Could not retrieve the key row!');
@@ -290,7 +308,7 @@ export class GoogleSheet {
 		const keyColumn = this.getColumnWithOffset(rangeStartSplit[1], keyIndex);
 		const keyColumnRange = `${sheet ? sheet + '!' : ''}${keyColumn}${startRowIndex}:${keyColumn}${endRowIndex}`;
 
-		const sheetDataKeyColumn = await this.getData(keyColumnRange, valueRenderMode);
+		const sheetDataKeyColumn = await this.getData(this.encodeRange(keyColumnRange), valueRenderMode);
 
 		if (sheetDataKeyColumn === undefined) {
 			throw new Error('Could not retrieve the key column!');
@@ -303,7 +321,7 @@ export class GoogleSheet {
 		sheetDataKeyColumn.shift();
 
 		// Create an Array which all the key-values of the Google Sheet
-		const keyColumnIndexLookup = sheetDataKeyColumn.map((rowContent) => rowContent[0] );
+		const keyColumnIndexLookup = sheetDataKeyColumn.map((rowContent) => rowContent[0]);
 
 		const updateData: ISheetUpdateData[] = [];
 		let itemKey: string | number | undefined | null;

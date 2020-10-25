@@ -4,11 +4,11 @@ import {
 } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
-	IBinaryKeyData,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {

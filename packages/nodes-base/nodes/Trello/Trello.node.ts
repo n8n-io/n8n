@@ -4,9 +4,9 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -14,38 +14,38 @@ import {
 } from './GenericFunctions';
 
 import {
-	attachmentOperations,
 	attachmentFields,
+	attachmentOperations,
 } from './AttachmentDescription';
 
 import {
-	boardOperations,
 	boardFields,
+	boardOperations,
 } from './BoardDescription';
 
 import {
-	cardOperations,
 	cardFields,
+	cardOperations,
 } from './CardDescription';
 
 import {
-	cardCommentOperations,
 	cardCommentFields,
+	cardCommentOperations,
 } from './CardCommentDescription';
 
 import {
-	checklistOperations,
 	checklistFields,
+	checklistOperations,
 } from './ChecklistDescription';
 
 import {
-	labelOperations,
 	labelFields,
+	labelOperations,
 } from './LabelDescription';
 
 import {
-	listOperations,
 	listFields,
+	listOperations,
 } from './ListDescription';
 
 export class Trello implements INodeType {
@@ -77,7 +77,7 @@ export class Trello implements INodeType {
 				options: [
 					{
 						name: 'Attachment',
-						value: 'attachment'
+						value: 'attachment',
 					},
 					{
 						name: 'Board',
@@ -97,7 +97,7 @@ export class Trello implements INodeType {
 					},
 					{
 						name: 'Label',
-						value: 'label'
+						value: 'label',
 					},
 					{
 						name: 'List',
@@ -128,7 +128,7 @@ export class Trello implements INodeType {
 			...cardCommentFields,
 			...checklistFields,
 			...labelFields,
-			...listFields
+			...listFields,
 
 		],
 	};
@@ -582,7 +582,7 @@ export class Trello implements INodeType {
 					Object.assign(qs, {
 						idBoard,
 						name,
-						color
+						color,
 					});
 
 					endpoint = 'labels';

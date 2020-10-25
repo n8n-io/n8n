@@ -6,9 +6,9 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
@@ -53,8 +53,19 @@ import {
 } from './ContactInterface';
 
 import {
+	customObjectFields,
+	customObjectOperations,
+} from './CustomObjectDescription';
+
+import {
+	flowFields,
+	flowOperations,
+} from './FlowDescription';
+
+import {
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
+	sortOptions,
 } from './GenericFunctions';
 
 import {
@@ -145,9 +156,19 @@ export class Salesforce implements INodeType {
 						description: 'Represents a contact, which is an individual associated with an account.',
 					},
 					{
+						name: 'Custom Object',
+						value: 'customObject',
+						description: 'Represents a custom object.',
+					},
+					{
+						name: 'Flow',
+						value: 'flow',
+						description: 'Represents an autolaunched flow.',
+					},
+					{
 						name: 'Lead',
 						value: 'lead',
-						description: 'Represents a prospect or potential .',
+						description: 'Represents a prospect or potential.',
 					},
 					{
 						name: 'Opportunity',
@@ -172,6 +193,8 @@ export class Salesforce implements INodeType {
 			...leadFields,
 			...contactOperations,
 			...contactFields,
+			...customObjectOperations,
+			...customObjectFields,
 			...opportunityOperations,
 			...opportunityFields,
 			...accountOperations,
@@ -184,6 +207,8 @@ export class Salesforce implements INodeType {
 			...attachmentFields,
 			...userOperations,
 			...userFields,
+			...flowOperations,
+			...flowFields,
 		],
 	};
 
@@ -205,6 +230,7 @@ export class Salesforce implements INodeType {
 						value: statusId,
 					});
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the users to display them to user so that he can
@@ -223,6 +249,7 @@ export class Salesforce implements INodeType {
 						value: userId,
 					});
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the lead sources to display them to user so that he can
@@ -231,6 +258,7 @@ export class Salesforce implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/lead/describe');
+
 				for (const field of fields) {
 					if (field.name === 'LeadSource') {
 						for (const pickValue of field.picklistValues) {
@@ -243,6 +271,27 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
+				return returnData;
+			},
+			// Get all the lead custom fields to display them to user so that he can
+			// select them easily
+			async getLeadCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/lead/describe');
+
+				for (const field of fields) {
+					if (field.custom === true) {
+						const fieldName = field.label;
+						const fieldId = field.name;
+						returnData.push({
+							name: fieldName,
+							value: fieldId,
+						});
+					}
+				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the accounts to display them to user so that he can
@@ -261,6 +310,7 @@ export class Salesforce implements INodeType {
 						value: accountId,
 					});
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the campaigns to display them to user so that he can
@@ -279,6 +329,7 @@ export class Salesforce implements INodeType {
 						value: campaignId,
 					});
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the stages to display them to user so that he can
@@ -299,6 +350,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the stages to display them to user so that he can
@@ -319,6 +371,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the account sources to display them to user so that he can
@@ -339,6 +392,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case types to display them to user so that he can
@@ -359,6 +413,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case statuses to display them to user so that he can
@@ -379,6 +434,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case reasons to display them to user so that he can
@@ -399,6 +455,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case origins to display them to user so that he can
@@ -419,6 +476,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the case priorities to display them to user so that he can
@@ -439,6 +497,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task statuses to display them to user so that he can
@@ -459,6 +518,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task subjects to display them to user so that he can
@@ -479,6 +539,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task call types to display them to user so that he can
@@ -499,6 +560,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task call priorities to display them to user so that he can
@@ -519,6 +581,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task recurrence types to display them to user so that he can
@@ -539,6 +602,7 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
 				return returnData;
 			},
 			// Get all the task recurrence instances to display them to user so that he can
@@ -559,6 +623,46 @@ export class Salesforce implements INodeType {
 						}
 					}
 				}
+				sortOptions(returnData);
+				return returnData;
+			},
+
+			// Get all the custom objects recurrence instances to display them to user so that he can
+			// select them easily
+			async getCustomObjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const { sobjects: objects } = await salesforceApiRequest.call(this, 'GET', '/sobjects');
+				for (const object of objects) {
+					if (object.custom === true) {
+						const objectName = object.label;
+						const objectId = object.name;
+						returnData.push({
+							name: objectName,
+							value: objectId,
+						});
+					}
+				}
+				sortOptions(returnData);
+				return returnData;
+			},
+
+			// Get all the custom objects fields recurrence instances to display them to user so that he can
+			// select them easily
+			async getCustomObjectFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
+				const customObject = this.getCurrentNodeParameter('customObject') as string;
+				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/${customObject}/describe`);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.name;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				sortOptions(returnData);
 				return returnData;
 			},
 		},
@@ -646,6 +750,16 @@ export class Salesforce implements INodeType {
 					if (additionalFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = additionalFields.numberOfEmployees as number;
 					}
+					if (additionalFields.customFieldsUi) {
+						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
+					}
+
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/lead', body);
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/patch-lead-id
@@ -724,6 +838,15 @@ export class Salesforce implements INodeType {
 					}
 					if (updateFields.numberOfEmployees !== undefined) {
 						body.NumberOfEmployees = updateFields.numberOfEmployees as number;
+					}
+					if (updateFields.customFieldsUi) {
+						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/lead/${leadId}`, body);
 				}
@@ -900,6 +1023,15 @@ export class Salesforce implements INodeType {
 					if (additionalFields.emailBouncedReason !== undefined) {
 						body.EmailBouncedReason = additionalFields.emailBouncedReason as string;
 					}
+					if (additionalFields.customFieldsUi) {
+						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
+					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/contact', body);
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/patch-contact-id
@@ -1000,6 +1132,15 @@ export class Salesforce implements INodeType {
 					if (updateFields.emailBouncedReason !== undefined) {
 						body.EmailBouncedReason = updateFields.emailBouncedReason as string;
 					}
+					if (updateFields.customFieldsUi) {
+						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
+					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/contact/${contactId}`, body);
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/get-contact-id
@@ -1077,6 +1218,74 @@ export class Salesforce implements INodeType {
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/note', body);
 				}
 			}
+			if (resource === 'customObject') {
+				if (operation === 'create') {
+					const customObject = this.getNodeParameter('customObject', i) as string;
+					const customFieldsUi = this.getNodeParameter('customFieldsUi', i) as IDataObject;
+					const body: IDataObject = {};
+					if (customFieldsUi) {
+						const customFields = (customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
+					}
+					responseData = await salesforceApiRequest.call(this, 'POST', `/sobjects/${customObject}`, body);
+				}
+				if (operation === 'update') {
+					const recordId = this.getNodeParameter('recordId', i) as string;
+					const customObject = this.getNodeParameter('customObject', i) as string;
+					const customFieldsUi = this.getNodeParameter('customFieldsUi', i) as IDataObject;
+					const body: IDataObject = {};
+					if (customFieldsUi) {
+						const customFields = (customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
+					}
+					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/${customObject}/${recordId}`, body);
+				}
+				if (operation === 'get') {
+					const customObject = this.getNodeParameter('customObject', i) as string;
+					const recordId = this.getNodeParameter('recordId', i) as string;
+					responseData = await salesforceApiRequest.call(this, 'GET', `/sobjects/${customObject}/${recordId}`);
+				}
+				if (operation === 'getAll') {
+					const customObject = this.getNodeParameter('customObject', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					let fields = ['id'];
+					if (options.fields) {
+						fields = options.fields as string[];
+					}
+					try {
+						if (returnAll) {
+							qs.q = `SELECT ${fields.join(',')} FROM ${customObject}`;
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.q = `SELECT ${fields.join(',')} FROM ${customObject} Limit ${limit}`;
+							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
+						}
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+				if (operation === 'delete') {
+					const customObject = this.getNodeParameter('customObject', i) as string;
+					const recordId = this.getNodeParameter('recordId', i) as string;
+					try {
+						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/${customObject}/${recordId}`);
+					} catch(err) {
+						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+			}
 			if (resource === 'opportunity') {
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/post-opportunity
 				if (operation === 'create') {
@@ -1121,6 +1330,15 @@ export class Salesforce implements INodeType {
 					}
 					if (additionalFields.forecastCategoryName !== undefined) {
 						body.ForecastCategoryName = additionalFields.forecastCategoryName as string;
+					}
+					if (additionalFields.customFieldsUi) {
+						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
 					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/opportunity', body);
 				}
@@ -1170,6 +1388,15 @@ export class Salesforce implements INodeType {
 					}
 					if (updateFields.forecastCategoryName !== undefined) {
 						body.ForecastCategoryName = updateFields.forecastCategoryName as string;
+					}
+					if (updateFields.customFieldsUi) {
+						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/opportunity/${opportunityId}`, body);
 				}
@@ -1314,6 +1541,15 @@ export class Salesforce implements INodeType {
 					if (additionalFields.shippingPostalCode !== undefined) {
 						body.ShippingPostalCode = additionalFields.shippingPostalCode as string;
 					}
+					if (additionalFields.customFieldsUi) {
+						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
+					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/account', body);
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Account/patch-account-id
@@ -1395,6 +1631,15 @@ export class Salesforce implements INodeType {
 					}
 					if (updateFields.shippingPostalCode !== undefined) {
 						body.ShippingPostalCode = updateFields.shippingPostalCode as string;
+					}
+					if (updateFields.customFieldsUi) {
+						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/account/${accountId}`, body);
 				}
@@ -1696,6 +1941,15 @@ export class Salesforce implements INodeType {
 					if (additionalFields.recurrenceRegeneratedType !== undefined) {
 						body.RecurrenceRegeneratedType = additionalFields.recurrenceRegeneratedType as string;
 					}
+					if (additionalFields.customFieldsUi) {
+						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
+					}
 					responseData = await salesforceApiRequest.call(this, 'POST', '/sobjects/task', body);
 				}
 				//https://developer.salesforce.com/docs/api-explorer/sobject/Task/patch-task-id
@@ -1774,6 +2028,15 @@ export class Salesforce implements INodeType {
 					}
 					if (updateFields.recurrenceRegeneratedType !== undefined) {
 						body.RecurrenceRegeneratedType = updateFields.recurrenceRegeneratedType as string;
+					}
+					if (updateFields.customFieldsUi) {
+						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							for (const customField of customFields) {
+								//@ts-ignore
+								body[customField.fieldId] = customField.value;
+							}
+						}
 					}
 					responseData = await salesforceApiRequest.call(this, 'PATCH', `/sobjects/task/${taskId}`, body);
 				}
@@ -1941,6 +2204,42 @@ export class Salesforce implements INodeType {
 						}
 					} catch(err) {
 						throw new Error(`Salesforce Error: ${err}`);
+					}
+				}
+			}
+			if (resource === 'flow') {
+				//https://developer.salesforce.com/docs/atlas.en-us.api_action.meta/api_action/actions_obj_flow.htm
+				if (operation === 'invoke') {
+					const apiName = this.getNodeParameter('apiName', i) as string;
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+					let variables = {};
+					if (jsonParameters) {
+						variables = this.getNodeParameter('variablesJson', i);
+					} else {
+						// Input variables are defined in UI
+						const setInputVariable = this.getNodeParameter('variablesUi', i, {}) as IDataObject;
+						if (setInputVariable!.variablesValues !== undefined) {
+							for (const inputVariableData of setInputVariable!.variablesValues as IDataObject[]) {
+								// @ts-ignore
+								variables[inputVariableData!.name as string] = inputVariableData!.value;
+							}
+						}
+					}
+					const body = {
+						inputs: [
+							variables,
+						],
+					};
+					responseData = await salesforceApiRequest.call(this, 'POST', `/actions/custom/flow/${apiName}`, body);
+				}
+				//https://developer.salesforce.com/docs/atlas.en-us.api_action.meta/api_action/actions_obj_flow.htm
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					responseData = await salesforceApiRequest.call(this, 'GET', '/actions/custom/flow');
+					responseData = responseData.actions;
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.splice(0, limit);
 					}
 				}
 			}

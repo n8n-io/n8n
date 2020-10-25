@@ -114,7 +114,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'archive'
+					'archive',
 				],
 				resource: [
 					'channel',
@@ -138,7 +138,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'close'
+					'close',
 				],
 				resource: [
 					'channel',
@@ -161,7 +161,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create'
+					'create',
 				],
 				resource: [
 					'channel',
@@ -205,7 +205,7 @@ export const channelFields = [
 				default: [],
 				description: `Required for workspace apps. A list of between 1 and 30 human users that will be added to the newly-created conversation`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 channel:invite                             */
@@ -221,7 +221,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'invite'
+					'invite',
 				],
 				resource: [
 					'channel',
@@ -242,7 +242,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'invite'
+					'invite',
 				],
 				resource: [
 					'channel',
@@ -263,7 +263,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get'
+					'get',
 				],
 				resource: [
 					'channel',
@@ -296,7 +296,7 @@ export const channelFields = [
 				type: 'boolean',
 				default: false,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  channel:kick                              */
@@ -313,7 +313,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'kick'
+					'kick',
 				],
 				resource: [
 					'channel',
@@ -333,7 +333,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'kick'
+					'kick',
 				],
 				resource: [
 					'channel',
@@ -357,7 +357,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'join'
+					'join',
 				],
 				resource: [
 					'channel',
@@ -441,25 +441,25 @@ export const channelFields = [
 				options: [
 					{
 						name: 'Public Channel',
-						value: 'public_channel'
+						value: 'public_channel',
 					},
 					{
 						name: 'Private Channel',
-						value: 'private_channel'
+						value: 'private_channel',
 					},
 					{
 						name: 'mpim',
-						value: 'mpim'
+						value: 'mpim',
 					},
 					{
 						name: 'im',
-						value: 'im'
+						value: 'im',
 					},
 				],
 				default: ['public_channel'],
 				description: 'Mix and match channel types',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 channel:history                            */
@@ -476,7 +476,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'history'
+					'history',
 				],
 				resource: [
 					'channel',
@@ -565,7 +565,7 @@ export const channelFields = [
 				default: '',
 				description: 'Start of time range of messages to include in results.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                channel:leave                               */
@@ -580,7 +580,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'leave'
+					'leave',
 				],
 				resource: [
 					'channel',
@@ -635,7 +635,7 @@ export const channelFields = [
 				default: [],
 				description: `If only one user is included, this creates a 1:1 DM. The ordering of the users is preserved whenever a multi-person direct message is returned. Supply a channel when not supplying users.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                channel:rename                              */
@@ -650,7 +650,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'rename'
+					'rename',
 				],
 				resource: [
 					'channel',
@@ -668,7 +668,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'rename'
+					'rename',
 				],
 				resource: [
 					'channel',
@@ -694,7 +694,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'replies'
+					'replies',
 				],
 				resource: [
 					'channel',
@@ -712,7 +712,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'replies'
+					'replies',
 				],
 				resource: [
 					'channel',
@@ -801,7 +801,7 @@ export const channelFields = [
 				default: '',
 				description: 'Start of time range of messages to include in results.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                channel:setPurpose                          */
@@ -816,7 +816,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'setPurpose'
+					'setPurpose',
 				],
 				resource: [
 					'channel',
@@ -834,7 +834,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'setPurpose'
+					'setPurpose',
 				],
 				resource: [
 					'channel',
@@ -858,7 +858,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'setTopic'
+					'setTopic',
 				],
 				resource: [
 					'channel',
@@ -876,7 +876,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'setTopic'
+					'setTopic',
 				],
 				resource: [
 					'channel',
@@ -900,7 +900,7 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'unarchive'
+					'unarchive',
 				],
 				resource: [
 					'channel',

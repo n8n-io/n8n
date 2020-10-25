@@ -1,7 +1,7 @@
 
 import {
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -99,17 +99,17 @@ export class GoogleSheets implements INodeType {
 					{
 						name: 'Lookup',
 						value: 'lookup',
-						description: 'Look up a specific column value and return the matching row'
+						description: 'Look up a specific column value and return the matching row',
 					},
 					{
 						name: 'Read',
 						value: 'read',
-						description: 'Read data from a sheet'
+						description: 'Read data from a sheet',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update rows in a sheet'
+						description: 'Update rows in a sheet',
 					},
 				],
 				default: 'read',
@@ -134,7 +134,7 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					hide: {
 						operation: [
-							'delete'
+							'delete',
 						],
 					},
 				},
@@ -159,7 +159,7 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 					},
 				},
@@ -201,7 +201,7 @@ export class GoogleSheets implements INodeType {
 								default: 1,
 								description: 'Number of columns to delete.',
 							},
-						]
+						],
 					},
 					{
 						displayName: 'Rows',
@@ -239,7 +239,7 @@ export class GoogleSheets implements INodeType {
 								default: 1,
 								description: 'Number of rows to delete.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -255,7 +255,7 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'read'
+							'read',
 						],
 					},
 				},
@@ -270,10 +270,10 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'read'
+							'read',
 						],
 						rawData: [
-							true
+							true,
 						],
 					},
 				},
@@ -290,7 +290,7 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 					},
 				},
@@ -305,10 +305,10 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						rawData: [
-							true
+							true,
 						],
 					},
 				},
@@ -334,7 +334,7 @@ export class GoogleSheets implements INodeType {
 							'delete',
 						],
 						rawData: [
-							true
+							true,
 						],
 					},
 				},
@@ -358,7 +358,7 @@ export class GoogleSheets implements INodeType {
 							'delete',
 						],
 						rawData: [
-							true
+							true,
 						],
 					},
 				},
@@ -380,7 +380,7 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'lookup'
+							'lookup',
 						],
 					},
 				},
@@ -395,7 +395,7 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'lookup'
+							'lookup',
 						],
 					},
 				},
@@ -413,10 +413,10 @@ export class GoogleSheets implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						rawData: [
-							false
+							false,
 						],
 					},
 				},
@@ -490,7 +490,7 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'User Entered',
 								value: 'USER_ENTERED',
-								description: 'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.'
+								description: 'The values will be parsed as if the user typed them into the UI. Numbers will stay as numbers, but strings may be converted to numbers, dates, etc. following the same rules that are applied when entering text into a cell via the Google Sheets UI.',
 							},
 						],
 						default: 'RAW',
@@ -522,7 +522,7 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'Unformatted Value',
 								value: 'UNFORMATTED_VALUE',
-								description: 'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.'
+								description: 'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
 							},
 						],
 						default: 'UNFORMATTED_VALUE',
@@ -538,7 +538,7 @@ export class GoogleSheets implements INodeType {
 									'update',
 								],
 								'/rawData': [
-									false
+									false,
 								],
 							},
 						},
@@ -556,7 +556,7 @@ export class GoogleSheets implements INodeType {
 							{
 								name: 'Unformatted Value',
 								value: 'UNFORMATTED_VALUE',
-								description: 'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.'
+								description: 'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
 							},
 						],
 						default: 'UNFORMATTED_VALUE',
@@ -564,7 +564,7 @@ export class GoogleSheets implements INodeType {
 					},
 
 				],
-			}
+			},
 
 		],
 	};
@@ -632,7 +632,7 @@ export class GoogleSheets implements INodeType {
 			});
 
 			// Convert data into array format
-			const data = await sheet.appendSheetData(setData, range, keyRow, valueInputMode);
+			const data = await sheet.appendSheetData(setData, sheet.encodeRange(range), keyRow, valueInputMode);
 
 			// TODO: Should add this data somewhere
 			// TODO: Should have something like add metadata which does not get passed through
@@ -643,7 +643,7 @@ export class GoogleSheets implements INodeType {
 			//         clear
 			// ----------------------------------
 
-			await sheet.clearData(range);
+			await sheet.clearData(sheet.encodeRange(range));
 
 			const items = this.getInputData();
 			return this.prepareOutputData(items);
@@ -671,8 +671,8 @@ export class GoogleSheets implements INodeType {
 									dimension: deletePropertyToDimensions[propertyName] as string,
 									startIndex: range.startIndex,
 									endIndex: parseInt(range.startIndex.toString(), 10) + parseInt(range.amount.toString(), 10),
-								}
-							}
+								},
+							},
 						});
 					});
 				}
@@ -687,7 +687,7 @@ export class GoogleSheets implements INodeType {
 			//         lookup
 			// ----------------------------------
 
-			const sheetData = await sheet.getData(range, valueRenderMode);
+			const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
 			if (sheetData === undefined) {
 				return [];
@@ -722,7 +722,7 @@ export class GoogleSheets implements INodeType {
 
 			const rawData = this.getNodeParameter('rawData', 0) as boolean;
 
-			const sheetData = await sheet.getData(range, valueRenderMode);
+			const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
 			let returnData: IDataObject[];
 			if (!sheetData) {
@@ -732,7 +732,7 @@ export class GoogleSheets implements INodeType {
 				returnData = [
 					{
 						[dataProperty]: sheetData,
-					}
+					},
 				];
 			} else {
 				const dataStartRow = parseInt(this.getNodeParameter('dataStartRow', 0) as string, 10);

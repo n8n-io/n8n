@@ -5,8 +5,8 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -33,7 +33,7 @@ export class CopperTrigger implements INodeType {
 			{
 				name: 'copperApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{

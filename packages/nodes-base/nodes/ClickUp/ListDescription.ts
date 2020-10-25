@@ -100,7 +100,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -337,7 +337,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'teamId',
-			]
+			],
 		},
 		required: true,
 	},
@@ -432,7 +432,7 @@ export const listFields = [
 			loadOptionsMethod: 'getLists',
 			loadOptionsDependsOn: [
 				'folder',
-			]
+			],
 		},
 		required: true,
 	},
@@ -478,7 +478,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -584,7 +584,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -690,7 +690,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -825,7 +825,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
