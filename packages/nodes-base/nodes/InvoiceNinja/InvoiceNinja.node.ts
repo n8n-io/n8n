@@ -3,8 +3,8 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeExecutionData,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,

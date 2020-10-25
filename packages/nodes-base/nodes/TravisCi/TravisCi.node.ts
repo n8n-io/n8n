@@ -4,9 +4,9 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -38,7 +38,7 @@ export class TravisCi implements INodeType {
 			{
 				name: 'travisCiApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

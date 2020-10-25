@@ -121,7 +121,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},
-		}
+		},
 	);
 
 	const options: OptionsWithUri = {
@@ -134,7 +134,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			assertion: signature,
 		},
 		uri: 'https://oauth2.googleapis.com/token',
-		json: true
+		json: true,
 	};
 
 	//@ts-ignore

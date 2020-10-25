@@ -17,13 +17,15 @@ import {
 export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authentication = this.getNodeParameter('authentication', 0);
 
+	const version = this.getNodeParameter('sentryVersion', 0);
+
 	const options: OptionsWithUri = {
 		headers: {},
 		method,
 		qs,
 		body,
 		uri: uri ||`https://sentry.io${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;
@@ -37,10 +39,22 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 		delete options.qs.limit;
 	}
 
+	let credentialName;
+
 	try {
 		if (authentication === 'accessToken') {
 
-			const credentials = this.getCredentials('sentryIoApi');
+			if (version === 'cloud') {
+				credentialName = 'sentryIoApi';
+			} else {
+				credentialName = 'sentryIoServerApi';
+			}
+
+			const credentials = this.getCredentials(credentialName);
+
+			if (credentials?.url) {
+				options.uri = `${credentials?.url}${resource}`;
+			}
 
 			options.headers = {
 				Authorization: `Bearer ${credentials?.token}`,
@@ -50,6 +64,7 @@ export async function sentryIoApiRequest(this: IHookFunctions | IExecuteFunction
 			return this.helpers.request(options);
 
 		} else {
+
 			return await this.helpers.requestOAuth2!.call(this, 'sentryIoOAuth2Api', options);
 		}
 

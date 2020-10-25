@@ -66,7 +66,7 @@ export class WorkflowRunnerProcess {
 
 		// Load the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();
-		await credentialsOverwrites.init();
+		await credentialsOverwrites.init(inputData.credentialsOverwrite);
 
 		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials);
@@ -135,13 +135,13 @@ export class WorkflowRunnerProcess {
 			workflowExecuteBefore: [
 				async (): Promise<void> => {
 					this.sendHookToParentProcess('workflowExecuteBefore', []);
-				}
+				},
 			],
 			workflowExecuteAfter: [
 				async (fullRunData: IRun, newStaticData?: IDataObject): Promise<void> => {
 					this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
 				},
-			]
+			],
 		};
 
 		return new WorkflowHooks(hookFunctions, this.data!.executionMode, this.data!.executionId, this.data!.workflowData, { sessionId: this.data!.sessionId, retryOf: this.data!.retryOf as string });

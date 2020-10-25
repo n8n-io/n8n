@@ -98,7 +98,7 @@ export const linkFields = [
 					loadOptionsMethod: 'getTags',
 					loadOptionsDependsOn: [
 						'group',
-					]
+					],
 				},
 			},
 			{
@@ -157,7 +157,7 @@ export const linkFields = [
 						type: 'string',
 						default: '',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -229,7 +229,7 @@ export const linkFields = [
 					loadOptionsMethod: 'getTags',
 					loadOptionsDependsOn: [
 						'group',
-					]
+					],
 				},
 			},
 			{
@@ -288,7 +288,7 @@ export const linkFields = [
 						type: 'string',
 						default: '',
 					},
-				]
+				],
 			},
 		],
 	},

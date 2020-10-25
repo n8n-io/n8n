@@ -9,8 +9,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -42,7 +42,7 @@ export class JotFormTrigger implements INodeType {
 			{
 				name: 'jotFormApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -59,7 +59,7 @@ export class JotFormTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getForms'
+					loadOptionsMethod: 'getForms',
 				},
 				default: '',
 				description: '',

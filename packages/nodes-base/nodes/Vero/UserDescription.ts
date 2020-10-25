@@ -73,7 +73,7 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the customer',
@@ -91,9 +91,9 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
-		}
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -119,7 +119,7 @@ export const userFields = [
 				default: '',
 				description: 'The table to create the row in.',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Data',
@@ -163,7 +163,7 @@ export const userFields = [
 						default: '',
 						description: 'Value of the property to set.',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -208,7 +208,7 @@ export const userFields = [
 				],
 				operation: [
 					'alias',
-				]
+				],
 			},
 		},
 		description: 'The old unique identifier of the user',
@@ -226,7 +226,7 @@ export const userFields = [
 				],
 				operation: [
 					'alias',
-				]
+				],
 			},
 		},
 		description: 'The new unique identifier of the user',
@@ -247,7 +247,7 @@ export const userFields = [
 				],
 				operation: [
 					'unsubscribe',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -268,7 +268,7 @@ export const userFields = [
 				],
 				operation: [
 					'resubscribe',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -289,7 +289,7 @@ export const userFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -310,7 +310,7 @@ export const userFields = [
 				],
 				operation: [
 					'addTags',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -328,7 +328,7 @@ export const userFields = [
 				],
 				operation: [
 					'addTags',
-				]
+				],
 			},
 		},
 		description: 'Tags to add separated by ","',
@@ -349,7 +349,7 @@ export const userFields = [
 				],
 				operation: [
 					'removeTags',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -367,7 +367,7 @@ export const userFields = [
 				],
 				operation: [
 					'removeTags',
-				]
+				],
 			},
 		},
 		description: 'Tags to remove separated by ","',

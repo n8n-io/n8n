@@ -7,8 +7,8 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -59,7 +59,7 @@ export class ConvertKit implements INodeType {
 			{
 				name: 'convertKitApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -89,7 +89,7 @@ export class ConvertKit implements INodeType {
 					},
 				],
 				default: 'form',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			//--------------------
 			// Field Description
@@ -170,7 +170,7 @@ export class ConvertKit implements INodeType {
 
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -389,7 +389,7 @@ export class ConvertKit implements INodeType {
 					const names = ((this.getNodeParameter('name', i) as string).split(',') as string[]).map((e) => ({ name: e }));
 
 					const body: IDataObject = {
-						tag: names
+						tag: names,
 					};
 
 					responseData = await convertKitApiRequest.call(this, 'POST', '/tags', body);

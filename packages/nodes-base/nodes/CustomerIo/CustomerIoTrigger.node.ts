@@ -4,9 +4,9 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
 	IDataObject,
+	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -315,14 +315,14 @@ export class CustomerIoTrigger implements INodeType {
 				}
 				return true;
 			},
-		}
+		},
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData)
+				this.helpers.returnJsonArray(bodyData),
 			],
 		};
 	}

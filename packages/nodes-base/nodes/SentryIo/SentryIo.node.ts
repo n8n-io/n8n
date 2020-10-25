@@ -4,21 +4,21 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import {
-	eventOperations,
 	eventFields,
+	eventOperations,
 } from './EventDescription';
 
 import {
-	issueOperations,
 	issueFields,
+	issueOperations,
 } from './IssueDescription';
 
 import {
@@ -27,25 +27,30 @@ import {
 } from './OrganizationDescription';
 
 import {
-	projectOperations,
 	projectFields,
+	projectOperations,
 } from './ProjectDescription';
 
 import {
-	releaseOperations,
 	releaseFields,
+	releaseOperations,
 } from './ReleaseDescription';
 
 import {
-	teamOperations,
 	teamFields,
+	teamOperations,
 } from './TeamDescription';
 
 import {
-	sentryIoApiRequest,
 	sentryApiRequestAllItems,
+	sentryIoApiRequest,
 } from './GenericFunctions';
-import { ICommit, IPatchSet, IRef } from './Interface';
+
+import {
+	ICommit,
+	IPatchSet,
+	IRef,
+} from './Interface';
 
 export class SentryIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -71,6 +76,9 @@ export class SentryIo implements INodeType {
 						authentication: [
 							'oAuth2',
 						],
+						sentryVersion: [
+							'cloud',
+						],
 					},
 				},
 			},
@@ -82,15 +90,55 @@ export class SentryIo implements INodeType {
 						authentication: [
 							'accessToken',
 						],
+						sentryVersion: [
+							'cloud',
+						],
+					},
+				},
+			},
+			{
+				name: 'sentryIoServerApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+						sentryVersion: [
+							'server',
+						],
 					},
 				},
 			},
 		],
 		properties: [
 			{
+				displayName: 'Sentry Version',
+				name: 'sentryVersion',
+				type: 'options',
+				options: [
+					{
+						name: 'Cloud',
+						value: 'cloud',
+					},
+					{
+						name: 'Server (Self Hosted)',
+						value: 'server',
+					},
+				],
+				default: 'cloud',
+			},
+			{
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
+				displayOptions: {
+					show: {
+						sentryVersion: [
+							'cloud',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'Access Token',
@@ -99,6 +147,26 @@ export class SentryIo implements INodeType {
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				displayOptions: {
+					show: {
+						sentryVersion: [
+							'server',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
 					},
 				],
 				default: 'accessToken',
@@ -160,7 +228,7 @@ export class SentryIo implements INodeType {
 
 			// TEAM
 			...teamOperations,
-			...teamFields
+			...teamFields,
 		],
 	};
 

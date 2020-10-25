@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const taskOperations = [
 	{
@@ -144,6 +146,42 @@ export const taskFields = [
 				description: 'The type of call being answered: Inbound, Internal, or Outbound.',
 			},
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getLeadCustomFields',
+								},
+								default: '',
+								description: 'The ID of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
@@ -186,7 +224,7 @@ export const taskFields = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'getTaskRecurrenceTypes'
+					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
 				description: 'Recurrence Type of the task.',
 			},
@@ -240,52 +278,52 @@ export const taskFields = [
 				options: [
 					{
 						name: 'January',
-						value: 'January'
+						value: 'January',
 					},
 					{
 						name: 'February',
-						value: 'February'
+						value: 'February',
 					},
 					{
 						name: 'March',
-						value: 'March'
+						value: 'March',
 					},
 					{
 						name: 'April',
-						value: 'April'
+						value: 'April',
 					},
 					{
 						name: 'May',
-						value: 'May'
+						value: 'May',
 					},
 					{
 						name: 'June',
-						value: 'June'
+						value: 'June',
 					},
 					{
 						name: 'July',
-						value: 'July'
+						value: 'July',
 					},
 					{
 						name: 'August',
-						value: 'August'
+						value: 'August',
 					},
 					{
 						name: 'September',
-						value: 'September'
+						value: 'September',
 					},
 					{
 						name: 'October',
-						value: 'October'
+						value: 'October',
 					},
 					{
 						name: 'November',
-						value: 'November'
+						value: 'November',
 					},
 					{
 						name: 'December',
-						value: 'December'
-					}
+						value: 'December',
+					},
 				],
 				default: '',
 				description: 'The month of the year in which the task repeats.',
@@ -298,16 +336,16 @@ export const taskFields = [
 				options: [
 					{
 						name: 'After due date',
-						value: 'RecurrenceRegenerateAfterDueDate'
+						value: 'RecurrenceRegenerateAfterDueDate',
 					},
 					{
 						name: 'After date completed',
-						value: 'RecurrenceRegenerateAfterToday'
+						value: 'RecurrenceRegenerateAfterToday',
 					},
 					{
 						name: '(Task Closed)',
-						value: 'RecurrenceRegenerated'
-					}
+						value: 'RecurrenceRegenerated',
+					},
 				],
 				description: `Represents what triggers a repeating task to repeat.<br/>
 				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
@@ -367,7 +405,7 @@ export const taskFields = [
 				description: `The WhoId represents a human such as a lead or a contact.<br/>
 				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 task:update                                */
@@ -385,7 +423,7 @@ export const taskFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of task that needs to be fetched',
@@ -457,6 +495,42 @@ export const taskFields = [
 					loadOptionsMethod: 'getTaskCallTypes',
 				},
 				description: 'The type of call being answered: Inbound, Internal, or Outbound.',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getLeadCustomFields',
+								},
+								default: '',
+								description: 'The ID of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Description',
@@ -565,52 +639,52 @@ export const taskFields = [
 				options: [
 					{
 						name: 'January',
-						value: 'January'
+						value: 'January',
 					},
 					{
 						name: 'February',
-						value: 'February'
+						value: 'February',
 					},
 					{
 						name: 'March',
-						value: 'March'
+						value: 'March',
 					},
 					{
 						name: 'April',
-						value: 'April'
+						value: 'April',
 					},
 					{
 						name: 'May',
-						value: 'May'
+						value: 'May',
 					},
 					{
 						name: 'June',
-						value: 'June'
+						value: 'June',
 					},
 					{
 						name: 'July',
-						value: 'July'
+						value: 'July',
 					},
 					{
 						name: 'August',
-						value: 'August'
+						value: 'August',
 					},
 					{
 						name: 'September',
-						value: 'September'
+						value: 'September',
 					},
 					{
 						name: 'October',
-						value: 'October'
+						value: 'October',
 					},
 					{
 						name: 'November',
-						value: 'November'
+						value: 'November',
 					},
 					{
 						name: 'December',
-						value: 'December'
-					}
+						value: 'December',
+					},
 				],
 				default: '',
 				description: 'The month of the year in which the task repeats.',
@@ -631,16 +705,16 @@ export const taskFields = [
 				options: [
 					{
 						name: 'After due date',
-						value: 'RecurrenceRegenerateAfterDueDate'
+						value: 'RecurrenceRegenerateAfterDueDate',
 					},
 					{
 						name: 'After date completed',
-						value: 'RecurrenceRegenerateAfterToday'
+						value: 'RecurrenceRegenerateAfterToday',
 					},
 					{
 						name: '(Task Closed)',
-						value: 'RecurrenceRegenerated'
-					}
+						value: 'RecurrenceRegenerated',
+					},
 				],
 				description: `Represents what triggers a repeating task to repeat.<br/>
 				 Add this field to a page layout together with the RecurrenceInterval field,<br/>
@@ -653,7 +727,7 @@ export const taskFields = [
 				type: 'options',
 				default: '',
 				typeOptions: {
-					loadOptionsMethod: 'getTaskRecurrenceTypes'
+					loadOptionsMethod: 'getTaskRecurrenceTypes',
 				},
 				description: 'Website for the task.',
 			},
@@ -692,7 +766,7 @@ export const taskFields = [
 				description: `The WhoId represents a human such as a lead or a contact.<br/>
 				WhoIds are polymorphic. Polymorphic means a WhoId is equivalent to a contact’s ID or a lead’s ID.`,
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -711,7 +785,7 @@ export const taskFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of task that needs to be fetched',
@@ -732,7 +806,7 @@ export const taskFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of task that needs to be fetched',
@@ -805,6 +879,6 @@ export const taskFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

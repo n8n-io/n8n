@@ -3,9 +3,9 @@ import {
 } from 'request';
 
 import {
-	IHookFunctions,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
@@ -19,7 +19,7 @@ export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingle
 		body,
 		qs,
 		url: uri || `https://api.twitter.com/1.1${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(option).length !== 0) {
@@ -74,5 +74,3 @@ export function chunks (buffer: Buffer, chunkSize: number) {
 
 	return result;
 }
-
-

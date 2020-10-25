@@ -18,8 +18,8 @@ import {
 } from './GenericFunctions';
 
 import {
-	issueOperations,
 	issueFields,
+	issueOperations,
 } from './IssueDescription';
 
 import {
@@ -153,7 +153,7 @@ export class Jira implements INodeType {
 					}
 				} else {
 					for (const issueType of issueTypes) {
-						if (issueType.scope.project.id === projectId) {
+						if (issueType.scope === undefined || issueType.scope.project.id === projectId) {
 							const issueTypeName = issueType.name;
 							const issueTypeId = issueType.id;
 
@@ -216,7 +216,7 @@ export class Jira implements INodeType {
 					const users = await jiraSoftwareCloudApiRequest.call(this, '/api/2/user/search', 'GET', {},
 						{
 							username: "'",
-						}
+						},
 					);
 					for (const user of users) {
 						const userName = user.displayName;
@@ -279,7 +279,7 @@ export class Jira implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -524,7 +524,7 @@ export class Jira implements INodeType {
 								// @ts-ignore
 								notificationRecipients.users = notificationRecipientsValues.users.map(user => {
 									return {
-										accountId: user
+										accountId: user,
 									};
 								});
 							}
@@ -533,7 +533,7 @@ export class Jira implements INodeType {
 								// @ts-ignore
 								notificationRecipients.groups = notificationRecipientsValues.groups.map(group => {
 									return {
-										name: group
+										name: group,
 									};
 								});
 							}
@@ -547,7 +547,7 @@ export class Jira implements INodeType {
 								// @ts-ignore
 								notificationRecipientsRestrictions.groups = notificationRecipientsRestrictionsValues.groups.map(group => {
 									return {
-										name: group
+										name: group,
 									};
 								});
 							}

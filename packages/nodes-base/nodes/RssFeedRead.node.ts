@@ -1,9 +1,9 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	INodeExecutionData,
 } from 'n8n-workflow';
 
 import * as Parser from 'rss-parser';

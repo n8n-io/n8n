@@ -67,8 +67,6 @@ export class ActiveWorkflows {
 	 * @memberof ActiveWorkflows
 	 */
 	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
-		console.log('ADD ID (active): ' + id);
-
 		this.workflowData[id] = {};
 		const triggerNodes = workflow.getTriggerNodes();
 
@@ -204,8 +202,6 @@ export class ActiveWorkflows {
 	 * @memberof ActiveWorkflows
 	 */
 	async remove(id: string): Promise<void> {
-		console.log('REMOVE ID (active): ' + id);
-
 		if (!this.isActive(id)) {
 			// Workflow is currently not registered
 			throw new Error(`The workflow with the id "${id}" is currently not active and can so not be removed`);

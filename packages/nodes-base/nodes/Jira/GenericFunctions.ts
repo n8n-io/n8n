@@ -10,8 +10,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
 	ICredentialDataDecryptedObject,
+	IDataObject,
 } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
@@ -48,7 +48,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		qs: query,
 		uri: uri || `${domain}/rest${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	try {

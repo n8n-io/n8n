@@ -9,7 +9,7 @@ export class MessageBirdApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'accessKey',
 			type: 'string' as NodePropertyTypes,
-			default: ''
-		}
+			default: '',
+		},
 	];
 }

@@ -37,7 +37,7 @@ export const userOpeations = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a user',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -339,7 +339,7 @@ export const userFields = [
 					'update',
 				],
 				resource: [
-					'user'
+					'user',
 				],
 			},
 		},
@@ -357,7 +357,7 @@ export const userFields = [
 					'update',
 				],
 				resource: [
-					'user'
+					'user',
 				],
 			},
 		},
@@ -371,13 +371,13 @@ export const userFields = [
 							'update',
 						],
 						'/resource': [
-							'user'
+							'user',
 						],
 					},
 					hide: {
 						'/updateBy': [
 							'email',
-						]
+						],
 					},
 				},
 				type: 'string',
@@ -393,14 +393,14 @@ export const userFields = [
 							'update',
 						],
 						'/resource': [
-							'user'
+							'user',
 						],
 					},
 					hide: {
 						'/updateBy': [
 							'email',
 							'userId',
-						]
+						],
 					},
 				},
 				type: 'string',
@@ -498,7 +498,7 @@ export const userFields = [
 				default: '',
 				description: 'Identifies what specifically was clicked to bring the user to the site',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -567,7 +567,7 @@ export const userFields = [
 						default: '',
 					},
 				],
-			}
+			},
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},

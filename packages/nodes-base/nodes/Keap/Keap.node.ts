@@ -3,13 +3,13 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	INodeType,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 	IBinaryKeyData,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -19,57 +19,57 @@ import {
 } from './GenericFunctions';
 
 import {
-	contactOperations,
 	contactFields,
+	contactOperations,
 } from './ContactDescription';
 
 import {
-	contactNoteOperations,
 	contactNoteFields,
+	contactNoteOperations,
 } from './ContactNoteDescription';
 
 import {
-	contactTagOperations,
 	contactTagFields,
+	contactTagOperations,
 } from './ContactTagDescription';
 
 import {
-	ecommerceOrderOperations,
 	ecommerceOrderFields,
+	ecommerceOrderOperations,
 } from './EcommerceOrderDescripion';
 
 import {
-	ecommerceProductOperations,
 	ecommerceProductFields,
+	ecommerceProductOperations,
 } from './EcommerceProductDescription';
 
 import {
-	emailOperations,
 	emailFields,
+	emailOperations,
 } from './EmailDescription';
 
 import {
-	fileOperations,
 	fileFields,
+	fileOperations,
 } from './FileDescription';
 
 import {
-	companyOperations,
 	companyFields,
+	companyOperations,
  } from './CompanyDescription';
 
 import {
-	IContact,
 	IAddress,
-	IFax,
+	IContact,
 	IEmailContact,
-	ISocialAccount,
+	IFax,
 	IPhone,
+	ISocialAccount,
 } from './ConctactInterface';
 
 import {
-	IEmail,
 	IAttachment,
+	IEmail,
 } from './EmaiIInterface';
 
 import {

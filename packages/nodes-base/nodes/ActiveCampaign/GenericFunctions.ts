@@ -4,7 +4,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject, ILoadOptionsFunctions,
+	IDataObject, ILoadOptionsFunctions, INodeProperties,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -42,7 +42,7 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		method,
 		qs: query,
 		uri: `${credentials.apiUrl}${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(body).length !== 0) {
@@ -124,3 +124,67 @@ export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IE
 
 	return returnData;
 }
+
+export function activeCampaignDefaultGetAllProperties(resource: string, operation: string): INodeProperties[] {
+	return [
+		{
+			displayName: 'Return All',
+			name: 'returnAll',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: [
+						operation,
+					],
+					resource: [
+						resource,
+					],
+				},
+			},
+			default: false,
+			description: 'If all results should be returned or only up to a given limit.',
+		},
+		{
+			displayName: 'Limit',
+			name: 'limit',
+			type: 'number',
+			displayOptions: {
+				show: {
+					operation: [
+						operation,
+					],
+					resource: [
+						resource,
+					],
+					returnAll: [
+						false,
+					],
+				},
+			},
+			typeOptions: {
+				minValue: 1,
+				maxValue: 500,
+			},
+			default: 100,
+			description: 'How many results to return.',
+		},
+		{
+			displayName: 'Simple',
+			name: 'simple',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: [
+						operation,
+					],
+					resource: [
+						resource,
+					],
+				},
+			},
+			default: true,
+			description: 'When set to true a simplify version of the response will be used else the raw data.',
+		},
+	];
+}
+

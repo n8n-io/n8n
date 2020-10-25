@@ -14,6 +14,7 @@ import {
 import {
 	asanaApiRequest,
 	asanaApiRequestAllItems,
+	getWorkspaces,
 } from './GenericFunctions';
 
 export class Asana implements INodeType {
@@ -35,9 +36,44 @@ export class Asana implements INodeType {
 			{
 				name: 'asanaApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'accessToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'asanaOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+				description: 'The resource to operate on.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -1004,32 +1040,7 @@ export class Asana implements INodeType {
 		loadOptions: {
 			// Get all the available workspaces to display them to user so that he can
 			// select them easily
-			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = '/workspaces';
-				const responseData = await asanaApiRequestAllItems.call(this, 'GET', endpoint, {});
-
-				const returnData: INodePropertyOptions[] = [];
-				for (const workspaceData of responseData) {
-					if (workspaceData.resource_type !== 'workspace') {
-						// Not sure if for some reason also ever other resources
-						// get returned but just in case filter them out
-						continue;
-					}
-
-					returnData.push({
-						name: workspaceData.name,
-						value: workspaceData.gid,
-					});
-				}
-
-				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
-					return 0;
-				});
-
-				return returnData;
-			},
+			getWorkspaces,
 
 			// Get all the available projects to display them to user so that they can be
 			// selected easily
@@ -1207,19 +1218,13 @@ export class Asana implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-
-		const credentials = this.getCredentials('asanaApi');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;

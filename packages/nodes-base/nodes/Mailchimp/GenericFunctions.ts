@@ -20,7 +20,7 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 
 	const options: OptionsWithUrl = {
 		headers: {
-			'Accept': 'application/json'
+			'Accept': 'application/json',
 		},
 		method,
 		qs,
@@ -49,6 +49,7 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 
 			const datacenter = (credentials.apiKey as string).split('-').pop();
 			options.url = `https://${datacenter}.${host}${endpoint}`;
+
 			return await this.helpers.request!(options);
 		} else {
 			const credentials = this.getCredentials('mailchimpOAuth2Api') as IDataObject;
@@ -110,3 +111,63 @@ function getMetadata(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFu
 	};
 	return this.helpers.request!(options);
 }
+
+export const campaignFieldsMetadata = [
+	'*',
+	'campaigns.id',
+	'campaigns.web_id',
+	'campaigns.type',
+	'campaigns.create_time',
+	'campaigns.archive_url',
+	'campaigns.long_archive_url',
+	'campaigns.status',
+	'campaigns.emails_sent',
+	'campaigns.send_time',
+	'campaigns.content_type',
+	'campaigns.needs_block_refresh',
+	'campaigns.resendable',
+	'campaigns.recipients',
+	'campaigns.recipients.list_id',
+	'campaigns.recipients.list_is_active',
+	'campaigns.recipients.list_name',
+	'campaigns.recipients.segment_text',
+	'campaigns.recipients.recipient_count',
+	'campaigns.settings',
+	'campaigns.settings.subject_line',
+	'campaigns.settings.preview_text',
+	'campaigns.settings.title',
+	'campaigns.settings.from_name',
+	'campaigns.settings.reply_to',
+	'campaigns.settings.use_conversation',
+	'campaigns.settings.to_name',
+	'campaigns.settings.folder_id',
+	'campaigns.settings.authenticate',
+	'campaigns.settings.auto_footer',
+	'campaigns.settings.inline_css',
+	'campaigns.settings.auto_tweet',
+	'campaigns.settings.fb_comments',
+	'campaigns.settings.timewarp',
+	'campaigns.settings.template_id',
+	'campaigns.settings.drag_and_drop',
+	'campaigns.tracking',
+	'campaigns.tracking.opens',
+	'campaigns.tracking.html_clicks',
+	'campaigns.tracking.text_clicks',
+	'campaigns.tracking.goal_tracking',
+	'campaigns.tracking.ecomm360',
+	'campaigns.tracking.google_analytics',
+	'campaigns.tracking.clicktale',
+	'campaigns.report_summary',
+	'campaigns.report_summary.opens',
+	'campaigns.report_summary.unique_opens',
+	'campaigns.report_summary.open_rate',
+	'campaigns.report_summary.clicks',
+	'campaigns.report_summary.subscriber_clicks',
+	'campaigns.report_summary.click_rate',
+	'campaigns.report_summary.click_rate.ecommerce',
+	'campaigns.report_summary.click_rate.ecommerce.total_orders',
+	'campaigns.report_summary.click_rate.ecommerce.total_spent',
+	'campaigns.report_summary.click_rate.ecommerce.total_revenue',
+	'campaigns.report_summary.delivery_status.enabled',
+	'campaigns._links',
+];

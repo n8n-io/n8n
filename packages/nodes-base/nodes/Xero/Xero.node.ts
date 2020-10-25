@@ -4,11 +4,11 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -56,7 +56,7 @@ export class Xero implements INodeType {
 			{
 				name: 'xeroOAuth2Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

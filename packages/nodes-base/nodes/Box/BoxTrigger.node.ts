@@ -4,8 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -275,8 +275,6 @@ export class BoxTrigger implements INodeType {
 				const endpoint = '/webhooks';
 				const webhooks = await boxApiRequestAllItems.call(this, 'entries', 'GET', endpoint, {});
 
-				console.log(webhooks);
-
 				for (const webhook of webhooks) {
 					if (webhook.address === webhookUrl &&
 						webhook.target.id === targetId &&
@@ -308,7 +306,7 @@ export class BoxTrigger implements INodeType {
 					target: {
 						id: targetId,
 						type: targetType,
-					}
+					},
 				};
 
 				const responseData = await boxApiRequest.call(this, 'POST', endpoint, body);
@@ -347,7 +345,7 @@ export class BoxTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData)
+				this.helpers.returnJsonArray(bodyData),
 			],
 		};
 	}

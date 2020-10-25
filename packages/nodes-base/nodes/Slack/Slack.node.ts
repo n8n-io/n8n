@@ -5,37 +5,48 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
 	channelFields,
 	channelOperations,
 } from './ChannelDescription';
+
 import {
 	messageFields,
 	messageOperations,
 } from './MessageDescription';
+
 import {
 	starFields,
 	starOperations,
 } from './StarDescription';
+
 import {
 	fileFields,
 	fileOperations,
 } from './FileDescription';
+
+import {
+	userProfileFields,
+	userProfileOperations,
+} from './UserProfileDescription';
+
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
+
 import {
 	IAttachment,
 } from './MessageInterface';
+import moment = require('moment');
 
 interface Attachment {
 	fields: {
@@ -156,6 +167,10 @@ export class Slack implements INodeType {
 						name: 'Star',
 						value: 'star',
 					},
+					{
+						name: 'User Profile',
+						value: 'userProfile',
+					},
 				],
 				default: 'message',
 				description: 'The resource to operate on.',
@@ -169,6 +184,8 @@ export class Slack implements INodeType {
 			...starFields,
 			...fileOperations,
 			...fileFields,
+			...userProfileOperations,
+			...userProfileFields,
 		],
 	};
 
@@ -218,7 +235,23 @@ export class Slack implements INodeType {
 
 				return returnData;
 			},
-		}
+			// Get all the team fields to display them to user so that he can
+			// select them easily
+			async getTeamFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { profile: { fields } } = await slackApiRequest.call(this, 'GET', '/team.profile.get');
+				console.log(fields);
+				for (const field of fields) {
+					const fieldName = field.label;
+					const fieldId = field.id;
+					returnData.push({
+						name: fieldName,
+						value: fieldId,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -232,6 +265,7 @@ export class Slack implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
+			responseData = { error: 'Resource ' + resource + ' / operation ' + operation + ' not found!'};
 			qs = {};
 			if (resource === 'channel') {
 				//https://api.slack.com/methods/conversations.archive
@@ -799,7 +833,7 @@ export class Slack implements INodeType {
 								filename: items[i].binary[binaryPropertyName].fileName,
 								//@ts-ignore
 								contentType: items[i].binary[binaryPropertyName].mimeType,
-							}
+							},
 						};
 						responseData = await slackApiRequest.call(this, 'POST', '/files.upload', {}, qs, { 'Content-Type': 'multipart/form-data' }, { formData: body });
 						responseData = responseData.file;
@@ -846,6 +880,55 @@ export class Slack implements INodeType {
 					qs.file = fileId;
 					responseData = await slackApiRequest.call(this, 'GET', '/files.info', {}, qs);
 					responseData = responseData.file;
+				}
+			}
+			if (resource === 'userProfile') {
+				//https://api.slack.com/methods/users.profile.set
+				if (operation === 'update') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const timezone = this.getTimezone();
+
+					const body: IDataObject = {};
+
+					Object.assign(body, additionalFields);
+
+					if (body.status_expiration === undefined) {
+						body.status_expiration = 0;
+
+					} else {
+						body.status_expiration = moment.tz(body.status_expiration as string, timezone).unix();
+					}
+
+					if (body.customFieldUi) {
+						const customFields = (body.customFieldUi as IDataObject).customFieldValues as IDataObject[];
+
+						body.fields = {};
+
+						for (const customField of customFields) {
+							//@ts-ignore
+							body.fields[customField.id] = {
+								value: customField.value,
+								alt: customField.alt,
+							};
+						}
+					}
+
+					responseData = await slackApiRequest.call(this, 'POST', '/users.profile.set', { profile: body }, qs);
+
+					responseData = responseData.profile;
+				}
+				//https://api.slack.com/methods/users.profile.get
+				if (operation === 'get') {
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					const body: IDataObject = {};
+
+					Object.assign(body, additionalFields);
+
+					responseData = await slackApiRequest.call(this, 'POST', '/users.profile.get', body);
+
+					responseData = responseData.profile;
 				}
 			}
 			if (Array.isArray(responseData)) {

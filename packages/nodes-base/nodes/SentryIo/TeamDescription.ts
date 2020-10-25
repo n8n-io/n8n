@@ -29,7 +29,7 @@ export const teamOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all teams',
-			}
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform',
@@ -210,7 +210,7 @@ export const teamFields = [
 				default: '',
 				description: 'The optional slug for this team. If not provided it will be auto generated from the name',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                team:update                                 */
@@ -229,7 +229,7 @@ export const teamFields = [
 					'team',
 				],
 				operation: [
-					'update', 'delete'
+					'update', 'delete',
 				],
 			},
 		},
@@ -247,7 +247,7 @@ export const teamFields = [
 					'team',
 				],
 				operation: [
-					'update', 'delete'
+					'update', 'delete',
 				],
 			},
 		},
@@ -285,6 +285,6 @@ export const teamFields = [
 				default: '',
 				description: 'The new name of the team',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

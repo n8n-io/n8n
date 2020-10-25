@@ -26,7 +26,7 @@ export async function keapApiRequest(this: IWebhookFunctions | IHookFunctions | 
 		body,
 		qs,
 		uri: uri || `https://api.infusionsoft.com/crm/rest/v1${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		options = Object.assign({}, options, option);

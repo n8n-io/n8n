@@ -4,9 +4,9 @@ import {
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
@@ -24,11 +24,11 @@ export async function paddleApiRequest(this: IHookFunctions | IExecuteFunctions 
 	const options: OptionsWithUri = {
 		method,
 		headers: {
-			'content-type': 'application/json'
+			'content-type': 'application/json',
 		},
 		uri: `https://vendors.paddle.com/api${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	body['vendor_id'] = credentials.vendorId;
@@ -58,8 +58,9 @@ export async function paddleApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	do {
 		responseData = await paddleApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
+		body.page++;
 	} while (
-		responseData[propertyName].length !== 0
+		responseData[propertyName].length !== 0 && responseData[propertyName].length === body.results_per_page
 	);
 
 	return returnData;

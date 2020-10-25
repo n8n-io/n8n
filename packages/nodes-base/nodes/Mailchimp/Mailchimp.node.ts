@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	campaignFieldsMetadata,
 	mailchimpApiRequest,
 	mailchimpApiRequestAllItems,
 	validateJSON,
@@ -113,6 +114,10 @@ export class Mailchimp implements INodeType {
 				name: 'resource',
 				type: 'options',
 				options: [
+					{
+						name: 'Campaign',
+						value: 'campaign',
+					},
 					{
 						name: 'List Group',
 						value: 'listGroup',
@@ -221,6 +226,54 @@ export class Mailchimp implements INodeType {
 				default: 'getAll',
 				description: 'The operation to perform.',
 			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type:'options',
+				required: true,
+				displayOptions : {
+					show: {
+						resource: [
+							'campaign',
+						],
+					},
+
+				},
+				options: [
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete a campaign',
+					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a campaign',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all the campaigns',
+					},
+					{
+						name: 'Replicate',
+						value: 'replicate',
+						description: 'Replicate a campaign',
+					},
+					{
+						name: 'Resend',
+						value: 'resend',
+						description: 'Creates a Resend to Non-Openers version of this campaign',
+					},
+					{
+						name: 'Send',
+						value: 'send',
+						description: 'Send a campaign',
+					},
+				],
+				default: 'getAll',
+				description: 'The operation to perform.',
+			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:create                              */
 /* -------------------------------------------------------------------------- */
@@ -312,7 +365,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -447,7 +500,7 @@ export class Mailchimp implements INodeType {
 								default: '',
 							},
 						],
-					}
+					},
 				],
 			},
 			{
@@ -462,7 +515,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -563,7 +616,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -748,7 +801,7 @@ export class Mailchimp implements INodeType {
 						default: '',
 						description: 'A comma-separated list of fields to exclude.',
 					},
-				]
+				],
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:getAll                              */
@@ -967,7 +1020,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'update',
@@ -1021,7 +1074,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1086,7 +1139,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1207,7 +1260,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1373,7 +1426,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'memberTag'
+							'memberTag',
 						],
 						operation: [
 							'create',
@@ -1500,6 +1553,219 @@ export class Mailchimp implements INodeType {
 				default: 500,
 				description: 'How many results to return.',
 			},
+/* -------------------------------------------------------------------------- */
+/*                                 campaign:getAll                            */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 1000,
+				},
+				default: 10,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource:[
+							'campaign',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Before Create Time',
+						name: 'beforeCreateTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns created before the set time.',
+					},
+					{
+						displayName: 'Before Send Time',
+						name: 'beforeSendTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns sent before the set time.',
+					},
+					{
+						displayName: 'Exclude Fields',
+						name: 'excludeFields',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getCampaignsFields',
+						},
+						default: [],
+						description: 'A comma-separated list of fields to exclude.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getCampaignsFields',
+						},
+						default: [
+							'campaigns.id',
+							'campaigns.status',
+							'campaigns.tracking',
+							'campaigns.settings.from_name',
+							'campaigns.settings.reply_to',
+							'campaigns.settings.title',
+						],
+						description: 'A comma-separated list of fields to return.',
+					},
+					{
+						displayName: 'List ID',
+						name: 'listId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getLists',
+						},
+						default: '',
+						description: 'List of lists',
+					},
+					{
+						displayName: 'Since Create Time',
+						name: 'sinceCreateTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns created after the set time.',
+					},
+					{
+						displayName: 'Since Send Time',
+						name: 'sinceSendTime',
+						type: 'dateTime',
+						default: '',
+						description: 'Restrict the response to campaigns sent after the set time.',
+					},
+					{
+						displayName: 'Sort Direction',
+						name: 'sortDirection',
+						type: 'options',
+						options: [
+							{
+								name: 'ASC',
+								value: 'ASC',
+							},
+							{
+								name: 'DESC',
+								value: 'DESC',
+							},
+						],
+						default: '',
+						description: 'Determines the order direction for sorted results.',
+					},
+					{
+						displayName: 'Sort Field',
+						name: 'sortField',
+						type: 'options',
+						options: [
+							{
+								name: 'Create Time',
+								value: 'create_time',
+							},
+							{
+								name: 'Send Time',
+								value: 'send_time',
+							},
+						],
+						default: '',
+						description: 'Returns files sorted by the specified field.',
+					},
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'Save',
+								value: 'save',
+							},
+							{
+								name: 'Sending',
+								value: 'sending',
+							},
+							{
+								name: 'Sent',
+								value: 'sent',
+							},
+							{
+								name: 'Schedule',
+								value: 'schedule',
+							},
+						],
+						default: '',
+						description: 'The status of the campaign.',
+					},
+				],
+			},
+/* -------------------------------------------------------------------------- */
+/*                                 campaign:send                              */
+/* -------------------------------------------------------------------------- */
+			{
+				displayName: 'Campaign ID',
+				name: 'campaignId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'campaign',
+						],
+						operation: [
+							'send',
+							'get',
+							'delete',
+							'replicate',
+							'resend',
+						],
+					},
+				},
+				required: true,
+				default: '',
+				description: 'List of Campaigns',
+				options:[],
+			},
 		],
 	};
 
@@ -1556,7 +1822,34 @@ export class Mailchimp implements INodeType {
 				}
 				return returnData;
 			},
-		}
+
+			// Get all the available campaigns to display them to users so that they can select them easily
+			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const campaigns = await mailchimpApiRequestAllItems.call(this, '/campaigns', 'GET', 'campaigns');
+				for (const campaign of campaigns) {
+					const campaignName = campaign.settings.title;
+					const campaignId = campaign.id;
+					returnData.push({
+						name: campaignName,
+						value: campaignId,
+					});
+				}
+				return returnData;
+			},
+
+			// Get all the available fields to display them to users so that they can select them easily
+			async getCampaignsFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				for (const campaignFields of campaignFieldsMetadata) {
+					returnData.push({
+						name: campaignFields,
+						value: campaignFields,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -1597,7 +1890,7 @@ export class Mailchimp implements INodeType {
 					const body: ICreateMemberBody = {
 						listId,
 						email_address: email,
-						status
+						status,
 					};
 					if (options.emailType) {
 						body.email_type = options.emailType as string;
@@ -1882,6 +2175,90 @@ export class Mailchimp implements INodeType {
 					}
 					responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/tags`, 'POST', body);
 					responseData = { success: true };
+				}
+			}
+			if (resource === 'campaign') {
+				//https://mailchimp.com/developer/api/marketing/campaigns/list-campaigns/
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					if (options.status) {
+						qs.status = options.status as string;
+					}
+					if (options.beforeCreateTime) {
+						qs.before_create_time = options.beforeCreateTime as string;
+					}
+					if (options.beforeSendTime) {
+						qs.before_send_time = options.beforeSendTime as string;
+					}
+					if (options.excludeFields) {
+						qs.exclude_fields = (options.exclude_fields as string[]).join(',');
+					}
+					if (options.fields) {
+						qs.fields = (options.fields as string[]).join(',');
+						if ((options.fields as string[]).includes('*')) {
+							qs.fields = campaignFieldsMetadata.join(',');
+						}
+					} else {
+						qs.fields = [
+							'campaigns.id',
+							'campaigns.status',
+							'campaigns.tracking',
+							'campaigns.settings.from_name',
+							'campaigns.settings.title',
+							'campaigns.settings.reply_to',
+						].join(',');
+					}
+
+					if (options.listId) {
+						qs.list_id = options.listId as string;
+					}
+					if (options.sinceCreateTime) {
+						qs.since_create_time = options.sinceCreateTime as string;
+					}
+					if (options.sinceSendTime) {
+						qs.since_send_time = options.sinceSendTime as string;
+					}
+					if (options.sortDirection) {
+						qs.sort_dir = options.sortDirection as string;
+					}
+					if (options.sortField) {
+						qs.sort_field = options.sortField as string;
+					}
+					if (returnAll === true) {
+						responseData = await mailchimpApiRequestAllItems.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs);
+					} else {
+						qs.count = this.getNodeParameter('limit', i) as number;
+						responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
+						responseData = responseData.campaigns;
+					}
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/send-campaign/
+				if (operation === 'send') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {});
+					responseData = { success: true };
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/get-campaign-info/
+				if (operation === 'get') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'GET', {});
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/delete-campaign/
+				if (operation === 'delete') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'DELETE', {});
+					responseData = { success: true };
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/replicate-campaign/
+				if (operation === 'replicate') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/replicate`, 'POST', {});
+				}
+				//https://mailchimp.com/developer/api/marketing/campaigns/resend-campaign/
+				if (operation === 'resend') {
+					const campaignId = this.getNodeParameter('campaignId', i) as string;
+					responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/create-resend`, 'POST', {});
 				}
 			}
 

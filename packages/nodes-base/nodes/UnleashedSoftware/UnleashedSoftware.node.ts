@@ -10,19 +10,19 @@ import {
 } from 'n8n-workflow';
 
 import {
+	convertNETDates,
 	unleashedApiRequest,
 	unleashedApiRequestAllItems,
-	convertNETDates,
 } from './GenericFunctions';
 
 import {
-	salesOrderOperations,
 	salesOrderFields,
+	salesOrderOperations,
 } from './SalesOrderDescription';
 
 import {
-	stockOnHandOperations,
 	stockOnHandFields,
+	stockOnHandOperations,
 } from './StockOnHandDescription';
 
 import * as moment from 'moment';

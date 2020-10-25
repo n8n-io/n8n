@@ -57,7 +57,7 @@ export const ticketFields = [
 		type: 'options',
 		required: true,
 		typeOptions: {
-			loadOptionsMethod: 'getTicketPipelines'
+			loadOptionsMethod: 'getTicketPipelines',
 		},
 		displayOptions: {
 			show: {
@@ -139,7 +139,7 @@ export const ticketFields = [
 					loadOptionsMethod:'getCompanies' ,
 				},
 				default: [],
-				description: 'Companies associated with the ticket'
+				description: 'Companies associated with the ticket',
 			},
 			{
 				displayName: 'Contact Ids',
@@ -149,7 +149,7 @@ export const ticketFields = [
 					loadOptionsMethod:'getContacts' ,
 				},
 				default: [],
-				description: 'Contacts associated with the ticket'
+				description: 'Contacts associated with the ticket',
 			},
 			{
 				displayName: 'Category',
@@ -274,7 +274,7 @@ export const ticketFields = [
 					loadOptionsMethod:'getCompanies' ,
 				},
 				default: [],
-				description: 'Companies associated with the ticket'
+				description: 'Companies associated with the ticket',
 			},
 			{
 				displayName: 'Contact Ids',
@@ -284,7 +284,7 @@ export const ticketFields = [
 					loadOptionsMethod:'getContacts' ,
 				},
 				default: [],
-				description: 'Contact associated with the ticket'
+				description: 'Contact associated with the ticket',
 			},
 			{
 				displayName: 'Category',
@@ -325,7 +325,7 @@ export const ticketFields = [
 				name: 'pipelineId',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getTicketPipelines'
+					loadOptionsMethod: 'getTicketPipelines',
 				},
 				default: '',
 				description: 'The ID of the pipeline the ticket is in. ',

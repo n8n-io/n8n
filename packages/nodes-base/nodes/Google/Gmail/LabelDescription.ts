@@ -34,7 +34,7 @@ export const labelOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all labels',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform',
@@ -55,7 +55,7 @@ export const labelFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		placeholder: 'invoices',
