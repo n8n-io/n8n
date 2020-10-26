@@ -41,6 +41,7 @@ import {
 	IExecutionDeleteFilter,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
+	IExecutionResponse,
 	IExecutionFlattedResponse,
 	IExecutionPushResponse,
 	IExecutionsListResponse,
@@ -1472,16 +1473,23 @@ class App {
 
 
 		// Returns a specific execution
-		this.app.get(`/${this.restEndpoint}/executions/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionFlattedResponse | undefined> => {
+		this.app.get(`/${this.restEndpoint}/executions/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
 			const result = await Db.collections.Execution!.findOne(req.params.id);
 
 			if (result === undefined) {
 				return undefined;
 			}
 
-			// Convert to response format in which the id is a string
-			(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
-			return result as IExecutionFlatted as IExecutionFlattedResponse;
+			if (req.query.unflattedResponse) {
+ 				const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
+				return fullExecutionData as IExecutionResponse;
+			} else {
+				// Convert to response format in which the id is a string
+				(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
+				return result as IExecutionFlatted as IExecutionFlattedResponse;
+			}
+
+			return undefined;
 		}));
 
 
