@@ -9,7 +9,6 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-
 export class TheHiveTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TheHive Trigger',
@@ -19,7 +18,7 @@ export class TheHiveTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when a TheHive event occurs.',
 		defaults: {
-			name: 'TheHive-Trigger',
+			name: 'TheHive Trigger',
 			color: '#f3d02f',
 		},
 		inputs: [],
@@ -46,7 +45,6 @@ export class TheHiveTrigger implements INodeType {
 						value: '*',
 						description: 'Any time any event is triggered (Wildcard Event).',
 					},
-					
 					{
 						name: 'alert_create',
 						value: 'alert_create',
@@ -119,33 +117,29 @@ export class TheHiveTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		// Get the request body
 		const bodyData = this.getBodyData();
-		const events = this.getNodeParameter('events', []) as Array<String>;
+		const events = this.getNodeParameter('events', []) as string[];
 		if(!bodyData.operation || !bodyData.objectType) {
 			// Don't start the workflow if mandatory fields are not specified
-			return {
-				webhookResponse: 'Error: Missing operation or object type'
-			};
+			return {};
 		}
 
 		// Don't start the workflow if the event is not fired
 		const event = `${(bodyData.objectType as string).toLowerCase()}_${(bodyData.operation as string).toLowerCase()}`;
 		if(events.indexOf('*') === -1 && events.indexOf(event) === -1) {
-			return {
-				webhookResponse: 'OK: Webhook called, but workflow didn\'t start (event is ignored)'
-			};
+			return {};
 		}
 
 		// The data to return and so start the workflow with
 		const returnData: IDataObject[] = [];
 		returnData.push(
 			{
-				event: event,
+				event,
 				body: this.getBodyData(),
 				headers: this.getHeaderData(),
 				query: this.getQueryData(),
 			}
 		);
-		
+
 		return {
 			workflowData: [
 				this.helpers.returnJsonArray(returnData)

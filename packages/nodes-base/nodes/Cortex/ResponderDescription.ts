@@ -74,7 +74,7 @@ export const responderFields:INodeProperties[] = [
 		description: 'choose the Data type',
 	},
 	{
-		displayName: 'Entity object (JSON)',
+		displayName: 'Entity Object (JSON)',
 		name: 'objectData',
 		type: 'json',
 		required: true,

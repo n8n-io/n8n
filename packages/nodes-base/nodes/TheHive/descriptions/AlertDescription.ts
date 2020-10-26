@@ -437,13 +437,13 @@ export const alertFields = [
 	},
 	// required for responder execution
 	{
-		displayName:'Responders',
-		name:'responders',
-		type:'multiOptions',
-		required:true,
-		default:'',
-		typeOptions:{
-			loadOptionsDependsOn:[
+		displayName: 'Responder ID',
+		name: 'responder',
+		type: 'options',
+		required: true,
+		default: '',
+		typeOptions: {
+			loadOptionsDependsOn: [
 				'id',
 			],
 			loadOptionsMethod: 'loadResponders',

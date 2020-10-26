@@ -182,9 +182,9 @@ export const logFields = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responders',
-		name: 'responders',
-		type: 'multiOptions',
+		displayName: 'Responder ID',
+		name: 'responder',
+		type: 'options',
 		required: true,
 		default: '',
 		typeOptions: {

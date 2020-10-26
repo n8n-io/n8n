@@ -6,21 +6,20 @@ import {
 
 export class CortexApi implements ICredentialType {
 	name = 'cortexApi';
-	displayName = 'Cortex Api';
+	displayName = 'Cortex API';
 	properties = [
 		{
-			displayName: 'API key',
+			displayName: 'API Key',
 			name: 'cortexApiKey',
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
 		{
-			default:'',
-			name:'host',
-			displayName:'Cortex Instance',
-			required:true,
-			type:"string" as NodePropertyTypes,
-			description:"The URL of the Cortex instance",
+			displayName: 'Cortex Instance',
+			name: 'host',
+			type: 'string' as NodePropertyTypes,
+			description: 'The URL of the Cortex instance',
+			default: '',
 			placeholder:'https://localhost:9001'
 		},
 	];

@@ -313,9 +313,7 @@ export class Cortex implements INodeType {
 			}
 
 			if (resource === 'responder') {
-
 				if (operation === 'execute') {
-
 					const responderId = (this.getNodeParameter('responder', i) as string).split('::')[0];
 
 					const dataType = this.getNodeParameter('dataType', i) as string;

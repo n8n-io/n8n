@@ -261,9 +261,9 @@ export const caseFields = [
 	},
 	// required for responder execution
 	{
-		displayName: 'Responders',
-		name: 'responders',
-		type: 'multiOptions',
+		displayName: 'Responder ID',
+		name: 'responder',
+		type: 'options',
 		default: '',
 		required: true,
 		typeOptions: {

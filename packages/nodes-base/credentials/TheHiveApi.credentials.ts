@@ -8,7 +8,7 @@ export class TheHiveApi implements ICredentialType {
 	displayName = 'The Hive API';
 	properties = [
 		{
-			displayName: 'API key',
+			displayName: 'API Key',
 			name: 'ApiKey',
 			type: 'string' as NodePropertyTypes,
 			default: '',
@@ -29,12 +29,12 @@ export class TheHiveApi implements ICredentialType {
 			description: 'The version of api to be used',
 			options:[
 				{
-					name:'API Version 1',
+					name:'Version 1',
 					value:'v1',
 					description:'API version supported by TheHive 4'
 				},
 				{
-					name:'API Version 0',
+					name:'Version 0',
 					value:'',
 					description:'API version supported by TheHive 3'
 				},

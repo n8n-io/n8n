@@ -396,11 +396,11 @@ export const observableFields = [
 
 	// required for responder execution
 	{
-		displayName: 'Responders',
-		name: 'responders',
-		type: 'multiOptions',
+		displayName: 'Responder ID',
+		name: 'responder',
+		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
 			loadOptionsDependsOn: [
 				'id',
