@@ -205,7 +205,7 @@ export class Expression {
 			}
 
 			return returnData as NodeParameterValue[] | INodeParameters[];
-		} else if (parameterValue === null) {
+		} else if (parameterValue === null || parameterValue === undefined) {
 			return parameterValue;
 		} else {
 			// Data is an object

@@ -841,7 +841,7 @@ export class ActiveCampaign implements INodeType {
 						source: this.getNodeParameter('source', i) as string,
 						email: this.getNodeParameter('email', i) as string,
 						totalPrice: this.getNodeParameter('totalPrice', i) as number,
-						currency: this.getNodeParameter('currency', i).toString().toUpperCase() as string,
+						currency: this.getNodeParameter('currency', i)!.toString().toUpperCase() as string,
 						externalCreatedDate: this.getNodeParameter('externalCreatedDate', i) as string,
 						connectionid: this.getNodeParameter('connectionid', i) as number,
 						customerid: this.getNodeParameter('customerid', i) as number,
