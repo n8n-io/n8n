@@ -245,6 +245,26 @@ export class HttpRequest implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Batch Interval',
+						name: 'batchInterval',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 1000,
+						description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
+					},
+					{
+						displayName: 'Batch Size',
+						name: 'batchSize',
+						type: 'number',
+						typeOptions: {
+							minValue: -1,
+						},
+						default: 50,
+						description: 'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
+					},
+					{
 						displayName: 'Body Content Type',
 						name: 'bodyContentType',
 						type: 'options',
@@ -279,24 +299,6 @@ export class HttpRequest implements INodeType {
 						description: 'Content-Type to use to send body parameters.',
 					},
 					{
-						displayName: 'MIME Type',
-						name: 'bodyContentCustomMimeType',
-						type: 'string',
-						default: '',
-						placeholder: 'text/xml',
-						description: 'Specify the mime type for raw/custom body type.',
-						required: false,
-						displayOptions: {
-							show: {
-								'/requestMethod': [
-									'PATCH',
-									'POST',
-									'PUT',
-								],
-							},
-						},
-					},
-					{
 						displayName: 'Full Response',
 						name: 'fullResponse',
 						type: 'boolean',
@@ -318,6 +320,24 @@ export class HttpRequest implements INodeType {
 						description: 'Succeeds also when status code is not 2xx.',
 					},
 					{
+						displayName: 'MIME Type',
+						name: 'bodyContentCustomMimeType',
+						type: 'string',
+						default: '',
+						placeholder: 'text/xml',
+						description: 'Specify the mime type for raw/custom body type.',
+						required: false,
+						displayOptions: {
+							show: {
+								'/requestMethod': [
+									'PATCH',
+									'POST',
+									'PUT',
+								],
+							},
+						},
+					},
+					{
 						displayName: 'Proxy',
 						name: 'proxy',
 						type: 'string',
@@ -334,26 +354,6 @@ export class HttpRequest implements INodeType {
 						},
 						default: 10000,
 						description: 'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request.',
-					},
-					{
-						displayName: 'Batch size',
-						name: 'batchSize',
-						type: 'number',
-						typeOptions: {
-							minValue: -1
-						},
-						default: 50,
-						description: 'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
-					},
-					{
-						displayName: 'Batch interval',
-						name: 'batchInterval',
-						type: 'number',
-						typeOptions: {
-							minValue: 0
-						},
-						default: 1000,
-						description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
 					},
 				],
 			},
@@ -649,8 +649,8 @@ export class HttpRequest implements INodeType {
 			if (itemIndex > 0 && options.batchSize as number >= 0 && options.batchInterval as number > 0) {
 				// defaults batch size to 1 of it's set to 0
 				const batchSize: number = options.batchSize as number > 0 ? options.batchSize as number : 1;
-				if (itemIndex % batchSize === 0) {
-					await new Promise(resolve => setTimeout(resolve, options.batchInterval as number))
+				if (itemIndex % batchSize === 1) {
+					await new Promise(resolve => setTimeout(resolve, options.batchInterval as number));
 				}
 			}
 
