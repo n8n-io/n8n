@@ -22,6 +22,11 @@ import {
 } from './EventDescription';
 
 import {
+	freeBusyFields,
+	freeBusyOperations,
+} from './freeBusyDescription';
+
+import {
 	IEvent,
 } from './EventInterface';
 
@@ -60,12 +65,18 @@ export class GoogleCalendar implements INodeType {
 						name: 'Event',
 						value: 'event',
 					},
+					{
+						name: 'Freebusy',
+						value: 'freeBusy'
+					}
 				],
 				default: 'event',
 				description: 'The resource to operate on.',
 			},
 			...eventOperations,
 			...eventFields,
+			...freeBusyOperations,
+			...freeBusyFields,
 		],
 	};
 
@@ -541,6 +552,31 @@ export class GoogleCalendar implements INodeType {
 						body,
 						qs,
 					);
+				}
+			}
+			if (resource === 'freeBusy') {
+				//https://developers.google.com/calendar/v3/reference/freebusy/query
+				if (operation === 'get') {
+					const calendarIds = this.getNodeParameter('calendar', i) as string[];
+					const timeMin = this.getNodeParameter('timeMin', i);
+					const timeMax = this.getNodeParameter('timeMax', i);
+					let items: IDataObject[] = [];
+					let body: IDataObject = {
+						timeMin: timeMin,
+						timeMax: timeMax,
+					};
+					for (let j=0; j< calendarIds.length; j++) {
+						items.push({id:calendarIds[j]})
+					}
+					body.items = items;
+					console.log(body)
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						`/calendar/v3/freeBusy`,
+						body,
+						{}
+					)
 				}
 			}
 			if (Array.isArray(responseData)) {
