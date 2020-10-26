@@ -335,6 +335,26 @@ export class HttpRequest implements INodeType {
 						default: 10000,
 						description: 'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request.',
 					},
+					{
+						displayName: 'Batch size',
+						name: 'batchSize',
+						type: 'number',
+						typeOptions: {
+							minValue: -1
+						},
+						default: 50,
+						description: 'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
+					},
+					{
+						displayName: 'Batch interval',
+						name: 'batchInterval',
+						type: 'number',
+						typeOptions: {
+							minValue: 0
+						},
+						default: 1000,
+						description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
+					},
 				],
 			},
 
@@ -625,6 +645,14 @@ export class HttpRequest implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 			const url = this.getNodeParameter('url', itemIndex) as string;
+
+			if (itemIndex > 0 && options.batchSize as number >= 0 && options.batchInterval as number > 0) {
+				// defaults batch size to 1 of it's set to 0
+				const batchSize: number = options.batchSize as number > 0 ? options.batchSize as number : 1;
+				if (itemIndex % batchSize === 0) {
+					await new Promise(resolve => setTimeout(resolve, options.batchInterval as number))
+				}
+			}
 
 			const fullResponse = !!options.fullResponse as boolean;
 
