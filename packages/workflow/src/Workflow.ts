@@ -380,8 +380,8 @@ export class Workflow {
 
 		const returnData: any = {}; // tslint:disable-line:no-any
 
-		for (const parameterName of Object.keys(parameterValue)) {
-			returnData[parameterName] = this.renameNodeInExpressions(parameterValue[parameterName], currentName, newName);
+		for (const parameterName of Object.keys(parameterValue || {})) {
+			returnData[parameterName] = this.renameNodeInExpressions(parameterValue![parameterName], currentName, newName);
 		}
 
 		return returnData;
