@@ -642,7 +642,7 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 			}
 
 			// Itterate over all collections
-			for (const itemName of Object.keys(propertyValues)) {
+			for (const itemName of Object.keys(propertyValues || {})) {
 				if (nodeProperties.typeOptions !== undefined && nodeProperties.typeOptions.multipleValues === true) {
 					// Multiple can be set so will be an array
 
