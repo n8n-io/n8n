@@ -258,7 +258,7 @@ export const store = new Vuex.Store({
 
 		},
 		removeAllConnections (state, data) {
-			if (data.setStateDirty === true) {
+			if (data && data.setStateDirty === true) {
 				state.stateIsDirty = true;
 			}
 			state.workflow.connections = {};
