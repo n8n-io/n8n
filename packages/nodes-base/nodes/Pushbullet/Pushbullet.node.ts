@@ -53,7 +53,7 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'push',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -89,7 +89,7 @@ export class Pushbullet implements INodeType {
 					},
 				],
 				default: 'create',
-				description: 'The resource to operate on.'
+				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Type',
@@ -137,12 +137,12 @@ export class Pushbullet implements INodeType {
 						],
 						type: [
 							'note',
-							'link'
+							'link',
 						],
 					},
 				},
 				default: '',
-				description: `Title of the push, used for all types of pushes`
+				description: `Title of the push.`,
 			},
 			{
 				displayName: 'Body',
@@ -165,7 +165,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `Body of the push, used for all types of pushes`
+				description: `Body of the push.`,
 			},
 			{
 				displayName: 'URL',
@@ -186,7 +186,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: '',
-				description: `Body of the push, used for all types of pushes`
+				description: `URL of the push.`,
 			},
 			{
 				displayName: 'Binary Property',
@@ -248,7 +248,7 @@ export class Pushbullet implements INodeType {
 					},
 				},
 				default: 'default',
-				description: 'Define the medium that will be used to send the push',
+				description: 'Define the medium that will be used to send the push.',
 			},
 			{
 				displayName: 'Value',
@@ -380,14 +380,14 @@ export class Pushbullet implements INodeType {
 						name: 'active',
 						type: 'boolean',
 						default: false,
-						description: `Don't return deleted pushes`,
+						description: `Don't return deleted pushes.`,
 					},
 					{
 						displayName: 'Modified After',
 						name: 'modified_after',
 						type: 'dateTime',
 						default: '',
-						description: `Request pushes modified after this timestamp`,
+						description: `Request pushes modified after this timestamp.`,
 					},
 				],
 			},
@@ -482,7 +482,7 @@ export class Pushbullet implements INodeType {
 						}
 					}
 
-					if  (type === 'file') {
+					if (type === 'file') {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 						if (items[i].binary === undefined) {
@@ -512,7 +512,7 @@ export class Pushbullet implements INodeType {
 						);
 
 						//upload the file
-						 await pushbulletApiRequest.call(
+						await pushbulletApiRequest.call(
 							this,
 							'POST',
 							'',
@@ -534,7 +534,7 @@ export class Pushbullet implements INodeType {
 
 						body.file_name = file_name;
 						body.file_type = file_type;
-						body.file_url =  file_url;
+						body.file_url = file_url;
 					}
 
 					responseData = await pushbulletApiRequest.call(
