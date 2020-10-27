@@ -32,7 +32,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs: query,
 		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(option).length !== 0) {

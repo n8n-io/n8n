@@ -26,20 +26,24 @@ import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
 	CredentialsHelper,
+	CredentialsOverwrites,
 	CredentialTypes,
 	Db,
 	ExternalHooks,
+	GenericHelpers,
 	IActivationError,
-	ICustomRequest,
 	ICredentialsDb,
 	ICredentialsDecryptedDb,
 	ICredentialsDecryptedResponse,
+	ICredentialsOverwrite,
 	ICredentialsResponse,
+	ICustomRequest,
 	IExecutionDeleteFilter,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
 	IExecutionFlattedResponse,
 	IExecutionPushResponse,
+	IExecutionResponse,
 	IExecutionsListResponse,
 	IExecutionsStopData,
 	IExecutionsSummary,
@@ -47,21 +51,18 @@ import {
 	IN8nUISettings,
 	IPackageVersions,
 	IWorkflowBase,
-	IWorkflowShortResponse,
-	IWorkflowResponse,
 	IWorkflowExecutionDataProcess,
+	IWorkflowResponse,
+	IWorkflowShortResponse,
+	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
 	ResponseHelper,
 	TestWebhooks,
-	WorkflowCredentials,
 	WebhookHelpers,
+	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 	WorkflowRunner,
-	GenericHelpers,
-	CredentialsOverwrites,
-	ICredentialsOverwrite,
-	LoadNodesAndCredentials,
 } from './';
 
 import {
@@ -75,9 +76,9 @@ import {
 	ICredentialType,
 	IDataObject,
 	INodeCredentials,
-	INodeTypeDescription,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeTypeDescription,
 	IRunData,
 	IWorkflowCredentials,
 	Workflow,
@@ -172,7 +173,7 @@ class App {
 			oauthCallbackUrls: {
 				'oauth1': urlBaseWebhook + `${this.restEndpoint}/oauth1-credential/callback`,
 				'oauth2': urlBaseWebhook + `${this.restEndpoint}/oauth2-credential/callback`,
-			}
+			},
 		};
 	}
 
@@ -313,7 +314,7 @@ class App {
 
 				const jwtVerifyOptions: jwt.VerifyOptions = {
 					issuer: jwtIssuer !== '' ? jwtIssuer : undefined,
-					ignoreExpiration: false
+					ignoreExpiration: false,
 				};
 
 				jwt.verify(token, getKey, jwtVerifyOptions, (err: jwt.VerifyErrors, decoded: object) => {
@@ -355,7 +356,7 @@ class App {
 			limit: '16mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		// Support application/xml type post data
@@ -365,14 +366,14 @@ class App {
 				normalize: true,     // Trim whitespace inside text nodes
 				normalizeTags: true, // Transform tags to lowercase
 				explicitArray: false, // Only put properties in array if length > 1
-			}
+			},
 		}));
 
 		this.app.use(bodyParser.text({
 			limit: '16mb', verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		// Make sure that Vue history mode works properly
@@ -382,9 +383,9 @@ class App {
 					from: new RegExp(`^\/(${this.restEndpoint}|healthz|css|js|${this.endpointWebhook}|${this.endpointWebhookTest})\/?.*$`),
 					to: (context) => {
 						return context.parsedUrl!.pathname!.toString();
-					}
-				}
-			]
+					},
+				},
+			],
 		}));
 
 		//support application/x-www-form-urlencoded post data
@@ -392,7 +393,7 @@ class App {
 			verify: (req, res, buf) => {
 				// @ts-ignore
 				req.rawBody = buf;
-			}
+			},
 		}));
 
 		if (process.env['NODE_ENV'] !== 'production') {
@@ -580,6 +581,7 @@ class App {
 			newWorkflowData.updatedAt = this.getCurrentDate();
 
 			await Db.collections.Workflow!.update(id, newWorkflowData);
+			await this.externalHooks.run('workflow.afterUpdate', [newWorkflowData]);
 
 			// We sadly get nothing back from "update". Neither if it updated a record
 			// nor the new value. So query now the hopefully updated entry.
@@ -628,6 +630,7 @@ class App {
 			}
 
 			await Db.collections.Workflow!.delete(id);
+			await this.externalHooks.run('workflow.afterDelete', [id]);
 
 			return true;
 		}));
@@ -713,10 +716,33 @@ class App {
 			const allNodes = nodeTypes.getAll();
 
 			allNodes.forEach((nodeData) => {
-				returnData.push(nodeData.description);
+				// Make a copy of the object. If we don't do this, then when
+				// The method below is called the properties are removed for good
+				// This happens because nodes are returned as reference.
+				const nodeInfo: INodeTypeDescription = {...nodeData.description};
+				if (req.query.includeProperties !== 'true') {
+					// @ts-ignore
+					delete nodeInfo.properties;
+				}
+				returnData.push(nodeInfo);
 			});
 
 			return returnData;
+		}));
+
+
+		// Returns node information baesd on namese
+		this.app.post(`/${this.restEndpoint}/node-types`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
+			const nodeNames = _.get(req, 'body.nodeNames', []) as string[];
+			const nodeTypes = NodeTypes();
+
+			return nodeNames.map(name => {
+				try {
+					return nodeTypes.getByName(name);
+				} catch (e) {
+					return undefined;
+				}
+			}).filter(nodeData => !!nodeData).map(nodeData => nodeData!.description);
 		}));
 
 
@@ -1072,7 +1098,7 @@ class App {
 			};
 
 			const oauthRequestData = {
-				oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`
+				oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth1-credential/callback?cid=${req.query.id}`,
 			};
 
 			await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
@@ -1151,7 +1177,7 @@ class App {
 				qs: {
 					oauth_token,
 					oauth_verifier,
-				}
+				},
 			};
 
 			let oauthToken;
@@ -1327,7 +1353,7 @@ class App {
 				accessTokenUri: _.get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: _.get(oauthCredentials, 'authUrl', '') as string,
 				redirectUri: `${WebhookHelpers.getWebhookBaseUrl()}${this.restEndpoint}/oauth2-credential/callback`,
-				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ',')
+				scopes: _.split(_.get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
 
 			if (_.get(oauthCredentials, 'authentication', 'header') as string === 'body') {
@@ -1447,16 +1473,23 @@ class App {
 
 
 		// Returns a specific execution
-		this.app.get(`/${this.restEndpoint}/executions/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionFlattedResponse | undefined> => {
+		this.app.get(`/${this.restEndpoint}/executions/:id`, ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
 			const result = await Db.collections.Execution!.findOne(req.params.id);
 
 			if (result === undefined) {
 				return undefined;
 			}
 
-			// Convert to response format in which the id is a string
-			(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
-			return result as IExecutionFlatted as IExecutionFlattedResponse;
+			if (req.query.unflattedResponse) {
+ 				const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
+				return fullExecutionData as IExecutionResponse;
+			} else {
+				// Convert to response format in which the id is a string
+				(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
+				return result as IExecutionFlatted as IExecutionFlattedResponse;
+			}
+
+			return undefined;
 		}));
 
 
@@ -1875,7 +1908,7 @@ class App {
 					// got used
 					res.setHeader('Last-Modified', startTime);
 				}
-			}
+			},
 		}));
 	}
 
@@ -1907,6 +1940,6 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
-		await app.externalHooks.run('n8n.ready', []);
+		await app.externalHooks.run('n8n.ready', [app]);
 	});
 }

@@ -36,7 +36,7 @@ export class ShopifyTrigger implements INodeType {
 			{
 				name: 'shopifyApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -326,7 +326,7 @@ export class ShopifyTrigger implements INodeType {
 						topic,
 						address: webhookUrl,
 						format: 'json',
-					}
+					},
 				};
 
 				let responseData;
@@ -386,7 +386,7 @@ export class ShopifyTrigger implements INodeType {
 		}
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

@@ -5,6 +5,7 @@ import Vue from 'vue';
 import 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'vue-prism-editor/dist/VuePrismEditor.css';
+import Vue2TouchEvents from 'vue2-touch-events';
 
 import * as ElementUI from 'element-ui';
 // @ts-ignore
@@ -91,6 +92,9 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 import { store } from './store';
+
+Vue.use(Vue2TouchEvents);
+
 Vue.use(ElementUI, { locale });
 
 library.add(faAngleDoubleLeft);

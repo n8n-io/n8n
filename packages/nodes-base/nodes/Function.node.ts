@@ -23,7 +23,7 @@ export class Function implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Function',
+				displayName: 'JavaScript Code',
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -65,7 +65,7 @@ export class Function implements INodeType {
 			require: {
 				external: false as boolean | { modules: string[] },
 				builtin: [] as string[],
-			}
+			},
 		};
 
 		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {

@@ -53,11 +53,11 @@ export class If implements INodeType {
 								options: [
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 								],
 								default: 'equal',
@@ -90,27 +90,27 @@ export class If implements INodeType {
 								options: [
 									{
 										name: 'Smaller',
-										value: 'smaller'
+										value: 'smaller',
 									},
 									{
 										name: 'Smaller Equal',
-										value: 'smallerEqual'
+										value: 'smallerEqual',
 									},
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 									{
 										name: 'Larger',
-										value: 'larger'
+										value: 'larger',
 									},
 									{
 										name: 'Larger Equal',
-										value: 'largerEqual'
+										value: 'largerEqual',
 									},
 								],
 								default: 'smaller',
@@ -143,23 +143,23 @@ export class If implements INodeType {
 								options: [
 									{
 										name: 'Contains',
-										value: 'contains'
+										value: 'contains',
 									},
 									{
 										name: 'Equal',
-										value: 'equal'
+										value: 'equal',
 									},
 									{
 										name: 'Not Contains',
-										value: 'notContains'
+										value: 'notContains',
 									},
 									{
 										name: 'Not Equal',
-										value: 'notEqual'
+										value: 'notEqual',
 									},
 									{
 										name: 'Regex',
-										value: 'regex'
+										value: 'regex',
 									},
 								],
 								default: 'equal',
@@ -206,12 +206,12 @@ export class If implements INodeType {
 					{
 						name: 'ALL',
 						description: 'Only if all conditions are meet it goes into "true" branch.',
-						value: 'all'
+						value: 'all',
 					},
 					{
 						name: 'ANY',
 						description: 'If any of the conditions is meet it goes into "true" branch.',
-						value: 'any'
+						value: 'any',
 					},
 				],
 				default: 'all',
@@ -234,27 +234,27 @@ export class If implements INodeType {
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 		} = {
-			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => value1.toString().includes(value2.toString()),
-			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !value1.toString().includes(value2.toString()),
+			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || '').toString().includes((value2 || '').toString()),
+			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 || '').toString().includes((value2 || '').toString()),
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
-			larger: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 > value2,
-			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 >= value2,
-			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 < value2,
-			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 <= value2,
+			larger: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
+			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) >= (value2 || 0),
+			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
+			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) <= (value2 || 0),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-				const regexMatch = value2.toString().match(new RegExp('^/(.*?)/([gimy]*)$'));
+				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimy]*)$'));
 
 				let regex: RegExp;
 				if (!regexMatch) {
-					regex = new RegExp(value2.toString());
+					regex = new RegExp((value2 || '').toString());
 				} else if (regexMatch.length === 1) {
 					regex = new RegExp(regexMatch[1]);
 				} else {
 					regex = new RegExp(regexMatch[1], regexMatch[2]);
 				}
 
-				return !!value1.toString().match(regex);
+				return !!(value1 || '').toString().match(regex);
 			},
 		};
 

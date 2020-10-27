@@ -1,9 +1,9 @@
 import {
+	BINARY_ENCODING,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IResponseError,
 	IWorkflowSettings,
-	BINARY_ENCODING,
 } from './';
 
 import {
@@ -19,6 +19,7 @@ import {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
+	IOAuth2Options,
 	IPollFunctions,
 	IRunExecutionData,
 	ITaskDataConnections,
@@ -34,7 +35,6 @@ import {
 	Workflow,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	IOAuth2Options,
 } from 'n8n-workflow';
 
 import * as clientOAuth1 from 'oauth-1.0a';
@@ -43,7 +43,7 @@ import * as clientOAuth2 from 'client-oauth2';
 import { get } from 'lodash';
 import * as express from 'express';
 import * as path from 'path';
-import { OptionsWithUrl, OptionsWithUri } from 'request';
+import { OptionsWithUri, OptionsWithUrl } from 'request';
 import * as requestPromise from 'request-promise-native';
 import { createHmac } from 'crypto';
 import { fromBuffer } from 'file-type';
@@ -91,7 +91,7 @@ export async function prepareBinaryData(binaryData: Buffer, filePath?: string, m
 		// TODO: Should program it in a way that it does not have to converted to base64
 		//       It should only convert to and from base64 when saved in database because
 		//       of for example an error or when there is a wait node.
-		data: binaryData.toString(BINARY_ENCODING)
+		data: binaryData.toString(BINARY_ENCODING),
 	};
 
 	if (filePath) {

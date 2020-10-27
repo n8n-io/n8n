@@ -42,8 +42,8 @@ export async function harvestApiRequest(
 		uri: `https://api.harvestapp.com/v2/${uri}?${queryStringElements.join('&')}`,
 		json: true,
 		headers: {
-			"User-Agent": "Harvest API"
-		}
+			"User-Agent": "Harvest API",
+		},
 	};
 
 	options = Object.assign({}, options, option);

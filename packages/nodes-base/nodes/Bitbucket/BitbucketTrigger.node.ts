@@ -35,7 +35,7 @@ export class BitbucketTrigger implements INodeType {
 			{
 				name: 'bitbucketApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -75,9 +75,9 @@ export class BitbucketTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'user'
-						]
-					}
+							'user',
+						],
+					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getUsersEvents',
@@ -94,9 +94,9 @@ export class BitbucketTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'team'
-						]
-					}
+							'team',
+						],
+					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
@@ -112,9 +112,9 @@ export class BitbucketTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'team'
-						]
-					}
+							'team',
+						],
+					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getTeamEvents',
@@ -131,9 +131,9 @@ export class BitbucketTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'repository'
-						]
-					}
+							'repository',
+						],
+					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getRepositories',
@@ -149,9 +149,9 @@ export class BitbucketTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'repository'
-						]
-					}
+							'repository',
+						],
+					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getRepositoriesEvents',
@@ -351,7 +351,7 @@ export class BitbucketTrigger implements INodeType {
 		}
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(req.body)
+				this.helpers.returnJsonArray(req.body),
 			],
 		};
 	}

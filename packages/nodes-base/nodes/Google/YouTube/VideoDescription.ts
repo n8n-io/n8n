@@ -47,8 +47,8 @@ export const videoOperations = [
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const videoFields = [
@@ -319,7 +319,7 @@ export const videoFields = [
 				],
 			},
 		},
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Fields',

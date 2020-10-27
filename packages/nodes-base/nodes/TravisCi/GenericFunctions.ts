@@ -35,7 +35,7 @@ export async function travisciApiRequest(this: IHookFunctions | IExecuteFunction
 		qs,
 		body,
 		uri: uri || `https://api.travis-ci.com${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

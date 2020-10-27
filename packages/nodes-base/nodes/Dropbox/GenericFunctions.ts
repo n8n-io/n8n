@@ -59,7 +59,7 @@ export async function dropboxApiRequest(this: IHookFunctions | IExecuteFunctions
 		if (error.error && error.error.error_summary) {
 			// Try to return the error prettier
 			throw new Error(
-				`Dropbox error response [${error.statusCode}]: ${error.error.error_summary}`
+				`Dropbox error response [${error.statusCode}]: ${error.error.error_summary}`,
 			);
 		}
 

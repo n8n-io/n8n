@@ -29,7 +29,7 @@ export class AwsLambda implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -145,7 +145,7 @@ export class AwsLambda implements INodeType {
 					});
 				}
 				return returnData;
-			}
+			},
 		},
 	};
 

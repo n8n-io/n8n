@@ -66,7 +66,7 @@ export class Dropbox implements INodeType {
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
-					}
+					},
 				],
 				default: 'accessToken',
 				description: 'Means of authenticating with the service.',
@@ -192,7 +192,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'copy'
+							'copy',
 						],
 						resource: [
 							'file',
@@ -212,7 +212,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'copy'
+							'copy',
 						],
 						resource: [
 							'file',
@@ -236,7 +236,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 						resource: [
 							'file',
@@ -261,7 +261,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'move'
+							'move',
 						],
 						resource: [
 							'file',
@@ -281,7 +281,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'move'
+							'move',
 						],
 						resource: [
 							'file',
@@ -305,7 +305,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -324,7 +324,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -346,7 +346,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -364,7 +364,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -381,13 +381,13 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
 						],
 						binaryData: [
-							false
+							false,
 						],
 					},
 
@@ -404,13 +404,13 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
 						],
 						binaryData: [
-							true
+							true,
 						],
 					},
 
@@ -437,7 +437,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'folder',
@@ -459,7 +459,7 @@ export class Dropbox implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list'
+							'list',
 						],
 						resource: [
 							'folder',
@@ -502,7 +502,7 @@ export class Dropbox implements INodeType {
 					requestMethod = 'POST';
 
 					query.arg = JSON.stringify({
-						path: this.getNodeParameter('path', i) as string
+						path: this.getNodeParameter('path', i) as string,
 					});
 
 					endpoint = 'https://content.dropboxapi.com/2/files/download';
@@ -517,7 +517,7 @@ export class Dropbox implements INodeType {
 
 					query.arg = JSON.stringify({
 						mode: 'overwrite',
-						path: this.getNodeParameter('path', i) as string
+						path: this.getNodeParameter('path', i) as string,
 					});
 
 					endpoint = 'https://content.dropboxapi.com/2/files/upload';

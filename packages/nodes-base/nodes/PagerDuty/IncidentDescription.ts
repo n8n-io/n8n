@@ -205,7 +205,7 @@ export const incidentFields = [
 						type: 'string',
 						default: '',
 						description: 'An URL for the conference bridge. This could be a link to a web conference or Slack channel.',
-					}
+					},
 				],
 			},
 		],
@@ -226,7 +226,7 @@ export const incidentFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the incident.',
@@ -634,7 +634,7 @@ export const incidentFields = [
 						type: 'string',
 						default: '',
 						description: 'An URL for the conference bridge. This could be a link to a web conference or Slack channel.',
-					}
+					},
 				],
 			},
 		],

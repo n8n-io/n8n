@@ -2,7 +2,7 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
-## 0.x.x
+## 0.87.0
 
 ### What changed?
 
@@ -10,11 +10,11 @@ The link.fish node got removed because the service is shutting down.
 
 ### When is action necessary?
 
-If you are are activly using the link.fish node.
+If you are are actively using the link.fish node.
 
 ### How to upgrade:
 
-Sadly not possible. Look for an alternative service.
+Unfortunately, that's not possible. We'd recommend you to look for an alternative service.
 
 
 ## 0.83.0

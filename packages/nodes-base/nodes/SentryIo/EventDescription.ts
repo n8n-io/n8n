@@ -24,7 +24,7 @@ export const eventOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all events',
-			}
+			},
 		],
 		default: 'get',
 		description: 'The operation to perform',

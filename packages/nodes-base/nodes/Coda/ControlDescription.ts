@@ -50,7 +50,7 @@ export const controlFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -68,7 +68,7 @@ export const controlFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'The control to get the row from.',
@@ -92,7 +92,7 @@ export const controlFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -108,7 +108,7 @@ export const controlFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		default: false,

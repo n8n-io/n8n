@@ -585,7 +585,7 @@ export class AwsSes implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 
@@ -664,7 +664,7 @@ export class AwsSes implements INodeType {
 						}
 					}
 
-					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=send&' + params.join('&'));
+					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=SendEmail&' + params.join('&'));
 				}
 
 				if (operation === 'sendTemplate') {
@@ -726,11 +726,13 @@ export class AwsSes implements INodeType {
 					if (templateDataUi) {
 						const templateDataValues = (templateDataUi as IDataObject).templateDataValues as IDataObject[];
 						const templateData: IDataObject = {};
-						for (const key of Object.keys(templateDataValues)) {
-							//@ts-ignore
-							templateData[key]= templateDataValues[key];
+						if (templateDataValues !== undefined) {
+							for (const templateDataValue of templateDataValues) {
+								//@ts-ignore
+								templateData[templateDataValue.key] = templateDataValue.value;
+							}
+							params.push(`TemplateData=${JSON.stringify(templateData)}`);
 						}
-						params.push(`TemplateData=${JSON.stringify(templateData)}`);
 					}
 
 					responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=SendTemplatedEmail&' + params.join('&'));
@@ -754,7 +756,7 @@ export class AwsSes implements INodeType {
 					const params = [
 						`Template.TemplateName=${templateName}`,
 						`Template.SubjectPart=${subjectPart}`,
-						`Template.HtmlPart=<h1>${htmlPart}</h1>`
+						`Template.HtmlPart=<h1>${htmlPart}</h1>`,
 					];
 
 					if (additionalFields.textPart) {
