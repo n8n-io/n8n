@@ -585,7 +585,7 @@ export class AwsSes implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 
@@ -727,9 +727,9 @@ export class AwsSes implements INodeType {
 						const templateDataValues = (templateDataUi as IDataObject).templateDataValues as IDataObject[];
 						const templateData: IDataObject = {};
 						if (templateDataValues !== undefined) {
-							for (const key of Object.keys(templateDataValues)) {
+							for (const templateDataValue of templateDataValues) {
 								//@ts-ignore
-								templateData[key]= templateDataValues[key];
+								templateData[templateDataValue.key] = templateDataValue.value;
 							}
 							params.push(`TemplateData=${JSON.stringify(templateData)}`);
 						}
@@ -756,7 +756,7 @@ export class AwsSes implements INodeType {
 					const params = [
 						`Template.TemplateName=${templateName}`,
 						`Template.SubjectPart=${subjectPart}`,
-						`Template.HtmlPart=<h1>${htmlPart}</h1>`
+						`Template.HtmlPart=<h1>${htmlPart}</h1>`,
 					];
 
 					if (additionalFields.textPart) {

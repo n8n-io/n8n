@@ -77,7 +77,7 @@ export class AmqpTrigger implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -109,7 +109,7 @@ export class AmqpTrigger implements INodeType {
 			port: credentials.port,
 			reconnect: true,		// this id the default anyway
 			reconnect_limit: 50,	// try for max 50 times, based on a back-off algorithm
-			container_id: (durable ? clientname : null)
+			container_id: (durable ? clientname : null),
 		};
 		if (credentials.username || credentials.password) {
 			container.options.username = credentials.username;
@@ -146,16 +146,16 @@ export class AmqpTrigger implements INodeType {
 				source: {
 					address: sink,
 					durable: 2,
-					expiry_policy: 'never'
+					expiry_policy: 'never',
 				},
-				credit_window: 1	// prefetch 1
+				credit_window: 1,	// prefetch 1
 			};
 		} else {
 			clientOptions = {
 				source: {
 					address: sink,
 				},
-				credit_window: 1	// prefetch 1
+				credit_window: 1,	// prefetch 1
 			};
 		}
 		connection.open_receiver(clientOptions);

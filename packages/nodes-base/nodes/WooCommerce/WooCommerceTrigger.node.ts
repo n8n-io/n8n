@@ -35,7 +35,7 @@ export class WooCommerceTrigger implements INodeType {
 			{
 				name: 'wooCommerceApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{

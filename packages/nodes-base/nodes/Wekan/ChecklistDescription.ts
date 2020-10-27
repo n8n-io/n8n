@@ -68,7 +68,7 @@ export const checklistFields = [
 				],
 			},
 		},
-		description: 'The ID of the board where the card is in.'
+		description: 'The ID of the board where the card is in.',
 	},
 	{
 		displayName: 'List ID',
@@ -181,7 +181,7 @@ export const checklistFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to.'
+		description: 'The ID of the board that card belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -280,7 +280,7 @@ export const checklistFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to.'
+		description: 'The ID of the board that card belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -329,7 +329,7 @@ export const checklistFields = [
 				],
 			},
 		},
-		description: 'The ID of the card that checklist belongs to.'
+		description: 'The ID of the card that checklist belongs to.',
 	},
 	{
 		displayName: 'Checklist ID',
@@ -379,7 +379,7 @@ export const checklistFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that list belongs to.'
+		description: 'The ID of the board that list belongs to.',
 	},
 	{
 		displayName: 'List ID',

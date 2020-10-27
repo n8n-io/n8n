@@ -102,27 +102,27 @@ export class HttpRequest implements INodeType {
 				options: [
 					{
 						name: 'Basic Auth',
-						value: 'basicAuth'
+						value: 'basicAuth',
 					},
 					{
 						name: 'Digest Auth',
-						value: 'digestAuth'
+						value: 'digestAuth',
 					},
 					{
 						name: 'Header Auth',
-						value: 'headerAuth'
+						value: 'headerAuth',
 					},
 					{
 						name: 'OAuth1',
-						value: 'oAuth1'
+						value: 'oAuth1',
 					},
 					{
 						name: 'OAuth2',
-						value: 'oAuth2'
+						value: 'oAuth2',
 					},
 					{
 						name: 'None',
-						value: 'none'
+						value: 'none',
 					},
 				],
 				default: 'none',
@@ -135,27 +135,27 @@ export class HttpRequest implements INodeType {
 				options: [
 					{
 						name: 'DELETE',
-						value: 'DELETE'
+						value: 'DELETE',
 					},
 					{
 						name: 'GET',
-						value: 'GET'
+						value: 'GET',
 					},
 					{
 						name: 'HEAD',
-						value: 'HEAD'
+						value: 'HEAD',
 					},
 					{
 						name: 'PATCH',
-						value: 'PATCH'
+						value: 'PATCH',
 					},
 					{
 						name: 'POST',
-						value: 'POST'
+						value: 'POST',
 					},
 					{
 						name: 'PUT',
-						value: 'PUT'
+						value: 'PUT',
 					},
 				],
 				default: 'GET',
@@ -184,15 +184,15 @@ export class HttpRequest implements INodeType {
 				options: [
 					{
 						name: 'File',
-						value: 'file'
+						value: 'file',
 					},
 					{
 						name: 'JSON',
-						value: 'json'
+						value: 'json',
 					},
 					{
 						name: 'String',
-						value: 'string'
+						value: 'string',
 					},
 				],
 				default: 'json',
@@ -260,19 +260,19 @@ export class HttpRequest implements INodeType {
 						options: [
 							{
 								name: 'JSON',
-								value: 'json'
+								value: 'json',
 							},
 							{
 								name: 'RAW/Custom',
-								value: 'raw'
+								value: 'raw',
 							},
 							{
 								name: 'Form-Data Multipart',
-								value: 'multipart-form-data'
+								value: 'multipart-form-data',
 							},
 							{
 								name: 'Form Urlencoded',
-								value: 'form-urlencoded'
+								value: 'form-urlencoded',
 							},
 						],
 						default: 'json',
@@ -455,7 +455,7 @@ export class HttpRequest implements INodeType {
 								default: '',
 								description: 'Value of the parameter.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -511,7 +511,7 @@ export class HttpRequest implements INodeType {
 								default: '',
 								description: 'Value to set for the header.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -567,11 +567,11 @@ export class HttpRequest implements INodeType {
 								default: '',
 								description: 'Value of the parameter.',
 							},
-						]
+						],
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -660,11 +660,7 @@ export class HttpRequest implements INodeType {
 				let optionData: OptionData;
 				for (const parameterName of Object.keys(jsonParameters)) {
 					optionData = jsonParameters[parameterName] as OptionData;
-					const tempValue = this.getNodeParameter(parameterName, itemIndex, {}) as string | object;
-					if (tempValue === '') {
-						// Paramter is empty so skip it
-						continue;
-					}
+					const tempValue = this.getNodeParameter(parameterName, itemIndex, '') as string | object;
 					const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 
 					if (optionData.name === 'body' && parametersAreJson === true) {
@@ -729,6 +725,11 @@ export class HttpRequest implements INodeType {
 						}
 					}
 
+					if (tempValue === '') {
+						// Paramter is empty so skip it
+						continue;
+					}
+
 					// @ts-ignore
 					requestOptions[optionData.name] = tempValue;
 
@@ -771,6 +772,19 @@ export class HttpRequest implements INodeType {
 				}
 			}
 
+			if (responseFormat === 'file') {
+				requestOptions.encoding = null;
+				requestOptions.body = JSON.stringify(requestOptions.body);
+				if (requestOptions.headers === undefined) {
+					requestOptions.headers = {};
+				}
+				requestOptions.headers['Content-Type'] = 'application/json';
+			} else if (options.bodyContentType === 'raw') {
+				requestOptions.json = false;
+			} else {
+				requestOptions.json = true;
+			}
+
 			// Add Content Type if any are set
 			if (options.bodyContentCustomMimeType) {
 				if(requestOptions.headers === undefined) {
@@ -807,14 +821,6 @@ export class HttpRequest implements INodeType {
 				}
 			}
 
-			if (responseFormat === 'file') {
-				requestOptions.encoding = null;
-			} else if(options.bodyContentType === 'raw') {
-				requestOptions.json = false;
-			} else {
-				requestOptions.json = true;
-			}
-
 			// Now that the options are all set make the actual http request
 			if (oAuth1Api !== undefined) {
 				requestPromises.push(this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions));
@@ -844,7 +850,7 @@ export class HttpRequest implements INodeType {
 							json: {
 								error: response.reason,
 							},
-						}
+						},
 					);
 					continue;
 				}

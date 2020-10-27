@@ -25,7 +25,7 @@ export async function gitlabApiRequest(this: IHookFunctions | IExecuteFunctions,
 		body,
 		qs: query,
 		uri: '',
-		json: true
+		json: true,
 	};
 
 	if (query === undefined) {

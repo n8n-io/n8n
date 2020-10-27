@@ -41,7 +41,7 @@ export const contactOperations = [
 				description: 'Update a contact',
 			},
 		],
-		default: 'get',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -204,7 +204,7 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Can be ID or email.'
+		description: 'Can be ID or email.',
 	},
 
 	/* -------------------------------------------------------------------------- */

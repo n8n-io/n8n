@@ -1218,7 +1218,7 @@ export class Asana implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 

@@ -124,7 +124,7 @@ export const contactFields = [
 					loadOptionsMethod:'getCompanies' ,
 				},
 				default: '',
-				description: 'Companies associated with the ticket'
+				description: 'Companies associated with the ticket',
 			},
 			{
 				displayName: 'City',
@@ -316,7 +316,7 @@ export const contactFields = [
 				name: 'lifeCycleStage',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getContactLifeCycleStages'
+					loadOptionsMethod: 'getContactLifeCycleStages',
 				},
 				default: '',
 				description: `The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis.`,
@@ -380,7 +380,7 @@ export const contactFields = [
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
-				description: `A contact's primary phone number`
+				description: `A contact's primary phone number`,
 			},
 			{
 				displayName: 'Properties',
@@ -407,7 +407,7 @@ export const contactFields = [
 				name: 'postalCode',
 				type: 'string',
 				default: '',
-				description: `The contact's zip code. This might be set via import, form, or integration.`
+				description: `The contact's zip code. This might be set via import, form, or integration.`,
 			},
 			{
 				displayName: 'Preffered Language',
@@ -417,49 +417,49 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactPrefferedLanguages',
 				},
 				default: '',
-				description: `Set your contact's preferred language for communications. This property can be changed from an import, form, or integration.`
+				description: `Set your contact's preferred language for communications. This property can be changed from an import, form, or integration.`,
 			},
 			{
 				displayName: 'Relationship Status',
 				name: 'relationshipStatus',
 				type: 'string',
 				default: '',
-				description: `A contact's relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 			{
 				displayName: 'Salutation',
 				name: 'salutation',
 				type: 'string',
 				default: '',
-				description: `The title used to address a contact`
+				description: `The title used to address a contact`,
 			},
 			{
 				displayName: 'School',
 				name: 'school',
 				type: 'string',
 				default: '',
-				description: `A contact's school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 			{
 				displayName: 'Seniority',
 				name: 'seniority',
 				type: 'string',
 				default: '',
-				description: `A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: `A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 			{
 				displayName: 'State/Region',
 				name: 'stateRegion',
 				type: 'string',
 				default: '',
-				description: `The contact's state of residence. This might be set via import, form, or integration.`
+				description: `The contact's state of residence. This might be set via import, form, or integration.`,
 			},
 			{
 				displayName: 'Status',
@@ -469,35 +469,35 @@ export const contactFields = [
 					loadOptionsMethod: 'getContactStatuses',
 				},
 				default: '',
-				description: `The status of the contact's content membership.`
+				description: `The status of the contact's content membership.`,
 			},
 			{
 				displayName: 'Street Address',
 				name: 'streetAddress',
 				type: 'string',
 				default: '',
-				description: `A contact's street address, including apartment or unit #`
+				description: `A contact's street address, including apartment or unit #`,
 			},
 			{
 				displayName: 'Twitter Username',
 				name: 'twitterUsername',
 				type: 'string',
 				default: '',
-				description: `The contact's Twitter handle. This is set by HubSpot using the contact's email address.`
+				description: `The contact's Twitter handle. This is set by HubSpot using the contact's email address.`,
 			},
 			{
 				displayName: 'Website URL',
 				name: 'websiteUrl',
 				type: 'string',
 				default: '',
-				description: `The contact's company website`
+				description: `The contact's company website`,
 			},
 			{
 				displayName: 'Work Email',
 				name: 'workEmail',
 				type: 'string',
 				default: '',
-				description: `A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`
+				description: `A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool`,
 			},
 		],
 	},
@@ -1031,17 +1031,17 @@ export const contactFields = [
 										default: '',
 									},
 								],
-							}
+							},
 						],
 						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
 					},
 				],
-			}
+			},
 		],
 		description: `When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator.<br>
 		When multiple filterGroups are provided, they will be combined using a logical OR operator.<br>
 		The system supports a maximum of three filterGroups with up to three filters each.<br>
-		More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`
+		More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`,
 	},
 	{
 		displayName: 'Additional Fields',

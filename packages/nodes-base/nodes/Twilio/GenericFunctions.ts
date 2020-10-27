@@ -35,7 +35,7 @@ export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions,
 			user: credentials.accountSid as string,
 			pass: credentials.authToken as string,
 		},
-		json: true
+		json: true,
 	};
 
 	try {

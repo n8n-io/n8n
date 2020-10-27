@@ -32,13 +32,11 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {
-			'Content-Type': 'application/json; charset=utf-8'
+			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
 		qs: query,
-		// Override URL when working with media only. All other endpoints use client.
-		//@ts-ignore
-		uri: option.hasOwnProperty('overridePrefix') ? `https://matrix.org/_matrix/${option.overridePrefix}/r0${resource}` : `https://matrix.org/_matrix/client/r0${resource}`,
+		uri: '',
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -56,6 +54,8 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
 		}
+		//@ts-ignore
+		options.uri = `${credentials.homeserverUrl}/_matrix/${option.overridePrefix || 'client'}/r0${resource}`;
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 		//@ts-ignore
 		response = await this.helpers.request(options);
@@ -110,7 +110,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const userId = this.getNodeParameter('userId', index) as string;
 			const body: IDataObject = {
-				user_id: userId
+				user_id: userId,
 			};
 			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/invite`, body);
 		} else if (operation === 'kick') {

@@ -266,8 +266,8 @@ export class TelegramTrigger implements INodeType {
 								binary: {
 									data: binaryData,
 								},
-							}
-						]
+							},
+						],
 					],
 				};
 			}
@@ -275,7 +275,7 @@ export class TelegramTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray([bodyData as unknown as IDataObject])
+				this.helpers.returnJsonArray([bodyData as unknown as IDataObject]),
 			],
 		};
 	}

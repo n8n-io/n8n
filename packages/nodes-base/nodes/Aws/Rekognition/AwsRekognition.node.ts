@@ -96,7 +96,7 @@ export class AwsRekognition implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'analyze'
+							'analyze',
 						],
 						resource: [
 							'image',
@@ -110,7 +110,7 @@ export class AwsRekognition implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'analyze'
+							'analyze',
 						],
 						resource: [
 							'image',
@@ -132,7 +132,7 @@ export class AwsRekognition implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'analyze'
+							'analyze',
 						],
 						resource: [
 							'image',
@@ -153,7 +153,7 @@ export class AwsRekognition implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'analyze'
+							'analyze',
 						],
 						resource: [
 							'image',
