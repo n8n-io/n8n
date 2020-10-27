@@ -525,7 +525,7 @@ export class Pushbullet implements INodeType {
 										value: Buffer.from(binaryData.data, BINARY_ENCODING),
 										options: {
 											filename: binaryData.fileName,
-										}
+										},
 									},
 								},
 								json: false,
@@ -591,7 +591,7 @@ export class Pushbullet implements INodeType {
 						`/pushes/${pushId}`,
 						{
 							dismissed,
-						}
+						},
 					);
 				}
 			}

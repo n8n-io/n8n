@@ -36,7 +36,7 @@ export async function pushbulletApiRequest(this: IExecuteFunctions | ILoadOption
 
 			// Try to return the error prettier
 			throw new Error(
-				`Pushbullet error response [${error.statusCode}]: ${message}`
+				`Pushbullet error response [${error.statusCode}]: ${message}`,
 			);
 		}
 		throw error;
