@@ -73,7 +73,7 @@ export const documentFields = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL',
+		description: 'As displayed in firebase console URL.',
 		required: true,
 	},
 	{
@@ -97,11 +97,8 @@ export const documentFields = [
 	{
 		displayName: 'Collection',
 		name: 'collection',
-		type: 'options',
+		type: 'string',
 		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getCollections',
-		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -116,8 +113,8 @@ export const documentFields = [
 		required: true,
 	},
 	{
-		displayName: 'Document data',
-		name: 'documentData',
+		displayName: 'Columns / attributes',
+		name: 'columns',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -130,12 +127,36 @@ export const documentFields = [
 				],
 			},
 		},
-		description: 'Document data in firebase format',
+		description: 'List of attributes to save',
 		required: true,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
+		placeholder: 'productId, modelName, description',
+	},
+	{
+		displayName: 'Other Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'create',
+				],
+			},
 		},
-		placeholder: '{"fields": {"name": {"stringValue": "John Doe"}, "age": {"integerValue": 34}, "hobbies": {"arrayValue": {"values": [{"stringValue": "Board Games"}]}}}}',
+		default: {},
+		description: 'Other options',
+		placeholder: 'Add options',
+		options: [
+			{
+				displayName: 'Raw data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: 'Return data just like returned by the Firestore API, without enhancements.',
+			},
+		],
 	},
 	
 	/* -------------------------------------------------------------------------- */
@@ -183,11 +204,8 @@ export const documentFields = [
 	{
 		displayName: 'Collection',
 		name: 'collection',
-		type: 'options',
+		type: 'string',
 		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getCollections',
-		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -218,6 +236,33 @@ export const documentFields = [
 		default: '',
 		description: 'Document ID',
 		required: true,
+	},
+	{
+		displayName: 'Other Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+		default: {},
+		description: 'Other options',
+		placeholder: 'Add options',
+		options: [
+			{
+				displayName: 'Raw data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: 'Return data just like returned by the Firestore API, without enhancements.',
+			},
+		],
 	},
 
 
@@ -266,11 +311,8 @@ export const documentFields = [
 	{
 		displayName: 'Collection',
 		name: 'collection',
-		type: 'options',
+		type: 'string',
 		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getCollections',
-		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -326,6 +368,33 @@ export const documentFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
+	{
+		displayName: 'Other Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		default: {},
+		description: 'Other options',
+		placeholder: 'Add options',
+		options: [
+			{
+				displayName: 'Raw data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: 'Return data just like returned by the Firestore API, without enhancements.',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                              document:delete                               */
 	/* -------------------------------------------------------------------------- */
@@ -371,11 +440,8 @@ export const documentFields = [
 	{
 		displayName: 'Collection',
 		name: 'collection',
-		type: 'options',
+		type: 'string',
 		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getCollections',
-		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -452,11 +518,8 @@ export const documentFields = [
 	{
 		displayName: 'Collection',
 		name: 'collection',
-		type: 'options',
+		type: 'string',
 		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getCollections',
-		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -471,8 +534,8 @@ export const documentFields = [
 		required: true,
 	},
 	{
-		displayName: 'Document ID',
-		name: 'documentId',
+		displayName: 'Update Key',
+		name: 'updateKey',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -485,12 +548,13 @@ export const documentFields = [
 			},
 		},
 		default: '',
-		description: 'Document ID',
+		description: 'Must correspond to a document ID',
 		required: true,
+		placeholder: 'documentId',
 	},
 	{
-		displayName: 'Document data',
-		name: 'documentData',
+		displayName: 'Columns / attributes',
+		name: 'columns',
 		type: 'string',
 		default: '',
 		displayOptions: {
@@ -503,12 +567,9 @@ export const documentFields = [
 				],
 			},
 		},
-		description: 'New data that overrides any previous data.',
+		description: 'Columns to insert',
 		required: true,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		placeholder: '{"fields": {"name": {"stringValue": "John Doe"}, "age": {"integerValue": 34}, "hobbies": {"arrayValue": {"values": [{"stringValue": "Board Games"}]}}}}',
+		placeholder: 'age, city, location',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -573,7 +634,34 @@ export const documentFields = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		placeholder: '{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL",	"value": {"integerValue": 28}}},"from": [{"collectionId": "users-collection"}]}}',
+		placeholder: '{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL", "value": {"integerValue": 28}}}, "from": [{"collectionId": "users-collection"}]}}',
+	},
+	{
+		displayName: 'Other Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'query',
+				],
+			},
+		},
+		default: {},
+		description: 'Other options',
+		placeholder: 'Add options',
+		options: [
+			{
+				displayName: 'Raw data',
+				name: 'rawData',
+				type: 'boolean',
+				default: false,
+				description: 'Return data just like returned by the Firestore API, without enhancements.',
+			},
+		],
 	},
 
 

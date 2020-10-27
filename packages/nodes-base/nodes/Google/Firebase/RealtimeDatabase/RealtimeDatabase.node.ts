@@ -22,7 +22,7 @@ export class RealtimeDatabase implements INodeType {
 		icon: 'file:googleFirebaseRealtimeDatabase.png',
 		group: ['input'],
 		version: 1,
-        subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+        subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Interact with Google Firebase - Realtime Database API',
 		defaults: {
 			name: 'Google Cloud Realtime Database',
@@ -75,8 +75,8 @@ export class RealtimeDatabase implements INodeType {
 				required: true,
 			},
 			{
-				displayName: "Object",
-				name: "object",
+				displayName: "Update Key",
+				name: "updateKey",
 				type: "string",
 				default: "",
 				placeholder: "/app/users",
@@ -84,8 +84,8 @@ export class RealtimeDatabase implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Document data',
-				name: 'documentData',
+				displayName: 'Attributes / columns',
+				name: 'attributes',
 				type: 'string',
 				default: '',
 				displayOptions: {
@@ -97,12 +97,9 @@ export class RealtimeDatabase implements INodeType {
 						],
 					},
 				},
-				description: 'Data to save. Must be JSON.',
+				description: 'Attributes to save',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				placeholder: '{"name": "John Doe", "hobbies": ["Board games", "Strategy Games"], "age": 34}',
+				placeholder: 'age, name, city',
 			},
 		],
 	};
@@ -117,34 +114,43 @@ export class RealtimeDatabase implements INodeType {
 		for (let i = 0; i < length; i++) {
 			const operation = this.getNodeParameter('operation', i) as string;
 			const projectId = this.getNodeParameter('projectId', i) as string;
-			let method = 'GET', body = '';
+			let method = 'GET', attributes = '', document = {} as IDataObject;
 			if (operation === 'create') {
 				method = 'PUT';
-				body = this.getNodeParameter('documentData', i) as string;
+				attributes = this.getNodeParameter('attributes', i) as string;
 			} else if (operation === 'delete') {
 				method = 'DELETE';
 			} else if (operation === 'get') {
 				method = 'GET';
 			} else if (operation === 'push') {
 				method = 'POST';
-				body = this.getNodeParameter('documentData', i) as string;
+				attributes = this.getNodeParameter('attributes', i) as string;
 			} else if (operation === 'update') {
 				method = 'PATCH';
-				body = this.getNodeParameter('documentData', i) as string;
+				attributes = this.getNodeParameter('attributes', i) as string;
+			}
+
+			if (attributes) {
+				const attributeList = attributes.split(',').map(el => el.trim());
+				attributeList.map((attribute: string) => {
+					if (items[i].json.hasOwnProperty(attribute)) {
+						document[attribute] = items[i].json[attribute];
+					}
+				});
 			}
 
 			responseData = await googleApiRequest.call(
 				this,
 				projectId,
 				method,
-				this.getNodeParameter('object', i) as string,
-				body ? JSON.parse(body) : {}
+				this.getNodeParameter('updateKey', i) as string,
+				document
 			);
 
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else if (typeof responseData === 'string') {
-				returnData.push({[this.getNodeParameter('object', i) as string]: responseData} as IDataObject);
+				returnData.push({[this.getNodeParameter('updateKey', i) as string]: responseData} as IDataObject);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}

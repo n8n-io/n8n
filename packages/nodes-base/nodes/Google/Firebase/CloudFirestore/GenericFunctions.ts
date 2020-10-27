@@ -77,3 +77,63 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 	return returnData;
 }
+
+
+// Both functions below were taken from Stack Overflow jsonToDocument was fixed as it was unable to handle null values correctly
+// https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
+// Great thanks to https://stackoverflow.com/users/3915246/mahindar
+export function jsonToDocument(value: string | number | IDataObject | IDataObject[]  ): IDataObject {
+	if (value === 'true' || value === 'false' || typeof value == 'boolean') {
+		return { 'booleanValue': value };
+	} else if (value === null) {
+		return { 'nullValue': null };
+	} else if (!isNaN(value as number)) {
+        if (value.toString().indexOf('.') != -1)
+            return { 'doubleValue': value };
+        else
+            return { 'integerValue': value };
+    } else if (Date.parse(value as string)) {
+		const date = new Date(Date.parse(value as string));
+        return { 'timestampValue': date.toISOString() };
+    } else if (typeof value == 'string') {
+        return { 'stringValue': value };
+    } else if (value && value.constructor === Array) {
+        return { 'arrayValue': { values: value.map(v => jsonToDocument(v)) } };
+    } else if (typeof value === 'object') {
+        let obj = {};
+        for (let o in value) {
+			// @ts-ignore
+            obj[o] = jsonToDocument(value[o]);
+        }
+        return { 'mapValue': { fields: obj } };
+	}
+	
+	return {};
+}
+
+export function documentToJson(fields: IDataObject): IDataObject {
+    let result = {};
+    for (let f in fields) {
+        let key = f, value = fields[f],
+            isDocumentType = ['stringValue', 'booleanValue', 'doubleValue',
+                'integerValue', 'timestampValue', 'mapValue', 'arrayValue'].find(t => t === key);
+        if (isDocumentType) {
+            let item = ['stringValue', 'booleanValue', 'doubleValue', 'integerValue', 'timestampValue']
+                .find(t => t === key)
+            if (item) // @ts-ignore
+                return value;
+            else if ('mapValue' == key) // @ts-ignore
+                return documentToJson(value!.fields || {});
+            else if ('arrayValue' == key) {
+				// @ts-ignore
+				let list = value.values as IDataObject[];
+				// @ts-ignore
+                return !!list ? list.map(l => documentToJson(l)) : [];
+            }
+        } else {
+			// @ts-ignore
+            result[key] = documentToJson(value)
+        }
+    }
+    return result;
+}
