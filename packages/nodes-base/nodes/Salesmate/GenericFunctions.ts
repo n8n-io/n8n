@@ -24,7 +24,7 @@ export async function salesmateApiRequest(this: IHookFunctions | IExecuteFunctio
 		qs,
 		body,
 		uri: uri ||`https://apis.salesmate.io${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;

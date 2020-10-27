@@ -43,7 +43,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier of the customer',
@@ -61,7 +61,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'Email',
@@ -79,7 +79,7 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
 		},
 		description: 'The name of the event tracked.',
@@ -97,9 +97,9 @@ export const eventFields = [
 				],
 				operation: [
 					'track',
-				]
+				],
 			},
-		}
+		},
 	},
 	{
 		displayName: 'Data',
@@ -143,7 +143,7 @@ export const eventFields = [
 						default: '',
 						description: 'Value of the property to set.',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -189,7 +189,7 @@ export const eventFields = [
 						default: '',
 						description: 'Value of the property to set.',
 					},
-				]
+				],
 			},
 		],
 	},

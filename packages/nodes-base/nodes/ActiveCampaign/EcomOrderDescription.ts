@@ -247,7 +247,7 @@ export const ecomOrderFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'create'
+					'create',
 				],
 				resource: [
 					'ecommerceOrder',
@@ -391,7 +391,7 @@ export const ecomOrderFields = [
 				description: 'The order number. This can be different than the externalid.',
 			},
 
-		]
+		],
 	},
 
 	// ----------------------------------
@@ -632,7 +632,7 @@ export const ecomOrderFields = [
 				],
 			},
 
-		]
+		],
 	},
 
 	// ----------------------------------

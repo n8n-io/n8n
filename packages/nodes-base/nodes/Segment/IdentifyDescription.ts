@@ -210,7 +210,7 @@ export const identifyFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -258,11 +258,11 @@ export const identifyFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
@@ -357,7 +357,7 @@ export const identifyFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -405,7 +405,7 @@ export const identifyFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -463,7 +463,7 @@ export const identifyFields = [
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},

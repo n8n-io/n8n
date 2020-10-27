@@ -2,19 +2,18 @@ import { INodeUi } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
+import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { nodeIndex } from '@/components/mixins/nodeIndex';
 
-export const mouseSelect = mixins(nodeIndex).extend({
+export const mouseSelect = mixins(
+	deviceSupportHelpers,
+	nodeIndex,
+).extend({
 	data () {
 		return {
 			selectActive: false,
 			selectBox: document.createElement('span'),
 		};
-	},
-	computed: {
-		isMacOs (): boolean {
-			return /(ipad|iphone|ipod|mac)/i.test(navigator.platform);
-		},
 	},
 	mounted () {
 		this.createSelectBox();
@@ -34,6 +33,9 @@ export const mouseSelect = mixins(nodeIndex).extend({
 			this.$el.appendChild(this.selectBox);
 		},
 		isCtrlKeyPressed (e: MouseEvent | KeyboardEvent): boolean {
+			if (this.isTouchDevice === true) {
+				return true;
+			}
 			if (this.isMacOs) {
 				return e.metaKey;
 			}
@@ -125,6 +127,13 @@ export const mouseSelect = mixins(nodeIndex).extend({
 		},
 		mouseUpMouseSelect (e: MouseEvent) {
 			if (this.selectActive === false) {
+				if (this.isTouchDevice === true) {
+					// @ts-ignore
+					if (e.target && e.target.id.includes('node-view')) {
+						// Deselect all nodes
+						this.deselectAllNodes();
+					}
+				}
 				// If it is not active return direcly.
 				// Else normal node dragging will not work.
 				return;

@@ -37,7 +37,7 @@ export class ClockifyTrigger implements INodeType {
 			{
 				name: 'clockifyApi',
 				required: true,
-			}
+			},
 		],
 		polling: true,
 		properties: [
@@ -59,12 +59,12 @@ export class ClockifyTrigger implements INodeType {
 					{
 						name: 'New Time Entry',
 						value: EntryTypeEnum.NEW_TIME_ENTRY,
-					}
+					},
 				],
 				required: true,
 				default: EntryTypeEnum.NEW_TIME_ENTRY,
 			},
-		]
+		],
 	};
 
 	methods = {

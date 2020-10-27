@@ -66,8 +66,8 @@ export const postFields = [
 				resource: [
 					'post',
 				],
-			}
-		}
+			},
+		},
 	},
 	{
 		displayName: 'Organization URN',
@@ -126,7 +126,7 @@ export const postFields = [
 				name: 'Image',
 				value: 'IMAGE',
 				description: 'The post contains an image',
-			}
+			},
 		],
 		displayOptions: {
 			show: {
