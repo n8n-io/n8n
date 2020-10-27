@@ -6,6 +6,7 @@ import {
 export class PushoverApi implements ICredentialType {
 	name = 'pushoverApi';
 	displayName = 'Pushover API';
+	documentationUrl = 'pushover';
 	properties = [
 		{
 			displayName: 'API Key',
