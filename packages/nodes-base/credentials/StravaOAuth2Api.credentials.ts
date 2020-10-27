@@ -9,7 +9,7 @@ export class StravaOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Strava OAuth2 API';
-	displayName = 'strava';
+	documentationUrl = 'strava';
 	properties = [
 		{
 			displayName: 'Authorization URL',
