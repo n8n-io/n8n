@@ -33,27 +33,27 @@ export let collections: IDatabaseCollections = {
 };
 
 import {
+	CreateIndexStoppedAt1594828256133,
 	InitialMigration1587669153312,
 	WebhookModel1589476000887,
-	CreateIndexStoppedAt1594828256133,
 } from './databases/postgresdb/migrations';
 
 import {
+	CreateIndexStoppedAt1594910478695,
 	InitialMigration1587563438936,
 	WebhookModel1592679094242,
-	CreateIndexStoppedAt1594910478695,
 } from './databases/mongodb/migrations';
 
 import {
+	CreateIndexStoppedAt1594902918301,
 	InitialMigration1588157391238,
 	WebhookModel1592447867632,
-	CreateIndexStoppedAt1594902918301,
 } from './databases/mysqldb/migrations';
 
 import {
+	CreateIndexStoppedAt1594825041918,
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
-	CreateIndexStoppedAt1594825041918,
 } from './databases/sqlite/migrations';
 
 import * as path from 'path';
@@ -154,7 +154,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				migrations: [
 					InitialMigration1588102412422,
 					WebhookModel1592445003908,
-					CreateIndexStoppedAt1594825041918
+					CreateIndexStoppedAt1594825041918,
 				],
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,

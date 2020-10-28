@@ -585,7 +585,7 @@ export class AwsSes implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 
@@ -756,7 +756,7 @@ export class AwsSes implements INodeType {
 					const params = [
 						`Template.TemplateName=${templateName}`,
 						`Template.SubjectPart=${subjectPart}`,
-						`Template.HtmlPart=<h1>${htmlPart}</h1>`
+						`Template.HtmlPart=<h1>${htmlPart}</h1>`,
 					];
 
 					if (additionalFields.textPart) {

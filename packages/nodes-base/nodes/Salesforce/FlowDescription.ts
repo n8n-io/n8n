@@ -92,7 +92,7 @@ export const flowFields = [
 					'flow',
 				],
 				operation: [
-					'invoke'
+					'invoke',
 				],
 			},
 		},
@@ -109,7 +109,7 @@ export const flowFields = [
 					'flow',
 				],
 				operation: [
-					'invoke'
+					'invoke',
 				],
 			},
 		},
@@ -125,7 +125,7 @@ export const flowFields = [
 					'flow',
 				],
 				operation: [
-					'invoke'
+					'invoke',
 				],
 				jsonParameters: [
 					true,
@@ -149,7 +149,7 @@ export const flowFields = [
 					'flow',
 				],
 				operation: [
-					'invoke'
+					'invoke',
 				],
 				jsonParameters: [
 					false,
@@ -177,7 +177,7 @@ export const flowFields = [
 						default: '',
 						description: 'Value of the input variable.',
 					},
-				]
+				],
 			},
 		],
 	},

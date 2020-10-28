@@ -228,7 +228,7 @@ export class SentryIo implements INodeType {
 
 			// TEAM
 			...teamOperations,
-			...teamFields
+			...teamFields,
 		],
 	};
 

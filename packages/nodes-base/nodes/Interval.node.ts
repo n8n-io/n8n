@@ -38,21 +38,21 @@ export class Interval implements INodeType {
 				options: [
 					{
 						name: 'Seconds',
-						value: 'seconds'
+						value: 'seconds',
 					},
 					{
 						name: 'Minutes',
-						value: 'minutes'
+						value: 'minutes',
 					},
 					{
 						name: 'Hours',
-						value: 'hours'
+						value: 'hours',
 					},
 				],
 				default: 'seconds',
 				description: 'Unit of the interval value.',
 			},
-		]
+		],
 	};
 
 

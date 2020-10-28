@@ -55,8 +55,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'create'
-				]
+					'create',
+				],
 			},
 		},
 		description: 'Create resources under the given workspace.',
@@ -72,8 +72,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'create'
-				]
+					'create',
+				],
 			},
 		},
 		description: 'The title of the task.',
@@ -171,7 +171,7 @@ export const taskFields = [
 					{
 						name: 'text/html',
 						value: 'text/html',
-					}
+					},
 				],
 				description: `Identify which markup language is used to format the given note`,
 			},
@@ -240,8 +240,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'update'
-				]
+					'update',
+				],
 			},
 		},
 		description: 'Create resources under the given workspace.',
@@ -257,8 +257,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'update'
-				]
+					'update',
+				],
 			},
 		},
 		description: '',
@@ -364,7 +364,7 @@ export const taskFields = [
 					{
 						name: 'text/html',
 						value: 'text/html',
-					}
+					},
 				],
 				description: `Identify which markup language is used to format the given note`,
 			},
@@ -426,8 +426,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'get'
-				]
+					'get',
+				],
 			},
 		},
 		description: '',
@@ -471,7 +471,7 @@ export const taskFields = [
 						name: 'Parent',
 						value: 'parent',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -488,8 +488,8 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'getAll'
-				]
+					'getAll',
+				],
 			},
 		},
 		default: false,
@@ -505,7 +505,7 @@ export const taskFields = [
 					'task',
 				],
 				operation: [
-					'getAll'
+					'getAll',
 				],
 				returnAll: [
 					false,
@@ -558,7 +558,7 @@ export const taskFields = [
 						name: 'Parent',
 						value: 'parent',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Order',
@@ -610,7 +610,7 @@ export const taskFields = [
 						name: 'Updated At',
 						value: 'updated_at',
 					},
-				]
+				],
 			},
 			{
 				displayName: 'Workspace ID',

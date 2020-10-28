@@ -62,7 +62,7 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Login name for the user.',
@@ -80,7 +80,7 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Display name for the user.',
@@ -98,7 +98,7 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'First name for the user.',
@@ -116,7 +116,7 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Last name for the user.',
@@ -134,7 +134,7 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The email address for the user.',
@@ -152,7 +152,7 @@ export const userFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Password for the user (never included)',
@@ -205,7 +205,7 @@ export const userFields = [
 				default: '',
 				description: 'An alphanumeric identifier for the user.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 user:update                                */
@@ -223,7 +223,7 @@ export const userFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the user.',
@@ -318,7 +318,7 @@ export const userFields = [
 				default: '',
 				description: 'An alphanumeric identifier for the user.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 user:get                                   */
@@ -336,7 +336,7 @@ export const userFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the user.',
@@ -379,7 +379,7 @@ export const userFields = [
 				default: 'view',
 				description: 'Scope under which the request is made; determines fields present in response.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 user:getAll                                */
@@ -541,7 +541,7 @@ export const userFields = [
 			default: 'authors',
 			description: 'Limit result set to users who are considered authors.',
 		},
-	]
+	],
 },
 /* -------------------------------------------------------------------------- */
 /*                                 user:delete                                */
@@ -559,7 +559,7 @@ export const userFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: `Reassign the deleted user's posts and links to this user ID.`,

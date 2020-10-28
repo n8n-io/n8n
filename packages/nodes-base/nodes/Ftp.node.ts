@@ -193,7 +193,7 @@ export class Ftp implements INodeType {
 						],
 						binaryData: [
 							true,
-						]
+						],
 					},
 				},
 				name: 'binaryPropertyName',
@@ -211,7 +211,7 @@ export class Ftp implements INodeType {
 						],
 						binaryData: [
 							false,
-						]
+						],
 					},
 				},
 				name: 'fileContent',
@@ -296,7 +296,7 @@ export class Ftp implements INodeType {
 				host: credentials.host as string,
 				port: credentials.port as number,
 				user: credentials.username as string,
-				password: credentials.password as string
+				password: credentials.password as string,
 			});
 		}
 

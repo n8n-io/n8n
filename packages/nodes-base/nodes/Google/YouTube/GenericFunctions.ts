@@ -21,7 +21,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		options = Object.assign({}, options, option);
@@ -51,7 +51,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 			// Try to return the error prettier
 			throw new Error(
-				`YouTube error response [${error.statusCode}]: ${errors.join('|')}`
+				`YouTube error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;

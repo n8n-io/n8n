@@ -74,7 +74,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Required. Last name of the opportunity. Limited to 80 characters.',
@@ -92,7 +92,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Required. Date when the opportunity is expected to close.',
@@ -102,7 +102,7 @@ export const opportunityFields = [
 		name: 'stageName',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getStages'
+			loadOptionsMethod: 'getStages',
 		},
 		required: true,
 		default: '',
@@ -113,7 +113,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Required. Date when the opportunity is expected to close.',
@@ -301,7 +301,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of opportunity that needs to be fetched',
@@ -473,7 +473,7 @@ export const opportunityFields = [
 				name: 'stageName',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getStages'
+					loadOptionsMethod: 'getStages',
 				},
 				default: '',
 				description: 'Required. Date when the opportunity is expected to close.',
@@ -514,7 +514,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of opportunity that needs to be fetched',
@@ -535,7 +535,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of opportunity that needs to be fetched',
@@ -608,7 +608,7 @@ export const opportunityFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -627,7 +627,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Id of opportunity that needs to be fetched',
@@ -645,7 +645,7 @@ export const opportunityFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Title of the note.',
@@ -694,6 +694,6 @@ export const opportunityFields = [
 				default: '',
 				description: 'ID of the user who owns the note.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

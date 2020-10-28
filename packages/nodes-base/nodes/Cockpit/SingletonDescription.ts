@@ -21,7 +21,7 @@ export const singletonOperations = [
 		],
 		default: 'get',
 		description: 'The operation to perform.',
-	}
+	},
 ] as INodeProperties[];
 
 export const singletonFields = [
@@ -41,6 +41,6 @@ export const singletonFields = [
 			},
 		},
 		required: true,
-		description: 'Name of the singleton to operate on.'
+		description: 'Name of the singleton to operate on.',
 	},
 ] as INodeProperties[];

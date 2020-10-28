@@ -56,7 +56,7 @@ export class Xero implements INodeType {
 			{
 				name: 'xeroOAuth2Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

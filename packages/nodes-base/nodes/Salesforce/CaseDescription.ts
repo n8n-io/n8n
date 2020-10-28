@@ -235,7 +235,7 @@ export const caseFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of case that needs to be fetched',
@@ -406,7 +406,7 @@ export const caseFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of case that needs to be fetched',
@@ -427,7 +427,7 @@ export const caseFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of case that needs to be fetched',
@@ -500,7 +500,7 @@ export const caseFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -519,7 +519,7 @@ export const caseFields = [
 				],
 				operation: [
 					'addComment',
-				]
+				],
 			},
 		},
 		description: 'Id of case that needs to be fetched',
@@ -558,6 +558,6 @@ export const caseFields = [
 				default: false,
 				description: 'Indicates whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false). ',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

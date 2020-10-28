@@ -135,13 +135,13 @@ export class WorkflowRunnerProcess {
 			workflowExecuteBefore: [
 				async (): Promise<void> => {
 					this.sendHookToParentProcess('workflowExecuteBefore', []);
-				}
+				},
 			],
 			workflowExecuteAfter: [
 				async (fullRunData: IRun, newStaticData?: IDataObject): Promise<void> => {
 					this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
 				},
-			]
+			],
 		};
 
 		return new WorkflowHooks(hookFunctions, this.data!.executionMode, this.data!.executionId, this.data!.workflowData, { sessionId: this.data!.sessionId, retryOf: this.data!.retryOf as string });

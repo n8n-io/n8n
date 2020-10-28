@@ -64,7 +64,7 @@ export const cardCommentFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to.'
+		description: 'The ID of the board that card belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -177,7 +177,7 @@ export const cardCommentFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to.'
+		description: 'The ID of the board that card belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -273,7 +273,7 @@ export const cardCommentFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to.'
+		description: 'The ID of the board that card belongs to.',
 	},
 	{
 		displayName: 'List ID',
@@ -365,7 +365,7 @@ export const cardCommentFields = [
 				],
 			},
 		},
-		description: 'The ID of the board that card belongs to.'
+		description: 'The ID of the board that card belongs to.',
 	},
 	{
 		displayName: 'List ID',
