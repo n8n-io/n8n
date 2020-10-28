@@ -158,7 +158,7 @@ export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecut
 	);
 
 	return {
-		data: returnData
+		data: returnData,
 	};
 }
 

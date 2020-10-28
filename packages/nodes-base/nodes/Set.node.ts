@@ -60,7 +60,7 @@ export class Set implements INodeType {
 								default: false,
 								description: 'The boolean value to write in the property.',
 							},
-						]
+						],
 					},
 					{
 						name: 'number',
@@ -80,7 +80,7 @@ export class Set implements INodeType {
 								default: 0,
 								description: 'The number value to write in the property.',
 							},
-						]
+						],
 					},
 					{
 						name: 'string',
@@ -100,7 +100,7 @@ export class Set implements INodeType {
 								default: '',
 								description: 'The string value to write in the property.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -124,7 +124,7 @@ export class Set implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 

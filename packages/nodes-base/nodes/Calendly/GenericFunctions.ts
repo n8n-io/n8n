@@ -30,7 +30,7 @@ export async function calendlyApiRequest(this: IExecuteFunctions | IWebhookFunct
 		body,
 		qs: query,
 		uri: uri || `${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.form;

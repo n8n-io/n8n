@@ -1,4 +1,4 @@
-FROM arm32v7/node:12.16
+FROM arm32v7/node:12.19
 
 ARG N8N_VERSION
 

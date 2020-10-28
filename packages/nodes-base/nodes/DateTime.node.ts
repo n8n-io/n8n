@@ -35,7 +35,7 @@ export class DateTime implements INodeType {
 					{
 						name: 'Format a Date',
 						description: 'Convert a date to a different format',
-						value: 'format'
+						value: 'format',
 					},
 				],
 				default: 'format',
@@ -162,7 +162,7 @@ export class DateTime implements INodeType {
 				displayOptions: {
 					show: {
 						action:[
-							'format'
+							'format',
 						],
 					},
 				},
@@ -218,7 +218,7 @@ export class DateTime implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

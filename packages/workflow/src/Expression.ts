@@ -114,7 +114,7 @@ export class Expression {
 		const runData: IRunExecutionData = {
 			resultData: {
 				runData: {},
-			}
+			},
 		};
 
 		return this.getParameterValue(parameterValue, runData, runIndex, itemIndex, node.name, connectionInputData) as boolean | number | string | undefined;
@@ -144,7 +144,7 @@ export class Expression {
 		const runData: IRunExecutionData = {
 			resultData: {
 				runData: {},
-			}
+			},
 		};
 
 		// Resolve the "outer" main values
@@ -205,7 +205,7 @@ export class Expression {
 			}
 
 			return returnData as NodeParameterValue[] | INodeParameters[];
-		} else if (parameterValue === null) {
+		} else if (parameterValue === null || parameterValue === undefined) {
 			return parameterValue;
 		} else {
 			// Data is an object

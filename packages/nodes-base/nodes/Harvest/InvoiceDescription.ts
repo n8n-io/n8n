@@ -172,8 +172,8 @@ export const invoiceFields = [
 			},
 			default: 1,
 			description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
-		}
-	]
+		},
+	],
 },
 
 /* -------------------------------------------------------------------------- */
@@ -255,91 +255,91 @@ export const invoiceFields = [
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies'
+				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Discount',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Due Date',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.'
+				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.',
 			},
 			{
 				displayName: 'Estimate Id',
 				name: 'estimate_id',
 				type: 'string',
 				default: '',
-				description: 'The ID of the estimate associated with this invoice.'
+				description: 'The ID of the estimate associated with this invoice.',
 			},
 			{
 				displayName: 'Issue Date',
 				name: 'issue_date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the invoice was issued. Defaults to today’s date.'
+				description: 'Date the invoice was issued. Defaults to today’s date.',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the project.'
+				description: 'Notes about the project.',
 			},
 			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
-				description: 'If no value is set, the number will be automatically generated.'
+				description: 'If no value is set, the number will be automatically generated.',
 			},
 			{
 				displayName: 'Payment Term',
 				name: 'payment_term',
 				type: 'string',
 				default: '',
-				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.'
+				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.',
 			},
 			{
 				displayName: 'Purchase Order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
-				description: 'The purchase order number.'
+				description: 'The purchase order number.',
 			},
 			{
 				displayName: 'Retainer Id',
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,
-				description: 'The ID of the retainer associated with this invoice.'
+				description: 'The ID of the retainer associated with this invoice.',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'The invoice subject.'
+				description: 'The invoice subject.',
 			},
 			{
 				displayName: 'Tax',
 				name: 'tax',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Tax2',
 				name: 'tax2',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 		],
 	},
@@ -390,91 +390,91 @@ export const invoiceFields = [
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies'
+				description: 'The currency used by the invoice. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Discount',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is subtracted from the subtotal. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Due Date',
 				name: 'ends_on',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.'
+				description: 'Date the invoice is due. Defaults to the issue_date if no payment_term is specified.',
 			},
 			{
 				displayName: 'Estimate Id',
 				name: 'estimate_id',
 				type: 'string',
 				default: '',
-				description: 'The ID of the estimate associated with this invoice.'
+				description: 'The ID of the estimate associated with this invoice.',
 			},
 			{
 				displayName: 'Issue Date',
 				name: 'issue_date',
 				type: 'dateTime',
 				default: '',
-				description: 'Date the invoice was issued. Defaults to today’s date.'
+				description: 'Date the invoice was issued. Defaults to today’s date.',
 			},
 			{
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
 				default: '',
-				description: 'Notes about the project.'
+				description: 'Notes about the project.',
 			},
 			{
 				displayName: 'Number',
 				name: 'number',
 				type: 'string',
 				default: '',
-				description: 'If no value is set, the number will be automatically generated.'
+				description: 'If no value is set, the number will be automatically generated.',
 			},
 			{
 				displayName: 'Payment Term',
 				name: 'payment_term',
 				type: 'string',
 				default: '',
-				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.'
+				description: 'The timeframe in which the invoice should be paid. Defaults to custom. Options: upon receipt, net 15, net 30, net 45, or net 60.',
 			},
 			{
 				displayName: 'Purchase Order',
 				name: 'purchase_order',
 				type: 'string',
 				default: '',
-				description: 'The purchase order number.'
+				description: 'The purchase order number.',
 			},
 			{
 				displayName: 'Retainer Id',
 				name: 'retainer_id',
 				type: 'boolean',
 				default: true,
-				description: 'The ID of the retainer associated with this invoice.'
+				description: 'The ID of the retainer associated with this invoice.',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
 				default: '',
-				description: 'The invoice subject.'
+				description: 'The invoice subject.',
 			},
 			{
 				displayName: 'Tax',
 				name: 'tax',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Tax2',
 				name: 'tax2',
 				type: 'string',
 				default: '',
-				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.'
+				description: 'This percentage is applied to the subtotal, including line items and discounts. Example: use 10.0 for 10.0%.',
 			},
 		],
 	},

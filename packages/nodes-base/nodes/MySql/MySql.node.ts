@@ -28,7 +28,7 @@ export class MySql implements INodeType {
 			{
 				name: 'mySql',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -69,7 +69,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'executeQuery'
+							'executeQuery',
 						],
 					},
 				},
@@ -90,7 +90,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'insert'
+							'insert',
 						],
 					},
 				},
@@ -105,7 +105,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'insert'
+							'insert',
 						],
 					},
 				},
@@ -125,7 +125,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 					},
 				},
@@ -140,7 +140,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 					},
 				},
@@ -155,7 +155,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 					},
 				},
@@ -164,7 +164,7 @@ export class MySql implements INodeType {
 				description: 'Comma separated list of the properties which should used as columns for rows to update.',
 			},
 
-		]
+		],
 	};
 
 

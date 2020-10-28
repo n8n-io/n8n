@@ -38,7 +38,7 @@ export class CircleCi implements INodeType {
 			{
 				name: 'circleCiApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

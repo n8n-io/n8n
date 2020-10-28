@@ -29,7 +29,7 @@ export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunc
 		qs: query,
 		uri: uri || `${baseUrl}/api/v1${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 	try {
 		return await this.helpers.request!(options);

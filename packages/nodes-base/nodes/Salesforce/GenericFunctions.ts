@@ -18,6 +18,14 @@ import * as moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
 
 export async function salesforceApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	const subdomain = ((credentials!.accessTokenUrl as string).match(/https:\/\/(.+).salesforce\.com/) || [])[1];
+	const options: OptionsWithUri = {
+		method,
+		body: method === 'GET' ? undefined : body,
+		qs,
+		uri: `https://${subdomain}.salesforce.com/services/data/v39.0${uri || endpoint}`,
+		json: true,
+	};
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 
 	try {

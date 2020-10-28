@@ -156,8 +156,11 @@ export class TestWebhooks {
 		}, 120000);
 
 		let key: string;
+		const activatedKey: string[] = [];
 		for (const webhookData of webhooks) {
 			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
+
+			activatedKey.push(key);
 
 			this.testWebhookData[key] = {
 				sessionId,
@@ -166,7 +169,13 @@ export class TestWebhooks {
 				workflowData,
 			};
 
-			await this.activeWebhooks!.add(workflow, webhookData, mode);
+			try {
+				await this.activeWebhooks!.add(workflow, webhookData, mode);
+			} catch (error) {
+				activatedKey.forEach(deleteKey => delete this.testWebhookData[deleteKey] );
+				await this.activeWebhooks!.removeWorkflow(workflow);
+				throw error;
+			}
 		}
 
 		return true;
@@ -189,8 +198,6 @@ export class TestWebhooks {
 				continue;
 			}
 
-			foundWebhook = true;
-
 			clearTimeout(this.testWebhookData[webhookKey].timeout);
 
 			// Inform editor-ui that webhook got received
@@ -207,7 +214,13 @@ export class TestWebhooks {
 
 			// Remove the webhook
 			delete this.testWebhookData[webhookKey];
-			this.activeWebhooks!.removeWorkflow(workflow);
+
+			if (foundWebhook === false) {
+				// As it removes all webhooks of the workflow execute only once
+				this.activeWebhooks!.removeWorkflow(workflow);
+			}
+
+			foundWebhook = true;
 		}
 
 		return foundWebhook;

@@ -30,7 +30,7 @@ export class Redis implements INodeType {
 			{
 				name: 'redis',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -78,7 +78,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -93,7 +93,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 					},
 				},
@@ -108,7 +108,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -123,7 +123,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -165,7 +165,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 					},
 				},
@@ -195,7 +195,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'keys'
+							'keys',
 						],
 					},
 				},
@@ -214,7 +214,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 					},
 				},
@@ -229,7 +229,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 					},
 				},
@@ -243,7 +243,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 					},
 				},
@@ -285,7 +285,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 					},
 				},
@@ -303,7 +303,7 @@ export class Redis implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'set'
+							'set',
 						],
 						expire: [
 							true,
@@ -312,8 +312,8 @@ export class Redis implements INodeType {
 				},
 				default: 60,
 				description: 'Number of seconds before key expiration.',
-			}
-		]
+			},
+		],
 	};
 
 

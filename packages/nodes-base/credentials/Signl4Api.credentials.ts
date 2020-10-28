@@ -13,7 +13,7 @@ export class Signl4Api implements ICredentialType {
 			name: 'teamSecret',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: 'The team secret is the last part of your SIGNL4 webhook URL.'
+			description: 'The team secret is the last part of your SIGNL4 webhook URL.',
 		},
 	];
 }

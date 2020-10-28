@@ -66,7 +66,7 @@ export class PhilipsHue implements INodeType {
 			// Get all the lights to display them to user so that he can
 			// select them easily
 			async getLights(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
@@ -82,12 +82,12 @@ export class PhilipsHue implements INodeType {
 					const lightId = light;
 					returnData.push({
 						name: lightName,
-						value: lightId
+						value: lightId,
 					});
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

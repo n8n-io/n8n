@@ -19,7 +19,7 @@ export const productOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all products.',
-			}
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',

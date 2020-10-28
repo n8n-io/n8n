@@ -416,8 +416,8 @@ export class Todoist implements INodeType {
 				}
 
 				return returnData;
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

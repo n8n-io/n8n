@@ -34,7 +34,7 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		qs,
 		body,
 		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.form;

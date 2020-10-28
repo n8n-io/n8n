@@ -56,7 +56,7 @@ export class Salesmate implements INodeType {
 			{
 				name: 'salesmateApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -112,7 +112,7 @@ export class Salesmate implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const qs: IDataObject = {
 					fields: ['name', 'id'],
-					query: {}
+					query: {},
 				};
 				const contacts = await salesmateApiRequest.call(this, 'POST', '/v2/contacts/search', qs);
 				for (const contact of contacts.Data.data) {
@@ -131,7 +131,7 @@ export class Salesmate implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const qs: IDataObject = {
 					fields: ['name', 'id'],
-					query: {}
+					query: {},
 				};
 				const companies = await salesmateApiRequest.call(this, 'POST', '/v2/companies/search', qs);
 				for (const company of companies.Data.data) {

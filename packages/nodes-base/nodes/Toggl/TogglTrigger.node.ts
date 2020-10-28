@@ -25,7 +25,7 @@ export class TogglTrigger implements INodeType {
 			{
 				name: 'togglApi',
 				required: true,
-			}
+			},
 		],
 		polling: true,
 		inputs: [],
@@ -39,12 +39,12 @@ export class TogglTrigger implements INodeType {
 					{
 						name: 'New Time Entry',
 						value: 'newTimeEntry',
-					}
+					},
 				],
 				required: true,
 				default: 'newTimeEntry',
 			},
-		]
+		],
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
