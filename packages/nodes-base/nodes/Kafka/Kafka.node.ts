@@ -1,6 +1,15 @@
-import { IHeaders, Kafka as apacheKafka, CompressionTypes } from 'kafkajs';
+import {
+	CompressionTypes,
+	Kafka as apacheKafka,
+	KafkaConfig,
+	SASLOptions,
+	TopicMessages,
+} from 'kafkajs';
 
-import { IExecuteFunctions } from 'n8n-core';
+import {
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -22,23 +31,116 @@ export class Kafka implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [{
-			name: 'kafka',
-			required: true,
-		}],
+		credentials: [
+			{
+				name: 'kafka',
+				displayOptions: {
+					show: {
+						authentication: [
+							'none',
+						],
+					},
+				},
+				required: true,
+			},
+			{
+				name: 'kafkaPlain',
+				displayOptions: {
+					show: {
+						authentication: [
+							'plain',
+						],
+					},
+				},
+				required: true,
+			},
+		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'None',
+						value: 'none',
+					},
+					{
+						name: 'Plain',
+						value: 'plain',
+					},
+				],
+				default: 'none',
+			},
 			{
 				displayName: 'Topic',
 				name: 'topic',
 				type: 'string',
 				default: '',
 				placeholder: 'topic-name',
-				description: 'name of the queue of topic to publish to',
+				description: 'Name of the queue of topic to publish to',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				default: '',
+				description: 'The message to be sent',
+			},
+			{
+				displayName: 'JSON Parameters',
+				name: 'jsonParameters',
+				type: 'boolean',
+				default: false,
 			},
 			{
 				displayName: 'Headers',
+				name: 'headersUi',
+				placeholder: 'Add Header',
+				type: 'fixedCollection',
+				displayOptions: {
+					show: {
+						jsonParameters: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'headerValues',
+						displayName: 'Header',
+						values: [
+							{
+								displayName: 'Key',
+								name: 'key',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Headers (JSON)',
 				name: 'headerParametersJson',
 				type: 'json',
+				displayOptions: {
+					show: {
+						jsonParameters: [
+							true,
+						],
+					},
+				},
 				default: '',
 				description: 'Header parameters as JSON (flat object)',
 			},
@@ -49,6 +151,13 @@ export class Kafka implements INodeType {
 				default: {},
 				placeholder: 'Add Option',
 				options: [
+					{
+						displayName: 'Acks',
+						name: 'acks',
+						type: 'boolean',
+						default: false,
+						description: 'Whether or not producer must wait for acknowledgement from all replicas',
+					},
 					{
 						displayName: 'Compression',
 						name: 'compression',
@@ -65,62 +174,113 @@ export class Kafka implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+
 		const length = items.length as unknown as number;
 
-		const topicMessages = [];
+		const authentication = this.getNodeParameter('authentication', 0) as string;
+
+		const topicMessages: TopicMessages[] = [];
+
 		let responseData;
 
 		const options = this.getNodeParameter('options', 0) as IDataObject;
 
-		let timeout = options.timeout as number;
+		const timeout = options.timeout as number;
+
 		let compression = CompressionTypes.None;
+
+		const acks = (options.acks === true) ? 1 : 0;
+
 		if (options.compression === true) {
 			compression = CompressionTypes.GZIP;
 		}
 
-		const credentials = this.getCredentials('kafka');
-		if (!credentials) {
-			throw new Error('Credentials are mandatory!');
+		let credentials: IDataObject = {};
+
+		const sasl: SASLOptions | IDataObject = {};
+
+		const brokers = (credentials.brokers as string || '').split(',') as string[];
+
+		const clientId = credentials.clientId as string;
+
+		const ssl = credentials.ssl as boolean;
+
+		const config: KafkaConfig = {
+			clientId,
+			brokers,
+			ssl,
+			//@ts-ignore
+			sasl,
+		};
+
+		if (authentication === 'plain') {
+			credentials = this.getCredentials('kafkaPlain') as IDataObject;
+			sasl.username = credentials.username as string;
+			sasl.password = credentials.password as string;
+			sasl.mechanism = 'plain';
+		} else {
+			credentials = this.getCredentials('kafka') as IDataObject;
+			delete config.sasl;
 		}
 
-		const broker = credentials.hostname + ':' + credentials.port;
-		const clientId = credentials.clientId.toString();
-
-		const kafka = new apacheKafka({
-			clientId: clientId,
-			brokers: [broker]
-		});
+		const kafka = new apacheKafka(config);
 
 		const producer = kafka.producer();
+
 		await producer.connect();
 
 		for (let i = 0; i < length; i++) {
-			const applicationProperties = this.getNodeParameter('headerParametersJson', i) as IHeaders;
 
-			let headers = applicationProperties;
-			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
-				headers = JSON.parse(applicationProperties);
-			}
+			const message = this.getNodeParameter('message', i) as string;
 
 			const topic = this.getNodeParameter('topic', i) as string;
 
-			if (topic === '') {
-				throw new Error('Topic name required!');
+			const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+
+			let headers;
+
+			if (jsonParameters === true) {
+				headers = this.getNodeParameter('headerParametersJson', i) as string;
+				try {
+					headers = JSON.parse(headers);
+				} catch (exception) {
+					throw new Error('Headers must be a valid json');
+				}
+			} else {
+				const values = (this.getNodeParameter('headersUi', i) as IDataObject).headerValues as IDataObject[];
+				headers = {};
+				if (values !== undefined) {
+					for (const value of values) {
+						//@ts-ignore
+						headers[value.key] = value.value;
+					}
+				}
 			}
 
-			let messages = [];
-			messages.push({value: JSON.stringify(items[i].json), headers: headers})
-
-			topicMessages.push({topic, messages});
+			topicMessages.push(
+				{
+					topic,
+					messages: [{
+						value: message,
+						headers,
+					}],
+				});
 		}
 
-		responseData = await producer.sendBatch({topicMessages, timeout, compression});
-		await producer.disconnect()
+		responseData = await producer.sendBatch(
+			{
+				topicMessages,
+				timeout,
+				compression,
+				acks,
+			});
+
+		await producer.disconnect();
 
 		return [this.helpers.returnJsonArray(responseData)];
 	}

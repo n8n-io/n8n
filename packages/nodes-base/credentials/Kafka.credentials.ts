@@ -3,7 +3,6 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
 export class Kafka implements ICredentialType {
 	name = 'kafka';
 	displayName = 'Kafka';
@@ -16,16 +15,16 @@ export class Kafka implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Hostname',
-			name: 'hostname',
+			displayName: 'Brokers',
+			name: 'brokers',
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
 		{
-			displayName: 'Port',
-			name: 'port',
-			type: 'number' as NodePropertyTypes,
-			default: 9092,
+			displayName: 'SSL',
+			name: 'ssl',
+			type: 'boolean' as NodePropertyTypes,
+			default: true,
 		},
 	];
 }
