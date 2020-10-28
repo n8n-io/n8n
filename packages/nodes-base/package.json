@@ -152,6 +152,7 @@
       "dist/credentials/RundeckApi.credentials.js",
       "dist/credentials/ShopifyApi.credentials.js",
       "dist/credentials/SalesforceOAuth2Api.credentials.js",
+      "dist/credentials/SalesforceJwtApi.credentials.js",
       "dist/credentials/SentryIoApi.credentials.js",
       "dist/credentials/SentryIoServerApi.credentials.js",
       "dist/credentials/SentryIoOAuth2Api.credentials.js",
