@@ -41,6 +41,7 @@ import {
 	IExecutionDeleteFilter,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
+	IExecutionResponse,
 	IExecutionFlattedResponse,
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -89,6 +90,7 @@ import {
 	FindOneOptions,
 	LessThan,
 	LessThanOrEqual,
+	MoreThanOrEqual,
 	Not,
 } from 'typeorm';
 
@@ -1423,6 +1425,8 @@ class App {
 			const countFilter = JSON.parse(JSON.stringify(filter));
 			if (req.query.lastId) {
 				filter.id = LessThan(req.query.lastId);
+			} else if (req.query.firstId) {
+				filter.id = MoreThanOrEqual(req.query.firstId);
 			}
 			countFilter.select = ['id'];
 
