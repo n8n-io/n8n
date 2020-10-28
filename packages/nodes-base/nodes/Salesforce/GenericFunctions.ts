@@ -82,7 +82,7 @@ export function sortOptions(options: INodePropertyOptions[]): void {
 	});
 }
 
-function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any, qs: IDataObject, instanceUrl: string): OptionsWithUri {
+function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any, qs: IDataObject, instanceUrl: string): OptionsWithUri { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -91,7 +91,7 @@ function getOptions(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOpt
 		body: method === 'GET' ? undefined : body,
 		qs,
 		uri: `${instanceUrl}/services/data/v39.0${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	//@ts-ignore
@@ -115,7 +115,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			header: {
 				'alg': 'RS256',
 			},
-		}
+		},
 	);
 
 	const options: OptionsWithUri = {
@@ -128,7 +128,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			assertion: signature,
 		},
 		uri: `${authUrl}/services/oauth2/token`,
-		json: true
+		json: true,
 	};
 
 	//@ts-ignore

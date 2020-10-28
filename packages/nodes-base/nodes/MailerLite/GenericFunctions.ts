@@ -40,7 +40,7 @@ export async function mailerliteApiRequest(this: IExecuteFunctions | IExecuteSin
 
 			// Try to return the error prettier
 			throw new Error(
-				`Mailer Lite error response [${error.statusCode}]: ${message}`
+				`Mailer Lite error response [${error.statusCode}]: ${message}`,
 			);
 		}
 		throw error;

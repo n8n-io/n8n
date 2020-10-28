@@ -54,7 +54,7 @@ export class MailerLite implements INodeType {
 					},
 				],
 				default: 'subscriber',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			...subscriberOperations,
 			...subscriberFields,
