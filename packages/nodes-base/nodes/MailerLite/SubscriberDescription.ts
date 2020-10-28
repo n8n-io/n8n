@@ -57,8 +57,8 @@ export const subscriberFields = [
 					'subscriber',
 				],
 				operation: [
-					'create'
-				]
+					'create',
+				],
 			},
 		},
 		description: 'Email of new subscriber.',
