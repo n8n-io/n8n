@@ -57,9 +57,16 @@ export class Amqp implements INodeType {
 						default: false,
 						description: 'Send the data as an object.',
 					},
+					{
+						displayName: 'Send property',
+						name: 'sendOnlyProperty',
+						type: 'string',
+						default: '',
+						description: 'Send only this property - If empty the hole Json will be sent',
+					},
 				],
 			},
-		],
+		]
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
@@ -87,6 +94,7 @@ export class Amqp implements INodeType {
 
 		const connectOptions: ContainerOptions = {
 			host: credentials.hostname,
+			hostname: credentials.hostname,
 			port: credentials.port,
 			reconnect: true,		// this id the default anyway
 			reconnect_limit: 50, 	// try for max 50 times, based on a back-off algorithm
@@ -94,12 +102,23 @@ export class Amqp implements INodeType {
 		if (credentials.username || credentials.password) {
 			container.options.username = credentials.username;
 			container.options.password = credentials.password;
+			connectOptions.username = credentials.username;
+			connectOptions.password = credentials.password;
+		}
+		if (credentials.transportType) {
+			connectOptions.transport = credentials.transportType;
 		}
 
 		const allSent = new Promise(( resolve ) => {
 			container.on('sendable', (context: any) => { // tslint:disable-line:no-any
 
 				let body: IDataObject | string = item.json;
+				let prop = options.sendOnlyProperty as string;
+
+				if(prop)
+				{
+					body = body[prop] as string;
+				}
 
 				if (options.dataAsObject !== true) {
 					body = JSON.stringify(body);
@@ -107,7 +126,7 @@ export class Amqp implements INodeType {
 
 				const message = {
 					application_properties: headerProperties,
-					body,
+					body
 				};
 
 				const sendResult = context.sender.send(message);
