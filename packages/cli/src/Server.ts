@@ -41,7 +41,6 @@ import {
 	IExecutionDeleteFilter,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
-	IExecutionResponse,
 	IExecutionFlattedResponse,
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -1484,7 +1483,7 @@ class App {
 				return undefined;
 			}
 
-			if (req.query.unflattedResponse) {
+			if (req.query.unflattedResponse === 'true') {
  				const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
 				return fullExecutionData as IExecutionResponse;
 			} else {
@@ -1492,8 +1491,6 @@ class App {
 				(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
 				return result as IExecutionFlatted as IExecutionFlattedResponse;
 			}
-
-			return undefined;
 		}));
 
 
