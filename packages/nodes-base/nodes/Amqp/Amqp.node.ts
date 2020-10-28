@@ -62,11 +62,11 @@ export class Amqp implements INodeType {
 						name: 'sendOnlyProperty',
 						type: 'string',
 						default: '',
-						description: 'Send only this property - If empty the hole Json will be sent',
+						description: 'The only property to send. If empty the whole item will be sent.',
 					},
 				],
 			},
-		]
+		],
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
@@ -105,7 +105,7 @@ export class Amqp implements INodeType {
 			connectOptions.username = credentials.username;
 			connectOptions.password = credentials.password;
 		}
-		if (credentials.transportType) {
+		if (credentials.transportType !== '') {
 			connectOptions.transport = credentials.transportType;
 		}
 
@@ -113,11 +113,10 @@ export class Amqp implements INodeType {
 			container.on('sendable', (context: any) => { // tslint:disable-line:no-any
 
 				let body: IDataObject | string = item.json;
-				let prop = options.sendOnlyProperty as string;
+				const sendOnlyProperty = options.sendOnlyProperty as string;
 
-				if(prop)
-				{
-					body = body[prop] as string;
+				if (sendOnlyProperty) {
+					body = body[sendOnlyProperty] as string;
 				}
 
 				if (options.dataAsObject !== true) {
@@ -126,7 +125,7 @@ export class Amqp implements INodeType {
 
 				const message = {
 					application_properties: headerProperties,
-					body
+					body,
 				};
 
 				const sendResult = context.sender.send(message);
