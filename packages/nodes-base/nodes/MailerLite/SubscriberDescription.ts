@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
-} from "n8n-workflow";
+} from 'n8n-workflow';
 
 export const subscriberOperations = [
 	{
@@ -43,9 +43,9 @@ export const subscriberOperations = [
 
 export const subscriberFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                subscriber:create                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                subscriber:create                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -61,7 +61,7 @@ export const subscriberFields = [
 				]
 			},
 		},
-		description: 'email of new subscriber',
+		description: 'Email of new subscriber.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -139,7 +139,7 @@ export const subscriberFields = [
 				name: 'resubscribe',
 				type: 'boolean',
 				default: false,
-				description: 'reactivate subscriber if value is true',
+				description: 'Reactivate subscriber if value is true.',
 			},
 			{
 				displayName: 'Signup IP',
@@ -175,11 +175,12 @@ export const subscriberFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                subscriber:update                           */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                subscriber:update                           */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Subscriber ID',
+		displayName: 'Subscriber Email',
 		name: 'subscriberId',
 		type: 'string',
 		required: true,
@@ -194,7 +195,7 @@ export const subscriberFields = [
 			},
 		},
 		default: '',
-		description: 'ID or email of subscriber',
+		description: 'Email of subscriber.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -260,7 +261,7 @@ export const subscriberFields = [
 				name: 'resend_autoresponders',
 				type: 'boolean',
 				default: false,
-				description: 'Defines if it is needed to resend autoresponders',
+				description: 'Defines if it is needed to resend autoresponders.',
 			},
 			{
 				displayName: 'Type',
@@ -284,11 +285,12 @@ export const subscriberFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                subscriber:delete                           */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                subscriber:delete                           */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Subscriber ID',
+		displayName: 'Subscriber Email',
 		name: 'subscriberId',
 		type: 'string',
 		required: true,
@@ -303,13 +305,14 @@ export const subscriberFields = [
 			},
 		},
 		default: '',
-		description: 'ID or email of subscriber',
+		description: 'Email of subscriber to delete.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  subscriber:get                            */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  subscriber:get                            */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Subscriber ID',
+		displayName: 'Subscriber Email',
 		name: 'subscriberId',
 		type: 'string',
 		required: true,
@@ -324,11 +327,11 @@ export const subscriberFields = [
 			},
 		},
 		default: '',
-		description: 'ID or email of subscriber',
+		description: 'Email of subscriber to get.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  subscriber:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  subscriber:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',

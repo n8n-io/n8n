@@ -24,7 +24,7 @@ import {
 export class MailerLite implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MailerLite',
-		name: 'marilerLite',
+		name: 'mailerLite',
 		icon: 'file:mailerLite.png',
 		group: ['input'],
 		version: 1,
@@ -92,7 +92,7 @@ export class MailerLite implements INodeType {
 			if (resource === 'subscriber') {
 				//https://developers.mailerlite.com/reference#create-a-subscriber
 				if (operation === 'create') {
-					const email  = this.getNodeParameter('email', i) as string;
+					const email = this.getNodeParameter('email', i) as string;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -123,13 +123,13 @@ export class MailerLite implements INodeType {
 				}
 				//https://developers.mailerlite.com/reference#single-subscriber
 				if (operation === 'get') {
-					const subscriberId  = this.getNodeParameter('subscriberId', i) as string;
+					const subscriberId = this.getNodeParameter('subscriberId', i) as string;
 
 					responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers/${subscriberId}`);
 				}
 				//https://developers.mailerlite.com/reference#subscribers
 				if (operation === 'getAll') {
-					const returnAll  = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -146,7 +146,7 @@ export class MailerLite implements INodeType {
 				}
 				//https://developers.mailerlite.com/reference#update-subscriber
 				if (operation === 'update') {
-					const subscriberId  = this.getNodeParameter('subscriberId', i) as string;
+					const subscriberId = this.getNodeParameter('subscriberId', i) as string;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
