@@ -62,11 +62,11 @@ export class AmqpTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Only Body',
-						name: 'onlyBody',
+						displayName: 'Convert Body To String',
+						name: 'jsonConvertByteArrayToString',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the body property.',
+						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -76,15 +76,15 @@ export class AmqpTrigger implements INodeType {
 						description: 'Parse the body to an object.',
 					},
 					{
-						displayName: 'Convert JSON Body content from Byte Array to string',
-						name: 'jsonConvertByteArrayToString',
+						displayName: 'Only Body',
+						name: 'onlyBody',
 						type: 'boolean',
 						default: false,
-						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string - Azure Service Bus',
-					}
+						description: 'Returns only the body property.',
+					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -117,7 +117,7 @@ export class AmqpTrigger implements INodeType {
 			port: credentials.port,
 			reconnect: true,		// this id the default anyway
 			reconnect_limit: 50,	// try for max 50 times, based on a back-off algorithm
-			container_id: (durable ? clientname : null)
+			container_id: (durable ? clientname : null),
 		};
 		if (credentials.username || credentials.password) {
 			// Old rhea implementation. not shure if it is neccessary
@@ -125,7 +125,7 @@ export class AmqpTrigger implements INodeType {
 			container.options.password = credentials.password;
 			connectOptions.username = credentials.username;
 			connectOptions.password = credentials.password;
-			}
+		}
 		if (credentials.transportType) {
 			connectOptions.transport = credentials.transportType;
 		}
@@ -139,15 +139,14 @@ export class AmqpTrigger implements INodeType {
 			if (context.message.message_id && context.message.message_id === lastMsgId) {
 				return;
 			}
-			console.log("new Message", context.message.message_id, lastMsgId);
 			lastMsgId = context.message.message_id;
 
 			let data = context.message;
-			
-			if(options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+
+			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				let cont = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null,JSON.parse(cont).data);	
+				const content = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null, JSON.parse(content).data);
 			}
 
 			if (options.jsonParseBody === true) {
@@ -169,16 +168,16 @@ export class AmqpTrigger implements INodeType {
 				source: {
 					address: sink,
 					durable: 2,
-					expiry_policy: 'never'
+					expiry_policy: 'never',
 				},
-				credit_window: 1	// prefetch 1
+				credit_window: 1,	// prefetch 1
 			};
 		} else {
 			clientOptions = {
 				source: {
 					address: sink,
 				},
-				credit_window: 1	// prefetch 1
+				credit_window: 1,	// prefetch 1
 			};
 		}
 		connection.open_receiver(clientOptions);
@@ -196,10 +195,10 @@ export class AmqpTrigger implements INodeType {
 		// for AMQP it doesn't make much sense to wait here but
 		// for a new user who doesn't know how this works, it's better to wait and show a respective info message
 		async function manualTriggerFunction() {
-			await new Promise(( resolve, reject ) => {
+			await new Promise((resolve, reject) => {
 				const timeoutHandler = setTimeout(() => {
 					reject(new Error('Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.'));
-				}, 3000);
+				}, 30000);
 				container.on('message', (context: any) => { // tslint:disable-line:no-any
 					// Check if the only property present in the message is body
 					// in which case we only emit the content of the body property
