@@ -182,7 +182,7 @@ export class MailerLiteTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(events)
+				this.helpers.returnJsonArray(events),
 			],
 		};
 	}
