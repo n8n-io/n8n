@@ -47,8 +47,8 @@ export const documentOperations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const documentFields = [
@@ -132,31 +132,21 @@ export const documentFields = [
 		placeholder: 'productId, modelName, description',
 	},
 	{
-		displayName: 'Other Options',
-		name: 'otherOptions',
-		type: 'collection',
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
 				operation: [
 					'create',
 				],
+				resource: [
+					'document',
+				],
 			},
 		},
-		default: {},
-		description: 'Other options',
-		placeholder: 'Add options',
-		options: [
-			{
-				displayName: 'Raw data',
-				name: 'rawData',
-				type: 'boolean',
-				default: false,
-				description: 'Return data just like returned by the Firestore API, without enhancements.',
-			},
-		],
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	
 	/* -------------------------------------------------------------------------- */
@@ -238,33 +228,22 @@ export const documentFields = [
 		required: true,
 	},
 	{
-		displayName: 'Other Options',
-		name: 'otherOptions',
-		type: 'collection',
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
 				operation: [
 					'get',
 				],
+				resource: [
+					'document',
+				],
 			},
 		},
-		default: {},
-		description: 'Other options',
-		placeholder: 'Add options',
-		options: [
-			{
-				displayName: 'Raw data',
-				name: 'rawData',
-				type: 'boolean',
-				default: false,
-				description: 'Return data just like returned by the Firestore API, without enhancements.',
-			},
-		],
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
-
 
 	/* -------------------------------------------------------------------------- */
 	/*                              document:getAll                               */
@@ -369,32 +348,23 @@ export const documentFields = [
 		description: 'How many results to return.',
 	},
 	{
-		displayName: 'Other Options',
-		name: 'otherOptions',
-		type: 'collection',
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
 				operation: [
 					'getAll',
 				],
+				resource: [
+					'document',
+				],
 			},
 		},
-		default: {},
-		description: 'Other options',
-		placeholder: 'Add options',
-		options: [
-			{
-				displayName: 'Raw data',
-				name: 'rawData',
-				type: 'boolean',
-				default: false,
-				description: 'Return data just like returned by the Firestore API, without enhancements.',
-			},
-		],
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                              document:delete                               */
 	/* -------------------------------------------------------------------------- */
@@ -553,7 +523,7 @@ export const documentFields = [
 		placeholder: 'documentId',
 	},
 	{
-		displayName: 'Columns / attributes',
+		displayName: 'Columns /Attributes',
 		name: 'columns',
 		type: 'string',
 		default: '',
@@ -637,33 +607,20 @@ export const documentFields = [
 		placeholder: '{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL", "value": {"integerValue": 28}}}, "from": [{"collectionId": "users-collection"}]}}',
 	},
 	{
-		displayName: 'Other Options',
-		name: 'otherOptions',
-		type: 'collection',
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
 				operation: [
 					'query',
 				],
+				resource: [
+					'document',
+				],
 			},
 		},
-		default: {},
-		description: 'Other options',
-		placeholder: 'Add options',
-		options: [
-			{
-				displayName: 'Raw data',
-				name: 'rawData',
-				type: 'boolean',
-				default: false,
-				description: 'Return data just like returned by the Firestore API, without enhancements.',
-			},
-		],
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
-
-
-	
 ] as INodeProperties[];

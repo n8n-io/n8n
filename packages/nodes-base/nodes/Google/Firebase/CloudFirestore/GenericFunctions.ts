@@ -14,7 +14,6 @@ import {
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 
-
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -23,7 +22,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://firestore.googleapis.com/v1/projects${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -36,23 +35,17 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleFirebaseCloudFirestoreOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
+		if (error.response && Array.isArray(error.response.body)) {
 
 			let errors;
 
-			if (error.response.body.error.errors) {
+			errors = error.response.body;
 
-				errors = error.response.body.error.errors;
-
-				errors = errors.map((e: IDataObject) => e.message).join('|');
-
-			} else {
-				errors = error.response.body.error.message;
-			}
+			errors = errors.map((e: { error: { message: string } }) => e.error.message).join('|');
 
 			// Try to return the error prettier
 			throw new Error(
-				`Google Firebase error response [${error.statusCode}]: ${errors}`
+				`Google Firebase error response [${error.statusCode}]: ${errors}`,
 			);
 		}
 		throw error;
@@ -83,57 +76,62 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 // https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
 // Great thanks to https://stackoverflow.com/users/3915246/mahindar
 export function jsonToDocument(value: string | number | IDataObject | IDataObject[]  ): IDataObject {
-	if (value === 'true' || value === 'false' || typeof value == 'boolean') {
+	if (value === 'true' || value === 'false' || typeof value === 'boolean') {
 		return { 'booleanValue': value };
 	} else if (value === null) {
 		return { 'nullValue': null };
 	} else if (!isNaN(value as number)) {
-        if (value.toString().indexOf('.') != -1)
-            return { 'doubleValue': value };
-        else
-            return { 'integerValue': value };
-    } else if (Date.parse(value as string)) {
+		if (value.toString().indexOf('.') !== -1) {
+			return { 'doubleValue': value };
+		} else {
+			return { 'integerValue': value };
+		}
+	} else if (Date.parse(value as string)) {
 		const date = new Date(Date.parse(value as string));
-        return { 'timestampValue': date.toISOString() };
-    } else if (typeof value == 'string') {
-        return { 'stringValue': value };
-    } else if (value && value.constructor === Array) {
-        return { 'arrayValue': { values: value.map(v => jsonToDocument(v)) } };
-    } else if (typeof value === 'object') {
-        let obj = {};
-        for (let o in value) {
-			// @ts-ignore
-            obj[o] = jsonToDocument(value[o]);
-        }
-        return { 'mapValue': { fields: obj } };
+		return { 'timestampValue': date.toISOString() };
+	} else if (typeof value === 'string') {
+		return { 'stringValue': value };
+	} else if (value && value.constructor === Array) {
+		return { 'arrayValue': { values: value.map(v => jsonToDocument(v)) } };
+	} else if (typeof value === 'object') {
+		const obj = {};
+		// tslint:disable-next-line: forin
+		for (const o in value) {
+			//@ts-ignore
+			obj[o] = jsonToDocument(value[o]);
+		}
+		return { 'mapValue': { fields: obj } };
 	}
 	
 	return {};
 }
 
 export function documentToJson(fields: IDataObject): IDataObject {
-    let result = {};
-    for (let f in fields) {
-        let key = f, value = fields[f],
-            isDocumentType = ['stringValue', 'booleanValue', 'doubleValue',
-                'integerValue', 'timestampValue', 'mapValue', 'arrayValue'].find(t => t === key);
-        if (isDocumentType) {
-            let item = ['stringValue', 'booleanValue', 'doubleValue', 'integerValue', 'timestampValue']
-                .find(t => t === key)
-            if (item) // @ts-ignore
-                return value;
-            else if ('mapValue' == key) // @ts-ignore
-                return documentToJson(value!.fields || {});
-            else if ('arrayValue' == key) {
+	const result = {};
+	// tslint:disable-next-line: forin
+	for (const f in fields) {
+		const key = f, value = fields[f],
+			isDocumentType = ['stringValue', 'booleanValue', 'doubleValue',
+				'integerValue', 'timestampValue', 'mapValue', 'arrayValue'].find(t => t === key);
+		if (isDocumentType) {
+			const item = ['stringValue', 'booleanValue', 'doubleValue', 'integerValue', 'timestampValue']
+				.find(t => t === key);
+			if (item) {
+				//@ts-ignore
+				return value;
+			} else if ('mapValue' === key) {
+				//@ts-ignore
+				return documentToJson(value!.fields || {});
+			} else if ('arrayValue' === key) {
 				// @ts-ignore
-				let list = value.values as IDataObject[];
+				const list = value.values as IDataObject[];
 				// @ts-ignore
-                return !!list ? list.map(l => documentToJson(l)) : [];
-            }
-        } else {
+				return !!list ? list.map(l => documentToJson(l)) : [];
+			}
+		} else {
 			// @ts-ignore
-            result[key] = documentToJson(value)
-        }
-    }
-    return result;
+			result[key] = documentToJson(value);
+		}
+	}
+	return result;
 }

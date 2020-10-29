@@ -22,7 +22,7 @@ export class RealtimeDatabase implements INodeType {
 		icon: 'file:googleFirebaseRealtimeDatabase.png',
 		group: ['input'],
 		version: 1,
-        subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
+		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Interact with Google Firebase - Realtime Database API',
 		defaults: {
 			name: 'Google Cloud Realtime Database',
@@ -114,7 +114,8 @@ export class RealtimeDatabase implements INodeType {
 		for (let i = 0; i < length; i++) {
 			const operation = this.getNodeParameter('operation', i) as string;
 			const projectId = this.getNodeParameter('projectId', i) as string;
-			let method = 'GET', attributes = '', document = {} as IDataObject;
+			let method = 'GET', attributes = '';
+			const document: IDataObject = {};
 			if (operation === 'create') {
 				method = 'PUT';
 				attributes = this.getNodeParameter('attributes', i) as string;
@@ -144,7 +145,7 @@ export class RealtimeDatabase implements INodeType {
 				projectId,
 				method,
 				this.getNodeParameter('updateKey', i) as string,
-				document
+				document,
 			);
 
 			if (Array.isArray(responseData)) {
