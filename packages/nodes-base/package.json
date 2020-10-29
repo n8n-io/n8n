@@ -102,7 +102,6 @@
       "dist/credentials/JiraSoftwareServerApi.credentials.js",
       "dist/credentials/JotFormApi.credentials.js",
       "dist/credentials/Kafka.credentials.js",
-      "dist/credentials/KafkaPlain.credentials.js",
       "dist/credentials/KeapOAuth2Api.credentials.js",
       "dist/credentials/LinkedInOAuth2Api.credentials.js",
       "dist/credentials/MailerLiteApi.credentials.js",
