@@ -67,8 +67,8 @@ export class GoogleCalendar implements INodeType {
 					},
 					{
 						name: 'Freebusy',
-						value: 'freeBusy'
-					}
+						value: 'freeBusy',
+					},
 				],
 				default: 'event',
 				description: 'The resource to operate on.',
@@ -557,26 +557,42 @@ export class GoogleCalendar implements INodeType {
 			if (resource === 'freeBusy') {
 				//https://developers.google.com/calendar/v3/reference/freebusy/query
 				if (operation === 'get') {
-					const calendarIds = this.getNodeParameter('calendar', i) as string[];
-					const timeMin = this.getNodeParameter('timeMin', i);
-					const timeMax = this.getNodeParameter('timeMax', i);
-					let items: IDataObject[] = [];
-					let body: IDataObject = {
-						timeMin: timeMin,
-						timeMax: timeMax,
+					const timezone = this.getTimezone();
+					const calendarId = this.getNodeParameter('calendarId', i) as string;
+					const timeMin = this.getNodeParameter('timeMin', i) as string;
+					const timeMax = this.getNodeParameter('timeMax', i) as string;
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						timeMin: moment.tz(timeMin, timezone).utc().format(),
+						timeMax: moment.tz(timeMax, timezone).utc().format(),
+						items: [
+							{
+								id: calendarId,
+							},
+						],
+						timeZone: additionalFields.timezone || timezone,
 					};
-					for (let j=0; j< calendarIds.length; j++) {
-						items.push({id:calendarIds[j]})
-					}
-					body.items = items;
-					console.log(body)
+
 					responseData = await googleApiRequest.call(
 						this,
 						'POST',
 						`/calendar/v3/freeBusy`,
 						body,
-						{}
-					)
+						{},
+					);
+
+					if (responseData.calendars[calendarId].errors) {
+						let errors = responseData.calendars[calendarId].errors;
+						errors = errors.map((e: IDataObject) => e.reason);
+						throw new Error(
+							`Google Calendar error response: ${errors.join('|')}`,
+						);
+					}
+
+					if (simple) {
+						responseData = responseData.calendars[calendarId].busy;
+					}
 				}
 			}
 			if (Array.isArray(responseData)) {
