@@ -10,10 +10,19 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
-import * as _ from 'lodash'
 import * as uuid from 'uuid/v4';
+
+import {
+	snakeCase,
+} from 'change-case';
+
+import {
+	facebookApiRequest,
+} from './GenericFunctions';
+
+import {
+	createHmac,
+} from 'crypto';
 
 export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,17 +31,17 @@ export class FacebookTrigger implements INodeType {
 		icon: 'file:facebook.png',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["appId"] + "/" + $parameter["object"]}}',
+		subtitle: '={{$parameter["appId"] +"/"+ $parameter["object"]}}',
 		description: 'Starts the workflow when a Facebook events occurs.',
 		defaults: {
 			name: 'Facebook Trigger',
-			color: '#772244',
+			color: '#3B5998',
 		},
 		inputs: [],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'facebookGraphApi',
+				name: 'facebookGraphSubscriptionApi',
 				required: true,
 			},
 		],
@@ -58,7 +67,7 @@ export class FacebookTrigger implements INodeType {
 				options: [
 					{
 						name: 'Ad Account',
-						value: 'ad_account',
+						value: 'adAccount',
 						description: 'Get updates about Ad Account',
 					},
 					{
@@ -68,7 +77,7 @@ export class FacebookTrigger implements INodeType {
 					},
 					{
 						name: 'Certificate Transparency',
-						value: 'certificate_transparency',
+						value: 'certificateTransparency',
 						description: 'Get updates about Certificate Transparency',
 					},
 					{
@@ -102,13 +111,13 @@ export class FacebookTrigger implements INodeType {
 						description: 'User profile updates',
 					},
 					{
-						name: 'Whatsapp business account',
-						value: 'whatsapp_business_account',
+						name: 'Whatsapp Business Account',
+						value: 'whatsappBusinessAccount',
 						description: 'Get updates about Whatsapp business account',
 					},
 					{
 						name: 'Workplace Security',
-						value: 'workplace_security',
+						value: 'workplaceSecurity',
 						description: 'Get updates about Workplace Security',
 					},
 				],
@@ -122,14 +131,13 @@ export class FacebookTrigger implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				description: 'Facebook app ID',
+				description: 'Facebook APP ID',
 			},
 			{
-				displayName: 'Other options',
-				name: 'otherOptions',
+				displayName: 'Options',
+				name: 'options',
 				type: 'collection',
 				default: {},
-				description: 'Other options',
 				placeholder: 'Add option',
 				options: [
 					{
@@ -148,165 +156,95 @@ export class FacebookTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
-				const graphApiCredentials = this.getCredentials('facebookGraphApi');
-				const webhookUrl = this.getNodeWebhookUrl('setup') as string;
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const object = this.getNodeParameter('object') as string;
 				const appId = this.getNodeParameter('appId') as string;
 
+				const { data } = await facebookApiRequest.call(this, 'GET', `/${appId}/subscriptions`, {});
 
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
-
-
-				const endpoint = `https://graph.facebook.com/v8.0/${appId}/subscriptions`;
-
-				const requestOptions : OptionsWithUri = {
-					headers: {
-						accept: 'application/json,text/*;q=0.99',
-					},
-					method: 'GET',
-					uri: endpoint,
-					json: true,
-					gzip: true,
-					qs: {
-						access_token: graphApiCredentials!.accessToken,
-					},
-				};
-
-				const { data } = await this.helpers.request(requestOptions);
 				for (const webhook of data) {
 					if (webhook.target === webhookUrl && webhook.object === object && webhook.status === true) {
-						webhookData.webhookId = uuid();
 						return true;
 					}
 				}
-
-				// If it did not error then the webhook exists
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const webhookUrl = this.getNodeWebhookUrl('setup') as string;
-				const defaultWebhookUrl = this.getNodeWebhookUrl('default') as string;
-
-				if (webhookUrl.includes('//localhost')) {
-					throw new Error('The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!');
-				}
-
+				const webhookData = this.getWorkflowStaticData('node');
+				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const object = this.getNodeParameter('object') as string;
 				const appId = this.getNodeParameter('appId') as string;
-				const otherOptions = this.getNodeParameter('otherOptions') as IDataObject;
-				const graphApiCredentials = this.getCredentials('facebookGraphApi');
-
-				const endpoint = `https://graph.facebook.com/v8.0/${appId}/subscriptions`;
+				const options = this.getNodeParameter('options') as IDataObject;
 
 				const body = {
-					object: object,
+					object: snakeCase(object),
 					callback_url: webhookUrl,
 					verify_token: uuid(),
 				} as IDataObject;
 
-				if (otherOptions.includeValues !== undefined) {
-					body.include_values = otherOptions.includeValues;
+				if (options.includeValues !== undefined) {
+					body.include_values = options.includeValues;
 				}
 
-				const requestOptions : OptionsWithUri = {
-					headers: {
-						accept: 'application/json,text/*;q=0.99',
-					},
-					method: 'POST',
-					uri: endpoint,
-					json: true,
-					gzip: true,
-					qs: {
-						access_token: graphApiCredentials!.accessToken,
-					},
-					body: body,
-				};
+				const responseData = await facebookApiRequest.call(this, 'POST', `/${appId}/subscriptions`, body);
 
-				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.verifyToken = body.verify_token;
-				const responseData = await this.helpers.request(requestOptions);
 
 				if (responseData.success !== true) {
 					// Facebook did not return success, so something went wrong
 					throw new Error('Facebook webhook creation response did not contain the expected data.');
 				}
-
-				webhookData.webhookId = uuid();
-
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
+				const appId = this.getNodeParameter('appId') as string;
+				const object = this.getNodeParameter('object') as string;
 
-				if (webhookData.webhookId !== undefined) {
-					const appId = this.getNodeParameter('appId') as string;
-					const graphApiCredentials = this.getCredentials('facebookGraphApi');
-
-					const endpoint = `https://graph.facebook.com/v8.0/${appId}/subscriptions`;
-					const requestOptions : OptionsWithUri = {
-						headers: {
-							accept: 'application/json,text/*;q=0.99',
-						},
-						method: 'DELETE',
-						uri: endpoint,
-						json: true,
-						gzip: true,
-						qs: {
-							access_token: graphApiCredentials!.accessToken,
-						},
-					};
-
-					try {
-						await this.helpers.request(requestOptions);
-					} catch (e) {
-						return false;
-					}
-
-					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
-					delete webhookData.webhookId;
+				try {
+					await facebookApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, { object: snakeCase(object) });
+				} catch (e) {
+					return false;
 				}
-
 				return true;
 			},
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData() as IDataObject;
 		const query = this.getQueryData() as IDataObject;
-
+		const res = this.getResponseObject();
+		const req = this.getRequestObject();
+		const headerData = this.getHeaderData() as IDataObject;
+		const credentials = this.getCredentials('facebookGraphSubscriptionApi') as IDataObject;
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
-		if (query.hasOwnProperty('hub.challenge')) {
-			const challenge = query['hub.challenge'];
-			const webhookData = this.getWorkflowStaticData('node');
-
-			if (webhookData.verifyToken !== query['hub.verify_token']) {
-				const res = this.getResponseObject();
-				res.write("Invalid verification token");
-				res.status(500).end();
-				return {};
+		if (this.getWebhookName() === 'setup') {
+			if (query['hub.challenge']) {
+				//TODO
+				//compare hub.verify_token with the saved token
+				//const webhookData = this.getWorkflowStaticData('node');
+				// if (webhookData.verifyToken !== query['hub.verify_token']) {
+				// 	return {};
+				// }
+				res.status(200).send(query['hub.challenge']).end();
+				return {
+					noWebhookResponse: true,
+				};
 			}
-
-			const res = this.getResponseObject();
-			res.write(challenge);
-			res.status(200).end();
-			return {
-				noWebhookResponse: true,
-			};
 		}
 
-		// Is a regular webhoook call
+		// validate signature if app secret is set
+		if (credentials.appSecret !== '') {
+			//@ts-ignore
+			const computedSignature = createHmac('sha1', credentials.appSecret as string).update(req.rawBody).digest('hex');
+			if (headerData['x-hub-signature'] !== `sha1=${computedSignature}`) {
+				return {};
+			}
+		}
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData.entry as IDataObject[])
+				this.helpers.returnJsonArray(bodyData.entry as IDataObject[]),
 			],
 		};
 	}
