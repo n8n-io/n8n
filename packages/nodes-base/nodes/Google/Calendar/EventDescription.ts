@@ -51,7 +51,7 @@ export const eventFields = [
 	/*                                 event:create                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar',
+		displayName: 'Calendar ID',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
@@ -453,7 +453,7 @@ export const eventFields = [
 	/*                                 event:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar',
+		displayName: 'Calendar ID',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
@@ -536,7 +536,7 @@ export const eventFields = [
 	/*                                 event:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar',
+		displayName: 'Calendar ID',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
@@ -613,7 +613,7 @@ export const eventFields = [
 	/*                                 event:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar',
+		displayName: 'Calendar ID',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
@@ -791,7 +791,7 @@ export const eventFields = [
 	/*                                 event:update                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar',
+		displayName: 'Calendar ID',
 		name: 'calendar',
 		type: 'options',
 		typeOptions: {
