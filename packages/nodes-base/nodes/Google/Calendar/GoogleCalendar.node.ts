@@ -22,6 +22,11 @@ import {
 } from './EventDescription';
 
 import {
+	freeBusyFields,
+	freeBusyOperations,
+} from './freeBusyDescription';
+
+import {
 	IEvent,
 } from './EventInterface';
 
@@ -60,12 +65,18 @@ export class GoogleCalendar implements INodeType {
 						name: 'Event',
 						value: 'event',
 					},
+					{
+						name: 'Freebusy',
+						value: 'freeBusy',
+					},
 				],
 				default: 'event',
 				description: 'The resource to operate on.',
 			},
 			...eventOperations,
 			...eventFields,
+			...freeBusyOperations,
+			...freeBusyFields,
 		],
 	};
 
@@ -541,6 +552,47 @@ export class GoogleCalendar implements INodeType {
 						body,
 						qs,
 					);
+				}
+			}
+			if (resource === 'freeBusy') {
+				//https://developers.google.com/calendar/v3/reference/freebusy/query
+				if (operation === 'get') {
+					const timezone = this.getTimezone();
+					const calendarId = this.getNodeParameter('calendarId', i) as string;
+					const timeMin = this.getNodeParameter('timeMin', i) as string;
+					const timeMax = this.getNodeParameter('timeMax', i) as string;
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						timeMin: moment.tz(timeMin, timezone).utc().format(),
+						timeMax: moment.tz(timeMax, timezone).utc().format(),
+						items: [
+							{
+								id: calendarId,
+							},
+						],
+						timeZone: additionalFields.timezone || timezone,
+					};
+
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						`/calendar/v3/freeBusy`,
+						body,
+						{},
+					);
+
+					if (responseData.calendars[calendarId].errors) {
+						let errors = responseData.calendars[calendarId].errors;
+						errors = errors.map((e: IDataObject) => e.reason);
+						throw new Error(
+							`Google Calendar error response: ${errors.join('|')}`,
+						);
+					}
+
+					if (simple) {
+						responseData = responseData.calendars[calendarId].busy;
+					}
 				}
 			}
 			if (Array.isArray(responseData)) {
