@@ -28,6 +28,7 @@ export class ShopifyApi implements ICredentialType {
 			required: true,
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			description: 'Only the subdomain without .myshopify.com',
 		},
 		{
 			displayName: 'Shared Secret',
