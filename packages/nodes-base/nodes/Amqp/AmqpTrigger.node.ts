@@ -179,8 +179,6 @@ export class AmqpTrigger implements INodeType {
 
 			self.emit([self.helpers.returnJsonArray([data])]);
 
-			console.log(context.receiver.credit);
-
 			if(context.receiver.credit ==0)
 				setTimeout(function(){ context.receiver.add_credit(options.pullMessagesNumber); }, options.sleepTime as number || 0);
 		});
@@ -211,9 +209,11 @@ export class AmqpTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
+			container.removeAllListeners("receiver_open");
+			container.removeAllListeners("message");
 			connection.close();
 		}
-
+		
 		// The "manualTriggerFunction" function gets called by n8n
 		// when a user is in the workflow editor and starts the
 		// workflow manually.
