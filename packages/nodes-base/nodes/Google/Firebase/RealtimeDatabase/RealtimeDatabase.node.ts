@@ -13,6 +13,7 @@ import {
 
 import {
 	googleApiRequest,
+	googleApiRequestAllItems,
 } from './GenericFunctions';
 
 export class RealtimeDatabase implements INodeType {
@@ -39,8 +40,11 @@ export class RealtimeDatabase implements INodeType {
 			{
 				displayName: 'Project ID',
 				name: 'projectId',
-				type: 'string',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
 				description: 'As displayed in firebase console URL',
 				required: true,
 			},
@@ -62,7 +66,7 @@ export class RealtimeDatabase implements INodeType {
 						value: 'get',
 					},
 					{
-						name: 'Push',
+						name: 'Push items to an array',
 						value: 'push',
 					},
 					{
@@ -75,8 +79,8 @@ export class RealtimeDatabase implements INodeType {
 				required: true,
 			},
 			{
-				displayName: "Update Key",
-				name: "updateKey",
+				displayName: "Object path",
+				name: "path",
 				type: "string",
 				default: "",
 				placeholder: "/app/users",
@@ -84,7 +88,7 @@ export class RealtimeDatabase implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Attributes / columns',
+				displayName: 'Columns / Attributes',
 				name: 'attributes',
 				type: 'string',
 				default: '',
@@ -102,6 +106,27 @@ export class RealtimeDatabase implements INodeType {
 				placeholder: 'age, name, city',
 			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getProjects(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const projects = await googleApiRequestAllItems.call(
+					this,
+					'projects',
+					'GET',
+					'results',
+					{},
+					{},
+					{},
+					'https://firebase.googleapis.com/v1beta1/projects',
+				);
+				const returnData = projects.map((o: IDataObject) => ({ name: o.projectId, value: o.projectId })) as INodePropertyOptions[];
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -144,14 +169,14 @@ export class RealtimeDatabase implements INodeType {
 				this,
 				projectId,
 				method,
-				this.getNodeParameter('updateKey', i) as string,
+				this.getNodeParameter('path', i) as string,
 				document,
 			);
 
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else if (typeof responseData === 'string') {
-				returnData.push({[this.getNodeParameter('updateKey', i) as string]: responseData} as IDataObject);
+				returnData.push({[this.getNodeParameter('path', i) as string]: responseData} as IDataObject);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}

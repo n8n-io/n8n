@@ -79,7 +79,7 @@ export class CloudFirestore implements INodeType {
 			async getProjects(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				const collections = await googleApiRequestAllItems.call(
+				const projects = await googleApiRequestAllItems.call(
 					this,
 					'results',
 					'GET',
@@ -89,7 +89,7 @@ export class CloudFirestore implements INodeType {
 					'https://firebase.googleapis.com/v1beta1/projects',
 				);
 				// @ts-ignore
-				const returnData = collections.map(o => ({ name: o.projectId, value: o.projectId })) as INodePropertyOptions[];
+				const returnData = projects.map((o: IDataObject) => ({ name: o.projectId, value: o.projectId })) as INodePropertyOptions[];
 				return returnData;
 			},
 		},

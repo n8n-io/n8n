@@ -73,7 +73,7 @@ export const documentFields = [
 				],
 			},
 		},
-		description: 'As displayed in firebase console URL.',
+		description: 'As displayed in firebase console URL',
 		required: true,
 	},
 	{

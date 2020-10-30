@@ -12,7 +12,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: string,  resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: string,  resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 	
 	const options: OptionsWithUri = {
 		headers: {
@@ -21,8 +21,8 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		method,
 		body,
 		qs,
-		uri: `https://${projectId}.firebaseio.com/${resource}.json`,
-		json: true
+		uri: uri || `https://${projectId}.firebaseio.com/${resource}.json`,
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -32,8 +32,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 
-		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'googleFirebaseRealtimeDatabaseOAuth2Api', options);
+		return await this.helpers.requestOAuth2!.call(this, 'googleFirebaseRealtimeDatabaseOAuth2Api', options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error) {
 
@@ -56,4 +55,24 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 		throw error;
 	}
+}
+
+
+export async function googleApiRequestAllItems(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: string,  resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	qs.pageSize = 100;
+
+	do {
+		responseData = await googleApiRequest.call(this, projectId, method, resource, body, qs, {}, uri);
+		qs.pageToken = responseData['nextPageToken'];
+		returnData.push.apply(returnData, responseData[resource]);
+	} while (
+		responseData['nextPageToken'] !== undefined &&
+		responseData['nextPageToken'] !== ''
+	);
+
+	return returnData;
 }
