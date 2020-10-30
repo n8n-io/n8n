@@ -48,7 +48,7 @@ export const eventOperations = [
 
 export const eventFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 event:create                               */
+	/*                                 event:ALL                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Calendar ID',
@@ -60,9 +60,6 @@ export const eventFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
 				resource: [
 					'event',
 				],
@@ -70,6 +67,10 @@ export const eventFields = [
 		},
 		default: '',
 	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 event:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Start',
 		name: 'start',
@@ -449,29 +450,10 @@ export const eventFields = [
 		],
 		description: `If the event doesn't use the default reminders, this lists the reminders specific to the event`,
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 event:delete                               */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Calendar ID',
-		name: 'calendar',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'event',
-				],
-			},
-		},
-		default: '',
-	},
 	{
 		displayName: 'Event ID',
 		name: 'eventId',
@@ -536,26 +518,6 @@ export const eventFields = [
 	/*                                 event:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar ID',
-		name: 'calendar',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'event',
-				],
-			},
-		},
-		default: '',
-	},
-	{
 		displayName: 'Event ID',
 		name: 'eventId',
 		type: 'string',
@@ -609,29 +571,10 @@ export const eventFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 event:getAll                               */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Calendar ID',
-		name: 'calendar',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'event',
-				],
-			},
-		},
-		default: '',
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -754,14 +697,14 @@ export const eventFields = [
 				events and instances of recurring events, but not the underlying recurring events themselves.`,
 			},
 			{
-				displayName: 'Time Max',
+				displayName: 'End Time',
 				name: 'timeMax',
 				type: 'dateTime',
 				default: '',
 				description: `Upper bound (exclusive) for an event's start time to filter by`,
 			},
 			{
-				displayName: 'Time Min',
+				displayName: 'Start Time',
 				name: 'timeMin',
 				type: 'dateTime',
 				default: '',
@@ -787,29 +730,10 @@ export const eventFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 event:update                               */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Calendar ID',
-		name: 'calendar',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'event',
-				],
-			},
-		},
-		default: '',
-	},
 	{
 		displayName: 'Event ID',
 		name: 'eventId',
