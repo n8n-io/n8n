@@ -55,6 +55,20 @@ export class AmqpTrigger implements INodeType {
 				description: 'Leave empty for non-durable topic subscriptions or queues',
 			},
 			{
+				displayName: 'Pull N Messages per Cicle',
+				name: 'pullMessagesNumber',
+				type: 'number',
+				default: 100,
+				description: 'Number of messages to pull from the bus for every cicle',
+			},
+			{
+				displayName: 'Sleep time after cicle',
+				name: 'sleepTime',
+				type: 'number',
+				default: 10,
+				description: 'Milliseconds to sleep after every cicle',
+			},
+	{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -62,11 +76,11 @@ export class AmqpTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Only Body',
-						name: 'onlyBody',
+						displayName: 'Convert Body To String',
+						name: 'jsonConvertByteArrayToString',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the body property.',
+						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -76,27 +90,12 @@ export class AmqpTrigger implements INodeType {
 						description: 'Parse the body to an object.',
 					},
 					{
-						displayName: 'Convert JSON Body content from Byte Array to string',
-						name: 'jsonConvertByteArrayToString',
+						displayName: 'Only Body',
+						name: 'onlyBody',
 						type: 'boolean',
 						default: false,
-						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string - Azure Service Bus',
+						description: 'Returns only the body property.',
 					},
-					{
-						displayName: 'Pull N Messages per Cicle',
-						name: 'pullMessagesNumber',
-						type: 'number',
-						default: 100,
-						description: 'Number of messages to pull from the bus for every cicle',
-					},
-					{
-						displayName: 'Sleep time after cicle',
-						name: 'sleepTime',
-						type: 'number',
-						default: 10,
-						description: 'Milliseconds to sleep after every cicle',
-					}
-
 				],
 			},
 		]
@@ -114,6 +113,8 @@ export class AmqpTrigger implements INodeType {
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const pullMessagesNumber = this.getNodeParameter('pullMessagesNumber', {}) as number;
+		const sleepTime = this.getNodeParameter('sleepTime', {}) as number;
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
@@ -140,10 +141,11 @@ export class AmqpTrigger implements INodeType {
 			container.options.password = credentials.password;
 			connectOptions.username = credentials.username;
 			connectOptions.password = credentials.password;
-			}
+		}
 		if (credentials.transportType) {
 			connectOptions.transport = credentials.transportType;
 		}
+
 
 
 		let lastMsgId: number | undefined = undefined;
@@ -151,7 +153,7 @@ export class AmqpTrigger implements INodeType {
 
 		container.on('receiver_open', function (context: any) {
 			console.log("Connection opened");
-			context.receiver.add_credit(options.pullMessagesNumber);
+			context.receiver.add_credit(pullMessagesNumber);
 		});
 
 		container.on('message', (context: any) => { // tslint:disable-line:no-any
@@ -159,7 +161,6 @@ export class AmqpTrigger implements INodeType {
 			if (context.message.message_id && context.message.message_id === lastMsgId) {
 				return;
 			}
-			console.log("new Message", context.message.message_id, lastMsgId);
 			lastMsgId = context.message.message_id;
 
 			let data = context.message;
@@ -170,6 +171,12 @@ export class AmqpTrigger implements INodeType {
 				data.body = String.fromCharCode.apply(null,JSON.parse(cont).data);	
 			}
 
+			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+				// The buffer is not ready... Stringify and parse back to load it.
+				const content = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null, JSON.parse(content).data);
+			}
+
 			if (options.jsonParseBody === true) {
 				data.body = JSON.parse(data.body);
 			}
@@ -177,10 +184,11 @@ export class AmqpTrigger implements INodeType {
 				data = data.body;
 			}
 
+
 			self.emit([self.helpers.returnJsonArray([data])]);
 
 			if(context.receiver.credit ==0)
-				setTimeout(function(){ context.receiver.add_credit(options.pullMessagesNumber); }, options.sleepTime as number || 0);
+				setTimeout(function(){ context.receiver.add_credit(pullMessagesNumber); }, sleepTime || 0);
 		});
 
 		const connection = container.connect(connectOptions);
@@ -220,7 +228,7 @@ export class AmqpTrigger implements INodeType {
 		// for AMQP it doesn't make much sense to wait here but
 		// for a new user who doesn't know how this works, it's better to wait and show a respective info message
 		async function manualTriggerFunction() {
-			await new Promise(( resolve, reject ) => {
+			await new Promise((resolve, reject) => {
 				const timeoutHandler = setTimeout(() => {
 					reject(new Error('Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.'));
 				}, 3000);

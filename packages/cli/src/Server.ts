@@ -89,6 +89,7 @@ import {
 	FindOneOptions,
 	LessThan,
 	LessThanOrEqual,
+	MoreThanOrEqual,
 	Not,
 } from 'typeorm';
 
@@ -1423,6 +1424,8 @@ class App {
 			const countFilter = JSON.parse(JSON.stringify(filter));
 			if (req.query.lastId) {
 				filter.id = LessThan(req.query.lastId);
+			} else if (req.query.firstId) {
+				filter.id = MoreThanOrEqual(req.query.firstId);
 			}
 			countFilter.select = ['id'];
 
@@ -1480,7 +1483,7 @@ class App {
 				return undefined;
 			}
 
-			if (req.query.unflattedResponse) {
+			if (req.query.unflattedResponse === 'true') {
  				const fullExecutionData = ResponseHelper.unflattenExecutionData(result);
 				return fullExecutionData as IExecutionResponse;
 			} else {
@@ -1488,8 +1491,6 @@ class App {
 				(result as IExecutionFlatted as IExecutionFlattedResponse).id = result.id.toString();
 				return result as IExecutionFlatted as IExecutionFlattedResponse;
 			}
-
-			return undefined;
 		}));
 
 
