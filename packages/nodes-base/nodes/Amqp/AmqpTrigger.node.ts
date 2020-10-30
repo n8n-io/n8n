@@ -81,7 +81,22 @@ export class AmqpTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string - Azure Service Bus',
+					},
+					{
+						displayName: 'Pull N Messages per Cicle',
+						name: 'pullMessagesNumber',
+						type: 'number',
+						default: 100,
+						description: 'Number of messages to pull from the bus for every cicle',
+					},
+					{
+						displayName: 'Sleep time after cicle',
+						name: 'sleepTime',
+						type: 'number',
+						default: 10,
+						description: 'Milliseconds to sleep after every cicle',
 					}
+
 				],
 			},
 		]
@@ -134,6 +149,11 @@ export class AmqpTrigger implements INodeType {
 		let lastMsgId: number | undefined = undefined;
 		const self = this;
 
+		container.on('receiver_open', function (context: any) {
+			console.log("Connection opened");
+			context.receiver.add_credit(options.pullMessagesNumber);
+		});
+
 		container.on('message', (context: any) => { // tslint:disable-line:no-any
 			// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
 			if (context.message.message_id && context.message.message_id === lastMsgId) {
@@ -157,8 +177,12 @@ export class AmqpTrigger implements INodeType {
 				data = data.body;
 			}
 
-
 			self.emit([self.helpers.returnJsonArray([data])]);
+
+			console.log(context.receiver.credit);
+
+			if(context.receiver.credit ==0)
+				setTimeout(function(){ context.receiver.add_credit(options.pullMessagesNumber); }, options.sleepTime as number || 0);
 		});
 
 		const connection = container.connect(connectOptions);
@@ -171,14 +195,14 @@ export class AmqpTrigger implements INodeType {
 					durable: 2,
 					expiry_policy: 'never'
 				},
-				credit_window: 1	// prefetch 1
+				credit_window: 0	// prefetch 1
 			};
 		} else {
 			clientOptions = {
 				source: {
 					address: sink,
 				},
-				credit_window: 1	// prefetch 1
+				credit_window: 0	// prefetch 1
 			};
 		}
 		connection.open_receiver(clientOptions);
