@@ -2,6 +2,21 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.90.0
+
+### What changed?
+
+Node.js version 12.9 or newer is required to run n8n.
+
+### When is action necessary?
+
+If you are running Node.js version older than 12.9.
+
+### How to upgrade:
+
+You can find download and install the latest version of Node.js from [here](https://nodejs.org/en/download/).
+
+
 ## 0.87.0
 
 ### What changed?
