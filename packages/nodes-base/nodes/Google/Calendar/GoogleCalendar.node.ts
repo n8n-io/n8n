@@ -22,9 +22,9 @@ import {
 } from './EventDescription';
 
 import {
-	freeBusyFields,
-	freeBusyOperations,
-} from './freeBusyDescription';
+	calendarFields,
+	calendarOperations,
+} from './CalendarDescription';
 
 import {
 	IEvent,
@@ -62,21 +62,21 @@ export class GoogleCalendar implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Event',
-						value: 'event',
+						name: 'Calendar',
+						value: 'calendar',
 					},
 					{
-						name: 'Freebusy',
-						value: 'freeBusy',
+						name: 'Event',
+						value: 'event',
 					},
 				],
 				default: 'event',
 				description: 'The resource to operate on.',
 			},
+			...calendarOperations,
+			...calendarFields,
 			...eventOperations,
 			...eventFields,
-			...freeBusyOperations,
-			...freeBusyFields,
 		],
 	};
 
@@ -178,6 +178,53 @@ export class GoogleCalendar implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			if (resource === 'calendar') {
+				//https://developers.google.com/calendar/v3/reference/freebusy/query
+				if (operation === 'availability') {
+					const timezone = this.getTimezone();
+					const calendarId = this.getNodeParameter('calendar', i) as string;
+					const timeMin = this.getNodeParameter('timeMin', i) as string;
+					const timeMax = this.getNodeParameter('timeMax', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const outputFormat = options.outputFormat || 'availability';
+
+					const body: IDataObject = {
+						timeMin: moment.tz(timeMin, timezone).utc().format(),
+						timeMax: moment.tz(timeMax, timezone).utc().format(),
+						items: [
+							{
+								id: calendarId,
+							},
+						],
+						timeZone: options.timezone || timezone,
+					};
+
+					responseData = await googleApiRequest.call(
+						this,
+						'POST',
+						`/calendar/v3/freeBusy`,
+						body,
+						{},
+					);
+
+					if (responseData.calendars[calendarId].errors) {
+						let errors = responseData.calendars[calendarId].errors;
+						errors = errors.map((e: IDataObject) => e.reason);
+						throw new Error(
+							`Google Calendar error response: ${errors.join('|')}`,
+						);
+					}
+
+					if (outputFormat === 'availability') {
+						responseData = {
+							available: !responseData.calendars[calendarId].busy.length,
+						};
+
+					} else if (outputFormat === 'bookedSlots') {
+						responseData = responseData.calendars[calendarId].busy;
+					}
+				}
+			}
 			if (resource === 'event') {
 				//https://developers.google.com/calendar/v3/reference/events/insert
 				if (operation === 'create') {
@@ -554,47 +601,7 @@ export class GoogleCalendar implements INodeType {
 					);
 				}
 			}
-			if (resource === 'freeBusy') {
-				//https://developers.google.com/calendar/v3/reference/freebusy/query
-				if (operation === 'get') {
-					const timezone = this.getTimezone();
-					const calendarId = this.getNodeParameter('calendarId', i) as string;
-					const timeMin = this.getNodeParameter('timeMin', i) as string;
-					const timeMax = this.getNodeParameter('timeMax', i) as string;
-					const simple = this.getNodeParameter('simple', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const body: IDataObject = {
-						timeMin: moment.tz(timeMin, timezone).utc().format(),
-						timeMax: moment.tz(timeMax, timezone).utc().format(),
-						items: [
-							{
-								id: calendarId,
-							},
-						],
-						timeZone: additionalFields.timezone || timezone,
-					};
 
-					responseData = await googleApiRequest.call(
-						this,
-						'POST',
-						`/calendar/v3/freeBusy`,
-						body,
-						{},
-					);
-
-					if (responseData.calendars[calendarId].errors) {
-						let errors = responseData.calendars[calendarId].errors;
-						errors = errors.map((e: IDataObject) => e.reason);
-						throw new Error(
-							`Google Calendar error response: ${errors.join('|')}`,
-						);
-					}
-
-					if (simple) {
-						responseData = responseData.calendars[calendarId].busy;
-					}
-				}
-			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else if (responseData !== undefined) {
