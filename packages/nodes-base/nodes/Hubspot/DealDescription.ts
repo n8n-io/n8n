@@ -67,7 +67,7 @@ export const dealFields = [
 		type: 'options',
 		required: true,
 		typeOptions: {
-			loadOptionsMethod: 'getDealStages'
+			loadOptionsMethod: 'getDealStages',
 		},
 		displayOptions: {
 			show: {
@@ -151,7 +151,7 @@ export const dealFields = [
 				},
 				default: [],
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:update                                */
@@ -203,7 +203,7 @@ export const dealFields = [
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getDealStages'
+					loadOptionsMethod: 'getDealStages',
 				},
 				default: '',
 				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
@@ -235,7 +235,7 @@ export const dealFields = [
 				},
 				default: '',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  deal:get                                  */
@@ -283,7 +283,7 @@ export const dealFields = [
 				description: `By default, you will only get data for the most recent version of a property in the "versions" data.<br/>
 				If you include this parameter, you will get data for all previous versions.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:getAll                                */
@@ -372,7 +372,7 @@ export const dealFields = [
 				description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
 				instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:delete                                */
@@ -474,6 +474,6 @@ export const dealFields = [
 				description: `By default, you will only get data for the most recent version of a property in the "versions" data.<br/>
 				If you include this parameter, you will get data for all previous versions.`,
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

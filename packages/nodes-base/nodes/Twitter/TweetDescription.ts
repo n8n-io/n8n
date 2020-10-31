@@ -143,7 +143,7 @@ export const tweetFields = [
 				default: false,
 				description: 'If you upload Tweet media that might be considered sensitive content such as nudity, or medical procedures, you must set this value to true.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                tweet:search                                */
@@ -323,7 +323,7 @@ export const tweetFields = [
 					{
 						name: 'Popular',
 						value: 'popular',
-						description: 'Return only the most popular results in the response.'
+						description: 'Return only the most popular results in the response.',
 					},
 				],
 				default: 'mixed',

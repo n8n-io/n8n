@@ -49,7 +49,7 @@ export class Affinity implements INodeType {
 			{
 				name: 'affinityApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

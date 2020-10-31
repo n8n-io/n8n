@@ -34,7 +34,7 @@ export class Telegram implements INodeType {
 			{
 				name: 'telegramApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -53,7 +53,7 @@ export class Telegram implements INodeType {
 					{
 						name: 'Message',
 						value: 'message',
-					}
+					},
 				],
 				default: 'message',
 				description: 'The resource to operate on.',
@@ -250,7 +250,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'member'
+							'member',
 						],
 						resource: [
 							'chat',
@@ -273,7 +273,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'setDescription'
+							'setDescription',
 						],
 						resource: [
 							'chat',
@@ -296,7 +296,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'setTitle'
+							'setTitle',
 						],
 						resource: [
 							'chat',
@@ -323,7 +323,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'answerQuery'
+							'answerQuery',
 						],
 						resource: [
 							'callback',
@@ -342,7 +342,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'answerQuery'
+							'answerQuery',
 						],
 						resource: [
 							'callback',
@@ -434,7 +434,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						messageType: [
-							'message'
+							'message',
 						],
 						operation: [
 							'editMessageText',
@@ -455,7 +455,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						messageType: [
-							'message'
+							'message',
 						],
 						operation: [
 							'editMessageText',
@@ -476,7 +476,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						messageType: [
-							'inlineMessage'
+							'inlineMessage',
 						],
 						operation: [
 							'editMessageText',
@@ -530,7 +530,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendAnimation'
+							'sendAnimation',
 						],
 						resource: [
 							'message',
@@ -553,7 +553,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendAudio'
+							'sendAudio',
 						],
 						resource: [
 							'message',
@@ -575,7 +575,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendChatAction'
+							'sendChatAction',
 						],
 						resource: [
 							'message',
@@ -641,7 +641,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendDocument'
+							'sendDocument',
 						],
 						resource: [
 							'message',
@@ -662,7 +662,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendMediaGroup'
+							'sendMediaGroup',
 						],
 						resource: [
 							'message',
@@ -784,7 +784,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendPhoto'
+							'sendPhoto',
 						],
 						resource: [
 							'message',
@@ -806,7 +806,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendSticker'
+							'sendSticker',
 						],
 						resource: [
 							'message',
@@ -828,7 +828,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'sendVideo'
+							'sendVideo',
 						],
 						resource: [
 							'message',

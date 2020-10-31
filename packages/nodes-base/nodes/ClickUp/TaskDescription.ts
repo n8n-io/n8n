@@ -395,7 +395,7 @@ export const taskFields = [
 				name: 'addAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma'
+				description: 'Assignees IDs. Multiple ca be added separated by comma',
 			},
 			{
 				displayName: 'Content',
@@ -458,14 +458,14 @@ export const taskFields = [
 				name: 'removeAssignees',
 				type: 'string',
 				default: '',
-				description: 'Assignees IDs. Multiple ca be added separated by comma'
+				description: 'Assignees IDs. Multiple ca be added separated by comma',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'string',
 				default: '',
-				description: 'status'
+				description: 'status',
 			},
 			{
 				displayName: 'Start Date',
@@ -552,7 +552,7 @@ export const taskFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -1053,7 +1053,7 @@ export const taskFields = [
 				],
 				operation: [
 					'setCustomField',
-				]
+				],
 			},
 		},
 		default: false,

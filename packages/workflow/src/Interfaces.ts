@@ -383,7 +383,7 @@ export interface INodeExecuteFunctions {
 
 
 // The values a node property can have
-export type NodeParameterValue = string | number | boolean;
+export type NodeParameterValue = string | number | boolean | undefined | null;
 
 export interface INodeParameters {
 	// TODO: Later also has to be possible to add multiple ones with the name name. So array has to be possible

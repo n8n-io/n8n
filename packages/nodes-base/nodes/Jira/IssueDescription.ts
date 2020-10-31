@@ -75,8 +75,8 @@ export const issueFields = [
 					'issue',
 				],
 				operation: [
-					'create'
-				]
+					'create',
+				],
 			},
 		},
 		typeOptions: {
@@ -98,8 +98,8 @@ export const issueFields = [
 					'issue',
 				],
 				operation: [
-					'create'
-				]
+					'create',
+				],
 			},
 		},
 		typeOptions: {
@@ -469,7 +469,7 @@ export const issueFields = [
 				editmeta Returns information about how each field can be edited.<br/>
 				changelog Returns a list of recent updates to an issue, sorted by date, starting from the most recent.<br/>
 				versionedRepresentations Returns a JSON array for each version of a field's value, with the highest number<br/>
-				representing the most recent version. Note: When included in the request, the fields parameter is ignored.`
+				representing the most recent version. Note: When included in the request, the fields parameter is ignored.`,
 			},
 			{
 				displayName: 'Fields',
@@ -482,7 +482,7 @@ export const issueFields = [
 				Use it to retrieve a subset of fields. Allowed values:<br/>
 				*all Returns all fields.<br/>
 				*navigable Returns navigable fields.<br/>
-				Any issue field, prefixed with a minus to exclude.<br/>`
+				Any issue field, prefixed with a minus to exclude.<br/>`,
 			},
 			{
 				displayName: 'Fields By Key',
@@ -508,7 +508,7 @@ export const issueFields = [
 				*all Returns all properties.<br/>
 				*all,-prop1 Returns all properties except prop1.<br/>
 				prop1,prop2 Returns prop1 and prop2 properties.<br/>
-				This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.`
+				This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.`,
 			},
 			{
 				displayName: 'Update History',
@@ -520,7 +520,7 @@ export const issueFields = [
 				Recently viewed project list, as shown under Projects in Jira. This also populates the
 				JQL issues search lastViewed field.`,
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -800,7 +800,7 @@ export const issueFields = [
 				required: false,
 				default: '',
 				description: `The subject of the email notification for the issue. If this is not specified,
-				then the subject is set to the issue key and summary.`
+				then the subject is set to the issue key and summary.`,
 			},
 			{
 				displayName: 'Text Body',
@@ -812,7 +812,7 @@ export const issueFields = [
 				required: false,
 				default: '',
 				description: `The subject of the email notification for the issue.
-				If this is not specified, then the subject is set to the issue key and summary.`
+				If this is not specified, then the subject is set to the issue key and summary.`,
 			},
 		],
 	},
@@ -892,10 +892,10 @@ export const issueFields = [
 						default: [],
 						description: `List of groups to receive the notification.`,
 					},
-				]
+				],
 
-			}
-		]
+			},
+		],
 	},
 	{
 		displayName: 'Notification Recipients',
@@ -915,7 +915,7 @@ export const issueFields = [
 				],
 				jsonParameters: [
 					true,
-				]
+				],
 			},
 		},
 		default: '',
@@ -969,10 +969,10 @@ export const issueFields = [
 						default: [],
 						description: `List of groups to receive the notification.`,
 					},
-				]
+				],
 
-			}
-		]
+			},
+		],
 	},
 	{
 		displayName: 'Notification Recipients Restrictions',
@@ -992,7 +992,7 @@ export const issueFields = [
 				],
 				jsonParameters: [
 					true,
-				]
+				],
 			},
 		},
 		default: '',
@@ -1046,7 +1046,7 @@ export const issueFields = [
 				description: `Use expand to include additional information about transitions in the response.<br/>
 				 This parameter accepts transitions.fields, which returns information about the fields in the<br/>
 				 transition screen for each transition. Fields hidden from the screen are not returned. Use this<br/>
-				 information to populate the fields and update fields in Transition issue.`
+				 information to populate the fields and update fields in Transition issue.`,
 			},
 			{
 				displayName: 'Transition ID',

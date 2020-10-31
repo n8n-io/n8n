@@ -232,7 +232,7 @@ export const dealFields = [
 				default: 0,
 				description: 'The status of the deal',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------
@@ -345,7 +345,7 @@ export const dealFields = [
 				default: 0,
 				description: 'The status of the deal',
 			},
-		]
+		],
 	},
 
 	// ----------------------------------

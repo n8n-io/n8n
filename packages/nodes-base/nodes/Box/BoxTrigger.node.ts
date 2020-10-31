@@ -306,7 +306,7 @@ export class BoxTrigger implements INodeType {
 					target: {
 						id: targetId,
 						type: targetType,
-					}
+					},
 				};
 
 				const responseData = await boxApiRequest.call(this, 'POST', endpoint, body);
@@ -345,7 +345,7 @@ export class BoxTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData)
+				this.helpers.returnJsonArray(bodyData),
 			],
 		};
 	}

@@ -206,8 +206,8 @@ export class HtmlExtract implements INodeType {
 						description: 'Removes automatically all spaces and newlines from<br />the beginning and end of the values.',
 					},
 				],
-			}
-		]
+			},
+		],
 	};
 
 

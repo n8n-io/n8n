@@ -47,7 +47,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 		placeholder: 'admin@example.com',
@@ -67,7 +67,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 	},
@@ -93,7 +93,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 		default: '',
@@ -113,7 +113,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 		default: '',
@@ -216,7 +216,7 @@ export const emailFields = [
 				description: 'Enable or disable open tracking on this message.',
 				default: 'account_default',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Variables',
@@ -232,7 +232,7 @@ export const emailFields = [
 				],
 				operation: [
 					'send',
-				]
+				],
 			},
 		},
 		placeholder: 'Add Variable',
@@ -254,7 +254,7 @@ export const emailFields = [
 						type: 'string',
 						default: '',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -274,7 +274,7 @@ export const emailFields = [
 				],
 				operation: [
 					'sendTemplate',
-				]
+				],
 			},
 		},
 		placeholder: 'admin@example.com',
@@ -294,7 +294,7 @@ export const emailFields = [
 				],
 				operation: [
 					'sendTemplate',
-				]
+				],
 			},
 		},
 	},
@@ -311,7 +311,7 @@ export const emailFields = [
 				],
 				operation: [
 					'sendTemplate',
-				]
+				],
 			},
 		},
 	},
@@ -384,7 +384,7 @@ export const emailFields = [
 				type: 'boolean',
 				default: true,
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Variables',
@@ -400,7 +400,7 @@ export const emailFields = [
 				],
 				operation: [
 					'sendTemplate',
-				]
+				],
 			},
 		},
 		placeholder: 'Add Variable',
@@ -422,7 +422,7 @@ export const emailFields = [
 						type: 'string',
 						default: '',
 					},
-				]
+				],
 			},
 		],
 	},

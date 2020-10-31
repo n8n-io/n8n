@@ -42,7 +42,7 @@ export async function vonageApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
 			throw new Error(
-				`Vonage error response [${error.statusCode}]: ${errors.join('|')}`
+				`Vonage error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;
