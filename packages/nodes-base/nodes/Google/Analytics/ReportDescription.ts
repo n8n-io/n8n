@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const reportsOperations = [
+export const reportOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -10,23 +10,23 @@ export const reportsOperations = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 			},
 		},
 		options: [
 			{
-				name: 'Get',
-				value: 'batchGet',
-				description: 'Returns the Analytics data',
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Return the analytics data',
 			},
 		],
-		default: 'batchGet',
+		default: 'getAll',
 		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
 
-export const reportsFields = [
+export const reportFields = [
 	{
 		displayName: 'View ID',
 		name: 'viewId',
@@ -36,15 +36,56 @@ export const reportsFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
-					'batchGet',
+					'getAll',
 				]
 			},
 		},
 		placeholder: '123456',
 		description: 'The View ID of Google Analytics',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'report',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'getAll',
+				],
+				resource: [
+					'report',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -55,10 +96,10 @@ export const reportsFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'reports',
+					'report',
 				],
 				operation: [
-					'batchGet',
+					'getAll',
 				]
 			},
 		},
@@ -166,13 +207,6 @@ export const reportsFields = [
 						]
 					}
 				]
-			},
-			{
-				displayName: 'Page Size',
-				name: 'pageSize',
-				type: 'number',
-				default: 50,
-				description: 'Page size is for paging and specifies the maximum number of returned rows.',
 			},
 			{
 				displayName: 'Use Resource Quotas',

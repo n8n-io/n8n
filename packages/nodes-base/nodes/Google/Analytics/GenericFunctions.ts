@@ -9,9 +9,7 @@ import {
 } from 'n8n-core';
 
 import {
-	IBinaryKeyData,
 	IDataObject,
-	INodeExecutionData,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
@@ -59,4 +57,30 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 		throw error;
 	}
+}
+
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	body.pageSize = 100;
+
+	do {
+		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
+		if (body.reportRequests && Array.isArray(body.reportRequests)) {
+			body.reportRequests[0].pageToken = responseData['nextPageToken'];
+		} else {
+			body.pageToken = responseData['nextPageToken'];
+		}
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		(responseData['nextPageToken'] !== undefined &&
+		responseData['nextPageToken'] !== '') ||
+		(responseData['reports'] &&
+		responseData['reports'][0].nextPageToken &&
+		responseData['reports'][0].nextPageToken !== undefined)
+	);
+
+	return returnData;
 }

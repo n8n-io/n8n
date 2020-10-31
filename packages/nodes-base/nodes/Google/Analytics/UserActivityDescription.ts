@@ -18,7 +18,7 @@ export const userActivityOperations = [
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Returns User Activity data.',
+				description: 'Return user activity data.',
 			},
 		],
 		default: 'search',
@@ -40,7 +40,7 @@ export const userActivityFields = [
 				],
 				operation: [
 					'search',
-				]
+				],
 			},
 		},
 		placeholder: '123456',
@@ -59,11 +59,52 @@ export const userActivityFields = [
 				],
 				operation: [
 					'search',
-				]
+				],
 			},
 		},
 		placeholder: '123456',
 		description: 'User ID of a user',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'userActivity',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'userActivity',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -89,35 +130,28 @@ export const userActivityFields = [
 				options: [
 					{
 						name:'Ecommerce',
-						value:'ECOMMERCE'
+						value:'ECOMMERCE',
 					},
 					{
 						name:'Event',
-						value:'EVENT'
+						value:'EVENT',
 					},
 					{
 						name:'Goal',
-						value:'GOAL'
+						value:'GOAL',
 					},
 					{
 						name:'Pageview',
-						value:'PAGEVIEW'
+						value:'PAGEVIEW',
 					},
 					{
 						name:'Screenview',
-						value:'SCREENVIEW'
+						value:'SCREENVIEW',
 					},
 				],
-				description:'Type of activites requested',
-				default:'',
+				description: 'Type of activites requested',
+				default: [],
 			},
-			{
-				displayName: 'Page Size',
-				name: 'pageSize',
-				type:'number',
-				default:1000,
-				description: 'Specifies the maximum number of returned rows'
-			}
-		]
-	}
+		],
+	},
 ] as INodeProperties[];

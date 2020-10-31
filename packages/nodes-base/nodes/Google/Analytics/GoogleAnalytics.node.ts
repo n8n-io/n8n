@@ -1,14 +1,30 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { 
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
+import { 
+	reportFields,
+	reportOperations,
+} from './reportDescription';
+
+import { 
+	userActivityFields,
+	userActivityOperations,
+} from './userActivityDescription';
+
+import { 
+	googleApiRequest,
+	googleApiRequestAllItems,
+} from './GenericFunctions';
+
 import * as moment from 'moment-timezone';
-import { reportsOperations, reportsFields } from './reportsDescription';
-import { userActivityOperations, userActivityFields } from './userActivityDescription';
-import { googleApiRequest } from './GenericFunctions';
 
 export class GoogleAnalytics implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,6 +33,7 @@ export class GoogleAnalytics implements INodeType {
 		icon: 'file:analytics.svg',
 		group: ['transform'],
 		version: 1,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Use the Google Analytics API',
 		defaults: {
 			name: 'Google Analytics',
@@ -37,28 +54,28 @@ export class GoogleAnalytics implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'Reports',
-						value: 'reports'
+						name: 'Report',
+						value: 'report',
 					},
 					{
 						name: 'User Activity',
-						value: 'userActivity'
-					}
+						value: 'userActivity',
+					},
 				],
-				default:'reports'
+				default:'report',
 			},
 			//-------------------------------
 			// Reports Operations
 			//-------------------------------
-			...reportsOperations,
-			...reportsFields,
+			...reportOperations,
+			...reportFields,
 
 			//-------------------------------
 			// User Activity Operations
 			//-------------------------------
 			...userActivityOperations,
-			...userActivityFields
-		]
+			...userActivityFields,
+		],
 	};
 
 
@@ -70,25 +87,23 @@ export class GoogleAnalytics implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let method = '';
-		let body: IDataObject = {};
-		let qs: IDataObject = {};
+		const qs: IDataObject = {};
 		let endpoint = '';
 		let responseData;
 		for (let i = 0; i < items.length; i++) {
 			if(resource === 'reports') {
-				if(operation === 'batchGet') {
+				if(operation === 'getAll') {
 					//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 					method = 'POST';
 					endpoint = '/v4/reports:batchGet';
-					const viewId = this.getNodeParameter('viewId', i);
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const viewId = this.getNodeParameter('viewId', i) as string;
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
-						i
+						i,
 					) as IDataObject;
-					body = {
-						"reportRequests":{
-							viewId
-						}
+					const body: IDataObject = {
+							viewId,
 					};
 					if(additionalFields.useResourceQuotas){
 						qs.useResourceQuotas = additionalFields.useResourceQuotas;
@@ -99,17 +114,17 @@ export class GoogleAnalytics implements INodeType {
 							const start = dateValues.startDate as string;
 							const end = dateValues.endDate as string;
 							Object.assign(
-								body.reportRequests, 
+								body, 
 								{
 									dateRanges:
 									[
 										{
 											startDate: moment(start).utc().format('YYYY-MM-DD'),
-											endDate: moment(end).utc().format('YYYY-MM-DD')
-										}
-									]
-								}
-							)
+											endDate: moment(end).utc().format('YYYY-MM-DD'),
+										},
+									],
+								},
+							);
 						}
 					}
 					if(additionalFields.metrics){
@@ -117,30 +132,33 @@ export class GoogleAnalytics implements INodeType {
 						const formattingType = (additionalFields.metrics as IDataObject).formattingType as string;
 						let metricsValues: IDataObject[] = [];
 						if(expression){
-							metricsValues = [{...metricsValues[0], expression:expression}]
+							metricsValues = [ { ...metricsValues[0], expression } ];
 						}
 						if(formattingType){
-							metricsValues = [{...metricsValues[0], formattingType:formattingType}]
+							metricsValues = [ { ...metricsValues[0], formattingType }];
 						}
-						Object.assign(body.reportRequests,{metrics: metricsValues})
+						Object.assign(body, { metrics: metricsValues });
 					}
 					if(additionalFields.dimensionName){
-						Object.assign(body.reportRequests,{dimensions:[{name:additionalFields.dimensionName}]});
-					}
-					if(additionalFields.pageSize){
-						Object.assign(body.reportRequests,{pageSize: additionalFields.pageSize});
+						Object.assign(body, {dimensions:[{name:additionalFields.dimensionName}]});
 					}
 					if(additionalFields.includeEmptyRows){
-						Object.assign(body.reportRequests,{includeEmptyRows: additionalFields.includeEmptyRows});
+						Object.assign(body, {includeEmptyRows: additionalFields.includeEmptyRows});
 					}
 					if(additionalFields.hideTotals){
-						Object.assign(body.reportRequests,{hideTotals: additionalFields.hideTotals});
+						Object.assign(body, {hideTotals: additionalFields.hideTotals});
 					}
 					if(additionalFields.hideValueRanges){
-						body.reportRequests = {...(body.reportRequests as IDataObject), hideValueRanges: additionalFields.hideValueRanges}
+						Object.assign(body, {hideTotals: additionalFields.hideTotals});
 					}
-					responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-					responseData = responseData.reports;
+
+					if (returnAll === true) {
+						responseData = await googleApiRequestAllItems.call(this, 'reports', method, endpoint, { reportRequests: [body] }, qs);
+					} else {
+						body.pageSize = this.getNodeParameter('limit', 0) as number;
+						responseData = await googleApiRequest.call(this, method, endpoint,  { reportRequests: [body] }, qs);
+						responseData = responseData.reports;
+					}
 				}
 			}
 			if(resource === 'userActivity') {
@@ -150,33 +168,36 @@ export class GoogleAnalytics implements INodeType {
 					endpoint = '/v4/userActivity:search';
 					const viewId = this.getNodeParameter('viewId', i);
 					const userId = this.getNodeParameter('userId', i);
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
-						i
+						i,
 					) as IDataObject;
-					body = {
+					const body: IDataObject = {
 						viewId,
 						user: {
-							userId
-						}
+							userId,
+						},
 					};
 					if(additionalFields.activityTypes){
-						Object.assign(body,{activityTypes:additionalFields.activityTypes})
+						Object.assign(body,{activityTypes:additionalFields.activityTypes});
 					}
-					if(additionalFields.pageSize) {
-						Object.assign(body,{pageSize:additionalFields.pageSize})
+
+					if (returnAll) {
+						responseData = await googleApiRequestAllItems.call(this, 'sessions', method, endpoint, body);
+					} else {
+						body.pageSize = this.getNodeParameter('limit', 0) as number;
+						responseData = await googleApiRequest.call(this, method, endpoint, body);
+						responseData = responseData.sessions;
 					}
-					responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
-					responseData = responseData.reports;
 				}
 			}
-		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else if (responseData !== undefined) {
+				returnData.push(responseData as IDataObject);
+			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
-
 	}
 }
