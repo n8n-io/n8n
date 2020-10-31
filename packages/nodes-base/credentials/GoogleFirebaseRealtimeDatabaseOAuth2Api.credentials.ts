@@ -6,6 +6,7 @@ import {
 const scopes = [
 	'https://www.googleapis.com/auth/userinfo.email',
 	'https://www.googleapis.com/auth/firebase.database',
+	'https://www.googleapis.com/auth/firebase',
 ];
 
 export class GoogleFirebaseRealtimeDatabaseOAuth2Api implements ICredentialType {

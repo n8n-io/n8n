@@ -13,6 +13,7 @@ import {
 
 import {
 	googleApiRequest,
+	googleApiRequestAllItems,
 } from './GenericFunctions';
 
 export class RealtimeDatabase implements INodeType {
@@ -22,7 +23,7 @@ export class RealtimeDatabase implements INodeType {
 		icon: 'file:googleFirebaseRealtimeDatabase.png',
 		group: ['input'],
 		version: 1,
-		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
+		subtitle: '={{$parameter["operation"]}}',
 		description: 'Interact with Google Firebase - Realtime Database API',
 		defaults: {
 			name: 'Google Cloud Realtime Database',
@@ -39,8 +40,11 @@ export class RealtimeDatabase implements INodeType {
 			{
 				displayName: 'Project ID',
 				name: 'projectId',
-				type: 'string',
+				type: 'options',
 				default: '',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
 				description: 'As displayed in firebase console URL',
 				required: true,
 			},
@@ -52,39 +56,44 @@ export class RealtimeDatabase implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
+						description: 'Write data to a database',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
+						description: 'Delete data from a database',
 					},
 					{
 						name: 'Get',
 						value: 'get',
+						description: 'Get a record from a database',
 					},
 					{
 						name: 'Push',
 						value: 'push',
+						description: 'Append to a list of data',
 					},
 					{
 						name: 'Update',
 						value: 'update',
+						description: 'Update item on a database',
 					},
 				],
-				default: 'get',
+				default: 'create',
 				description: 'The operation to perform.',
 				required: true,
 			},
 			{
-				displayName: "Update Key",
-				name: "updateKey",
-				type: "string",
-				default: "",
-				placeholder: "/app/users",
-				description: "Object path on database. With leading slash. Do not append .json.",
+				displayName: 'Object Path',
+				name: 'path',
+				type: 'string',
+				default: '',
+				placeholder: '/app/users',
+				description: 'Object path on database. With leading slash. Do not append .json.',
 				required: true,
 			},
 			{
-				displayName: 'Attributes / columns',
+				displayName: 'Columns / Attributes',
 				name: 'attributes',
 				type: 'string',
 				default: '',
@@ -104,15 +113,36 @@ export class RealtimeDatabase implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			async getProjects(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const projects = await googleApiRequestAllItems.call(
+					this,
+					'projects',
+					'GET',
+					'results',
+					{},
+					{},
+					{},
+					'https://firebase.googleapis.com/v1beta1/projects',
+				);
+				const returnData = projects.map((o: IDataObject) => ({ name: o.projectId, value: o.projectId })) as INodePropertyOptions[];
+				return returnData;
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
 		let responseData: INodeExecutionData;
-
+		const operation = this.getNodeParameter('operation', 0) as string;
+		//https://firebase.google.com/docs/reference/rest/database
 		for (let i = 0; i < length; i++) {
-			const operation = this.getNodeParameter('operation', i) as string;
 			const projectId = this.getNodeParameter('projectId', i) as string;
 			let method = 'GET', attributes = '';
 			const document: IDataObject = {};
@@ -144,14 +174,14 @@ export class RealtimeDatabase implements INodeType {
 				this,
 				projectId,
 				method,
-				this.getNodeParameter('updateKey', i) as string,
+				this.getNodeParameter('path', i) as string,
 				document,
 			);
 
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else if (typeof responseData === 'string') {
-				returnData.push({[this.getNodeParameter('updateKey', i) as string]: responseData} as IDataObject);
+				returnData.push({[this.getNodeParameter('path', i) as string]: responseData} as IDataObject);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}
