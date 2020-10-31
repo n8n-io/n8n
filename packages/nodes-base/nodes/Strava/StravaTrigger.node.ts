@@ -25,7 +25,7 @@ export class StravaTrigger implements INodeType {
 		icon: 'file:strava.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a Github events occurs.',
+		description: 'Starts the workflow when a Strava events occurs.',
 		defaults: {
 			name: 'Strava Trigger',
 			color: '#ea5929',
