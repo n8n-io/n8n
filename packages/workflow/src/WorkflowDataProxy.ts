@@ -63,7 +63,7 @@ export class WorkflowDataProxy {
 				}
 
 				return contextData[name];
-			}
+			},
 		});
 	}
 
@@ -101,7 +101,7 @@ export class WorkflowDataProxy {
 				}
 
 				return returnValue;
-			}
+			},
 		});
 	}
 
@@ -252,7 +252,7 @@ export class WorkflowDataProxy {
 				}
 
 				return Reflect.get(target, name, receiver);
-			}
+			},
 		});
 	}
 
@@ -269,7 +269,7 @@ export class WorkflowDataProxy {
 		return new Proxy({}, {
 			get(target, name, receiver) {
 				return process.env[name.toString()];
-			}
+			},
 		});
 	}
 
@@ -298,7 +298,7 @@ export class WorkflowDataProxy {
 
 				// @ts-ignore
 				return that.workflow[name.toString()];
-			}
+			},
 		});
 	}
 
@@ -316,7 +316,7 @@ export class WorkflowDataProxy {
 		return new Proxy({}, {
 			get(target, name, receiver) {
 				return that.nodeDataGetter(name.toString());
-			}
+			},
 		});
 	}
 
@@ -375,7 +375,7 @@ export class WorkflowDataProxy {
 				}
 
 				return Reflect.get(target, name, receiver);
-			}
+			},
 		});
 	}
 }

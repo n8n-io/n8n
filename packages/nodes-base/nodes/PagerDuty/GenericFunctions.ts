@@ -23,7 +23,7 @@ export async function pagerDutyApiRequest(this: IExecuteFunctions | IWebhookFunc
 
 	const options: OptionsWithUri = {
 		headers: {
-			Accept: 'application/vnd.pagerduty+json;version=2'
+			Accept: 'application/vnd.pagerduty+json;version=2',
 		},
 		method,
 		body,

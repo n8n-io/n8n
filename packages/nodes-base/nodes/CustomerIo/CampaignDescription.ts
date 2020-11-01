@@ -48,7 +48,7 @@ export const campaignFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier for the campaign',
@@ -69,7 +69,7 @@ export const campaignFields = [
 				],
 				operation: [
 					'getMetrics',
-				]
+				],
 			},
 		},
 		description: 'The unique identifier for the campaign',
@@ -86,7 +86,7 @@ export const campaignFields = [
 				],
 				operation: [
 					'getMetrics',
-				]
+				],
 			},
 		},
 		description: 'Specify metric period',
@@ -107,7 +107,7 @@ export const campaignFields = [
 				name: 'Months',
 				value: 'months',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -138,7 +138,7 @@ export const campaignFields = [
 					'campaign',
 				],
 				operation: [
-					'getMetrics'
+					'getMetrics',
 				],
 				jsonParameters: [
 					false,
@@ -155,7 +155,7 @@ export const campaignFields = [
 				typeOptions: {
 					minValue: 0,
 					maxValue: 120,
-				}
+				},
 			},
 			{
 				displayName: 'Type',
@@ -192,7 +192,7 @@ export const campaignFields = [
 						name: 'Webhook',
 						value: 'webhook',
 					},
-				]
+				],
 			},
 		],
 	},

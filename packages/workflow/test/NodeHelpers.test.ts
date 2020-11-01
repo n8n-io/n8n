@@ -1,8 +1,8 @@
 
 import {
-	NodeHelpers,
 	INodeParameters,
 	INodeProperties,
+	NodeHelpers,
 } from '../src';
 
 describe('Workflow', () => {
@@ -178,7 +178,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -230,7 +230,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									hide: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -278,7 +278,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -327,7 +327,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										mode: [
-											'mode1'
+											'mode1',
 										],
 									},
 								},
@@ -373,7 +373,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										string1: [
-											'default string1'
+											'default string1',
 										],
 									},
 								},
@@ -386,7 +386,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -437,7 +437,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										string1: [
-											'default string1'
+											'default string1',
 										],
 									},
 								},
@@ -450,7 +450,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										boolean1: [
-											true
+											true,
 										],
 									},
 								},
@@ -498,7 +498,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										mode: [
-											'mode1'
+											'mode1',
 										],
 									},
 								},
@@ -546,7 +546,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										mode: [
-											'mode2'
+											'mode2',
 										],
 									},
 								},
@@ -591,7 +591,7 @@ describe('Workflow', () => {
 								displayOptions: {
 									show: {
 										mode: [
-											'mode2'
+											'mode2',
 										],
 									},
 								},
@@ -711,7 +711,7 @@ describe('Workflow', () => {
 								values: {
 									number: [
 										{
-											number1: 1
+											number1: 1,
 										},
 									],
 								},
@@ -794,7 +794,7 @@ describe('Workflow', () => {
 							values: {
 								number: {
 									number1: 1,
-								}
+								},
 							},
 						},
 					},
@@ -902,8 +902,8 @@ describe('Workflow', () => {
 									number1: 1,
 								},
 								singleString: {
-									string1: 'value1'
-								}
+									string1: 'value1',
+								},
 							},
 						},
 					},
@@ -915,7 +915,7 @@ describe('Workflow', () => {
 										number1: 1,
 									},
 									singleString: {
-										string1: 'value1'
+										string1: 'value1',
 									},
 								},
 							},
@@ -926,7 +926,7 @@ describe('Workflow', () => {
 										number1: 1,
 									},
 									singleString: {
-										string1: 'value1'
+										string1: 'value1',
 									},
 								},
 							},
@@ -938,7 +938,7 @@ describe('Workflow', () => {
 										number1: 1,
 									},
 									singleString: {
-										string1: 'value1'
+										string1: 'value1',
 									},
 								},
 							},
@@ -949,7 +949,7 @@ describe('Workflow', () => {
 										number1: 1,
 									},
 									singleString: {
-										string1: 'value1'
+										string1: 'value1',
 									},
 								},
 							},
@@ -1040,8 +1040,8 @@ describe('Workflow', () => {
 										number1: 1,
 										collection1: [
 											{
-												string1: 'value1'
-											}
+												string1: 'value1',
+											},
 										],
 									},
 								],
@@ -1057,8 +1057,8 @@ describe('Workflow', () => {
 											number1: 1,
 											collection1: [
 												{
-													string1: 'value1'
-												}
+													string1: 'value1',
+												},
 											],
 										},
 									],
@@ -1072,8 +1072,8 @@ describe('Workflow', () => {
 											number1: 1,
 											collection1: [
 												{
-													string1: 'value1'
-												}
+													string1: 'value1',
+												},
 											],
 										},
 									],
@@ -1088,8 +1088,8 @@ describe('Workflow', () => {
 											number1: 1,
 											collection1: [
 												{
-													string1: 'value1'
-												}
+													string1: 'value1',
+												},
 											],
 										},
 									],
@@ -1103,8 +1103,8 @@ describe('Workflow', () => {
 											number1: 1,
 											collection1: [
 												{
-													string1: 'value1'
-												}
+													string1: 'value1',
+												},
 											],
 										},
 									],
@@ -1140,7 +1140,7 @@ describe('Workflow', () => {
 												displayOptions: {
 													show: {
 														mode: [
-															'mode1'
+															'mode1',
 														],
 													},
 												},
@@ -1231,7 +1231,7 @@ describe('Workflow', () => {
 												displayOptions: {
 													show: {
 														'/mode': [
-															'mode1'
+															'mode1',
 														],
 													},
 												},
@@ -1322,7 +1322,7 @@ describe('Workflow', () => {
 												displayOptions: {
 													show: {
 														'/mode': [
-															'mode2'
+															'mode2',
 														],
 													},
 												},
@@ -1405,7 +1405,7 @@ describe('Workflow', () => {
 										displayOptions: {
 											show: {
 												'/mode': [
-													'mode1'
+													'mode1',
 												],
 											},
 										},
@@ -1481,7 +1481,7 @@ describe('Workflow', () => {
 										displayOptions: {
 											show: {
 												'/mode': [
-													'mode2'
+													'mode2',
 												],
 											},
 										},
@@ -1558,7 +1558,7 @@ describe('Workflow', () => {
 										displayOptions: {
 											show: {
 												'/mode': [
-													'mode1'
+													'mode1',
 												],
 											},
 										},
@@ -1577,7 +1577,7 @@ describe('Workflow', () => {
 							values: [
 								{
 									string1: 'own string1',
-								}
+								},
 							],
 						},
 					},
@@ -1587,7 +1587,7 @@ describe('Workflow', () => {
 								values: [
 									{
 										string1: 'own string1',
-									}
+									},
 								],
 							},
 							defaultsTrue: {
@@ -1595,7 +1595,7 @@ describe('Workflow', () => {
 								values: [
 									{
 										string1: 'own string1',
-									}
+									},
 								],
 							},
 						},
@@ -1604,7 +1604,7 @@ describe('Workflow', () => {
 								values: [
 									{
 										string1: 'own string1',
-									}
+									},
 								],
 							},
 							defaultsTrue: {
@@ -1612,7 +1612,7 @@ describe('Workflow', () => {
 								values: [
 									{
 										string1: 'own string1',
-									}
+									},
 								],
 							},
 						},
@@ -1648,7 +1648,7 @@ describe('Workflow', () => {
 										displayOptions: {
 											show: {
 												'/mode': [
-													'mode2'
+													'mode2',
 												],
 											},
 										},
@@ -1668,7 +1668,7 @@ describe('Workflow', () => {
 								{
 									string1: 'own string1',
 									number1: 0,
-								}
+								},
 							],
 						},
 					},
@@ -1740,7 +1740,7 @@ describe('Workflow', () => {
 												displayOptions: {
 													show: {
 														mode: [
-															'mode1'
+															'mode1',
 														],
 													},
 												},
@@ -1838,8 +1838,8 @@ describe('Workflow', () => {
 						nodeValues: {
 							collection1: [
 								{
-									string1: 'value1'
-								}
+									string1: 'value1',
+								},
 							],
 						},
 					},
@@ -1848,15 +1848,15 @@ describe('Workflow', () => {
 							defaultsFalse: {
 								collection1: [
 									{
-										string1: 'value1'
-									}
+										string1: 'value1',
+									},
 								],
 							},
 							defaultsTrue: {
 								collection1: [
 									{
-										string1: 'value1'
-									}
+										string1: 'value1',
+									},
 								],
 							},
 						},
@@ -1864,15 +1864,15 @@ describe('Workflow', () => {
 							defaultsFalse: {
 								collection1: [
 									{
-										string1: 'value1'
-									}
+										string1: 'value1',
+									},
 								],
 							},
 							defaultsTrue: {
 								collection1: [
 									{
-										string1: 'value1'
-									}
+										string1: 'value1',
+									},
 								],
 							},
 						},
@@ -1912,8 +1912,8 @@ describe('Workflow', () => {
 						nodeValues: {
 							collection1: [
 								{
-									string1: 'default string1'
-								}
+									string1: 'default string1',
+								},
 							],
 						},
 					},
@@ -1923,14 +1923,14 @@ describe('Workflow', () => {
 								collection1: [
 									{
 										string1: 'default string1',
-									}
+									},
 								],
 							},
 							defaultsTrue: {
 								collection1: [
 									{
 										string1: 'default string1',
-									}
+									},
 								],
 							},
 						},
@@ -1939,14 +1939,14 @@ describe('Workflow', () => {
 								collection1: [
 									{
 										string1: 'default string1',
-									}
+									},
 								],
 							},
 							defaultsTrue: {
 								collection1: [
 									{
 										string1: 'default string1',
-									}
+									},
 								],
 							},
 						},
@@ -2650,7 +2650,7 @@ describe('Workflow', () => {
 							},
 						],
 						nodeValues: {
-							mainOption: 'option2'
+							mainOption: 'option2',
 						},
 					},
 					output: {

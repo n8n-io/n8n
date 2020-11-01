@@ -159,7 +159,7 @@ export const issueOperationFields = [
 					loadOptionsDependsOn: [
 						'projectSlug',
 					],
-					loadOptionsMethod: 'getTypes'
+					loadOptionsMethod: 'getTypes',
 				},
 				default: '',
 			},
@@ -306,7 +306,7 @@ export const issueOperationFields = [
 					loadOptionsDependsOn: [
 						'projectSlug',
 					],
-					loadOptionsMethod: 'getTypes'
+					loadOptionsMethod: 'getTypes',
 				},
 				default: '',
 			},

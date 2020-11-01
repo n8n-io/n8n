@@ -32,7 +32,7 @@ export async function matrixApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {
-			'Content-Type': 'application/json; charset=utf-8'
+			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
 		qs: query,
@@ -110,7 +110,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const userId = this.getNodeParameter('userId', index) as string;
 			const body: IDataObject = {
-				user_id: userId
+				user_id: userId,
 			};
 			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/invite`, body);
 		} else if (operation === 'kick') {

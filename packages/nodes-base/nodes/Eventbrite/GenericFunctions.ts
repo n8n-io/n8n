@@ -21,7 +21,7 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
 		qs,
 		body,
 		uri: uri ||`https://www.eventbriteapi.com/v3${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {
