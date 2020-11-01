@@ -1,12 +1,10 @@
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
-	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -15,20 +13,24 @@ import {
 } from 'n8n-workflow';
 
 import {
+	directMessageFields,
+	directMessageOperations,
+} from './DirectMessageDescription';
+
+import {
 	tweetFields,
 	tweetOperations,
 } from './TweetDescription';
 
 import {
-	chunks,
 	twitterApiRequest,
 	twitterApiRequestAllItems,
+	uploadAttachments,
 } from './GenericFunctions';
 
 import {
 	ITweet,
 } from './TweetInterface';
-import { isDate } from 'util';
 
 const ISO6391 = require('iso-639-1');
 
@@ -60,6 +62,10 @@ export class Twitter implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Direct Message',
+						value: 'directMessage',
+					},
+					{
 						name: 'Tweet',
 						value: 'tweet',
 					},
@@ -67,6 +73,9 @@ export class Twitter implements INodeType {
 				default: 'tweet',
 				description: 'The resource to operate on.',
 			},
+			// DIRECT MESSAGE
+			...directMessageOperations,
+			...directMessageFields,
 			// TWEET
 			...tweetOperations,
 			...tweetFields,
@@ -101,6 +110,45 @@ export class Twitter implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			if (resource === 'directMessage') {
+				//https://developer.twitter.com/en/docs/twitter-api/v1/direct-messages/sending-and-receiving/api-reference/new-event
+				if (operation === 'create') {
+					const userId = this.getNodeParameter('userId', i) as string;
+					const text = this.getNodeParameter('text', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						type: 'message_create',
+						message_create: {
+							target: {
+								recipient_id: userId,
+							},
+							message_data: {
+								text,
+								attachment: {},
+							},
+						},
+					};
+
+					if (additionalFields.attachment) {
+						const attachment = additionalFields.attachment as string;
+
+						const attachmentProperties: string[] = attachment.split(',').map((propertyName) => {
+							return propertyName.trim();
+						});
+
+						const medias = await uploadAttachments.call(this, attachmentProperties, items, i);
+						//@ts-ignore
+						body.message_create.message_data.attachment = { type: 'media', media: { id: medias[0].media_id_string } };
+					} else {
+						//@ts-ignore
+						delete body.message_create.message_data.attachment;
+					}
+
+					responseData = await twitterApiRequest.call(this, 'POST', '/direct_messages/events/new.json', { event: body });
+
+					responseData = responseData.event;
+				}
+			}
 			if (resource === 'tweet') {
 				// https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
 				if (operation === 'create') {
@@ -109,129 +157,43 @@ export class Twitter implements INodeType {
 					const body: ITweet = {
 						status: text,
 					};
-
+					
 					if (additionalFields.inReplyToStatusId) {
 						body.in_reply_to_status_id = additionalFields.inReplyToStatusId as string;
 						body.auto_populate_reply_metadata = true;
 					}
 
 					if (additionalFields.attachments) {
-						const mediaIds = [];
+
 						const attachments = additionalFields.attachments as string;
-						const uploadUri = 'https://upload.twitter.com/1.1/media/upload.json';
 
 						const attachmentProperties: string[] = attachments.split(',').map((propertyName) => {
 							return propertyName.trim();
 						});
 
-						for (const binaryPropertyName of attachmentProperties) {
-
-							const binaryData = items[i].binary as IBinaryKeyData;
-
-							if (binaryData === undefined) {
-								throw new Error('No binary data set. So file can not be written!');
-							}
-
-							if (!binaryData[binaryPropertyName]) {
-								continue;
-							}
-
-							let attachmentBody = {};
-							let response: IDataObject = {};
-
-							const isAnimatedWebp = (Buffer.from(binaryData[binaryPropertyName].data, 'base64').toString().indexOf('ANMF') !== -1);
-
-							const isImage = binaryData[binaryPropertyName].mimeType.includes('image');
-
-							if (isImage && isAnimatedWebp) {
-								throw new Error('Animated .webp images are not supported use .gif instead');
-							}
-
-							if (isImage) {
-
-								const attachmentBody = {
-									media_data: binaryData[binaryPropertyName].data,
-								};
-
-								response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
-
-							} else {
-
-								// https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init
-
-								attachmentBody = {
-									command: 'INIT',
-									total_bytes: Buffer.from(binaryData[binaryPropertyName].data, BINARY_ENCODING).byteLength,
-									media_type: binaryData[binaryPropertyName].mimeType,
-								};
-
-								response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
-
-								const mediaId = response.media_id_string;
-
-								// break the data on 5mb chunks (max size that can be uploaded at once)
-
-								const binaryParts = chunks(Buffer.from(binaryData[binaryPropertyName].data, BINARY_ENCODING), 5242880);
-
-								let index = 0;
-
-								for (const binaryPart of binaryParts) {
-
-									//https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-append
-
-									attachmentBody = {
-										name: binaryData[binaryPropertyName].fileName,
-										command: 'APPEND',
-										media_id: mediaId,
-										media_data: Buffer.from(binaryPart).toString('base64'),
-										segment_index: index,
-									};
-
-									response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
-
-									index++;
-								}
-
-								//https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-finalize
-
-								attachmentBody = {
-									command: 'FINALIZE',
-									media_id: mediaId,
-								};
-
-								response = await twitterApiRequest.call(this, 'POST', '', attachmentBody, {}, uploadUri);
-
-								// data has not been uploaded yet, so wait for it to be ready
-								if (response.processing_info) {
-									const { check_after_secs } = (response.processing_info as IDataObject);
-									await new Promise((resolve, reject) => {
-										setTimeout(() => {
-											resolve();
-										}, (check_after_secs as number) * 1000);
-									});
-								}
-							}
-
-							mediaIds.push(response.media_id_string);
-						}
-
-						body.media_ids = mediaIds.join(',');
+						const medias = await uploadAttachments.call(this, attachmentProperties, items, i);
+						
+						body.media_ids = (medias as IDataObject[]).map((media: IDataObject) => media.media_id_string).join(',');
 					}
 
 					if (additionalFields.possiblySensitive) {
-						body.possibly_sensitive = additionalFields.possibly_sensitive as boolean;
+						body.possibly_sensitive = additionalFields.possiblySensitive as boolean;
+					}
+
+					if (additionalFields.displayCoordinates) {
+						body.display_coordinates = additionalFields.displayCoordinates as boolean;
 					}
 
 					if (additionalFields.locationFieldsUi) {
 						const locationUi = additionalFields.locationFieldsUi as IDataObject;
 						if (locationUi.locationFieldsValues) {
 							const values = locationUi.locationFieldsValues as IDataObject;
-							body.lat = parseFloat(values.lalatitude as string);
-							body.long = parseFloat(values.lalatitude as string);
+							body.lat = parseFloat(values.latitude as string);
+							body.long = parseFloat(values.longitude as string);
 						}
 					}
 
-					responseData = await twitterApiRequest.call(this, 'POST', '/statuses/update.json', body);
+					responseData = await twitterApiRequest.call(this, 'POST', '/statuses/update.json', {}, body as unknown as IDataObject);
 				}
 				// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
 				if (operation === 'search') {
