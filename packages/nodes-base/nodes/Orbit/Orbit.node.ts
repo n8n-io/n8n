@@ -16,6 +16,26 @@ import {
 	orbitApiRequestAllItems,
 } from './GenericFunctions';
 
+import {
+	activityFields,
+	activityOperations,
+} from './ActivityDescription';
+
+import {
+	memberFields,
+	memberOperations,
+} from './MemberDescription';
+
+import {
+	noteFields,
+	noteOperations,
+} from './NoteDescription';
+
+import {
+	postFields,
+	postOperations,
+} from './PostDescription';
+
 export class Orbit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Orbit',
@@ -63,257 +83,18 @@ export class Orbit implements INodeType {
 				default: 'member',
 				description: 'Resource to consume.',
 			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'activity',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Create',
-						value: 'create',
-						description: 'Create an activity for a member',
-					},
-					{
-						name: 'Get',
-						value: 'get',
-						description: 'Get activities for a member',
-					},
-				],
-				default: 'create',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'member',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Get',
-						value: 'get',
-						description: 'Get a member',
-					},
-				],
-				default: 'get',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'note',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Create',
-						value: 'create',
-						description: 'Create a note',
-					},
-					{
-						name: 'Get',
-						value: 'get',
-						description: 'Get notes for a member',
-					},
-					{
-						name: 'Update',
-						value: 'update',
-						description: 'Update a note',
-					},
-				],
-				default: 'create',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				displayOptions: {
-					show: {
-						resource: [
-							'post',
-						],
-					},
-				},
-				options: [
-					{
-						name: 'Create',
-						value: 'create',
-						description: 'Create a post',
-					},
-					{
-						name: 'Get',
-						value: 'get',
-						description: 'Get posts for a member',
-					},
-					{
-						name: 'Delete',
-						value: 'delete',
-						description: 'Delete a note',
-					},
-				],
-				default: 'create',
-				description: 'The operation to perform.',
-			},
-			{
-				displayName: 'Workspace',
-				name: 'workspaceId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getWorkspaces',
-				},
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-							'delete',
-							'get',
-							'update',
-						],
-						resource: [
-							'activity',
-							'member',
-							'note',
-							'post',
-						],
-					},
-				},
-				description: 'The workspace',
-			},
-			{
-				displayName: 'Member ID',
-				name: 'memberId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-							'delete',
-							'get',
-							'update',
-						],
-						resource: [
-							'activity',
-							'member',
-							'note',
-							'post',
-						],
-					},
-				},
-				description: 'Member ID',
-			},
-			{
-				displayName: 'Note ID',
-				name: 'noteId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'update',
-						],
-						resource: [
-							'note',
-						],
-					},
-				},
-				description: 'Note ID',
-			},
-			{
-				displayName: 'Post ID',
-				name: 'postId',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'delete',
-						],
-						resource: [
-							'post',
-						],
-					},
-				},
-				description: 'Post ID',
-			},
-			{
-				displayName: 'Note',
-				name: 'note',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-							'update',
-						],
-						resource: [
-							'note',
-						],
-					},
-				},
-				description: 'Note',
-			},
-			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'post',
-						],
-					},
-				},
-				description: 'Post',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'activity',
-						],
-					},
-				},
-				description: 'Title',
-			},
+			// ACTIVITY
+			...activityOperations,
+			...activityFields,
+			// MEMBER
+			...memberOperations,
+			...memberFields,
+			// NOTE
+			...noteOperations,
+			...noteFields,
+			// POST
+			...postOperations,
+			...postFields,
 		],
 	};
 
@@ -353,8 +134,33 @@ export class Orbit implements INodeType {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const memberId = this.getNodeParameter('memberId', i) as string;
 					const title = this.getNodeParameter('title', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						title: title,
+					};
+					if (additionalFields.description) {
+						body.description = additionalFields.description as string;
+					}
+					if (additionalFields.link) {
+						body.link = additionalFields.link as string;
+					}
+					if (additionalFields.linkText) {
+						body.link_text = additionalFields.linkText as string;
+					}
+					if (additionalFields.score) {
+						body.score = additionalFields.score as number;
+					}
+					if (additionalFields.activityType) {
+						body.activity_type = additionalFields.activityType as string;
+					}
+					if (additionalFields.key) {
+						body.key = additionalFields.key as string;
+					}
+					if (additionalFields.occurredAt) {
+						body.occurred_at = additionalFields.occurredAt as string;
+					}
 
-					responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/activities`, {title: title});
+					responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/activities`, body);
 				}
 				if (operation === 'get') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
@@ -362,12 +168,94 @@ export class Orbit implements INodeType {
 
 					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members/${memberId}/activities`);
 				}
+				if (operation === 'getAll') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/activities`);
+				}
 			}
 			if (resource === 'member') {
+				if (operation === 'delete') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+					const memberId = this.getNodeParameter('memberId', i) as string;
+					responseData = await orbitApiRequest.call(this, 'DELETE', `/${workspaceId}/members/${memberId}`);
+				}
 				if (operation === 'get') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const memberId = this.getNodeParameter('memberId', i) as string;
 					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members/${memberId}`);
+				}
+				if (operation === 'getAll') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members`);
+				}
+				if (operation === 'lookup') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+					const githubUsername = this.getNodeParameter('githubUsername', i) as string;
+					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/github_user/${githubUsername}`);
+				}
+				if (operation === 'update') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+					const memberId = this.getNodeParameter('memberId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+					};
+					if (additionalFields.bio) {
+						body.bio = additionalFields.bio as string;
+					}
+					if (additionalFields.birthday) {
+						// This isn't functioning at the moment
+						body.birthday = additionalFields.birthday as string;
+					}
+					if (additionalFields.company) {
+						body.company = additionalFields.company as string;
+					}
+					if (additionalFields.devTo) {
+						body.devto = additionalFields.devTo as string;
+					}
+					if (additionalFields.linkedin) {
+						body.linkedin = additionalFields.linkedin as string;
+					}
+					if (additionalFields.location) {
+						body.location = additionalFields.location as string;
+					}
+					if (additionalFields.name) {
+						body.name = additionalFields.name as string;
+					}
+					if (additionalFields.orbitLevel) {
+						// This isn't functioning at the moment
+						body.orbit_level = additionalFields.orbitLevel as number;
+					}
+					if (additionalFields.bio) {
+						body.bio = additionalFields.bio as string;
+					}
+					if (additionalFields.pronouns) {
+						body.pronouns = additionalFields.pronouns as string;
+					}
+					if (additionalFields.shippingAddress) {
+						body.shipping_address = additionalFields.shippingAddress as string;
+					}
+					if (additionalFields.slug) {
+						body.slug = additionalFields.slug as string;
+					}
+					if (additionalFields.tagsToAdd) {
+						body.tags_to_add = additionalFields.tagsToAdd as string;
+					}
+					if (additionalFields.tagList) {
+						body.tag_list = additionalFields.tagList as string;
+					}
+					if (additionalFields.tshirt) {
+						body.tshirt = additionalFields.tshirt as string;
+					}
+					if (additionalFields.teammate) {
+						// This is partially functioning at the moment
+						body.teammate = additionalFields.teammate as boolean;
+					}
+					if (additionalFields.url) {
+						body.url = additionalFields.url as string;
+					}
+
+					responseData = await orbitApiRequest.call(this, 'PUT', `/${workspaceId}/members/${memberId}`, body);
 				}
 			}
 			if (resource === 'note') {
@@ -398,14 +286,26 @@ export class Orbit implements INodeType {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const memberId = this.getNodeParameter('memberId', i) as string;
 					const url = this.getNodeParameter('url', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						url: url,
+					};
+					if (additionalFields.publishedAt) {
+						body.published_at = additionalFields.publishedAt as string;
+					}
 
-					responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/posts`, {url: url});
+					responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/posts`, body);
 				}
 				if (operation === 'get') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const memberId = this.getNodeParameter('memberId', i) as string;
 
 					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members/${memberId}/posts`);
+				}
+				if (operation === 'getAll') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+
+					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/posts`);
 				}
 				if (operation === 'delete') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
