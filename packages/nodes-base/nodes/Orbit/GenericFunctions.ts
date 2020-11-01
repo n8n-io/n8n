@@ -13,6 +13,10 @@ import {
 	IDataObject,
  } from 'n8n-workflow';
 
+import { 
+	IRelation,
+} from './Interfaces';
+
 export async function orbitApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	try{
 		const credentials = this.getCredentials('orbitApi');
@@ -20,20 +24,17 @@ export async function orbitApiRequest(this: IHookFunctions | IExecuteFunctions |
 			throw new Error('No credentials got returned!');
 		}
 		let options: OptionsWithUri = {
-			headers: {},
+			headers: {
+				Authorization: `Bearer ${credentials.accessToken}`,
+			},
 			method,
 			qs,
 			body,
-			uri: uri||`https://app.orbit.love/api/v1${resource}`,
-			json: true
+			uri: uri || `https://app.orbit.love/api/v1${resource}`,
+			json: true,
 		};
 
 		options = Object.assign({}, options, option);
-
-		if (Object.keys(options.body).length === 0) {
-			delete options.body;
-		}
-		options.headers = { Authorization: `Bearer ${credentials.accessToken}`};
 
 		return await this.helpers.request!(options);
 	} catch(error) {
@@ -59,17 +60,61 @@ export async function orbitApiRequestAllItems(this: IHookFunctions | IExecuteFun
 
 	let responseData;
 	let uri: string | undefined;
-	query.size = 50;
+	query.page = 1;
 
 	do {
 		responseData = await orbitApiRequest.call(this, method, resource, body, query, uri);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		if (responseData.pagination && responseData.pagination.next) {
-			uri = responseData.pagination.next;
+		
+		if (query.resolveIdentities === true) {
+			resolveIdentities(responseData);
 		}
+
+		if (query.resolveMember === true) {
+			resolveMember(responseData);
+		}
+
+		query.page++;
+		if (query.limit && (returnData.length >= query.limit)) {
+			return returnData;
+		}
+
 	} while (
-		responseData.pagination !== undefined &&
-		responseData.pagination.next !== undefined
+		responseData.data.length !== 0
 	);
 	return returnData;
+}
+
+export function resolveIdentities(responseData: IRelation) {
+	const identities: IDataObject = {};
+	for (const data of responseData.included) {
+		identities[data.id as string] = data;
+	}
+
+	if (!Array.isArray(responseData.data)) {
+		responseData.data = [responseData.data];
+	}
+
+	for (let i = 0; i < responseData.data.length; i++) {
+		for (let y = 0; y < responseData.data[i].relationships.identities.data.length; y++) {
+			//@ts-ignore
+			responseData.data[i].relationships.identities.data[y] = identities[responseData.data[i].relationships.identities.data[y].id];
+		}
+	}
+}
+
+export function resolveMember(responseData: IRelation) {
+	const members: IDataObject = {};
+	for (const data of responseData.included) {
+		members[data.id as string] = data;
+	}
+
+	if (!Array.isArray(responseData.data)) {
+		responseData.data = [responseData.data];
+	}
+
+	for (let i = 0; i < responseData.data.length; i++) {
+		//@ts-ignore
+		responseData.data[i].relationships.member.data = members[responseData.data[i].relationships.member.data.id];
+	}
 }
