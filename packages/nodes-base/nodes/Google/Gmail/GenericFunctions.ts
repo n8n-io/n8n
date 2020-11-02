@@ -23,6 +23,8 @@ import {
 	IEmail,
 } from './Gmail.node';
 
+const MailComposer = require("nodemailer/lib/mail-composer");
+
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
 	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	let options: OptionsWithUri = {
@@ -126,62 +128,40 @@ export async function parseRawEmail(this: IExecuteFunctions, messageData: any, d
 // for more info on MIME, https://docs.microsoft.com/en-us/previous-versions/office/developer/exchange-server-2010/aa494197(v%3Dexchg.140)
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-export function encodeEmail(email: IEmail) {
-	let mimeEmail = '';
+export async function encodeEmail(email: IEmail) {
+	let mailBody: Buffer;
 
-	if (email.attachments !== undefined && email.attachments !== []) {
-		const attachments = email.attachments.map((attachment) => {
-			return [
-				"--XXXXboundary text\n",
-				"Content-Type:", attachment.type, ";\n",
-				"Content-Transfer-Encoding: Base64\n",
-				"Content-Disposition: attachment;\n",
-				"\tfilename=\"", attachment.name, "\"\n\n",
+	const mailOptions = {
+		to: email.to,
+		cc : email.cc,
+		bcc: email.bcc,
+		replyTo: email.inReplyTo,
+		references: email.reference,
+		subject: email.subject,
+		text: email.body,
+	} as IDataObject;
 
-				attachment.content, "\n\n",
+	if (email.attachments !== undefined && Array.isArray(email.attachments) && email.attachments.length > 0) {
+		const attachments = email.attachments.map((attachment) => ({
+			filename: attachment.name,
+			content: attachment.content,
+			contentType: attachment.type,
+			encoding : 'base64',
+		}));
 
-				"--XXXXboundary text\n\n",
-			].join('');
-		});
-
-		mimeEmail = [
-			"To: ", email.to, "\n",
-			"Cc: ", email.cc, "\n",
-			"Bcc: ", email.bcc, "\n",
-			"In-Reply-To: ", email.inReplyTo, "\n",
-			"References: ", email.reference, "\n",
-			"Subject: ", email.subject, "\n",
-			"MIME-Version: 1.0\n",
-			"Content-Type: multipart/mixed;\n",
-			"\tboundary=\"XXXXboundary text\"\n\n",
-
-			"This is a multipart message in MIME format.\n\n",
-
-			"--XXXXboundary text\n",
-			"Content-Type: text/plain\n\n",
-
-			email.body, "\n\n",
-
-			attachments.join(''),
-
-			"--XXXXboundary text--",
-		].join('');
-	} else {
-		mimeEmail = [
-			"Content-Type: text/plain; charset=\"UTF-8\"\n",
-			"MIME-Version: 1.0\n",
-			"Content-Transfer-Encoding: 7bit\n",
-			"To: ", email.to, "\n",
-			"Cc: ", email.cc, "\n",
-			"Bcc: ", email.bcc, "\n",
-			"In-Reply-To: ", email.inReplyTo, "\n",
-			"References: ", email.reference, "\n",
-			"Subject: ", email.subject, "\n\n",
-			email.body,
-		].join('');
+		mailOptions.attachments = attachments;
 	}
 
-	return Buffer.from(mimeEmail).toString("base64").replace(/\+/g, '-').replace(/\//g, '_');
+	
+	const mail = new MailComposer(mailOptions);
+
+	mailBody = await new Promise((resolve) => {
+		mail.compile().build(async (err: string, result: Buffer) => {
+			resolve(result);
+		});
+	});
+
+	return mailBody.toString("base64").replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
