@@ -43,14 +43,14 @@ export class Orbit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Orbit',
 		name: 'orbit',
-		icon: 'file:orbit.png',
+		icon: 'file:orbit.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Orbit API',
 		defaults: {
 			name: 'Orbit',
-			color: '#775af6',
+			color: '#00ade8',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -120,6 +120,23 @@ export class Orbit implements INodeType {
 				}
 				return returnData;
 			},
+			async getActivityTypes(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await orbitApiRequest.call(
+					this,
+					'GET',
+					'/activity_types',
+				);		
+				for (const activityType of data) {
+					returnData.push({
+						name: activityType.attributes.short_name,
+						value: activityType.id,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -149,9 +166,6 @@ export class Orbit implements INodeType {
 					}
 					if (additionalFields.linkText) {
 						body.link_text = additionalFields.linkText as string;
-					}
-					if (additionalFields.score) {
-						body.score = additionalFields.score as number;
 					}
 					if (additionalFields.activityType) {
 						body.activity_type = additionalFields.activityType as string;
@@ -184,6 +198,76 @@ export class Orbit implements INodeType {
 				}
 			}
 			if (resource === 'member') {
+				if (operation === 'upsert') {
+					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const member: IDataObject = {};
+					const identity: IDataObject = {};
+					if (additionalFields.bio) {
+						member.bio = additionalFields.bio as string;
+					}
+					if (additionalFields.birthday) {
+						member.birthday = moment(additionalFields.birthday as string).format('MM-DD-YYYY');
+					}
+					if (additionalFields.company) {
+						member.company = additionalFields.company as string;
+					}
+					if (additionalFields.location) {
+						member.location = additionalFields.location as string;
+					}
+					if (additionalFields.name) {
+						member.name = additionalFields.name as string;
+					}
+					if (additionalFields.bio) {
+						member.bio = additionalFields.bio as string;
+					}
+					if (additionalFields.pronouns) {
+						member.pronouns = additionalFields.pronouns as string;
+					}
+					if (additionalFields.shippingAddress) {
+						member.shipping_address = additionalFields.shippingAddress as string;
+					}
+					if (additionalFields.slug) {
+						member.slug = additionalFields.slug as string;
+					}
+					if (additionalFields.tagsToAdd) {
+						member.tags_to_add = additionalFields.tagsToAdd as string;
+					}
+					if (additionalFields.tagList) {
+						member.tag_list = additionalFields.tagList as string;
+					}
+					if (additionalFields.tshirt) {
+						member.tshirt = additionalFields.tshirt as string;
+					}
+					if (additionalFields.hasOwnProperty('teammate')) {
+						member.teammate = additionalFields.teammate as boolean;
+					}
+					if (additionalFields.url) {
+						member.url = additionalFields.url as string;
+					}
+
+					const data = (this.getNodeParameter('identityUi', i) as IDataObject).identityValue as IDataObject;
+					if (data) {
+						if (['github', 'twitter', 'discourse'].includes(data.source as string)) {
+							identity.source = data.source as string;
+							const searchBy = data.searchBy as string;
+							if (searchBy === 'id') {
+								identity.uid = data.id as string;
+							} else {
+								identity.username = data.username as string;
+							}
+							if (data.source === 'discourse') {
+								identity.source_host = data.host as string;
+							}
+						} else {
+							//it's email
+							identity.email= data.email as string;
+						}
+					}
+
+					responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members`, { member, identity });
+					responseData = responseData.data;
+				}
 				if (operation === 'delete') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const memberId = this.getNodeParameter('memberId', i) as string;
@@ -216,8 +300,25 @@ export class Orbit implements INodeType {
 				}
 				if (operation === 'lookup') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-					const githubUsername = this.getNodeParameter('githubUsername', i) as string;
-					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/github_user/${githubUsername}`);
+					const source = this.getNodeParameter('source', i) as string;
+
+					if (['github', 'twitter', 'discourse'].includes(source)) {
+						qs.source = this.getNodeParameter('source', i) as string;
+						const searchBy = this.getNodeParameter('searchBy', i) as string;
+						if (searchBy === 'id') {
+							qs.uid = this.getNodeParameter('id', i) as string;
+						} else {
+							qs.username = this.getNodeParameter('username', i) as string;
+						}
+						if (source === 'discourse') {
+							qs.source_host = this.getNodeParameter('host', i) as string;
+						}
+					} else {
+						//it's email
+						qs.email= this.getNodeParameter('email', i) as string;
+					}
+
+					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members/find`, {}, qs);
 					responseData = responseData.data;
 				}
 				if (operation === 'update') {
@@ -235,20 +336,11 @@ export class Orbit implements INodeType {
 					if (updateFields.company) {
 						body.company = updateFields.company as string;
 					}
-					if (updateFields.devTo) {
-						body.devto = updateFields.devTo as string;
-					}
-					if (updateFields.linkedin) {
-						body.linkedin = updateFields.linkedin as string;
-					}
 					if (updateFields.location) {
 						body.location = updateFields.location as string;
 					}
 					if (updateFields.name) {
 						body.name = updateFields.name as string;
-					}
-					if (updateFields.hasOwnProperty('orbitLevel')) {
-						body.orbit_level = updateFields.orbitLevel as number;
 					}
 					if (updateFields.bio) {
 						body.bio = updateFields.bio as string;

@@ -33,12 +33,17 @@ export const memberOperations = [
 			{
 				name: 'Lookup',
 				value: 'lookup',
-				description: 'Lookup a member or identity by GitHub username',
+				description: 'Lookup a member by identity',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a member',
+			},
+			{
+				name: 'Upsert',
+				value: 'upsert',
+				description: 'Create/Update a member',
 			},
 		],
 		default: 'get',
@@ -149,7 +154,7 @@ export const memberFields = [
 			},
 		},
 		default: false,
-		description: '',
+		description: 'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -232,7 +237,7 @@ export const memberFields = [
 			},
 		},
 		default: false,
-		description: '',
+		description: 'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
 	},
 	{
 		displayName: 'Options',
@@ -302,9 +307,27 @@ export const memberFields = [
 		description: 'The workspace',
 	},
 	{
-		displayName: 'GitHub Username',
-		name: 'githubUsername',
-		type: 'string',
+		displayName: 'Source',
+		name: 'source',
+		type: 'options',
+		options: [
+			{
+				name: 'Discourse',
+				value: 'discourse',
+			},
+			{
+				name: 'Email',
+				value: 'email',
+			},
+			{
+				name: 'GitHub',
+				value: 'github',
+			},
+			{
+				name: 'Twitter',
+				value: 'twitter',
+			},
+		],
 		default: '',
 		required: true,
 		displayOptions: {
@@ -317,10 +340,133 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'GitHub username',
+		description: `Set to github, twitter, email, discourse or the source of any identities you've manually created.`,
 	},
-
-
+	{
+		displayName: 'Search By',
+		name: 'searchBy',
+		type: 'options',
+		options: [
+			{
+				name: 'Username',
+				value: 'username',
+			},
+			{
+				name: 'ID',
+				value: 'id',
+			},
+		],
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'lookup',
+				],
+				source: [
+					'discourse',
+					'github',
+					'twitter',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'lookup',
+				],
+				searchBy: [
+					'id',
+				],
+				source: [
+					'discourse',
+					'github',
+					'twitter',
+				],
+			},
+		},
+		description: `The username at the source.`,
+	},
+	{
+		displayName: 'Username',
+		name: 'username',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'lookup',
+				],
+				searchBy: [
+					'username',
+				],
+				source: [
+					'discourse',
+					'github',
+					'twitter',
+				],
+			},
+		},
+		description: `The username at the source.`,
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'lookup',
+				],
+				source: [
+					'email',
+				],
+			},
+		},
+		description: `The email address.`,
+	},
+	{
+		displayName: 'Host',
+		name: 'host',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'lookup',
+				],
+				source: [
+					'discourse',
+				],
+			},
+		},
+	},
 /* -------------------------------------------------------------------------- */
 /*                                member:update                               */
 /* -------------------------------------------------------------------------- */
@@ -402,15 +548,285 @@ export const memberFields = [
 				description: '',
 			},
 			{
-				displayName: 'Dev.to',
-				name: 'devTo',
+				displayName: 'Location',
+				name: 'location',
 				type: 'string',
 				default: '',
 				description: '',
 			},
 			{
-				displayName: 'LinkedIn',
-				name: 'linkedin',
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: '',
+			},
+			{
+				displayName: 'Pronouns',
+				name: 'pronouns',
+				type: 'string',
+				default: '',
+				description: '',
+			},
+			{
+				displayName: 'Shipping Address',
+				name: 'shippingAddress',
+				type: 'string',
+				default: '',
+				description: '',
+			},
+			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+				description: '',
+			},
+			{
+				displayName: 'Tags to Add',
+				name: 'tagsToAdd',
+				type: 'string',
+				default: '',
+				description: 'Adds tags to member; comma-separated string or array',
+			},
+			{
+				displayName: 'Tag List',
+				name: 'tagList',
+				type: 'string',
+				default: '',
+				description: 'Replaces all tags for the member; comma-separated string or array',
+			},
+			{
+				displayName: 'T-Shirt',
+				name: 'tShirt',
+				type: 'string',
+				default: '',
+				description: '',
+			},
+			{
+				displayName: 'Teammate',
+				name: 'teammate',
+				type: 'boolean',
+				default: false,
+				description: '',
+			},
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				description: '',
+			},
+		],
+	},
+
+/* -------------------------------------------------------------------------- */
+/*                                member:upsert                               */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Workspace',
+		name: 'workspaceId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getWorkspaces',
+		},
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		description: 'The workspace',
+	},
+	{
+		displayName: 'Identity',
+		name: 'identityUi',
+		type: 'fixedCollection',
+		description: 'The identity is used to find the member. If no member exists, a new member will be created and linked to the provided identity.',
+		typeOptions: {
+			multipleValues: false,
+		},
+		placeholder: 'Add Identity',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Identity',
+				name: 'identityValue',
+				values: [
+					{
+						displayName: 'Source',
+						name: 'source',
+						type: 'options',
+						options: [
+							{
+								name: 'Discourse',
+								value: 'discourse',
+							},
+							{
+								name: 'Email',
+								value: 'email',
+							},
+							{
+								name: 'GitHub',
+								value: 'github',
+							},
+							{
+								name: 'Twitter',
+								value: 'twitter',
+							},
+						],
+						default: '',
+						description: `Set to github, twitter, email, discourse or the source of any identities you've manually created.`,
+					},
+					{
+						displayName: 'Search By',
+						name: 'searchBy',
+						type: 'options',
+						options: [
+							{
+								name: 'Username',
+								value: 'username',
+							},
+							{
+								name: 'ID',
+								value: 'id',
+							},
+						],
+						default: '',
+						required: true,
+						displayOptions: {
+							show: {
+								source: [
+									'discourse',
+									'github',
+									'twitter',
+								],
+							},
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						default: '',
+						required: true,
+						displayOptions: {
+							show: {
+								searchBy: [
+									'id',
+								],
+								source: [
+									'discourse',
+									'github',
+									'twitter',
+								],
+							},
+						},
+						description: `The username at the source.`,
+					},
+					{
+						displayName: 'Username',
+						name: 'username',
+						type: 'string',
+						default: '',
+						required: true,
+						displayOptions: {
+							show: {
+								searchBy: [
+									'username',
+								],
+								source: [
+									'discourse',
+									'github',
+									'twitter',
+								],
+							},
+						},
+						description: `The username at the source.`,
+					},
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						default: '',
+						required: true,
+						displayOptions: {
+							show: {
+								source: [
+									'email',
+								],
+							},
+						},
+						description: `The email address.`,
+					},
+					{
+						displayName: 'Host',
+						name: 'host',
+						type: 'string',
+						default: '',
+						required: true,
+						displayOptions: {
+							show: {
+								source: [
+									'discourse',
+								],
+							},
+						},
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: [
+					'member',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Bio',
+				name: 'bio',
+				type: 'string',
+				default: '',
+				description: '',
+			},
+			{
+				displayName: 'Birthday',
+				name: 'birthday',
+				type: 'dateTime',
+				default: '',
+				description: '',
+			},
+			{
+				displayName: 'Company',
+				name: 'company',
 				type: 'string',
 				default: '',
 				description: '',
@@ -427,17 +843,6 @@ export const memberFields = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: '',
-			},
-			{
-				displayName: 'Orbit Level',
-				name: 'orbitLevel',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-					maxValue: 1,
-				},
-				default: 0,
 				description: '',
 			},
 			{

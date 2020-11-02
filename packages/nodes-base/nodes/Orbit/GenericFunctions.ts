@@ -59,11 +59,10 @@ export async function orbitApiRequestAllItems(this: IHookFunctions | IExecuteFun
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	let uri: string | undefined;
 	query.page = 1;
 
 	do {
-		responseData = await orbitApiRequest.call(this, method, resource, body, query, uri);
+		responseData = await orbitApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
 		
 		if (query.resolveIdentities === true) {

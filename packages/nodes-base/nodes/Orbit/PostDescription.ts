@@ -81,7 +81,7 @@ export const postFields = [
 		description: 'Member ID',
 	},
 	{
-		displayName: 'Post URL',
+		displayName: 'URL',
 		name: 'url',
 		type: 'string',
 		default: '',
@@ -96,7 +96,7 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'Post',
+		description: 'Supply any URL and Orbit will do its best job to parse out a title, description, and image',
 	},
 	{
 		displayName: 'Additional Fields',

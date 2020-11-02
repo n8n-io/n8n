@@ -113,7 +113,10 @@ export const activityFields = [
 			{
 				displayName: 'Activity Type',
 				name: 'activityType',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getActivityTypes',
+				},
 				default: '',
 				description: 'A user-defined way to group activities of the same nature',
 			},
@@ -151,13 +154,6 @@ export const activityFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'The date and time the activity occurred; defaults to now',
-			},
-			{
-				displayName: 'Score',
-				name: 'score',
-				type: 'number',
-				default: '',
-				description: 'The number of points this activity counts for',
 			},
 		],
 	},
