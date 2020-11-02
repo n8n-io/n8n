@@ -175,8 +175,10 @@ export class RealtimeDatabase implements INodeType {
 
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (typeof responseData === 'string') {
+			} else if (typeof responseData === 'string' || typeof responseData === 'number') {
 				returnData.push({[this.getNodeParameter('path', i) as string]: responseData} as IDataObject);
+			} else if (responseData === null) {
+				returnData.push({} as IDataObject);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}
