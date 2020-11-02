@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const logOperations = [
 	{
@@ -9,24 +11,56 @@ export const logOperations = [
 		default: 'getAll',
 		displayOptions: {
 			show: {
-				resource: ['log']
-			}
+				resource: [
+					'log',
+				],
+			},
 		},
 		options: [
-			{ name: 'Get All', value: 'getAll', description: 'Get all task logs' },
-			{ name: 'Get', value: 'get', description: 'Get a single log' },
-			{ name: 'Create', value: 'create', description: 'Create task log' },
 			{
-				name: 'Execute a responder',
+				name: 'Create',
+				value: 'create',
+				description: 'Create task log',
+			},
+			{
+				name: 'Execute Responder',
 				value: 'executeResponder',
 				description: 'Execute a responder on a selected log'
-            },
-        ],
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all task logs'
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a single log',
+			},
+		],
 	}
 ] as INodeProperties[];
 
 export const logFields = [
-    {
+	{
+		displayName: 'Task ID',
+		name: 'taskId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'log',
+				],
+				operation: [
+					'create',
+					'getAll',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -69,23 +103,21 @@ export const logFields = [
 	},
 	// required attributs
 	{
-		displayName: 'Log Id',
+		displayName: 'Log ID',
 		name: 'id',
 		type: 'string',
 		required: true,
 		displayOptions: {
-			show: { resource: ['log'], operation: ['executeResponder', 'get'] }
-		}
-	},
-	{
-		displayName: 'Task Id',
-		name: 'taskId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: { resource: ['log'], operation: ['create', 'getAll'] }
-		}
+			show: {
+				resource: [
+					'log',
+				],
+				operation: [
+					'executeResponder',
+					'get',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Message',
@@ -93,7 +125,16 @@ export const logFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		displayOptions: { show: { resource: ['log'], operation: ['create'] } }
+		displayOptions: {
+			show: {
+				resource: [
+					'log',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Start Date',
@@ -101,60 +142,116 @@ export const logFields = [
 		type: 'dateTime',
 		required: true,
 		default: '',
-		displayOptions: { show: { resource: ['log'], operation: ['create'] } }
+		displayOptions: {
+			show: {
+				resource: [
+					'log',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
 	},
 	{
 		displayName: 'Status',
 		name: 'status',
 		type: 'options',
 		options: [
-			{ name: 'Ok', value: 'Ok' },
-			{ name: 'Deleted', value: 'Deleted' }
+			{
+				name: 'Ok',
+				value: 'Ok',
+			},
+			{
+				name: 'Deleted',
+				value: 'Deleted',
+			},
 		],
 		default: '',
 		required: true,
-		displayOptions: { show: { resource: ['log'], operation: ['create'] } }
+		displayOptions: {
+			show: {
+				resource: [
+					'log',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
 	},
 	// required for responder execution
 	{
-		displayName: 'Responders',
-		name: 'responders',
-		type: 'multiOptions',
+		displayName: 'Responder ID',
+		name: 'responder',
+		type: 'options',
 		required: true,
 		default: '',
 		typeOptions: {
-			loadOptionsDependsOn: ['id'],
+			loadOptionsDependsOn: [
+				'id',
+			],
 			loadOptionsMethod: 'loadResponders'
 		},
 		displayOptions: {
-			show: { resource: ['log'], operation: ['executeResponder'] },
-			hide: { id: [''] }
-		}
+			show: {
+				resource: [
+					'log',
+				],
+				operation: [
+					'executeResponder',
+				],
+			},
+			hide: {
+				id: [
+					'',
+				],
+			},
+		},
 	},
 	// Optional attributs
 	{
-        displayName: 'Optional Attribut',
-		name: 'optionals',
-		type: 'fixedCollection',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
 		default: {},
-		displayOptions: { show: { resource: ['log'], operation: ['create'] } },
-		description: 'adding attachment is optional',
-		placeholder: 'Add attachement',
+		displayOptions: {
+			show: {
+				resource: [
+					'log',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		placeholder: 'Add Option',
 		options: [
-            {
-                displayName: 'Attachement',
-                name: 'attachement',
-                values: [
-                    {
-                        displayName: 'Binary Property',
-                        name: 'binaryProperty',
-                        type: 'string',
-                        default: 'data',
-                        description: '',
-                    },
-                    
-                ],
-            },
-		]
+			{
+				displayName: 'Attachment',
+				name: 'attachmentValues',
+				placeholder: 'Add Attachment',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Attachment',
+						name: 'attachmentValues',
+						values: [
+							{
+								displayName: 'Binary Property',
+								name: 'binaryProperty',
+								type: 'string',
+								default: 'data',
+								description: 'Object property name which holds binary data.',
+							},
+						],
+					},
+				],
+			},
+		],
 	}
 ] as INodeProperties[];

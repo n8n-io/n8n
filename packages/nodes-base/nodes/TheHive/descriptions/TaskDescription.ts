@@ -1,19 +1,25 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const taskOperations = [
 	{
-		default: 'getAll',
 		displayName: 'Operation',
 		name: 'operation',
+		default: 'getAll',
 		type: 'options',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['task'],
+				resource: [
+					'task',
+				],
 			},
 		},
 		typeOptions: {
-			loadOptionsDependsOn: ['operation'],
+			loadOptionsDependsOn: [
+				'operation',
+			],
 			loadOptionsMethod: 'loadTaskOptions',
 		},
 	},
@@ -21,13 +27,55 @@ export const taskOperations = [
 
 export const taskFields = [
 	{
+		displayName: 'Task ID',
+		name: 'id',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'update',
+					'executeResponder',
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Case ID',
+		name: 'caseId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+					'getAll',
+				],
+			},
+		},
+	},
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['search', 'getAll'],
-				resource: ['task'],
+				operation: [
+					'search',
+					'getAll',
+				],
+				resource: [
+					'task',
+				],
 			},
 		},
 		default: false,
@@ -39,9 +87,16 @@ export const taskFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: ['search', 'getAll'],
-				resource: ['task'],
-				returnAll: [false],
+				operation: [
+					'search',
+					'getAll',
+				],
+				resource: [
+					'task',
+				],
+				returnAll: [
+					false,
+				],
 			},
 		},
 		typeOptions: {
@@ -51,102 +106,122 @@ export const taskFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-
 	{
-		name: 'id',
-		displayName: 'Task Id',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['update', 'executeResponder', 'get'],
-			},
-		},
-	},
-	{
-		name: 'caseId',
-		displayName: 'Case Id',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['create', 'getAll'],
-			},
-		},
-	},
-	{
-		name: 'title',
 		displayName: 'Title',
+		name: 'title',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['create'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
 	{
+		displayName: 'Status',
 		name: 'status',
-		displayName: 'status',
 		type: 'options',
 		default: 'Waiting',
 		options: [
-			{ name: 'Waiting', value: 'Waiting' },
-			{ name: 'InProgress', value: 'InProgress' },
-			{ name: 'Completed', value: 'Completed' },
-			{ name: 'Cancel', value: 'Cancel' },
+			{
+				name: 'Waiting',
+				value: 'Waiting',
+			},
+			{
+				name: 'InProgress',
+				value: 'InProgress',
+			},
+			{
+				name: 'Completed',
+				value: 'Completed',
+			},
+			{
+				name: 'Cancel',
+				value: 'Cancel',
+			},
 		],
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['create'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
 	{
-		name: 'flag',
 		displayName: 'Flag',
+		name: 'flag',
 		type: 'boolean',
 		required: true,
 		default: false,
 		displayOptions: {
 			show: {
-				resource: ['task'],
-				operation: ['create'],
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
 			},
 		},
 	},
 	// required for responder execution
 	{
-		name: 'responders',
-		displayName: 'Responders',
-		type: 'multiOptions',
+		displayName: 'Responder ID',
+		name: 'responder',
+		type: 'options',
 		required: true,
-		default: [],
+		default: '',
 		typeOptions: {
-			loadOptionsDependsOn: ['id'],
+			loadOptionsDependsOn: [
+				'id',
+			],
 			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
-			show: { resource: ['task'], operation: ['executeResponder'] },
-			hide: { id: [''] },
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'executeResponder',
+				],
+			},
+			hide: {
+				id: [
+					'',
+				],
+			},
 		},
 	},
 	// optional attributes (Create operations)
 	{
+		displayName: 'Options',
 		type: 'collection',
-		displayName: 'Optional attributes',
-		name: 'optionals',
+		name: 'options',
+		placeholder: 'Add Option',
 		required: false,
 		default: '',
-		displayOptions: { show: { resource: ['task'], operation: ['create'] } },
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
 		options: [
 			{
 				displayName: 'Owner',
@@ -181,12 +256,22 @@ export const taskFields = [
 	// optional attributes (Update operation)
 
 	{
+		displayName: 'Update Fields',
 		type: 'collection',
-		displayName: 'Optional attributes',
-		name: 'optionals',
+		name: 'updateFields',
+		placeholder: 'Add Field',
 		default: '',
 		required: false,
-		displayOptions: { show: { resource: ['task'], operation: ['update'] } },
+		displayOptions: {
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
 		options: [
 			{
 				displayName: 'Owner',
@@ -229,10 +314,22 @@ export const taskFields = [
 				type: 'options',
 				default: 'Waiting',
 				options: [
-					{ name: 'Waiting', value: 'Waiting' },
-					{ name: 'InProgress', value: 'InProgress' },
-					{ name: 'Completed', value: 'Completed' },
-					{ name: 'Cancel', value: 'Cancel' },
+					{
+						name: 'Waiting',
+						value: 'Waiting',
+					},
+					{
+						name: 'In Progress',
+						value: 'InProgress',
+					},
+					{
+						name: 'Completed',
+						value: 'Completed',
+					},
+					{
+						name: 'Cancel',
+						value: 'Cancel',
+					},
 				],
 				required: false,
 			},
@@ -250,17 +347,23 @@ export const taskFields = [
 	{
 		displayName: 'Options',
 		name: 'options',
-        type: 'collection',
-        default: {},
+		placeholder: 'Add Option',
+		type: 'collection',
+		default: {},
 		displayOptions: {
 			show: {
-				operation: ['getAll', 'search'],
-				resource: ['task'],
+				operation: [
+					'getAll',
+					'search',
+				],
+				resource: [
+					'task',
+				],
 			},
 		},
 		options: [
-            {
-                displayName: 'Sort',
+			{
+				displayName: 'Sort',
 				name: 'sort',
 				type: 'string',
 				placeholder: '±Attribut, exp +status',
@@ -268,7 +371,6 @@ export const taskFields = [
 				default: '',
 			},
 		],
-        placeholder: 'Add Option',
 	},
 	// query attributes
 	{
@@ -279,7 +381,15 @@ export const taskFields = [
 		default: {},
 		placeholder: 'Add Filter',
 		displayOptions: {
-			show: { resource: ['task'], operation: ['search', 'count'] },
+			show: {
+				resource: [
+					'task',
+				],
+				operation: [
+					'search',
+					'count',
+				],
+			},
 		},
 		options: [
 			{
@@ -321,13 +431,25 @@ export const taskFields = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-                required: false,
+				required: false,
 				default: 'Waiting',
 				options: [
-					{ name: 'Waiting', value: 'Waiting' },
-					{ name: 'InProgress', value: 'InProgress' },
-					{ name: 'Completed', value: 'Completed' },
-					{ name: 'Cancel', value: 'Cancel' },
+					{
+						name: 'Waiting',
+						value: 'Waiting',
+					},
+					{
+						name: 'In Progress',
+						value: 'InProgress'
+					},
+					{
+						name: 'Completed',
+						value: 'Completed'
+					},
+					{
+						name: 'Cancel',
+						value: 'Cancel'
+					},
 				],
 			},
 			{

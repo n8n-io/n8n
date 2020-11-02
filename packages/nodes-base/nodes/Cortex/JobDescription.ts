@@ -2,7 +2,7 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-export const jobsOperations = [
+export const jobOperations = [
 	{
 		displayName: 'Operation',
 		name: 'operation',

@@ -375,16 +375,60 @@ export const alertFields = [
 						default: '',
 						options: [
 							{
-								name: 'IP',
-								value: 'ip',
-							},
-							{
 								name: 'Domain',
 								value: 'domain',
 							},
 							{
 								name: 'File',
-								value: 'file',
+								value: 'file'
+							},
+							{
+								name: 'Filename',
+								value: 'filename'
+							},
+							{
+								name: 'Fqdn',
+								value: 'fqdn'
+							},
+							{
+								name: 'Hash',
+								value: 'hash'
+							},
+							{
+								name: 'IP',
+								value: 'ip'
+							},
+							{
+								name: 'Mail',
+								value: 'mail'
+							},
+							{
+								name: 'Mail_subject',
+								value: 'mail_subject'
+							},
+							{
+								name: 'Other',
+								value: 'other'
+							},
+							{
+								name: 'Regexp',
+								value: 'regexp'
+							},
+							{
+								name: 'Registry',
+								value: 'registry'
+							},
+							{
+								name: 'Uri_path',
+								value: 'uri_path'
+							},
+							{
+								name: 'URL',
+								value: 'url'
+							},
+							{
+								name: 'User-agent',
+								value: 'user-agent'
 							},
 						],
 						description: '',
@@ -437,13 +481,13 @@ export const alertFields = [
 	},
 	// required for responder execution
 	{
-		displayName:'Responders',
-		name:'responders',
-		type:'multiOptions',
-		required:true,
-		default:'',
-		typeOptions:{
-			loadOptionsDependsOn:[
+		displayName: 'Responder ID',
+		name: 'responder',
+		type: 'options',
+		required: true,
+		default: '',
+		typeOptions: {
+			loadOptionsDependsOn: [
 				'id',
 			],
 			loadOptionsMethod: 'loadResponders',
@@ -467,7 +511,7 @@ export const alertFields = [
 	// optional attributs (Create, Promote operations)
 	{
 		displayName: 'Additional Fields',
-		name: 'AdditionalFields',
+		name: 'additionalFields',
 		placeholder: 'Add Field',
 		type: 'collection',
 		required: false,

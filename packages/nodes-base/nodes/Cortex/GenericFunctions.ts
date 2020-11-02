@@ -62,7 +62,7 @@ export function getEntityLabel(entity: IDataObject): string{
 	let label = '';
 	switch (entity._type) {
 		case  'case':
-			label = `#${entity.caseId} ${entity.title}`;
+			label = `#${entity.caseId || 'NA'} ${entity.title }`;
 			break;
 		case  'case_artifact':
 			//@ts-ignore

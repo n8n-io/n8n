@@ -20,6 +20,7 @@ import {
 	INodePropertyOptions,
 	ILoadOptionsFunctions,
 	IDataObject,
+	IBinaryData
 } from 'n8n-workflow';
 
 import {
@@ -29,7 +30,7 @@ import {
 
 import {
 	jobFields,
-	jobsOperations,
+	jobOperations,
 } from './JobDescription';
 
 import {
@@ -39,7 +40,28 @@ import {
 import {
 	IJob,
 } from './AnalyzerInterface';
+import { createHash } from 'crypto';
+import * as moment from 'moment';
 
+function splitTags(tags: string): string[] {
+	return tags.split(',').filter(tag => tag !== ' ' && tag);
+}
+
+function prepareParameters(values: IDataObject): IDataObject {
+	const response: IDataObject = {};
+	for (const key in values) {
+		if (values[key]!== undefined && values[key]!==null && values[key]!=='') {
+			if (moment(values[key] as string, moment.ISO_8601).isValid()) {
+				response[key] = Date.parse(values[key] as string);
+			} else if (key === 'tags') {
+				response[key] = splitTags(values[key] as string);
+			} else {
+				response[key] = values[key];
+			}
+		}
+	}
+	return response;
+}
 export class Cortex implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cortex',
@@ -90,7 +112,7 @@ export class Cortex implements INodeType {
 			...analyzerFields,
 			...respondersOperations,
 			...responderFields,
-			...jobsOperations,
+			...jobOperations,
 			...jobFields
 		],
 	};
@@ -297,42 +319,152 @@ export class Cortex implements INodeType {
 						this,
 						'GET',
 						`/job/${jobId}`,
-					);
+					) as IJob;
 				}
 				//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#get-details-and-report
 				if (operation === 'report') {
 
 					const jobId = this.getNodeParameter('jobId', i) as string;
 
-					responseData = await cortexApiRequest.call(
+					const jobDetails = await cortexApiRequest.call(
 						this,
 						'GET',
 						`/job/${jobId}/report`,
-					);
+					)as IJob;
+
+					responseData = jobDetails.report;
 				}
 			}
 
 			if (resource === 'responder') {
-
 				if (operation === 'execute') {
-
 					const responderId = (this.getNodeParameter('responder', i) as string).split('::')[0];
 
-					const dataType = this.getNodeParameter('dataType', i) as string;
+					const entityType = this.getNodeParameter('entityType', i) as string;
 
-					const entityJson = JSON.parse(this.getNodeParameter('objectData', i) as string);
+					const isJSON = this.getNodeParameter('jsonObject',i) as boolean;
+					let body:IDataObject;
+					
 
-					const body: IDataObject = {
-						responderId,
-						label: getEntityLabel(entityJson),
-						dataType: `thehive:${dataType}`,
-						data: entityJson,
-						tlp: entityJson.tlp,
-						pap: entityJson.pap,
-						message: entityJson.message || '',
-						parameters:[],
-					};
+					if(isJSON){
 
+
+						const entityJson = JSON.parse(this.getNodeParameter('objectData', i) as string);
+						
+						body = {
+							responderId,
+							label: getEntityLabel(entityJson),
+							dataType: `thehive:${entityType}`,
+							data: entityJson,
+							tlp: entityJson.tlp || 2,
+							pap: entityJson.pap || 2,
+							message: entityJson.message || '',
+							parameters:[],
+						};
+						
+					}else{
+
+						const values = (this.getNodeParameter('parameters',i) as IDataObject).values as IDataObject;
+
+						body= {
+							responderId,
+							dataType: `thehive:${entityType}`,
+							data: { 
+								_type: entityType,
+								...prepareParameters(values)
+							}
+						};
+						if( entityType === 'alert'){
+							// deal with alert artifacts
+							const artifacts = (body.data as IDataObject).artifacts as IDataObject;
+
+							if (artifacts) {
+								
+								const artifactValues = (artifacts as IDataObject).artifactValues as IDataObject[];
+								
+								if (artifactValues) {
+
+									const artifactData = [];
+
+									for (const artifactvalue of artifactValues) {
+
+										const element: IDataObject = {};
+
+										element.message = artifactvalue.message as string;
+
+										element.tags = splitTags(artifactvalue.tags as string) as string[];
+
+										element.dataType = artifactvalue.dataType as string;
+
+										element.data = artifactvalue.data as string;
+
+										if (artifactvalue.dataType === 'file') {
+
+											const item = items[i];
+
+											if (item.binary === undefined) {
+												throw new Error('No binary data exists on item!');
+											}
+
+											const binaryPropertyName = artifactvalue.binaryProperty as string;
+
+											if (item.binary[binaryPropertyName] === undefined) {
+												throw new Error(`No binary data property '${binaryPropertyName}' does not exists on item!`);
+											}
+
+											const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+
+											element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
+										}
+
+										artifactData.push(element);
+									}
+									
+									(body.data as IDataObject).artifacts = artifactData;
+								}
+							}
+						}
+						if(entityType ==='case_artifact'){							
+							// deal with file observable
+
+							if ((body.data as IDataObject).dataType === 'file') {
+
+								const item = items[i];
+		
+								if (item.binary === undefined) {
+									throw new Error('No binary data exists on item!');
+								}
+		
+								const binaryPropertyName = (body.data as IDataObject).binaryPropertyName as string;
+								if (item.binary[binaryPropertyName] === undefined) {
+									throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+								}
+		
+								const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
+								const sha256 = createHash('sha256').update(fileBufferData).digest('hex');
+								
+								(body.data as IDataObject).attachment = {
+									name: item.binary[binaryPropertyName].fileName,
+									hashes: [
+									  sha256,
+									  createHash('sha1').update(fileBufferData).digest('hex'),
+									  createHash('md5').update(fileBufferData).digest('hex')
+									],
+									size:fileBufferData.byteLength,
+									contentType: item.binary[binaryPropertyName].mimeType,
+									id:sha256,
+								  };
+								  
+								delete (body.data as IDataObject).binaryPropertyName;
+							}
+						}
+						// add the job label after getting all entity attributes
+						body = {
+							label: getEntityLabel(body.data as IDataObject),
+							...body
+						};
+						
+					}
 					responseData = await cortexApiRequest.call(
 						this,
 						'POST',

@@ -31,6 +31,8 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 		json: true,
 	};
 
+	console.log(options);
+
 	if (Object.keys(option).length !== 0) {
 		options = Object.assign({},options, option);
 	}
