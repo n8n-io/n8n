@@ -642,26 +642,6 @@ export class GoogleDrive implements INodeType {
 			},
 
 			{
-				displayName: 'Parents',
-				name: 'parents',
-				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: [],
-				displayOptions: {
-					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
-					},
-				},
-				description: 'The IDs of the parent folders which contain the file.',
-			},
-			{
 				displayName: 'Binary Data',
 				name: 'binaryData',
 				type: 'boolean',
