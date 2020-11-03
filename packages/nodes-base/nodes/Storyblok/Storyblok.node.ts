@@ -13,6 +13,8 @@ import {
 
 import {
 	storyblokApiRequest,
+	storyblokApiRequestAllItems,
+	validateJSON,
 } from './GenericFunctions';
 
 import {
@@ -24,6 +26,8 @@ import {
 	storyManagementFields,
 	storyManagementOperations,
 } from './StoryManagementDescription';
+
+import { v4 as uuidv4}  from 'uuid';
 
 export class Storyblok implements INodeType {
 	description: INodeTypeDescription = {
@@ -74,11 +78,11 @@ export class Storyblok implements INodeType {
 				options: [
 					{
 						name: 'Content API',
-						value: 'contentApi'
+						value: 'contentApi',
 					},
 					{
 						name: 'Management API',
-						value: 'managementApi'
+						value: 'managementApi',
 					},
 				],
 			},
@@ -152,6 +156,24 @@ export class Storyblok implements INodeType {
 				}
 				return returnData;
 			},
+			async getComponents(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const space = this.getCurrentNodeParameter('space') as string;
+				const { components } = await storyblokApiRequest.call(
+					this,
+					'GET',
+					`/v1/spaces/${space}/components`,
+				);
+				for (const component of components) {
+					returnData.push({
+						name: `${component.name} ${(component.is_root ? '(root)' : '')}`,
+						value: component.name,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -174,12 +196,18 @@ export class Storyblok implements INodeType {
 						responseData = responseData.story;
 					}
 					if (operation === 'getAll') {
-						const startsWith = this.getNodeParameter('startsWith', i) as string;
+						const filters = this.getNodeParameter('filters', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						Object.assign(qs, filters);
 
-						// This doesnt work, cause I am not sending token properly maybe
-
-						responseData = await storyblokApiRequest.call(this, 'GET', `/v1/cdn/stories?starts_with=${startsWith}/`);
-						responseData = responseData.stories;
+						if (returnAll) {
+							responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', '/v1/cdn/stories', {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.per_page = limit;
+							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/cdn/stories`, {} , qs);
+							responseData = responseData.stories;
+						}
 					}
 				}
 			}
@@ -189,16 +217,42 @@ export class Storyblok implements INodeType {
 						const space = this.getNodeParameter('space', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
 						const slug = this.getNodeParameter('slug', i) as string;
-
+						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const body: IDataObject = {
 							name,
 							slug,
 						};
-						if (additionalFields.content) {
-							// This doesnt work
-							body.content = additionalFields.content as string;
+
+						if (jsonParameters) {
+							if (additionalFields.contentJson) {
+								const json = validateJSON(additionalFields.contentJson as string);
+								body.content = json;
+							}
+						} else {
+							if (additionalFields.contentUi) {
+								const contentValue = (additionalFields.contentUi as IDataObject).contentValue as IDataObject;
+								const content: { component: string, body: IDataObject[] } = { component: '', body: [] };
+								if (contentValue) {
+									content.component = contentValue.component as string;
+									const elementValues = (contentValue.elementUi as IDataObject).elementValues as IDataObject[];
+									for (const elementValue of elementValues) {
+										const body: IDataObject = {};
+										body._uid = uuidv4();
+										body.component = elementValue.component;
+										if (elementValue.dataUi) {
+											const dataValues = (elementValue.dataUi as IDataObject).dataValues as IDataObject[];
+											for (const dataValue of dataValues) {
+												body[dataValue.key as string] = dataValue.value;
+											}
+										}
+										content.body.push(body);
+									}
+								}
+								body.content = content;
+							}
 						}
+
 						if (additionalFields.parentId) {
 							body.parent_id = additionalFields.parentId as string;
 						}
@@ -231,9 +285,18 @@ export class Storyblok implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const space = this.getNodeParameter('space', i) as string;
+						const filters = this.getNodeParameter('filters', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						Object.assign(qs, filters);
 
-						responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories/`);
-						responseData = responseData.stories;
+						if (returnAll) {
+							responseData = await storyblokApiRequestAllItems.call(this, 'stories', 'GET', `/v1/spaces/${space}/stories`, {}, qs);
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.per_page = limit;
+							responseData = await storyblokApiRequest.call(this, 'GET', `/v1/spaces/${space}/stories`, {} , qs);
+							responseData = responseData.stories;
+						}
 					}
 					if (operation === 'publish') {
 						const space = this.getNodeParameter('space', i) as string;

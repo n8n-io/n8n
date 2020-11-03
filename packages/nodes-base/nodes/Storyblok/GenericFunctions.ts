@@ -13,19 +13,18 @@ import {
 	IDataObject,
  } from 'n8n-workflow';
 
-export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('source', 0) as string;
 
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
-			'Accept': 'application/json',
 		},
 		method,
 		qs,
 		body,
 		uri: '',
-		json: true
+		json: true,
 	};
 
 	options = Object.assign({}, options, option);
@@ -34,12 +33,10 @@ export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctio
 		delete options.body;
 	}
 
-	let endpoint;
-
 	if (authenticationMethod === 'contentApi') {
 		const credentials = this.getCredentials('storyblokContentApi') as IDataObject;
 
-		endpoint = `https://api.storyblok.com${resource}`;
+		options.uri = `https://api.storyblok.com${resource}`;
 
 		Object.assign(options.qs, { token: credentials.apiKey });
 
@@ -47,14 +44,14 @@ export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctio
 
 		const credentials = this.getCredentials('storyblokManagementApi') as IDataObject;
 
-		endpoint = `https://mapi.storyblok.com${resource}`;
+		options.uri = `https://mapi.storyblok.com${resource}`;
 
 		Object.assign(options.headers, { 'Authorization': credentials.accessToken });
 
 	}
-
+	
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 
 	} catch(error) {
 
@@ -67,4 +64,35 @@ export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctio
 		// Expected error data did not get returned so throw the actual error
 		throw error;
 	}
+}
+
+export async function storyblokApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.per_page = 100;
+
+	query.page = 1;
+
+	do {
+		responseData = await storyblokApiRequest.call(this, method, resource, body, query);
+		query.page++;
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		responseData[propertyName].length !== 0
+	);
+
+	return returnData;
+}
+
+export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }
