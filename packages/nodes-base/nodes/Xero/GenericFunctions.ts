@@ -21,7 +21,7 @@ export async function xeroApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		body,
 		qs,
 		uri: uri || `https://api.xero.com/api.xro/2.0${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (body.organizationId) {

@@ -90,7 +90,7 @@ export const folderFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -153,7 +153,7 @@ export const folderFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -222,7 +222,7 @@ export const folderFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -291,7 +291,7 @@ export const folderFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -383,7 +383,7 @@ export const folderFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},

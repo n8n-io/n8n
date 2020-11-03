@@ -315,7 +315,7 @@ export const leadFields = [
 				default: '',
 				description: 'Website for the lead.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 lead:update                                */
@@ -333,7 +333,7 @@ export const leadFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of Lead that needs to be fetched',
@@ -565,7 +565,7 @@ export const leadFields = [
 				default: '',
 				description: 'Website for the lead.',
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -584,7 +584,7 @@ export const leadFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of Lead that needs to be fetched',
@@ -605,7 +605,7 @@ export const leadFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of Lead that needs to be fetched',
@@ -678,7 +678,7 @@ export const leadFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                            contact:addToCampaign                           */
@@ -696,7 +696,7 @@ export const leadFields = [
 				],
 				operation: [
 					'addToCampaign',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -717,7 +717,7 @@ export const leadFields = [
 				],
 				operation: [
 					'addToCampaign',
-				]
+				],
 			},
 		},
 		description: 'Id of the campaign that needs to be fetched',
@@ -746,7 +746,7 @@ export const leadFields = [
 				default: '',
 				description: 'Controls the HasResponded flag on this object',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                             lead:addNote                                   */
@@ -764,7 +764,7 @@ export const leadFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Id of lead that needs to be fetched',
@@ -782,7 +782,7 @@ export const leadFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Title of the note.',
@@ -831,6 +831,6 @@ export const leadFields = [
 				default: '',
 				description: 'ID of the user who owns the note.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

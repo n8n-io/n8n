@@ -146,7 +146,7 @@ export class MicrosoftExcel implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

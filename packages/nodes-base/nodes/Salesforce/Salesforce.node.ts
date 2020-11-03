@@ -127,9 +127,44 @@ export class Salesforce implements INodeType {
 			{
 				name: 'salesforceOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
+			{
+				name: 'salesforceJwtApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'jwt',
+						],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+					{
+						name: 'OAuth2 JWT',
+						value: 'jwt',
+					},
+				],
+				default: 'oAuth2',
+				description: 'OAuth Authorization Flow',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -2214,7 +2249,7 @@ export class Salesforce implements INodeType {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					let variables = {};
 					if (jsonParameters) {
-						variables = this.getNodeParameter('variablesJson', i);
+						variables = this.getNodeParameter('variablesJson', i) as object;
 					} else {
 						// Input variables are defined in UI
 						const setInputVariable = this.getNodeParameter('variablesUi', i, {}) as IDataObject;

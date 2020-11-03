@@ -25,7 +25,7 @@ export async function payPalApiRequest(this: IHookFunctions | IExecuteFunctions 
 		qs: query || {},
 		uri: uri || `${env}/v1${endpoint}`,
 		body,
-		json: true
+		json: true,
 	};
 	try {
 		return await this.helpers.request!(options);
@@ -67,7 +67,7 @@ async function getAccessToken(this: IHookFunctions | IExecuteFunctions | IExecut
 				grant_type: 'client_credentials',
 			},
 			uri: `${env}/v1/oauth2/token`,
-			json: true
+			json: true,
 		};
 	try {
 		return await this.helpers.request!(options);

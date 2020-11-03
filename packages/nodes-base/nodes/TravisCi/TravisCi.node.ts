@@ -38,7 +38,7 @@ export class TravisCi implements INodeType {
 			{
 				name: 'travisCiApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

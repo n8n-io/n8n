@@ -94,7 +94,7 @@ export class Harvest implements INodeType {
 			{
 				name: 'harvestApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -169,8 +169,8 @@ export class Harvest implements INodeType {
 			...projectFields,
 			...taskFields,
 			...timeEntryFields,
-			...userFields
-		]
+			...userFields,
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

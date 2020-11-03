@@ -75,7 +75,7 @@ export const tableFields = [
 				],
 				operation: [
 					'createRow',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -99,7 +99,7 @@ export const tableFields = [
 				],
 				operation: [
 					'createRow',
-				]
+				],
 			},
 		},
 		description: 'The table to create the row in.',
@@ -136,7 +136,7 @@ export const tableFields = [
 				description: `Optional column IDs, URLs, or names (fragile and discouraged)<br />,
 				specifying columns to be used as upsert keys. If more than one separate by ,`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   table:get                                */
@@ -157,7 +157,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getRow',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -181,7 +181,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getRow',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -199,7 +199,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getRow',
-				]
+				],
 			},
 		},
 		description: `ID or name of the row. Names are discouraged because<br />
@@ -262,7 +262,7 @@ export const tableFields = [
 				],
 				description: `The format that cell values are returned as.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                   table:getAll                             */
@@ -283,7 +283,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllRows',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -307,7 +307,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllRows',
-				]
+				],
 			},
 		},
 		description: 'The table to get the rows from.',
@@ -323,7 +323,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllRows',
-				]
+				],
 			},
 		},
 		default: false,
@@ -444,7 +444,7 @@ export const tableFields = [
 				default: false,
 				description: `If true, returns only visible rows and columns for the table.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 row:delete                                 */
@@ -465,7 +465,7 @@ export const tableFields = [
 				],
 				operation: [
 					'deleteRow',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -489,7 +489,7 @@ export const tableFields = [
 				],
 				operation: [
 					'deleteRow',
-				]
+				],
 			},
 		},
 		description: 'The table to delete the row in.',
@@ -507,7 +507,7 @@ export const tableFields = [
 				],
 				operation: [
 					'deleteRow',
-				]
+				],
 			},
 		},
 		description: 'Row IDs to delete.',
@@ -531,7 +531,7 @@ export const tableFields = [
 				],
 				operation: [
 					'pushButton',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -555,7 +555,7 @@ export const tableFields = [
 				],
 				operation: [
 					'pushButton',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -573,7 +573,7 @@ export const tableFields = [
 				],
 				operation: [
 					'pushButton',
-				]
+				],
 			},
 		},
 		description: `ID or name of the row. Names are discouraged because<br />
@@ -602,7 +602,7 @@ export const tableFields = [
 				],
 				operation: [
 					'pushButton',
-				]
+				],
 			},
 		},
 	},
@@ -625,7 +625,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getColumn',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -649,7 +649,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getColumn',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -667,7 +667,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getColumn',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -691,7 +691,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllColumns',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -715,7 +715,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllColumns',
-				]
+				],
 			},
 		},
 		description: 'The table to get the row from.',
@@ -731,7 +731,7 @@ export const tableFields = [
 				],
 				operation: [
 					'getAllColumns',
-				]
+				],
 			},
 		},
 		default: false,

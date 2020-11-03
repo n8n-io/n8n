@@ -27,8 +27,8 @@ export const userOperations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.'
-	}
+		description: 'The operation to perform.',
+	},
 ] as INodeProperties[];
 
 export const userFields = [
@@ -51,7 +51,7 @@ export const userFields = [
 				],
 			},
 		},
-		description: 'Id of user that needs to be fetched'
+		description: 'Id of user that needs to be fetched',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
@@ -68,10 +68,10 @@ export const userFields = [
 				operation: [
 					'getAll',
 				],
-			}
+			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.'
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -92,10 +92,10 @@ export const userFields = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100
+			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.'
+		description: 'How many results to return.',
 	},
 	{
 		displayName: 'Options',
@@ -119,7 +119,7 @@ export const userFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields to include separated by ,'
+				description: 'Fields to include separated by ,',
 			},
 		],
 	},

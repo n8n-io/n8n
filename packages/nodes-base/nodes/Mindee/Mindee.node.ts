@@ -72,7 +72,7 @@ export class Mindee implements INodeType {
 					},
 				],
 				default: 'receipt',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -85,7 +85,7 @@ export class Mindee implements INodeType {
 					},
 				],
 				default: 'predict',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Binary Property',
@@ -96,7 +96,7 @@ export class Mindee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'predict'
+							'predict',
 						],
 						resource: [
 							'receipt',
@@ -156,7 +156,7 @@ export class Mindee implements INodeType {
 									value: Buffer.from(binaryData.data, BINARY_ENCODING),
 									options: {
 										filename: binaryData.fileName,
-									}
+									},
 								},
 							},
 						},
@@ -198,7 +198,7 @@ export class Mindee implements INodeType {
 									value: Buffer.from(binaryData.data, BINARY_ENCODING),
 									options: {
 										filename: binaryData.fileName,
-									}
+									},
 								},
 							},
 						},

@@ -284,59 +284,59 @@ export class JiraTrigger implements INodeType {
 						options: [
 							{
 								name: 'Attachment ID',
-								value: 'attachment.id'
+								value: 'attachment.id',
 							},
 							{
 								name: 'Board ID',
-								value: 'board.id'
+								value: 'board.id',
 							},
 							{
 								name: 'Comment ID',
-								value: 'comment.id'
+								value: 'comment.id',
 							},
 							{
 								name: 'Issue ID',
-								value: 'issue.id'
+								value: 'issue.id',
 							},
 							{
 								name: 'Merge Version ID',
-								value: 'mergeVersion.id'
+								value: 'mergeVersion.id',
 							},
 							{
 								name: 'Modified User Account ID',
-								value: 'modifiedUser.accountId'
+								value: 'modifiedUser.accountId',
 							},
 							{
 								name: 'Modified User Key',
-								value: 'modifiedUser.key'
+								value: 'modifiedUser.key',
 							},
 							{
 								name: 'Modified User Name',
-								value: 'modifiedUser.name'
+								value: 'modifiedUser.name',
 							},
 							{
 								name: 'Project ID',
-								value: 'project.id'
+								value: 'project.id',
 							},
 							{
 								name: 'Project Key',
-								value: 'project.key'
+								value: 'project.key',
 							},
 							{
 								name: 'Propery Key',
-								value: 'property.key'
+								value: 'property.key',
 							},
 							{
 								name: 'Sprint ID',
-								value: 'sprint.id'
+								value: 'sprint.id',
 							},
 							{
 								name: 'Version ID',
-								value: 'version.id'
+								value: 'version.id',
 							},
 							{
 								name: 'Worklog ID',
-								value: 'worklog.id'
+								value: 'worklog.id',
 							},
 						],
 						default: [],
@@ -448,7 +448,7 @@ export class JiraTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(bodyData)
+				this.helpers.returnJsonArray(bodyData),
 			],
 		};
 	}

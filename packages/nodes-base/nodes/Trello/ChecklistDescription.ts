@@ -452,7 +452,7 @@ export const checklistFields = [
 				options: [
 					{
 						name: 'complete',
-						value: 'complete'
+						value: 'complete',
 					},
 					{
 						name: 'incomplete',

@@ -41,7 +41,7 @@ export class Chargebee implements INodeType {
 			{
 				name: 'chargebeeApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -103,7 +103,7 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'customer',
@@ -185,10 +185,10 @@ export class Chargebee implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
-					}
+					},
 
 				],
 			},
@@ -240,10 +240,10 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list'
+							'list',
 						],
 						resource: [
-							'invoice'
+							'invoice',
 						],
 					},
 				},
@@ -262,10 +262,10 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list'
+							'list',
 						],
 						resource: [
-							'invoice'
+							'invoice',
 						],
 					},
 				},
@@ -281,19 +281,19 @@ export class Chargebee implements INodeType {
 								options: [
 									{
 										name: 'Is',
-										value: 'is'
+										value: 'is',
 									},
 									{
 										name: 'Is Not',
-										value: 'is_not'
+										value: 'is_not',
 									},
 									{
 										name: 'After',
-										value: 'after'
+										value: 'after',
 									},
 									{
 										name: 'Before',
-										value: 'before'
+										value: 'before',
 									},
 
 								],
@@ -307,7 +307,7 @@ export class Chargebee implements INodeType {
 								default: '',
 								description: 'Query date.',
 							},
-						]
+						],
 					},
 					{
 						name: 'total',
@@ -320,27 +320,27 @@ export class Chargebee implements INodeType {
 								options: [
 									{
 										name: 'Is',
-										value: 'is'
+										value: 'is',
 									},
 									{
 										name: 'Is Not',
-										value: 'is_not'
+										value: 'is_not',
 									},
 									{
 										name: 'Greater than',
-										value: 'gt'
+										value: 'gt',
 									},
 									{
 										name: 'Greater equal than',
-										value: 'gte'
+										value: 'gte',
 									},
 									{
 										name: 'Less than',
-										value: 'lt'
+										value: 'lt',
 									},
 									{
 										name: 'Less equal than',
-										value: 'lte'
+										value: 'lte',
 									},
 								],
 								default: 'gt',
@@ -356,7 +356,7 @@ export class Chargebee implements INodeType {
 								default: 0,
 								description: 'Query amount.',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -374,10 +374,10 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'pdfUrl'
+							'pdfUrl',
 						],
 						resource: [
-							'invoice'
+							'invoice',
 						],
 					},
 				},
@@ -428,7 +428,7 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'cancel'
+							'cancel',
 						],
 						resource: [
 							'subscription',
@@ -444,7 +444,7 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'cancel'
+							'cancel',
 						],
 						resource: [
 							'subscription',
@@ -467,7 +467,7 @@ export class Chargebee implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 						resource: [
 							'subscription',
@@ -610,7 +610,7 @@ export class Chargebee implements INodeType {
 					user: credentials.apiKey as string,
 					pass: '',
 				},
-				json: true
+				json: true,
 			};
 
 			const responseData = await this.helpers.request!(options);

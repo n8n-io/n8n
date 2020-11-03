@@ -1,10 +1,10 @@
 import {
 	IContextObject,
-	INodeCredentialDescription,
 	INode,
+	INodeCredentialDescription,
 	INodeExecutionData,
-	INodeIssues,
 	INodeIssueObjectProperty,
+	INodeIssues,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
@@ -238,11 +238,11 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								options: [
 									{
 										name: 'Minutes',
-										value: 'minutes'
+										value: 'minutes',
 									},
 									{
 										name: 'Hours',
-										value: 'hours'
+										value: 'hours',
 									},
 								],
 								default: 'hours',
@@ -642,7 +642,7 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 			}
 
 			// Itterate over all collections
-			for (const itemName of Object.keys(propertyValues)) {
+			for (const itemName of Object.keys(propertyValues || {})) {
 				if (nodeProperties.typeOptions !== undefined && nodeProperties.typeOptions.multipleValues === true) {
 					// Multiple can be set so will be an array
 

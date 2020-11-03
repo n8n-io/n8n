@@ -112,7 +112,7 @@ export class Matrix implements INodeType {
 			...roomFields,
 			...roomMemberOperations,
 			...roomMemberFields,
-		]
+		],
 	};
 
 
@@ -147,7 +147,7 @@ export class Matrix implements INodeType {
 
 				return returnData;
 			},
-		}
+		},
 	};
 
 

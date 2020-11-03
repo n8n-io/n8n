@@ -188,7 +188,7 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'copy'
+							'copy',
 						],
 						resource: [
 							'file',
@@ -211,7 +211,7 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'delete'
+							'delete',
 						],
 						resource: [
 							'file',
@@ -235,7 +235,7 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -253,7 +253,7 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -275,7 +275,7 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'list'
+							'list',
 						],
 						resource: [
 							'file',
@@ -361,15 +361,15 @@ export class GoogleDrive implements INodeType {
 								options: [
 									{
 										name: 'Contains',
-										value: 'contains'
+										value: 'contains',
 									},
 									{
 										name: 'Is',
-										value: 'is'
+										value: 'is',
 									},
 									{
 										name: 'Is Not',
-										value: 'isNot'
+										value: 'isNot',
 									},
 
 								],
@@ -383,7 +383,7 @@ export class GoogleDrive implements INodeType {
 								default: '',
 								description: 'The value for operation.',
 							},
-						]
+						],
 					},
 					{
 						name: 'mimeType',
@@ -482,8 +482,8 @@ export class GoogleDrive implements INodeType {
 								},
 								description: 'Custom Mime Type',
 							},
-						]
-					}
+						],
+					},
 				],
 			},
 
@@ -500,7 +500,7 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'share'
+							'share',
 						],
 						resource: [
 							'file',
@@ -642,26 +642,6 @@ export class GoogleDrive implements INodeType {
 			},
 
 			{
-				displayName: 'Parents',
-				name: 'parents',
-				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: [],
-				displayOptions: {
-					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
-					},
-				},
-				description: 'The IDs of the parent folders which contain the file.',
-			},
-			{
 				displayName: 'Binary Data',
 				name: 'binaryData',
 				type: 'boolean',
@@ -669,7 +649,7 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -686,13 +666,13 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
 						],
 						binaryData: [
-							false
+							false,
 						],
 					},
 
@@ -709,13 +689,13 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
 						],
 						binaryData: [
-							true
+							true,
 						],
 					},
 
@@ -736,7 +716,7 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'upload'
+							'upload',
 						],
 						resource: [
 							'file',
@@ -766,68 +746,6 @@ export class GoogleDrive implements INodeType {
 				},
 				description: 'The IDs of the parent folders which contain the file.',
 			},
-			{
-				displayName: 'Binary Data',
-				name: 'binaryData',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'upload'
-						],
-						resource: [
-							'file',
-						],
-					},
-				},
-				description: 'If the data to upload should be taken from binary field.',
-			},
-			{
-				displayName: 'File Content',
-				name: 'fileContent',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'upload'
-						],
-						resource: [
-							'file',
-						],
-						binaryData: [
-							false
-						],
-					},
-
-				},
-				placeholder: '',
-				description: 'The text content of the file to upload.',
-			},
-			{
-				displayName: 'Binary Property',
-				name: 'binaryPropertyName',
-				type: 'string',
-				default: 'data',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'upload'
-						],
-						resource: [
-							'file',
-						],
-						binaryData: [
-							true
-						],
-					},
-
-				},
-				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
-			},
 
 
 			// ----------------------------------
@@ -846,7 +764,7 @@ export class GoogleDrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'folder',
@@ -870,7 +788,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share'
+									'share',
 								],
 								'/resource': [
 									'file',
@@ -888,7 +806,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share'
+									'share',
 								],
 								'/resource': [
 									'file',
@@ -944,7 +862,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							hide: {
 								'/operation': [
-									'share'
+									'share',
 								],
 								'/resource': [
 									'file',
@@ -1034,7 +952,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share'
+									'share',
 								],
 								'/resource': [
 									'file',
@@ -1053,7 +971,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share'
+									'share',
 								],
 								'/resource': [
 									'file',
@@ -1071,7 +989,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share'
+									'share',
 								],
 								'/resource': [
 									'file',
@@ -1089,7 +1007,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share'
+									'share',
 								],
 								'/resource': [
 									'file',
@@ -1107,7 +1025,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'share'
+									'share',
 								],
 								'/resource': [
 									'file',
@@ -1127,7 +1045,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'copy'
+									'copy',
 								],
 								'/resource': [
 									'file',
@@ -1167,7 +1085,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'list'
+									'list',
 								],
 								'/resource': [
 									'file',
@@ -1204,7 +1122,7 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'list'
+									'list',
 								],
 								'/resource': [
 									'file',
@@ -1246,14 +1164,14 @@ export class GoogleDrive implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'list'
+									'list',
 								],
 								'/resource': [
 									'file',
 								],
 								corpora: [
-									'drive'
-								]
+									'drive',
+								],
 							},
 						},
 						description: 'ID of the shared drive to search. The driveId parameter must be specified if and only if corpora is set to drive.',

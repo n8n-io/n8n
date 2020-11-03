@@ -116,7 +116,7 @@ export class Mailchimp implements INodeType {
 				options: [
 					{
 						name: 'Campaign',
-						value: 'campaign'
+						value: 'campaign',
 					},
 					{
 						name: 'List Group',
@@ -243,36 +243,36 @@ export class Mailchimp implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete a campaign'
+						description: 'Delete a campaign',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get a campaign'
+						description: 'Get a campaign',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all the campaigns'
+						description: 'Get all the campaigns',
 					},
 					{
 						name: 'Replicate',
 						value: 'replicate',
-						description: 'Replicate a campaign'
+						description: 'Replicate a campaign',
 					},
 					{
 						name: 'Resend',
 						value: 'resend',
-						description: 'Creates a Resend to Non-Openers version of this campaign'
+						description: 'Creates a Resend to Non-Openers version of this campaign',
 					},
 					{
 						name: 'Send',
 						value: 'send',
-						description: 'Send a campaign'
+						description: 'Send a campaign',
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform.'
+				description: 'The operation to perform.',
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:create                              */
@@ -365,7 +365,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -500,7 +500,7 @@ export class Mailchimp implements INodeType {
 								default: '',
 							},
 						],
-					}
+					},
 				],
 			},
 			{
@@ -515,7 +515,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -616,7 +616,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'create',
@@ -801,7 +801,7 @@ export class Mailchimp implements INodeType {
 						default: '',
 						description: 'A comma-separated list of fields to exclude.',
 					},
-				]
+				],
 			},
 /* -------------------------------------------------------------------------- */
 /*                                 member:getAll                              */
@@ -1020,7 +1020,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'member'
+							'member',
 						],
 						operation: [
 							'update',
@@ -1074,7 +1074,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1139,7 +1139,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1260,7 +1260,7 @@ export class Mailchimp implements INodeType {
 						displayOptions: {
 							show: {
 								'/resource':[
-									'member'
+									'member',
 								],
 								'/operation':[
 									'update',
@@ -1426,7 +1426,7 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource:[
-							'memberTag'
+							'memberTag',
 						],
 						operation: [
 							'create',
@@ -1663,7 +1663,7 @@ export class Mailchimp implements INodeType {
 							loadOptionsMethod: 'getLists',
 						},
 						default: '',
-						description: 'List of lists'
+						description: 'List of lists',
 					},
 					{
 						displayName: 'Since Create Time',
@@ -1750,16 +1750,16 @@ export class Mailchimp implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'campaign'
+							'campaign',
 						],
 						operation: [
 							'send',
 							'get',
 							'delete',
 							'replicate',
-							'resend'
-						]
-					}
+							'resend',
+						],
+					},
 				},
 				required: true,
 				default: '',
@@ -1848,7 +1848,7 @@ export class Mailchimp implements INodeType {
 					});
 				}
 				return returnData;
-			}
+			},
 		},
 	};
 
@@ -1890,7 +1890,7 @@ export class Mailchimp implements INodeType {
 					const body: ICreateMemberBody = {
 						listId,
 						email_address: email,
-						status
+						status,
 					};
 					if (options.emailType) {
 						body.email_type = options.emailType as string;

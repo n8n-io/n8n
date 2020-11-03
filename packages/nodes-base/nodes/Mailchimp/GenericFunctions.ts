@@ -20,7 +20,7 @@ export async function mailchimpApiRequest(this: IHookFunctions | IExecuteFunctio
 
 	const options: OptionsWithUrl = {
 		headers: {
-			'Accept': 'application/json'
+			'Accept': 'application/json',
 		},
 		method,
 		qs,

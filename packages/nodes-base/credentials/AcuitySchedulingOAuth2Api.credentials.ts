@@ -31,7 +31,7 @@ export class AcuitySchedulingOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'api-v1',
-			required: true
+			required: true,
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
