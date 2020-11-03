@@ -157,7 +157,7 @@ export class Twitter implements INodeType {
 					const body: ITweet = {
 						status: text,
 					};
-					
+
 					if (additionalFields.inReplyToStatusId) {
 						body.in_reply_to_status_id = additionalFields.inReplyToStatusId as string;
 						body.auto_populate_reply_metadata = true;
@@ -172,7 +172,7 @@ export class Twitter implements INodeType {
 						});
 
 						const medias = await uploadAttachments.call(this, attachmentProperties, items, i);
-						
+
 						body.media_ids = (medias as IDataObject[]).map((media: IDataObject) => media.media_id_string).join(',');
 					}
 

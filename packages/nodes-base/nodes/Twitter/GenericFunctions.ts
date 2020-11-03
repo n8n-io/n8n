@@ -12,7 +12,8 @@ import {
 
 import {
 	IBinaryKeyData,
-	IDataObject, INodeExecutionData,
+	IDataObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -68,7 +69,7 @@ export async function twitterApiRequestAllItems(this: IExecuteFunctions | ILoadO
 	return returnData;
 }
 
-export function chunks (buffer: Buffer, chunkSize: number) {
+export function chunks(buffer: Buffer, chunkSize: number) {
 	const result = [];
 	const len = buffer.length;
 	let i = 0;
@@ -81,9 +82,9 @@ export function chunks (buffer: Buffer, chunkSize: number) {
 }
 
 export async function uploadAttachments(this: IExecuteFunctions, binaryProperties: string[], items: INodeExecutionData[], i: number) {
-	
+
 	const uploadUri = 'https://upload.twitter.com/1.1/media/upload.json';
-	
+
 	const media: IDataObject[] = [];
 
 	for (const binaryPropertyName of binaryProperties) {
@@ -129,7 +130,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 				media_type: binaryData[binaryPropertyName].mimeType,
 			};
 
-			response = await twitterApiRequest.call(this, 'POST', '', {}, {},  uploadUri, { form: attachmentBody });
+			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, { form: attachmentBody });
 
 			const mediaId = response.media_id_string;
 
@@ -174,7 +175,7 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 					}, (check_after_secs as number) * 1000);
 				});
 			}
-			
+
 			media.push(response);
 		}
 
