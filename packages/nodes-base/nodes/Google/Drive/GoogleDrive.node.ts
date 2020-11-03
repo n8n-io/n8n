@@ -746,68 +746,6 @@ export class GoogleDrive implements INodeType {
 				},
 				description: 'The IDs of the parent folders which contain the file.',
 			},
-			{
-				displayName: 'Binary Data',
-				name: 'binaryData',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
-					},
-				},
-				description: 'If the data to upload should be taken from binary field.',
-			},
-			{
-				displayName: 'File Content',
-				name: 'fileContent',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
-						binaryData: [
-							false,
-						],
-					},
-
-				},
-				placeholder: '',
-				description: 'The text content of the file to upload.',
-			},
-			{
-				displayName: 'Binary Property',
-				name: 'binaryPropertyName',
-				type: 'string',
-				default: 'data',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'upload',
-						],
-						resource: [
-							'file',
-						],
-						binaryData: [
-							true,
-						],
-					},
-
-				},
-				placeholder: '',
-				description: 'Name of the binary property which contains<br />the data for the file to be uploaded.',
-			},
 
 
 			// ----------------------------------
