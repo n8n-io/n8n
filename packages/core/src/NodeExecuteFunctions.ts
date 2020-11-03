@@ -38,7 +38,7 @@ import {
 } from 'n8n-workflow';
 
 import * as clientOAuth1 from 'oauth-1.0a';
-import { RequestOptions, Token } from 'oauth-1.0a';
+import { Token } from 'oauth-1.0a';
 import * as clientOAuth2 from 'client-oauth2';
 import { get } from 'lodash';
 import * as express from 'express';
@@ -238,31 +238,13 @@ export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: strin
 		secret: oauthTokenData.oauth_token_secret as string,
 	};
 
-	const newRequestOptions = {
-		method: requestOptions.method,
-		data: { ...requestOptions.qs, ...requestOptions.body },
-		json: requestOptions.json,
-	};
+	//@ts-ignore
+	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
 
-	// Some RequestOptions have a URI and some have a URL
-	//@ts-ignores
-	if (requestOptions.url !== undefined) {
-		//@ts-ignore
-		newRequestOptions.url = requestOptions.url;
-	} else {
-		//@ts-ignore
-		newRequestOptions.url = requestOptions.uri;
-	}
+	//@ts-ignore
+	requestOptions.headers = oauth.toHeader(oauth.authorize(requestOptions, token));
 
-	if (requestOptions.qs !== undefined) {
-		//@ts-ignore
-		newRequestOptions.qs = oauth.authorize(newRequestOptions as RequestOptions, token);
-	} else {
-		//@ts-ignore
-		newRequestOptions.form = oauth.authorize(newRequestOptions as RequestOptions, token);
-	}
-
-	return this.helpers.request!(newRequestOptions)
+	return this.helpers.request!(requestOptions)
 		.catch(async (error: IResponseError) => {
 			// Unknown error so simply throw it
 			throw error;
