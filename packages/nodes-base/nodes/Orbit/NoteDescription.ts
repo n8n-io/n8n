@@ -38,15 +38,15 @@ export const noteOperations = [
 
 export const noteFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                note:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                note:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsMethod: 'getAllWorkspaces',
+			loadOptionsMethod: 'getWorkspaces',
 		},
 		default: '',
 		required: true,
@@ -78,7 +78,6 @@ export const noteFields = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Note',
@@ -96,12 +95,11 @@ export const noteFields = [
 				],
 			},
 		},
-		description: 'Note',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                note:getAll                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                note:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -121,7 +119,6 @@ export const noteFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -139,7 +136,6 @@ export const noteFields = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Return All',
@@ -197,13 +193,11 @@ export const noteFields = [
 			},
 		},
 		default: false,
-		description: '',
 	},
 
-
-/* -------------------------------------------------------------------------- */
-/*                                note:update                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                note:update                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -223,7 +217,6 @@ export const noteFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -241,7 +234,6 @@ export const noteFields = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Note ID',
@@ -259,7 +251,6 @@ export const noteFields = [
 				],
 			},
 		},
-		description: 'Note ID',
 	},
 	{
 		displayName: 'Note',
@@ -277,6 +268,5 @@ export const noteFields = [
 				],
 			},
 		},
-		description: 'Note',
 	},
 ] as INodeProperties[];

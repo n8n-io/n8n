@@ -1,4 +1,4 @@
-import { 
+import {
 	IDataObject,
 } from "n8n-workflow";
 
@@ -10,7 +10,7 @@ export interface IData {
 	];
 }
 
-export interface IRelation { 
+export interface IRelation {
 	data: [
 		{
 			relationships: {

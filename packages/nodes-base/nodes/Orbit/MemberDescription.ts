@@ -53,9 +53,9 @@ export const memberOperations = [
 
 export const memberFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                member:delete                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                member:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -97,9 +97,9 @@ export const memberFields = [
 	},
 
 
-/* -------------------------------------------------------------------------- */
-/*                                member:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                member:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -157,9 +157,9 @@ export const memberFields = [
 		description: 'By default, the response just includes the reference of the identity. When set to true the identities will be resolved automatically.',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                member:getAll                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                member:getAll                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -282,9 +282,9 @@ export const memberFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                member:lookup                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                member:lookup                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -467,9 +467,10 @@ export const memberFields = [
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                member:update                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                member:update                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -489,7 +490,6 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -507,7 +507,6 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Update Fields',
@@ -531,56 +530,48 @@ export const memberFields = [
 				name: 'bio',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Birthday',
 				name: 'birthday',
 				type: 'dateTime',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Company',
 				name: 'company',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Location',
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Pronouns',
 				name: 'pronouns',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Shipping Address',
 				name: 'shippingAddress',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Tags to Add',
@@ -601,28 +592,25 @@ export const memberFields = [
 				name: 'tShirt',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Teammate',
 				name: 'teammate',
 				type: 'boolean',
 				default: false,
-				description: '',
 			},
 			{
 				displayName: 'URL',
 				name: 'url',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                member:upsert                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                member:upsert                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -642,7 +630,6 @@ export const memberFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Identity',
@@ -773,7 +760,6 @@ export const memberFields = [
 								],
 							},
 						},
-						description: `The email address.`,
 					},
 					{
 						displayName: 'Host',
@@ -815,91 +801,80 @@ export const memberFields = [
 				name: 'bio',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Birthday',
 				name: 'birthday',
 				type: 'dateTime',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Company',
 				name: 'company',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Location',
 				name: 'location',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Pronouns',
 				name: 'pronouns',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Shipping Address',
 				name: 'shippingAddress',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Tags to Add',
 				name: 'tagsToAdd',
 				type: 'string',
 				default: '',
-				description: 'Adds tags to member; comma-separated string or array',
+				description: 'Adds tags to member; comma-separated string or array.',
 			},
 			{
 				displayName: 'Tag List',
 				name: 'tagList',
 				type: 'string',
 				default: '',
-				description: 'Replaces all tags for the member; comma-separated string or array',
+				description: 'Replaces all tags for the member; comma-separated string or array.',
 			},
 			{
 				displayName: 'T-Shirt',
 				name: 'tShirt',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Teammate',
 				name: 'teammate',
 				type: 'boolean',
 				default: false,
-				description: '',
 			},
 			{
 				displayName: 'URL',
 				name: 'url',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 		],
 	},

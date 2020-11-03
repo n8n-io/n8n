@@ -33,9 +33,9 @@ export const activityOperations = [
 
 export const activityFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                activity:create                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                activity:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -55,7 +55,6 @@ export const activityFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -73,7 +72,6 @@ export const activityFields = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Title',
@@ -91,7 +89,6 @@ export const activityFields = [
 				],
 			},
 		},
-		description: 'Title',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -157,9 +154,10 @@ export const activityFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                activity:getAll                             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                activity:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -179,7 +177,6 @@ export const activityFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Return All',

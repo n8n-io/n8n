@@ -111,7 +111,7 @@ export class Orbit implements INodeType {
 					this,
 					'GET',
 					'/workspaces',
-				);		
+				);
 				for (const workspace of workspaces.data) {
 					returnData.push({
 						name: workspace.attributes.name,
@@ -128,7 +128,7 @@ export class Orbit implements INodeType {
 					this,
 					'GET',
 					'/activity_types',
-				);		
+				);
 				for (const activityType of data) {
 					returnData.push({
 						name: activityType.attributes.short_name,
@@ -261,7 +261,7 @@ export class Orbit implements INodeType {
 							}
 						} else {
 							//it's email
-							identity.email= data.email as string;
+							identity.email = data.email as string;
 						}
 					}
 
@@ -281,7 +281,7 @@ export class Orbit implements INodeType {
 					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members/${memberId}`);
 					if (resolve === true) {
 						resolveIdentities(responseData);
-					} 
+					}
 					responseData = responseData.data;
 				}
 				if (operation === 'getAll') {
@@ -315,7 +315,7 @@ export class Orbit implements INodeType {
 						}
 					} else {
 						//it's email
-						qs.email= this.getNodeParameter('email', i) as string;
+						qs.email = this.getNodeParameter('email', i) as string;
 					}
 
 					responseData = await orbitApiRequest.call(this, 'GET', `/${workspaceId}/members/find`, {}, qs);
@@ -380,7 +380,7 @@ export class Orbit implements INodeType {
 					const memberId = this.getNodeParameter('memberId', i) as string;
 					const note = this.getNodeParameter('note', i) as string;
 
-					responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/notes`, {body: note});
+					responseData = await orbitApiRequest.call(this, 'POST', `/${workspaceId}/members/${memberId}/notes`, { body: note });
 					responseData = responseData.data;
 				}
 				if (operation === 'getAll') {
@@ -402,7 +402,7 @@ export class Orbit implements INodeType {
 					const noteId = this.getNodeParameter('noteId', i) as string;
 					const note = this.getNodeParameter('note', i) as string;
 
-					responseData = await orbitApiRequest.call(this, 'PUT', `/${workspaceId}/members/${memberId}/notes/${noteId}`, {body: note});
+					responseData = await orbitApiRequest.call(this, 'PUT', `/${workspaceId}/members/${memberId}/notes/${noteId}`, { body: note });
 					responseData = { success: true };
 				}
 			}

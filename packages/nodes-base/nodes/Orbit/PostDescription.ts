@@ -38,9 +38,9 @@ export const postOperations = [
 
 export const postFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                post:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                post:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -60,7 +60,6 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -78,7 +77,6 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'URL',
@@ -96,7 +94,7 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'Supply any URL and Orbit will do its best job to parse out a title, description, and image',
+		description: 'Supply any URL and Orbit will do its best job to parse out a title, description, and image.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -120,14 +118,13 @@ export const postFields = [
 				name: 'publishedAt',
 				type: 'dateTime',
 				default: '',
-				description: '',
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                post:getAll                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                post:getAll                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -147,7 +144,6 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Return All',
@@ -212,14 +208,14 @@ export const postFields = [
 				name: 'memberId',
 				type: 'string',
 				default: '',
-				description: 'When set the post will be filtered by the member id.',
+				description: 'When set the post will be filtered by the member ID.',
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                post:delete                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                post:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace',
 		name: 'workspaceId',
@@ -239,7 +235,6 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'The workspace',
 	},
 	{
 		displayName: 'Member ID',
@@ -257,7 +252,6 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'Member ID',
 	},
 	{
 		displayName: 'Post ID',
@@ -275,6 +269,5 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'Post ID',
 	},
 ] as INodeProperties[];

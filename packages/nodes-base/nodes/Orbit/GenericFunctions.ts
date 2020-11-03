@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -11,14 +11,14 @@ import {
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-import { 
+import {
 	IRelation,
 } from './Interfaces';
 
 export async function orbitApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	try{
+	try {
 		const credentials = this.getCredentials('orbitApi');
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
@@ -37,7 +37,7 @@ export async function orbitApiRequest(this: IHookFunctions | IExecuteFunctions |
 		options = Object.assign({}, options, option);
 
 		return await this.helpers.request!(options);
-	} catch(error) {
+	} catch (error) {
 
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
@@ -54,7 +54,7 @@ export async function orbitApiRequest(this: IHookFunctions | IExecuteFunctions |
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function orbitApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function orbitApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -64,7 +64,7 @@ export async function orbitApiRequestAllItems(this: IHookFunctions | IExecuteFun
 	do {
 		responseData = await orbitApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		
+
 		if (query.resolveIdentities === true) {
 			resolveIdentities(responseData);
 		}
