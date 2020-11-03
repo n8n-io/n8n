@@ -42,14 +42,16 @@ export class Mqtt implements INodeType {
 				name: 'topic',
 				type: 'string',
 				required: true,
-				default: 'The topic to publish to',
+				default: '',
+				description: 'The topic to publish to',
 			},
 			{
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
 				required: true,
-				default: 'The message to publish',
+				default: '',
+				description: 'The message to publish',
 			},
 			{
 				displayName: 'Options',
@@ -145,9 +147,9 @@ export class Mqtt implements INodeType {
 			});
 	
 			client.on('error', (e: string | undefined) => {
-				reject(e)
+				reject(e);
 			});
-		})
+		});
 
 		return data as INodeExecutionData[][];
 	}
