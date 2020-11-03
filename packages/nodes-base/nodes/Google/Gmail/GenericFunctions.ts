@@ -23,7 +23,7 @@ import {
 	IEmail,
 } from './Gmail.node';
 
-const MailComposer = require("nodemailer/lib/mail-composer");
+const mailComposer = require('nodemailer/lib/mail-composer');
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
 	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -152,8 +152,8 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.attachments = attachments;
 	}
 
-	
-	const mail = new MailComposer(mailOptions);
+
+	const mail = new mailComposer(mailOptions);
 
 	mailBody = await new Promise((resolve) => {
 		mail.compile().build(async (err: string, result: Buffer) => {
@@ -161,7 +161,7 @@ export async function encodeEmail(email: IEmail) {
 		});
 	});
 
-	return mailBody.toString("base64").replace(/\+/g, '-').replace(/\//g, '_');
+	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
