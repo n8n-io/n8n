@@ -36,7 +36,7 @@ export class Storyblok implements INodeType {
 		description: 'Consume Storyblok API',
 		defaults: {
 			name: 'Storyblok',
-			color: '#775af6',
+			color: '#09b3af',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -93,7 +93,7 @@ export class Storyblok implements INodeType {
 						value: 'story',
 					},
 				],
-				default: 'member',
+				default: 'story',
 				description: 'Resource to consume.',
 				displayOptions: {
 					show: {
@@ -114,7 +114,7 @@ export class Storyblok implements INodeType {
 						value: 'story',
 					},
 				],
-				default: 'member',
+				default: 'story',
 				description: 'Resource to consume.',
 				displayOptions: {
 					show: {
