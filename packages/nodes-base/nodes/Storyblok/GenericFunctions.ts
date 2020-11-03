@@ -14,68 +14,48 @@ import {
  } from 'n8n-workflow';
 
 export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	try{
-		const authenticationMethod = this.getNodeParameter('source', 0) as string;
+	const authenticationMethod = this.getNodeParameter('source', 0) as string;
 
-		if (authenticationMethod === 'contentApi') {
-			const credentials = this.getCredentials('storyblokContentApi');
+	let options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/json',
+			'Accept': 'application/json',
+		},
+		method,
+		qs,
+		body,
+		uri: '',
+		json: true
+	};
 
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
+	options = Object.assign({}, options, option);
 
-			const apiUrl = 'https://api.storyblok.com';
+	if (Object.keys(options.body).length === 0) {
+		delete options.body;
+	}
 
-			let options: OptionsWithUri = {
-				headers: {
-					'Content-Type': 'application/json',
-					'Accept': 'application/json',
-				},
-				method,
-				qs,
-				body,
-				uri: uri || `${apiUrl}${resource}?token=${credentials.apiKey}`,
-				json: true
-			};
-	
-			options = Object.assign({}, options, option);
-	
-			if (Object.keys(options.body).length === 0) {
-				delete options.body;
-			}
-	
-			return await this.helpers.request!(options);
-		}
+	let endpoint;
 
-		if (authenticationMethod === 'managementApi') {
-			const credentials = this.getCredentials('storyblokManagementApi');
+	if (authenticationMethod === 'contentApi') {
+		const credentials = this.getCredentials('storyblokContentApi') as IDataObject;
 
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
+		endpoint = `https://api.storyblok.com${resource}`;
 
-			const apiUrl = 'https://mapi.storyblok.com';
+		Object.assign(options.qs, { token: credentials.apiKey });
 
-			let options: OptionsWithUri = {
-				headers: {
-					'Content-Type': 'application/json',
-					'Authorization': credentials.accessToken,
-				},
-				method,
-				qs,
-				body,
-				uri: uri || `${apiUrl}${resource}`,
-				json: true
-			};
-	
-			options = Object.assign({}, options, option);
-	
-			if (Object.keys(options.body).length === 0) {
-				delete options.body;
-			}
-	
-			return await this.helpers.request!(options);
-		}
+	} else {
+
+		const credentials = this.getCredentials('storyblokManagementApi') as IDataObject;
+
+		endpoint = `https://mapi.storyblok.com${resource}`;
+
+		Object.assign(options.headers, { 'Authorization': credentials.accessToken });
+
+	}
+
+	try {
+		return await this.helpers.request!(options);
+
 	} catch(error) {
 
 		if (error.response && error.response.body && error.response.body.message) {
