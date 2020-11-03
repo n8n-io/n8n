@@ -130,7 +130,7 @@ export class Mqtt implements INodeType {
 		}
 
 		const client = mqtt.connect(brokerUrl, clientOptions);
-		
+
 		const data = await new Promise((resolve, reject): any => {
 			client.on('connect', () => {
 				for (let i = 0; i < length; i++) {
@@ -140,7 +140,12 @@ export class Mqtt implements INodeType {
 
 					const options = (this.getNodeParameter('options', i) as IDataObject);
 
-					client.publish(topic, message, options);
+					try {
+						client.publish(topic, message, options);
+					} catch (e) {
+						reject(e);
+					}
+
 				}
 				client.end();	
 				resolve([items]);	
