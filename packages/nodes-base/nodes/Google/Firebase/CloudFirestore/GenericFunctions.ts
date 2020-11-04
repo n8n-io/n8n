@@ -21,6 +21,9 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		method,
 		body,
 		qs,
+		qsStringifyOptions: {
+			arrayFormat: 'repeat',
+		},
 		uri: uri || `https://firestore.googleapis.com/v1/projects${resource}`,
 		json: true,
 	};
@@ -132,6 +135,6 @@ export function documentToJson(fields: IDataObject): IDataObject {
 			// @ts-ignore
 			result[key] = documentToJson(value);
 		}
-	}
+	}	
 	return result;
 }

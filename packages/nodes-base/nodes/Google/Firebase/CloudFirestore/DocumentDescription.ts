@@ -18,12 +18,12 @@ export const documentOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a contact',
+				description: 'Create a document',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a contact',
+				description: 'Delete a document',
 			},
 			{
 				name: 'Get',
@@ -540,6 +540,23 @@ export const documentFields = [
 		description: 'Columns to insert',
 		required: true,
 		placeholder: 'age, city, location',
+	},
+	{
+		displayName: 'Simple',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'document',
+				],
+			},
+		},
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 
 	/* -------------------------------------------------------------------------- */
