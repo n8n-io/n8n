@@ -46,11 +46,9 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			console.log(options);
 			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
-			console.log(this.getCredentials('googleBooksOAuth2Api'));
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'googleBooksOAuth2Api', options);
 		}

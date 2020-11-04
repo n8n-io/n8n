@@ -280,6 +280,24 @@ export class GoogleBooks implements INodeType {
 				},
 			},
 			{
+				displayName: 'Bookshelf ID',
+				name: 'shelfId',
+				type: 'string',
+				description: 'ID of the bookshelf',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'bookshelfVolume',
+						],
+					},
+				},
+			},
+			{
 				displayName: 'Volume ID',
 				name: 'volumeId',
 				type: 'string',
@@ -296,6 +314,7 @@ export class GoogleBooks implements INodeType {
 						],
 						resource: [
 							'bookshelfVolume',
+							'volume',
 						],
 					},
 				},
@@ -423,12 +442,12 @@ export class GoogleBooks implements INodeType {
 					const body: IDataObject = {
 						volumeId,
 					};
-					responseData = await googleApiRequest.call(this, 'POST', `mylibrary/bookshelves/${shelfId}/addVolume`, body);
+					responseData = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/addVolume`, body);
 				}
 
 				if (operation === 'clear') {
 					const shelfId = this.getNodeParameter('shelfId', i) as string;
-					responseData = await googleApiRequest.call(this, 'POST', `mylibrary/bookshelves/${shelfId}/clearVolumes`);
+					responseData = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/clearVolumes`);
 				}
 
 				 if (operation === 'getAll') {
@@ -459,16 +478,16 @@ export class GoogleBooks implements INodeType {
 						volumeId,
 						volumePosition,
 					};
-					responseData = await googleApiRequest.call(this, 'POST', `mylibrary/bookshelves/${shelfId}/moveVolume`, body);
+					responseData = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/moveVolume`, body);
 				}
 
-				if (operation === 'move') {
+				if (operation === 'remove') {
 					const shelfId = this.getNodeParameter('shelfId', i) as string;
 					const volumeId = this.getNodeParameter('volumeId', i) as string;
 					const body: IDataObject = {
 						volumeId,
 					};
-					responseData = await googleApiRequest.call(this, 'POST', `mylibrary/bookshelves/${shelfId}/removeVolume`, body);
+					responseData = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/removeVolume`, body);
 				}
 			}
 			if (Array.isArray(responseData)) {
