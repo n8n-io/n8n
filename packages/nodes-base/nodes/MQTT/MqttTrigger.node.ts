@@ -42,7 +42,9 @@ export class MqttTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				description: `Topics to subscribe to, multiple can be defined with comma.<br/>
-				wildcard characters are supported (+ - for single level and # - for multi level)`,
+				wildcard characters are supported (+ - for single level and # - for multi level)<br>
+				By default all subscription used QoS=0. To set a different QoS, write the QoS desired<br>
+				after the topic preceded by a colom. For Example: topicA:1,topicB:2`,
 			},
 			{
 				displayName: 'Options',
@@ -80,6 +82,15 @@ export class MqttTrigger implements INodeType {
 
 		const topics = (this.getNodeParameter('topics') as string).split(',');
 
+		const topicsQoS: IDataObject = {};
+
+		for (const data of topics) {
+			const [topic, qos] = data.split(':');
+			topicsQoS[topic] = (qos) ? { qos: parseInt(qos, 10) } : { qos: 0 }; 
+		}
+
+		console.log(topicsQoS);
+
 		const options = this.getNodeParameter('options') as IDataObject;
 
 		if (!topics) {
@@ -90,10 +101,18 @@ export class MqttTrigger implements INodeType {
 		const host = credentials.host as string;
 		const brokerUrl = `${protocol}://${host}`;
 		const port = credentials.port as number || 1883;
+		const clientId = credentials.clientId as string;
+		const clean = credentials.clean as boolean;
 
 		const clientOptions: IClientOptions = {
 			port,
+			clean,
+			clientId,
 		};
+
+		if (clientOptions.clean === true) {
+			delete clientOptions.clientId;
+		}
 
 		if (credentials.username && credentials.password) {
 			clientOptions.username = credentials.username as string;
@@ -107,7 +126,8 @@ export class MqttTrigger implements INodeType {
 		async function manualTriggerFunction() {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
-					client.subscribe(topics, (err, granted) => {
+					//@ts-ignore
+					client.subscribe(topicsQoS, (err, granted) => {
 						if (err) {
 							reject(err);
 						}

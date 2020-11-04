@@ -55,5 +55,18 @@ export class Mqtt implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'Clean Session',
+			name: 'clean',
+			type: 'boolean' as NodePropertyTypes,
+			default: true,
+			description: `Set to false to receive QoS 1 and 2 messages while offline.`,
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+		},
 	];
 }

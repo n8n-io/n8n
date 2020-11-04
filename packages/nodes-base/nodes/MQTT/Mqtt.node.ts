@@ -43,7 +43,7 @@ export class Mqtt implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
-				description: 'The topic to publish to',
+				description: `The topic to publish to`,
 			},
 			{
 				displayName: 'Message',
@@ -82,28 +82,13 @@ export class Mqtt implements INodeType {
 						description: 'QoS subscription level',
 					},
 					{
-						displayName: 'No Local',
-						name: 'nl',
+						displayName: 'Retain',
+						name: 'retain',
 						type: 'boolean',
 						default: false,
-						description: `No Local MQTT 5.0 flag (If the value is true, Application Messages MUST NOT be<br>
-							forwarded to a connection with a ClientID equal to the ClientID of the publishing connection)`,
-					},
-					{
-						displayName: 'Retain as Published',
-						name: 'rap',
-						type: 'boolean',
-						default: false,
-						description: `Retain as Published MQTT 5.0 flag (If true, Application Messages forwarded using this<br>
-						subscription keep the RETAIN flag they were published with. If false, Application Messages forwarded<br>
-						using this subscription have the RETAIN flag set to 0.)`,
-					},
-					{
-						displayName: 'Retain Handling',
-						name: 'rh',
-						type: 'boolean',
-						default: false,
-						description: `Retain Handling MQTT 5.0 (This option specifies whether retained messages are sent when the subscription is established.)`,
+						description: `Normally if a publisher publishes a message to a topic, and no one is subscribed to<br>
+						that topic the message is simply discarded by the broker. However the publisher can tell the broker<br>
+						to keep the last message on that topic by setting the retain flag to true.`,
 					},
 				],
 			},
@@ -119,10 +104,18 @@ export class Mqtt implements INodeType {
 		const host = credentials.host as string;
 		const brokerUrl = `${protocol}://${host}`;
 		const port = credentials.port as number || 1883;
+		const clientId = credentials.clientId as string;
+		const clean = credentials.clean as boolean;
 
 		const clientOptions: IClientOptions = {
 			port,
+			clean,
+			clientId,
 		};
+		
+		if (clientOptions.clean === true) {
+			delete clientOptions.clientId;
+		}
 
 		if (credentials.username && credentials.password) {
 			clientOptions.username = credentials.username as string;
