@@ -18,11 +18,11 @@ export const storyManagementOperations = [
 			},
 		},
 		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a story',
-			},
+			// {
+			// 	name: 'Create',
+			// 	value: 'create',
+			// 	description: 'Create a story',
+			// },
 			{
 				name: 'Delete',
 				value: 'delete',
@@ -49,269 +49,269 @@ export const storyManagementOperations = [
 				description: 'Unpublish a story',
 			},
 		],
-		default: 'create',
+		default: 'get',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
 export const storyManagementFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                story:create                                */
-/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Space ID',
-		name: 'space',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getSpaces',
-		},
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'The name of the space',
-	},
-	{
-		displayName: 'Name',
-		name: 'name',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'The name you give this story',
-	},
-	{
-		displayName: 'Slug',
-		name: 'slug',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		description: 'The slug/path you give this story',
-	},
-	{
-		displayName: 'JSON Parameters',
-		name: 'jsonParameters',
-		type: 'boolean',
-		default: false,
-		description: '',
-		displayOptions: {
-			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		displayOptions: {
-			show: {
-				source: [
-					'managementApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: {},
-		options: [
-			{
-				displayName: 'Content',
-				name: 'contentUi',
-				type: 'fixedCollection',
-				description: 'Add Content',
-				typeOptions: {
-					multipleValues: false,
-				},
-				displayOptions: {
-					show: {
-						'/jsonParameters': [
-							false,
-						],
-					},
-				},
-				placeholder: 'Add Content',
-				default: '',
-				options: [
-					{
-						displayName: 'Content Data',
-						name: 'contentValue',
-						values: [
-							{
-								displayName: 'Component',
-								name: 'component',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getComponents',
-									loadOptionsDependsOn: [
-										'space',
-									],
-								},
-								default: '',
-							},
-							{
-								displayName: 'Elements',
-								name: 'elementUi',
-								type: 'fixedCollection',
-								description: 'Add Body',
-								typeOptions: {
-									multipleValues: true,
-								},
-								placeholder: 'Add Element',
-								default: '',
-								options: [
-									{
-										displayName: 'Element',
-										name: 'elementValues',
-										values: [
-											{
-												displayName: 'Component',
-												name: 'component',
-												type: 'options',
-												typeOptions: {
-													loadOptionsMethod: 'getComponents',
-													loadOptionsDependsOn: [
-														'space',
-													],
-												},
-												default: '',
-											},
-											{
-												displayName: 'Element Data',
-												name: 'dataUi',
-												type: 'fixedCollection',
-												description: 'Add Data',
-												typeOptions: {
-													multipleValues: true,
-												},
-												placeholder: 'Add Data',
-												default: '',
-												options: [
-													{
-														displayName: 'Data',
-														name: 'dataValues',
-														values: [
-															{
-																displayName: 'Key',
-																name: 'key',
-																type: 'string',
-																default: '',
-															},
-															{
-																displayName: 'Value',
-																name: 'value',
-																type: 'string',
-																default: '',
-															},
-														],
-													},
-												],
-											},
-										],
-									},
-								],
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Content (JSON)',
-				name: 'contentJson',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/jsonParameters': [
-							true,
-						],
-					},
-				},
-				default: '',
-			},
-			{
-				displayName: 'Parent ID',
-				name: 'parentId',
-				type: 'string',
-				default: '',
-				description: 'Parent story/folder numeric id',
-			},
-			{
-				displayName: 'Path',
-				name: 'path',
-				type: 'string',
-				default: '',
-				description: 'Given real path, used in the preview editor',
-			},
-			{
-				displayName: 'Is Startpage',
-				name: 'isStartpage',
-				type: 'boolean',
-				default: false,
-				description: 'Is startpage of current folder',
-			},
-			{
-				displayName: 'First Published At',
-				name: 'firstPublishedAt',
-				type: 'dateTime',
-				default: '',
-				description: 'First publishing date',
-			},
-		],
-	},
+	// /* -------------------------------------------------------------------------- */
+	// /*                                story:create                                */
+	// /* -------------------------------------------------------------------------- */
+	// {
+	// 	displayName: 'Space ID',
+	// 	name: 'space',
+	// 	type: 'options',
+	// 	typeOptions: {
+	// 		loadOptionsMethod: 'getSpaces',
+	// 	},
+	// 	default: '',
+	// 	required: true,
+	// 	displayOptions: {
+	// 		show: {
+	// 			source: [
+	// 				'managementApi',
+	// 			],
+	// 			resource: [
+	// 				'story',
+	// 			],
+	// 			operation: [
+	// 				'create',
+	// 			],
+	// 		},
+	// 	},
+	// 	description: 'The name of the space.',
+	// },
+	// {
+	// 	displayName: 'Name',
+	// 	name: 'name',
+	// 	type: 'string',
+	// 	default: '',
+	// 	required: true,
+	// 	displayOptions: {
+	// 		show: {
+	// 			source: [
+	// 				'managementApi',
+	// 			],
+	// 			resource: [
+	// 				'story',
+	// 			],
+	// 			operation: [
+	// 				'create',
+	// 			],
+	// 		},
+	// 	},
+	// 	description: 'The name you give this story.',
+	// },
+	// {
+	// 	displayName: 'Slug',
+	// 	name: 'slug',
+	// 	type: 'string',
+	// 	default: '',
+	// 	required: true,
+	// 	displayOptions: {
+	// 		show: {
+	// 			source: [
+	// 				'managementApi',
+	// 			],
+	// 			resource: [
+	// 				'story',
+	// 			],
+	// 			operation: [
+	// 				'create',
+	// 			],
+	// 		},
+	// 	},
+	// 	description: 'The slug/path you give this story.',
+	// },
+	// {
+	// 	displayName: 'JSON Parameters',
+	// 	name: 'jsonParameters',
+	// 	type: 'boolean',
+	// 	default: false,
+	// 	description: '',
+	// 	displayOptions: {
+	// 		show: {
+	// 			source: [
+	// 				'managementApi',
+	// 			],
+	// 			resource: [
+	// 				'story',
+	// 			],
+	// 			operation: [
+	// 				'create',
+	// 			],
+	// 		},
+	// 	},
+	// },
+	// {
+	// 	displayName: 'Additional Fields',
+	// 	name: 'additionalFields',
+	// 	type: 'collection',
+	// 	placeholder: 'Add Field',
+	// 	displayOptions: {
+	// 		show: {
+	// 			source: [
+	// 				'managementApi',
+	// 			],
+	// 			resource: [
+	// 				'story',
+	// 			],
+	// 			operation: [
+	// 				'create',
+	// 			],
+	// 		},
+	// 	},
+	// 	default: {},
+	// 	options: [
+	// 		{
+	// 			displayName: 'Content',
+	// 			name: 'contentUi',
+	// 			type: 'fixedCollection',
+	// 			description: 'Add Content',
+	// 			typeOptions: {
+	// 				multipleValues: false,
+	// 			},
+	// 			displayOptions: {
+	// 				show: {
+	// 					'/jsonParameters': [
+	// 						false,
+	// 					],
+	// 				},
+	// 			},
+	// 			placeholder: 'Add Content',
+	// 			default: '',
+	// 			options: [
+	// 				{
+	// 					displayName: 'Content Data',
+	// 					name: 'contentValue',
+	// 					values: [
+	// 						{
+	// 							displayName: 'Component',
+	// 							name: 'component',
+	// 							type: 'options',
+	// 							typeOptions: {
+	// 								loadOptionsMethod: 'getComponents',
+	// 								loadOptionsDependsOn: [
+	// 									'space',
+	// 								],
+	// 							},
+	// 							default: '',
+	// 						},
+	// 						{
+	// 							displayName: 'Elements',
+	// 							name: 'elementUi',
+	// 							type: 'fixedCollection',
+	// 							description: 'Add Body',
+	// 							typeOptions: {
+	// 								multipleValues: true,
+	// 							},
+	// 							placeholder: 'Add Element',
+	// 							default: '',
+	// 							options: [
+	// 								{
+	// 									displayName: 'Element',
+	// 									name: 'elementValues',
+	// 									values: [
+	// 										{
+	// 											displayName: 'Component',
+	// 											name: 'component',
+	// 											type: 'options',
+	// 											typeOptions: {
+	// 												loadOptionsMethod: 'getComponents',
+	// 												loadOptionsDependsOn: [
+	// 													'space',
+	// 												],
+	// 											},
+	// 											default: '',
+	// 										},
+	// 										{
+	// 											displayName: 'Element Data',
+	// 											name: 'dataUi',
+	// 											type: 'fixedCollection',
+	// 											description: 'Add Data',
+	// 											typeOptions: {
+	// 												multipleValues: true,
+	// 											},
+	// 											placeholder: 'Add Data',
+	// 											default: '',
+	// 											options: [
+	// 												{
+	// 													displayName: 'Data',
+	// 													name: 'dataValues',
+	// 													values: [
+	// 														{
+	// 															displayName: 'Key',
+	// 															name: 'key',
+	// 															type: 'string',
+	// 															default: '',
+	// 														},
+	// 														{
+	// 															displayName: 'Value',
+	// 															name: 'value',
+	// 															type: 'string',
+	// 															default: '',
+	// 														},
+	// 													],
+	// 												},
+	// 											],
+	// 										},
+	// 									],
+	// 								},
+	// 							],
+	// 						},
+	// 					],
+	// 				},
+	// 			],
+	// 		},
+	// 		{
+	// 			displayName: 'Content (JSON)',
+	// 			name: 'contentJson',
+	// 			type: 'string',
+	// 			displayOptions: {
+	// 				show: {
+	// 					'/jsonParameters': [
+	// 						true,
+	// 					],
+	// 				},
+	// 			},
+	// 			default: '',
+	// 		},
+	// 		{
+	// 			displayName: 'Parent ID',
+	// 			name: 'parentId',
+	// 			type: 'string',
+	// 			default: '',
+	// 			description: 'Parent story/folder numeric ID.',
+	// 		},
+	// 		{
+	// 			displayName: 'Path',
+	// 			name: 'path',
+	// 			type: 'string',
+	// 			default: '',
+	// 			description: 'Given real path, used in the preview editor.',
+	// 		},
+	// 		{
+	// 			displayName: 'Is Startpage',
+	// 			name: 'isStartpage',
+	// 			type: 'boolean',
+	// 			default: false,
+	// 			description: 'Is startpage of current folder.',
+	// 		},
+	// 		{
+	// 			displayName: 'First Published At',
+	// 			name: 'firstPublishedAt',
+	// 			type: 'dateTime',
+	// 			default: '',
+	// 			description: 'First publishing date.',
+	// 		},
+	// 	],
+	// },
 
-/* -------------------------------------------------------------------------- */
-/*                                story:delete                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                story:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Space ID',
 		name: 'space',
@@ -334,7 +334,7 @@ export const storyManagementFields = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space.',
 	},
 	{
 		displayName: 'Story ID',
@@ -355,12 +355,12 @@ export const storyManagementFields = [
 				],
 			},
 		},
-		description: 'Numeric ID of the story',
+		description: 'Numeric ID of the story.',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                story:get                                   */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                story:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Space ID',
 		name: 'space',
@@ -383,7 +383,7 @@ export const storyManagementFields = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space.',
 	},
 	{
 		displayName: 'Story ID',
@@ -404,12 +404,12 @@ export const storyManagementFields = [
 				],
 			},
 		},
-		description: 'Numeric ID of the story',
+		description: 'Numeric ID of the story.',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                story:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                story:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Space ID',
 		name: 'space',
@@ -506,14 +506,14 @@ export const storyManagementFields = [
 				name: 'starts_with',
 				type: 'string',
 				default: '',
-				description: 'Filter by slug',
+				description: 'Filter by slug.',
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                story:publish                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                story:publish                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Space ID',
 		name: 'space',
@@ -536,7 +536,7 @@ export const storyManagementFields = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space.',
 	},
 	{
 		displayName: 'Story ID',
@@ -557,7 +557,7 @@ export const storyManagementFields = [
 				],
 			},
 		},
-		description: 'Numeric ID of the story',
+		description: 'Numeric ID of the story.',
 	},
 	{
 		displayName: 'Options',
@@ -584,21 +584,21 @@ export const storyManagementFields = [
 				name: 'releaseId',
 				type: 'string',
 				default: '',
-				description: 'Numeric ID of release',
+				description: 'Numeric ID of release.',
 			},
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'string',
 				default: '',
-				description: 'Language code to publish the story individually (must be enabled in the space settings)',
+				description: 'Language code to publish the story individually (must be enabled in the space settings).',
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                story:unpublish                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                story:unpublish                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Space ID',
 		name: 'space',
@@ -621,7 +621,7 @@ export const storyManagementFields = [
 				],
 			},
 		},
-		description: 'The name of the space',
+		description: 'The name of the space.',
 	},
 	{
 		displayName: 'Story ID',
@@ -642,6 +642,6 @@ export const storyManagementFields = [
 				],
 			},
 		},
-		description: 'Numeric ID of the story',
+		description: 'Numeric ID of the story.',
 	},
 ] as INodeProperties[];

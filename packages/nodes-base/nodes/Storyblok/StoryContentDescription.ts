@@ -36,12 +36,12 @@ export const storyContentOperations = [
 
 export const storyContentFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                story:get                                   */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                story:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Slug',
-		name: 'slug',
+		displayName: 'Identifier',
+		name: 'identifier',
 		type: 'string',
 		default: '',
 		required: true,
@@ -58,12 +58,12 @@ export const storyContentFields = [
 				],
 			},
 		},
-		description: 'The slug of the story',
+		description: 'The ID or slug of the story to get.',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                story:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                story:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -136,7 +136,7 @@ export const storyContentFields = [
 				name: 'starts_with',
 				type: 'string',
 				default: '',
-				description: 'Filter by slug',
+				description: 'Filter by slug.',
 			},
 		],
 	},

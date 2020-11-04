@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -11,7 +11,7 @@ import {
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('source', 0) as string;
@@ -39,22 +39,17 @@ export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctio
 		options.uri = `https://api.storyblok.com${resource}`;
 
 		Object.assign(options.qs, { token: credentials.apiKey });
-
 	} else {
-
 		const credentials = this.getCredentials('storyblokManagementApi') as IDataObject;
 
 		options.uri = `https://mapi.storyblok.com${resource}`;
 
 		Object.assign(options.headers, { 'Authorization': credentials.accessToken });
-
 	}
-	
+
 	try {
 		return this.helpers.request!(options);
-
-	} catch(error) {
-
+	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
 			const errorBody = error.response.body;
@@ -67,7 +62,6 @@ export async function storyblokApiRequest(this: IHookFunctions | IExecuteFunctio
 }
 
 export async function storyblokApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
 	const returnData: IDataObject[] = [];
 
 	let responseData;
