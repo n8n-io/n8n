@@ -32,6 +32,8 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 
+		console.log(options);
+
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleFirebaseCloudFirestoreOAuth2Api', options);
 	} catch (error) {
@@ -132,6 +134,6 @@ export function documentToJson(fields: IDataObject): IDataObject {
 			// @ts-ignore
 			result[key] = documentToJson(value);
 		}
-	}
+	}	
 	return result;
 }

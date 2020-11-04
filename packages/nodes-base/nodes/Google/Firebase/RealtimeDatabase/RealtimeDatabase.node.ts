@@ -10,6 +10,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { isDate } from 'util';
 
 import {
 	googleApiRequest,
@@ -139,9 +140,14 @@ export class RealtimeDatabase implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
-		let responseData: INodeExecutionData;
+		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		//https://firebase.google.com/docs/reference/rest/database
+
+		if (['push', 'create', 'update'].includes(operation) && items.length === 1 && Object.keys(items[0].json).length === 0) {
+			throw new Error(`The ${operation} operation needs input data`);
+		}
+
 		for (let i = 0; i < length; i++) {
 			const projectId = this.getNodeParameter('projectId', i) as string;
 			let method = 'GET', attributes = '';
@@ -178,10 +184,18 @@ export class RealtimeDatabase implements INodeType {
 				document,
 			);
 
+			if (responseData === null) {
+				if (operation === 'GET') {
+					throw new Error(`Google Firebase error response: Requested entity was not found.`);
+				} else if (method === 'DELETE') {
+					responseData = { success: true };
+				}
+			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else if (typeof responseData === 'string') {
-				returnData.push({[this.getNodeParameter('path', i) as string]: responseData} as IDataObject);
+			} else if (typeof responseData === 'string' || typeof responseData === 'number') {
+				returnData.push({[this.getNodeParameter('path', i) as string]: responseData } as IDataObject);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}

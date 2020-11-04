@@ -1,5 +1,5 @@
 import {
-	OptionsWithUri,
+	OptionsWithUrl,
 } from 'request';
 
 import {
@@ -14,14 +14,14 @@ import {
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, projectId: string, method: string,  resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 	
-	const options: OptionsWithUri = {
+	const options: OptionsWithUrl = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://${projectId}.firebaseio.com/${resource}.json`,
+		url: uri || `https://${projectId}.firebaseio.com/${resource}.json`,
 		json: true,
 	};
 	try {

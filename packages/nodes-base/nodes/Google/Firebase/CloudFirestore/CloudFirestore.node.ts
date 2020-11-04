@@ -192,11 +192,13 @@ export class CloudFirestore implements INodeType {
 					const collection = this.getNodeParameter('collection', i) as string;
 					const documentId = this.getNodeParameter('documentId', i) as string;
 
-					responseData.push(await googleApiRequest.call(
+					await googleApiRequest.call(
 						this,
 						'DELETE',
 						`/${projectId}/databases/${database}/documents/${collection}/${documentId}`,
-					));
+					);
+
+					responseData.push({ success: true });
 					
 				}));
 				returnData.push.apply(returnData, responseData);
