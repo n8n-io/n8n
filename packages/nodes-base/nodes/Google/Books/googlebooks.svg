@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generator: Adobe Illustrator 23.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="svg61" xmlns:x="http://ns.adobe.com/Extensibility/1.0/" xmlns:i="http://ns.adobe.com/AdobeIllustrator/10.0/" xmlns:graph="http://ns.adobe.com/Graphs/1.0/" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 448.7 500" enable-background="new 0 0 448.7 500" xml:space="preserve">
+<metadata id="metadata58">
+	<rdf:RDF>
+		<cc:Work rdf:about="">
+			<dc:format>image/svg+xml</dc:format>
+			<dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+		</cc:Work>
+	</rdf:RDF>
+	<sfw xmlns="http://ns.adobe.com/SaveForWeb/1.0/">
+		<slices/>
+		<sliceSourceBounds bottomLeftOrigin="true" height="500" width="448.7" x="3451.9" y="3846"/>
+	</sfw>
+</metadata>
+<g>
+	<path fill="#0B5E9F" d="M428.2,221.9L49.2,6.5C33-2.6,18.5-1.7,9.7,6.8l0,0C3.4,12.8,0,22.4,0,34.9v429.9C0,477.4,3.7,487,9.7,493   l0,0c9.1,8.8,23.3,9.7,39.5,0.3l379.1-215.4C455.5,262.5,455.5,237.5,428.2,221.9z"/>
+	
+		<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="223.1684" y1="7682.2407" x2="223.1684" y2="8182.2686" gradientTransform="matrix(0.9998 0 0 -0.9998 1.2134 8180.7046)">
+		<stop offset="0" style="stop-color:#FFFFFF;stop-opacity:0"/>
+		<stop offset="1" style="stop-color:#FFFFFF;stop-opacity:0.1"/>
+	</linearGradient>
+	<path fill-rule="evenodd" clip-rule="evenodd" fill="url(#SVGID_1_)" d="M428.3,221.9l-95-54l-1.7-1.1l-0.1,0.1L49.2,6.6   c-15.7-9-29.9-8.3-38.9-0.2L8.8,7.7C3.2,13.7,0,23,0,35.1v429.7c0,12.1,3.2,21.4,9.1,27.2l0,0l-0.2,0.2c8.9,9.5,23.7,10.6,40.4,1.3   l282.2-160.5l0.1,0.1c0,0,1.7-1.1,1.8-1.1l95-54C455.5,262.5,455.5,237.2,428.3,221.9z"/>
+	<path opacity="0.25" fill-rule="evenodd" clip-rule="evenodd" fill="#FFFFFF" enable-background="new    " d="M49.2,9.4l379,215.3   c12.3,6.9,19.2,16,20.3,25.3c0-10.1-6.7-20.3-20.3-28.1L49.2,6.6C22-9,0,4,0,35.1v2.8C0,6.8,22-5.9,49.2,9.4z"/>
+	<path fill="#40DCFF" d="M358.2,70.2H135.9V444l242.9-138V90.9C378.8,79.5,369.6,70.2,358.2,70.2z"/>
+	
+		<linearGradient id="SVGID_2_" gradientUnits="userSpaceOnUse" x1="7121.7529" y1="-324.192" x2="7123.5923" y2="-327.4978" gradientTransform="matrix(38.316 0 0 -36.19 -272599.25 -11433.2002)">
+		<stop offset="0" style="stop-color:#5B7C8C;stop-opacity:0"/>
+		<stop offset="1" style="stop-color:#5B7C8C;stop-opacity:0.4"/>
+	</linearGradient>
+	<path fill="url(#SVGID_2_)" d="M358.2,70.2H135.9v373.6l242.9-137.9V90.9C378.8,79.5,369.6,70.2,358.2,70.2z"/>
+	<polygon fill="#009BF0" points="135.9,70.2 70.3,70.2 70.3,481.2 135.9,444  "/>
+	<path opacity="0.15" fill="#FFFFFF" enable-background="new    " d="M358.2,70.2H70.3v2.3h287.9c11.4,0,20.7,6.9,20.7,18.3l0,0   C378.8,79.5,369.6,70.2,358.2,70.2z"/>
+	<polygon fill="#FAFAFA" points="261.1,173.3 294.9,152.4 329.9,173.3 329.9,70.2 261.1,70.2  "/>
+</g>
+</svg>
