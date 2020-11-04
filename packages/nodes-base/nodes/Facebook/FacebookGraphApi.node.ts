@@ -10,7 +10,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import {
+	OptionsWithUri,
+} from 'request';
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,7 +24,7 @@ export class FacebookGraphApi implements INodeType {
 		description: 'Interacts with Facebook using the Graph API',
 		defaults: {
 			name: 'Facebook Graph API',
-			color: '#772244',
+			color: '#3B5998',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
