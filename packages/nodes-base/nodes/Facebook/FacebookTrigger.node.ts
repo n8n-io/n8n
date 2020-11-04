@@ -41,7 +41,7 @@ export class FacebookTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'facebookGraphSubscriptionApi',
+				name: 'facebookGraphAppApi',
 				required: true,
 			},
 		],
@@ -216,7 +216,7 @@ export class FacebookTrigger implements INodeType {
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const credentials = this.getCredentials('facebookGraphSubscriptionApi') as IDataObject;
+		const credentials = this.getCredentials('facebookGraphAppApi') as IDataObject;
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
 			if (query['hub.challenge']) {
