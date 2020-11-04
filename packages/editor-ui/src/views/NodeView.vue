@@ -1006,6 +1006,8 @@ export default mixins(
 
 				await this.addNodes([newNodeData]);
 
+				this.$store.commit('setStateDirty', true);
+
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
@@ -1500,6 +1502,8 @@ export default mixins(
 
 				await this.addNodes([newNodeData]);
 
+				this.$store.commit('setStateDirty', true);
+
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
@@ -1833,6 +1837,8 @@ export default mixins(
 
 				// Add the nodes with the changed node names, expressions and connections
 				await this.addNodes(Object.values(tempWorkflow.nodes), tempWorkflow.connectionsBySourceNode);
+
+				this.$store.commit('setStateDirty', true);
 
 				return {
 					nodes: Object.values(tempWorkflow.nodes),
