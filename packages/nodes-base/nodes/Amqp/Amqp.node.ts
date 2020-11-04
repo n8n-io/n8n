@@ -134,9 +134,13 @@ export class Amqp implements INodeType {
 			});
 		});
 
-		container.connect(connectOptions).open_sender(sink);
+		const conn = container.connect(connectOptions);
+		const sender = conn.open_sender(sink);
 
 		const sendResult: Delivery = await allSent as Delivery;	// sendResult has a a property that causes circular reference if returned
+
+		sender.close();
+		conn.close();
 
 		return { json: { id: sendResult.id } } as INodeExecutionData;
 	}
