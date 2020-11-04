@@ -26,7 +26,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com/books/${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -67,7 +67,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			}
 			// Try to return the error prettier
 			throw new Error(
-				`Google Books error response [${error.statusCode}]: ${errors}`
+				`Google Books error response [${error.statusCode}]: ${errors}`,
 			);
 		}
 		throw error;
@@ -117,7 +117,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 				'typ': 'JWT',
 				'alg': 'RS256',
 			},
-		}
+		},
 	);
 
 	const options: OptionsWithUri = {
@@ -130,7 +130,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 			assertion: signature,
 		},
 		uri: 'https://oauth2.googleapis.com/token',
-		json: true
+		json: true,
 	};
 
 	//@ts-ignore
