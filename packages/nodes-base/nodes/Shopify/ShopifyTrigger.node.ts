@@ -124,15 +124,15 @@ export class ShopifyTrigger implements INodeType {
 							value: 'customers/delete',
 						},
 						{
-							name: 'Customer disable',
+							name: 'Customer disabled',
 							value: 'customers/disable',
 						},
 						{
-							name: 'Customer Enable',
+							name: 'Customer Enabled',
 							value: 'customers/enable',
 						},
 						{
-							name: 'Customer Update',
+							name: 'Customer Updated',
 							value: 'customers/update',
 						},
 						{
