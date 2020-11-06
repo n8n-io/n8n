@@ -110,7 +110,7 @@ export class Amqp implements INodeType {
 		}
 
 		const allSent = new Promise(( resolve ) => {
-			container.on('sendable', (context: any) => { // tslint:disable-line:no-any
+			container.once('sendable', (context: any) => { // tslint:disable-line:no-any
 
 				let body: IDataObject | string = item.json;
 				const sendOnlyProperty = options.sendOnlyProperty as string;
