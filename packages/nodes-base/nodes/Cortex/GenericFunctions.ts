@@ -19,6 +19,8 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+import * as moment from 'moment';
+
 export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('cortexApi');
@@ -84,4 +86,24 @@ export function getEntityLabel(entity: IDataObject): string{
 			break;
 	}
 	return label;
+}
+
+export function splitTags(tags: string): string[] {
+	return tags.split(',').filter(tag => tag !== ' ' && tag);
+}
+
+export function prepareParameters(values: IDataObject): IDataObject {
+	const response: IDataObject = {};
+	for (const key in values) {
+		if (values[key]!== undefined && values[key]!==null && values[key]!=='') {
+			if (moment(values[key] as string, moment.ISO_8601).isValid()) {
+				response[key] = Date.parse(values[key] as string);
+			} else if (key === 'tags') {
+				response[key] = splitTags(values[key] as string);
+			} else {
+				response[key] = values[key];
+			}
+		}
+	}
+	return response;
 }

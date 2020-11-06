@@ -7,6 +7,7 @@ import {
 	INodeTypeDescription,
 	INodeType,
 	IWebhookResponseData,
+	IHookFunctions,
 } from 'n8n-workflow';
 
 export class TheHiveTrigger implements INodeType {
@@ -46,67 +47,67 @@ export class TheHiveTrigger implements INodeType {
 						description: 'Any time any event is triggered (Wildcard Event).',
 					},
 					{
-						name: 'alert_create',
+						name: 'Alert Created',
 						value: 'alert_create',
 						description: 'Triggered when an alert is created',
 					},
 					{
-						name: 'alert_update',
+						name: 'Alert Updated',
 						value: 'alert_update',
 						description: 'Triggered when an alert is updated',
 					},
 					{
-						name: 'alert_delete',
+						name: 'Alert Deleted',
 						value: 'alert_delete',
 						description: 'Triggered when an alert is deleted',
 					},
 					{
-						name: 'observable_create',
+						name: 'Observable Created',
 						value: 'case_artifact_create',
 						description: 'Triggered when an observable is created',
 					},
 					{
-						name: 'observable_update',
+						name: 'Observable Updated',
 						value: 'case_artifact_update',
 						description: 'Triggered when an observable is updated',
 					},
 					{
-						name: 'observable_delete',
+						name: 'Observable Deleted',
 						value: 'case_artifact_delete',
 						description: 'Triggered when an observable is deleted',
 					},
 					{
-						name: 'case_create',
+						name: 'Case Created',
 						value: 'case_create',
 						description: 'Triggered when a case is created',
 					},
 					{
-						name: 'case_update',
+						name: 'Case Updated',
 						value: 'case_update',
 						description: 'Triggered when a case is updated',
 					},
 					{
-						name: 'case_delete',
+						name: 'Case Deleted',
 						value: 'case_delete',
 						description: 'Triggered when a case is deleted',
 					},
 					{
-						name: 'task_create',
+						name: 'Task Created',
 						value: 'case_task_create',
 						description: 'Triggered when a task is created',
 					},
 					{
-						name: 'task_update',
+						name: 'Task Updated',
 						value: 'case_task_update',
 						description: 'Triggered when a task is updated',
 					},
 					{
-						name: 'task_delete',
+						name: 'Task Deleted',
 						value: 'case_task_delete',
 						description: 'Triggered when a task is deleted',
 					},
 					{
-						name: 'log_create',
+						name: 'Log Created',
 						value: 'case_task_log_create',
 						description: 'Triggered when a task log is created',
 					},
@@ -114,6 +115,21 @@ export class TheHiveTrigger implements INodeType {
 			}
 		]
 	};
+	// @ts-ignore (because of request)
+	webhookMethods = {
+		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+			async create(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+			async delete(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+		},
+	};
+
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		// Get the request body
 		const bodyData = this.getBodyData();
@@ -137,7 +153,7 @@ export class TheHiveTrigger implements INodeType {
 				body: this.getBodyData(),
 				headers: this.getHeaderData(),
 				query: this.getQueryData(),
-			}
+			},
 		);
 
 		return {
