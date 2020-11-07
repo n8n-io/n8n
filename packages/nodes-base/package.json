@@ -215,6 +215,7 @@
       "dist/nodes/ActiveCampaign/ActiveCampaignTrigger.node.js",
       "dist/nodes/AgileCrm/AgileCrm.node.js",
       "dist/nodes/Airtable/Airtable.node.js",
+      "dist/nodes/Airtable/AirtableTrigger.node.js",
       "dist/nodes/AcuityScheduling/AcuitySchedulingTrigger.node.js",
       "dist/nodes/Amqp/Amqp.node.js",
       "dist/nodes/Amqp/AmqpTrigger.node.js",
