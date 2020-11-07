@@ -5,7 +5,7 @@ import {
 } from 'n8n-core';
 
 import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, IPollFunctions } from 'n8n-workflow';
 
 
 /**
@@ -17,7 +17,7 @@ import { IDataObject } from 'n8n-workflow';
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('airtableApi');
 
 	if (credentials === undefined) {
@@ -77,7 +77,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
  * @param {IDataObject} [query]
  * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | IPollFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 
 	if (query === undefined) {
 		query = {};
