@@ -101,36 +101,9 @@ export const dealFields = [
 		},
 		options: [
 			{
-				displayName: 'Deal Name',
-				name: 'dealName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Pipeline',
-				name: 'pipeline',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Close Date',
-				name: 'closeDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
 				displayName: 'Amount',
 				name: 'amount',
 				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Deal Type',
-				name: 'dealType',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getDealTypes',
-				},
 				default: '',
 			},
 			{
@@ -150,6 +123,12 @@ export const dealFields = [
 					loadOptionsMethod:'getContacts' ,
 				},
 				default: [],
+			},
+			{
+				displayName: 'Close Date',
+				name: 'closeDate',
+				type: 'dateTime',
+				default: '',
 			},
 			{
 				displayName: 'Custom Properties',
@@ -185,7 +164,28 @@ export const dealFields = [
 						],
 					},
 				],
-			}
+			},
+			{
+				displayName: 'Deal Name',
+				name: 'dealName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Deal Type',
+				name: 'dealType',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDealTypes',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Pipeline',
+				name: 'pipeline',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
 /* -------------------------------------------------------------------------- */
@@ -227,25 +227,8 @@ export const dealFields = [
 		},
 		options: [
 			{
-				displayName: 'Deal Name',
-				name: 'dealName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Deal Stage',
-				name: 'stage',
-				type: 'options',
-				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getDealStages',
-				},
-				default: '',
-				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
-			},
-			{
-				displayName: 'Pipeline',
-				name: 'pipeline',
+				displayName: 'Amount',
+				name: 'amount',
 				type: 'string',
 				default: '',
 			},
@@ -253,21 +236,6 @@ export const dealFields = [
 				displayName: 'Close Date',
 				name: 'closeDate',
 				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Deal Type',
-				name: 'dealType',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getDealTypes',
-				},
 				default: '',
 			},
 			{
@@ -304,7 +272,39 @@ export const dealFields = [
 						],
 					},
 				],
-			}
+			},
+			{
+				displayName: 'Deal Name',
+				name: 'dealName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Deal Stage',
+				name: 'stage',
+				type: 'options',
+				required: true,
+				typeOptions: {
+					loadOptionsMethod: 'getDealStages',
+				},
+				default: '',
+				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
+			},
+			{
+				displayName: 'Deal Type',
+				name: 'dealType',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDealTypes',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Pipeline',
+				name: 'pipeline',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
 /* -------------------------------------------------------------------------- */
