@@ -552,6 +552,25 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
+			
+			// Get all the deal properties to display them to user so that he can
+			// select them easily
+			async getDealCustomProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/deals/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					if (property.hubspotDefined === null) {
+						const propertyName = property.label;
+						const propertyId = property.name;
+						returnData.push({
+							name: propertyName,
+							value: propertyId,
+						});
+					}
+				}
+				return returnData;
+			},
 
 			/* -------------------------------------------------------------------------- */
 			/*                                 FORM                                       */
@@ -1801,6 +1820,17 @@ export class Hubspot implements INodeType {
 							value: additionalFields.pipeline as string,
 						});
 					}
+					if (additionalFields.customPropertiesUi) {
+						const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+						if (customProperties) {
+							for (const customProperty of customProperties) {
+								body.properties.push({
+									name: customProperty.property,
+									value: customProperty.value,
+								});
+							}
+						}
+					}
 					body.associations = association;
 					const endpoint = '/deals/v1/deal';
 					responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
@@ -1845,6 +1875,17 @@ export class Hubspot implements INodeType {
 							name: 'pipeline',
 							value: updateFields.pipeline as string,
 						});
+					}
+					if (updateFields.customPropertiesUi) {
+						const customProperties = (updateFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
+						if (customProperties) {
+							for (const customProperty of customProperties) {
+								body.properties.push({
+									name: customProperty.property,
+									value: customProperty.value,
+								});
+							}
+						}
 					}
 					const endpoint = `/deals/v1/deal/${dealId}`;
 					responseData = await hubspotApiRequest.call(this, 'PUT', endpoint, body);
