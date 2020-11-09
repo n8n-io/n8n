@@ -536,6 +536,7 @@ export interface INodeTypeDescription {
 	version: number;
 	description: string;
 	defaults: INodeParameters;
+	documentationUrl?: string;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
