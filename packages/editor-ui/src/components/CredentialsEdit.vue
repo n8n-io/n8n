@@ -20,7 +20,7 @@
 								</g>
 							</g>
 						</svg>
-						<span class="doc-link-text">Need help? <a class="doc-hyperlink" :href="'https://docs.n8n.io/credentials/' + documentationUrl + '/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal'" target="_blank">Open credential docs</a></span>
+						<span class="doc-link-text">Need help? <a class="doc-hyperlink" :href="documentationUrl" target="_blank">Open credential docs</a></span>
 					</div>
 				</div>
 			</div>
@@ -119,7 +119,11 @@ export default mixins(
 
 			const credentialType = this.$store.getters.credentialType(credentialTypeName);
 			if (credentialType.documentationUrl !== undefined) {
-				return `${credentialType.documentationUrl}`;
+				if (credentialType.documentationUrl.startsWith('http')) {
+					return credentialType.documentationUrl;
+				} else {
+					return 'https://docs.n8n.io/credentials/' + credentialType.documentationUrl + '/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal';
+				}
 			}
 			return undefined;
 		},
