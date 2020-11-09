@@ -408,6 +408,7 @@ export interface INodePropertyTypeOptions {
 	numberStepSize?: number;     // Supported by: number
 	password?: boolean;          // Supported by: string
 	rows?: number;               // Supported by: string
+	showAlpha?: boolean;         // Supported by: color
 	[key: string]: boolean | number | string | EditorTypes | undefined | string[];
 }
 
