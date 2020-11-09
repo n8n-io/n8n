@@ -66,26 +66,70 @@ export const notificationFields = [
 		},
 		options: [
 			{
-				displayName: 'Image File',
-				name: 'imageFile',
-				type: 'string',
-				default: 'data',
-				description: `Name of the property that holds the binary data.<br>
-				If you specified imageThumbnail ,imageFullsize and imageFile, imageFile takes precedence.`,
-			},
-			{
-				displayName: 'Image Full Size',
-				name: 'imageFullsize',
-				type: 'string',
-				default: '',
-				description: 'HTTP/HTTPS URL. Maximum size of 2048×2048px JPEG',
-			},
-			{
-				displayName: 'Image Thumbnail',
-				name: 'imageThumbnail',
-				type: 'string',
-				default: '',
-				description: 'HTTP/HTTPS URL. Maximum size of 240×240px JPEG',
+				displayName: 'Image',
+				name: 'imageUi',
+				placeholder: 'Add Image',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						name: 'imageValue',
+						displayName: 'image',
+						values: [
+							{
+								displayName: 'Binary Data',
+								name: 'binaryData',
+								type: 'boolean',
+								default: false,
+							},
+							{
+								displayName: 'Image Full Size',
+								name: 'imageFullsize',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										binaryData: [
+											false,
+										],
+									},
+								},
+								description: 'HTTP/HTTPS URL. Maximum size of 2048×2048px JPEG',
+							},
+							{
+								displayName: 'Image Thumbnail',
+								name: 'imageThumbnail',
+								type: 'string',
+								displayOptions: {
+									show: {
+										binaryData: [
+											false,
+										],
+									},
+								},
+								default: '',
+								description: 'HTTP/HTTPS URL. Maximum size of 240×240px JPEG',
+							},
+							{
+								displayName: 'Binary Property',
+								name: 'binaryProperty',
+								type: 'string',
+								displayOptions: {
+									show: {
+										binaryData: [
+											true,
+										],
+									},
+								},
+								default: 'data',
+								description: `Name of the property that holds the binary data.<br>`,
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Notification Disabled',
@@ -96,18 +140,36 @@ export const notificationFields = [
 				false: The user receives a push notification when the message is sent`,
 			},
 			{
-				displayName: 'Sticker ID',
-				name: 'stickerId',
-				type: 'number',
-				default: '',
-				description: 'Package ID',
-			},
-			{
-				displayName: 'Sticker Package ID',
-				name: 'stickerPackageId',
-				type: 'number',
-				default: '',
-				description: 'Package ID. <a href="https://developers.line.biz/media/messaging-api/sticker_list.pdf" target="_blank">Sticker List</a>',
+				displayName: 'Sticker',
+				name: 'stickerUi',
+				placeholder: 'Add Sticker',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						name: 'stickerValue',
+						displayName: 'Sticker',
+						values: [
+							{
+								displayName: 'Sticker ID',
+								name: 'stickerId',
+								type: 'number',
+								default: '',
+								description: 'Sticker ID',
+							},
+							{
+								displayName: 'Sticker Package ID',
+								name: 'stickerPackageId',
+								type: 'number',
+								default: '',
+								description: 'Package ID',
+							},
+						],
+					},
+				],
 			},
 		],
 	},
