@@ -66,6 +66,10 @@ export default Vue.extend({
 	},
 	computed: {
 		documentationUrl (): string {
+			if (!this.nodeType) {
+				return '';
+			}
+
 			if (this.nodeType.documentationUrl && this.nodeType.documentationUrl.startsWith('http')) {
 				return this.nodeType.documentationUrl;
 			}
