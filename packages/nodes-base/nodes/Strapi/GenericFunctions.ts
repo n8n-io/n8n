@@ -18,11 +18,9 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 	const credentials = this.getCredentials('strapiApi') as IDataObject;
 	
 	try {
-		const { jwt } = await getToken.call(this);
-
 		const options: OptionsWithUri = {
 			headers: {
-				'Authorization': `Bearer ${jwt}`,
+				'Authorization': `Bearer ${qs.jwt}`,
 			},
 			method,
 			body,
@@ -36,6 +34,8 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
+		delete qs.jwt;
+
 		//@ts-ignore
 		return await this.helpers?.request(options);
 	} catch (error) {

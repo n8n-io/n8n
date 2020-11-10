@@ -10,6 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	getToken,
 	strapiApiRequest,
 	strapiApiRequestAllItems,
 	validateJSON,
@@ -68,6 +69,11 @@ export class Strapi implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
+
+		const { jwt } = await getToken.call(this);
+
+		qs.jwt = jwt;
+
 		if (resource === 'entry') {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
@@ -85,7 +91,7 @@ export class Strapi implements INodeType {
 							body[key] = items[i].json[key];
 						}
 					}
-					responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body);
+					responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs);
 					
 					returnData.push(responseData);
 				}
@@ -97,7 +103,7 @@ export class Strapi implements INodeType {
 
 					const entryId = this.getNodeParameter('entryId', i) as string;
 	
-					responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`);
+					responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs);
 
 					returnData.push(responseData);
 				}
@@ -148,7 +154,7 @@ export class Strapi implements INodeType {
 
 					const entryId = this.getNodeParameter('entryId', i) as string;
 
-					responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`);
+					responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs);
 
 					returnData.push(responseData);
 				}
@@ -174,7 +180,7 @@ export class Strapi implements INodeType {
 							body[key] = items[i].json[key];
 						}
 					}
-					responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body);
+					responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body, qs);
 					
 					returnData.push(responseData);
 				}
