@@ -47,7 +47,7 @@ export class GetResponse implements INodeType {
 						authentication: [
 							'apiKey',
 						],
-					},		
+					},
 				},
 			},
 			{
@@ -97,7 +97,7 @@ export class GetResponse implements INodeType {
 			...contactFields,
 		],
 	};
-	
+
 	methods = {
 		loadOptions: {
 			// Get all the campaigns to display them to user so that he can
@@ -252,7 +252,7 @@ export class GetResponse implements INodeType {
 						'changeOnTo',
 					];
 
-					const dateMapToKey: { [key: string]: string; }  = {
+					const dateMapToKey: { [key: string]: string; } = {
 						'createdOnFrom': '[createdOn][from]',
 						'createdOnTo': '[createdOn][to]',
 						'changeOnFrom': '[changeOn][from]',
@@ -264,7 +264,7 @@ export class GetResponse implements INodeType {
 							if (isDate.includes(key)) {
 								qs[`query${dateMapToKey[key]}`] = moment.tz(qs[key], timezone).format('YYYY-MM-DDTHH:mm:ssZZ');
 							} else {
-								qs[`query[${key}]`] =  qs[key];
+								qs[`query[${key}]`] = qs[key];
 							}
 							delete qs[key];
 						}
@@ -310,7 +310,7 @@ export class GetResponse implements INodeType {
 			}
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
-	
+
 			} else if (responseData !== undefined) {
 				returnData.push(responseData as IDataObject);
 			}
