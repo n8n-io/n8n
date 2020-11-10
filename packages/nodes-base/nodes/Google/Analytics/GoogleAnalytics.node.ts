@@ -91,7 +91,7 @@ export class GoogleAnalytics implements INodeType {
 		let endpoint = '';
 		let responseData;
 		for (let i = 0; i < items.length; i++) {
-			if(resource === 'reports') {
+			if(resource === 'report') {
 				if(operation === 'getAll') {
 					//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 					method = 'POST';
@@ -140,16 +140,16 @@ export class GoogleAnalytics implements INodeType {
 						Object.assign(body, { metrics: metricsValues });
 					}
 					if(additionalFields.dimensionName){
-						Object.assign(body, {dimensions:[{name:additionalFields.dimensionName}]});
+						Object.assign(body, { dimensions: [{ name:additionalFields.dimensionName }]});
 					}
 					if(additionalFields.includeEmptyRows){
-						Object.assign(body, {includeEmptyRows: additionalFields.includeEmptyRows});
+						Object.assign(body, { includeEmptyRows: additionalFields.includeEmptyRows });
 					}
 					if(additionalFields.hideTotals){
-						Object.assign(body, {hideTotals: additionalFields.hideTotals});
+						Object.assign(body, { hideTotals: additionalFields.hideTotals });
 					}
 					if(additionalFields.hideValueRanges){
-						Object.assign(body, {hideTotals: additionalFields.hideTotals});
+						Object.assign(body, { hideTotals: additionalFields.hideTotals });
 					}
 
 					if (returnAll === true) {
