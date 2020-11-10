@@ -202,6 +202,18 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 }
 
 
+export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowExecuteHooks {
+	const externalHooks = ExternalHooks();
+
+	return {
+		workflowExecuteBefore: [
+			async function (this: WorkflowHooks, workflow: Workflow, data: IRunExecutionData): Promise<void> {
+				await externalHooks.run('workflow.preExecute', [workflow, data]);
+			},
+		],
+	};
+}
+
 /**
  * Returns hook functions to save workflow execution and call error workflow
  *
@@ -474,11 +486,18 @@ export function getWorkflowHooksIntegrated(mode: WorkflowExecuteMode, executionI
  * @param {string} executionId
  * @returns {WorkflowHooks}
  */
-export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, executionId: string): WorkflowHooks {
+export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, executionId: string, isMainProcess = false): WorkflowHooks {
 	const hookFunctions = hookFunctionsSave();
 	const pushFunctions = hookFunctionsPush();
 	for (const key of Object.keys(pushFunctions)) {
 		hookFunctions[key]!.push.apply(hookFunctions[key], pushFunctions[key]);
+	}
+
+	if (isMainProcess === true) {
+		const preExecuteFunctions = hookFunctionsPreExecute();
+		for (const key of Object.keys(pushFunctions)) {
+			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+		}
 	}
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string});

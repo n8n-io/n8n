@@ -2,6 +2,7 @@
 import {
 	CredentialsOverwrites,
 	CredentialTypes,
+	ExternalHooks,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
 	WorkflowExecuteAdditionalData,
@@ -19,6 +20,7 @@ import {
 	INodeTypeData,
 	IRun,
 	ITaskData,
+	IWorkflowExecuteHooks,
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
@@ -67,6 +69,10 @@ export class WorkflowRunnerProcess {
 		// Load the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();
 		await credentialsOverwrites.init(inputData.credentialsOverwrite);
+
+		// Load all external hooks
+		const externalHooks = ExternalHooks();
+		await externalHooks.init();
 
 		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials);
@@ -121,7 +127,7 @@ export class WorkflowRunnerProcess {
 	 * @returns
 	 */
 	getProcessForwardHooks(): WorkflowHooks {
-		const hookFunctions = {
+		const hookFunctions: IWorkflowExecuteHooks = {
 			nodeExecuteBefore: [
 				async (nodeName: string): Promise<void> => {
 					this.sendHookToParentProcess('nodeExecuteBefore', [nodeName]);
@@ -143,6 +149,11 @@ export class WorkflowRunnerProcess {
 				},
 			],
 		};
+
+		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();
+		for (const key of Object.keys(preExecuteFunctions)) {
+			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+		}
 
 		return new WorkflowHooks(hookFunctions, this.data!.executionMode, this.data!.executionId, this.data!.workflowData, { sessionId: this.data!.sessionId, retryOf: this.data!.retryOf as string });
 	}
