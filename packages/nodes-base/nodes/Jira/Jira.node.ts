@@ -134,6 +134,13 @@ export class Jira implements INodeType {
 						value: projectId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -169,6 +176,12 @@ export class Jira implements INodeType {
 					}
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -188,6 +201,13 @@ export class Jira implements INodeType {
 						value: labelId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -207,6 +227,13 @@ export class Jira implements INodeType {
 						value: priorityId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -245,6 +272,12 @@ export class Jira implements INodeType {
 					}
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -264,6 +297,13 @@ export class Jira implements INodeType {
 						value: groupId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -281,6 +321,13 @@ export class Jira implements INodeType {
 						value: transition.id,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 		},
