@@ -126,6 +126,13 @@ const config = convict({
 		},
 	},
 
+	encryptionKey: {
+		format: String,
+		default: '',
+		env: 'N8N_ENCRYPTION_KEY',
+		doc: 'Encryption key for credentials',
+	},
+
 	credentials: {
 		overwrite: {
 			data: {
