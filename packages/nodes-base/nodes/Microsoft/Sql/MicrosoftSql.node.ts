@@ -218,8 +218,8 @@ export class MicrosoftSql implements INodeType {
 			password: credentials.password as string,
 			domain: credentials.domain ? (credentials.domain as string) : undefined,
 			options: {
-                             encrypt: credentials.tls as boolean
-                        },
+				encrypt: credentials.tls as boolean,
+			},
 		};
 
 		const pool = new mssql.ConnectionPool(config);
