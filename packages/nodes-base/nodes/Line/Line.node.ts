@@ -102,7 +102,7 @@ export class Line implements INodeType {
 						}
 						delete body.stickerUi;
 					}
-					
+
 					if (body.imageUi) {
 						const image = (body.imageUi as IDataObject).imageValue as IDataObject;
 
@@ -126,8 +126,8 @@ export class Line implements INodeType {
 						} else {
 							body.imageFullsize = image.imageFullsize;
 							body.imageThumbnail = image.imageThumbnail;
-						}	
-						delete body.imageUi;			
+						}
+						delete body.imageUi;
 					}
 					responseData = await lineApiRequest.call(this, 'POST', '', {}, {}, 'https://notify-api.line.me/api/notify', { formData: body });
 				}
