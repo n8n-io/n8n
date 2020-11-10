@@ -38,6 +38,7 @@ import {
 } from './TrackInterface';
 
 import * as uuid from 'uuid/v4';
+import { customerFields } from '../CustomerIo/CustomerDescription';
 
 export class Segment implements INodeType {
 	description: INodeTypeDescription = {
@@ -170,6 +171,7 @@ export class Segment implements INodeType {
 						if (traits.id) {
 							body.traits!.id = traits.id as string;
 						}
+						
 						if (traits.company) {
 							const company = (traits.company as IDataObject).companyUi as IDataObject;
 							if (company) {
@@ -384,6 +386,14 @@ export class Segment implements INodeType {
 						if (traits.id) {
 							body.traits!.id = traits.id as string;
 						}
+						if (traits.customTraitsUi) {
+							const customTraits = (traits.customTraitsUi as IDataObject).customTraitValues as IDataObject[];
+							if (customTraits && customTraits.length !== 0) {
+								for (const customTrait of customTraits) {
+									body.traits![customTrait.key as string] = customTrait.value;
+								}
+							}
+						}
 						if (traits.company) {
 							const company = (traits.company as IDataObject).companyUi as IDataObject;
 							if (company) {
@@ -531,6 +541,17 @@ export class Segment implements INodeType {
 							body.integrations!.salesforce = integrations.salesforce as boolean;
 						}
 					}
+
+					if (Object.keys(traits.company as IDataObject).length === 0) {
+						//@ts-ignore
+						delete body.traits.company;
+					}
+
+					if (Object.keys(traits.address as IDataObject).length === 0) {
+						//@ts-ignore
+						delete body.traits.address;
+					}
+
 					responseData = await segmentApiRequest.call(this, 'POST', '/identify', body);
 				}
 			}
@@ -601,6 +622,14 @@ export class Segment implements INodeType {
 						}
 						if (traits.id) {
 							body.traits!.id = traits.id as string;
+						}
+						if (traits.customTraitsUi) {
+							const customTraits = (traits.customTraitsUi as IDataObject).customTraitValues as IDataObject[];
+							if (customTraits && customTraits.length !== 0) {
+								for (const customTrait of customTraits) {
+									body.traits![customTrait.key as string] = customTrait.value;
+								}
+							}
 						}
 						if (traits.company) {
 							const company = (traits.company as IDataObject).companyUi as IDataObject;
@@ -760,6 +789,17 @@ export class Segment implements INodeType {
 							body.properties!.value = properties.value as string;
 						}
 					}
+
+					if (Object.keys(traits.company as IDataObject).length === 0) {
+						//@ts-ignore
+						delete body.traits.company;
+					}
+
+					if (Object.keys(traits.address as IDataObject).length === 0) {
+						//@ts-ignore
+						delete body.traits.address;
+					}
+
 					responseData = await segmentApiRequest.call(this, 'POST', '/track', body);
 				}
 				//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#page
