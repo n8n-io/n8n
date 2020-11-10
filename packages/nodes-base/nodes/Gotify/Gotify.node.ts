@@ -204,7 +204,7 @@ export class Gotify implements INodeType {
 					const body: IDataObject = {
 						message,
 					};
-					
+
 					Object.assign(body, additionalFields);
 
 					responseData = await gotifyApiRequest.call(

@@ -8,24 +8,25 @@ export class GotifyApi implements ICredentialType {
 	displayName = 'Gotify API';
 	properties = [
 		{
-			displayName: 'APP API Token',
+			displayName: 'App API Token',
 			name: 'appApiToken',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: '(Optional) Needed for message creation',
+			description: '(Optional) Needed for message creation.',
 		},
 		{
 			displayName: 'Client API Token',
 			name: 'clientApiToken',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: '(Optional) Needed for everything (delete, getAll) but message creation',
+			description: '(Optional) Needed for everything (delete, getAll) but message creation.',
 		},
 		{
 			displayName: 'URL',
 			name: 'url',
 			type: 'string' as NodePropertyTypes,
-			default: `Host's URL`,
+			default: '',
+			description: 'The URL of the Gotify host.',
 		},
 	];
 }
