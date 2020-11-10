@@ -16,6 +16,10 @@ import {
 } from './GenericFunctions';
 
 import {
+	companyOperations,
+} from './CompanyDescription';
+
+import {
 	metricsFields,
 	metricsOperations,
 } from './MetricsDescription';
@@ -48,6 +52,10 @@ export class ProfitWell implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Company',
+						value: 'company',
+					},
+					{
 						name: 'Metrics',
 						value: 'metrics',
 					},
@@ -55,6 +63,8 @@ export class ProfitWell implements INodeType {
 				default: 'metrics',
 				description: 'Resource to consume.',
 			},
+			// COMPANY
+			...companyOperations,
 			// METRICS
 			...metricsOperations,
 			...metricsFields,
@@ -92,6 +102,9 @@ export class ProfitWell implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
+			if (resource === 'company') {
+				responseData = await profitWellApiRequest.call(this, 'GET', `/company/settings/`);
+			}
 			if (resource === 'metrics') {
 				if (operation === 'getDailyMetrics') {
 					const options = this.getNodeParameter('options', i) as IDataObject;
