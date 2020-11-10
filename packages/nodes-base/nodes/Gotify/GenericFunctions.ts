@@ -35,7 +35,7 @@ export async function gotifyApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-	
+
 		if (error.response && error.response.body && error.response.body.errorDescription) {
 			const message = error.response.body.errorDescription;
 			// Try to return the error prettier
