@@ -41,10 +41,14 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {
 
-			const message = error.response.body.message;
+			let messages = error.response.body.message;
+
+			if (Array.isArray(error.response.body.message)) {
+				messages = messages[0].messages.map((e: IDataObject) => e.message).join('|');
+			}
 			// Try to return the error prettier
 			throw new Error(
-				`Strapi error response [${error.statusCode}]: ${message}`,
+				`Strapi error response [${error.statusCode}]: ${messages}`,
 			);
 		}
 		throw error;

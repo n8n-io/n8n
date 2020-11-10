@@ -103,19 +103,6 @@ export class Strapi implements INodeType {
 				}
 			}
 
-			if (operation === 'get') {
-				for (let i = 0; i < length; i++) {
-
-					const contentType = this.getNodeParameter('contentType', i) as string;
-
-					const entryId = this.getNodeParameter('entryId', i) as string;
-
-					responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`);
-
-					returnData.push(responseData);
-				}
-			}
-
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 
@@ -125,7 +112,7 @@ export class Strapi implements INodeType {
 
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
-					if (options.sort) {
+					if (options.sort && (options.sort as string[]).length !== 0) {
 						const sortFields = options.sort as string[];
 						qs._sort = sortFields.join(',');
 					}

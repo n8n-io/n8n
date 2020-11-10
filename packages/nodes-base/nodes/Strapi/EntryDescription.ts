@@ -123,7 +123,7 @@ export const entryFields = [
 				],
 			},
 		},
-		description: 'The ID or slug of the entry to get.',
+		description: 'The ID of the entry to get.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                entry:get                                   */
@@ -162,7 +162,7 @@ export const entryFields = [
 				],
 			},
 		},
-		description: 'The ID or slug of the entry to get.',
+		description: 'The ID of the entry to get.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                entry:getAll                                */
