@@ -44,5 +44,11 @@ export class MicrosoftSql implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'TLS',
+			name: 'tls',
+			type: 'boolean' as NodePropertyTypes,
+			default: true,
+		},
 	];
 }
