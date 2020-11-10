@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -41,7 +41,7 @@ export async function getresponseApiRequest(this: IWebhookFunctions | IHookFunct
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'getResponseOAuth2Api', options);
-		}	
+		}
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
@@ -68,4 +68,3 @@ export async function getResponseApiRequestAllItems(this: IExecuteFunctions | IL
 
 	return returnData;
 }
-

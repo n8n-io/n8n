@@ -241,6 +241,7 @@ export const contactFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                  contact:get                               */
 	/* -------------------------------------------------------------------------- */
@@ -288,6 +289,7 @@ export const contactFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                  contact:getAll                            */
 	/* -------------------------------------------------------------------------- */
@@ -551,7 +553,6 @@ export const contactFields = [
 					loadOptionsMethod: 'getCampaigns',
 				},
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -600,7 +601,6 @@ export const contactFields = [
 				name: 'email',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'IP Address',
