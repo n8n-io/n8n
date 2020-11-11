@@ -79,6 +79,40 @@ export const messageFields = [
 		},
 		description: 'The text to send.',
 	},
+	{
+		name: 'msgType',
+		displayName: 'Message type',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		type: 'options',
+		options: [
+			{
+				name: 'Text',
+				value: 'm.text',
+				description: 'Send a text message.',
+			},
+			{
+				name: 'Emote',
+				value: 'm.emote',
+				description: 'Perform an action (similar to /me in IRC).'
+			},
+			{
+				name: 'Notice',
+				value: 'm.notice',
+				description: 'Send a notice.'
+			},
+		],
+		default: 'm.text',
+		description: 'The type of message to send.',
+	},
 
 
 	/* ----------------------------------------------------------------------- */
