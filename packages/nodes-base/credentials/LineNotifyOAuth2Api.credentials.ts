@@ -9,6 +9,7 @@ export class LineNotifyOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Line Notify OAuth2 API';
+	documentationUrl = 'line';
 	properties = [
 		{
 			displayName: 'Authorization URL',
