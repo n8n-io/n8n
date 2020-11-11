@@ -19,9 +19,7 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 
 	try {
 		const options: OptionsWithUri = {
-			headers: {
-				'Authorization': `Bearer ${qs.jwt}`,
-			},
+			headers: {},
 			method,
 			body,
 			qs,
@@ -34,7 +32,6 @@ export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFun
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		delete qs.jwt;
 
 		//@ts-ignore
 		return await this.helpers?.request(options);
@@ -74,7 +71,7 @@ export async function getToken(this: IExecuteFunctions | ILoadOptionsFunctions |
 	return this.helpers.request!(options);
 }
 
-export async function strapiApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function strapiApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -85,7 +82,7 @@ export async function strapiApiRequestAllItems(this: IHookFunctions | ILoadOptio
 	query._start = 0;
 
 	do {
-		responseData = await strapiApiRequest.call(this, method, resource, body, query);
+		responseData = await strapiApiRequest.call(this, method, resource, body, query, undefined, headers);
 		query._start += query._limit;
 		returnData.push.apply(returnData, responseData);
 	} while (
