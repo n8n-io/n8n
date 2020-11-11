@@ -47,7 +47,7 @@
         "file-type": "^14.6.2",
         "lodash.get": "^4.4.2",
         "mime-types": "^2.1.27",
-        "n8n-workflow": "~0.43.0",
+        "n8n-workflow": "~0.44.0",
         "oauth-1.0a": "^2.2.6",
         "p-cancelable": "^2.0.0",
         "request": "^2.88.2",
