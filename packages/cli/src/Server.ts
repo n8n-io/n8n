@@ -1534,17 +1534,21 @@ class App {
 				// Loads the currently saved workflow to execute instead of the
 				// one saved at the time of the execution.
 				const workflowId = fullExecutionData.workflowData.id;
-				data.workflowData = await Db.collections.Workflow!.findOne(workflowId) as IWorkflowBase;
+				const workflowData = await Db.collections.Workflow!.findOne(workflowId) as IWorkflowBase;
 
-				if (data.workflowData === undefined) {
+				if (workflowData === undefined) {
 					throw new Error(`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`);
 				}
+
+				data.workflowData = workflowData;
+				const nodeTypes = NodeTypes();
+				const workflowInstance = new Workflow({ id: workflowData.id as string, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
 
 				// Replace all of the nodes in the execution stack with the ones of the new workflow
 				for (const stack of data!.executionData!.executionData!.nodeExecutionStack) {
 					// Find the data of the last executed node in the new workflow
-					const node = data.workflowData.nodes.find(node => node.name === stack.node.name);
-					if (node === undefined) {
+					const node = workflowInstance.getNode(stack.node.name);
+					if (node === null) {
 						throw new Error(`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`);
 					}
 
