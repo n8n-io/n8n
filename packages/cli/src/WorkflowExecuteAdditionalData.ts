@@ -493,9 +493,9 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 		hookFunctions[key]!.push.apply(hookFunctions[key], pushFunctions[key]);
 	}
 
-	if (isMainProcess === true) {
+	if (isMainProcess) {
 		const preExecuteFunctions = hookFunctionsPreExecute();
-		for (const key of Object.keys(pushFunctions)) {
+		for (const key of Object.keys(preExecuteFunctions)) {
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 		}
 	}

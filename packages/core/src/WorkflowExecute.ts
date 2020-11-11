@@ -484,6 +484,12 @@ export class WorkflowExecute {
 				try {
 					await this.executeHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
 				} catch (error) {
+					// Set the error that it can be saved correctly
+					executionError = {
+						message: error.message,
+						stack: error.stack,
+					};
+
 					// Set the incoming data of the node that it can be saved correctly
 					executionData = this.runExecutionData.executionData!.nodeExecutionStack[0] as IExecuteData;
 					this.runExecutionData.resultData = {
@@ -498,12 +504,8 @@ export class WorkflowExecute {
 								},
 							],
 						},
-					};
-
-					// Set the error that it can be saved correctly
-					executionError = {
-						message: error.message,
-						stack: error.stack,
+						lastNodeExecuted: executionData.node.name,
+						error: executionError,
 					};
 
 					throw error;

@@ -100,7 +100,6 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
-		const externalHooks = ExternalHooks();
 		const executionsProcess = config.get('executions.process') as string;
 
 		let executionId: string;
@@ -110,6 +109,7 @@ export class WorkflowRunner {
 			executionId = await this.runSubprocess(data, loadStaticData);
 		}
 
+		const externalHooks = ExternalHooks();
 		if (externalHooks.exists('workflow.postExecute')) {
 			this.activeExecutions.getPostExecutePromise(executionId)
 				.then(async (executionData) => {
