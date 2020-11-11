@@ -17,6 +17,9 @@ export class StrapiApi implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 		},
 		{
@@ -24,6 +27,7 @@ export class StrapiApi implements ICredentialType {
 			name: 'url',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			placeholder: 'https://api.example.com',
 		},
 	];
 }
