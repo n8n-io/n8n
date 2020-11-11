@@ -55,6 +55,20 @@ export class AmqpTrigger implements INodeType {
 				description: 'Leave empty for non-durable topic subscriptions or queues',
 			},
 			{
+				displayName: 'Pull N Messages per Cicle',
+				name: 'pullMessagesNumber',
+				type: 'number',
+				default: 100,
+				description: 'Number of messages to pull from the bus for every cicle',
+			},
+			{
+				displayName: 'Sleep time after cicle',
+				name: 'sleepTime',
+				type: 'number',
+				default: 10,
+				description: 'Milliseconds to sleep after every cicle',
+			},
+	{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -84,7 +98,7 @@ export class AmqpTrigger implements INodeType {
 					},
 				],
 			},
-		],
+		]
 	};
 
 
@@ -99,6 +113,8 @@ export class AmqpTrigger implements INodeType {
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const pullMessagesNumber = this.getNodeParameter('pullMessagesNumber', {}) as number;
+		const sleepTime = this.getNodeParameter('sleepTime', {}) as number;
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
@@ -117,7 +133,7 @@ export class AmqpTrigger implements INodeType {
 			port: credentials.port,
 			reconnect: true,		// this id the default anyway
 			reconnect_limit: 50,	// try for max 50 times, based on a back-off algorithm
-			container_id: (durable ? clientname : null),
+			container_id: (durable ? clientname : null)
 		};
 		if (credentials.username || credentials.password) {
 			// Old rhea implementation. not shure if it is neccessary
@@ -131,8 +147,14 @@ export class AmqpTrigger implements INodeType {
 		}
 
 
+
 		let lastMsgId: number | undefined = undefined;
 		const self = this;
+
+		container.on('receiver_open', function (context: any) {
+			console.log("Connection opened");
+			context.receiver.add_credit(pullMessagesNumber);
+		});
 
 		container.on('message', (context: any) => { // tslint:disable-line:no-any
 			// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
@@ -142,6 +164,12 @@ export class AmqpTrigger implements INodeType {
 			lastMsgId = context.message.message_id;
 
 			let data = context.message;
+			
+			if(options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+				// The buffer is not ready... Stringify and parse back to load it.
+				let cont = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null,JSON.parse(cont).data);	
+			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
@@ -158,6 +186,9 @@ export class AmqpTrigger implements INodeType {
 
 
 			self.emit([self.helpers.returnJsonArray([data])]);
+
+			if(context.receiver.credit ==0)
+				setTimeout(function(){ context.receiver.add_credit(pullMessagesNumber); }, sleepTime || 0);
 		});
 
 		const connection = container.connect(connectOptions);
@@ -168,16 +199,16 @@ export class AmqpTrigger implements INodeType {
 				source: {
 					address: sink,
 					durable: 2,
-					expiry_policy: 'never',
+					expiry_policy: 'never'
 				},
-				credit_window: 1,	// prefetch 1
+				credit_window: 0	// prefetch 1
 			};
 		} else {
 			clientOptions = {
 				source: {
 					address: sink,
 				},
-				credit_window: 1,	// prefetch 1
+				credit_window: 0	// prefetch 1
 			};
 		}
 		connection.open_receiver(clientOptions);
@@ -186,9 +217,11 @@ export class AmqpTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
+			container.removeAllListeners("receiver_open");
+			container.removeAllListeners("message");
 			connection.close();
 		}
-
+		
 		// The "manualTriggerFunction" function gets called by n8n
 		// when a user is in the workflow editor and starts the
 		// workflow manually.
@@ -198,7 +231,7 @@ export class AmqpTrigger implements INodeType {
 			await new Promise((resolve, reject) => {
 				const timeoutHandler = setTimeout(() => {
 					reject(new Error('Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.'));
-				}, 30000);
+				}, 3000);
 				container.on('message', (context: any) => { // tslint:disable-line:no-any
 					// Check if the only property present in the message is body
 					// in which case we only emit the content of the body property
