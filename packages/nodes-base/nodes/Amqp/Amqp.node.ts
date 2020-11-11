@@ -66,7 +66,7 @@ export class Amqp implements INodeType {
 					},
 				],
 			},
-		],
+		]
 	};
 
 	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
@@ -110,7 +110,7 @@ export class Amqp implements INodeType {
 		}
 
 		const allSent = new Promise(( resolve ) => {
-			container.on('sendable', (context: any) => { // tslint:disable-line:no-any
+			container.once('sendable', (context: any) => { // tslint:disable-line:no-any
 
 				let body: IDataObject | string = item.json;
 				const sendOnlyProperty = options.sendOnlyProperty as string;
@@ -125,7 +125,7 @@ export class Amqp implements INodeType {
 
 				const message = {
 					application_properties: headerProperties,
-					body,
+					body
 				};
 
 				const sendResult = context.sender.send(message);
@@ -134,9 +134,13 @@ export class Amqp implements INodeType {
 			});
 		});
 
-		container.connect(connectOptions).open_sender(sink);
+		const conn = container.connect(connectOptions);
+		const sender = conn.open_sender(sink);
 
 		const sendResult: Delivery = await allSent as Delivery;	// sendResult has a a property that causes circular reference if returned
+
+		sender.close();
+		conn.close();
 
 		return { json: { id: sendResult.id } } as INodeExecutionData;
 	}
