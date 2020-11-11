@@ -92,7 +92,7 @@ export class Strapi implements INodeType {
 						}
 					}
 					responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs);
-					
+
 					returnData.push(responseData);
 				}
 			}
@@ -102,7 +102,7 @@ export class Strapi implements INodeType {
 					const contentType = this.getNodeParameter('contentType', i) as string;
 
 					const entryId = this.getNodeParameter('entryId', i) as string;
-	
+
 					responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs);
 
 					returnData.push(responseData);
@@ -140,7 +140,7 @@ export class Strapi implements INodeType {
 						responseData = await strapiApiRequestAllItems.call(this, 'GET', `/${contentType}`, {}, qs);
 					} else {
 						qs._limit = this.getNodeParameter('limit', i) as number;
-	
+
 						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}`, {}, qs);
 					}
 					returnData.push.apply(returnData, responseData);
@@ -181,7 +181,7 @@ export class Strapi implements INodeType {
 						}
 					}
 					responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body, qs);
-					
+
 					returnData.push(responseData);
 				}
 			}

@@ -16,7 +16,7 @@ import {
 export async function strapiApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('strapiApi') as IDataObject;
-	
+
 	try {
 		const options: OptionsWithUri = {
 			headers: {
