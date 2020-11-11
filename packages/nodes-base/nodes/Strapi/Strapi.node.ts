@@ -66,13 +66,14 @@ export class Strapi implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = (items.length as unknown) as number;
 		const qs: IDataObject = {};
+		const headers: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		const { jwt } = await getToken.call(this);
 
-		qs.jwt = jwt;
+		headers.Authorization = `Bearer ${jwt}`;
 
 		if (resource === 'entry') {
 			if (operation === 'create') {
@@ -91,7 +92,7 @@ export class Strapi implements INodeType {
 							body[key] = items[i].json[key];
 						}
 					}
-					responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs);
+					responseData = await strapiApiRequest.call(this, 'POST', `/${contentType}`, body, qs, undefined, headers);
 
 					returnData.push(responseData);
 				}
@@ -103,7 +104,7 @@ export class Strapi implements INodeType {
 
 					const entryId = this.getNodeParameter('entryId', i) as string;
 
-					responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs);
+					responseData = await strapiApiRequest.call(this, 'DELETE', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
 
 					returnData.push(responseData);
 				}
@@ -137,11 +138,11 @@ export class Strapi implements INodeType {
 					}
 
 					if (returnAll) {
-						responseData = await strapiApiRequestAllItems.call(this, 'GET', `/${contentType}`, {}, qs);
+						responseData = await strapiApiRequestAllItems.call(this, 'GET', `/${contentType}`, {}, qs, headers);
 					} else {
 						qs._limit = this.getNodeParameter('limit', i) as number;
 
-						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}`, {}, qs);
+						responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}`, {}, qs, undefined, headers);
 					}
 					returnData.push.apply(returnData, responseData);
 				}
@@ -154,7 +155,7 @@ export class Strapi implements INodeType {
 
 					const entryId = this.getNodeParameter('entryId', i) as string;
 
-					responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs);
+					responseData = await strapiApiRequest.call(this, 'GET', `/${contentType}/${entryId}`, {}, qs, undefined, headers);
 
 					returnData.push(responseData);
 				}
@@ -180,7 +181,7 @@ export class Strapi implements INodeType {
 							body[key] = items[i].json[key];
 						}
 					}
-					responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body, qs);
+					responseData = await strapiApiRequest.call(this, 'PUT', `/${contentType}/${entryId}`, body, qs, undefined, headers);
 
 					returnData.push(responseData);
 				}
