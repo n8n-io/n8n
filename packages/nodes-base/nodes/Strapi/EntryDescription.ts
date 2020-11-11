@@ -66,7 +66,7 @@ export const entryFields = [
 				],
 			},
 		},
-		description: 'Name of the content type',
+		description: 'Name of the content type.',
 	},
 	{
 		displayName: 'Columns',
@@ -86,6 +86,7 @@ export const entryFields = [
 		placeholder: 'id,name,description',
 		description: 'Comma separated list of the properties which should used as columns for the new rows.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                entry:delete                                */
 	/* -------------------------------------------------------------------------- */
@@ -105,7 +106,7 @@ export const entryFields = [
 				],
 			},
 		},
-		description: 'Name of the content type',
+		description: 'Name of the content type.',
 	},
 	{
 		displayName: 'Entry ID',
@@ -123,8 +124,9 @@ export const entryFields = [
 				],
 			},
 		},
-		description: 'The ID of the entry to get.',
+		description: 'The ID of the entry to delete.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                entry:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -144,7 +146,7 @@ export const entryFields = [
 				],
 			},
 		},
-		description: 'Name of the content type',
+		description: 'Name of the content type.',
 	},
 	{
 		displayName: 'Entry ID',
@@ -164,6 +166,7 @@ export const entryFields = [
 		},
 		description: 'The ID of the entry to get.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                entry:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -286,6 +289,7 @@ export const entryFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                entry:update                                */
 	/* -------------------------------------------------------------------------- */
@@ -305,7 +309,7 @@ export const entryFields = [
 				],
 			},
 		},
-		description: 'Name of the content type',
+		description: 'Name of the content type.',
 	},
 	{
 		displayName: 'Update Key',
