@@ -113,6 +113,58 @@ export const messageFields = [
 		default: 'm.text',
 		description: 'The type of message to send.',
 	},
+	{
+		name: 'format',
+		displayName: 'Message format',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		type: 'options',
+		options: [
+			{
+				name: 'Plain text',
+				value: 'plain',
+				description: 'Text only',
+			},
+			{
+				name: 'HTML',
+				value: 'org.matrix.custom.html',
+				description: 'HTML-formatted text',
+			},
+		],
+		default: 'plain',
+		description: "The format of the message's body.",
+	},
+	{
+		name: 'fallbackText',
+		displayName: 'Fallback text',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'create',
+				],
+				format: [
+					'org.matrix.custom.html',
+				],
+			},
+		},
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		placeholder: 'HTML message could not be displayed.',
+		description: 'A plain text message to display in case the HTML cannot be rendered by the Matrix client.',
+	},
 
 
 	/* ----------------------------------------------------------------------- */
