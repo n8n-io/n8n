@@ -6,6 +6,7 @@ import {
 export class GotifyApi implements ICredentialType {
 	name = 'gotifyApi';
 	displayName = 'Gotify API';
+	documentationUrl = 'gotify';
 	properties = [
 		{
 			displayName: 'App API Token',
