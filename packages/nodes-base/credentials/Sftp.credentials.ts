@@ -52,6 +52,9 @@ export class Sftp implements ICredentialType {
 		{
 			displayName: 'Passphrase',
 			name: 'passphrase',
+			typeOptions: {
+				password: true,
+			},
 			required: true,
 			type: 'string' as NodePropertyTypes,
 			default: '',
