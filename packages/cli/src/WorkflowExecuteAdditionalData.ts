@@ -207,8 +207,8 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 	return {
 		workflowExecuteBefore: [
-			async function (this: WorkflowHooks, workflow: Workflow, data: IRunExecutionData): Promise<void> {
-				await externalHooks.run('workflow.preExecute', [workflow, data]);
+			async function (this: WorkflowHooks, workflow: Workflow): Promise<void> {
+				await externalHooks.run('workflow.preExecute', [workflow, this.mode]);
 			},
 		],
 	};
@@ -473,6 +473,10 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 export function getWorkflowHooksIntegrated(mode: WorkflowExecuteMode, executionId: string, workflowData: IWorkflowBase, optionalParameters?: IWorkflowHooksOptionalParameters): WorkflowHooks {
 	optionalParameters = optionalParameters || {};
 	const hookFunctions = hookFunctionsSave(optionalParameters.parentProcessMode);
+	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	for (const key of Object.keys(preExecuteFunctions)) {
+		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	}
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
