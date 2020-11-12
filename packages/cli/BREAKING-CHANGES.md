@@ -2,6 +2,21 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.93.0
+
+### What changed?
+
+Change in naming of the Authentication field for the Pipedrive Trigger node.
+
+### When is action necessary?
+
+If you had set "Basic Auth" for the "Authentication" field in the node.
+
+### How to upgrade:
+
+The "Authentication" field has been renamed to "Incoming Authentication". Please set the parameter “Incoming Authentication” to “Basic Auth” to activate it again.
+
+
 ## 0.90.0
 
 ### What changed?
