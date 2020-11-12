@@ -41,10 +41,9 @@ export class Sftp implements ICredentialType {
 		{
 			displayName: 'Private Key',
 			name: 'privateKey',
-			required: true,
 			type: 'string' as NodePropertyTypes,
 			typeOptions: {
-				alwaysOpenEditWindow: true,	
+				alwaysOpenEditWindow: true,
 			},
 			default: '',
 			description: 'String that contains a private key for either key-based or hostbased user authentication (OpenSSH format).',
@@ -55,10 +54,9 @@ export class Sftp implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
-			required: true,
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			description: 'For an encrypted private key, this is the passphrase used to decrypt it',
+			description: 'For an encrypted private key, this is the passphrase used to decrypt it.',
 		},
 	];
 }
