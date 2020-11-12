@@ -349,7 +349,6 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 	const externalHooks = ExternalHooks();
 	await externalHooks.init();
-	await externalHooks.run('workflow.execute', [workflowData, mode]);
 
 	const nodeTypes = NodeTypes();
 
