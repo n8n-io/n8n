@@ -47,6 +47,7 @@ export const observableFields = [
 				],
 			},
 		},
+		description: 'ID of the case',
 	},
 	{
 		displayName: 'Return All',
@@ -111,6 +112,7 @@ export const observableFields = [
 				],
 			},
 		},
+		description: 'ID of the observable',
 	},
 	{
 		displayName: 'Data Type',
@@ -187,6 +189,7 @@ export const observableFields = [
 				],
 			},
 		},
+		description: 'Type of the observable',
 	},
 	{
 		displayName: 'Data',
@@ -247,6 +250,7 @@ export const observableFields = [
 				],
 			},
 		},
+		description: 'Description of the observable in the context of the case',
 	},
 	{
 		displayName: 'Start Date',
@@ -264,6 +268,7 @@ export const observableFields = [
 				],
 			},
 		},
+		description: 'Date and time of the begin of the case default=now',
 	},
 	{
 		displayName: 'TLP',
@@ -299,11 +304,11 @@ export const observableFields = [
 				value: TLP.red,
 			},
 		],
+		description: 'Traffict Light Protocol (TLP). Default=Amber',
 	},
 	{
 		displayName: 'IOC',
 		name: 'ioc',
-		description: 'Indicator of compromise',
 		type: 'boolean',
 		required: true,
 		default: false,
@@ -317,6 +322,7 @@ export const observableFields = [
 				],
 			},
 		},
+		description: 'Indicates if the observable is an IOC (Indicator of compromise)',
 	},
 	{
 		displayName: 'Sighted',
@@ -362,6 +368,7 @@ export const observableFields = [
 				],
 			},
 		},
+		description: 'Status of the observable. Default=Ok',
 	},
 	// required for analyzer execution
 	{
@@ -473,15 +480,15 @@ export const observableFields = [
 			{
 				displayName: 'Message',
 				name: 'message',
-				required: false,
 				type: 'string',
 				default: '',
+				description: 'Description of the observable in the context of the case',
+
 			},
 			{
 				displayName: 'Observable Tags',
 				name: 'tags',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'tag1,tag2',
 			},
@@ -489,7 +496,6 @@ export const observableFields = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				required: false,
 				default: 2,
 				options: [
 					{
@@ -509,28 +515,26 @@ export const observableFields = [
 						value: TLP.red,
 					},
 				],
+				description: 'Traffict Light Protocol (TLP). Default=Amber',
 			},
 			{
 				displayName: 'IOC',
 				name: 'ioc',
-				description: 'Indicator of compromise',
 				type: 'boolean',
-				required: false,
 				default: false,
+				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Sighted',
 				name: 'sighted',
 				description: 'sighted previously',
 				type: 'boolean',
-				required: false,
 				default: false,
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				required: false,
 				default: '',
 				options: [
 					{
@@ -542,6 +546,7 @@ export const observableFields = [
 						value: 'Deleted',
 					},
 				],
+				description: 'Status of the observable. Default=Ok',
 			},
 		],
 	},
@@ -598,7 +603,6 @@ export const observableFields = [
 				displayName: 'Keyword',
 				name: 'keyword',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'exp,freetext',
 			},
@@ -606,7 +610,6 @@ export const observableFields = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'exp,freetext',
 			},
@@ -614,7 +617,6 @@ export const observableFields = [
 				name: 'status',
 				displayName: 'Status',
 				type: 'options',
-				required: false,
 				default: '',
 				options: [
 					{
@@ -626,12 +628,12 @@ export const observableFields = [
 						value: 'Deleted',
 					},
 				],
+				description: 'Status of the observable. Default=Ok',
 			},
 			{
 				displayName: 'Observable Tags',
 				name: 'tags',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'tag1,tag2',
 			},
@@ -639,7 +641,6 @@ export const observableFields = [
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				required: false,
 				default: 2,
 				options: [
 					{
@@ -659,27 +660,25 @@ export const observableFields = [
 						value: TLP.red,
 					},
 				],
+				description: 'Traffict Light Protocol (TLP). Default=Amber',
 			},
 			{
 				displayName: 'IOC',
 				name: 'ioc',
-				description: 'Indicator of compromise',
 				type: 'boolean',
-				required: false,
 				default: false,
+				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
 			},
 			{
 				displayName: 'Sighted',
 				name: 'sighted',
 				type: 'boolean',
-				required: false,
 				default: false,
 			},
 			{
 				displayName: 'Value',
 				name: 'data',
 				type: 'string',
-				required: false,
 				default: '',
 				placeholder: 'example.com; 8.8.8.8',
 			},
@@ -687,7 +686,6 @@ export const observableFields = [
 				displayName: 'Data Type',
 				name: 'dataType',
 				type: 'multiOptions',
-				required: false,
 				default: [],
 				options: [
 					{
@@ -747,13 +745,14 @@ export const observableFields = [
 						value: 'user-agent'
 					},
 				],
+				description: 'Type of the observable',
 			},
 			{
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
-				required: false,
 				default: '',
+				description: 'Description of the observable in the context of the case',
 			},
 			{
 				displayName: 'Date range',

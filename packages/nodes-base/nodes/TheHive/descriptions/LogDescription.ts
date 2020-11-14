@@ -59,6 +59,7 @@ export const logFields = [
 				],
 			},
 		},
+		description: 'ID of the task',
 	},
 	{
 		displayName: 'Return All',
@@ -135,6 +136,7 @@ export const logFields = [
 				],
 			},
 		},
+		description: 'Content of the Log',
 	},
 	{
 		displayName: 'Start Date',
@@ -152,6 +154,7 @@ export const logFields = [
 				],
 			},
 		},
+		description: 'Date of the log submission default=now',
 	},
 	{
 		displayName: 'Status',
@@ -179,6 +182,7 @@ export const logFields = [
 				],
 			},
 		},
+		description: 'Status of the log (Ok or Deleted) default=Ok',
 	},
 	// required for responder execution
 	{
@@ -251,6 +255,7 @@ export const logFields = [
 						],
 					},
 				],
+				description: 'File attached to the log',
 			},
 		],
 	}

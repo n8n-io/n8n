@@ -89,6 +89,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Title of the alert'
 	},
 	{
 		displayName: 'Case ID',
@@ -123,6 +124,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Title of the alert',
 	},
 	{
 		displayName: 'Description',
@@ -140,6 +142,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Description of the alert',
 	},
 	{
 		displayName: 'Severity',
@@ -171,6 +174,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Severity of the alert. Default=Medium',
 	},
 	{
 		displayName: 'Date',
@@ -188,9 +192,10 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Date and time when the alert was raised default=now'
 	},
 	{
-		displayName: 'Tags',
+		displayName: 'Case Tags',
 		name: 'tags',
 		type: 'string',
 		required: true,
@@ -206,6 +211,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Case Tags'
 	},
 	{
 		displayName: 'TLP',
@@ -240,6 +246,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Traffict Light Protocol (TLP). Default=Amber'
 	},
 	{
 		displayName: 'Status',
@@ -275,6 +282,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Status of the alert',
 	},
 	{
 		displayName: 'Type',
@@ -292,6 +300,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Type of the alert'
 	},
 	{
 		displayName: 'Source',
@@ -309,6 +318,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Source of the alert'
 	},
 	{
 		displayName: 'SourceRef',
@@ -326,6 +336,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'Source reference of the alert'
 	},
 	{
 		displayName: 'Follow',
@@ -343,6 +354,7 @@ export const alertFields = [
 				],
 			},
 		},
+		description: 'if true, the alert becomes active when updated default=true',
 	},
 	{
 		displayName: 'Artifacts',
@@ -425,7 +437,7 @@ export const alertFields = [
 						description: '',
 					},
 					{
-						displayName: 'Tags',
+						displayName: 'Case Tags',
 						name: 'tags',
 						type: 'string',
 						default: '',
@@ -434,6 +446,7 @@ export const alertFields = [
 				],
 			},
 		],
+		description: 'Artifact attributes'
 	},
 	// required for responder execution
 	{
@@ -489,6 +502,7 @@ export const alertFields = [
 				name: 'caseTemplate',
 				type:'string',
 				default: '',
+				description: `Case template to use when a case is created from this alert`,
 			},
 		],
 	},
@@ -516,6 +530,7 @@ export const alertFields = [
 				type: 'string',
 				required: false,
 				default: '',
+				description: `Case template to use when a case is created from this alert`,
 			},
 			{
 				displayName: 'Description',
@@ -523,12 +538,14 @@ export const alertFields = [
 				type: 'string',
 				required: false,
 				default: '',
+				description: 'Description of the alert',
 			},
 			{
 				displayName: 'Follow',
 				name: 'follow',
 				type: 'boolean',
 				default: true,
+				description: 'if true, the alert becomes active when updated default=true',
 			},
 			{
 				displayName: 'Severity',
@@ -549,6 +566,7 @@ export const alertFields = [
 					},
 				],
 				default: 2,
+				description: 'Severity of the alert. Default=Medium',
 			},
 			{
 				displayName: 'Status',
@@ -575,7 +593,7 @@ export const alertFields = [
 				default: 'New',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Case Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
@@ -587,6 +605,7 @@ export const alertFields = [
 				type: 'string',
 				required: false,
 				default: '',
+				description: 'Title of the alert'
 			},
 			{
 				displayName: 'TLP',
@@ -612,6 +631,7 @@ export const alertFields = [
 						value: TLP.red,
 					},
 				],
+				description: 'Traffict Light Protocol (TLP). Default=Amber'
 			},
 			{
 				displayName: 'Artifacts',
@@ -684,7 +704,7 @@ export const alertFields = [
 								description: '',
 							},
 							{
-								displayName: 'Tags',
+								displayName: 'Case Tags',
 								name: 'tags',
 								type: 'string',
 								default: '',
@@ -746,12 +766,13 @@ export const alertFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
+				description: 'Description of the alert',
 			},
 			{
 				displayName: 'Follow',
 				name: 'follow',
 				type: 'boolean',
-				default: true,
+				description: 'if true, the alert becomes active when updated default=true',
 			},
 			{
 				displayName: 'Severity',
@@ -772,6 +793,7 @@ export const alertFields = [
 					},
 				],
 				default: 2,
+				description: 'Severity of the alert. Default=Medium',
 			},
 			{
 				displayName: 'Tags',
@@ -809,6 +831,7 @@ export const alertFields = [
 						value:TLP.red,
 					}
 				],
+				description: 'Traffict Light Protocol (TLP). Default=Amber'
 			},
 		],
 	}

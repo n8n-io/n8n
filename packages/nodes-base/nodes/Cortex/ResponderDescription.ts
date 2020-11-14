@@ -116,21 +116,20 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Title of the case',
 					},
 					{
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Description of the case',	
 					},
 					{
 						displayName: 'Severity',
 						name: 'severity',
 						type: 'options',
-						required: false,
 						default: 2,
 						options: [
 							{
@@ -146,34 +145,34 @@ export const responderFields: INodeProperties[] = [
 								value: 3,
 							},
 						],
+						description: 'Severity of the case. Default=Medium',
 					},
 					{
 						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Date and time of the begin of the case default=now',
 					},
 					{
 						displayName: 'Owner',
 						name: 'owner',
 						type: 'string',
-						required: false,
 						default: '',
+						description: `User who owns the case. This is automatically set to current user when status is set to InProgress`,
 					},
 					{
 						displayName: 'Flag',
 						name: 'flag',
 						type: 'boolean',
-						required: false,
 						default: false,
+						description: 'Flag of the case default=false',
 					},
 					{
 						displayName: 'TLP',
 						name: 'tlp',
 						type: 'options',
-						required: false,
-						default:2,
+						default: 2,
 						options: [
 							{
 								name: 'White',
@@ -192,12 +191,12 @@ export const responderFields: INodeProperties[] = [
 								value: TLP.red,
 							},
 						],
+						description: 'Traffict Light Protocol (TLP). Default=Amber',
 					},
 					{
 						displayName: 'Tags',
 						name: 'tags',
 						type: 'string',
-						required: false,
 						default: '',
 						placeholder:'tag1,tag2,...',
 					},
@@ -247,21 +246,20 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Title of the alert',
 					},
 					{
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Description of the alert',
 					},
 					{
 						displayName: 'Severity',
 						name: 'severity',
 						type: 'options',
-						required: false,
 						default: 2,
 						options:[
 							{
@@ -277,28 +275,26 @@ export const responderFields: INodeProperties[] = [
 								value: 3,
 							},
 						],
-						
+						description: 'Severity of the case. Default=Medium',
 					},
 					{
 						displayName: 'Date',
 						name: 'date',
 						type: 'dateTime',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Date and time when the alert was raised default=now',
 					},
 					{
-						displayName: 'Tags',
+						displayName: 'Case Tags',
 						name: 'tags',
 						type: 'string',
-						required: false,
 						placeholder:'tag1,tag2,...',
 						default: ''
 					},
 					{
-						displayName: 'Tlp',
+						displayName: 'TLP',
 						name: 'tlp',
 						type: 'options',
-						required: false,
 						default: 2,
 						options: [
 							{
@@ -317,12 +313,12 @@ export const responderFields: INodeProperties[] = [
 								value:TLP.red,
 							}
 						],
+						description: 'Traffict Light Protocol (TLP). Default=Amber',
 					},
 					{
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
-						required: false,
 						default: 'New',
 						options:[
 							{
@@ -342,34 +338,33 @@ export const responderFields: INodeProperties[] = [
 								value: 'Imported',
 							},
 						],
-						
+						description: 'Status of the alert. Default=New'
 					},
 					{
 						displayName: 'Type',
 						name: 'type',
 						type: 'string',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Type of the alert',
 					},
 					{
 						displayName: 'Source',
 						name: 'source',
 						type: 'string',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Source of the alert',
 					},
 					{
 						displayName: 'SourceRef',
 						name: 'sourceRef',
 						type: 'string',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Source reference of the alert',
 					},
 					{
 						displayName: 'Follow',
 						name: 'follow',
 						type: 'boolean',
-						required: false,
 						default: false
 					},
 					{
@@ -378,11 +373,11 @@ export const responderFields: INodeProperties[] = [
 						type: 'fixedCollection',
 						placeholder:'Add an artifact',
 						required: false,
-						typeOptions:{
-							multipleValues:true,
-							multipleValueButtonText:'Add an artifact'
+						typeOptions: {
+							multipleValues: true,
+							multipleValueButtonText: 'Add an artifact',
 						},
-						default:[],
+						default: [],
 						options: [
 							{
 								displayName: 'Artifact',
@@ -544,12 +539,10 @@ export const responderFields: INodeProperties[] = [
 				displayName: 'Observable attributes',
 				name: 'values',
 				values: [
-					
 					{
 						displayName: 'DataType',
 						name: 'dataType',
 						type: 'options',
-						required: false,
 						default: '',
 						options: [
 							{
@@ -614,7 +607,6 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Data',
 						name: 'data',
 						type: 'string',
-						required: false,
 						default: '',
 						displayOptions:{
 							hide:{
@@ -629,7 +621,6 @@ export const responderFields: INodeProperties[] = [
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
-						required: false,
 						displayOptions: {
 							show: {
 								dataType:[
@@ -643,21 +634,19 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Message',
 						name: 'message',
 						type: 'string',
-						required: false,
 						default: ''
 					},
 					{
 						displayName: 'StartDate',
 						name: 'startDate',
 						type: 'dateTime',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Date and time of the begin of the case default=now',
 					},
 					{
-						displayName: 'Tlp',
+						displayName: 'TLP',
 						name: 'tlp',
 						type: 'options',
-						required: false,
 						default: 2,
 						options: [
 							{
@@ -676,19 +665,19 @@ export const responderFields: INodeProperties[] = [
 								value:TLP.red,
 							}
 						],
+						description: 'Traffict Light Protocol (TLP). Default=Amber',
 					},
 					{
-						displayName: 'Ioc',
+						displayName: 'IOC',
 						name: 'ioc',
 						type: 'boolean',
-						required: false,
-						default: false
+						default: false,
+						description: 'Indicates if the observable is an IOC (Indicator of compromise)',
 					},
 					{
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
-						required: false,
 						default: '',
 						options: [
 							{
@@ -700,6 +689,7 @@ export const responderFields: INodeProperties[] = [
 								value: 'Deleted',
 							},
 						],
+						description: 'Status of the observable (Ok or Deleted) default=Ok',
 					}
 				],
 			},
@@ -751,7 +741,8 @@ export const responderFields: INodeProperties[] = [
 						name: 'title',
 						type: 'string',
 						required: false,
-						default: ''
+						default: '',
+						description: 'Title of the task',
 					},
 					{
 						displayName: 'Status',
@@ -833,21 +824,20 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Message',
 						name: 'message',
 						type: 'string',
-						required: false,
 						default: ''
 					},
 					{
 						displayName: 'StartDate',
 						name: 'startDate',
 						type: 'dateTime',
-						required: false,
-						default: ''
+						default: '',
+						description: 'Date and time of the begin of the case default=now',
 					},
 					{
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
-						required:true,
+						required: true,
 						default: '',
 						options: [
 							{

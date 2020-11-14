@@ -90,6 +90,7 @@ export const caseFields = [
 				],
 			},
 		},
+		description: 'ID of the case',
 	},
 	{
 		displayName: 'Title',
@@ -107,6 +108,7 @@ export const caseFields = [
 				],
 			},
 		},
+		description: 'Title of the case',
 	},
 	{
 		displayName: 'Description',
@@ -124,6 +126,7 @@ export const caseFields = [
 				],
 			},
 		},
+		description: 'Description of the case',
 	},
 	{
 		displayName: 'Severity',
@@ -155,6 +158,7 @@ export const caseFields = [
 				],
 			},
 		},
+		description: 'Severity of the alert. Default=Medium',
 	},
 	{
 		displayName: 'Start Date',
@@ -172,6 +176,7 @@ export const caseFields = [
 				],
 			},
 		},
+		description: 'Date and time of the begin of the case default=now',
 	},
 	{
 		displayName: 'Owner',
@@ -206,6 +211,7 @@ export const caseFields = [
 				],
 			},
 		},
+		description: 'Flag of the case default=false',
 	},
 	{
 		displayName: 'TLP',
@@ -241,6 +247,7 @@ export const caseFields = [
 				],
 			},
 		},
+		description: 'Traffict Light Protocol (TLP). Default=Amber'
 	},
 	{
 		displayName: 'Case Tags',
@@ -360,23 +367,23 @@ export const caseFields = [
 			{
 				displayName: 'Summary',
 				name: 'summary',
-				required: false,
 				type: 'string',
 				default: '',
+				description: 'Summary of the case, to be provided when closing a case',
 			},
 			{
 				displayName: 'End Date',
 				name: 'endDate',
-				required: false,
 				default: '',
 				type: 'dateTime',
+				description: 'Resolution date',
 			},
 			{
-				displayName: 'Metrics',
+				displayName: 'Metrics (JSON)',
 				name: 'metrics',
-				required: false,
 				default: '[]',
 				type: 'json',
+				description: 'List of metrics',
 			},
 		],
 	},
@@ -403,15 +410,15 @@ export const caseFields = [
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				required: false,
 				default: '',
+				description: 'Title of the case',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				required: false,
 				default: '',
+				description: 'Description of the case',
 			},
 			{
 				displayName: 'Severity',
@@ -431,8 +438,8 @@ export const caseFields = [
 						value: 3
 					},
 				],
-				required: false,
 				default: 2,
+				description: 'Severity of the alert. Default=Medium',
 			},
 			{
 				displayName: 'Status',
@@ -451,36 +458,33 @@ export const caseFields = [
 						name: 'Deleted',
 						value: 'Deleted',
 					},
-			],
-				required: false,
+				],
 				default: 'Open',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
-				required: false,
 				default: '',
+				description: 'Date and time of the begin of the case default=now',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'string',
-				required: false,
 				default: '',
 			},
 			{
 				displayName: 'Flag',
 				name: 'flag',
 				type: 'boolean',
-				required: false,
 				default: false,
+				description: 'Flag of the case default=false',
 			},
 			{
 				displayName: 'TLP',
 				name: 'tlp',
 				type: 'options',
-				required: false,
 				default: 2,
 				options: [
 					{
@@ -500,19 +504,18 @@ export const caseFields = [
 						value: TLP.red,
 					},
 				],
+				description: 'Traffict Light Protocol (TLP). Default=Amber'
 			},
 			{
 				displayName: 'Case Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				required: false,
 			},
 			{
 				displayName: 'Resolution Status',
 				name: 'resolutionStatus',
 				type: 'options',
-				required: false,
 				default: '',
 				options: [
 					{
@@ -536,12 +539,12 @@ export const caseFields = [
 						name: 'Duplicated'
 					},
 				],
+				description: 'Resolution status of the case',
 			},
 			{
 				displayName: 'Impact Status',
 				name: 'impactStatus',
 				type: 'options',
-				required: false,
 				default: '',
 				options: [
 					{
@@ -557,27 +560,28 @@ export const caseFields = [
 						value: 'NotApplicable'
 					},
 				],
+				description: 'Impact status of the case',
 			},
 			{
 				displayName: 'Summary',
 				name: 'summary',
 				type: 'string',
-				required: false,
 				default: '',
+				description: 'Summary of the case, to be provided when closing a case'
 			},
 			{
 				displayName: 'End Date',
 				name: 'endDate',
 				type: 'dateTime',
-				required: false,
 				default: '',
+				description: 'Resolution date',
 			},
 			{
-				displayName: 'Metrics',
+				displayName: 'Metrics (JSON)',
 				name: 'metrics',
 				type: 'json',
-				required: false,
 				default: '[]',
+				description: 'List of metrics',
 			},
 		],
 	},
@@ -633,28 +637,27 @@ export const caseFields = [
 				displayName: 'Summary',
 				name: 'summary',
 				type: 'string',
-				required: false,
 				default: '',
+				description: 'Summary of the case, to be provided when closing a case',
 			},
 			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				required: false,
 				default: '',
+				description: 'Title of the case',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				required: false,
 				default: '',
+				description: 'Description of the case',
 			},
 			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'string',
-				required: false,
 				default: '',
 			},
 			{
@@ -675,8 +678,8 @@ export const caseFields = [
 						value: 3
 					},
 				],
-				required: false,
 				default: 2,
+				description: 'Severity of the alert. Default=Medium',
 			},
 			{
 				displayName: 'Status',
@@ -696,7 +699,6 @@ export const caseFields = [
 						value: 'Deleted',
 					},
 				],
-				required: false,
 				default: 'Open',
 			},
 			{
@@ -723,41 +725,39 @@ export const caseFields = [
 						value: TLP.red,
 					},
 				],
+				description: 'Traffict Light Protocol (TLP). Default=Amber',
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
-				required: false,
 				default: '',
+				description: 'Date and time of the begin of the case default=now',
 			},
 			{
 				displayName: 'End Date',
 				name: 'endDate',
 				type: 'dateTime',
-				required: false,
 				default: '',
+				description: 'Resolution date',
 			},
 			{
 				displayName: 'Flag',
 				name: 'flag',
 				type: 'boolean',
-				required: false,
 				default: false,
+				description: 'Flag of the case default=false',
 			},
-
 			{
 				displayName: 'Case Tags',
 				name: 'tags',
 				type: 'string',
-				required: false,
 				default: '',
 			},
 			{
 				displayName: 'Resolution Status',
 				name: 'resolutionStatus',
 				type: 'options',
-				required: false,
 				default: '',
 				options: [
 					{
@@ -786,7 +786,6 @@ export const caseFields = [
 				displayName: 'Impact Status',
 				name: 'impactStatus',
 				type: 'options',
-				required: false,
 				default: '',
 				options: [
 					{

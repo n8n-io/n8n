@@ -50,5 +50,6 @@ export const jobFields: INodeProperties[] =[
 			},
 		},
 		default:'',
+		description: 'ID of the job',
 	},
 ];

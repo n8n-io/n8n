@@ -6,14 +6,13 @@ import {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
 import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('theHiveApi');
 
 	if (credentials === undefined) {
@@ -30,8 +29,6 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 		body,
 		json: true,
 	};
-
-	console.log(options);
 
 	if (Object.keys(option).length !== 0) {
 		options = Object.assign({},options, option);
