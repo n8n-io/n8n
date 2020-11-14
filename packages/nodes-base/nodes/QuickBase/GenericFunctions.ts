@@ -26,11 +26,28 @@ export async function quickbaseApiRequest(
 		query = {};
 	}
 
+	const workflow = this.getWorkflow();
+	const node = this.getNode();
+
 	const headers: requestPromise.Options['headers'] = {
 		'QB-Realm-Hostname': credentials.realm,
 		'Authorization': `QB-USER-TOKEN ${credentials.userToken}`,
-		'User-Agent': `nodejs/${process.version} n8n`
+		'User-Agent': [
+			`nodejs/${process.version}`,
+			[
+				'n8n',
+				(workflow.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-'),
+				'quickbase',
+				node.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
+			].filter((val) => {
+				return !!val;
+			}).join('/')
+		].join(' ')
 	};
+
+	if(isJson){
+		headers['Content-Type'] = 'application/json; charset=UTF-8';
+	}
 
 	const options: requestPromise.OptionsWithUri = {
 		method,
@@ -40,7 +57,6 @@ export async function quickbaseApiRequest(
 	};
 
 	if(isJson){
-		headers['Content-Type'] = 'application/json; charset=UTF-8';
 		options.json = true;
 		options.body = body;
 	}else{
