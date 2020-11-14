@@ -21,6 +21,11 @@ export const documentOperations = [
 				description: 'Create a document',
 			},
 			{
+				name: 'Create/Update',
+				value: 'upsert',
+				description: 'Create/Update a document',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a document',
@@ -35,11 +40,11 @@ export const documentOperations = [
 				value: 'getAll',
 				description: 'Get all documents from a collection',
 			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a document',
-			},
+			// {
+			// 	name: 'Update',
+			// 	value: 'update',
+			// 	description: 'Update a document',
+			// },
 			{
 				name: 'Query',
 				value: 'query',
@@ -443,8 +448,123 @@ export const documentFields = [
 		description: 'Document ID',
 		required: true,
 	},
+	// 	/* ---------------------------------------------------------------------- */
+	// /*                              document:update                               */
+	// /* -------------------------------------------------------------------------- */
+	// {
+	// 	displayName: 'Project ID',
+	// 	name: 'projectId',
+	// 	type: 'options',
+	// 	default: '',
+	// 	typeOptions: {
+	// 		loadOptionsMethod: 'getProjects',
+	// 	},
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'document',
+	// 			],
+	// 			operation: [
+	// 				'update',
+	// 			],
+	// 		},
+	// 	},
+	// 	description: 'As displayed in firebase console URL',
+	// 	required: true,
+	// },
+	// {
+	// 	displayName: 'Database',
+	// 	name: 'database',
+	// 	type: 'string',
+	// 	default: '(default)',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'document',
+	// 			],
+	// 			operation: [
+	// 				'update',
+	// 			],
+	// 		},
+	// 	},
+	// 	description: 'Usually the provided default value will work',
+	// 	required: true,
+	// },
+	// {
+	// 	displayName: 'Collection',
+	// 	name: 'collection',
+	// 	type: 'string',
+	// 	default: '',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'document',
+	// 			],
+	// 			operation: [
+	// 				'update',
+	// 			],
+	// 		},
+	// 	},
+	// 	description: 'Collection name',
+	// 	required: true,
+	// },
+	// {
+	// 	displayName: 'Update Key',
+	// 	name: 'updateKey',
+	// 	type: 'string',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'document',
+	// 			],
+	// 			operation: [
+	// 				'update',
+	// 			],
+	// 		},
+	// 	},
+	// 	default: '',
+	// 	description: 'Must correspond to a document ID',
+	// 	required: true,
+	// 	placeholder: 'documentId',
+	// },
+	// {
+	// 	displayName: 'Columns /Attributes',
+	// 	name: 'columns',
+	// 	type: 'string',
+	// 	default: '',
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: [
+	// 				'document',
+	// 			],
+	// 			operation: [
+	// 				'update',
+	// 			],
+	// 		},
+	// 	},
+	// 	description: 'Columns to insert',
+	// 	required: true,
+	// 	placeholder: 'age, city, location',
+	// },
+	// {
+	// 	displayName: 'Simple',
+	// 	name: 'simple',
+	// 	type: 'boolean',
+	// 	displayOptions: {
+	// 		show: {
+	// 			operation: [
+	// 				'update',
+	// 			],
+	// 			resource: [
+	// 				'document',
+	// 			],
+	// 		},
+	// 	},
+	// 	default: true,
+	// 	description: 'When set to true a simplify version of the response will be used else the raw data.',
+	// },
 	/* -------------------------------------------------------------------------- */
-	/*                              document:update                               */
+	/*                              document:upsert                               */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project ID',
@@ -460,7 +580,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'update',
+					'upsert',
 				],
 			},
 		},
@@ -478,7 +598,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'update',
+					'upsert',
 				],
 			},
 		},
@@ -496,7 +616,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'update',
+					'upsert',
 				],
 			},
 		},
@@ -513,7 +633,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'update',
+					'upsert',
 				],
 			},
 		},
@@ -533,7 +653,7 @@ export const documentFields = [
 					'document',
 				],
 				operation: [
-					'update',
+					'upsert',
 				],
 			},
 		},
@@ -541,24 +661,6 @@ export const documentFields = [
 		required: true,
 		placeholder: 'age, city, location',
 	},
-	{
-		displayName: 'Simple',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'document',
-				],
-			},
-		},
-		default: true,
-		description: 'When set to true a simplify version of the response will be used else the raw data.',
-	},
-
 	/* -------------------------------------------------------------------------- */
 	/*                              document:query                                */
 	/* -------------------------------------------------------------------------- */

@@ -12,7 +12,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, headers: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri: string | null = null): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -28,9 +28,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		json: true,
 	};
 	try {
-		if (Object.keys(headers).length !== 0) {
-			options.headers = Object.assign({}, options.headers, headers);
-		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
@@ -38,13 +35,22 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleFirebaseCloudFirestoreOAuth2Api', options);
 	} catch (error) {
-		if (error.response && Array.isArray(error.response.body)) {
 
-			let errors;
 
-			errors = error.response.body;
+		console.log(error.response.body)
 
-			errors = errors.map((e: { error: { message: string } }) => e.error.message).join('|');
+		let errors;
+
+		if (error.response && error.response.body) {
+
+			if (Array.isArray(error.response.body)) {
+
+				errors = error.response.body;
+	
+				errors = errors.map((e: { error: { message: string } }) => e.error.message).join('|');
+			} else {
+				errors = error.response.body.error.message;
+			}
 
 			// Try to return the error prettier
 			throw new Error(
@@ -63,7 +69,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	query.pageSize = 100;
 
 	do {
-		responseData = await googleApiRequest.call(this, method, endpoint, body, query, {}, uri);
+		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
 		query.pageToken = responseData['nextPageToken'];
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (

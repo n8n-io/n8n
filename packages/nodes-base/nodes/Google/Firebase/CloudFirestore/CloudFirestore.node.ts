@@ -27,7 +27,6 @@ import {
 	documentFields,
 	documentOperations,
 } from './DocumentDescription';
-import { json } from 'express';
 
 export class CloudFirestore implements INodeType {
 	description: INodeTypeDescription = {
@@ -204,12 +203,11 @@ export class CloudFirestore implements INodeType {
 				}));
 				returnData.push.apply(returnData, responseData);
 
-			} else if (operation === 'update') {
+			} else if (operation === 'upsert') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
-				const simple = this.getNodeParameter('simple', 0) as boolean;
 
-				await Promise.all(items.map( async (item: IDataObject, i: number) => {
+				const updates = items.map((item: IDataObject, i: number) => {
 					const collection = this.getNodeParameter('collection', i) as string;
 					const updateKey = this.getNodeParameter('updateKey', i) as string;
 					// @ts-ignore
@@ -222,21 +220,66 @@ export class CloudFirestore implements INodeType {
 						document[column] = item['json'].hasOwnProperty(column) ? jsonToDocument(item['json'][column]) : jsonToDocument(null);
 					});
 
-					responseData = await googleApiRequest.call(
-						this,
-						'PATCH',
-						`/${projectId}/databases/${database}/documents/${collection}/${documentId}`,
-						{ fields: document },
-						{ [`updateMask.fieldPaths`]: columnList },
-					);
-					if (simple === false) {
-						returnData.push(responseData);
-					} else {
-						//@ts-ignore
-						returnData.push(documentToJson(responseData.fields as IDataObject));
-					}
-				}));
+					return {
+						update: {
+							name: `projects/${projectId}/databases/${database}/documents/${collection}/${documentId}`,
+							fields: document,
+						},
+						updateMask: {
+							fieldPaths: columnList,
+						},
+					};
 
+				});
+
+				responseData = [];
+
+				const { writeResults, status } = await googleApiRequest.call(
+					this,
+					'POST',
+					`/${projectId}/databases/${database}/documents:batchWrite`,
+					{ writes: updates },
+				);
+
+				for (let i = 0; i < writeResults.length; i++) {
+					writeResults[i]['status'] = status[i];
+					Object.assign(writeResults[i], items[i].json);
+					responseData.push(writeResults[i]);
+				}
+
+				returnData.push.apply(returnData, responseData);
+
+			// } else if (operation === 'update') {
+			// 	const projectId = this.getNodeParameter('projectId', 0) as string;
+			// 	const database = this.getNodeParameter('database', 0) as string;
+			// 	const simple = this.getNodeParameter('simple', 0) as boolean;
+
+			// 	await Promise.all(items.map(async (item: IDataObject, i: number) => {
+			// 		const collection = this.getNodeParameter('collection', i) as string;
+			// 		const updateKey = this.getNodeParameter('updateKey', i) as string;
+			// 		// @ts-ignore
+			// 		const documentId = item['json'][updateKey] as string;
+			// 		const columns = this.getNodeParameter('columns', i) as string;
+			// 		const columnList = columns.split(',').map(column => column.trim()) as string[];
+			// 		const document = {};
+			// 		columnList.map(column => {
+			// 			// @ts-ignore
+			// 			document[column] = item['json'].hasOwnProperty(column) ? jsonToDocument(item['json'][column]) : jsonToDocument(null);
+			// 		});
+			// 		responseData = await googleApiRequest.call(
+			// 			this,
+			// 			'PATCH',
+			// 			`/${projectId}/databases/${database}/documents/${collection}/${documentId}`,
+			// 			{ fields: document },
+			// 			{ [`updateMask.fieldPaths`]: columnList },
+			// 		);
+			// 		if (simple === false) {
+			// 			returnData.push(responseData);
+			// 		} else {
+			// 			returnData.push(documentToJson(responseData.fields as IDataObject));
+			// 		}
+			// 	}));
+		
 			} else if (operation === 'query') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
