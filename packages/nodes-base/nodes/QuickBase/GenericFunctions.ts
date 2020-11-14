@@ -90,7 +90,7 @@ export async function quickbaseApiRequest(
 			options.qs.skip = batchSize;
 		}
 
-		while(results.metadata.numRecords < results.metadata.totalRecords || results.metadata.skip > results.metadata.totalRecords){
+		while(results.metadata.numRecords < results.metadata.totalRecords && results.metadata.skip < results.metadata.totalRecords){
 			const batch = await this.helpers.request(options);
 
 			results.data = results.data.concat(batch.data);
