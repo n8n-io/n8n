@@ -98,7 +98,7 @@ export class QuickBase implements INodeType {
 			displayName: 'Record ID',
 			name: 'recordId',
 			type: 'number',
-			default: '',
+			default: 1,
 			required: true,
 			displayOptions: {
 				show: {
@@ -116,7 +116,7 @@ export class QuickBase implements INodeType {
 			displayName: 'Field ID',
 			name: 'fieldId',
 			type: 'number',
-			default: '',
+			default: 6,
 			required: true,
 			displayOptions: {
 				show: {
@@ -150,25 +150,7 @@ export class QuickBase implements INodeType {
 			description: 'Quick Base File Version Number',
 		},
 
-		/* Run Query */
-		{
-			displayName: 'Select',
-			name: 'select',
-			type: 'string',
-			default: '',
-			placeholder: '3.4.5',
-			required: true,
-			displayOptions: {
-				show: {
-					operation: [
-						'runQuery'
-					]
-				}
-			},
-			description: 'Period delimited list of field ids',
-		},
-
-		/* Run Report */
+		/* Run Report - Report ID should come before top/skip/fetchAll */
 		{
 			displayName: 'Report ID',
 			name: 'reportId',
@@ -186,6 +168,184 @@ export class QuickBase implements INodeType {
 				minValue: 1
 			},
 			description: 'Quick Base Report ID',
+		},
+
+		/* Run Query */
+		{
+			displayName: 'Select',
+			name: 'select',
+			type: 'string',
+			default: '',
+			placeholder: '3.4.5',
+			required: true,
+			displayOptions: {
+				show: {
+					operation: [
+						'runQuery'
+					]
+				}
+			},
+			description: 'Period delimited list of field ids',
+		}, {
+			displayName: 'Fetch All Records',
+			name: 'fetchAll',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: {
+					operation: [
+						'runQuery',
+						'runReport'
+					]
+				}
+			},
+			description: 'Cycle through Quick Base\'s pagination to retreive all records'
+		}, {
+			displayName: 'Top',
+			name: 'top',
+			type: 'number',
+			default: 100,
+			typeOptions: {
+				minValue: 1
+			},
+			displayOptions: {
+				show: {
+					operation: [
+						'runQuery',
+						'runReport'
+					],
+					fetchAll: [
+						false
+					]
+				}
+			},
+			description: 'The maximum number of records to return'
+		}, {
+			displayName: 'Skip',
+			name: 'skip',
+			type: 'number',
+			default: 0,
+			typeOptions: {
+				minValue: 0
+			},
+			displayOptions: {
+				show: {
+					operation: [
+						'runQuery',
+						'runReport'
+					],
+					fetchAll: [
+						false
+					]
+				}
+			},
+			description: 'The number of records to skip'
+		},  {
+			displayName: 'Use App Local Time',
+			name: 'compareWithAppLocalTime',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: {
+					operation: [
+						'runQuery'
+					]
+				}
+			},
+			description: 'Whether to run the query against the Quick Base application\'s local time as opposed to UTC (UTC or false is default)'
+		}, {
+			displayName: 'Sort By',
+			name: 'sortByUI',
+			type: 'fixedCollection',
+			default: [],
+			displayOptions: {
+				show: {
+					operation: [
+						'runQuery'
+					]
+				}
+			},
+			typeOptions: {
+				multipleValues: true,
+				multipleValueButtonText: 'Add Sort By'
+			},
+			description: 'Sort the query in the order of the given field ids',
+			placeholder: 'Add Sort By',
+			options: [{
+				name: 'sortBy',
+				displayName: 'Sort By',
+				values: [{
+					displayName: 'Field ID',
+					name: 'fieldId',
+					type: 'number',
+					default: 1,
+					typeOptions: {
+						minValue: 1
+					},
+					description: 'Field ID to sort by'
+				}, {
+					displayName: 'Order',
+					name: 'order',
+					type: 'options',
+					default: 'DESC',
+					options: [{
+						name: 'Ascending',
+						value: 'ASC'
+					}, {
+						name: 'Descending',
+						value: 'DESC'
+					}],
+					description: 'Direction of sort'
+				}]
+			}]
+		},{
+			displayName: 'Group By',
+			name: 'groupByUI',
+			type: 'fixedCollection',
+			default: [],
+			displayOptions: {
+				show: {
+					operation: [
+						'runQuery'
+					]
+				}
+			},
+			typeOptions: {
+				multipleValues: true,
+				multipleValueButtonText: 'Add Group By'
+			},
+			description: 'Group the query in the order of the given field ids',
+			placeholder: 'Add Group By',
+			options: [{
+				name: 'groupBy',
+				displayName: 'Group By',
+				values: [{
+					displayName: 'Field ID',
+					name: 'fieldId',
+					type: 'number',
+					default: 1,
+					typeOptions: {
+						minValue: 1
+					},
+					description: 'Field ID to group by'
+				}, {
+					displayName: 'Grouping',
+					name: 'grouping',
+					type: 'options',
+					default: 'equal-values',
+					options: [{
+						name: 'Ascending',
+						value: 'ASC'
+					}, {
+						name: 'Descending',
+						value: 'DESC'
+					}, {
+						name: 'Equal Values',
+						value: 'equal-values'
+					}],
+					description: 'Grouping type'
+				}]
+			}]
 		},
 
 		/* Upsert */
@@ -252,6 +412,8 @@ export class QuickBase implements INodeType {
 
 		let requestMethod: string;
 		let endpoint: string;
+
+		let fetchAll: boolean | 'qs';
  
         for(let i = 0; i < items.length; ++i){
 			requestMethod = 'GET';
@@ -259,6 +421,7 @@ export class QuickBase implements INodeType {
 			body = {};
 			qs = {};
 			isJson = true;
+			fetchAll = false;
 
 			operation = this.getNodeParameter('operation', i) as string;
 			tableId = this.getNodeParameter('tableId', i) as string;
@@ -284,11 +447,79 @@ export class QuickBase implements INodeType {
 					body.select = (this.getNodeParameter('select', i) as string).split('.').map((val) => {
 						return +val;
 					});
+
+					const sortBy = (this.getNodeParameter('sortByUI', i) as {
+						sortBy: {
+							fieldId: number;
+							order: 'ASC' | 'DESC';
+						}[]
+					}).sortBy;
+
+					if(sortBy.length > 0){
+						body.sortBy = sortBy;
+					}
+
+					const groupBy = (this.getNodeParameter('groupByUI', i) as {
+						groupBy: {
+							fieldId: number;
+							grouping: 'ASC' | 'DESC' | 'equal-values';
+						}[]
+					}).groupBy;
+
+					if(groupBy.length > 0){
+						body.groupBy = groupBy;
+					}
+
+					const compareWithAppLocalTime = this.getNodeParameter('compareWithAppLocalTime', i) as boolean;
+
+					fetchAll = this.getNodeParameter('fetchAll', i) as boolean
+
+					const options: {
+						top?: number;
+						skip?: number;
+						compareWithAppLocalTime?: boolean;
+					} = {};
+
+					if(!fetchAll){
+						const top = this.getNodeParameter('top', i) as number;
+						const skip = this.getNodeParameter('skip', i) as number;
+
+						if(top !== undefined){
+							options.top = top;
+						}
+
+						if(skip !== undefined){
+							options.skip = skip;
+						}
+					}
+
+					if(compareWithAppLocalTime !== undefined){
+						options.compareWithAppLocalTime = compareWithAppLocalTime;
+					}
+
+					body.options = options;
 				break;
 				case 'runReport':
 					requestMethod = 'POST';
 
 					const reportId = this.getNodeParameter('reportId', i) as number;
+
+					fetchAll = this.getNodeParameter('fetchAll', i) as boolean
+
+					if(!fetchAll){
+						const top = this.getNodeParameter('top', i) as number;
+						const skip = this.getNodeParameter('skip', i) as number;
+
+						if(top !== undefined){
+							qs.top = top;
+						}
+
+						if(skip !== undefined){
+							qs.skip = skip;
+						}
+
+						fetchAll = 'qs';
+					}
 
 					endpoint = `reports/${reportId}/run?tableId=${tableId}`;
 				break;
@@ -321,7 +552,7 @@ export class QuickBase implements INodeType {
 					throw new Error(`The operation "${operation}" is not known!`);
 			}
 
-			const responseData = await quickbaseApiRequest.call(this, requestMethod, endpoint, body, qs, isJson);
+			const responseData = await quickbaseApiRequest.call(this, requestMethod, endpoint, body, qs, isJson, fetchAll);
 
 			switch(operation){
 				case 'downloadFile':
