@@ -288,6 +288,8 @@ export class Ftp implements INodeType {
 				port: credentials.port as number,
 				username: credentials.username as string,
 				password: credentials.password as string,
+				privateKey: credentials.privateKey as string | undefined,
+				passphrase: credentials.passphrase as string | undefined,
 			});
 
 		} else {
