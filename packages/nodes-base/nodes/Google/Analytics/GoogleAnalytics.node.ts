@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -78,6 +80,36 @@ export class GoogleAnalytics implements INodeType {
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			// Get all the dimensions to display them to user so that he can
+			// select them easily
+			async getDimensions(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { items: dimensions } = await googleApiRequest.call(
+					this,
+					'GET',
+					'',
+					{},
+					{},
+					'https://www.googleapis.com/analytics/v3/metadata/ga/columns',
+				);
+
+				for (const dimesion of dimensions) {
+					if (dimesion.attributes.status !== 'DEPRECATED') {
+						returnData.push({
+							name: dimesion.attributes.uiName,
+							value: dimesion.id,
+							description: dimesion.attributes.description,
+						});
+					}
+				}
+				return returnData;
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
@@ -92,19 +124,39 @@ export class GoogleAnalytics implements INodeType {
 		let responseData;
 		for (let i = 0; i < items.length; i++) {
 			if(resource === 'report') {
-				if(operation === 'getAll') {
+				if(operation === 'get') {
 					//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/reports/batchGet
 					method = 'POST';
 					endpoint = '/v4/reports:batchGet';
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const viewId = this.getNodeParameter('viewId', i) as string;
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
 						i,
 					) as IDataObject;
-					const body: IDataObject = {
+					const simple = this.getNodeParameter('simple', i) as boolean;
+
+					interface IData {
+						viewId: string;
+						dimensions?: IDimension[];
+						pageSize?: number;
+						metrics?: IMetric[];
+					}
+
+					interface IDimension  {
+						name?: string;
+						histogramBuckets?: string[];
+					}
+
+					interface IMetric  {
+						expression?: string;
+						alias?: string;
+						formattingType?: string;
+					}
+
+					const body: IData = {
 							viewId,
 					};
+
 					if(additionalFields.useResourceQuotas){
 						qs.useResourceQuotas = additionalFields.useResourceQuotas;
 					}
@@ -127,20 +179,15 @@ export class GoogleAnalytics implements INodeType {
 							);
 						}
 					}
-					if(additionalFields.metrics){
-						const expression = (additionalFields.metrics as IDataObject).expression as string;
-						const formattingType = (additionalFields.metrics as IDataObject).formattingType as string;
-						let metricsValues: IDataObject[] = [];
-						if(expression){
-							metricsValues = [ { ...metricsValues[0], expression } ];
-						}
-						if(formattingType){
-							metricsValues = [ { ...metricsValues[0], formattingType }];
-						}
-						Object.assign(body, { metrics: metricsValues });
+					if(additionalFields.metricsUi) {
+						const metrics = (additionalFields.metricsUi as IDataObject).metricsValues as IDataObject[];
+						body.metrics = metrics;
 					}
-					if(additionalFields.dimensionName){
-						Object.assign(body, { dimensions: [{ name:additionalFields.dimensionName }]});
+					if(additionalFields.dimensionUi){
+						const dimensions = (additionalFields.dimensionUi as IDataObject).dimensionValues as IDataObject[];
+						if (dimensions) {
+							body.dimensions = dimensions;
+						}
 					}
 					if(additionalFields.includeEmptyRows){
 						Object.assign(body, { includeEmptyRows: additionalFields.includeEmptyRows });
@@ -152,12 +199,20 @@ export class GoogleAnalytics implements INodeType {
 						Object.assign(body, { hideTotals: additionalFields.hideTotals });
 					}
 
-					if (returnAll === true) {
-						responseData = await googleApiRequestAllItems.call(this, 'reports', method, endpoint, { reportRequests: [body] }, qs);
-					} else {
-						body.pageSize = this.getNodeParameter('limit', 0) as number;
-						responseData = await googleApiRequest.call(this, method, endpoint,  { reportRequests: [body] }, qs);
-						responseData = responseData.reports;
+					responseData = await googleApiRequest.call(this, method, endpoint,  { reportRequests: [body] }, qs);
+					responseData = responseData.reports;		
+
+					if (simple === true) {
+						const { columnHeader: { dimensions }, data: { rows } } = responseData[0];
+						responseData = [];
+						for (const row of rows) {
+							const data: IDataObject = {};
+							for (let i = 0; i < dimensions.length; i++) {
+								data[dimensions[i]] = row.dimensions[i];
+								data['total'] = row.metrics[0].values.join(',');
+							}
+							responseData.push(data);
+						}
 					}
 				}
 			}

@@ -16,12 +16,12 @@ export const reportOperations = [
 		},
 		options: [
 			{
-				name: 'Get All',
-				value: 'getAll',
+				name: 'Get',
+				value: 'get',
 				description: 'Return the analytics data',
 			},
 		],
-		default: 'getAll',
+		default: 'get',
 		description: 'The operation to perform',
 	},
 ] as INodeProperties[];
@@ -39,7 +39,7 @@ export const reportFields = [
 					'report',
 				],
 				operation: [
-					'getAll',
+					'get',
 				]
 			},
 		},
@@ -47,45 +47,21 @@ export const reportFields = [
 		description: 'The View ID of Google Analytics',
 	},
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
+		displayName: 'Simple',
+		name: 'simple',
 		type: 'boolean',
 		displayOptions: {
 			show: {
 				operation: [
-					'getAll',
+					'get',
 				],
 				resource: [
 					'report',
 				],
 			},
 		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'report',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
+		default: true,
+		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -99,7 +75,7 @@ export const reportFields = [
 					'report',
 				],
 				operation: [
-					'getAll',
+					'get',
 				]
 			},
 		},
@@ -135,11 +111,33 @@ export const reportFields = [
 				]
 			},
 			{
-				displayName: 'Dimension Name',
-				name: 'dimensionName',
-				type: 'string',
-				default: '',
-				description: 'Name of the dimension to fetch',
+				displayName: 'Dimensions',
+				name: 'dimensionUi',
+				type: 'fixedCollection',
+				default: {},
+				typeOptions: {
+					multipleValues: true,	
+				},
+				placeholder:'Add Dimension',
+				description: 'Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.',
+				options: [
+					{
+						displayName: 'Dimension',
+						name: 'dimensionValues',
+						values:[
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDimensions',
+								},
+								default:'',
+								description: 'Name of the dimension to fetch, for example ga:browser.'
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Hide Totals',
@@ -164,49 +162,69 @@ export const reportFields = [
 			},
 			{
 				displayName: 'Metrics',
-				name: 'metrics',
-				type: 'collection',
+				name: 'metricsUi',
+				type: 'fixedCollection',
 				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
 				placeholder:'Add Metrics',
 				description: 'Metrics in the request',
 				options: [
 					{
-						displayName: 'Expression',
-						name: 'expression',
-						type: 'string',
-						default:'ga:users',
-						description: 'A metric expression'
+						displayName: 'Metric',
+						name: 'metricValues',
+						values:[
+							{
+								displayName: 'Alias',
+								name: 'alias',
+								type: 'string',
+								default: '',
+								description: 'An alias for the metric expression is an alternate name for the expression. The alias can be used for filtering and sorting.',
+							},
+							{
+								displayName: 'Expression',
+								name: 'expression',
+								type: 'string',
+								default: 'ga:users',
+								description: `A metric expression in the request. An expression is constructed from one or more metrics and numbers.<br>
+								Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis,<br>
+								Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters. Example ga:totalRefunds/ga:users,<br>
+								in most cases the metric expression is just a single metric name like ga:users. Adding mixed MetricType (E.g., CURRENCY + PERCENTAGE)<br>
+								metrics will result in unexpected results.`,
+							},
+							{
+								displayName: 'Formatting Type',
+								name: 'formattingType',
+								type: 'options',
+								default:'INTEGER',
+								description: 'Specifies how the metric expression should be formatted',
+								options: [
+									{
+										name: 'Currency',
+										value:'CURRENCY'
+									},
+									{
+										name: 'Float',
+										value:'FLOAT'
+									},
+									{
+										name: 'Integer',
+										value:'INTEGER'
+									},
+									{
+										name: 'Percent',
+										value:'PERCENT'
+									},
+									{
+										name: 'Time',
+										value:'TIME'
+									},
+								],
+							},
+						],
 					},
-					{
-						displayName: 'Formatting Type',
-						name: 'formattingType',
-						type: 'options',
-						default:'INTEGER',
-						description: 'Specifies how the metric expression should be formatted',
-						options: [
-							{
-								name: 'Currency',
-								value:'CURRENCY'
-							},
-							{
-								name: 'Float',
-								value:'FLOAT'
-							},
-							{
-								name: 'Integer',
-								value:'INTEGER'
-							},
-							{
-								name: 'Percent',
-								value:'PERCENT'
-							},
-							{
-								name: 'Time',
-								value:'TIME'
-							}
-						]
-					}
-				]
+				],
 			},
 			{
 				displayName: 'Use Resource Quotas',
@@ -215,6 +233,6 @@ export const reportFields = [
 				default: false,
 				description: 'Enables resource based quotas',
 			},
-		]
+		],
 	}
 ] as INodeProperties[];

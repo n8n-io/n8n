@@ -32,7 +32,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleAnalyticsOAuth2', options);
 
@@ -59,7 +58,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -67,7 +66,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	body.pageSize = 100;
 
 	do {
-		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
+		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
 		if (body.reportRequests && Array.isArray(body.reportRequests)) {
 			body.reportRequests[0].pageToken = responseData['nextPageToken'];
 		} else {
