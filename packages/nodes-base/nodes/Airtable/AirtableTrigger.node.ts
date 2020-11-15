@@ -137,6 +137,11 @@ export class AirtableTrigger implements INodeType {
 			qs.filterByFormula = `AND(${qs.filterByFormula}, ${additionalFields.formula})`;
 		}
 
+		if (this.getMode() === 'manual') {
+			delete qs.filterByFormula;
+			qs.maxRecords = 1;
+		}
+
 		const { records } = await apiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 		webhookData.lastTimeChecked = endDate;
