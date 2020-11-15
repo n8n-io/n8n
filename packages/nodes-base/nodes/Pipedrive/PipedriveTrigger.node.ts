@@ -54,13 +54,31 @@ export class PipedriveTrigger implements INodeType {
 			{
 				name: 'pipedriveApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'pipedriveOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
 			},
 			{
 				name: 'httpBasicAuth',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
+						incomingAuthentication: [
 							'basicAuth',
 						],
 					},
@@ -82,6 +100,23 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiToken',
+				description: 'Method of authentication.',
+			},
+			{
+				displayName: 'Incoming Authentication',
+				name: 'incomingAuthentication',
+				type: 'options',
+				options: [
+					{
 						name: 'Basic Auth',
 						value: 'basicAuth',
 					},
@@ -91,7 +126,7 @@ export class PipedriveTrigger implements INodeType {
 					},
 				],
 				default: 'none',
-				description: 'If authentication should be activated for the webhook (makes it more scure).',
+				description: 'If authentication should be activated for the webhook (makes it more secure).',
 			},
 			{
 				displayName: 'Action',
@@ -218,7 +253,7 @@ export class PipedriveTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const authentication = this.getNodeParameter('authentication', 0) as string;
+				const incomingAuthentication = this.getNodeParameter('incomingAuthentication', 0) as string;
 				const eventAction = this.getNodeParameter('action') as string;
 				const eventObject = this.getNodeParameter('object') as string;
 
@@ -232,7 +267,7 @@ export class PipedriveTrigger implements INodeType {
 					http_auth_password: undefined as string | undefined,
 				};
 
-				if (authentication === 'basicAuth') {
+				if (incomingAuthentication === 'basicAuth') {
 					const httpBasicAuth = this.getCredentials('httpBasicAuth');
 
 					if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
@@ -285,9 +320,9 @@ export class PipedriveTrigger implements INodeType {
 		const resp = this.getResponseObject();
 		const realm = 'Webhook';
 
-		const authentication = this.getNodeParameter('authentication', 0) as string;
+		const incomingAuthentication = this.getNodeParameter('incomingAuthentication', 0) as string;
 
-		if (authentication === 'basicAuth') {
+		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
 			const httpBasicAuth = this.getCredentials('httpBasicAuth');
 

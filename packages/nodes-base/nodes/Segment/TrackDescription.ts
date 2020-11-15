@@ -285,6 +285,38 @@ export const trackFields = [
 							},
 						],
 					},
+					{
+						displayName: 'Custom Traits',
+						name: 'customTraitsUi',
+						placeholder: 'Add Custom Trait',
+						type: 'fixedCollection',
+						default: '',
+						typeOptions: {
+							multipleValues: true,
+						},
+						options: [
+							{
+								name: 'customTraitValues',
+								displayName: 'Custom Traits',
+								values: [
+									{
+										displayName: 'Key',
+										name: 'key',
+										type: 'string',
+										default: '',
+										description: '',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: '',
+									},
+								],
+							},
+						],
+					},
 				],
 			},
 		],

@@ -82,6 +82,20 @@ export class AmqpTrigger implements INodeType {
 						default: false,
 						description: 'Returns only the body property.',
 					},
+					{
+						displayName: 'Messages per Cicle',
+						name: 'pullMessagesNumber',
+						type: 'number',
+						default: 100,
+						description: 'Number of messages to pull from the bus for every cicle',
+					},
+					{
+						displayName: 'Sleep Time',
+						name: 'sleepTime',
+						type: 'number',
+						default: 10,
+						description: 'Milliseconds to sleep after every cicle.',
+					},
 				],
 			},
 		],
@@ -99,6 +113,7 @@ export class AmqpTrigger implements INodeType {
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const pullMessagesNumber = options.pullMessagesNumber || 100;
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
@@ -130,9 +145,12 @@ export class AmqpTrigger implements INodeType {
 			connectOptions.transport = credentials.transportType;
 		}
 
-
 		let lastMsgId: number | undefined = undefined;
 		const self = this;
+
+		container.on('receiver_open', (context: any) => { // tslint:disable-line:no-any
+			context.receiver.add_credit(pullMessagesNumber);
+		});
 
 		container.on('message', (context: any) => { // tslint:disable-line:no-any
 			// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
@@ -142,6 +160,12 @@ export class AmqpTrigger implements INodeType {
 			lastMsgId = context.message.message_id;
 
 			let data = context.message;
+
+			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+				// The buffer is not ready... Stringify and parse back to load it.
+				const cont = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
@@ -158,6 +182,12 @@ export class AmqpTrigger implements INodeType {
 
 
 			self.emit([self.helpers.returnJsonArray([data])]);
+
+			if (context.receiver.credit === 0) {
+				setTimeout(() => {
+					context.receiver.add_credit(pullMessagesNumber);
+				}, options.sleepTime as number || 10);
+			}
 		});
 
 		const connection = container.connect(connectOptions);
@@ -170,14 +200,14 @@ export class AmqpTrigger implements INodeType {
 					durable: 2,
 					expiry_policy: 'never',
 				},
-				credit_window: 1,	// prefetch 1
+				credit_window: 0,	// prefetch 1
 			};
 		} else {
 			clientOptions = {
 				source: {
 					address: sink,
 				},
-				credit_window: 1,	// prefetch 1
+				credit_window: 0,	// prefetch 1
 			};
 		}
 		connection.open_receiver(clientOptions);
@@ -186,6 +216,8 @@ export class AmqpTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
+			container.removeAllListeners('receiver_open');
+			container.removeAllListeners('message');
 			connection.close();
 		}
 
