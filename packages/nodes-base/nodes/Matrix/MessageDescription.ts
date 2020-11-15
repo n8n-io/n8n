@@ -80,8 +80,8 @@ export const messageFields = [
 		description: 'The text to send.',
 	},
 	{
-		name: 'msgType',
 		displayName: 'Message type',
+		name: 'msgType',
 		displayOptions: {
 			show: {
 				operation: [
@@ -102,20 +102,20 @@ export const messageFields = [
 			{
 				name: 'Emote',
 				value: 'm.emote',
-				description: 'Perform an action (similar to /me in IRC).'
+				description: 'Perform an action (similar to /me in IRC).',
 			},
 			{
 				name: 'Notice',
 				value: 'm.notice',
-				description: 'Send a notice.'
+				description: 'Send a notice.',
 			},
 		],
 		default: 'm.text',
 		description: 'The type of message to send.',
 	},
 	{
+		displayName: 'Message Format',
 		name: 'format',
-		displayName: 'Message format',
 		displayOptions: {
 			show: {
 				operation: [
@@ -129,7 +129,7 @@ export const messageFields = [
 		type: 'options',
 		options: [
 			{
-				name: 'Plain text',
+				name: 'Plain Text',
 				value: 'plain',
 				description: 'Text only',
 			},
@@ -143,8 +143,8 @@ export const messageFields = [
 		description: "The format of the message's body.",
 	},
 	{
+		displayName: 'Fallback Text',
 		name: 'fallbackText',
-		displayName: 'Fallback text',
 		displayOptions: {
 			show: {
 				resource: [
@@ -168,7 +168,7 @@ export const messageFields = [
 
 
 	/* ----------------------------------------------------------------------- */
-	/*                                message:getAll                          */
+	/*                                message:getAll                           */
 	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Room ID',
