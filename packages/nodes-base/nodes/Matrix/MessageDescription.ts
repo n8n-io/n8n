@@ -80,8 +80,8 @@ export const messageFields = [
 		description: 'The text to send.',
 	},
 	{
-		displayName: 'Message type',
-		name: 'msgType',
+		displayName: 'Message Type',
+		name: 'messageType',
 		displayOptions: {
 			show: {
 				operation: [
@@ -95,11 +95,6 @@ export const messageFields = [
 		type: 'options',
 		options: [
 			{
-				name: 'Text',
-				value: 'm.text',
-				description: 'Send a text message.',
-			},
-			{
 				name: 'Emote',
 				value: 'm.emote',
 				description: 'Perform an action (similar to /me in IRC).',
@@ -109,13 +104,18 @@ export const messageFields = [
 				value: 'm.notice',
 				description: 'Send a notice.',
 			},
+			{
+				name: 'Text',
+				value: 'm.text',
+				description: 'Send a text message.',
+			},
 		],
 		default: 'm.text',
 		description: 'The type of message to send.',
 	},
 	{
 		displayName: 'Message Format',
-		name: 'format',
+		name: 'messageFormat',
 		displayOptions: {
 			show: {
 				operation: [
@@ -140,7 +140,7 @@ export const messageFields = [
 			},
 		],
 		default: 'plain',
-		description: "The format of the message's body.",
+		description: `The format of the message's body.`,
 	},
 	{
 		displayName: 'Fallback Text',
@@ -153,7 +153,7 @@ export const messageFields = [
 				operation: [
 					'create',
 				],
-				format: [
+				messageFormat: [
 					'org.matrix.custom.html',
 				],
 			},
@@ -162,7 +162,6 @@ export const messageFields = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		placeholder: 'HTML message could not be displayed.',
 		description: 'A plain text message to display in case the HTML cannot be rendered by the Matrix client.',
 	},
 
