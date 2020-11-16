@@ -1,16 +1,17 @@
 import {
-	IExecuteFunctions,
+	IExecuteFunctions, ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
-	quickbaseApiRequest,
+	quickbaseApiRequest, quickbaseApiRequestFetchAll,
 } from './GenericFunctions';
 
 export class QuickBase implements INodeType {
@@ -115,7 +116,7 @@ export class QuickBase implements INodeType {
 		}, {
 			displayName: 'Field ID',
 			name: 'fieldId',
-			type: 'number',
+			type: 'options',
 			default: 6,
 			required: true,
 			displayOptions: {
@@ -127,7 +128,10 @@ export class QuickBase implements INodeType {
 				}
 			},
 			typeOptions: {
-				minValue: 6
+				loadOptionsMethod: 'getTableFieldsFiles',
+				loadOptionsDependsOn: [
+					'tableId',
+				],
 			},
 			description: 'Quick Base Field ID',
 		}, {
@@ -149,12 +153,27 @@ export class QuickBase implements INodeType {
 			},
 			description: 'Quick Base File Version Number',
 		},
+		{
+			displayName: 'Binary Property',
+			displayOptions: {
+				show: {
+					operation: [
+						'downloadFile',
+					],
+				},
+			},
+			name: 'binaryPropertyName',
+			type: 'string',
+			default: 'data',
+			description: 'Object property name which holds binary data.',
+			required: true,
+		},
 
 		/* Run Report - Report ID should come before top/skip/fetchAll */
 		{
 			displayName: 'Report ID',
 			name: 'reportId',
-			type: 'number',
+			type: 'options',
 			default: 1,
 			required: true,
 			displayOptions: {
@@ -165,7 +184,10 @@ export class QuickBase implements INodeType {
 				}
 			},
 			typeOptions: {
-				minValue: 1
+				loadOptionsMethod: 'getTableReports',
+				loadOptionsDependsOn: [
+					'tableId',
+				],
 			},
 			description: 'Quick Base Report ID',
 		},
@@ -174,10 +196,8 @@ export class QuickBase implements INodeType {
 		{
 			displayName: 'Select',
 			name: 'select',
-			type: 'string',
-			default: '',
-			placeholder: '3.4.5',
-			required: true,
+			type: 'multiOptions',
+			default: [],
 			displayOptions: {
 				show: {
 					operation: [
@@ -185,7 +205,13 @@ export class QuickBase implements INodeType {
 					]
 				}
 			},
-			description: 'Period delimited list of field ids',
+			typeOptions: {
+				loadOptionsMethod: 'getTableFields',
+				loadOptionsDependsOn: [
+					'tableId',
+				],
+			},
+			description: 'Specify an array of field ids that will return data for any updates or added record. Omitting this value will return the table default fields',
 		}, {
 			displayName: 'Fetch All Records',
 			name: 'fetchAll',
@@ -277,10 +303,13 @@ export class QuickBase implements INodeType {
 				values: [{
 					displayName: 'Field ID',
 					name: 'fieldId',
-					type: 'number',
+					type: 'options',
 					default: 1,
 					typeOptions: {
-						minValue: 1
+						loadOptionsMethod: 'getTableFields',
+						loadOptionsDependsOn: [
+							'tableId',
+						],
 					},
 					description: 'Field ID to sort by'
 				}, {
@@ -322,10 +351,13 @@ export class QuickBase implements INodeType {
 				values: [{
 					displayName: 'Field ID',
 					name: 'fieldId',
-					type: 'number',
+					type: 'options',
 					default: 1,
 					typeOptions: {
-						minValue: 1
+						loadOptionsMethod: 'getTableFields',
+						loadOptionsDependsOn: [
+							'tableId',
+						],
 					},
 					description: 'Field ID to group by'
 				}, {
@@ -367,7 +399,7 @@ export class QuickBase implements INodeType {
 		}, {
 			displayName: 'Merge Field ID',
 			name: 'mergeFieldId',
-			type: 'number',
+			type: 'options',
 			default: 3,
 			required: true,
 			displayOptions: {
@@ -378,15 +410,17 @@ export class QuickBase implements INodeType {
 				}
 			},
 			typeOptions: {
-				minValue: 1
+				loadOptionsMethod: 'getTableFieldsUnique',
+				loadOptionsDependsOn: [
+					'tableId',
+				],
 			},
 			description: 'The merge field id',
 		}, {
 			displayName: 'Fields to Return',
 			name: 'fieldsToReturn',
-			type: 'string',
-			default: '3',
-			placeholder: '3.4.5',
+			type: 'multiOptions',
+			default: [3],
 			required: true,
 			displayOptions: {
 				show: {
@@ -395,8 +429,118 @@ export class QuickBase implements INodeType {
 					]
 				}
 			},
-			description: 'Period delimited list of field ids',
+			typeOptions: {
+				loadOptionsMethod: 'getTableFields',
+				loadOptionsDependsOn: [
+					'tableId',
+				],
+			},
+			description: 'Array of field ids to return with data from the upsert',
+		},
+
+		{
+			displayName: 'Simplified',
+			name: 'simplified',
+			type: 'boolean',
+			default: true,
+			displayOptions: {
+				show: {
+					operation: [
+						'runReport',
+						'runQuery',
+						'upsert',
+					],
+				},
+			},
+			description: 'Remove auxiliary from the returned object and split returned data into individual objects for n8n to operate on',
 		}]
+	};
+
+	methods = {
+		loadOptions: {
+			async getTableFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const tableId = this.getCurrentNodeParameter('tableId') as string;
+
+				const fields: {
+					id: number;
+					label: string;
+				}[] = await quickbaseApiRequest.call(this, {
+					method: 'GET',
+					endpoint: 'fields',
+					query: { tableId }
+				});
+
+				return fields.map((field) => {
+					return {
+						name: field.label,
+						value: field.id
+					}
+				});
+			},
+			async getTableFieldsFiles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const tableId = this.getCurrentNodeParameter('tableId') as string;
+
+				const fields: {
+					id: number;
+					label: string;
+					fieldType: string;
+				}[] = await quickbaseApiRequest.call(this, {
+					method: 'GET',
+					endpoint: 'fields',
+					query: { tableId }
+				});
+
+				return fields.filter((field) => {
+					return field.fieldType === 'file';
+				}).map((field) => {
+					return {
+						name: field.label,
+						value: field.id
+					}
+				});
+			},
+			async getTableFieldsUnique(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const tableId = this.getCurrentNodeParameter('tableId') as string;
+
+				const fields: {
+					id: number;
+					label: string;
+					unique: boolean;
+				}[] = await quickbaseApiRequest.call(this, {
+					method: 'GET',
+					endpoint: 'fields',
+					query: { tableId }
+				});
+
+				return fields.filter((field) => {
+					return field.unique === true;
+				}).map((field) => {
+					return {
+						name: field.label,
+						value: field.id
+					}
+				});
+			},
+			async getTableReports(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const tableId = this.getCurrentNodeParameter('tableId') as string;
+
+				const reports: {
+					id: number;
+					name: string;
+				}[] = await quickbaseApiRequest.call(this, {
+					method: 'GET',
+					endpoint: 'reports',
+					query: { tableId }
+				});
+
+				return reports.map((report) => {
+					return {
+						name: report.name,
+						value: report.id
+					}
+				});
+			}
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -410,11 +554,11 @@ export class QuickBase implements INodeType {
 		let qs: IDataObject;
 		let isJson: boolean;
 
-		let requestMethod: string;
+		let requestMethod: 'GET' | 'DELETE' | 'POST';
 		let endpoint: string;
 
 		let fetchAll: boolean | 'qs';
- 
+
         for(let i = 0; i < items.length; ++i){
 			requestMethod = 'GET';
 			endpoint = '';
@@ -444,9 +588,7 @@ export class QuickBase implements INodeType {
 
 					body.from = tableId;
 					body.where = this.getNodeParameter('where', i) as string;
-					body.select = (this.getNodeParameter('select', i) as string).split('.').map((val) => {
-						return +val;
-					});
+					body.select = this.getNodeParameter('select', i) as number[];
 
 					const sortBy = (this.getNodeParameter('sortByUI', i) as {
 						sortBy: {
@@ -530,9 +672,7 @@ export class QuickBase implements INodeType {
 					body.to = tableId;
 					body.data = JSON.parse(this.getNodeParameter('data', i) as string);
 					body.mergeFieldId = this.getNodeParameter('mergeFieldId', i) as number;
-					body.fieldsToReturn = (this.getNodeParameter('fieldsToReturn', i) as string).split('.').map((val) => {
-						return +val;
-					});
+					body.fieldsToReturn = (this.getNodeParameter('fieldsToReturn', i) as number[]);
 				break;
 				case 'deleteFile':
 				case 'downloadFile':
@@ -552,23 +692,80 @@ export class QuickBase implements INodeType {
 					throw new Error(`The operation "${operation}" is not known!`);
 			}
 
-			const responseData = await quickbaseApiRequest.call(this, requestMethod, endpoint, body, qs, isJson, fetchAll);
+			const options = {
+				method: requestMethod,
+				endpoint,
+				body,
+				query: qs,
+				isJson
+			};
+
+			let responseData: any;
+
+			if(fetchAll){
+				responseData = await quickbaseApiRequestFetchAll.call(this, options);
+			}else{
+				try {
+					responseData = await quickbaseApiRequest.call(this, options);
+				}catch(error){
+					switch(operation){
+						case 'downloadFile':
+							if(error.message.match(/bad request/i)){
+								throw new Error('File not found');
+							}
+
+							throw error;
+						default:
+							throw error;
+					}
+				}
+			}
 
 			switch(operation){
 				case 'downloadFile':
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const filename = responseData.headers['content-disposition'].match(/filename="(.*)"$/)[1];
+					const buffer = Buffer.from(responseData.body, 'base64');
+
 					returnData.push({
-						filename: responseData.headers['content-disposition'].match(/filename="(.*)"$/)[1],
-						filesize: +responseData.headers['content-length'],
-						data: responseData.body
+						_prepared: true,
+						json: {
+							filename: filename,
+							filesize: +responseData.headers['content-length']
+						},
+						binary: {
+							[dataPropertyNameDownload]: await this.helpers.prepareBinaryData(buffer, filename)
+						}
 					});
 				break;
+				case 'runQuery':
+				case 'runReport':
+				case 'upsert':
+					const simplified = this.getNodeParameter('simplified', i) as boolean;
+
+					if(simplified){
+						responseData.data.forEach((record: IDataObject) => {
+							returnData.push(record);
+						});
+					}else{
+						returnData.push(responseData);
+					}
+				break;
 				default:
-					returnData.push(responseData as IDataObject);
+					returnData.push(responseData);
 				break;
 			}
 		}
 
-		return [ this.helpers.returnJsonArray(returnData) ];
+		return [ returnData.map((data: any) => {
+			if(data._prepared){
+				return data;
+			}
+
+			return {
+				json: data
+			};
+		}) ];
 	}
 
 }
