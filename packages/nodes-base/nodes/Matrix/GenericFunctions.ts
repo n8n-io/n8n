@@ -127,10 +127,18 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 		if (operation === 'create') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const text = this.getNodeParameter('text', index) as string;
+			const msgType = this.getNodeParameter('msgType', index) as string;
+			const format = this.getNodeParameter('format', index) as string;
 			const body: IDataObject = {
-				msgtype: 'm.text',
+				msgtype: msgType,
 				body: text,
 			};
+			if (format === 'org.matrix.custom.html') {
+				const fallbackText = this.getNodeParameter('fallbackText', index) as string;
+				body.format = format;
+				body.formatted_body = text;
+				body.body = fallbackText;
+			}
 			const messageId = uuid();
 			return await matrixApiRequest.call(this, 'PUT', `/rooms/${roomId}/send/m.room.message/${messageId}`, body);
 		} else if (operation === 'getAll') {
