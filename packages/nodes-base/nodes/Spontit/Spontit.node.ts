@@ -88,50 +88,26 @@ export class Spontit implements INodeType {
 			{
 				displayName: 'PushToFollowers',
 				name: 'pushToFollowers',
-				type: 'collection',
-				default: {},
+				type: 'string',
+				default: '',
 				required: false,
-				options: [
-					{
-						displayName: 'Followers',
-						name: 'followers',
-						type: 'string',
-						default: '',
-						description: `An array of userIds (strings) to whom to send the notification. If all three attributes 'pushToFollowers', 'pushToPhoneNumbers' and 'pushToEmails' are not supplied, then everyone who follows the channel will receive the push notification. If 'pushToFollowers' is supplied, only those listed in the array will receive the push notification. If one of the userIds supplied does not follow the specified channel, then that userId value will be ignored. See the "Followers" section to learn how to list the userIds of those who follow one of your channels.`,
-					},
-				],
+				description: `An array of userIds (strings) to whom to send the notification. If all three attributes 'pushToFollowers', 'pushToPhoneNumbers' and 'pushToEmails' are not supplied, then everyone who follows the channel will receive the push notification. If 'pushToFollowers' is supplied, only those listed in the array will receive the push notification. If one of the userIds supplied does not follow the specified channel, then that userId value will be ignored. See the "Followers" section to learn how to list the userIds of those who follow one of your channels.`,
 			},
 			{
 				displayName: 'PushToPhoneNumbers',
 				name: 'pushToPhoneNumbers',
-				type: 'collection',
-				default: {},
+				type: 'string',
+				default: '',
 				required: false,
-				options: [
-					{
-						displayName: 'Followers',
-						name: 'followers',
-						type: 'string',
-						default: '',
-						description: `An array of phoneNumbers (strings) to whom to send the notification. If all three attributes 'pushToFollowers', 'pushToPhoneNumbers' and 'pushToEmails' are not supplied, then everyone who follows the channel will receive the push notification. If 'pushToPhoneNumbers' is supplied, then we will map the numbers to Spontit accounts and push accordingly. The users specified by 'pushToPhoneNumbers' do not have to follow the specified channel in order to receive the push. However, they can report your push as spam if they do not follow you and do not wish to receive your pushes.`,
-					},
-				],
+				description: `An array of phoneNumbers (strings) to whom to send the notification. If all three attributes 'pushToFollowers', 'pushToPhoneNumbers' and 'pushToEmails' are not supplied, then everyone who follows the channel will receive the push notification. If 'pushToPhoneNumbers' is supplied, then we will map the numbers to Spontit accounts and push accordingly. The users specified by 'pushToPhoneNumbers' do not have to follow the specified channel in order to receive the push. However, they can report your push as spam if they do not follow you and do not wish to receive your pushes.`,
 			},
 			{
 				displayName: 'pushToEmails',
 				name: 'pushToEmails',
-				type: 'collection',
-				default: {},
+				type: 'string',
+				default: '',
 				required: false,
-				options: [
-					{
-						displayName: 'Followers',
-						name: 'followers',
-						type: 'string',
-						default: '',
-						description: `An array of emails (strings) to whom to send the notification. If all three attributes 'pushToFollowers', 'pushToPhoneNumbers' and 'pushToEmails' are not supplied, then everyone who follows the channel will receive the push notification. If 'pushToEmails' is supplied, then we will map the emails to Spontit accounts and push accordingly. The users specified by 'pushToEmails' do not have to follow the specified channel in order to receive the push. However, they can report your push as spam if they do not follow you and do not wish to receive your pushes.`,
-					},
-				],
+				description: `An array of emails (strings) to whom to send the notification. If all three attributes 'pushToFollowers', 'pushToPhoneNumbers' and 'pushToEmails' are not supplied, then everyone who follows the channel will receive the push notification. If 'pushToEmails' is supplied, then we will map the emails to Spontit accounts and push accordingly. The users specified by 'pushToEmails' do not have to follow the specified channel in order to receive the push. However, they can report your push as spam if they do not follow you and do not wish to receive your pushes.`,
 			},
 			{
 				displayName: 'Schedule',
@@ -183,7 +159,7 @@ export class Spontit implements INodeType {
 
 		const timezone = this.getTimezone();
 
-		const credentials = this.getCredentials('spotitApi');
+		const credentials = this.getCredentials('spontitApi');
 
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
@@ -224,6 +200,21 @@ export class Spontit implements INodeType {
 			const link = this.getNodeParameter('link', i) as string;
 			if (link) {
 				body.link = link;
+			}
+
+			const pushToFollowers = this.getNodeParameter('pushToEmails', i) as string;
+			if (pushToFollowers) {
+				body.pushToFollowers = pushToFollowers.split(',');
+			}
+
+			const pushToPhoneNumbers = this.getNodeParameter('pushToPhoneNumbers', i) as string;
+			if (pushToPhoneNumbers) {
+				body.pushToPhoneNumbers = pushToPhoneNumbers.split(',');
+			}
+
+			const pushToEmails = this.getNodeParameter('pushToEmails', i) as string;
+			if (pushToEmails) {
+				body.pushToEmails = pushToEmails.split(',');
 			}
 
 			const schedule = this.getNodeParameter('schedule', i) as string;
