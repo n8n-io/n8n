@@ -6,6 +6,7 @@ import {
 export class StrapiApi implements ICredentialType {
 	name = 'strapiApi';
 	displayName = 'Strapi API';
+	documentationUrl = 'strapi';
 	properties = [
 		{
 			displayName: 'Email',
