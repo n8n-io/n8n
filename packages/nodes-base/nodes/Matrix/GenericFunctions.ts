@@ -126,16 +126,16 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 	} else if (resource === 'message') {
 		if (operation === 'create') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			const text = this.getNodeParameter('text', index) as string;
-			const msgType = this.getNodeParameter('msgType', index) as string;
-			const format = this.getNodeParameter('format', index) as string;
+			const text = this.getNodeParameter('text', index, '') as string;
+			const messageType = this.getNodeParameter('messageType', index) as string;
+			const messageFormat = this.getNodeParameter('messageFormat', index) as string;
 			const body: IDataObject = {
-				msgtype: msgType,
+				msgtype: messageType,
 				body: text,
 			};
-			if (format === 'org.matrix.custom.html') {
-				const fallbackText = this.getNodeParameter('fallbackText', index) as string;
-				body.format = format;
+			if (messageFormat === 'org.matrix.custom.html') {
+				const fallbackText = this.getNodeParameter('fallbackText', index, '') as string;
+				body.format = messageFormat;
 				body.formatted_body = text;
 				body.body = fallbackText;
 			}
@@ -167,7 +167,7 @@ export async function handleMatrixCall(this: IExecuteFunctions | IExecuteSingleF
 			} else {
 				const limit = this.getNodeParameter('limit', index) as number;
 				const qs: IDataObject = {
-					dir: 'b', // Get latest messages first - doesn't return anything if we use f without a previous token.
+					dir: 'b', // GetfallbackText latest messages first - doesn't return anything if we use f without a previous token.
 					limit,
 				};
 
