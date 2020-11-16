@@ -153,7 +153,7 @@ export const documentFields = [
 		default: true,
 		description: 'When set to true a simplify version of the response will be used else the raw data.',
 	},
-	
+
 	/* -------------------------------------------------------------------------- */
 	/*                                document:get                                */
 	/* -------------------------------------------------------------------------- */

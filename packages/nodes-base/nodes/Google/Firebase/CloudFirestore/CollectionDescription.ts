@@ -23,7 +23,7 @@ export const collectionOperations = [
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',
-	}
+	},
 ] as INodeProperties[];
 
 export const collectionFields = [

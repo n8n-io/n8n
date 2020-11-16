@@ -35,10 +35,6 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleFirebaseCloudFirestoreOAuth2Api', options);
 	} catch (error) {
-
-
-		console.log(error.response.body)
-
 		let errors;
 
 		if (error.response && error.response.body) {
@@ -46,7 +42,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			if (Array.isArray(error.response.body)) {
 
 				errors = error.response.body;
-	
+
 				errors = errors.map((e: { error: { message: string } }) => e.error.message).join('|');
 			} else {
 				errors = error.response.body.error.message;
@@ -84,7 +80,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 // Both functions below were taken from Stack Overflow jsonToDocument was fixed as it was unable to handle null values correctly
 // https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
 // Great thanks to https://stackoverflow.com/users/3915246/mahindar
-export function jsonToDocument(value: string | number | IDataObject | IDataObject[]  ): IDataObject {
+export function jsonToDocument(value: string | number | IDataObject | IDataObject[]): IDataObject {
 	if (value === 'true' || value === 'false' || typeof value === 'boolean') {
 		return { 'booleanValue': value };
 	} else if (value === null) {
@@ -104,21 +100,33 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 		return { 'arrayValue': { values: value.map(v => jsonToDocument(v)) } };
 	} else if (typeof value === 'object') {
 		const obj = {};
-		// tslint:disable-next-line: forin
-		for (const o in value) {
+		for (const o of Object.keys(value)) {
 			//@ts-ignore
 			obj[o] = jsonToDocument(value[o]);
 		}
 		return { 'mapValue': { fields: obj } };
 	}
-	
+
 	return {};
 }
 
+export function fullDocumentToJson(data: IDataObject): IDataObject {
+	if (data === undefined) {
+		return data;
+	}
+
+	return {
+		_name: data.name,
+		_createTime: data.createTime,
+		_updateTime: data.updateTime,
+		...documentToJson(data.fields as IDataObject),
+	};
+}
+
+
 export function documentToJson(fields: IDataObject): IDataObject {
 	const result = {};
-	// tslint:disable-next-line: forin
-	for (const f in fields) {
+	for (const f of Object.keys(fields)) {
 		const key = f, value = fields[f],
 			isDocumentType = ['stringValue', 'booleanValue', 'doubleValue',
 				'integerValue', 'timestampValue', 'mapValue', 'arrayValue'].find(t => t === key);
@@ -126,8 +134,7 @@ export function documentToJson(fields: IDataObject): IDataObject {
 			const item = ['stringValue', 'booleanValue', 'doubleValue', 'integerValue', 'timestampValue']
 				.find(t => t === key);
 			if (item) {
-				//@ts-ignore
-				return value;
+				return value as IDataObject;
 			} else if ('mapValue' === key) {
 				//@ts-ignore
 				return documentToJson(value!.fields || {});
@@ -141,6 +148,6 @@ export function documentToJson(fields: IDataObject): IDataObject {
 			// @ts-ignore
 			result[key] = documentToJson(value);
 		}
-	}	
+	}
 	return result;
 }
