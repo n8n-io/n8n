@@ -23,6 +23,21 @@ When the properties 'traits' or 'properties' are set, and one of the following r
 
 Open the affected resource/operation and set the parameters 'traits' or 'properties' again.
 
+## 0.93.0
+
+### What changed?
+
+Change in naming of the Authentication field for the Pipedrive Trigger node.
+
+### When is action necessary?
+
+If you had set "Basic Auth" for the "Authentication" field in the node.
+
+### How to upgrade:
+
+The "Authentication" field has been renamed to "Incoming Authentication". Please set the parameter “Incoming Authentication” to “Basic Auth” to activate it again.
+
+
 ## 0.90.0
 
 ### What changed?

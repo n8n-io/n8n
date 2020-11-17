@@ -716,7 +716,7 @@ export interface IWorkflowExecuteHooks {
 	nodeExecuteAfter?: Array<((nodeName: string, data: ITaskData) => Promise<void>)>;
 	nodeExecuteBefore?: Array<((nodeName: string) => Promise<void>)>;
 	workflowExecuteAfter?: Array<((data: IRun, newStaticData: IDataObject) => Promise<void>)>;
-	workflowExecuteBefore?: Array<(() => Promise<void>)>;
+	workflowExecuteBefore?: Array<((workflow: Workflow, data: IRunExecutionData) => Promise<void>)>;
 }
 
 export interface IWorkflowExecuteAdditionalData {

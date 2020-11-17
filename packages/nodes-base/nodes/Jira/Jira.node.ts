@@ -112,12 +112,16 @@ export class Jira implements INodeType {
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+				let endpoint = '';
+				let projects;
 
-				let endpoint = '/api/2/project/search';
 				if (jiraVersion === 'server') {
 					endpoint = '/api/2/project';
+					projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
+				} else {
+					endpoint = '/api/2/project/search';
+					projects = await jiraSoftwareCloudApiRequestAllItems.call(this, 'values', endpoint, 'GET');
 				}
-				let projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
 
 				if (projects.values && Array.isArray(projects.values)) {
 					projects = projects.values;
@@ -130,6 +134,13 @@ export class Jira implements INodeType {
 						value: projectId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -165,6 +176,12 @@ export class Jira implements INodeType {
 					}
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -184,6 +201,13 @@ export class Jira implements INodeType {
 						value: labelId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -203,6 +227,13 @@ export class Jira implements INodeType {
 						value: priorityId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -241,6 +272,12 @@ export class Jira implements INodeType {
 					}
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -260,6 +297,13 @@ export class Jira implements INodeType {
 						value: groupId,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 
@@ -277,6 +321,13 @@ export class Jira implements INodeType {
 						value: transition.id,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 		},

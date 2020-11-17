@@ -38,6 +38,7 @@ import {
 } from './TrackInterface';
 
 import * as uuid from 'uuid/v4';
+import { customerFields } from '../CustomerIo/CustomerDescription';
 
 export class Segment implements INodeType {
 	description: INodeTypeDescription = {

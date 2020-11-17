@@ -127,7 +127,7 @@ export class ActiveWorkflows {
 			for (const item of pollTimes.item) {
 				cronTime = [];
 				if (item.mode === 'custom') {
-					cronTimes.push(item.cronExpression as string);
+					cronTimes.push((item.cronExpression as string).trim());
 					continue;
 				}
 				if (item.mode === 'everyMinute') {
@@ -178,6 +178,11 @@ export class ActiveWorkflows {
 		// Start the cron-jobs
 		const cronJobs: CronJob[] = [];
 		for (const cronTime of cronTimes) {
+			const cronTimeParts = cronTime.split(' ');
+			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
+				throw new Error('The polling interval is too short. It has to be at least a minute!');
+			}
+
 			cronJobs.push(new CronJob(cronTime, executeTrigger, undefined, true, timezone));
 		}
 
