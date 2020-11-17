@@ -241,6 +241,7 @@ export class Segment implements INodeType {
 				if (operation === 'create') {
 					const userId = this.getNodeParameter('userId', i) as string;
 					const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
+					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject[];
 					const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
 					const body: IIdentify = {
 						context: {
@@ -248,6 +249,7 @@ export class Segment implements INodeType {
 							campaign: {},
 							device: {},
 						},
+						traits: {},
 						integrations: {},
 					};
 					if (userId) {
@@ -352,6 +354,14 @@ export class Segment implements INodeType {
 						}
 					}
 
+					if (traits) {
+						if (traits && traits.length !== 0) {
+							for (const trait of traits) {
+								body.traits![trait.key as string] = trait.value;
+							}
+						}
+					}
+
 					responseData = await segmentApiRequest.call(this, 'POST', '/identify', body);
 				}
 			}
@@ -360,7 +370,6 @@ export class Segment implements INodeType {
 				if (operation === 'event') {
 					const userId = this.getNodeParameter('userId', i) as string;
 					const event = this.getNodeParameter('event', i) as string;
-					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject[];
 					const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
 					const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
 					const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject[];
@@ -380,13 +389,6 @@ export class Segment implements INodeType {
 						body.userId = userId as string;
 					} else {
 						body.anonymousId = uuid();
-					}
-					if (traits) {
-						if (traits && traits.length !== 0) {
-							for (const trait of traits) {
-								body.traits![trait.key as string] = trait.value;
-							}
-						}
 					}
 					if (context) {
 						if (context.active) {
@@ -497,13 +499,12 @@ export class Segment implements INodeType {
 				//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#page
 				if (operation === 'page') {
 					const userId = this.getNodeParameter('userId', i) as string;
-					const event = this.getNodeParameter('event', i) as string;
-					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject[];
+					const name = this.getNodeParameter('name', i) as string;
 					const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
 					const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
 					const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject[];
 					const body: ITrack = {
-						event,
+						name,
 						traits: {},
 						context: {
 							app: {},
@@ -517,13 +518,6 @@ export class Segment implements INodeType {
 						body.userId = userId as string;
 					} else {
 						body.anonymousId = uuid();
-					}
-					if (traits) {
-						if (traits && traits.length !== 0) {
-							for (const trait of traits) {
-								body.traits![trait.key as string] = trait.value;
-							}
-						}
 					}
 					if (context) {
 						if (context.active) {

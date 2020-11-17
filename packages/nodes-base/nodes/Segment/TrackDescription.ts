@@ -72,80 +72,6 @@ export const trackFields = [
 		required: true,
 	},
 	{
-		displayName: 'Traits',
-		name: 'traits',
-		placeholder: 'Add Trait',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'traitsUi',
-				displayName: 'Trait',
-				values: [
-					{
-						displayName: 'Key',
-						name: 'key',
-						type: 'string',
-						default: '',
-						description: '',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: '',
-					},
-					{
-						displayName: 'Custom Traits',
-						name: 'customTraitsUi',
-						placeholder: 'Add Custom Trait',
-						type: 'fixedCollection',
-						default: '',
-						typeOptions: {
-							multipleValues: true,
-						},
-						options: [
-							{
-								name: 'customTraitValues',
-								displayName: 'Custom Traits',
-								values: [
-									{
-										displayName: 'Key',
-										name: 'key',
-										type: 'string',
-										default: '',
-										description: '',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-										description: '',
-									},
-								],
-							},
-						],
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: 'Context',
 		name: 'context',
 		placeholder: 'Add Context',
@@ -463,48 +389,6 @@ export const trackFields = [
 			},
 		},
 		description: 'Name of the page For example, most sites have a “Signup” page that can be useful to tag, so you can see users as they move through your funnel',
-	},
-	{
-		displayName: 'Traits',
-		name: 'traits',
-		placeholder: 'Add Trait',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'traitsUi',
-				displayName: 'Trait',
-				values: [
-					{
-						displayName: 'Key',
-						name: 'key',
-						type: 'string',
-						default: '',
-						description: '',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						description: '',
-					},
-				],
-			},
-		],
 	},
 	{
 		displayName: 'Context',

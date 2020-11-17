@@ -49,6 +49,48 @@ export const identifyFields = [
 		required: false,
 	},
 	{
+		displayName: 'Traits',
+		name: 'traits',
+		placeholder: 'Add Trait',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'identify',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'traitsUi',
+				displayName: 'Trait',
+				values: [
+					{
+						displayName: 'Key',
+						name: 'key',
+						type: 'string',
+						default: '',
+						description: '',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						description: '',
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Context',
 		name: 'context',
 		placeholder: 'Add Context',
