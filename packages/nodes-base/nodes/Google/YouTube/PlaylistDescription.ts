@@ -107,7 +107,7 @@ export const playlistFields = [
 					},
 					{
 						name: 'Unlisted',
-						value: 'unlistef',
+						value: 'unlisted',
 					},
 				],
 				default: '',
@@ -553,7 +553,7 @@ export const playlistFields = [
 					},
 					{
 						name: 'Unlisted',
-						value: 'unlistef',
+						value: 'unlisted',
 					},
 				],
 				default: '',
