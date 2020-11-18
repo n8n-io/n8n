@@ -99,8 +99,8 @@ export const moveNodeWorkflow = mixins(
 		wheelMoveWorkflow (e: WheelEvent) {
 			const normalized = normalizeWheel(e);
 			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
-			const nodeViewOffsetPositionX = offsetPosition[0] - normalized.pixelX;
-			const nodeViewOffsetPositionY = offsetPosition[1] - normalized.pixelY;
+			const nodeViewOffsetPositionX = offsetPosition[0] - (e.shiftKey ? normalized.pixelY : normalized.pixelX);
+			const nodeViewOffsetPositionY = offsetPosition[1] - (e.shiftKey ? normalized.pixelX : normalized.pixelY);
 			this.$store.commit('setNodeViewOffsetPosition', {newOffset: [nodeViewOffsetPositionX, nodeViewOffsetPositionY]});
 		},
 	},
