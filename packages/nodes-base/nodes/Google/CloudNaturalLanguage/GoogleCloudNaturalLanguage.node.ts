@@ -10,36 +10,60 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { 
+	IData,
+} from './Interface';
+
 import {
 	googleApiRequest,
 } from './GenericFunctions';
 
-export class CloudNaturalLanguage implements INodeType {
+export class GoogleCloudNaturalLanguage implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Cloud Natural Language',
-		name: 'cloudNaturalLanguage',
-		icon: 'file:cloudnaturallanguage.png',
+		displayName: 'Google Cloud Natural Language',
+		name: 'googleCloudNaturalLanguage',
+		icon: 'file:googleCloudnaturallanguage.png',
 		group: ['input', 'output'],
 		version: 1,
 		description: 'Consume Google Cloud Natural Language API',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
-			name: 'Cloud Natural Language',
+			name: 'Google Cloud Natural Language',
 			color: '#5288f0',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'cloudNaturalLanguageOAuth2Api',
+				name: 'googleCloudNaturalLanguageOAuth2Api',
 				required: true,
 			},
 		],
 		properties: [
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Document',
+						value: 'document',
+					},
+				],
+				default: 'document',
+				description: 'The resource to operate on.',
+			},
+			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'document',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'Analyze Sentiment',
@@ -177,8 +201,8 @@ export class CloudNaturalLanguage implements INodeType {
 				},
 			},
 			{
-				displayName: 'Additional Options',
-				name: 'additionalOptions',
+				displayName: 'Options',
+				name: 'options',
 				type: 'collection',
 				displayOptions: {
 					show: {
@@ -194,62 +218,118 @@ export class CloudNaturalLanguage implements INodeType {
 					{
 						displayName: 'Language',
 						name: 'language',
-						type: 'string',
-						default: '',
+						type: 'options',
+						options: [
+							{
+								name: 'Arabic',
+								value: 'ar',
+							},
+							{
+								name: 'Chinese (Simplified)	',
+								value: 'zh',
+							},
+							{
+								name: 'Chinese (Traditional)',
+								value: 'zh-Hant',
+							},
+							{
+								name: 'Dutch',
+								value: 'nl',
+							},
+							{
+								name: 'English',
+								value: 'en',
+							},
+							{
+								name: 'French',
+								value: 'fr',
+							},
+							{
+								name: 'German',
+								value: 'de',
+							},
+							{
+								name: 'Indonesian',
+								value: 'id',
+							},
+							{
+								name: 'Italian',
+								value: 'it',
+							},
+							{
+								name: 'Japanese',
+								value: 'ja',
+							},
+							{
+								name: 'Korean',
+								value: 'ko',
+							},
+							{
+								name: 'Portuguese (Brazilian & Continental)',
+								value: 'pt',
+							},
+							{
+								name: 'Spanish',
+								value: 'es',
+							},
+							{
+								name: 'Thai',
+								value: 'th',
+							},
+							{
+								name: 'Turkish',
+								value: 'tr',
+							},
+							{
+								name: 'Vietnamese',
+								value: 'vi',
+							},
+						],
+						default: 'en',
 						placeholder: '',
 						description: 'The language of the document (if not specified, the language is automatically detected). Both ISO and BCP-47 language codes are accepted.',
 					},
 				],
-			}
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
-
+		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const responseData = [];
 		for (let i = 0; i < length; i++) {
-			if (operation === 'analyzeSentiment') {
-				const source = this.getNodeParameter('source', i) as string;
-				const documentType = this.getNodeParameter('documentType', i) as string;
-				const encodingType = this.getNodeParameter('encodingType', i) as string;
-				const options = this.getNodeParameter('additionalOptions', i) as IDataObject;
+			if (resource === 'document') {
+				if (operation === 'analyzeSentiment') {
+					const source = this.getNodeParameter('source', i) as string;
+					const documentType = this.getNodeParameter('documentType', i) as string;
+					const encodingType = this.getNodeParameter('encodingType', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
-				interface IData {
-					document: IDocument;
-					encodingType: string;
+					const body: IData = {
+						document: {
+							type: documentType,
+						},
+						encodingType,
+					};
+
+					if (source === 'content') {
+						const content = this.getNodeParameter('content', i) as string;
+						body.document.content = content;
+					} else {
+						const gcsContentUri = this.getNodeParameter('gcsContentUri', i) as string;
+						body.document.gcsContentUri = gcsContentUri;
+					}
+
+					if (options.language) {
+						body.document.language = options.language as string;
+					}
+
+					const response = await googleApiRequest.call(this, 'POST', `/v1/documents:analyzeSentiment`, body);
+					responseData.push(response);
 				}
-
-				interface IDocument {
-					type: string;
-					language?: string;
-					content?: string;
-					gcsContentUri?: string;
-				}
-
-				const body: IData = {
-					document: {
-						type: documentType,
-					},
-					encodingType,
-				};
-
-				if (source === 'content') {
-					const content = this.getNodeParameter('content', i) as string;
-					body.document.content = content;
-				} else {
-					const gcsContentUri = this.getNodeParameter('gcsContentUri', i) as string;
-					body.document.gcsContentUri = gcsContentUri;
-				}
-
-				if (options.language) {
-					body.document.language = options.language as string;
-				}
-
-				const response = await googleApiRequest.call(this, 'POST', `/v1/documents:analyzeSentiment`, body);
-				responseData.push(response);
 			}
 		}
 		return [this.helpers.returnJsonArray(responseData)];

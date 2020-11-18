@@ -33,7 +33,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'cloudNaturalLanguageOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'googleCloudNaturalLanguageOAuth2Api', options);
 
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error) {
@@ -52,7 +52,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 				errorMessages = error.response.body.error.message;
 			}
 
-			throw new Error(`Cloud Natural Language error response [${error.statusCode}]: ${errorMessages}`);
+			throw new Error(`Google Cloud Natural Language error response [${error.statusCode}]: ${errorMessages}`);
 		}
 		throw error;
 	}

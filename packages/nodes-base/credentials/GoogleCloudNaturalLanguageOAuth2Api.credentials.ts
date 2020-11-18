@@ -8,8 +8,8 @@ const scopes = [
 	'https://www.googleapis.com/auth/cloud-platform',
 ];
 
-export class CloudNaturalLanguageOAuth2Api implements ICredentialType {
-	name = 'cloudNaturalLanguageOAuth2Api';
+export class GoogleCloudNaturalLanguageOAuth2Api implements ICredentialType {
+	name = 'googleCloudNaturalLanguageOAuth2Api';
 	extends = [
 		'googleOAuth2Api',
 	];
