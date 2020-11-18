@@ -295,7 +295,7 @@ export const ticketFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'ticket'
+					'ticket',
 				],
 				operation: [
 					'update',

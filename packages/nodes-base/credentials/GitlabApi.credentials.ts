@@ -13,7 +13,7 @@ export class GitlabApi implements ICredentialType {
 			displayName: 'Gitlab Server',
 			name: 'server',
 			type: 'string' as NodePropertyTypes,
-			default: 'https://gitlab.com'
+			default: 'https://gitlab.com',
 		},
 		{
 			displayName: 'Access Token',

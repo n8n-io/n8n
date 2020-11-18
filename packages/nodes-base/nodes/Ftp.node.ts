@@ -193,7 +193,7 @@ export class Ftp implements INodeType {
 						],
 						binaryData: [
 							true,
-						]
+						],
 					},
 				},
 				name: 'binaryPropertyName',
@@ -211,7 +211,7 @@ export class Ftp implements INodeType {
 						],
 						binaryData: [
 							false,
-						]
+						],
 					},
 				},
 				name: 'fileContent',
@@ -288,6 +288,8 @@ export class Ftp implements INodeType {
 				port: credentials.port as number,
 				username: credentials.username as string,
 				password: credentials.password as string,
+				privateKey: credentials.privateKey as string | undefined,
+				passphrase: credentials.passphrase as string | undefined,
 			});
 
 		} else {
@@ -296,7 +298,7 @@ export class Ftp implements INodeType {
 				host: credentials.host as string,
 				port: credentials.port as number,
 				user: credentials.username as string,
-				password: credentials.password as string
+				password: credentials.password as string,
 			});
 		}
 
@@ -346,13 +348,11 @@ export class Ftp implements INodeType {
 					const remotePath = this.getNodeParameter('path', i) as string;
 
 					// Check if dir path exists
-					const dirExists = await sftp!.exists(dirname(remotePath));
+					const dirPath = dirname(remotePath);
+					const dirExists = await sftp!.exists(dirPath);
 
 					// If dir does not exist, create all recursively in path
 					if (!dirExists) {
-						// Separate filename from dir path
-						const fileName = basename(remotePath);
-						const dirPath = remotePath.replace(fileName, '');
 						// Create directory
 						await sftp!.mkdir(dirPath, true);
 					}

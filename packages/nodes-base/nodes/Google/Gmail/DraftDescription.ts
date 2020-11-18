@@ -34,7 +34,7 @@ export const draftOperations = [
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Get all drafts',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -56,7 +56,7 @@ export const draftFields = [
 				operation: [
 					'delete',
 					'get',
-				]
+				],
 			},
 		},
 		placeholder: 'r-3254521568507167962',
@@ -75,7 +75,7 @@ export const draftFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		placeholder: 'Hello World!',
@@ -94,7 +94,7 @@ export const draftFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		placeholder: 'Hello World!',
@@ -112,7 +112,7 @@ export const draftFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		default: {},
@@ -193,7 +193,7 @@ export const draftFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		default: {},
@@ -238,7 +238,7 @@ export const draftFields = [
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
 					},
 					{
 						name: 'Resolved',
@@ -249,7 +249,7 @@ export const draftFields = [
 				default: 'resolved',
 				description: 'The format to return the message in',
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -359,7 +359,7 @@ export const draftFields = [
 					{
 						name: 'RAW',
 						value: 'raw',
-						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.'
+						description: 'Returns the full email message data with body content in the raw field as a base64url encoded string; the payload field is not used.',
 					},
 					{
 						name: 'Resolved',

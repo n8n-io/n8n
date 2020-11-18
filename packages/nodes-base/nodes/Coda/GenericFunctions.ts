@@ -18,7 +18,7 @@ export async function codaApiRequest(this: IExecuteFunctions | IExecuteSingleFun
 		qs,
 		body,
 		uri: uri ||`https://coda.io/apis/v1${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

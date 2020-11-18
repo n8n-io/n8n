@@ -79,7 +79,7 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Required. Last name of the contact. Limited to 80 characters.',
@@ -367,7 +367,7 @@ export const contactFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -656,7 +656,7 @@ export const contactFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -677,7 +677,7 @@ export const contactFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -750,7 +750,7 @@ export const contactFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -769,7 +769,7 @@ export const contactFields = [
 				],
 				operation: [
 					'addToCampaign',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -790,7 +790,7 @@ export const contactFields = [
 				],
 				operation: [
 					'addToCampaign',
-				]
+				],
 			},
 		},
 		description: 'Id of the campaign that needs to be fetched',
@@ -819,7 +819,7 @@ export const contactFields = [
 				default: '',
 				description: 'Controls the HasResponded flag on this object',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                             contact:addNote                                */
@@ -837,7 +837,7 @@ export const contactFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -855,7 +855,7 @@ export const contactFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Title of the note.',
@@ -904,6 +904,6 @@ export const contactFields = [
 				default: '',
 				description: 'ID of the user who owns the note.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

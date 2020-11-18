@@ -21,7 +21,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		body,
 		qs,
 		uri: uri || `https://www.googleapis.com/admin${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -40,7 +40,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
 			throw new Error(
-				`G Suite Admin error response [${error.statusCode}]: ${errors.join('|')}`
+				`G Suite Admin error response [${error.statusCode}]: ${errors.join('|')}`,
 			);
 		}
 		throw error;

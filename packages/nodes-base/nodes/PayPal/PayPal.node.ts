@@ -46,7 +46,7 @@ export class PayPal implements INodeType {
 			{
 				name: 'payPalApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

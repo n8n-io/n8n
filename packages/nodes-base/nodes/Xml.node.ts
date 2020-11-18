@@ -220,7 +220,7 @@ export class Xml implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -256,8 +256,8 @@ export class Xml implements INodeType {
 
 				items[itemIndex] = {
 					json: {
-						[dataPropertyName]: builder.buildObject(items[itemIndex].json)
-					}
+						[dataPropertyName]: builder.buildObject(items[itemIndex].json),
+					},
 				};
 			} else {
 				throw new Error(`The operation "${mode}" is not known!`);

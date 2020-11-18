@@ -10,12 +10,11 @@ import * as config from '../config';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
-	CredentialTypes,
 	CredentialsOverwrites,
+	CredentialTypes,
 	Db,
 	ExternalHooks,
 	GenericHelpers,
-	IExecutionsCurrentSummary,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,

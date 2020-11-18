@@ -24,8 +24,8 @@ import {
 	IExecutionError,
 	IRun,
 	Workflow,
-	WorkflowHooks,
 	WorkflowExecuteMode,
+	WorkflowHooks,
 } from 'n8n-workflow';
 
 import * as config from '../config';
@@ -100,15 +100,27 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
-		const externalHooks = ExternalHooks();
-		await externalHooks.run('workflow.execute', [data.workflowData, data.executionMode]);
-
 		const executionsProcess = config.get('executions.process') as string;
+
+		let executionId: string;
 		if (executionsProcess === 'main') {
-			return this.runMainProcess(data, loadStaticData);
+			executionId = await this.runMainProcess(data, loadStaticData);
+		} else {
+			executionId = await this.runSubprocess(data, loadStaticData);
 		}
 
-		return this.runSubprocess(data, loadStaticData);
+		const externalHooks = ExternalHooks();
+		if (externalHooks.exists('workflow.postExecute')) {
+			this.activeExecutions.getPostExecutePromise(executionId)
+				.then(async (executionData) => {
+					await externalHooks.run('workflow.postExecute', [executionData, data.workflowData]);
+				})
+				.catch(error => {
+					console.error('There was a problem running hook "workflow.postExecute"', error);
+				});
+		}
+
+		return executionId;
 	}
 
 
@@ -134,7 +146,7 @@ export class WorkflowRunner {
 		// Register the active execution
 		const executionId = this.activeExecutions.add(data, undefined);
 
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
 		let workflowExecution: PCancelable<IRun>;
 		if (data.executionData !== undefined) {
