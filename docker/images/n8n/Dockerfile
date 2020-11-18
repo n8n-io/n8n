@@ -16,6 +16,13 @@ RUN apk --update add --virtual build-dependencies python build-base ca-certifica
 	npm_config_user=root npm install -g full-icu n8n@${N8N_VERSION} && \
 	apk del build-dependencies
 
+# Install fonts
+RUN apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
+	update-ms-fonts && \
+	fc-cache -f && \
+	apk del fonts && \
+	find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
+
 ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
 
 WORKDIR /data
