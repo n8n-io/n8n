@@ -785,6 +785,10 @@ export class EditImage implements INodeType {
 
 				files.forEach((file: string) => {
 					const pathParts = pathParse(file);
+					if (!pathParts.ext) {
+						return;
+					}
+
 					returnData.push({
 						name: pathParts.name,
 						value: file,
