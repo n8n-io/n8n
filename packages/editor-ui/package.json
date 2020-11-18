@@ -26,7 +26,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@beyonk/google-fonts-webpack-plugin": "^1.2.3",
+    "@beyonk/google-fonts-webpack-plugin": "^1.5.0",
     "@fortawesome/fontawesome-svg-core": "^1.2.19",
     "@fortawesome/free-solid-svg-icons": "^5.9.0",
     "@fortawesome/vue-fontawesome": "^0.1.6",
