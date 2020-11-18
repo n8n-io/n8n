@@ -2,6 +2,27 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.94.0
+
+### What changed?
+
+In the Segment Node, we have changed how the properties 'traits' and 'properties' are defined. Now, key/value pairs can be provided, allowing you to send customs traits/properties.
+
+### When is action necessary?
+
+When the properties 'traits' or 'properties' are set, and one of the following resources/operations is used:
+
+| Resource | Operation |
+|--|--|
+| Identify | Create |
+| Track | Event |
+| Track | Page |
+| Group | Add |
+
+### How to upgrade:
+
+Open the affected resource/operation and set the parameters 'traits' or 'properties' again.
+
 ## 0.93.0
 
 ### What changed?
