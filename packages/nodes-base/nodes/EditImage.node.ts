@@ -53,6 +53,11 @@ export class EditImage implements INodeType {
 						description: 'Crops the image',
 					},
 					{
+						name: 'Composite',
+						value: 'composite',
+						description: 'Composite image on top of another one',
+					},
+					{
 						name: 'Get Information',
 						value: 'information',
 						description: 'Returns image information like resolution',
@@ -274,6 +279,53 @@ export class EditImage implements INodeType {
 				description: 'Color of the border.',
 			},
 
+
+			// ----------------------------------
+			//         composite
+			// ----------------------------------
+			{
+				displayName: 'Composite Image Property',
+				name: 'dataPropertyNameComposite',
+				type: 'string',
+				default: '',
+				placeholder: 'data2',
+				displayOptions: {
+					show: {
+						operation: [
+							'composite',
+						],
+					},
+				},
+				description: 'The name of the binary property which contains the data of the image to<br />composite on top of image which is found in Property Name.',
+			},
+			{
+				displayName: 'Position X',
+				name: 'positionX',
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						operation: [
+							'composite',
+						],
+					},
+				},
+				description: 'X (horizontal) position of composite image.',
+			},
+			{
+				displayName: 'Position Y',
+				name: 'positionY',
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						operation: [
+							'composite',
+						],
+					},
+				},
+				description: 'Y (vertical) position of composite image.',
+			},
 
 			// ----------------------------------
 			//         crop
@@ -582,6 +634,8 @@ export class EditImage implements INodeType {
 
 		gmInstance = gmInstance.background('transparent');
 
+		const cleanupFunctions: Array<() => void> = [];
+
 		if (operation === 'blur') {
 			const blur = this.getNodeParameter('blur') as number;
 			const sigma = this.getNodeParameter('sigma') as number;
@@ -592,7 +646,23 @@ export class EditImage implements INodeType {
 			const borderColor = this.getNodeParameter('borderColor') as string;
 
 			gmInstance = gmInstance.borderColor(borderColor).border(borderWidth, borderHeight);
-		} else if (operation === 'crop')  {
+		} else if (operation === 'composite') {
+			const dataPropertyNameComposite = this.getNodeParameter('dataPropertyNameComposite') as string;
+			const positionX = this.getNodeParameter('positionX') as number;
+			const positionY = this.getNodeParameter('positionY') as number;
+
+			const geometryString = (positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
+
+			if (item.binary[dataPropertyNameComposite as string] === undefined) {
+				throw new Error('');
+			}
+
+			const { fd, path, cleanup } = await file();
+			cleanupFunctions.push(cleanup);
+			fsWriteFileAsync(fd, Buffer.from(item.binary![dataPropertyNameComposite as string].data, BINARY_ENCODING));
+
+			gmInstance = gmInstance.composite(path).geometry(geometryString);
+		} else if (operation === 'crop') {
 			const width = this.getNodeParameter('width') as number;
 			const height = this.getNodeParameter('height') as number;
 
@@ -708,6 +778,8 @@ export class EditImage implements INodeType {
 		return new Promise<INodeExecutionData>((resolve, reject) => {
 			gmInstance
 				.toBuffer((error: Error | null, buffer: Buffer) => {
+					cleanupFunctions.forEach(async cleanup => await cleanup());
+
 					if (error) {
 						return reject(error);
 					}
