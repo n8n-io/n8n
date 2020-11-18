@@ -1,7 +1,7 @@
 import {
 	Db,
-	IExternalHooksFunctions,
 	IExternalHooksClass,
+	IExternalHooksFunctions,
 } from './';
 
 import * as config from '../config';
@@ -62,6 +62,10 @@ class ExternalHooksClass implements IExternalHooksClass {
 		for(const externalHookFunction of this.externalHooks[hookName]) {
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
+	}
+
+	exists(hookName: string): boolean {
+		return !!this.externalHooks[hookName];
 	}
 
 }

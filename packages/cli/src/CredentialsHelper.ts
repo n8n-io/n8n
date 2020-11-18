@@ -9,8 +9,8 @@ import {
 	INodeParameters,
 	INodeProperties,
 	INodeType,
-	INodeTypes,
 	INodeTypeData,
+	INodeTypes,
 	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';

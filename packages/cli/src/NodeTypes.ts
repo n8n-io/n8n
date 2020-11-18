@@ -1,7 +1,7 @@
 import {
 	INodeType,
-	INodeTypes,
 	INodeTypeData,
+	INodeTypes,
 	NodeHelpers,
 } from 'n8n-workflow';
 

@@ -30,7 +30,7 @@ export class Msg91 implements INodeType {
 			{
 				name: 'msg91Api',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -123,7 +123,7 @@ export class Msg91 implements INodeType {
 				},
 				description: 'The message to send',
 			},
-		]
+		],
 	};
 
 

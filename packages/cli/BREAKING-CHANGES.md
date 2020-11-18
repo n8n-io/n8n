@@ -2,6 +2,36 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.93.0
+
+### What changed?
+
+Change in naming of the Authentication field for the Pipedrive Trigger node.
+
+### When is action necessary?
+
+If you had set "Basic Auth" for the "Authentication" field in the node.
+
+### How to upgrade:
+
+The "Authentication" field has been renamed to "Incoming Authentication". Please set the parameter “Incoming Authentication” to “Basic Auth” to activate it again.
+
+
+## 0.90.0
+
+### What changed?
+
+Node.js version 12.9 or newer is required to run n8n.
+
+### When is action necessary?
+
+If you are running Node.js version older than 12.9.
+
+### How to upgrade:
+
+You can find download and install the latest version of Node.js from [here](https://nodejs.org/en/download/).
+
+
 ## 0.87.0
 
 ### What changed?

@@ -9,6 +9,12 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import * as gm from 'gm';
+import { file } from 'tmp-promise';
+import {
+	writeFile as fsWriteFile,
+} from 'fs';
+import { promisify } from 'util';
+const fsWriteFileAsync = promisify(fsWriteFile);
 
 
 export class EditImage implements INodeType {
@@ -62,6 +68,11 @@ export class EditImage implements INodeType {
 						description: 'Change the size of image',
 					},
 					{
+						name: 'Shear',
+						value: 'shear',
+						description: 'Shear image along the X or Y axis',
+					},
+					{
 						name: 'Text',
 						value: 'text',
 						description: 'Adds text to image',
@@ -95,7 +106,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -109,7 +120,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -123,7 +134,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -137,7 +148,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -151,7 +162,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -168,7 +179,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'text'
+							'text',
 						],
 					},
 				},
@@ -191,7 +202,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'blur'
+							'blur',
 						],
 					},
 				},
@@ -209,7 +220,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'blur'
+							'blur',
 						],
 					},
 				},
@@ -228,7 +239,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'border'
+							'border',
 						],
 					},
 				},
@@ -242,7 +253,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'border'
+							'border',
 						],
 					},
 				},
@@ -256,7 +267,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'border'
+							'border',
 						],
 					},
 				},
@@ -275,7 +286,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'crop'
+							'crop',
 						],
 					},
 				},
@@ -289,7 +300,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'crop'
+							'crop',
 						],
 					},
 				},
@@ -303,7 +314,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'crop'
+							'crop',
 						],
 					},
 				},
@@ -317,7 +328,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'crop'
+							'crop',
 						],
 					},
 				},
@@ -335,7 +346,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'resize'
+							'resize',
 						],
 					},
 				},
@@ -349,7 +360,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'resize'
+							'resize',
 						],
 					},
 				},
@@ -385,12 +396,17 @@ export class EditImage implements INodeType {
 						value: 'onlyIfSmaller',
 						description: 'Resize only if image is smaller than width or height',
 					},
+					{
+						name: 'Percent',
+						value: 'percent',
+						description: 'Width and height are specified in percents.',
+					},
 				],
 				default: 'maximumArea',
 				displayOptions: {
 					show: {
 						operation: [
-							'resize'
+							'resize',
 						],
 					},
 				},
@@ -412,7 +428,7 @@ export class EditImage implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'rotate'
+							'rotate',
 						],
 					},
 				},
@@ -422,15 +438,51 @@ export class EditImage implements INodeType {
 				displayName: 'Background Color',
 				name: 'backgroundColor',
 				type: 'color',
-				default: '#ffffff',
+				default: '#ffffffff',
+				typeOptions: {
+					showAlpha: true,
+				},
 				displayOptions: {
 					show: {
 						operation: [
-							'rotate'
+							'rotate',
 						],
 					},
 				},
 				description: 'The color to use for the background when image gets rotated by anything which is not a multiple of 90..',
+			},
+
+
+			// ----------------------------------
+			//         shear
+			// ----------------------------------
+			{
+				displayName: 'Degrees X',
+				name: 'degreesX',
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						operation: [
+							'shear',
+						],
+					},
+				},
+				description: 'X (horizontal) shear degrees.',
+			},
+			{
+				displayName: 'Degrees Y',
+				name: 'degreesY',
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						operation: [
+							'shear',
+						],
+					},
+				},
+				description: 'Y (vertical) shear degrees.',
 			},
 
 			{
@@ -503,10 +555,9 @@ export class EditImage implements INodeType {
 						},
 						description: 'Sets the jpeg|png|tiff compression level from 0 to 100 (best).',
 					},
-
 				],
 			},
-		]
+		],
 	};
 
 
@@ -528,6 +579,8 @@ export class EditImage implements INodeType {
 		}
 
 		let gmInstance = gm(Buffer.from(item.binary![dataPropertyName as string].data, BINARY_ENCODING));
+
+		gmInstance = gmInstance.background('transparent');
 
 		if (operation === 'blur') {
 			const blur = this.getNodeParameter('blur') as number;
@@ -574,6 +627,8 @@ export class EditImage implements INodeType {
 				option = '<';
 			} else if (resizeOption === 'onlyIfLarger') {
 				option = '>';
+			} else if (resizeOption === 'percent') {
+				option = '%';
 			}
 
 			gmInstance = gmInstance.resize(width, height, option);
@@ -581,6 +636,10 @@ export class EditImage implements INodeType {
 			const rotate = this.getNodeParameter('rotate') as number;
 			const backgroundColor = this.getNodeParameter('backgroundColor') as string;
 			gmInstance = gmInstance.rotate(backgroundColor, rotate);
+		} else if (operation === 'shear') {
+			const xDegrees = this.getNodeParameter('degreesX') as number;
+			const yDegress = this.getNodeParameter('degreesY') as number;
+			gmInstance = gmInstance.shear(xDegrees, yDegress);
 		} else if (operation === 'text') {
 			const fontColor = this.getNodeParameter('fontColor') as string;
 			const fontSize = this.getNodeParameter('fontSize') as number;
@@ -624,6 +683,8 @@ export class EditImage implements INodeType {
 			// data references which do not get changed still stay behind
 			// but the incoming data does not get changed.
 			Object.assign(newItem.binary, item.binary);
+			// Make a deep copy of the binary data we change
+			newItem.binary![dataPropertyName as string] = JSON.parse(JSON.stringify(newItem.binary![dataPropertyName as string]));
 		}
 
 		if (options.quality !== undefined) {

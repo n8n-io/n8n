@@ -453,7 +453,7 @@ export const timeEntryFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the time entry'
+				description: 'Description of the time entry',
 			},
 			{
 				displayName: 'Tags IDs',
@@ -463,7 +463,7 @@ export const timeEntryFields = [
 					loadOptionsDependsOn: [
 						'team',
 					],
-					loadOptionsMethod: 'getTimeEntryTags'
+					loadOptionsMethod: 'getTimeEntryTags',
 				},
 				default: [],
 			},
@@ -538,7 +538,7 @@ export const timeEntryFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the time entry'
+				description: 'Description of the time entry',
 			},
 		],
 	},
@@ -823,7 +823,7 @@ export const timeEntryFields = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the time entry'
+				description: 'Description of the time entry',
 			},
 			{
 				displayName: 'Duration (minutes)',
@@ -846,7 +846,7 @@ export const timeEntryFields = [
 					loadOptionsDependsOn: [
 						'spaceId',
 					],
-					loadOptionsMethod: 'getTags'
+					loadOptionsMethod: 'getTags',
 				},
 				default: [],
 			},

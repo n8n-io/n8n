@@ -47,7 +47,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -64,13 +64,13 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
 				],
 				binaryData: [
-					false
+					false,
 				],
 			},
 
@@ -87,13 +87,13 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
 				],
 				binaryData: [
-					true
+					true,
 				],
 			},
 
@@ -108,7 +108,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -210,7 +210,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getAll'
+					'getAll',
 				],
 				resource: [
 					'file',

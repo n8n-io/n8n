@@ -4,11 +4,11 @@ import {
 	IConnections,
 	IGetExecuteTriggerFunctions,
 	INode,
-	INodes,
 	INodeExecuteFunctions,
 	INodeExecutionData,
 	INodeIssues,
 	INodeParameters,
+	INodes,
 	INodeType,
 	INodeTypes,
 	IPollFunctions,
@@ -129,7 +129,7 @@ export class Workflow {
 						returnConnection[connectionInfo.node][connectionInfo.type][connectionInfo.index].push({
 							node: sourceNode,
 							type,
-							index: parseInt(inputIndex, 10)
+							index: parseInt(inputIndex, 10),
 						});
 					}
 				}
@@ -215,7 +215,7 @@ export class Workflow {
 					typeUnknown: true,
 				};
 			} else {
-				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties, node);
+				nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.description.properties!, node);
 			}
 
 			if (nodeIssues !== null) {
@@ -380,8 +380,8 @@ export class Workflow {
 
 		const returnData: any = {}; // tslint:disable-line:no-any
 
-		for (const parameterName of Object.keys(parameterValue)) {
-			returnData[parameterName] = this.renameNodeInExpressions(parameterValue[parameterName], currentName, newName);
+		for (const parameterName of Object.keys(parameterValue || {})) {
+			returnData[parameterName] = this.renameNodeInExpressions(parameterValue![parameterName], currentName, newName);
 		}
 
 		return returnData;

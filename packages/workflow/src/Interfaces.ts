@@ -383,7 +383,7 @@ export interface INodeExecuteFunctions {
 
 
 // The values a node property can have
-export type NodeParameterValue = string | number | boolean;
+export type NodeParameterValue = string | number | boolean | undefined | null;
 
 export interface INodeParameters {
 	// TODO: Later also has to be possible to add multiple ones with the name name. So array has to be possible
@@ -408,6 +408,7 @@ export interface INodePropertyTypeOptions {
 	numberStepSize?: number;     // Supported by: number
 	password?: boolean;          // Supported by: string
 	rows?: number;               // Supported by: string
+	showAlpha?: boolean;         // Supported by: color
 	[key: string]: boolean | number | string | EditorTypes | undefined | string[];
 }
 
@@ -535,6 +536,7 @@ export interface INodeTypeDescription {
 	version: number;
 	description: string;
 	defaults: INodeParameters;
+	documentationUrl?: string;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
@@ -714,7 +716,7 @@ export interface IWorkflowExecuteHooks {
 	nodeExecuteAfter?: Array<((nodeName: string, data: ITaskData) => Promise<void>)>;
 	nodeExecuteBefore?: Array<((nodeName: string) => Promise<void>)>;
 	workflowExecuteAfter?: Array<((data: IRun, newStaticData: IDataObject) => Promise<void>)>;
-	workflowExecuteBefore?: Array<(() => Promise<void>)>;
+	workflowExecuteBefore?: Array<((workflow: Workflow, data: IRunExecutionData) => Promise<void>)>;
 }
 
 export interface IWorkflowExecuteAdditionalData {

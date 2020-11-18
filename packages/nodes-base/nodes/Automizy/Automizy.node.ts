@@ -63,7 +63,7 @@ export class Automizy implements INodeType {
 					},
 				],
 				default: 'contact',
-				description: 'The resource to operate on.'
+				description: 'The resource to operate on.',
 			},
 
 			...contactOperations,
@@ -79,7 +79,7 @@ export class Automizy implements INodeType {
 			// Get all the tags to display them to user so that he can
 			// select them easily
 			async getLists(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const lists = await automizyApiRequestAllItems.call(
@@ -91,31 +91,31 @@ export class Automizy implements INodeType {
 				for (const list of lists) {
 					returnData.push({
 						name: list.name,
-						value: list.id
+						value: list.id,
 					});
 				}
 				return returnData;
 			},
 			async getTags(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tags = await automizyApiRequestAllItems.call(
 					this,
 					'contactTags',
 					'GET',
-					'/contacts/tag-manager'
+					'/contacts/tag-manager',
 				);
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.name,
-						value: tag.name
+						value: tag.name,
 					});
 				}
 				return returnData;
 			},
 			async getCustomFields(
-				this: ILoadOptionsFunctions
+				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const customFields = await automizyApiRequestAllItems.call(
@@ -127,7 +127,7 @@ export class Automizy implements INodeType {
 				for (const customField of customFields) {
 					returnData.push({
 						name: customField.name,
-						value: customField.id
+						value: customField.id,
 					});
 				}
 				return returnData;

@@ -52,7 +52,7 @@ export class ActiveWebhooks {
 
 		try {
 			const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
-			if (webhookExists === false) {
+			if (webhookExists !== true) {
 				// If webhook does not exist yet create it
 				await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
 
@@ -60,7 +60,6 @@ export class ActiveWebhooks {
 		} catch (error) {
 			// If there was a problem unregister the webhook again
 			delete this.webhookUrls[webhookKey];
-			delete this.workflowWebhooks[webhookData.workflowId];
 
 			throw error;
 		}
@@ -159,7 +158,7 @@ export class ActiveWebhooks {
 
 
 	/**
-	 * Removes all the webhooks of the given workflow
+	 * Removes all the webhooks of the given workflows
 	 */
 	async removeAll(workflows: Workflow[]): Promise<void> {
 		const removePromises = [];

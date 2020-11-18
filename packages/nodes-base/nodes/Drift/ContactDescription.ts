@@ -116,7 +116,7 @@ export const contactFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the contact.',
@@ -159,7 +159,7 @@ export const contactFields = [
 				default: '',
 				description: 'The phone number associated with the contact.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 contact:get                                */
@@ -177,7 +177,7 @@ export const contactFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the contact.',
@@ -198,7 +198,7 @@ export const contactFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the contact.',

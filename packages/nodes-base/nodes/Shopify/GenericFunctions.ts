@@ -24,7 +24,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		throw new Error('No credentials got returned!');
 	}
 	const headerWithAuthentication = Object.assign({},
-		{ Authorization: ` Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
+		{ Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}` });
 
 	const options: OptionsWithUri = {
 		headers: headerWithAuthentication,
@@ -32,7 +32,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 		qs: query,
 		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
 		body,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(option).length !== 0) {
@@ -47,6 +47,7 @@ export async function shopifyApiRequest(this: IHookFunctions | IExecuteFunctions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
+		console.log(error.response.body);
 		if (error.response.body && error.response.body.errors) {
 			let message = '';
 			if (typeof error.response.body.errors === 'object') {

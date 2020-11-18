@@ -67,7 +67,7 @@ export function sendSuccessResponse(res: Response, data: any, raw?: boolean, res
 		res.json(data);
 	} else {
 		res.json({
-			data
+			data,
 		});
 	}
 }
@@ -183,7 +183,7 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 		mode: fullExecutionData.mode,
 		startedAt: fullExecutionData.startedAt,
 		stoppedAt: fullExecutionData.stoppedAt,
-		finished: fullExecutionData.finished ? fullExecutionData.finished : false
+		finished: fullExecutionData.finished ? fullExecutionData.finished : false,
 	});
 
 	return returnData;

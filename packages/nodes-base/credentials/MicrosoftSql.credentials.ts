@@ -9,40 +9,46 @@ export class MicrosoftSql implements ICredentialType {
 			displayName: 'Server',
 			name: 'server',
 			type: 'string' as NodePropertyTypes,
-			default: 'localhost'
+			default: 'localhost',
 		},
 		{
 			displayName: 'Database',
 			name: 'database',
 			type: 'string' as NodePropertyTypes,
-			default: 'master'
+			default: 'master',
 		},
 		{
 			displayName: 'User',
 			name: 'user',
 			type: 'string' as NodePropertyTypes,
-			default: 'sa'
+			default: 'sa',
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
 			type: 'string' as NodePropertyTypes,
 			typeOptions: {
-				password: true
+				password: true,
 			},
-			default: ''
+			default: '',
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
 			type: 'number' as NodePropertyTypes,
-			default: 1433
+			default: 1433,
 		},
 		{
 			displayName: 'Domain',
 			name: 'domain',
 			type: 'string' as NodePropertyTypes,
-			default: ''
-		}
+			default: '',
+		},
+		{
+			displayName: 'TLS',
+			name: 'tls',
+			type: 'boolean' as NodePropertyTypes,
+			default: true,
+		},
 	];
 }

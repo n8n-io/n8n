@@ -126,7 +126,7 @@ export const releaseFields = [
 				default: '',
 				description: 'This parameter can be used to create a “starts with” filter for the version',
 			},
-		]
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                release:get                                   */
@@ -295,7 +295,7 @@ export const releaseFields = [
 								type: 'string',
 								default: '',
 								description: 'the sha of the commit',
-								required: true
+								required: true,
 							},
 							{
 								displayName: 'Author Email',
@@ -338,7 +338,7 @@ export const releaseFields = [
 												type: 'string',
 												default: '',
 												description: 'he path to the file. Both forward and backward slashes are supported',
-												required: true
+												required: true,
 											},
 											{
 												displayName: 'Type',
@@ -349,19 +349,19 @@ export const releaseFields = [
 												options: [
 													{
 														name: 'Add',
-														value: 'add'
+														value: 'add',
 													},
 													{
 														name: 'Modify',
-														value: 'modify'
+														value: 'modify',
 													},
 													{
 														name: 'Delete',
-														value: 'delete'
+														value: 'delete',
 													},
-												]
+												],
 											},
-										]
+										],
 									},
 								],
 							},
@@ -379,7 +379,7 @@ export const releaseFields = [
 								default: '',
 								description: 'Timestamp of commit',
 							},
-						]
+						],
 					},
 				],
 			},
@@ -403,7 +403,7 @@ export const releaseFields = [
 								type: 'string',
 								default: '',
 								description: 'the head sha of the commit',
-								required: true
+								required: true,
 							},
 							{
 								displayName: 'Repository',
@@ -411,7 +411,7 @@ export const releaseFields = [
 								type: 'string',
 								default: '',
 								description: 'Repository name',
-								required: true
+								required: true,
 							},
 							{
 								displayName: 'Previous Commit',
@@ -420,10 +420,10 @@ export const releaseFields = [
 								default: '',
 								description: 'the sha of the HEAD of the previous release',
 							},
-						]
+						],
 					},
 				],
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

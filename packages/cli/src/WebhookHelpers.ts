@@ -3,16 +3,17 @@ import { get } from 'lodash';
 
 import {
 	ActiveExecutions,
+	ExternalHooks,
 	GenericHelpers,
 	IExecutionDb,
 	IResponseCallbackData,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 	ResponseHelper,
-	WorkflowHelpers,
-	WorkflowRunner,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
+	WorkflowHelpers,
+	WorkflowRunner,
 } from './';
 
 import {
@@ -221,7 +222,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 			return;
 		}
 
-		// Now that we know that the workflow should run we can return the default respons
+		// Now that we know that the workflow should run we can return the default response
 		// directly if responseMode it set to "onReceived" and a respone should be sent
 		if (responseMode === 'onReceived' && didSendResponse === false) {
 			// Return response directly and do not wait for the workflow to finish
@@ -251,7 +252,7 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 				data: {
 					main: webhookResultData.workflowData,
 				},
-			},
+			}
 		);
 
 		const runExecutionData: IRunExecutionData = {
@@ -301,6 +302,19 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 			}
 
 			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
+			if(data.data.resultData.error || returnData?.error !== undefined) {
+				if (didSendResponse === false) {
+					responseCallback(null, {
+						data: {
+							message: 'Workflow did error.',
+						},
+						responseCode: 500,
+					});
+				}
+				didSendResponse = true;
+				return data;
+			}
+
 			if (returnData === undefined) {
 				if (didSendResponse === false) {
 					responseCallback(null, {
@@ -308,17 +322,6 @@ export function getWorkflowWebhooksBasic(workflow: Workflow): IWebhookData[] {
 							message: 'Workflow did execute sucessfully but the last node did not return any data.',
 						},
 						responseCode,
-					});
-				}
-				didSendResponse = true;
-				return data;
-			} else if (returnData.error !== undefined) {
-				if (didSendResponse === false) {
-					responseCallback(null, {
-						data: {
-							message: 'Workflow did error.',
-						},
-						responseCode: 500,
 					});
 				}
 				didSendResponse = true;
