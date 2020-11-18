@@ -109,10 +109,14 @@ export class HumanticAi implements INodeType {
 								},
 							},
 						);
-						responseData = responseData.data;
 					} else {
 						responseData = await humanticAiApiRequest.call(this, 'GET', `/user-profile/create`, {}, qs);
+					}
+
+					if (responseData.data !== undefined) {
 						responseData = responseData.data;
+					} else {
+						delete responseData.usage_stats;
 					}
 				}
 				if (operation === 'get') {
