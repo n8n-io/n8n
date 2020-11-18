@@ -38,7 +38,6 @@ import {
 } from './TrackInterface';
 
 import * as uuid from 'uuid/v4';
-import { customerFields } from '../CustomerIo/CustomerDescription';
 
 export class Segment implements INodeType {
 	description: INodeTypeDescription = {
@@ -110,7 +109,7 @@ export class Segment implements INodeType {
 				if (operation === 'add') {
 					const userId = this.getNodeParameter('userId', i) as string;
 					const groupId = this.getNodeParameter('groupId', i) as string;
-					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject;
+					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject[];
 					const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
 					const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
 					const body: IGroup = {
@@ -132,94 +131,9 @@ export class Segment implements INodeType {
 						body.anonymousId = uuid();
 					}
 					if (traits) {
-						if (traits.email) {
-							body.traits!.email = traits.email as string;
-						}
-						if (traits.firstname) {
-							body.traits!.firstname = traits.firstname as string;
-						}
-						if (traits.lastname) {
-							body.traits!.lastname = traits.lastname as string;
-						}
-						if (traits.gender) {
-							body.traits!.gender = traits.gender as string;
-						}
-						if (traits.phone) {
-							body.traits!.phone = traits.phone as string;
-						}
-						if (traits.username) {
-							body.traits!.username = traits.username as string;
-						}
-						if (traits.website) {
-							body.traits!.website = traits.website as string;
-						}
-						if (traits.age) {
-							body.traits!.age = traits.age as number;
-						}
-						if (traits.avatar) {
-							body.traits!.avatar = traits.avatar as string;
-						}
-						if (traits.birthday) {
-							body.traits!.birthday = traits.birthday as string;
-						}
-						if (traits.createdAt) {
-							body.traits!.createdAt = traits.createdAt as string;
-						}
-						if (traits.description) {
-							body.traits!.description = traits.description as string;
-						}
-						if (traits.id) {
-							body.traits!.id = traits.id as string;
-						}
-						
-						if (traits.company) {
-							const company = (traits.company as IDataObject).companyUi as IDataObject;
-							if (company) {
-								if (company.id) {
-									//@ts-ignore
-									body.traits.company.id = company.id as string;
-								}
-								if (company.name) {
-									//@ts-ignore
-									body.traits.company.name = company.name as string;
-								}
-								if (company.industry) {
-									//@ts-ignore
-									body.traits.company.industry = company.industry as string;
-								}
-								if (company.employeeCount) {
-									//@ts-ignore
-									body.traits.company.employeeCount = company.employeeCount as number;
-								}
-								if (company.plan) {
-									//@ts-ignore
-									body.traits.company.plan = company.plan as string;
-								}
-							}
-						}
-						if (traits.address) {
-							const address = (traits.address as IDataObject).addressUi as IDataObject;
-							if (address) {
-								if (address.street) {
-									//@ts-ignore
-									body.traits.address.street = address.street as string;
-								}
-								if (address.city) {
-									//@ts-ignore
-									body.traits.address.city = address.city as string;
-								}
-								if (address.state) {
-									//@ts-ignore
-									body.traits.address.state = address.state as string;
-								}
-								if (address.postalCode) {
-									//@ts-ignore
-									body.traits.address.postalCode = address.postalCode as string;
-								}
-								if (address.country) {
-									//@ts-ignore
-									body.traits.address.country = address.country as string;
-								}
+						if (traits && traits.length !== 0) {
+							for (const trait of traits) {
+								body.traits![trait.key as string] = trait.value;
 							}
 						}
 					}
@@ -326,124 +240,22 @@ export class Segment implements INodeType {
 				//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#identify
 				if (operation === 'create') {
 					const userId = this.getNodeParameter('userId', i) as string;
-					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject;
 					const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
+					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject[];
 					const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
 					const body: IIdentify = {
-						traits: {
-							company: {},
-							address: {},
-						},
 						context: {
 							app: {},
 							campaign: {},
 							device: {},
 						},
+						traits: {},
 						integrations: {},
 					};
 					if (userId) {
 						body.userId = userId as string;
 					} else {
 						body.anonymousId = uuid();
-					}
-					if (traits) {
-						if (traits.email) {
-							body.traits!.email = traits.email as string;
-						}
-						if (traits.firstname) {
-							body.traits!.firstname = traits.firstname as string;
-						}
-						if (traits.lastname) {
-							body.traits!.lastname = traits.lastname as string;
-						}
-						if (traits.gender) {
-							body.traits!.gender = traits.gender as string;
-						}
-						if (traits.phone) {
-							body.traits!.phone = traits.phone as string;
-						}
-						if (traits.username) {
-							body.traits!.username = traits.username as string;
-						}
-						if (traits.website) {
-							body.traits!.website = traits.website as string;
-						}
-						if (traits.age) {
-							body.traits!.age = traits.age as number;
-						}
-						if (traits.avatar) {
-							body.traits!.avatar = traits.avatar as string;
-						}
-						if (traits.birthday) {
-							body.traits!.birthday = traits.birthday as string;
-						}
-						if (traits.createdAt) {
-							body.traits!.createdAt = traits.createdAt as string;
-						}
-						if (traits.description) {
-							body.traits!.description = traits.description as string;
-						}
-						if (traits.id) {
-							body.traits!.id = traits.id as string;
-						}
-						if (traits.customTraitsUi) {
-							const customTraits = (traits.customTraitsUi as IDataObject).customTraitValues as IDataObject[];
-							if (customTraits && customTraits.length !== 0) {
-								for (const customTrait of customTraits) {
-									body.traits![customTrait.key as string] = customTrait.value;
-								}
-							}
-						}
-						if (traits.company) {
-							const company = (traits.company as IDataObject).companyUi as IDataObject;
-							if (company) {
-								if (company.id) {
-									//@ts-ignore
-									body.traits.company.id = company.id as string;
-								}
-								if (company.name) {
-									//@ts-ignore
-									body.traits.company.name = company.name as string;
-								}
-								if (company.industry) {
-									//@ts-ignore
-									body.traits.company.industry = company.industry as string;
-								}
-								if (company.employeeCount) {
-									//@ts-ignore
-									body.traits.company.employeeCount = company.employeeCount as number;
-								}
-								if (company.plan) {
-									//@ts-ignore
-									body.traits.company.plan = company.plan as string;
-								}
-							}
-						}
-						if (traits.address) {
-							const address = (traits.address as IDataObject).addressUi as IDataObject;
-							if (address) {
-								if (address.street) {
-									//@ts-ignore
-									body.traits.address.street = address.street as string;
-								}
-								if (address.city) {
-									//@ts-ignore
-									body.traits.address.city = address.city as string;
-								}
-								if (address.state) {
-									//@ts-ignore
-									body.traits.address.state = address.state as string;
-								}
-								if (address.postalCode) {
-									//@ts-ignore
-									body.traits.address.postalCode = address.postalCode as string;
-								}
-								if (address.country) {
-									//@ts-ignore
-									body.traits.address.country = address.country as string;
-								}
-							}
-						}
 					}
 					if (context) {
 						if (context.active) {
@@ -542,14 +354,12 @@ export class Segment implements INodeType {
 						}
 					}
 
-					if (Object.keys(traits.company as IDataObject).length === 0) {
-						//@ts-ignore
-						delete body.traits.company;
-					}
-
-					if (Object.keys(traits.address as IDataObject).length === 0) {
-						//@ts-ignore
-						delete body.traits.address;
+					if (traits) {
+						if (traits && traits.length !== 0) {
+							for (const trait of traits) {
+								body.traits![trait.key as string] = trait.value;
+							}
+						}
 					}
 
 					responseData = await segmentApiRequest.call(this, 'POST', '/identify', body);
@@ -560,15 +370,12 @@ export class Segment implements INodeType {
 				if (operation === 'event') {
 					const userId = this.getNodeParameter('userId', i) as string;
 					const event = this.getNodeParameter('event', i) as string;
-					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject;
 					const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
 					const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
-					const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject;
+					const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject[];
 					const body: ITrack = {
 						event,
 						traits: {
-							company: {},
-							address: {},
 						},
 						context: {
 							app: {},
@@ -582,105 +389,6 @@ export class Segment implements INodeType {
 						body.userId = userId as string;
 					} else {
 						body.anonymousId = uuid();
-					}
-					if (traits) {
-						if (traits.email) {
-							body.traits!.email = traits.email as string;
-						}
-						if (traits.firstname) {
-							body.traits!.firstname = traits.firstname as string;
-						}
-						if (traits.lastname) {
-							body.traits!.lastname = traits.lastname as string;
-						}
-						if (traits.gender) {
-							body.traits!.gender = traits.gender as string;
-						}
-						if (traits.phone) {
-							body.traits!.phone = traits.phone as string;
-						}
-						if (traits.username) {
-							body.traits!.username = traits.username as string;
-						}
-						if (traits.website) {
-							body.traits!.website = traits.website as string;
-						}
-						if (traits.age) {
-							body.traits!.age = traits.age as number;
-						}
-						if (traits.avatar) {
-							body.traits!.avatar = traits.avatar as string;
-						}
-						if (traits.birthday) {
-							body.traits!.birthday = traits.birthday as string;
-						}
-						if (traits.createdAt) {
-							body.traits!.createdAt = traits.createdAt as string;
-						}
-						if (traits.description) {
-							body.traits!.description = traits.description as string;
-						}
-						if (traits.id) {
-							body.traits!.id = traits.id as string;
-						}
-						if (traits.customTraitsUi) {
-							const customTraits = (traits.customTraitsUi as IDataObject).customTraitValues as IDataObject[];
-							if (customTraits && customTraits.length !== 0) {
-								for (const customTrait of customTraits) {
-									body.traits![customTrait.key as string] = customTrait.value;
-								}
-							}
-						}
-						if (traits.company) {
-							const company = (traits.company as IDataObject).companyUi as IDataObject;
-							if (company) {
-								if (company.id) {
-									//@ts-ignore
-									body.traits.company.id = company.id as string;
-								}
-								if (company.name) {
-									//@ts-ignore
-									body.traits.company.name = company.name as string;
-								}
-								if (company.industry) {
-									//@ts-ignore
-									body.traits.company.industry = company.industry as string;
-								}
-								if (company.employeeCount) {
-									//@ts-ignore
-									body.traits.company.employeeCount = company.employeeCount as number;
-								}
-								if (company.plan) {
-									//@ts-ignore
-									body.traits.company.plan = company.plan as string;
-								}
-							}
-						}
-						if (traits.address) {
-							const address = (traits.address as IDataObject).addressUi as IDataObject;
-							if (address) {
-								if (address.street) {
-									//@ts-ignore
-									body.traits.address.street = address.street as string;
-								}
-								if (address.city) {
-									//@ts-ignore
-									body.traits.address.city = address.city as string;
-								}
-								if (address.state) {
-									//@ts-ignore
-									body.traits.address.state = address.state as string;
-								}
-								if (address.postalCode) {
-									//@ts-ignore
-									body.traits.address.postalCode = address.postalCode as string;
-								}
-								if (address.country) {
-									//@ts-ignore
-									body.traits.address.country = address.country as string;
-								}
-							}
-						}
 					}
 					if (context) {
 						if (context.active) {
@@ -779,25 +487,11 @@ export class Segment implements INodeType {
 						}
 					}
 					if (properties) {
-						if (properties.revenue) {
-							body.properties!.revenue = properties.revenue as number;
+						if (properties && properties.length !== 0) {
+							for (const property of properties) {
+								body.properties![property.key as string] = property.value;
+							}
 						}
-						if (properties.currency) {
-							body.properties!.currency = properties.currency as string;
-						}
-						if (properties.value) {
-							body.properties!.value = properties.value as string;
-						}
-					}
-
-					if (Object.keys(traits.company as IDataObject).length === 0) {
-						//@ts-ignore
-						delete body.traits.company;
-					}
-
-					if (Object.keys(traits.address as IDataObject).length === 0) {
-						//@ts-ignore
-						delete body.traits.address;
 					}
 
 					responseData = await segmentApiRequest.call(this, 'POST', '/track', body);
@@ -805,17 +499,13 @@ export class Segment implements INodeType {
 				//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#page
 				if (operation === 'page') {
 					const userId = this.getNodeParameter('userId', i) as string;
-					const event = this.getNodeParameter('event', i) as string;
-					const traits = (this.getNodeParameter('traits', i) as IDataObject).traitsUi as IDataObject;
+					const name = this.getNodeParameter('name', i) as string;
 					const context = (this.getNodeParameter('context', i) as IDataObject).contextUi as IDataObject;
 					const integrations = (this.getNodeParameter('integrations', i) as IDataObject).integrationsUi as IDataObject;
-					const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject;
+					const properties = (this.getNodeParameter('properties', i) as IDataObject).propertiesUi as IDataObject[];
 					const body: ITrack = {
-						event,
-						traits: {
-							company: {},
-							address: {},
-						},
+						name,
+						traits: {},
 						context: {
 							app: {},
 							campaign: {},
@@ -828,97 +518,6 @@ export class Segment implements INodeType {
 						body.userId = userId as string;
 					} else {
 						body.anonymousId = uuid();
-					}
-					if (traits) {
-						if (traits.email) {
-							body.traits!.email = traits.email as string;
-						}
-						if (traits.firstname) {
-							body.traits!.firstname = traits.firstname as string;
-						}
-						if (traits.lastname) {
-							body.traits!.lastname = traits.lastname as string;
-						}
-						if (traits.gender) {
-							body.traits!.gender = traits.gender as string;
-						}
-						if (traits.phone) {
-							body.traits!.phone = traits.phone as string;
-						}
-						if (traits.username) {
-							body.traits!.username = traits.username as string;
-						}
-						if (traits.website) {
-							body.traits!.website = traits.website as string;
-						}
-						if (traits.age) {
-							body.traits!.age = traits.age as number;
-						}
-						if (traits.avatar) {
-							body.traits!.avatar = traits.avatar as string;
-						}
-						if (traits.birthday) {
-							body.traits!.birthday = traits.birthday as string;
-						}
-						if (traits.createdAt) {
-							body.traits!.createdAt = traits.createdAt as string;
-						}
-						if (traits.description) {
-							body.traits!.description = traits.description as string;
-						}
-						if (traits.id) {
-							body.traits!.id = traits.id as string;
-						}
-						if (traits.company) {
-							const company = (traits.company as IDataObject).companyUi as IDataObject;
-							if (company) {
-								if (company.id) {
-									//@ts-ignore
-									body.traits.company.id = company.id as string;
-								}
-								if (company.name) {
-									//@ts-ignore
-									body.traits.company.name = company.name as string;
-								}
-								if (company.industry) {
-									//@ts-ignore
-									body.traits.company.industry = company.industry as string;
-								}
-								if (company.employeeCount) {
-									//@ts-ignore
-									body.traits.company.employeeCount = company.employeeCount as number;
-								}
-								if (company.plan) {
-									//@ts-ignore
-									body.traits.company.plan = company.plan as string;
-								}
-							}
-						}
-						if (traits.address) {
-							const address = (traits.address as IDataObject).addressUi as IDataObject;
-							if (address) {
-								if (address.street) {
-									//@ts-ignore
-									body.traits.address.street = address.street as string;
-								}
-								if (address.city) {
-									//@ts-ignore
-									body.traits.address.city = address.city as string;
-								}
-								if (address.state) {
-									//@ts-ignore
-									body.traits.address.state = address.state as string;
-								}
-								if (address.postalCode) {
-									//@ts-ignore
-									body.traits.address.postalCode = address.postalCode as string;
-								}
-								if (address.country) {
-									//@ts-ignore
-									body.traits.address.country = address.country as string;
-								}
-							}
-						}
 					}
 					if (context) {
 						if (context.active) {
@@ -1017,26 +616,10 @@ export class Segment implements INodeType {
 						}
 					}
 					if (properties) {
-						if (properties.name) {
-							body.properties!.name = properties.name as number;
-						}
-						if (properties.path) {
-							body.properties!.path = properties.path as string;
-						}
-						if (properties.referrer) {
-							body.properties!.referrer = properties.referrer as string;
-						}
-						if (properties.search) {
-							body.properties!.search = properties.search as string;
-						}
-						if (properties.title) {
-							body.properties!.title = properties.title as string;
-						}
-						if (properties.url) {
-							body.properties!.url = properties.url as string;
-						}
-						if (properties.keywords) {
-							body.properties!.keywords = properties.keywords as string;
+						if (properties && properties.length !== 0) {
+							for (const property of properties) {
+								body.properties![property.key as string] = property.value;
+							}
 						}
 					}
 					responseData = await segmentApiRequest.call(this, 'POST', '/page', body);
