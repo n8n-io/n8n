@@ -37,7 +37,14 @@ export async function humanticAiApiRequest(this: IHookFunctions | IExecuteFuncti
 			delete options.body;
 		}
 
-		return await this.helpers.request!(options);
+		const response = await this.helpers.request!(options);
+
+		if (response.data && response.data.status === 'error') {
+			throw new Error(`Humantic AI error response [400]: ${response.data.message}`);
+		}
+
+		return response;
+
 	} catch (error) {
 
 		if (error.response && error.response.body && error.response.body.message) {

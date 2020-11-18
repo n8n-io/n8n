@@ -32,7 +32,7 @@ export class HumanticAi implements INodeType {
 		description: 'Consume Humantic AI API',
 		defaults: {
 			name: 'Humantic AI',
-			color: '#00ade8',
+			color: '#f8ce59',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -74,7 +74,7 @@ export class HumanticAi implements INodeType {
 			if (resource === 'profile') {
 				if (operation === 'create') {
 					const userId = this.getNodeParameter('userId', i) as string;
-					const sendResume = this.getNodeParameter('sendResume', i) as string;
+					const sendResume = this.getNodeParameter('sendResume', i) as boolean;
 					qs.userid = userId;
 
 					if (sendResume) {
@@ -122,7 +122,7 @@ export class HumanticAi implements INodeType {
 					qs.userid = userId;
 
 					if (options.persona) {
-						qs.persona = options.persona as string;
+						qs.persona = (options.persona as string[]).join(',');
 					}
 
 					responseData = await humanticAiApiRequest.call(this, 'GET', `/user-profile`, {}, qs);

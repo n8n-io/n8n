@@ -18,17 +18,17 @@ export const profileOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a meeting',
+				description: 'Create a profile',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve a meeting',
+				description: 'Retrieve a profile',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a meeting',
+				description: 'Update a profile',
 			},
 		],
 		default: 'create',
@@ -137,10 +137,20 @@ export const profileFields = [
 			{
 				displayName: 'Persona',
 				name: 'persona',
-				type: 'string',
-				default: '',
-				placeholder: 'sales,hiring',
-				description: `Fetch the Humantic profile of the user for a particular persona type. Multiple persona values can be supported using comma as a delimiter.`,
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'Sales',
+						value: 'sales',
+					},
+					{
+						name: 'Hiring',
+						value: 'hiring',
+					},
+				],
+				default: [],
+				description: `Fetch the Humantic profile of the user for a particular persona type.<br>
+				Multiple persona values can be supported using comma as a delimiter.`,
 			},
 		],
 	},
@@ -169,6 +179,23 @@ export const profileFields = [
 		description: `This value is the same as the User ID that was provided when the analysis was created. Currently only supported for profiles created using LinkedIn URL.`,
 	},
 	{
+		displayName: 'Send Resume',
+		name: 'sendResume',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'profile',
+				],
+			},
+		},
+		description: `Send a resume for a resume of the user.`,
+	},
+	{
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
@@ -187,23 +214,6 @@ export const profileFields = [
 			},
 		},
 		description: `Additional text written by the user.`,
-	},
-	{
-		displayName: 'Send Resume',
-		name: 'sendResume',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'profile',
-				],
-			},
-		},
-		description: `Send a resume for a resume of the user.`,
 	},
 	{
 		displayName: 'Binary Property',
