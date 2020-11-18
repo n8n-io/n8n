@@ -721,16 +721,19 @@ export class EditImage implements INodeType {
 			// Split the text in multiple lines
 			const lines: string[] = [];
 			let currentLine = '';
-			(text as string).split(' ').forEach((textPart: string) => {
-				if (currentLine.length + textPart.length + 1 > lineLength) {
-					lines.push(currentLine.trim());
-					currentLine = `${textPart} `;
-					return;
-				}
-				currentLine += `${textPart} `;
+			(text as string).split('\n').forEach((textLine: string) => {
+				textLine.split(' ').forEach((textPart: string) => {
+					if ((currentLine.length + textPart.length + 1) > lineLength) {
+						lines.push(currentLine.trim());
+						currentLine = `${textPart} `;
+						return;
+					}
+					currentLine += `${textPart} `;
+				});
+
+				lines.push(currentLine.trim());
+				currentLine = '';
 			});
-			// Add the last line
-			lines.push(currentLine.trim());
 
 			// Combine the lines to a single string
 			const renderText = lines.join('\n');
