@@ -4,17 +4,23 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import * as gm from 'gm';
 import { file } from 'tmp-promise';
 import {
+	parse as pathParse,
+} from 'path';
+import {
 	writeFile as fsWriteFile,
 } from 'fs';
 import { promisify } from 'util';
 const fsWriteFileAsync = promisify(fsWriteFile);
+import * as getSystemFonts from 'get-system-fonts';
 
 
 export class EditImage implements INodeType {
@@ -58,6 +64,11 @@ export class EditImage implements INodeType {
 						description: 'Composite image on top of another one',
 					},
 					{
+						name: 'Draw',
+						value: 'draw',
+						description: 'Draw on image',
+					},
+					{
 						name: 'Get Information',
 						value: 'information',
 						description: 'Returns image information like resolution',
@@ -95,6 +106,140 @@ export class EditImage implements INodeType {
 				description: 'Name of the binary property in which the image data can be found.',
 			},
 
+
+			// ----------------------------------
+			//         draw
+			// ----------------------------------
+			{
+				displayName: 'Primitive',
+				name: 'primitive',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: [
+							'draw',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Line',
+						value: 'line',
+					},
+					{
+						name: 'Rectangle',
+						value: 'rectangle',
+					},
+				],
+				default: 'rectangle',
+				description: 'The primitive to draw.',
+			},
+			{
+				displayName: 'Color',
+				name: 'color',
+				type: 'color',
+				default: '#ff000000',
+				typeOptions: {
+					showAlpha: true,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'draw',
+						],
+					},
+				},
+				description: 'The color of the primitive to draw',
+			},
+			{
+				displayName: 'Start Position X',
+				name: 'startPositionX',
+				type: 'number',
+				default: 50,
+				displayOptions: {
+					show: {
+						operation: [
+							'draw',
+						],
+						primitive: [
+							'line',
+							'rectangle',
+						],
+					},
+				},
+				description: 'X (horizontal) start position of the primitive.',
+			},
+			{
+				displayName: 'Start Position Y',
+				name: 'startPositionY',
+				type: 'number',
+				default: 50,
+				displayOptions: {
+					show: {
+						operation: [
+							'draw',
+						],
+						primitive: [
+							'line',
+							'rectangle',
+						],
+					},
+				},
+				description: 'Y (horizontal) start position of the primitive.',
+			},
+			{
+				displayName: 'End Position X',
+				name: 'endPositionX',
+				type: 'number',
+				default: 250,
+				displayOptions: {
+					show: {
+						operation: [
+							'draw',
+						],
+						primitive: [
+							'line',
+							'rectangle',
+						],
+					},
+				},
+				description: 'X (horizontal) end position of the primitive.',
+			},
+			{
+				displayName: 'End Position Y',
+				name: 'endPositionY',
+				type: 'number',
+				default: 250,
+				displayOptions: {
+					show: {
+						operation: [
+							'draw',
+						],
+						primitive: [
+							'line',
+							'rectangle',
+						],
+					},
+				},
+				description: 'Y (horizontal) end position of the primitive.',
+			},
+			{
+				displayName: 'Corner Radius',
+				name: 'cornerRadius',
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						operation: [
+							'draw',
+						],
+						primitive: [
+							'rectangle',
+						],
+					},
+				},
+				description: 'The radius of the corner to create round corners.',
+			},
 
 			// ----------------------------------
 			//         text
@@ -501,7 +646,7 @@ export class EditImage implements INodeType {
 						],
 					},
 				},
-				description: 'The color to use for the background when image gets rotated by anything which is not a multiple of 90..',
+				description: 'The color to use for the background when image gets rotated by anything which is not a multiple of 90.',
 			},
 
 
@@ -559,6 +704,23 @@ export class EditImage implements INodeType {
 						description: 'File name to set in binary data.',
 					},
 					{
+						displayName: 'Font',
+						name: 'font',
+						type: 'options',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'text',
+								],
+							},
+						},
+						typeOptions: {
+							loadOptionsMethod: 'getFonts',
+						},
+						default: 'default',
+						description: 'The font to use.',
+					},
+					{
 						displayName: 'Format',
 						name: 'format',
 						type: 'options',
@@ -610,6 +772,40 @@ export class EditImage implements INodeType {
 				],
 			},
 		],
+	};
+
+
+	methods = {
+		loadOptions: {
+			async getFonts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+
+				// @ts-ignore
+				const files = await getSystemFonts();
+				const returnData: INodePropertyOptions[] = [];
+
+				files.forEach((file: string) => {
+					const pathParts = pathParse(file);
+					returnData.push({
+						name: pathParts.name,
+						value: file,
+					});
+				});
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
+				returnData.unshift({
+					name: 'default',
+					value: 'default',
+				});
+
+				return returnData;
+			},
+
+		},
 	};
 
 
@@ -670,7 +866,24 @@ export class EditImage implements INodeType {
 			const positionY = this.getNodeParameter('positionY') as number;
 
 			gmInstance = gmInstance.crop(width, height, positionX, positionY);
-		} else if (operation === 'information')  {
+		} else if (operation === 'draw') {
+			const startPositionX = this.getNodeParameter('startPositionX') as number;
+			const startPositionY = this.getNodeParameter('startPositionY') as number;
+			const endPositionX = this.getNodeParameter('endPositionX') as number;
+			const endPositionY = this.getNodeParameter('endPositionY') as number;
+			const primitive = this.getNodeParameter('primitive') as string;
+			const color = this.getNodeParameter('color') as string;
+
+			gmInstance = gmInstance.fill(color);
+
+			if (primitive === 'line') {
+				gmInstance = gmInstance.drawLine(startPositionX, startPositionY, endPositionX, endPositionY);
+			} else if (primitive === 'rectangle') {
+				const cornerRadius = this.getNodeParameter('cornerRadius') as number;
+				gmInstance = gmInstance.drawRectangle(startPositionX, startPositionY, endPositionX, endPositionY, cornerRadius || undefined);
+			}
+
+		} else if (operation === 'information') {
 			const imageData = await new Promise<IDataObject>((resolve, reject) => {
 				gmInstance = gmInstance.identify((error, imageData) => {
 					if (error) {
@@ -737,6 +950,10 @@ export class EditImage implements INodeType {
 
 			// Combine the lines to a single string
 			const renderText = lines.join('\n');
+
+			if (options.font && options.font !== 'default') {
+				gmInstance = gmInstance.font(options.font as string);
+			}
 
 			gmInstance = gmInstance
 				.fill(fontColor)
