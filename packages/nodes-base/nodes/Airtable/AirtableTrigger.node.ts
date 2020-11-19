@@ -121,8 +121,6 @@ export class AirtableTrigger implements INodeType {
 
 		const endDate = now;
 
-		qs['fields[]'] = [triggerField];
-
 		if (additionalFields.viewId) {
 			qs.view = additionalFields.viewId;
 		}
