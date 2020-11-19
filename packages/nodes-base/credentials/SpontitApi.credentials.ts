@@ -6,7 +6,7 @@ import {
 export class SpontitApi implements ICredentialType {
 	name = 'spontitApi';
 	displayName = 'Spontit API';
-	documentationUrl = 'https://api.spontit.com/';
+	documentationUrl = 'spontit';
 	properties = [
 		{
 			displayName: 'API Key',
@@ -15,8 +15,8 @@ export class SpontitApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Your User ID',
-			name: 'userId',
+			displayName: 'Username',
+			name: 'username',
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
