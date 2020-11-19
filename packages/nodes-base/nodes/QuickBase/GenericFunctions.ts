@@ -1,115 +1,132 @@
 import {
+	OptionsWithUri,
+} from 'request';
+
+import {
 	IExecuteFunctions,
 	IHookFunctions,
+	ILoadOptionsFunctions,
+	IWebhookFunctions,
 } from 'n8n-core';
 
 import {
 	IDataObject,
 } from 'n8n-workflow';
 
-import requestPromise = require('request-promise-native');
+export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
-export async function quickbaseApiRequest(
-	this: IHookFunctions | IExecuteFunctions,
-	method: string,
-	endpoint: string,
-	body: IDataObject,
-	query?: IDataObject,
-	isJson: boolean = true,
-	fetchAll: boolean | 'qs' = false
-): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('quickbase');
+	const credentials = this.getCredentials('quickbaseApi') as IDataObject;
 
-	if(credentials === undefined){
-		throw new Error('No credentials found!');
+	if (credentials.hostname === '') {
+		throw new Error('Hostname must be defined');
 	}
 
-	if(query === undefined){
-		query = {};
-	}
-
-	const workflow = this.getWorkflow();
-	const node = this.getNode();
-
-	const headers: requestPromise.Options['headers'] = {
-		'QB-Realm-Hostname': credentials.realm,
-		'Authorization': `QB-USER-TOKEN ${credentials.userToken}`,
-		'User-Agent': [
-			`nodejs/${process.version}`,
-			[
-				'n8n',
-				(workflow.name || '').toLowerCase().replace(/[^a-z0-9]/g, '-'),
-				'quickbase',
-				node.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
-			].filter((val) => {
-				return !!val;
-			}).join('/')
-		].join(' ')
-	};
-
-	if(isJson){
-		headers['Content-Type'] = 'application/json; charset=UTF-8';
-	}
-
-	const options: requestPromise.OptionsWithUri = {
-		method,
-		qs: query,
-		uri: `https://api.quickbase.com/v1/${endpoint}`,
-		headers: headers,
-	};
-
-	if(isJson){
-		options.json = true;
-		options.body = body;
-	}else{
-		options.resolveWithFullResponse = true;
+	if (credentials.userKey === '') {
+		throw new Error('User Token must be defined');
 	}
 
 	try {
-		const results = await this.helpers.request(options);
-
-		if(!fetchAll){
-			return results;
+		const options: OptionsWithUri = {
+			headers: {
+				'QB-Realm-Hostname': credentials.hostname,
+				'User-Agent': 'n8n',
+				'Authorization': `QB-USER-TOKEN ${credentials.userToken}`,
+				'Content-Type': 'application/json',
+			},
+			method,
+			body,
+			qs,
+			uri: `https://api.quickbase.com/v1${resource}`,
+			json: true,
+		};
+		if (Object.keys(body).length === 0) {
+			delete options.body;
 		}
 
-		const viaBody = fetchAll !== 'qs';
-
-		if(viaBody){
-			if(!options.body.options){
-				options.body.options = {};
-			}
+		if (Object.keys(qs).length === 0) {
+			delete options.qs;
 		}
 
-		const batchSize = 0 + results.metadata.numRecords;
-
-		if(viaBody){
-			options.body.options.top = batchSize;
-			options.body.options.skip = batchSize;
-		}else{
-			options.qs.top = batchSize;
-			options.qs.skip = batchSize;
+		if (Object.keys(option).length !== 0) {
+			Object.assign(options, option);
 		}
+		//@ts-ignore
+		return await this.helpers?.request(options);
+	} catch (error) {
 
-		while(results.metadata.numRecords < results.metadata.totalRecords && results.metadata.skip < results.metadata.totalRecords){
-			const batch = await this.helpers.request(options);
+		if (error.response && error.response.body && error.response.body.description) {
 
-			results.data = results.data.concat(batch.data);
-			results.metadata.numRecords = results.data.length;
-			results.metadata.totalRecords = results.metadata.totalRecords;
+			const message = error.response.body.description;
 
-			if(viaBody){
-				options.body.options.skip = batch.data.length;
-			}else{
-				options.qs.skip = batch.data.length;
-			}
+			// Try to return the error prettier
+			throw new Error(
+				`Quickbase error response [${error.statusCode}]: ${message} (qb-api-ray=${error.response.headers['qb-api-ray']})`,
+			);
 		}
-
-		return results;
-	}catch(error){
-		throw new Error([
-			`Quick Base Error [${error.statusCode}]: ${error.response.body.message}.`,
-			error.response.body.description,
-			`Quick Base Ray ID: ${error.response.headers['qb-api-ray']}`
-		].join('\n'));
+		throw error;
 	}
+}
+
+//@ts-ignore
+export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any {
+	const fieldsLabelKey: { [key: string]: number } = {};
+	const fieldsIdKey: { [key: number]: string } = {};
+	const data  = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
+	for (const field of data) {
+		fieldsLabelKey[field.label] = field.id;
+		fieldsIdKey[field.id] = field.label;
+	}
+	return { fieldsLabelKey, fieldsIdKey };
+}
+				
+export async function quickbaseApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData = [];
+
+	if (method === 'POST') {
+		body.options = {
+			skip: 0,
+			top: 100,
+		};
+	} else {
+		query.skip = 0;
+		query.top = 100;
+	}
+
+	let metadata;
+
+	do {
+		const { data, fields, metadata: meta } = await quickbaseApiRequest.call(this, method, resource, body, query);
+
+		metadata = meta;
+
+		const fieldsIdKey: { [key: string]: string } = {};
+
+		for (const field of fields) {
+			fieldsIdKey[field.id] = field.label;
+		}
+
+		for (const record of data) {
+			const data: IDataObject = {};
+			for (const [key, value] of Object.entries(record)) {
+				data[fieldsIdKey[key]] = (value as IDataObject).value;
+			}
+			responseData.push(data);
+		}
+
+		if (method === 'POST') {
+			body.options.skip += body.options.top;
+		} else {
+			//@ts-ignore
+			query.skip += query.top;
+		}
+		returnData.push.apply(returnData, responseData);
+		responseData = [];
+	} while (
+		returnData.length < metadata.totalRecords 
+	);
+
+	return returnData;
 }

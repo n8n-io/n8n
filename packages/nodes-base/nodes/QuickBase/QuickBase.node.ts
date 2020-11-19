@@ -4,14 +4,38 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
+	getFieldsObject,
 	quickbaseApiRequest,
+	quickbaseApiRequestAllItems,
 } from './GenericFunctions';
+
+import {
+	fieldFields,
+	fieldOperations,
+} from './FieldDescription';
+
+import {
+	fileFields,
+	fileOperations,
+} from './FileDescription';
+
+import {
+	recordFields,
+	recordOperations,
+} from './RecordDescription';
+
+import {
+	reportFields,
+	reportOperations,
+} from './ReportDescription';
 
 export class QuickBase implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,555 +44,518 @@ export class QuickBase implements INodeType {
 		icon: 'file:quickbase.png',
 		group: [ 'input' ],
 		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["tableId"]}}',
-		documentationUrl: 'https://developer.quickbase.com/',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Integrate with the Quick Base RESTful API.',
 		defaults: {
 			name: 'Quick Base',
-			color: '#73489d'
+			color: '#73489d',
 		},
 		inputs: [ 'main' ],
 		outputs: [ 'main' ],
-		credentials: [{
-			name: 'quickbase',
-			required: true
-		}],
-		properties: [{
-			displayName: 'Operation',
-			name: 'operation',
-			type: 'options',
-			options: [{
-				name: 'Delete File',
-				value: 'deleteFile',
-				description: 'Delete a file attachment from a Quick Base table.'
-			}, {
-				name: 'Delete Records',
-				value: 'deleteRecords',
-				description: 'Delete records from a Quick Base table.'
-			}, {
-				name: 'Download File',
-				value: 'downloadFile',
-				description: 'Download a file attachment from a Quick Base table.'
-			}, {
-				name: 'Run Query',
-				value: 'runQuery',
-				description: 'Run a query against a Quick Base table.'
-			}, {
-				name: 'Run Report',
-				value: 'runReport',
-				description: 'Run a saved report against a Quick Base table.'
-			}, {
-				name: 'Upsert Records',
-				value: 'upsert',
-				description: 'Upsert records into a Quick Base table.'
-			}],
-			required: true,
-			default: 'upsert',
-			description: 'The operation to perform.',
-		},
-
-		/* Common */
-		{
-			displayName: 'Table ID',
-			name: 'tableId',
-			type: 'string',
-			default: '',
-			placeholder: '',
-			required: true,
-			description: 'The Quick Base Table ID to operate on.',
-		}, {
-			displayName: 'Where',
-			name: 'where',
-			type: 'string',
-			default: '',
-			placeholder: "{'3'.EX.'0'}",
-			displayOptions: {
-				show: {
-					operation: [
-						'runQuery',
-						'deleteRecords'
-					]
-				}
+		credentials: [
+			{
+				name: 'quickbaseApi',
 			},
-			description: 'The query filter',
-		},
-
-		/* Delete/Download File */
-		{
-			displayName: 'Record ID',
-			name: 'recordId',
-			type: 'number',
-			default: 1,
-			required: true,
-			displayOptions: {
-				show: {
-					operation: [
-						'deleteFile',
-						'downloadFile'
-					]
-				}
-			},
-			typeOptions: {
-				minValue: 1
-			},
-			description: 'Quick Base Record ID',
-		}, {
-			displayName: 'Field ID',
-			name: 'fieldId',
-			type: 'number',
-			default: 6,
-			required: true,
-			displayOptions: {
-				show: {
-					operation: [
-						'deleteFile',
-						'downloadFile'
-					],
-				}
-			},
-			typeOptions: {
-				minValue: 6
-			},
-			description: 'Quick Base Field ID',
-		}, {
-			displayName: 'Version Number',
-			name: 'versionNumber',
-			type: 'number',
-			default: 0,
-			required: true,
-			displayOptions: {
-				show: {
-					operation: [
-						'deleteFile',
-						'downloadFile'
-					]
-				}
-			},
-			typeOptions: {
-				minValue: 0
-			},
-			description: 'Quick Base File Version Number',
-		},
-
-		/* Run Report - Report ID should come before top/skip/fetchAll */
-		{
-			displayName: 'Report ID',
-			name: 'reportId',
-			type: 'number',
-			default: 1,
-			required: true,
-			displayOptions: {
-				show: {
-					operation: [
-						'runReport'
-					]
-				}
-			},
-			typeOptions: {
-				minValue: 1
-			},
-			description: 'Quick Base Report ID',
-		},
-
-		/* Run Query */
-		{
-			displayName: 'Select',
-			name: 'select',
-			type: 'string',
-			default: '',
-			placeholder: '3.4.5',
-			required: true,
-			displayOptions: {
-				show: {
-					operation: [
-						'runQuery'
-					]
-				}
-			},
-			description: 'Period delimited list of field ids',
-		}, {
-			displayName: 'Fetch All Records',
-			name: 'fetchAll',
-			type: 'boolean',
-			default: false,
-			displayOptions: {
-				show: {
-					operation: [
-						'runQuery',
-						'runReport'
-					]
-				}
-			},
-			description: 'Cycle through Quick Base\'s pagination to retreive all records'
-		}, {
-			displayName: 'Top',
-			name: 'top',
-			type: 'number',
-			default: 100,
-			typeOptions: {
-				minValue: 1
-			},
-			displayOptions: {
-				show: {
-					operation: [
-						'runQuery',
-						'runReport'
-					],
-					fetchAll: [
-						false
-					]
-				}
-			},
-			description: 'The maximum number of records to return'
-		}, {
-			displayName: 'Skip',
-			name: 'skip',
-			type: 'number',
-			default: 0,
-			typeOptions: {
-				minValue: 0
-			},
-			displayOptions: {
-				show: {
-					operation: [
-						'runQuery',
-						'runReport'
-					],
-					fetchAll: [
-						false
-					]
-				}
-			},
-			description: 'The number of records to skip'
-		},  {
-			displayName: 'Use App Local Time',
-			name: 'compareWithAppLocalTime',
-			type: 'boolean',
-			default: false,
-			displayOptions: {
-				show: {
-					operation: [
-						'runQuery'
-					]
-				}
-			},
-			description: 'Whether to run the query against the Quick Base application\'s local time as opposed to UTC (UTC or false is default)'
-		}, {
-			displayName: 'Sort By',
-			name: 'sortByUI',
-			type: 'fixedCollection',
-			default: [],
-			displayOptions: {
-				show: {
-					operation: [
-						'runQuery'
-					]
-				}
-			},
-			typeOptions: {
-				multipleValues: true,
-				multipleValueButtonText: 'Add Sort By'
-			},
-			description: 'Sort the query in the order of the given field ids',
-			placeholder: 'Add Sort By',
-			options: [{
-				name: 'sortBy',
-				displayName: 'Sort By',
-				values: [{
-					displayName: 'Field ID',
-					name: 'fieldId',
-					type: 'number',
-					default: 1,
-					typeOptions: {
-						minValue: 1
+		],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
+					{
+						name: 'Field',
+						value: 'field',
 					},
-					description: 'Field ID to sort by'
-				}, {
-					displayName: 'Order',
-					name: 'order',
-					type: 'options',
-					default: 'DESC',
-					options: [{
-						name: 'Ascending',
-						value: 'ASC'
-					}, {
-						name: 'Descending',
-						value: 'DESC'
-					}],
-					description: 'Direction of sort'
-				}]
-			}]
-		},{
-			displayName: 'Group By',
-			name: 'groupByUI',
-			type: 'fixedCollection',
-			default: [],
-			displayOptions: {
-				show: {
-					operation: [
-						'runQuery'
-					]
-				}
-			},
-			typeOptions: {
-				multipleValues: true,
-				multipleValueButtonText: 'Add Group By'
-			},
-			description: 'Group the query in the order of the given field ids',
-			placeholder: 'Add Group By',
-			options: [{
-				name: 'groupBy',
-				displayName: 'Group By',
-				values: [{
-					displayName: 'Field ID',
-					name: 'fieldId',
-					type: 'number',
-					default: 1,
-					typeOptions: {
-						minValue: 1
+					{
+						name: 'File',
+						value: 'file',
 					},
-					description: 'Field ID to group by'
-				}, {
-					displayName: 'Grouping',
-					name: 'grouping',
-					type: 'options',
-					default: 'equal-values',
-					options: [{
-						name: 'Ascending',
-						value: 'ASC'
-					}, {
-						name: 'Descending',
-						value: 'DESC'
-					}, {
-						name: 'Equal Values',
-						value: 'equal-values'
-					}],
-					description: 'Grouping type'
-				}]
-			}]
-		},
+					{
+						name: 'Record',
+						value: 'record',
+					},
+					{
+						name: 'Report',
+						value: 'report',
+					},
+				],
+				default: 'record',
+				description: 'The resource to operate on.',
+			},
+			...fieldOperations,
+			...fieldFields,
+			...fileOperations,
+			...fileFields,
+			...recordOperations,
+			...recordFields,
+			...reportOperations,
+			...reportFields,
+		],
+	};
 
-		/* Upsert */
-		{
-			displayName: 'Records Data',
-			name: 'data',
-			type: 'string',
-			default: '',
-			placeholder: '[ { "6": { "value": "field value" }, ... }, ... ]',
-			required: true,
-			displayOptions: {
-				show: {
-					operation: [
-						'upsert'
-					]
+	methods = {
+		loadOptions: {
+			async getTableFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const tableId = this.getCurrentNodeParameter('tableId') as string;
+				const fields = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
+				for (const field of fields) {
+					returnData.push({
+						name: field.label,
+						value: field.id,
+					});
 				}
+				return returnData;
 			},
-			description: 'Record data array',
-		}, {
-			displayName: 'Merge Field ID',
-			name: 'mergeFieldId',
-			type: 'number',
-			default: 3,
-			required: true,
-			displayOptions: {
-				show: {
-					operation: [
-						'upsert'
-					]
+			async getUniqueTableFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const tableId = this.getCurrentNodeParameter('tableId') as string;
+				const fields = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
+				for (const field of fields) {
+					//upsert can be achived just with fields that are set as unique and are no the primary key
+					if (field.unique === true && field.properties.primaryKey === false) {
+						returnData.push({
+							name: field.label,
+							value: field.id,
+						});
+					}
 				}
+				return returnData;
 			},
-			typeOptions: {
-				minValue: 1
-			},
-			description: 'The merge field id',
-		}, {
-			displayName: 'Fields to Return',
-			name: 'fieldsToReturn',
-			type: 'string',
-			default: '3',
-			placeholder: '3.4.5',
-			required: true,
-			displayOptions: {
-				show: {
-					operation: [
-						'upsert'
-					]
-				}
-			},
-			description: 'Period delimited list of field ids',
-		}]
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
+		const length = (items.length as unknown) as number;
+		const qs: IDataObject = {};
+		const headers: IDataObject = {};
+		let responseData;
+		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0) as string;
 
-		let operation: string;
-		let tableId: string;
+		if (resource === 'field') {
+			if (operation === 'getAll') {
+				for (let i = 0; i < length; i++) {
 
-		let body: IDataObject;
-		let qs: IDataObject;
-		let isJson: boolean;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-		let requestMethod: string;
-		let endpoint: string;
+					const tableId = this.getNodeParameter('tableId', i) as string;
 
-		let fetchAll: boolean | 'qs';
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					const qs: IDataObject = {
+						tableId,
+					};
+
+					Object.assign(qs, options);
+
+					responseData = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, qs);
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+
+						responseData = responseData.splice(0, limit);
+					} 
  
-        for(let i = 0; i < items.length; ++i){
-			requestMethod = 'GET';
-			endpoint = '';
-			body = {};
-			qs = {};
-			isJson = true;
-			fetchAll = false;
-
-			operation = this.getNodeParameter('operation', i) as string;
-			tableId = this.getNodeParameter('tableId', i) as string;
-
-			if(!tableId){
-				throw new Error(`Missing Table ID.`);
-			}
-
-			switch(operation){
-				case 'deleteRecords':
-					requestMethod = 'DELETE';
-					endpoint = 'records';
-
-					body.from = tableId;
-					body.where = this.getNodeParameter('where', i) as string;
-				break;
-				case 'runQuery':
-					requestMethod = 'POST';
-					endpoint = 'records/query';
-
-					body.from = tableId;
-					body.where = this.getNodeParameter('where', i) as string;
-					body.select = (this.getNodeParameter('select', i) as string).split('.').map((val) => {
-						return +val;
-					});
-
-					const sortBy = (this.getNodeParameter('sortByUI', i) as {
-						sortBy: {
-							fieldId: number;
-							order: 'ASC' | 'DESC';
-						}[]
-					}).sortBy;
-
-					if(sortBy.length > 0){
-						body.sortBy = sortBy;
-					}
-
-					const groupBy = (this.getNodeParameter('groupByUI', i) as {
-						groupBy: {
-							fieldId: number;
-							grouping: 'ASC' | 'DESC' | 'equal-values';
-						}[]
-					}).groupBy;
-
-					if(groupBy.length > 0){
-						body.groupBy = groupBy;
-					}
-
-					const compareWithAppLocalTime = this.getNodeParameter('compareWithAppLocalTime', i) as boolean;
-
-					fetchAll = this.getNodeParameter('fetchAll', i) as boolean
-
-					const options: {
-						top?: number;
-						skip?: number;
-						compareWithAppLocalTime?: boolean;
-					} = {};
-
-					if(!fetchAll){
-						const top = this.getNodeParameter('top', i) as number;
-						const skip = this.getNodeParameter('skip', i) as number;
-
-						if(top !== undefined){
-							options.top = top;
-						}
-
-						if(skip !== undefined){
-							options.skip = skip;
-						}
-					}
-
-					if(compareWithAppLocalTime !== undefined){
-						options.compareWithAppLocalTime = compareWithAppLocalTime;
-					}
-
-					body.options = options;
-				break;
-				case 'runReport':
-					requestMethod = 'POST';
-
-					const reportId = this.getNodeParameter('reportId', i) as number;
-
-					fetchAll = this.getNodeParameter('fetchAll', i) as boolean
-
-					if(!fetchAll){
-						const top = this.getNodeParameter('top', i) as number;
-						const skip = this.getNodeParameter('skip', i) as number;
-
-						if(top !== undefined){
-							qs.top = top;
-						}
-
-						if(skip !== undefined){
-							qs.skip = skip;
-						}
-
-						fetchAll = 'qs';
-					}
-
-					endpoint = `reports/${reportId}/run?tableId=${tableId}`;
-				break;
-				case 'upsert':
-					requestMethod = 'POST';
-					endpoint = 'records';
-
-					body.to = tableId;
-					body.data = JSON.parse(this.getNodeParameter('data', i) as string);
-					body.mergeFieldId = this.getNodeParameter('mergeFieldId', i) as number;
-					body.fieldsToReturn = (this.getNodeParameter('fieldsToReturn', i) as string).split('.').map((val) => {
-						return +val;
-					});
-				break;
-				case 'deleteFile':
-				case 'downloadFile':
-					if(operation === 'deleteFile'){
-						requestMethod = 'DELETE';
-					}else{
-						isJson = false;
-					}
-
-					const recordId = this.getNodeParameter('recordId', i) as number;
-					const fieldId = this.getNodeParameter('fieldId', i) as number;
-					const versionNumber = this.getNodeParameter('versionNumber', i) as number;
-
-					endpoint = `files/${tableId}/${recordId}/${fieldId}/${versionNumber}`;
-				break;
-				default:
-					throw new Error(`The operation "${operation}" is not known!`);
-			}
-
-			const responseData = await quickbaseApiRequest.call(this, requestMethod, endpoint, body, qs, isJson, fetchAll);
-
-			switch(operation){
-				case 'downloadFile':
-					returnData.push({
-						filename: responseData.headers['content-disposition'].match(/filename="(.*)"$/)[1],
-						filesize: +responseData.headers['content-length'],
-						data: responseData.body
-					});
-				break;
-				default:
-					returnData.push(responseData as IDataObject);
-				break;
+					returnData.push.apply(returnData, responseData);
+				}
 			}
 		}
 
-		return [ this.helpers.returnJsonArray(returnData) ];
-	}
+		if (resource === 'file') {
+			if (operation === 'delete') {
+				for (let i = 0; i < length; i++) {
+					const tableId = this.getNodeParameter('tableId', i) as string;
 
+					const recordId = this.getNodeParameter('recordId', i) as string;
+
+					const fieldId = this.getNodeParameter('fieldId', i) as string;
+
+					const versionNumber = this.getNodeParameter('versionNumber', i) as string;
+
+					responseData = await quickbaseApiRequest.call(this,'DELETE', `/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`);
+
+					returnData.push(responseData);
+				}
+			}
+
+			if (operation === 'download') {
+
+				for (let i = 0; i < length; i++) {
+
+					const tableId = this.getNodeParameter('tableId', i) as string;
+
+					const recordId = this.getNodeParameter('recordId', i) as string;
+
+					const fieldId = this.getNodeParameter('fieldId', i) as string;
+
+					const versionNumber = this.getNodeParameter('versionNumber', i) as string;
+
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
+
+					if (items[i].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary, items[i].binary);
+					}
+
+					items[i] = newItem;
+
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+
+					responseData = await quickbaseApiRequest.call(this,'GET', `/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`, {}, {}, { json: false, resolveWithFullResponse: true });
+
+					//content-disposition': 'attachment; filename="dog-puppy-on-garden-royalty-free-image-1586966191.jpg"',
+					const contentDisposition = responseData.headers['content-disposition'];
+
+					const data = Buffer.from(responseData.body as string, 'base64');
+
+					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer,  contentDisposition.split('=')[1]);
+				}
+		
+				return this.prepareOutputData(items);
+			}
+		}
+		
+		if (resource === 'record') {
+			if (operation === 'create') {
+				const tableId = this.getNodeParameter('tableId', 0) as string;
+
+				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
+
+				const simple = this.getNodeParameter('simple', 0) as boolean;
+
+				const data: IDataObject[] = [];
+
+				const options = this.getNodeParameter('options', 0) as IDataObject;
+
+				for (let i = 0; i < length; i++) {
+					const record: IDataObject = {};
+
+					const columns = this.getNodeParameter('columns', i) as string;
+
+					const columnList = columns.split(',').map(column => column.trim());
+
+					for (const key of Object.keys(items[i].json)) {
+						if (fieldsLabelKey.hasOwnProperty(key) && columnList.includes(key)) {
+							record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
+						}
+					}
+					
+					data.push(record);
+				}
+
+				const body: IDataObject = {
+					data,
+					to: tableId,
+				};
+
+				// If not fields are set return at least the record id
+				body.fieldsToReturn = [fieldsLabelKey['Record ID#']];
+
+				if (options.fields) {
+					body.fieldsToReturn = options.fields as string[];
+				}
+
+				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
+
+				if (simple === true) {
+					const { data: records } = responseData;
+					responseData = [];
+					
+					for (const record of records) {
+						const data: IDataObject = {};
+						for (const [key, value] of Object.entries(record)) {
+							data[fieldsIdKey[key]] = (value as IDataObject).value;
+						}
+						responseData.push(data);
+					}
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData);
+				} else {
+					returnData.push(responseData);
+				}
+			}
+			
+			if (operation === 'delete') {
+				for (let i = 0; i < length; i++) {
+					const tableId = this.getNodeParameter('tableId', i) as string;
+
+					const where = this.getNodeParameter('where', i) as string;
+
+					const body: IDataObject = {
+						from: tableId,
+						where,
+					};
+
+					responseData = await quickbaseApiRequest.call(this, 'DELETE', '/records', body);
+
+					returnData.push(responseData);
+				}
+			}
+
+			if (operation === 'getAll') {
+				for (let i = 0; i < length; i++) {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const tableId = this.getNodeParameter('tableId', i) as string;
+
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					const body: IDataObject = {
+						from: tableId,
+					};
+
+					Object.assign(body, options);
+
+					if (options.sortByUi) {
+						const sort = (options.sortByUi as IDataObject).sortByValues as IDataObject[];
+						body.sortBy = sort;
+						delete body.sortByUi;
+					}
+
+					// if (options.groupByUi) {
+					// 	const group = (options.groupByUi as IDataObject).groupByValues as IDataObject[];
+					// 	body.groupBy = group;
+					// 	delete body.groupByUi;
+					// }
+					
+					if (returnAll) {
+						responseData = await quickbaseApiRequestAllItems.call(this, 'POST', '/records/query', body, qs);
+					} else {
+						body.options = { top: this.getNodeParameter('limit', i) as number }; 
+
+						responseData = await quickbaseApiRequest.call(this, 'POST', '/records/query', body, qs);
+						
+						const { data: records, fields } = responseData;
+						responseData = [];
+
+						const fieldsIdKey: { [key: string]: string } = {};
+
+						for (const field of fields) {
+							fieldsIdKey[field.id] = field.label;
+						}
+						
+						for (const record of records) {
+							const data: IDataObject = {};
+							for (const [key, value] of Object.entries(record)) {
+								data[fieldsIdKey[key]] = (value as IDataObject).value;
+							}
+							responseData.push(data);
+						}
+					}
+					returnData.push.apply(returnData, responseData);
+				}
+			}
+
+			if (operation === 'update') {
+				const tableId = this.getNodeParameter('tableId', 0) as string;
+
+				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
+
+				const simple = this.getNodeParameter('simple', 0) as boolean;
+
+				const updateKey = this.getNodeParameter('updateKey', 0) as string;
+
+				const data: IDataObject[] = [];
+
+				const options = this.getNodeParameter('options', 0) as IDataObject;
+
+				for (let i = 0; i < length; i++) {
+					const record: IDataObject = {};
+
+					const columns = this.getNodeParameter('columns', i) as string;
+
+					const columnList = columns.split(',').map(column => column.trim());
+
+					for (const key of Object.keys(items[i].json)) {
+						if (fieldsLabelKey.hasOwnProperty(key) && columnList.includes(key)) {
+							record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
+						}
+					}
+
+					if (items[i].json[updateKey] === undefined) {
+						throw new Error(`The update key ${updateKey} could not be found in the input`);
+					}
+
+					record[fieldsLabelKey['Record ID#']] = { value: items[i].json[updateKey] };
+					
+					data.push(record);
+				}
+
+				const body: IDataObject = {
+					data,
+					to: tableId,
+				};
+
+				// If not fields are set return at least the record id
+				body.fieldsToReturn = [fieldsLabelKey['Record ID#']];
+
+				if (options.fields) {
+					body.fieldsToReturn = options.fields as string[];
+				}
+
+				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
+
+				if (simple === true) {
+					const { data: records } = responseData;
+					responseData = [];
+					
+					for (const record of records) {
+						const data: IDataObject = {};
+						for (const [key, value] of Object.entries(record)) {
+							data[fieldsIdKey[key]] = (value as IDataObject).value;
+						}
+						responseData.push(data);
+					}
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData);
+				} else {
+					returnData.push(responseData);
+				}
+			}
+
+			if (operation === 'upsert') {
+				const tableId = this.getNodeParameter('tableId', 0) as string;
+
+				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
+
+				const simple = this.getNodeParameter('simple', 0) as boolean;
+
+				const updateKey = this.getNodeParameter('updateKey', 0) as string;
+
+				const mergeFieldId = this.getNodeParameter('mergeFieldId', 0) as string;
+
+				const data: IDataObject[] = [];
+
+				const options = this.getNodeParameter('options', 0) as IDataObject;
+
+				for (let i = 0; i < length; i++) {
+					const record: IDataObject = {};
+
+					const columns = this.getNodeParameter('columns', i) as string;
+
+					const columnList = columns.split(',').map(column => column.trim());
+
+					for (const key of Object.keys(items[i].json)) {
+						if (fieldsLabelKey.hasOwnProperty(key) && columnList.includes(key)) {
+							record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
+						}
+					}
+
+					if (items[i].json[updateKey] === undefined) {
+						throw new Error(`The update key ${updateKey} could not be found in the input`);
+					}
+
+					record[mergeFieldId] = { value: items[i].json[updateKey] };
+					
+					data.push(record);
+				}
+
+				const body: IDataObject = {
+					data,
+					to: tableId,
+					mergeFieldId,
+				};
+
+				// If not fields are set return at least the record id
+				body.fieldsToReturn = [fieldsLabelKey['Record ID#']];
+
+				if (options.fields) {
+					body.fieldsToReturn = options.fields as string[];
+				}
+
+				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
+
+				if (simple === true) {
+					const { data: records } = responseData;
+					responseData = [];
+					
+					for (const record of records) {
+						const data: IDataObject = {};
+						for (const [key, value] of Object.entries(record)) {
+							data[fieldsIdKey[key]] = (value as IDataObject).value;
+						}
+						responseData.push(data);
+					}
+				}
+
+				if (Array.isArray(responseData)) {
+					returnData.push.apply(returnData, responseData);
+				} else {
+					returnData.push(responseData);
+				}
+			}
+		}
+
+		if (resource === 'report') {
+
+			if (operation === 'run') {
+				for (let i = 0; i < length; i++) {
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const tableId = this.getNodeParameter('tableId', i) as string;
+
+					const reportId = this.getNodeParameter('reportId', i) as string;
+
+					qs.tableId = tableId;
+
+					if (returnAll) {
+						responseData = await quickbaseApiRequestAllItems.call(this, 'POST', `/reports/${reportId}/run`, {}, qs);
+					} else {
+						qs.top = this.getNodeParameter('limit', i) as number; 
+
+						responseData = await quickbaseApiRequest.call(this, 'POST', `/reports/${reportId}/run`, {}, qs);
+
+						const { data: records, fields } = responseData;
+						responseData = [];
+
+						const fieldsIdKey: { [key: string]: string } = {};
+
+						for (const field of fields) {
+							fieldsIdKey[field.id] = field.label;
+						}
+						
+						for (const record of records) {
+							const data: IDataObject = {};
+							for (const [key, value] of Object.entries(record)) {
+								data[fieldsIdKey[key]] = (value as IDataObject).value;
+							}
+							responseData.push(data);
+						}
+					}
+					returnData.push.apply(returnData, responseData);
+				}
+			}
+
+			if (operation === 'get') {
+				for (let i = 0; i < length; i++) {
+
+					const reportId = this.getNodeParameter('reportId', i) as string;
+
+					const tableId = this.getNodeParameter('tableId', i) as string;
+
+					qs.tableId = tableId;
+
+					responseData = await quickbaseApiRequest.call(this, 'GET', `/reports/${reportId}`, {}, qs);
+
+					returnData.push(responseData);
+				}
+			}
+		}
+		return [this.helpers.returnJsonArray(returnData)];
+	}
 }

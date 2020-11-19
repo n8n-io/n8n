@@ -155,7 +155,7 @@
       "dist/credentials/PushbulletOAuth2Api.credentials.js",
       "dist/credentials/PushoverApi.credentials.js",
       "dist/credentials/QuestDb.credentials.js",
-      "dist/credentials/QuickBase.credentials.js",
+      "dist/credentials/QuickBaseApi.credentials.js",
       "dist/credentials/Redis.credentials.js",
       "dist/credentials/RocketchatApi.credentials.js",
       "dist/credentials/RundeckApi.credentials.js",
