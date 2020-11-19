@@ -4,9 +4,7 @@ import {
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -61,8 +59,8 @@ export class OpenThesaurus implements INodeType {
 				},
 			},
 			{
-				displayName: 'Additional Options',
-				name: 'additionalOptions',
+				displayName: 'Options',
+				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Options',
 				displayOptions: {
@@ -75,11 +73,25 @@ export class OpenThesaurus implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Baseform',
+						name: 'baseform',
+						type: 'boolean',
+						default: false,
+						description: 'Specifies the basic form for the search term if it is not already a basic form.',
+					},
+					{
 						displayName: 'Similar',
 						name: 'similar',
 						type: 'boolean',
 						default: false,
 						description: 'This also returns up to five similarly written words for each answer.</br> This is useful to be able to make a suggestion to the user in the event of a possible typing error.',
+					},
+					{
+						displayName: 'Starts With',
+						name: 'startswith',
+						type: 'boolean',
+						default: false,
+						description: 'Like substring = true, but only finds words that begin with the specified search term.',
 					},
 					{
 						displayName: 'Substring',
@@ -106,11 +118,11 @@ export class OpenThesaurus implements INodeType {
 						description: 'Specifies how many partial word hits should be returned in total.</br> Only works together with substring = true.',
 					},
 					{
-						displayName: 'Starts With',
-						name: 'startswith',
+						displayName: 'Subsynsets',
+						name: 'subsynsets',
 						type: 'boolean',
 						default: false,
-						description: 'Like substring = true, but only finds words that begin with the specified search term.',
+						description: 'Indicates that each synonym group has its (optional) sub-terms supplied.',
 					},
 					{
 						displayName: 'Supersynsets',
@@ -119,23 +131,8 @@ export class OpenThesaurus implements INodeType {
 						default: false,
 						description: 'Indicates that each synonym group is supplied with its (optional) generic terms.',
 					},
-					{
-						displayName: 'Subsynsets',
-						name: 'subsynsets',
-						type: 'boolean',
-						default: false,
-						description: 'Indicates that each synonym group has its (optional) sub-terms supplied.',
-					},
-					{
-						displayName: 'Baseform',
-						name: 'baseform',
-						type: 'boolean',
-						default: false,
-						description: 'Specifies the basic form for the search term if it is not already a basic form.',
-					},
 				],
 			},
-
 		],
 	};
 
@@ -150,11 +147,11 @@ export class OpenThesaurus implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (operation === 'getSynonyms') {
 				const text = this.getNodeParameter('text', i) as string;
-				const additionalOptions = this.getNodeParameter('additionalOptions', i) as IDataObject;
+				const options = this.getNodeParameter('options', i) as IDataObject;
 
 				qs.q = text;
 
-				Object.assign(qs, additionalOptions);
+				Object.assign(qs, options);
 
 				responseData = await openThesaurusApiRequest.call(this, 'GET', `/synonyme/search`, {}, qs);
 				responseData = responseData.synsets;
