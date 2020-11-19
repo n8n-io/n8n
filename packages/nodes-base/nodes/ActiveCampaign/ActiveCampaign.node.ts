@@ -63,9 +63,19 @@ import {
 } from "./AccountContactDescription";
 
 import {
+	contactListFields,
+	contactListOperations,
+} from "./ContactListDescription";
+
+import {
 	contactTagFields,
 	contactTagOperations,
 } from "./ContactTagDescription";
+
+import {
+	listFields,
+	listOperations,
+} from "./ListDescription";
 
 interface CustomProperty {
 	name: string;
@@ -137,6 +147,10 @@ export class ActiveCampaign implements INodeType {
 						value: 'contact',
 					},
 					{
+						name: 'Contact List',
+						value: 'contactList',
+					},
+					{
 						name: 'Contact Tag',
 						value: 'contactTag',
 					},
@@ -161,6 +175,10 @@ export class ActiveCampaign implements INodeType {
 						value: 'ecommerceOrderProducts',
 					},
 					{
+						name: 'List',
+						value: 'list',
+					},
+					{
 						name: 'Tag',
 						value: 'tag',
 					},
@@ -175,7 +193,9 @@ export class ActiveCampaign implements INodeType {
 			...accountOperations,
 			...contactOperations,
 			...accountContactOperations,
+			...contactListOperations,
 			...contactTagOperations,
+			...listOperations,
 			...tagOperations,
 			...dealOperations,
 			...connectionOperations,
@@ -190,12 +210,19 @@ export class ActiveCampaign implements INodeType {
 			//         tag
 			// ----------------------------------
 			...tagFields,
-
+			// ----------------------------------
+			//         list
+			// ----------------------------------
+			...listFields,
+			// ----------------------------------
 			// ----------------------------------
 			//         tag
 			// ----------------------------------
 			...contactTagFields,
-
+			// ----------------------------------
+			//         Contact List
+			// ----------------------------------
+			...contactListFields,
 			// ----------------------------------
 			//         account
 			// ----------------------------------
@@ -554,6 +581,67 @@ export class ActiveCampaign implements INodeType {
 				} else {
 					throw new Error(`The operation "${operation}" is not known`);
 				}
+			} else if (resource === 'contactList') {
+				if (operation === 'add') {
+					// ----------------------------------
+					//         contactList:add
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					endpoint = '/api/3/contactLists';
+
+					dataKey = 'contactTag';
+
+					body.contactList = {
+						list: this.getNodeParameter('listId', i) as string,
+						contact: this.getNodeParameter('contactId', i) as string,
+						status: 1,
+					} as IDataObject;
+
+				} else if (operation === 'remove') {
+					// ----------------------------------
+					//         contactList:remove
+					// ----------------------------------
+
+					requestMethod = 'POST';
+
+					endpoint = '/api/3/contactLists';
+
+					body.contactList = {
+						list: this.getNodeParameter('listId', i) as string,
+						contact: this.getNodeParameter('contactId', i) as string,
+						status: 2,
+					} as IDataObject;
+
+					dataKey = 'contacts';
+
+				} else {
+					throw new Error(`The operation "${operation}" is not known`);
+				}
+			} else if (resource === 'list') {
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//         list:getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const simple = this.getNodeParameter('simple', i, true) as boolean;
+
+
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					if (simple === true) {
+						dataKey = 'lists';
+					}
+
+					endpoint = `/api/3/lists`;
+				}
+
 			} else if (resource === 'tag') {
 				if (operation === 'create') {
 					// ----------------------------------
@@ -1071,6 +1159,10 @@ export class ActiveCampaign implements INodeType {
 				responseData = await activeCampaignApiRequestAllItems.call(this, requestMethod, endpoint, body, qs, dataKey);
 			} else {
 				responseData = await activeCampaignApiRequest.call(this, requestMethod, endpoint, body, qs, dataKey);
+			}
+
+			if (resource === 'contactList' && operation === 'add' && responseData === undefined) {
+				responseData = { success: true };
 			}
 
 			if (Array.isArray(responseData)) {
