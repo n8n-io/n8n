@@ -187,4 +187,3 @@ export function activeCampaignDefaultGetAllProperties(resource: string, operatio
 		},
 	];
 }
-
