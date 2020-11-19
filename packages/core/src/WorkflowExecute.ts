@@ -761,7 +761,9 @@ export class WorkflowExecute {
 					newStaticData = workflow.staticData;
 				}
 
-				await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+				await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(error => {
+					console.error('There was a problem running hook "workflowExecuteAfter"', error);
+				});
 
 				return fullRunData;
 			});
