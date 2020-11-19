@@ -10,7 +10,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { 
+import {
 	IData,
 } from './Interface';
 
@@ -22,7 +22,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Cloud Natural Language',
 		name: 'googleCloudNaturalLanguage',
-		icon: 'file:googleCloudnaturallanguage.png',
+		icon: 'file:googlecloudnaturallanguage.png',
 		group: ['input', 'output'],
 		version: 1,
 		description: 'Consume Google Cloud Natural Language API',
@@ -77,35 +77,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 			// ----------------------------------
 			//         All
 			// ----------------------------------
-			{
-				displayName: 'Document Type',
-				name: 'documentType',
-				type: 'options',
-				options: [
-					{
-						name: 'Unspecified',
-						value: 'TYPE_UNSPECIFIED',
-					},
-					{
-						name: 'Plain Text',
-						value: 'PLAIN_TEXT',
-					},
-					{
-						name: 'HTML',
-						value: 'HTML',
-					},
-				],
-				default: '',
-				description: 'The type of input document.',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'analyzeSentiment',
-						],
-					},
-				},
-			},
 			{
 				displayName: 'Source',
 				name: 'source',
@@ -168,39 +139,6 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				},
 			},
 			{
-				displayName: 'Encoding Type',
-				name: 'encodingType',
-				type: 'options',
-				options: [
-					{
-						name: 'None',
-						value: 'NONE',
-					},
-					{
-						name: 'UTF-8',
-						value: 'UTF8',
-					},
-					{
-						name: 'UTF-16',
-						value: 'UTF16',
-					},
-					{
-						name: 'UTF-32',
-						value: 'UTF32',
-					},
-				],
-				default: '',
-				description: 'The encoding type used by the API to calculate sentence offsets.',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'analyzeSentiment',
-						],
-					},
-				},
-			},
-			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -215,6 +153,49 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				description: '',
 				placeholder: 'Add Option',
 				options: [
+					{
+						displayName: 'Document Type',
+						name: 'documentType',
+						type: 'options',
+						options: [
+							{
+								name: 'HTML',
+								value: 'HTML',
+							},
+							{
+								name: 'Plain Text',
+								value: 'PLAIN_TEXT',
+							},
+						],
+						default: 'PLAIN_TEXT',
+						description: 'The type of input document.',
+						required: true,
+					},
+					{
+						displayName: 'Encoding Type',
+						name: 'encodingType',
+						type: 'options',
+						options: [
+							{
+								name: 'None',
+								value: 'NONE',
+							},
+							{
+								name: 'UTF-8',
+								value: 'UTF8',
+							},
+							{
+								name: 'UTF-16',
+								value: 'UTF16',
+							},
+							{
+								name: 'UTF-32',
+								value: 'UTF32',
+							},
+						],
+						default: 'UTF16',
+						description: 'The encoding type used by the API to calculate sentence offsets.',
+					},
 					{
 						displayName: 'Language',
 						name: 'language',
@@ -304,9 +285,9 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 			if (resource === 'document') {
 				if (operation === 'analyzeSentiment') {
 					const source = this.getNodeParameter('source', i) as string;
-					const documentType = this.getNodeParameter('documentType', i) as string;
-					const encodingType = this.getNodeParameter('encodingType', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
+					const encodingType = (options.encodingType as string | undefined) || 'UTF16';
+					const documentType = (options.documentType as string | undefined) || 'PLAIN_TEXT';
 
 					const body: IData = {
 						document: {
