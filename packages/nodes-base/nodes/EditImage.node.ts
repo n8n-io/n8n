@@ -54,6 +54,11 @@ export class EditImage implements INodeType {
 						description: 'Adds a border to the image',
 					},
 					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a new image',
+					},
+					{
 						name: 'Crop',
 						value: 'crop',
 						description: 'Crops the image',
@@ -104,6 +109,62 @@ export class EditImage implements INodeType {
 				type: 'string',
 				default: 'data',
 				description: 'Name of the binary property in which the image data can be found.',
+			},
+
+
+			// ----------------------------------
+			//         create
+			// ----------------------------------
+			{
+				displayName: 'Background Color',
+				name: 'backgroundColor',
+				type: 'color',
+				default: '#ffffff00',
+				typeOptions: {
+					showAlpha: true,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'The background color of the image to create.',
+			},
+			{
+				displayName: 'Image Width',
+				name: 'width',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'The width of the image to create.',
+			},
+			{
+				displayName: 'Image Height',
+				name: 'height',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+					},
+				},
+				description: 'The height of the image to create.',
 			},
 
 
@@ -821,18 +882,28 @@ export class EditImage implements INodeType {
 
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		// TODO: Later should make so that it sends directly a valid buffer and the buffer.from stuff is not needed anymore
-		if (item.binary === undefined) {
-			return item;
+		let gmInstance: gm.State;
+		if (operation === 'create') {
+			const backgroundColor = this.getNodeParameter('backgroundColor') as string;
+			const width = this.getNodeParameter('width') as number;
+			const height = this.getNodeParameter('height') as number;
+
+			gmInstance = gm(width, height, backgroundColor);
+			if (!options.format) {
+				options.format = 'png';
+			}
+		} else {
+			if (item.binary === undefined) {
+				throw new Error('Item does not contain any binary data.');
+			}
+
+			if (item.binary[dataPropertyName as string] === undefined) {
+				throw new Error(`Item does not contain any binary data with the name "${dataPropertyName}".`);
+			}
+
+			gmInstance = gm(Buffer.from(item.binary![dataPropertyName as string].data, BINARY_ENCODING));
+			gmInstance = gmInstance.background('transparent');
 		}
-
-		if (item.binary[dataPropertyName as string] === undefined) {
-			return item;
-		}
-
-		let gmInstance = gm(Buffer.from(item.binary![dataPropertyName as string].data, BINARY_ENCODING));
-
-		gmInstance = gmInstance.background('transparent');
 
 		const cleanupFunctions: Array<() => void> = [];
 
@@ -853,15 +924,15 @@ export class EditImage implements INodeType {
 
 			const geometryString = (positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
-			if (item.binary[dataPropertyNameComposite as string] === undefined) {
-				throw new Error('');
+			if (item.binary![dataPropertyNameComposite as string] === undefined) {
+				throw new Error(`Item does not contain any binary data with the name "${dataPropertyNameComposite}".`);
 			}
 
 			const { fd, path, cleanup } = await file();
 			cleanupFunctions.push(cleanup);
 			fsWriteFileAsync(fd, Buffer.from(item.binary![dataPropertyNameComposite as string].data, BINARY_ENCODING));
 
-			gmInstance = gmInstance.compose(path).geometry(geometryString);
+			gmInstance = gmInstance.composite(path).geometry(geometryString);
 		} else if (operation === 'crop') {
 			const width = this.getNodeParameter('width') as number;
 			const height = this.getNodeParameter('height') as number;
@@ -963,7 +1034,7 @@ export class EditImage implements INodeType {
 				.fill(fontColor)
 				.fontSize(fontSize)
 				.drawText(positionX, positionY, renderText);
-		} else {
+		} else if (operation !== 'create') {
 			throw new Error(`The operation "${operation}" is not supported!`);
 		}
 
@@ -979,6 +1050,13 @@ export class EditImage implements INodeType {
 			Object.assign(newItem.binary, item.binary);
 			// Make a deep copy of the binary data we change
 			newItem.binary![dataPropertyName as string] = JSON.parse(JSON.stringify(newItem.binary![dataPropertyName as string]));
+		} else {
+			newItem.binary = {
+				[dataPropertyName as string]: {
+					data: '',
+					mimeType: '',
+				},
+			};
 		}
 
 		if (options.quality !== undefined) {
