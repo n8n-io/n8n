@@ -40,6 +40,7 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
+	
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -58,7 +59,7 @@ export async function woocommerceApiRequest(this: IHookFunctions | IExecuteFunct
 	}
 }
 
-export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function woocommerceApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
