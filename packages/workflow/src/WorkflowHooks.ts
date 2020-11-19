@@ -28,8 +28,6 @@ export class WorkflowHooks {
 	async executeHookFunctions(hookName: string, parameters: any[]) { // tslint:disable-line:no-any
 		if (this.hookFunctions[hookName] !== undefined && Array.isArray(this.hookFunctions[hookName])) {
 			for (const hookFunction of this.hookFunctions[hookName]!) {
-				// TODO: As catch got removed we should make sure that we catch errors
-				//       where hooks get called
 				await hookFunction.apply(this, parameters);
 			}
 		}
