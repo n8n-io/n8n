@@ -32,7 +32,14 @@ export async function lingvaNexApiRequest(this: IHookFunctions | IExecuteFunctio
 
 		options = Object.assign({}, options, option);
 
-		return await this.helpers.request!(options);
+		const response = await this.helpers.request!(options);
+
+		if (response.err !== null) {
+			throw new Error(`LingvaNex error response [400]: ${response.err}`);
+		}
+
+		return response;
+
 	} catch (error) {
 
 		if (error.response && error.response.body && error.response.body.message) {
