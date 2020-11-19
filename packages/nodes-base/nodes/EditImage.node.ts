@@ -861,7 +861,7 @@ export class EditImage implements INodeType {
 			cleanupFunctions.push(cleanup);
 			fsWriteFileAsync(fd, Buffer.from(item.binary![dataPropertyNameComposite as string].data, BINARY_ENCODING));
 
-			gmInstance = gmInstance.compose(path).geometry(geometryString);
+			gmInstance = gmInstance.composite(path).geometry(geometryString);
 		} else if (operation === 'crop') {
 			const width = this.getNodeParameter('width') as number;
 			const height = this.getNodeParameter('height') as number;

@@ -18,12 +18,12 @@ export const contactListOperations = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: 'Add contactt to a list',
+				description: 'Add contact to a list',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
-				description: 'Remove contactt from a list',
+				description: 'Remove contact from a list',
 			},
 		],
 		default: 'add',
@@ -71,6 +71,7 @@ export const contactListFields = [
 		},
 		description: 'Contact ID',
 	},
+
 	// ----------------------------------
 	//         contactList:remove
 	// ----------------------------------
