@@ -5,15 +5,15 @@ import {
 
 import {
 	groups,
-} from './json/groups';
+} from './Json/Groups';
 
 import {
 	tools,
-} from './json/tools';
+} from './Json/Tools';
 
 function capitalize(str: string): string {
 	if (!str) {
-		return "";
+		return '';
 	} else {
 		return str.charAt(0).toUpperCase() + str.slice(1);
 	}
@@ -40,11 +40,8 @@ for(const group of (groups as IDataObject).groups as IDataObject[]) {
 	const options = [];
 
 	for(const tool of (tools as IDataObject).processors as IDataObject[]){
-		//@ts-ignore
 		if (tool.g === group.name) {
-		//if (tool?.groups.indexOf(group.name) !== -1) {
-					//@ts-ignore
-			const link = "https://app.uproc.io/#/tools/processor/" + (tool.k as string).replace(/ /g, "-").toLowerCase().replace("-", "/").replace("-", "/");
+			const link = 'https://app.uproc.io/#/tools/processor/' + (tool.k as string).replace(/ /g, '-').toLowerCase().replace('-', '/').replace('-', '/');
 			const option = {
 				name: tool.d as string,
 				value: tool.k,
@@ -55,7 +52,7 @@ for(const group of (groups as IDataObject).groups as IDataObject[]) {
 	}
 
 	//Tool
-	item.options = <any>options.sort((a, b) => (a.name > b.name) ? 1 : -1)
+	item.options = <any>options.sort((a, b) => (a.name > b.name) ? 1 : -1);
 	item.default = <string>options[0].value;
 	operations.push(item);
 }
