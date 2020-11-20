@@ -5,7 +5,7 @@ import {
 
 import {
 	groups,
-} from './json/groups';
+} from './Json/Groups';
 
 const finalGroups = {
 	displayName: 'Group',

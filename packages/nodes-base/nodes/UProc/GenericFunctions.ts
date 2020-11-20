@@ -18,7 +18,7 @@ export async function uprocApiRequest(this: IHookFunctions | IExecuteFunctions |
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	const token = Buffer.from(`${credentials.email}:${credentials.apiKey}`).toString("base64");
+	const token = Buffer.from(`${credentials.email}:${credentials.apiKey}`).toString('base64');
 	const options: OptionsWithUri = {
 		headers: { Authorization: `Basic ${token}`},
 		method,

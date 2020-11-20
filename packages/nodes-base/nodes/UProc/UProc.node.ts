@@ -22,8 +22,6 @@ import {
   toolParameters,
 } from './ToolDescription';
 
-import { OptionsWithUri } from 'request';
-
 export class UProc implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'UProc',
@@ -127,7 +125,7 @@ export class UProc implements INodeType {
 
     const requestPromises = [];
     for (let i = 0; i < length; i++) {
-      const toolKey = tool.replace(/([A-Z]+)/g, "-$1").toLowerCase()
+      const toolKey = tool.replace(/([A-Z]+)/g, "-$1").toLowerCase();
       const body: LooseObject = {
         processor: toolKey,
         params: {}
