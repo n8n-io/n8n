@@ -16,7 +16,7 @@
 
 				<el-menu-item index="logo" class="logo-item">
 					<a href="https://n8n.io" target="_blank" class="logo">
-						<img src="/n8n-icon-small.png" class="icon" alt="n8n.io"/>
+						<img :src="basePath + 'n8n-icon-small.png'" class="icon" alt="n8n.io"/>
 						<span class="logo-text" slot="title">n8n.io</span>
 					</a>
 				</el-menu-item>
@@ -179,6 +179,7 @@ import WorkflowSettings from '@/components/WorkflowSettings.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '@/components/mixins/showMessage';
+import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowSave } from '@/components/mixins/workflowSave';
 import { workflowRun } from '@/components/mixins/workflowRun';
@@ -191,6 +192,7 @@ export default mixins(
 	genericHelpers,
 	restApi,
 	showMessage,
+	titleChange,
 	workflowHelpers,
 	workflowRun,
 	workflowSave,
@@ -208,6 +210,8 @@ export default mixins(
 		data () {
 			return {
 				aboutDialogVisible: false,
+				// @ts-ignore
+				basePath: this.$store.getters.getBaseUrl,
 				isCollapsed: true,
 				credentialNewDialogVisible: false,
 				credentialOpenDialogVisible: false,
@@ -394,7 +398,7 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('setWorkflowName', workflowName);
+					this.$store.commit('setWorkflowName', {newName: workflowName, setStateDirty: false});
 
 					this.$showMessage({
 						title: 'Workflow renamed',
@@ -415,7 +419,8 @@ export default mixins(
 						this.$showError(error, 'Problem deleting the workflow', 'There was a problem deleting the workflow:');
 						return;
 					}
-
+					// Reset tab title since workflow is deleted.
+					this.$titleReset();
 					this.$showMessage({
 						title: 'Workflow got deleted',
 						message: `The workflow "${this.workflowName}" got deleted!`,
@@ -443,13 +448,28 @@ export default mixins(
 				} else if (key === 'workflow-settings') {
 					this.workflowSettingsDialogVisible = true;
 				} else if (key === 'workflow-new') {
-					this.$router.push({ name: 'NodeViewNew' });
+					const result = this.$store.getters.getStateIsDirty;
+					if(result) {
+						const importConfirm = await this.confirmMessage(`When you switch workflows your current workflow changes will be lost.`, 'Save your Changes?', 'warning', 'Yes, switch workflows and forget changes');
+						if (importConfirm === true) {
+							this.$store.commit('setStateDirty', false);
+							this.$router.push({ name: 'NodeViewNew' });
 
-					this.$showMessage({
-						title: 'Workflow created',
-						message: 'A new workflow got created!',
-						type: 'success',
-					});
+							this.$showMessage({
+								title: 'Workflow created',
+								message: 'A new workflow got created!',
+								type: 'success',
+							});
+						}
+					} else {
+						this.$router.push({ name: 'NodeViewNew' });
+
+						this.$showMessage({
+							title: 'Workflow created',
+							message: 'A new workflow got created!',
+							type: 'success',
+						});
+					}
 				} else if (key === 'credentials-open') {
 					this.credentialOpenDialogVisible = true;
 				} else if (key === 'credentials-new') {

@@ -7,6 +7,7 @@ import {
 export class TrelloApi implements ICredentialType {
 	name = 'trelloApi';
 	displayName = 'Trello API';
+	documentationUrl = 'trello';
 	properties = [
 		{
 			displayName: 'API Key',

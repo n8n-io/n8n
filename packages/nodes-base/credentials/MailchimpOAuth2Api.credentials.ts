@@ -10,6 +10,7 @@ export class MailchimpOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Mailchimp OAuth2 API';
+	documentationUrl = 'mailchimp';
 	properties = [
 		{
 			displayName: 'Authorization URL',
@@ -48,7 +49,7 @@ export class MailchimpOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'header',
+			default: 'body',
 		},
 	];
 }

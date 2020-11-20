@@ -23,7 +23,7 @@ export const dealOperations = [
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a deals',
+				description: 'Delete a deal',
 			},
 			{
 				name: 'Get',
@@ -67,7 +67,7 @@ export const dealFields = [
 		type: 'options',
 		required: true,
 		typeOptions: {
-			loadOptionsMethod: 'getDealStages'
+			loadOptionsMethod: 'getDealStages',
 		},
 		displayOptions: {
 			show: {
@@ -101,36 +101,9 @@ export const dealFields = [
 		},
 		options: [
 			{
-				displayName: 'Deal Name',
-				name: 'dealName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Pipeline',
-				name: 'pipeline',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Close Date',
-				name: 'closeDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
 				displayName: 'Amount',
 				name: 'amount',
 				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Deal Type',
-				name: 'dealType',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getDealTypes',
-				},
 				default: '',
 			},
 			{
@@ -151,7 +124,69 @@ export const dealFields = [
 				},
 				default: [],
 			},
-		]
+			{
+				displayName: 'Close Date',
+				name: 'closeDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Custom Properties',
+				name: 'customPropertiesUi',
+				placeholder: 'Add Custom Property',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customPropertiesValues',
+						displayName: 'Custom Property',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDealCustomProperties',
+								},
+								default: '',
+								description: 'Name of the property.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the property',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Deal Name',
+				name: 'dealName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Deal Type',
+				name: 'dealType',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDealTypes',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Pipeline',
+				name: 'pipeline',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:update                                */
@@ -192,6 +227,53 @@ export const dealFields = [
 		},
 		options: [
 			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Close Date',
+				name: 'closeDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Custom Properties',
+				name: 'customPropertiesUi',
+				placeholder: 'Add Custom Property',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customPropertiesValues',
+						displayName: 'Custom Property',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDealCustomProperties',
+								},
+								default: '',
+								description: 'Name of the property.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the property',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Deal Name',
 				name: 'dealName',
 				type: 'string',
@@ -203,28 +285,10 @@ export const dealFields = [
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsMethod: 'getDealStages'
+					loadOptionsMethod: 'getDealStages',
 				},
 				default: '',
 				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
-			},
-			{
-				displayName: 'Pipeline',
-				name: 'pipeline',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Close Date',
-				name: 'closeDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'string',
-				default: '',
 			},
 			{
 				displayName: 'Deal Type',
@@ -235,7 +299,13 @@ export const dealFields = [
 				},
 				default: '',
 			},
-		]
+			{
+				displayName: 'Pipeline',
+				name: 'pipeline',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                  deal:get                                  */
@@ -283,7 +353,7 @@ export const dealFields = [
 				description: `By default, you will only get data for the most recent version of a property in the "versions" data.<br/>
 				If you include this parameter, you will get data for all previous versions.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:getAll                                */
@@ -372,7 +442,7 @@ export const dealFields = [
 				description: `Works similarly to properties=, but this parameter will include the history for the specified property,<br/>
 				instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 deal:delete                                */
@@ -474,6 +544,6 @@ export const dealFields = [
 				description: `By default, you will only get data for the most recent version of a property in the "versions" data.<br/>
 				If you include this parameter, you will get data for all previous versions.`,
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

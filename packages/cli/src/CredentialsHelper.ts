@@ -5,9 +5,14 @@ import {
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
+	INode,
 	INodeParameters,
 	INodeProperties,
+	INodeType,
+	INodeTypeData,
+	INodeTypes,
 	NodeHelpers,
+	Workflow,
 } from 'n8n-workflow';
 
 import {
@@ -16,6 +21,19 @@ import {
 	Db,
 	ICredentialsDb,
 } from './';
+
+
+const mockNodeTypes: INodeTypes = {
+	nodeTypes: {},
+	init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
+	getAll: (): INodeType[] => {
+		// Does not get used in Workflow so no need to return it
+		return [];
+	},
+	getByName: (nodeType: string): INodeType | undefined => {
+		return undefined;
+	},
+};
 
 
 export class CredentialsHelper extends ICredentialsHelper {
@@ -107,13 +125,25 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
 		// Add the default credential values
-		const decryptedData = NodeHelpers.getNodeParameters(credentialsProperties, decryptedDataOriginal as INodeParameters, true, false) as ICredentialDataDecryptedObject;
+		let decryptedData = NodeHelpers.getNodeParameters(credentialsProperties, decryptedDataOriginal as INodeParameters, true, false) as ICredentialDataDecryptedObject;
 
 		if (decryptedDataOriginal.oauthTokenData !== undefined) {
 			// The OAuth data gets removed as it is not defined specifically as a parameter
 			// on the credentials so add it back in case it was set
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
+
+		const mockNode: INode = {
+			name: '',
+			typeVersion: 1,
+			type: 'mock',
+			position: [0, 0],
+			parameters: decryptedData as INodeParameters,
+		};
+
+		const workflow = new Workflow({ nodes: [mockNode], connections: {}, active: false, nodeTypes: mockNodeTypes});
+		// Resolve expressions if any are set
+		decryptedData = workflow.expression.getComplexParameterValue(mockNode, decryptedData as INodeParameters, undefined) as ICredentialDataDecryptedObject;
 
 		// Load and apply the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();

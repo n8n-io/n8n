@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const contactOperations = [
 	{
@@ -19,9 +21,9 @@ export const contactOperations = [
 				description: 'Create a new contact',
 			},
 			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a contact',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a contact',
 			},
 			{
 				name: 'Get',
@@ -34,9 +36,9 @@ export const contactOperations = [
 				description: 'Get data of all contacts',
 			},
 			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a contact',
+				name: 'Update',
+				value: 'update',
+				description: 'Update a contact',
 			},
 		],
 		default: 'create',
@@ -46,9 +48,9 @@ export const contactOperations = [
 
 export const contactFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                contact:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
@@ -80,7 +82,7 @@ export const contactFields = [
 				],
 				jsonParameters: [
 					false,
-				]
+				],
 			},
 		},
 		default: '',
@@ -100,7 +102,7 @@ export const contactFields = [
 				],
 				jsonParameters: [
 					false,
-				]
+				],
 			},
 		},
 		default: '',
@@ -450,9 +452,9 @@ export const contactFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                               contact:update                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               contact:update                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -955,9 +957,9 @@ export const contactFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 contact:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contact:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -976,9 +978,9 @@ export const contactFields = [
 		description: 'Contact ID',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                contact:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                contact:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -1021,9 +1023,9 @@ export const contactFields = [
 		description: 'How many results to return.',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                               contact:delete                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               contact:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
@@ -1042,9 +1044,9 @@ export const contactFields = [
 		description: 'Contact ID',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 contact:all                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contact:all                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -1158,11 +1160,11 @@ export const contactFields = [
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description: `By default only the data of the fields get returned. If this<br />
 							  options gets set the RAW response with all data gets returned.`,
 			},
-		]
+		],
 	},
 
 ] as INodeProperties[];

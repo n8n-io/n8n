@@ -1,10 +1,10 @@
 import {
 	IContextObject,
-	INodeCredentialDescription,
 	INode,
+	INodeCredentialDescription,
 	INodeExecutionData,
-	INodeIssues,
 	INodeIssueObjectProperty,
+	INodeIssues,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
@@ -238,11 +238,11 @@ export function getSpecialNodeParameters(nodeType: INodeType) {
 								options: [
 									{
 										name: 'Minutes',
-										value: 'minutes'
+										value: 'minutes',
 									},
 									{
 										name: 'Hours',
-										value: 'hours'
+										value: 'hours',
 									},
 								],
 								default: 'hours',
@@ -642,7 +642,7 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 			}
 
 			// Itterate over all collections
-			for (const itemName of Object.keys(propertyValues)) {
+			for (const itemName of Object.keys(propertyValues || {})) {
 				if (nodeProperties.typeOptions !== undefined && nodeProperties.typeOptions.multipleValues === true) {
 					// Multiple can be set so will be an array
 
@@ -755,7 +755,7 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 
 	const returnData: IWebhookData[] = [];
 	for (const webhookDescription of nodeType.description.webhooks) {
-		let nodeWebhookPath = workflow.getSimpleParameterValue(node, webhookDescription['path'], 'GET');
+		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(node, webhookDescription['path']);
 		if (nodeWebhookPath === undefined) {
 			// TODO: Use a proper logger
 			console.error(`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`);
@@ -768,9 +768,10 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			nodeWebhookPath = nodeWebhookPath.slice(1);
 		}
 
-		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath);
+		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
+		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
 
-		const httpMethod = workflow.getSimpleParameterValue(node, webhookDescription['httpMethod'], 'GET');
+		const httpMethod = workflow.expression.getSimpleParameterValue(node, webhookDescription['httpMethod'], 'GET');
 
 		if (httpMethod === undefined) {
 			// TODO: Use a proper logger
@@ -791,6 +792,61 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 	return returnData;
 }
 
+export function getNodeWebhooksBasic(workflow: Workflow, node: INode): IWebhookData[] {
+	if (node.disabled === true) {
+		// Node is disabled so webhooks will also not be enabled
+		return [];
+	}
+
+	const nodeType = workflow.nodeTypes.getByName(node.type) as INodeType;
+
+	if (nodeType.description.webhooks === undefined) {
+		// Node does not have any webhooks so return
+		return [];
+	}
+
+	const workflowId = workflow.id || '__UNSAVED__';
+
+	const returnData: IWebhookData[] = [];
+	for (const webhookDescription of nodeType.description.webhooks) {
+		let nodeWebhookPath = workflow.expression.getSimpleParameterValue(node, webhookDescription['path']);
+		if (nodeWebhookPath === undefined) {
+			// TODO: Use a proper logger
+			console.error(`No webhook path could be found for node "${node.name}" in workflow "${workflowId}".`);
+			continue;
+		}
+
+		nodeWebhookPath = nodeWebhookPath.toString();
+
+		if (nodeWebhookPath.charAt(0) === '/') {
+			nodeWebhookPath = nodeWebhookPath.slice(1);
+		}
+
+		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(node, webhookDescription['isFullPath'], false) as boolean;
+
+		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath);
+
+		const httpMethod = workflow.expression.getSimpleParameterValue(node, webhookDescription['httpMethod']);
+
+		if (httpMethod === undefined) {
+			// TODO: Use a proper logger
+			console.error(`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`);
+			continue;
+		}
+
+		//@ts-ignore
+		returnData.push({
+			httpMethod: httpMethod.toString() as WebhookHttpMethod,
+			node: node.name,
+			path,
+			webhookDescription,
+			workflowId,
+		});
+	}
+
+	return returnData;
+}
+
 
 /**
  * Returns the webhook path
@@ -801,8 +857,17 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
  * @param {string} path
  * @returns {string}
  */
-export function getNodeWebhookPath(workflowId: string, node: INode, path: string): string {
-	return `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
+export function getNodeWebhookPath(workflowId: string, node: INode, path: string, isFullPath?: boolean): string {
+	let webhookPath = '';
+	if (node.webhookId === undefined) {
+		webhookPath = `${workflowId}/${encodeURIComponent(node.name.toLowerCase())}/${path}`;
+	} else {
+		if (isFullPath === true) {
+			return path;
+		}
+		webhookPath = `${node.webhookId}/${path}`;
+	}
+	return webhookPath;
 }
 
 
@@ -814,11 +879,11 @@ export function getNodeWebhookPath(workflowId: string, node: INode, path: string
  * @param {string} workflowId
  * @param {string} nodeTypeName
  * @param {string} path
+ * @param {boolean} isFullPath
  * @returns {string}
  */
-export function getNodeWebhookUrl(baseUrl: string, workflowId: string, node: INode, path: string): string {
-	// return `${baseUrl}/${workflowId}/${nodeTypeName}/${path}`;
-	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path)}`;
+export function getNodeWebhookUrl(baseUrl: string, workflowId: string, node: INode, path: string, isFullPath?: boolean): string {
+	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
 

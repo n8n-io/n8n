@@ -126,6 +126,7 @@ export interface IRestApi {
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
 	getSettings(): Promise<IN8nUISettings>;
 	getNodeTypes(): Promise<INodeTypeDescription[]>;
+	getNodesInformation(nodeList: string[]): Promise<INodeTypeDescription[]>;
 	getNodeParameterOptions(nodeType: string, methodName: string, currentNodeParameters: INodeParameters, credentials?: INodeCredentials): Promise<INodePropertyOptions[]>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
@@ -397,6 +398,12 @@ export interface IN8nUISettings {
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
 	timezone: string;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
+	oauthCallbackUrls: {
+		oauth1: string;
+		oauth2: string;
+	};
 	urlBaseWebhook: string;
 	versionCli: string;
 }
@@ -407,4 +414,13 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveDataSuccessExecution?: string;
 	saveManualExecutions?: boolean;
 	timezone?: string;
+	executionTimeout?: number;
 }
+
+export interface ITimeoutHMS {
+	hours: number;
+	minutes: number;
+	seconds: number;
+}
+
+export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';

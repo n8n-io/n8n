@@ -4,10 +4,10 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -20,13 +20,13 @@ import {
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Hubspot Trigger',
+		displayName: 'HubSpot Trigger',
 		name: 'hubspotTrigger',
 		icon: 'file:hubspot.png',
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{($parameter["appId"]) ? $parameter["event"] : ""}}',
-		description: 'Starts the workflow when Hubspot events occure.',
+		description: 'Starts the workflow when HubSpot events occur.',
 		defaults: {
 			name: 'Hubspot Trigger',
 			color: '#ff7f64',

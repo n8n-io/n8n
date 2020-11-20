@@ -1,4 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const attachmentOperations = [
 	// ----------------------------------
@@ -29,13 +31,13 @@ export const attachmentOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get the data of an attachments',
+				description: 'Get the data of an attachment',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
 				description: 'Returns all attachments for the card',
-			}
+			},
 		],
 		default: 'getAll',
 		description: 'The operation to perform.',

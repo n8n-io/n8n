@@ -7,6 +7,7 @@ import {
 export class TelegramApi implements ICredentialType {
 	name = 'telegramApi';
 	displayName = 'Telegram API';
+	documentationUrl = 'telegram';
 	properties = [
 		{
 			displayName: 'Access Token',

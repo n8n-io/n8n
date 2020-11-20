@@ -1,12 +1,14 @@
 import {
 	BINARY_ENCODING,
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import {
@@ -22,7 +24,6 @@ interface CustomProperty {
 	name: string;
 	value: string;
 }
-
 
 /**
  * Add the additional fields to the body
@@ -61,9 +62,44 @@ export class Pipedrive implements INodeType {
 			{
 				name: 'pipedriveApi',
 				required: true,
-			}
+				displayOptions: {
+					show: {
+						authentication: [
+							'apiToken',
+						],
+					},
+				},
+			},
+			{
+				name: 'pipedriveOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [
+							'oAuth2',
+						],
+					},
+				},
+			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiToken',
+				description: 'Method of authentication.',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -273,7 +309,7 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get data of all note',
+						description: 'Get data of all notes',
 					},
 					{
 						name: 'Update',
@@ -305,7 +341,7 @@ export class Pipedrive implements INodeType {
 					{
 						name: 'Delete',
 						value: 'delete',
-						description: 'Delete anorganization',
+						description: 'Delete an organization',
 					},
 					{
 						name: 'Get',
@@ -359,6 +395,11 @@ export class Pipedrive implements INodeType {
 						name: 'Get All',
 						value: 'getAll',
 						description: 'Get data of all persons',
+					},
+					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search all persons',
 					},
 					{
 						name: 'Update',
@@ -550,7 +591,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -590,7 +631,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'activity',
@@ -612,7 +653,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'activity',
@@ -631,7 +672,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'activity',
@@ -741,7 +782,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -923,7 +964,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -984,7 +1025,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'deal',
@@ -1006,7 +1047,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'deal',
@@ -1025,7 +1066,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'deal',
@@ -1165,7 +1206,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -1190,7 +1231,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create'
+							'create',
 						],
 						resource: [
 							'file',
@@ -1308,7 +1349,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'download'
+							'download',
 						],
 						resource: [
 							'file',
@@ -1328,7 +1369,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'file',
@@ -1379,6 +1420,7 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'create',
+							'getAll',
 						],
 						resource: [
 							'note',
@@ -1443,7 +1485,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'get'
+							'get',
 						],
 						resource: [
 							'note',
@@ -1465,7 +1507,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'note',
@@ -1484,7 +1526,7 @@ export class Pipedrive implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 						resource: [
 							'note',
@@ -1617,7 +1659,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -1785,7 +1827,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -1955,7 +1997,7 @@ export class Pipedrive implements INodeType {
 										default: '',
 										description: 'Value of the property to set.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -2019,6 +2061,7 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
+							'search',
 						],
 					},
 				},
@@ -2033,6 +2076,7 @@ export class Pipedrive implements INodeType {
 					show: {
 						operation: [
 							'getAll',
+							'search',
 						],
 						returnAll: [
 							false,
@@ -2047,7 +2091,187 @@ export class Pipedrive implements INodeType {
 				description: 'How many results to return.',
 			},
 
+			// ----------------------------------
+			//         person:getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Filter ID',
+						name: 'filterId',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getFilters',
+						},
+						default: '',
+						description: 'ID of the filter to use.',
+					},
+					{
+						displayName: 'First Char',
+						name: 'firstChar',
+						type: 'string',
+						default: '',
+						description: 'If supplied, only persons whose name starts with the specified letter will be returned ',
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         person:search
+			// ----------------------------------
+			{
+				displayName: 'Term',
+				name: 'term',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: '',
+				description: 'The search term to look for. Minimum 2 characters (or 1 if using exact_match).',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'search',
+						],
+						resource: [
+							'person',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Exact Match',
+						name: 'exactMatch',
+						type: 'boolean',
+						default: false,
+						description: 'When enabled, only full exact matches against the given term are returned. It is not case sensitive.',
+					},
+					{
+						displayName: 'Fields',
+						name: 'fields',
+						type: 'string',
+						default: '',
+						description: 'A comma-separated string array. The fields to perform the search from. Defaults to all of them.',
+					},
+					{
+						displayName: 'Include Fields',
+						name: 'includeFields',
+						type: 'string',
+						default: '',
+						description: 'Supports including optional fields in the results which are not provided by default.',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'organizationId',
+						type: 'string',
+						default: '',
+						description: 'Will filter Deals by the provided Organization ID.',
+					},
+					{
+						displayName: 'RAW Data',
+						name: 'rawData',
+						type: 'boolean',
+						default: false,
+						description: `Returns the data exactly in the way it got received from the API.`,
+					},
+				],
+			},
+
+			// ----------------------------------
+			//         note:create/getAll
+			// ----------------------------------
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+							'getAll',
+						],
+						resource: [
+							'note',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Deal ID',
+						name: 'deal_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the deal this note will be associated with',
+					},
+					{
+						displayName: 'Organization ID',
+						name: 'org_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the organization this note will be associated with.',
+					},
+					{
+						displayName: 'Person ID',
+						name: 'person_id',
+						type: 'number',
+						default: 0,
+						description: 'ID of the person this note will be associated with.',
+					},
+				],
+			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the filters to display them to user so that he can
+			// select them easily
+			async getFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { data } = await pipedriveApiRequest.call(this, 'GET', '/filters', {}, { type: 'people' });
+				for (const filter of data) {
+					const filterName = filter.name;
+					const filterId = filter.id;
+					returnData.push({
+						name: filterName,
+						value: filterId,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 
@@ -2261,7 +2485,7 @@ export class Pipedrive implements INodeType {
 						options: {
 							contentType: item.binary[binaryPropertyName].mimeType,
 							filename: item.binary[binaryPropertyName].fileName,
-						}
+						},
 					};
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -2338,13 +2562,14 @@ export class Pipedrive implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'GET';
+					endpoint = `/notes`;
 
 					returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll === false) {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
-
-					endpoint = `/notes`;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					addAdditionalFields(qs, additionalFields);
 
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -2453,7 +2678,50 @@ export class Pipedrive implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 					}
 
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.filterId) {
+						qs.filter_id = additionalFields.filterId as string;
+					}
+
+					if (additionalFields.firstChar) {
+						qs.first_char = additionalFields.firstChar as string;
+					}
+
 					endpoint = `/persons`;
+
+				} else if (operation === 'search') {
+					// ----------------------------------
+					//         persons:search
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					qs.term = this.getNodeParameter('term', i) as string;
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.fields) {
+						qs.fields = additionalFields.fields as string;
+					}
+
+					if (additionalFields.exactMatch) {
+						qs.exact_match = additionalFields.exactMatch as boolean;
+					}
+
+					if (additionalFields.organizationId) {
+						qs.organization_id = parseInt(additionalFields.organizationId as string, 10);
+					}
+
+					if (additionalFields.includeFields) {
+						qs.include_fields = additionalFields.includeFields as string;
+					}
+
+					endpoint = `/persons/search`;
 
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -2491,7 +2759,9 @@ export class Pipedrive implements INodeType {
 
 			let responseData;
 			if (returnAll === true) {
+
 				responseData = await pipedriveApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+
 			} else {
 
 				if (customProperties !== undefined) {
@@ -2499,6 +2769,7 @@ export class Pipedrive implements INodeType {
 				}
 
 				responseData = await pipedriveApiRequest.call(this, requestMethod, endpoint, body, qs, formData, downloadFile);
+
 			}
 
 			if (resource === 'file' && operation === 'download') {
@@ -2520,6 +2791,24 @@ export class Pipedrive implements INodeType {
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData.data);
 			} else {
+
+				if (responseData.data === null) {
+					responseData.data = [];
+				}
+
+				if (operation === 'search' && responseData.data && responseData.data.items) {
+					responseData.data = responseData.data.items;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					if (additionalFields.rawData !== true) {
+						responseData.data = responseData.data.map((item: { result_score: number, item: object }) => {
+							return {
+								result_score: item.result_score,
+								...item.item,
+							};
+						});
+					}
+				}
+
 				if (Array.isArray(responseData.data)) {
 					returnData.push.apply(returnData, responseData.data as IDataObject[]);
 				} else {

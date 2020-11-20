@@ -25,7 +25,7 @@ export class FunctionItem implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Function',
+				displayName: 'JavaScript Code',
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
@@ -70,7 +70,7 @@ export class FunctionItem implements INodeType {
 			require: {
 				external: false as boolean | { modules: string[] },
 				builtin: [] as string[],
-			}
+			},
 		};
 
 		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
@@ -100,8 +100,14 @@ export class FunctionItem implements INodeType {
 			throw new Error('No data got returned. Always an object has to be returned!');
 		}
 
-		return {
-			json: jsonData
+		const returnItem: INodeExecutionData = {
+			json: jsonData,
 		};
+
+		if (item.binary) {
+			returnItem.binary = item.binary;
+		}
+
+		return returnItem;
 	}
 }

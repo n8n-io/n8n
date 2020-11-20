@@ -4,18 +4,20 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
 	awsApiRequestSOAP,
 } from './GenericFunctions';
 
-import { get } from 'lodash';
+import {
+	get,
+} from 'lodash';
 
 export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +38,7 @@ export class AwsSnsTrigger implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -91,7 +93,7 @@ export class AwsSnsTrigger implements INodeType {
 					});
 				}
 				return returnData;
-			}
+			},
 		},
 	};
 	// @ts-ignore
@@ -108,8 +110,18 @@ export class AwsSnsTrigger implements INodeType {
 					'Version=2010-03-31',
 				];
 				const data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListSubscriptionsByTopic&' + params.join('&'));
-				const subscriptions = get(data, 'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions.member');
-				for (const subscription of subscriptions) {
+				const subscriptions = get(data, 'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions');
+				if (!subscriptions || !subscriptions.member) {
+					return false;
+				}
+
+				let subscriptionMembers = subscriptions.member;
+
+				if (!Array.isArray(subscriptionMembers)) {
+					subscriptionMembers = [subscriptionMembers];
+				}
+
+				for (const subscription of subscriptionMembers) {
 					if (webhookData.webhookId === subscription.SubscriptionArn) {
 						return true;
 					}

@@ -7,6 +7,7 @@ import {
 export class FreshdeskApi implements ICredentialType {
 	name = 'freshdeskApi';
 	displayName = 'Freshdesk API';
+	documentationUrl = 'freshdesk';
 	properties = [
 		{
 			displayName: 'API Key',
@@ -20,7 +21,7 @@ export class FreshdeskApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			placeholder: 'company',
 			description: 'If the URL you get displayed on Freshdesk is "https://company.freshdesk.com" enter "company"',
-			default: ''
-        }
+			default: '',
+		},
 	];
 }

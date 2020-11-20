@@ -7,6 +7,7 @@ import {
 export class Amqp implements ICredentialType {
 	name = 'amqp';
 	displayName = 'AMQP';
+	documentationUrl = 'amqp';
 	properties = [
 		{
 			displayName: 'Hostname',
@@ -34,6 +35,13 @@ export class Amqp implements ICredentialType {
 				password: true,
 			},
 			default: '',
+		},
+		{
+			displayName: 'Transport Type',
+			name: 'transportType',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			description: 'Optional Transport Type to use.',
 		},
 	];
 }

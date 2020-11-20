@@ -1,4 +1,6 @@
-import { INodeProperties } from "n8n-workflow";
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const boardOperations = [
 	// ----------------------------------
@@ -39,7 +41,7 @@ export const boardOperations = [
 		],
 		default: 'create',
 		description: 'The operation to perform.',
-	}
+	},
 ] as INodeProperties[];
 
 export const boardFields = [

@@ -15,8 +15,8 @@ import {
 	companyOperations,
 } from './CompanyDesciption';
 import {
+	personFields,
 	personOperations,
-	 personFields,
 } from './PersonDescription';
 
 export class Uplead implements INodeType {
@@ -38,7 +38,7 @@ export class Uplead implements INodeType {
 			{
 				name: 'upleadApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -54,7 +54,7 @@ export class Uplead implements INodeType {
 					{
 						name: 'Person',
 						value: 'person',
-						description: `Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name`
+						description: `Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name`,
 					},
 				],
 				default: 'company',
@@ -113,7 +113,9 @@ export class Uplead implements INodeType {
 			if (Array.isArray(responseData.data)) {
 				returnData.push.apply(returnData, responseData.data as IDataObject[]);
 			} else {
-				returnData.push(responseData.data as IDataObject);
+				if (responseData.data !== null) {
+					returnData.push(responseData.data as IDataObject);
+				}
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

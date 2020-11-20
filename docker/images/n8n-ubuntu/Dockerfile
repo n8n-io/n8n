@@ -1,4 +1,4 @@
-FROM node:12.16
+FROM node:12.19
 
 ARG N8N_VERSION
 
@@ -19,3 +19,5 @@ WORKDIR /data
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
+
+EXPOSE 5678/tcp

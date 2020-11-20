@@ -124,7 +124,7 @@ export default mixins(
 			try {
 				this.credentials = JSON.parse(JSON.stringify(this.$store.getters.allCredentials));
 			} catch (error) {
-				this.$showError(error, 'Proble loading credentials', 'There was a problem loading the credentials:');
+				this.$showError(error, 'Problem loading credentials', 'There was a problem loading the credentials:');
 				this.isDataLoading = false;
 				return;
 			}
@@ -138,7 +138,7 @@ export default mixins(
 		},
 
 		async deleteCredential (credential: ICredentialsResponse) {
-			const deleteConfirmed = await this.confirmMessage(`Are you sure that you want to delete the credentials "${credential.name}"?`, 'Delete Credentials?', 'warning', 'Yes, delete!');
+			const deleteConfirmed = await this.confirmMessage(`Are you sure you want to delete "${credential.name}" credentials?`, 'Delete Credentials?', 'warning', 'Yes, delete!');
 
 			if (deleteConfirmed === false) {
 				return;

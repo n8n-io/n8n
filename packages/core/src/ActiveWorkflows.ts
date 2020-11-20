@@ -67,8 +67,6 @@ export class ActiveWorkflows {
 	 * @memberof ActiveWorkflows
 	 */
 	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
-		console.log('ADD ID (active): ' + id);
-
 		this.workflowData[id] = {};
 		const triggerNodes = workflow.getTriggerNodes();
 
@@ -129,7 +127,7 @@ export class ActiveWorkflows {
 			for (const item of pollTimes.item) {
 				cronTime = [];
 				if (item.mode === 'custom') {
-					cronTimes.push(item.cronExpression as string);
+					cronTimes.push((item.cronExpression as string).trim());
 					continue;
 				}
 				if (item.mode === 'everyMinute') {
@@ -180,6 +178,11 @@ export class ActiveWorkflows {
 		// Start the cron-jobs
 		const cronJobs: CronJob[] = [];
 		for (const cronTime of cronTimes) {
+			const cronTimeParts = cronTime.split(' ');
+			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
+				throw new Error('The polling interval is too short. It has to be at least a minute!');
+			}
+
 			cronJobs.push(new CronJob(cronTime, executeTrigger, undefined, true, timezone));
 		}
 
@@ -204,8 +207,6 @@ export class ActiveWorkflows {
 	 * @memberof ActiveWorkflows
 	 */
 	async remove(id: string): Promise<void> {
-		console.log('REMOVE ID (active): ' + id);
-
 		if (!this.isActive(id)) {
 			// Workflow is currently not registered
 			throw new Error(`The workflow with the id "${id}" is currently not active and can so not be removed`);

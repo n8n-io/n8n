@@ -7,6 +7,7 @@ import {
 export class MattermostApi implements ICredentialType {
 	name = 'mattermostApi';
 	displayName = 'Mattermost API';
+	documentationUrl = 'mattermost';
 	properties = [
 		{
 			displayName: 'Access Token',

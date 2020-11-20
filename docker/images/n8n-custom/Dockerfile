@@ -36,9 +36,18 @@ WORKDIR /data
 # Install all needed dependencies
 RUN npm_config_user=root npm install -g full-icu
 
+# Install fonts
+RUN apk --no-cache add --virtual fonts msttcorefonts-installer fontconfig && \
+	update-ms-fonts && \
+	fc-cache -f && \
+	apk del fonts && \
+	find  /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \;
+
 ENV NODE_ICU_DATA /usr/local/lib/node_modules/full-icu
 
 COPY --from=builder /data ./
 
 COPY docker/images/n8n-custom/docker-entrypoint.sh /docker-entrypoint.sh
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
+
+EXPOSE 5678/tcp

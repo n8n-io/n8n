@@ -7,6 +7,7 @@ import {
 export class FacebookGraphApi implements ICredentialType {
 	name = 'facebookGraphApi';
 	displayName = 'Facebook Graph API';
+	documentationUrl = 'facebookGraph';
 	properties = [
 		{
 			displayName: 'Access Token',

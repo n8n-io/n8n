@@ -1,19 +1,21 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import {
+	getErrors,
 	mauticApiRequest,
 	mauticApiRequestAllItems,
 	validateJSON,
-	getErrors,
 } from './GenericFunctions';
 
 import {
@@ -22,8 +24,18 @@ import {
 } from './ContactDescription';
 
 import {
+	companyFields,
+	companyOperations,
+} from './CompanyDescription';
+
+import {
+	contactCompanyFields,
+	contactCompanyOperations,
+} from './ContactCompanyDescription';
+
+import {
 	snakeCase,
- } from 'change-case';
+} from 'change-case';
 
 export class Mautic implements INodeType {
 	description: INodeTypeDescription = {
@@ -87,16 +99,30 @@ export class Mautic implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Company',
+						value: 'company',
+						description: 'Create or modify a company',
+					},
+					{
 						name: 'Contact',
 						value: 'contact',
-						description: 'Use this endpoint to manipulate and obtain details on Mautic’s contacts.',
+						description: 'Create & modify contacts',
+					},
+					{
+						name: 'Contact <> Company',
+						value: 'contactCompany',
+						description: 'Add/ remove contacts from a company',
 					},
 				],
 				default: 'contact',
 				description: 'Resource to consume.',
 			},
+			...companyOperations,
+			...companyFields,
 			...contactOperations,
 			...contactFields,
+			...contactCompanyOperations,
+			...contactCompanyFields,
 		],
 	};
 
@@ -110,7 +136,7 @@ export class Mautic implements INodeType {
 				for (const company of companies) {
 					returnData.push({
 						name: company.fields.all.companyname,
-						value: company.id,
+						value: company.fields.all.companyname,
 					});
 				}
 				return returnData;
@@ -141,6 +167,19 @@ export class Mautic implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available company fields to display them to user so that he can
+			// select them easily
+			async getCompanyFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const fields = await mauticApiRequestAllItems.call(this, 'fields', 'GET', '/fields/company');
+				for (const field of fields) {
+					returnData.push({
+						name: field.label,
+						value: field.alias,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -156,11 +195,89 @@ export class Mautic implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			qs = {};
-			const options = this.getNodeParameter('options', i) as IDataObject;
+
+			if (resource === 'company') {
+				//https://developer.mautic.org/#create-company
+				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const body: IDataObject = {
+						companyname: name,
+					};
+					Object.assign(body, additionalFields);
+					responseData = await mauticApiRequest.call(this, 'POST', '/companies/new', body);
+					responseData = responseData.company;
+					if (simple === true) {
+						responseData = responseData.fields.all;
+					}
+				}
+				//https://developer.mautic.org/#edit-company
+				if (operation === 'update') {
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: IDataObject = {};
+					Object.assign(body, updateFields);
+					if (body.name) {
+						body.companyname = body.name;
+						delete body.name;
+					}
+					responseData = await mauticApiRequest.call(this, 'PATCH', `/companies/${companyId}/edit`, body);
+					responseData = responseData.company;
+					if (simple === true) {
+						responseData = responseData.fields.all;
+					}
+				}
+				//https://developer.mautic.org/#get-company
+				if (operation === 'get') {
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					responseData = await mauticApiRequest.call(this, 'GET', `/companies/${companyId}`);
+					responseData = responseData.company;
+					if (simple === true) {
+						responseData = responseData.fields.all;
+					}
+				}
+				//https://developer.mautic.org/#list-contact-companies
+				if (operation === 'getAll') {
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					qs = Object.assign(qs, additionalFields);
+					if (returnAll === true) {
+						responseData = await mauticApiRequestAllItems.call(this, 'companies', 'GET', '/companies', {}, qs);
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.start = 0;
+						responseData = await mauticApiRequest.call(this, 'GET', '/companies', {}, qs);
+						if (responseData.errors) {
+							throw new Error(getErrors(responseData));
+						}
+						responseData = responseData.companies;
+						responseData = Object.values(responseData);
+					}
+					if (simple === true) {
+						//@ts-ignore
+						responseData = responseData.map(item => item.fields.all);
+					}
+				}
+				//https://developer.mautic.org/#delete-company
+				if (operation === 'delete') {
+					const simple = this.getNodeParameter('simple', i) as boolean;
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					responseData = await mauticApiRequest.call(this, 'DELETE', `/companies/${companyId}/delete`);
+					responseData = responseData.company;
+					if (simple === true) {
+						responseData = responseData.fields.all;
+					}
+				}
+			}
 
 			if (resource === 'contact') {
 				//https://developer.mautic.org/?php#create-contact
 				if (operation === 'create') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
 					let body: IDataObject = {};
@@ -243,12 +360,15 @@ export class Mautic implements INodeType {
 					if (additionalFields.website) {
 						body.website = additionalFields.website as string;
 					}
-
 					responseData = await mauticApiRequest.call(this, 'POST', '/contacts/new', body);
-					responseData = responseData.contact;
+					responseData = [responseData.contact];
+					if (options.rawData === false) {
+						responseData = responseData.map(item => item.fields.all);
+					}
 				}
 				//https://developer.mautic.org/?php#edit-contact
 				if (operation === 'update') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					let body: IDataObject = {};
@@ -343,17 +463,25 @@ export class Mautic implements INodeType {
 						body.website = updateFields.website as string;
 					}
 					responseData = await mauticApiRequest.call(this, 'PATCH', `/contacts/${contactId}/edit`, body);
-					responseData = responseData.contact;
+					responseData = [responseData.contact];
+					if (options.rawData === false) {
+						responseData = responseData.map(item => item.fields.all);
+					}
 				}
 				//https://developer.mautic.org/?php#get-contact
 				if (operation === 'get') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					responseData = await mauticApiRequest.call(this, 'GET', `/contacts/${contactId}`);
-					responseData = responseData.contact;
+					responseData = [responseData.contact];
+					if (options.rawData === false) {
+						responseData = responseData.map(item => item.fields.all);
+					}
 				}
 				//https://developer.mautic.org/?php#list-contacts
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 					qs = Object.assign(qs, options);
 					if (qs.orderBy) {
 						// For some reason does camelCase get used in the returned data
@@ -374,27 +502,49 @@ export class Mautic implements INodeType {
 						responseData = responseData.contacts;
 						responseData = Object.values(responseData);
 					}
-
+					if (options.rawData === false) {
+						//@ts-ignore
+						responseData = responseData.map(item => item.fields.all);
+					}
 				}
 				//https://developer.mautic.org/?php#delete-contact
 				if (operation === 'delete') {
+					const options = this.getNodeParameter('options', i) as IDataObject;
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					responseData = await mauticApiRequest.call(this, 'DELETE', `/contacts/${contactId}/delete`);
-					responseData = responseData.contact;
+					responseData = [responseData.contact];
+					if (options.rawData === false) {
+						responseData = responseData.map(item => item.fields.all);
+					}
+				}
+			}
+
+			if (resource === 'contactCompany') {
+				//https://developer.mautic.org/#add-contact-to-a-company
+				if (operation === 'add') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					responseData = await mauticApiRequest.call(this, 'POST', `/companies/${companyId}/contact/${contactId}/add`, {});
+					// responseData = responseData.company;
+					// if (simple === true) {
+					// 	responseData = responseData.fields.all;
+					// }
+				}
+				//https://developer.mautic.org/#remove-contact-from-a-company
+				if (operation === 'remove') {
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const companyId = this.getNodeParameter('companyId', i) as string;
+					responseData = await mauticApiRequest.call(this, 'POST', `/companies/${companyId}/contact/${contactId}/remove`, {});
+					// responseData = responseData.company;
+					// if (simple === true) {
+					// 	responseData = responseData.fields.all;
+					// }
 				}
 			}
 
 			if (Array.isArray(responseData)) {
-				if (options.rawData !== true) {
-					// @ts-ignore
-					responseData = responseData.map(item => item.fields.all);
-				}
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
-				if (options.rawData !== true) {
-					// @ts-ignore
-					responseData = responseData.fields.all;
-				}
 				returnData.push(responseData as IDataObject);
 			}
 		}

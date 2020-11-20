@@ -5,8 +5,8 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -469,7 +469,7 @@ export class GithubTrigger implements INodeType {
 			// but do not start the workflow.
 
 			return {
-				webhookResponse: 'OK'
+				webhookResponse: 'OK',
 			};
 		}
 
@@ -483,12 +483,12 @@ export class GithubTrigger implements INodeType {
 				body: bodyData,
 				headers: this.getHeaderData(),
 				query: this.getQueryData(),
-			}
+			},
 		);
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(returnData)
+				this.helpers.returnJsonArray(returnData),
 			],
 		};
 	}
