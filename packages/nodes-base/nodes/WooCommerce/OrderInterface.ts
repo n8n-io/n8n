@@ -46,6 +46,7 @@ export interface ICouponLine {
 }
 
 export interface IOrder {
+	[index: string]: any
 	billing?: IAddress;
 	coupon_lines?: ICouponLine[];
 	currency?: string;
