@@ -1,9 +1,12 @@
 import {
-	IExecuteFunctions, ILoadOptionsFunctions,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -12,31 +15,41 @@ import {
 	clientFields,
 	clientOperations,
 } from './ClientDescription';
+
 import {
 	contactFields,
 	contactOperations,
 } from './ContactDescription';
-import { companyOperations } from './CompanyDescription';
+
+import { 
+	companyOperations,
+} from './CompanyDescription';
+
 import {
 	estimateFields,
 	estimateOperations,
 } from './EstimateDescription';
+
 import {
 	expenseFields,
 	expenseOperations,
 } from './ExpenseDescription';
+
 import {
+	getAllResource,
 	harvestApiRequest,
-	harvestApiRequestAllItems,
 } from './GenericFunctions';
+
 import {
 	invoiceFields,
 	invoiceOperations,
 } from './InvoiceDescription';
+
 import {
 	projectFields,
 	projectOperations,
 } from './ProjectDescription';
+
 import {
 	taskFields,
 	taskOperations,
@@ -45,36 +58,11 @@ import {
 	timeEntryFields,
 	timeEntryOperations,
 } from './TimeEntryDescription';
+
 import {
 	userFields,
 	userOperations,
 } from './UserDescription';
-
-/**
- * fetch All resource using paginated calls
- */
-async function getAllResource(this: IExecuteFunctions | ILoadOptionsFunctions, resource: string, i: number) {
-	const endpoint = resource;
-	const qs: IDataObject = {};
-	const requestMethod = 'GET';
-
-	qs.per_page = 100;
-
-	const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-
-	Object.assign(qs, additionalFields);
-
-	let responseData: IDataObject = {};
-	if (returnAll) {
-		responseData[resource] = await harvestApiRequestAllItems.call(this, requestMethod, qs, endpoint, resource);
-	} else {
-		const limit = this.getNodeParameter('limit', i) as string;
-		qs.per_page = limit;
-		responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
-	}
-	return responseData[resource] as IDataObject[];
-}
 
 export class Harvest implements INodeType {
 	description: INodeTypeDescription = {
