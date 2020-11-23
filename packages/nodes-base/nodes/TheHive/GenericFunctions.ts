@@ -41,7 +41,6 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 	if (Object.keys(query).length ===  0) {
 		delete options.qs;
 	}
-
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {

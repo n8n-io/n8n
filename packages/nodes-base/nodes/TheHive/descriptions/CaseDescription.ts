@@ -315,54 +315,11 @@ export const caseFields = [
 		default: '',
 		options: [
 			{
-				displayName: 'Resolution Status',
-				name: 'resolutionStatus',
-				type: 'options',
-				required: false,
+				displayName: 'End Date',
+				name: 'endDate',
 				default: '',
-				options: [
-					{
-						value: 'Indeterminate',
-						name: 'Indeterminate'
-					},
-					{
-						value: 'FalsePositive',
-						name: 'FalsePositive'
-					},
-					{
-						value: 'TruePositive',
-						name: 'TruePositive'
-					},
-					{
-						value: 'Other',
-						name: 'Other'
-					},
-					{
-						value: 'Duplicated',
-						name: 'Duplicated'
-					},
-				],
-			},
-			{
-				displayName: 'Impact Status',
-				name: 'impactStatus',
-				type: 'options',
-				required: false,
-				default: '',
-				options: [
-					{
-						name: 'NoImpact',
-						value: 'NoImpact'
-					},
-					{
-						name: 'WithImpact',
-						value: 'WithImpact'
-					},
-					{
-						name: 'NotApplicable',
-						value: 'NotApplicable'
-					},
-				],
+				type: 'dateTime',
+				description: 'Resolution date',
 			},
 			{
 				displayName: 'Summary',
@@ -370,13 +327,6 @@ export const caseFields = [
 				type: 'string',
 				default: '',
 				description: 'Summary of the case, to be provided when closing a case',
-			},
-			{
-				displayName: 'End Date',
-				name: 'endDate',
-				default: '',
-				type: 'dateTime',
-				description: 'Resolution date',
 			},
 			{
 				displayName: 'Metrics (JSON)',
@@ -407,18 +357,88 @@ export const caseFields = [
 		default: '',
 		options: [
 			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'Title of the case',
-			},
-			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
 				description: 'Description of the case',
+			},
+			{
+				displayName: 'End Date',
+				name: 'endDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Resolution date',
+			},
+			{
+				displayName: 'Flag',
+				name: 'flag',
+				type: 'boolean',
+				default: false,
+				description: 'Flag of the case default=false',
+			},
+			{
+				displayName: 'Impact Status',
+				name: 'impactStatus',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'No Impact',
+						value: 'NoImpact'
+					},
+					{
+						name: 'With Impact',
+						value: 'WithImpact'
+					},
+					{
+						name: 'Not Applicable',
+						value: 'NotApplicable'
+					},
+				],
+				description: 'Impact status of the case',
+			},
+			{
+				displayName: 'Metrics (JSON)',
+				name: 'metrics',
+				type: 'json',
+				default: '[]',
+				description: 'List of metrics',
+			},
+			{
+				displayName: 'Owner',
+				name: 'owner',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Resolution Status',
+				name: 'resolutionStatus',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						value: 'Indeterminate',
+						name: 'Indeterminate'
+					},
+					{
+						value: 'False Positive',
+						name: 'FalsePositive'
+					},
+					{
+						value: 'True Positive',
+						name: 'TruePositive'
+					},
+					{
+						value: 'Other',
+						name: 'Other'
+					},
+					{
+						value: 'Duplicated',
+						name: 'Duplicated'
+					},
+				],
+				description: 'Resolution status of the case',
 			},
 			{
 				displayName: 'Severity',
@@ -442,6 +462,13 @@ export const caseFields = [
 				description: 'Severity of the alert. Default=Medium',
 			},
 			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Date and time of the begin of the case default=now',
+			},
+			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
@@ -462,24 +489,24 @@ export const caseFields = [
 				default: 'Open',
 			},
 			{
-				displayName: 'Start Date',
-				name: 'startDate',
-				type: 'dateTime',
+				displayName: 'Summary',
+				name: 'summary',
+				type: 'string',
 				default: '',
-				description: 'Date and time of the begin of the case default=now',
+				description: 'Summary of the case, to be provided when closing a case'
 			},
 			{
-				displayName: 'Owner',
-				name: 'owner',
+				displayName: 'Tags',
+				name: 'tags',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Flag',
-				name: 'flag',
-				type: 'boolean',
-				default: false,
-				description: 'Flag of the case default=false',
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'Title of the case',
 			},
 			{
 				displayName: 'TLP',
@@ -505,83 +532,6 @@ export const caseFields = [
 					},
 				],
 				description: 'Traffict Light Protocol (TLP). Default=Amber'
-			},
-			{
-				displayName: 'Case Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Resolution Status',
-				name: 'resolutionStatus',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						value: 'Indeterminate',
-						name: 'Indeterminate'
-					},
-					{
-						value: 'FalsePositive',
-						name: 'FalsePositive'
-					},
-					{
-						value: 'TruePositive',
-						name: 'TruePositive'
-					},
-					{
-						value: 'Other',
-						name: 'Other'
-					},
-					{
-						value: 'Duplicated',
-						name: 'Duplicated'
-					},
-				],
-				description: 'Resolution status of the case',
-			},
-			{
-				displayName: 'Impact Status',
-				name: 'impactStatus',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name: 'NoImpact',
-						value: 'NoImpact'
-					},
-					{
-						name: 'WithImpact',
-						value: 'WithImpact'
-					},
-					{
-						name: 'NotApplicable',
-						value: 'NotApplicable'
-					},
-				],
-				description: 'Impact status of the case',
-			},
-			{
-				displayName: 'Summary',
-				name: 'summary',
-				type: 'string',
-				default: '',
-				description: 'Summary of the case, to be provided when closing a case'
-			},
-			{
-				displayName: 'End Date',
-				name: 'endDate',
-				type: 'dateTime',
-				default: '',
-				description: 'Resolution date',
-			},
-			{
-				displayName: 'Metrics (JSON)',
-				name: 'metrics',
-				type: 'json',
-				default: '[]',
-				description: 'List of metrics',
 			},
 		],
 	},
@@ -634,20 +584,6 @@ export const caseFields = [
 		},
 		options: [
 			{
-				displayName: 'Summary',
-				name: 'summary',
-				type: 'string',
-				default: '',
-				description: 'Summary of the case, to be provided when closing a case',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-				description: 'Title of the case',
-			},
-			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
@@ -655,10 +591,72 @@ export const caseFields = [
 				description: 'Description of the case',
 			},
 			{
+				displayName: 'End Date',
+				name: 'endDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Resolution date',
+			},
+			{
+				displayName: 'Flag',
+				name: 'flag',
+				type: 'boolean',
+				default: false,
+				description: 'Flag of the case default=false',
+			},
+			{
+				displayName: 'Impact Status',
+				name: 'impactStatus',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'No Impact',
+						value: 'NoImpact',
+					},
+					{
+						name: 'With Impact',
+						value: 'WithImpact',
+					},
+					{
+						name: 'Not Applicable',
+						value: 'NotApplicable',
+					},
+				],
+			},
+			{
 				displayName: 'Owner',
 				name: 'owner',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Resolution Status',
+				name: 'resolutionStatus',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						value: 'Indeterminate',
+						name: 'Indeterminate',
+					},
+					{
+						value: 'False Positive',
+						name: 'FalsePositive',
+					},
+					{
+						value: 'True Positive',
+						name: 'TruePositive',
+					},
+					{
+						value: 'Other',
+						name: 'Other',
+					},
+					{
+						value: 'Duplicated',
+						name: 'Duplicated',
+					},
+				],
 			},
 			{
 				displayName: 'Severity',
@@ -682,6 +680,13 @@ export const caseFields = [
 				description: 'Severity of the alert. Default=Medium',
 			},
 			{
+				displayName: 'Start Date',
+				name: 'startDate',
+				type: 'dateTime',
+				default: '',
+				description: 'Date and time of the begin of the case default=now',
+			},
+			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
@@ -700,6 +705,26 @@ export const caseFields = [
 					},
 				],
 				default: 'Open',
+			},
+			{
+				displayName: 'Summary',
+				name: 'summary',
+				type: 'string',
+				default: '',
+				description: 'Summary of the case, to be provided when closing a case',
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+				description: 'Title of the case',
 			},
 			{
 				displayName: 'TLP',
@@ -726,81 +751,6 @@ export const caseFields = [
 					},
 				],
 				description: 'Traffict Light Protocol (TLP). Default=Amber',
-			},
-			{
-				displayName: 'Start Date',
-				name: 'startDate',
-				type: 'dateTime',
-				default: '',
-				description: 'Date and time of the begin of the case default=now',
-			},
-			{
-				displayName: 'End Date',
-				name: 'endDate',
-				type: 'dateTime',
-				default: '',
-				description: 'Resolution date',
-			},
-			{
-				displayName: 'Flag',
-				name: 'flag',
-				type: 'boolean',
-				default: false,
-				description: 'Flag of the case default=false',
-			},
-			{
-				displayName: 'Case Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Resolution Status',
-				name: 'resolutionStatus',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						value: 'Indeterminate',
-						name: 'Indeterminate',
-					},
-					{
-						value: 'FalsePositive',
-						name: 'FalsePositive',
-					},
-					{
-						value: 'TruePositive',
-						name: 'TruePositive',
-					},
-					{
-						value: 'Other',
-						name: 'Other',
-					},
-					{
-						value: 'Duplicated',
-						name: 'Duplicated',
-					},
-				],
-			},
-			{
-				displayName: 'Impact Status',
-				name: 'impactStatus',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name: 'NoImpact',
-						value: 'NoImpact',
-					},
-					{
-						name: 'WithImpact',
-						value: 'WithImpact',
-					},
-					{
-						name: 'NotApplicable',
-						value: 'NotApplicable',
-					},
-				],
 			},
 		],
 	},

@@ -600,89 +600,6 @@ export const observableFields = [
 		},
 		options: [
 			{
-				displayName: 'Keyword',
-				name: 'keyword',
-				type: 'string',
-				default: '',
-				placeholder: 'exp,freetext',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				placeholder: 'exp,freetext',
-			},
-			{
-				name: 'status',
-				displayName: 'Status',
-				type: 'options',
-				default: '',
-				options: [
-					{
-						name: 'Ok',
-						value: 'Ok',
-					},
-					{
-						name: 'Deleted',
-						value: 'Deleted',
-					},
-				],
-				description: 'Status of the observable. Default=Ok',
-			},
-			{
-				displayName: 'Observable Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-				placeholder: 'tag1,tag2',
-			},
-			{
-				displayName: 'TLP',
-				name: 'tlp',
-				type: 'options',
-				default: 2,
-				options: [
-					{
-						name: 'White',
-						value: TLP.white,
-					},
-					{
-						name: 'Green',
-						value: TLP.green,
-					},
-					{
-						name: 'Amber',
-						value: TLP.amber,
-					},
-					{
-						name: 'Red',
-						value: TLP.red,
-					},
-				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber',
-			},
-			{
-				displayName: 'IOC',
-				name: 'ioc',
-				type: 'boolean',
-				default: false,
-				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
-			},
-			{
-				displayName: 'Sighted',
-				name: 'sighted',
-				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Value',
-				name: 'data',
-				type: 'string',
-				default: '',
-				placeholder: 'example.com; 8.8.8.8',
-			},
-			{
 				displayName: 'Data Type',
 				name: 'dataType',
 				type: 'multiOptions',
@@ -748,13 +665,6 @@ export const observableFields = [
 				description: 'Type of the observable',
 			},
 			{
-				displayName: 'Message',
-				name: 'message',
-				type: 'string',
-				default: '',
-				description: 'Description of the observable in the context of the case',
-			},
-			{
 				displayName: 'Date range',
 				type: 'fixedCollection',
 				name: 'range',
@@ -781,6 +691,96 @@ export const observableFields = [
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				placeholder: 'exp,freetext',
+			},
+			{
+				displayName: 'IOC',
+				name: 'ioc',
+				type: 'boolean',
+				default: false,
+				description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+			},
+			{
+				displayName: 'Keyword',
+				name: 'keyword',
+				type: 'string',
+				default: '',
+				placeholder: 'exp,freetext',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				default: '',
+				description: 'Description of the observable in the context of the case',
+			},
+			{
+				displayName: 'Observable Tags',
+				name: 'tags',
+				type: 'string',
+				default: '',
+				placeholder: 'tag1,tag2',
+			},
+			{
+				displayName: 'Sighted',
+				name: 'sighted',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				name: 'Status',
+				displayName: 'Status',
+				type: 'options',
+				default: '',
+				options: [
+					{
+						name: 'Ok',
+						value: 'Ok',
+					},
+					{
+						name: 'Deleted',
+						value: 'Deleted',
+					},
+				],
+				description: 'Status of the observable. Default=Ok',
+			},
+			{
+				displayName: 'TLP',
+				name: 'tlp',
+				type: 'options',
+				default: 2,
+				options: [
+					{
+						name: 'White',
+						value: TLP.white,
+					},
+					{
+						name: 'Green',
+						value: TLP.green,
+					},
+					{
+						name: 'Amber',
+						value: TLP.amber,
+					},
+					{
+						name: 'Red',
+						value: TLP.red,
+					},
+				],
+				description: 'Traffict Light Protocol (TLP). Default=Amber',
+			},
+			{
+				displayName: 'Value',
+				name: 'data',
+				type: 'string',
+				default: '',
+				placeholder: 'example.com; 8.8.8.8',
 			},
 		],
 	},

@@ -59,28 +59,23 @@ import {
 } from './GenericFunctions';
 
 import * as moment from 'moment';
+import { query } from 'express';
 
 // Helpers functions
 function mapResource(resource: string): string {
 	switch (resource) {
 		case 'alert':
 			return 'alert';
-			break;
 		case 'case':
 			return 'case';
-			break;
 		case 'observable':
 			return 'case_artifact';
-			break;
 		case 'task':
 			return 'case_task';
-			break;
 		case 'log':
 			return 'case_task_log';
-			break;
 		default:
 			return '';
-			break;
 	}
 }
 
@@ -522,7 +517,7 @@ export class TheHive implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
 
@@ -570,7 +565,7 @@ export class TheHive implements INodeType {
 								},
 								{
 									'_name': 'filter',
-									'_and': _searchQuery['_and'],
+									'_and': _searchQuery['_and']
 								},
 							],
 						};
@@ -920,7 +915,7 @@ export class TheHive implements INodeType {
 
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					let endpoint;
 
@@ -967,7 +962,7 @@ export class TheHive implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					const options =  this.getNodeParameter('options', i) as IDataObject;
 
@@ -1043,7 +1038,7 @@ export class TheHive implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
 
@@ -1296,7 +1291,7 @@ export class TheHive implements INodeType {
 
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					let endpoint;
 
@@ -1343,7 +1338,7 @@ export class TheHive implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
 
@@ -1573,7 +1568,7 @@ export class TheHive implements INodeType {
 
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					let endpoint;
 
@@ -1619,7 +1614,7 @@ export class TheHive implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					const caseId = this.getNodeParameter('caseId', i) as string;
 
@@ -1694,7 +1689,7 @@ export class TheHive implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
 
@@ -1916,7 +1911,7 @@ export class TheHive implements INodeType {
 
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					let endpoint;
 
@@ -1966,7 +1961,7 @@ export class TheHive implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-					const version = credentials.version;
+					const version = credentials.apiVersion;
 
 					const taskId =  this.getNodeParameter('taskId', i) as string;
 

@@ -195,7 +195,7 @@ export const alertFields = [
 		description: 'Date and time when the alert was raised default=now'
 	},
 	{
-		displayName: 'Case Tags',
+		displayName: 'Tags',
 		name: 'tags',
 		type: 'string',
 		required: true,
@@ -525,6 +525,87 @@ export const alertFields = [
 		},
 		options: [
 			{
+				displayName: 'Artifacts',
+				name: 'artifactUi',
+				type: 'fixedCollection',
+				placeholder: 'Add Artifact',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						displayName: 'Artifact',
+						name: 'artifactValues',
+						values: [
+							{
+								displayName: 'Data Type',
+								name: 'dataType',
+								type: 'options',
+								default: '',
+								options: [
+									{
+										name: 'IP',
+										value: 'ip',
+									},
+									{
+										name: 'Domain',
+										value: 'domain',
+									},
+									{
+										name: 'File',
+										value: 'file',
+									},
+								],
+								description: '',
+							},
+							{
+								displayName: 'Data',
+								name: 'data',
+								type: 'string',
+								displayOptions: {
+									hide: {
+										dataType: [
+											'file',
+										],
+									},
+								},
+								default: '',
+								description: '',
+							},
+							{
+								displayName: 'Binary Property',
+								name: 'binaryProperty',
+								type: 'string',
+								displayOptions: {
+									show: {
+										dataType: [
+											'file',
+										],
+									},
+								},
+								default: 'data',
+								description: '',
+							},
+							{
+								displayName: 'Message',
+								name: 'message',
+								type: 'string',
+								default: '',
+								description: '',
+							},
+							{
+								displayName: 'Case Tags',
+								name: 'tags',
+								type: 'string',
+								default: '',
+								description: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Case Template',
 				name: 'caseTemplate',
 				type: 'string',
@@ -632,87 +713,6 @@ export const alertFields = [
 					},
 				],
 				description: 'Traffict Light Protocol (TLP). Default=Amber'
-			},
-			{
-				displayName: 'Artifacts',
-				name: 'artifactUi',
-				type: 'fixedCollection',
-				placeholder: 'Add Artifact',
-				default: '',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Artifact',
-						name: 'artifactValues',
-						values: [
-							{
-								displayName: 'Data Type',
-								name: 'dataType',
-								type: 'options',
-								default: '',
-								options: [
-									{
-										name: 'IP',
-										value: 'ip',
-									},
-									{
-										name: 'Domain',
-										value: 'domain',
-									},
-									{
-										name: 'File',
-										value: 'file',
-									},
-								],
-								description: '',
-							},
-							{
-								displayName: 'Data',
-								name: 'data',
-								type: 'string',
-								displayOptions: {
-									hide: {
-										dataType: [
-											'file',
-										],
-									},
-								},
-								default: '',
-								description: '',
-							},
-							{
-								displayName: 'Binary Property',
-								name: 'binaryProperty',
-								type: 'string',
-								displayOptions: {
-									show: {
-										dataType: [
-											'file',
-										],
-									},
-								},
-								default: 'data',
-								description: '',
-							},
-							{
-								displayName: 'Message',
-								name: 'message',
-								type: 'string',
-								default: '',
-								description: '',
-							},
-							{
-								displayName: 'Case Tags',
-								name: 'tags',
-								type: 'string',
-								default: '',
-								description: '',
-							},
-						],
-					},
-				],
 			},
 		],
 	},
