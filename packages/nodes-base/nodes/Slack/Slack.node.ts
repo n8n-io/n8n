@@ -294,9 +294,6 @@ export class Slack implements INodeType {
 					if (additionalFields.isPrivate) {
 						body.is_private = additionalFields.isPrivate as boolean;
 					}
-					if (additionalFields.users) {
-						body.user_ids = (additionalFields.users as string[]).join(',');
-					}
 					responseData = await slackApiRequest.call(this, 'POST', '/conversations.create', body, qs);
 					responseData = responseData.channel;
 				}
@@ -370,10 +367,10 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/conversations.invite
 				if (operation === 'invite') {
 					const channel = this.getNodeParameter('channelId', i) as string;
-					const userId = this.getNodeParameter('userId', i) as string;
+					const userIds = (this.getNodeParameter('userIds', i) as string[]).join(',');
 					const body: IDataObject = {
 						channel,
-						user: userId,
+						users: userIds,
 					};
 					responseData = await slackApiRequest.call(this, 'POST', '/conversations.invite', body, qs);
 					responseData = responseData.channel;
