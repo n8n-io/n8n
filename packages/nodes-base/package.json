@@ -285,6 +285,7 @@
       "dist/nodes/Flow/FlowTrigger.node.js",
       "dist/nodes/Function.node.js",
       "dist/nodes/FunctionItem.node.js",
+      "dist/nodes/F5/F5.node.js",
       "dist/nodes/GetResponse/GetResponse.node.js",
       "dist/nodes/Github/Github.node.js",
       "dist/nodes/Github/GithubTrigger.node.js",
