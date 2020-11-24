@@ -21,7 +21,7 @@ export class OpenThesaurus implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume OpenThesaurus API',
+		description: 'Get synonmns for German words using the OpenThesaurus API',
 		defaults: {
 			name: 'OpenThesaurus',
 			color: '#00ade8',
