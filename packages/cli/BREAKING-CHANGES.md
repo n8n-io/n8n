@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.95.0
+
+### What changed?
+
+In the Harvest Node, we moved the account field from the credentials to the node parameters. This will allow you to work witn multiples accounts without having to create multiples credentials.
+
+### When is action necessary?
+
+If you are using the Harvest Node.
+
+### How to upgrade:
+
+Open the node set the parameter `Account ID`.
+
 ## 0.94.0
 
 ### What changed?
