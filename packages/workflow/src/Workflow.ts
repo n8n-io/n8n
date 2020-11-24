@@ -974,8 +974,14 @@ export class Workflow {
 			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(this, runExecutionData, runIndex, connectionInputData, inputData, node, additionalData, mode);
 			return nodeType.execute.call(thisArgs);
 		} else if (nodeType.poll) {
-			const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(this, node, additionalData, mode);
-			return nodeType.poll.call(thisArgs);
+			if (mode === 'manual') {
+				// In manual mode run the poll function
+				const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(this, node, additionalData, mode);
+				return nodeType.poll.call(thisArgs);
+			} else {
+				// In any other mode pass data through as it already contains the result of the poll
+				return inputData.main as INodeExecutionData[][];
+			}
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
@@ -1004,12 +1010,12 @@ export class Workflow {
 				return response;
 			} else {
 				// For trigger nodes in any mode except "manual" do we simply pass the data through
-				return NodeHelpers.prepareOutputData(connectionInputData);
+				return inputData.main as INodeExecutionData[][];
 			}
 
 		} else if (nodeType.webhook) {
 			// For webhook nodes always simply pass the data through
-			return NodeHelpers.prepareOutputData(connectionInputData);
+			return inputData.main as INodeExecutionData[][];
 		}
 
 		return null;
