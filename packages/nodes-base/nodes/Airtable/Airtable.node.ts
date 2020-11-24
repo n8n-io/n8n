@@ -12,7 +12,7 @@ import {
 import {
 	apiRequest,
 	apiRequestAllItems,
-	downloadAttachments,
+	downloadRecordAttachments,
 } from './GenericFunctions';
 
 export class Airtable implements INodeType {
@@ -192,7 +192,7 @@ export class Airtable implements INodeType {
 			},
 			{
 				displayName: 'Download Attachments',
-				name: 'download',
+				name: 'downloadAttachments',
 				type: 'boolean',
 				displayOptions: {
 					show: {
@@ -202,11 +202,11 @@ export class Airtable implements INodeType {
 					},
 				},
 				default: false,
-				description: `When set to true the attachment fields define in 'Field Names' will be downloaded.`,
+				description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
 			},
 			{
-				displayName: 'Field Names',
-				name: 'fieldNames',
+				displayName: 'Download Fields',
+				name: 'downloadFieldNames',
 				type: 'string',
 				required: true,
 				displayOptions: {
@@ -214,13 +214,13 @@ export class Airtable implements INodeType {
 						operation: [
 							'list',
 						],
-						download: [
+						downloadAttachments: [
 							true,
 						],
 					},
 				},
 				default: '',
-				description: `Name of the fields type 'attachment' that you want to download. Multiple can be defined separated by comma. Case sensitive.`,
+				description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
 			},
 			{
 				displayName: 'Additional Options',
@@ -522,7 +522,7 @@ export class Airtable implements INodeType {
 
 			returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
-			const download = this.getNodeParameter('download', 0) as boolean;
+			const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 
 			const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
 
@@ -543,9 +543,9 @@ export class Airtable implements INodeType {
 
 			returnData.push.apply(returnData, responseData.records);
 
-			if (download === true) {
-				const fieldNames = (this.getNodeParameter('fieldNames', 0) as string).split(',');
-				const data = await downloadAttachments.call(this, responseData.records, fieldNames);
+			if (downloadAttachments === true) {
+				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
+				const data = await downloadRecordAttachments.call(this, responseData.records, downloadFieldNames);
 				return [data];
 			}
 

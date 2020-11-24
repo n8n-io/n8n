@@ -4,11 +4,11 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { 
+import {
 	OptionsWithUri,
 } from 'request';
 
-import { 
+import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -67,7 +67,7 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
-	
+
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -129,7 +129,7 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 	};
 }
 
-export async function downloadAttachments(this: IExecuteFunctions, records: IRecord[], fieldNames: string[]): Promise<INodeExecutionData[]> {
+export async function downloadRecordAttachments(this: IExecuteFunctions, records: IRecord[], fieldNames: string[]): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
@@ -144,7 +144,7 @@ export async function downloadAttachments(this: IExecuteFunctions, records: IRec
 						mimeType: attachment.type,
 					};
 				}
-			} 
+			}
 		}
 		if (Object.keys(element.binary as IBinaryKeyData).length === 0) {
 			delete element.binary;
