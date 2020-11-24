@@ -4,9 +4,28 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
+import {
+	OptionsWithUri,
+} from 'request';
 
+import {
+	IBinaryKeyData,
+	IDataObject,
+	INodeExecutionData,
+} from 'n8n-workflow';
+
+
+interface IAttachment {
+	url: string;
+	filename: string;
+	type: string;
+}
+
+export interface IRecord {
+	fields: {
+		[key: string]: string | IAttachment[],
+	};
+}
 
 /**
  * Make an API request to Airtable
@@ -17,7 +36,7 @@ import { IDataObject } from 'n8n-workflow';
  * @param {object} body
  * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('airtableApi');
 
 	if (credentials === undefined) {
@@ -37,9 +56,17 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		method,
 		body,
 		qs: query,
-		uri: `https://api.airtable.com/v0/${endpoint}`,
+		uri: uri || `https://api.airtable.com/v0/${endpoint}`,
 		json: true,
 	};
+
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
+	}
+
+	if (Object.keys(body).length === 0) {
+		delete options.body;
+	}
 
 	try {
 		return await this.helpers.request!(options);
@@ -100,4 +127,29 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 	return {
 		records: returnData,
 	};
+}
+
+export async function downloadRecordAttachments(this: IExecuteFunctions, records: IRecord[], fieldNames: string[]): Promise<INodeExecutionData[]> {
+	const elements: INodeExecutionData[] = [];
+	for (const record of records) {
+		const element: INodeExecutionData = { json: {}, binary: {} };
+		element.json = record as unknown as IDataObject;
+		for (const fieldName of fieldNames) {
+			if (record.fields[fieldName] !== undefined) {
+				for (const [index, attachment] of (record.fields[fieldName] as IAttachment[]).entries()) {
+					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, { json: false, encoding: null });
+					element.binary![`${fieldName}_${index}`] = {
+						data: Buffer.from(file).toString('base64'),
+						fileName: attachment.filename,
+						mimeType: attachment.type,
+					};
+				}
+			}
+		}
+		if (Object.keys(element.binary as IBinaryKeyData).length === 0) {
+			delete element.binary;
+		}
+		elements.push(element);
+	}
+	return elements;
 }

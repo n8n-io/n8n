@@ -1,6 +1,7 @@
 import {
 	IExecuteFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -11,19 +12,20 @@ import {
 import {
 	apiRequest,
 	apiRequestAllItems,
+	downloadRecordAttachments,
 } from './GenericFunctions';
 
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Airtable',
 		name: 'airtable',
-		icon: 'file:airtable.png',
+		icon: 'file:airtable.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Read, update, write and delete data from Airtable',
 		defaults: {
 			name: 'Airtable',
-			color: '#445599',
+			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -188,7 +190,38 @@ export class Airtable implements INodeType {
 				default: 100,
 				description: 'Number of results to return.',
 			},
-
+			{
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'list',
+						],
+					},
+				},
+				default: false,
+				description: `When set to true the attachment fields define in 'Download Fields' will be downloaded.`,
+			},
+			{
+				displayName: 'Download Fields',
+				name: 'downloadFieldNames',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'list',
+						],
+						downloadAttachments: [
+							true,
+						],
+					},
+				},
+				default: '',
+				description: `Name of the fields of type 'attachment' that should be downloaded. Multiple ones can be defined separated by comma. Case sensitive.`,
+			},
 			{
 				displayName: 'Additional Options',
 				name: 'additionalOptions',
@@ -489,6 +522,8 @@ export class Airtable implements INodeType {
 
 			returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
+			const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
+
 			const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
 
 			for (const key of Object.keys(additionalOptions)) {
@@ -507,6 +542,12 @@ export class Airtable implements INodeType {
 			}
 
 			returnData.push.apply(returnData, responseData.records);
+
+			if (downloadAttachments === true) {
+				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
+				const data = await downloadRecordAttachments.call(this, responseData.records, downloadFieldNames);
+				return [data];
+			}
 
 		} else if (operation === 'read') {
 			// ----------------------------------
