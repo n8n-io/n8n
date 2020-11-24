@@ -145,6 +145,10 @@ export class AirtableTrigger implements INodeType {
 		webhookData.lastTimeChecked = endDate;
 
 		if (Array.isArray(records) && records.length) {
+			if (this.getMode() === 'manual' && records[0].fields[triggerField] === undefined) {
+				throw new Error(`The Field "${triggerField}" does not exist.`);
+			}
+
 			return [this.helpers.returnJsonArray(records)];
 		}
 
