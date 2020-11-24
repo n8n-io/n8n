@@ -145,7 +145,6 @@ export class AirtableTrigger implements INodeType {
 		webhookData.lastTimeChecked = endDate;
 
 		if (Array.isArray(records) && records.length) {
-
 			return [this.helpers.returnJsonArray(records)];
 		}
 
