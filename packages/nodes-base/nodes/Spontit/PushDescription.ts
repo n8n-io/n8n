@@ -21,7 +21,7 @@ export const pushOperations = [
 				description: 'Create a push notification',
 			},
 		],
-		default: 'push',
+		default: 'create',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -145,6 +145,13 @@ export const pushFields = [
 				See the "Followers" section to learn how to list the userIds of those who follow one of your channels.`,
 			},
 			{
+				displayName: 'Schedule',
+				name: 'schedule',
+				type: 'dateTime',
+				default: '',
+				description: 'A Unix timestamp. Schedule a push to be sent at a later date and time.',
+			},
+			{
 				displayName: 'Subtitle',
 				name: 'subtitle',
 				type: 'string',
@@ -157,13 +164,6 @@ export const pushFields = [
 				type: 'string',
 				default: '',
 				description: 'The title of push. Appears in bold at the top. Limited to 100 characters.',
-			},
-			{
-				displayName: 'Schedule',
-				name: 'schedule',
-				type: 'dateTime',
-				default: '',
-				description: 'A Unix timestamp. Schedule a push to be sent at a later date and time.',
 			},
 		],
 	},
