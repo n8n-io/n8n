@@ -75,12 +75,12 @@ export class Airtable implements INodeType {
 			//         All
 			// ----------------------------------
 			{
-				displayName: 'Application ID',
+				displayName: 'Base ID',
 				name: 'application',
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'The ID of the application to access.',
+				description: 'The ID of the base to access.',
 			},
 			{
 				displayName: 'Table',
