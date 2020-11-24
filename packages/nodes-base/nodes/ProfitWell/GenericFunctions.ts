@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -11,10 +11,10 @@ import {
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export async function profitWellApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	try{
+	try {
 		const credentials = this.getCredentials('profitWellApi');
 		if (credentials === undefined) {
 			throw new Error('No credentials got returned!');
@@ -33,7 +33,7 @@ export async function profitWellApiRequest(this: IHookFunctions | IExecuteFuncti
 		options = Object.assign({}, options, option);
 
 		return await this.helpers.request!(options);
-	} catch(error) {
+	} catch (error) {
 
 		if (error.response && error.response.body && error.response.body.message) {
 			// Try to return the error prettier
@@ -46,7 +46,7 @@ export async function profitWellApiRequest(this: IHookFunctions | IExecuteFuncti
 	}
 }
 
-export function simplify(responseData: { [key: string]: [ { date: string, value: number | null } ] }) {
+export function simplify(responseData: { [key: string]: [{ date: string, value: number | null }] }) {
 	const data: IDataObject[] = [];
 	for (const key of Object.keys(responseData)) {
 		if (responseData[key].length === 1) {

@@ -113,7 +113,7 @@ export class ProfitWell implements INodeType {
 					const type = this.getNodeParameter('type', i) as string;
 
 					const simple = this.getNodeParameter('simple', 0) as boolean;
-					
+
 					if (type === 'daily') {
 						qs.month = this.getNodeParameter('month', i) as string;
 					}
@@ -127,7 +127,7 @@ export class ProfitWell implements INodeType {
 					}
 
 					if (qs.monthlyMetrics) {
-						qs.metrics= (qs.monthlyMetrics as string[]).join(',');
+						qs.metrics = (qs.monthlyMetrics as string[]).join(',');
 						delete qs.monthlyMetrics;
 					}
 

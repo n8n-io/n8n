@@ -291,6 +291,21 @@ export const metricFields = [
 						description: 'How much MRR comes from users who converted from trialing to active',
 					},
 					{
+						name: 'Customer Churn Cancellations Rate',
+						value: 'customers_churn_cancellations_rate',
+						description: `Percentage of paying customers who churned by cancelling their subscription(s)`,
+					},
+					{
+						name: 'Customer Churn Delinquent Rate',
+						value: 'customers_churn_delinquent_rate',
+						description: `Percentage of paying customers who churned because they failed to pay you`,
+					},
+					{
+						name: 'Customer Churn Rate',
+						value: 'customers_churn_rate',
+						description: `Percentage of paying customers who churned`,
+					},
+					{
 						name: 'Customer Conversion Rate',
 						value: 'customer_conversion_rate',
 						description: 'Percent of trialing customers who converted',
@@ -301,14 +316,14 @@ export const metricFields = [
 						description: 'Percent of customers active last month who are still active this month',
 					},
 					{
-						name: 'Downgrade Rate',
-						value: 'downgrade_rate',
-						description: 'Downgrade revenue as a percent of existing revenue',
-					},
-					{
 						name: 'Downgrade Customers',
 						value: 'downgraded_customers',
 						description: 'Number of existing customers who net downgraded',
+					},
+					{
+						name: 'Downgrade Rate',
+						value: 'downgrade_rate',
+						description: 'Downgrade revenue as a percent of existing revenue',
 					},
 					{
 						name: 'Downgrade Recurring Revenue',
@@ -371,21 +386,6 @@ export const metricFields = [
 						description: `Your company's MRR`,
 					},
 					{
-						name: 'Customer Churn Rate',
-						value: 'customers_churn_rate',
-						description: `Percentage of paying customers who churned`,
-					},
-					{
-						name: 'Customer Churn Cancellations Rate',
-						value: 'customers_churn_cancellations_rate',
-						description: `Percentage of paying customers who churned by cancelling their subscription(s)`,
-					},
-					{
-						name: 'Customer Churn Delinquent Rate',
-						value: 'customers_churn_delinquent_rate',
-						description: `Percentage of paying customers who churned because they failed to pay you`,
-					},
-					{
 						name: 'Revenue Churn Cancellations Rate',
 						value: 'revenue_churn_cancellations_rate',
 						description: `Voluntary churn revenue as a percent of the month's starting revenue`,
@@ -421,14 +421,14 @@ export const metricFields = [
 						description: `How much upgrades and plan length increases affect your MRR`,
 					},
 					{
-						name: 'Plan Changed Recurring Revenue',
-						value: 'plan_changed_recurring_revenue',
-						description: `Net change in revenue for this plan`,
-					},
-					{
 						name: 'Plan Changed Rate',
 						value: 'plan_change_rate',
 						description: `Net change in revenue as a percentage of existing revenue`,
+					},
+					{
+						name: 'Plan Changed Recurring Revenue',
+						value: 'plan_changed_recurring_revenue',
+						description: `Net change in revenue for this plan`,
 					},
 				],
 				default: '',
