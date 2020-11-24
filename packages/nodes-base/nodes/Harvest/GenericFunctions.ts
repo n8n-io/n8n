@@ -1,4 +1,4 @@
-import { 
+import {
 	OptionsWithUri,
 } from 'request';
 
@@ -9,7 +9,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { 
+import {
 	IDataObject
 } from 'n8n-workflow';
 
@@ -69,14 +69,14 @@ export async function harvestApiRequest(this: IHookFunctions | IExecuteFunctions
  * and return all results
  */
 export async function harvestApiRequestAllItems(
-		this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-		method: string,
-		qs: IDataObject = {},
-		uri: string,
-		resource: string,
-		body: IDataObject = {},
-		option: IDataObject = {},
-	): Promise<any> { // tslint:disable-line:no-any
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	qs: IDataObject = {},
+	uri: string,
+	resource: string,
+	body: IDataObject = {},
+	option: IDataObject = {},
+): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -87,7 +87,7 @@ export async function harvestApiRequestAllItems(
 		qs.page = responseData.next_page;
 		returnData.push.apply(returnData, responseData[resource]);
 	} while (responseData.next_page);
-	
+
 	return returnData;
 }
 

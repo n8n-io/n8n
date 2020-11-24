@@ -21,7 +21,7 @@ import {
 	contactOperations,
 } from './ContactDescription';
 
-import { 
+import {
 	companyOperations,
 } from './CompanyDescription';
 
