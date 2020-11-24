@@ -95,6 +95,7 @@
       "dist/credentials/YouTubeOAuth2Api.credentials.js",
       "dist/credentials/GumroadApi.credentials.js",
       "dist/credentials/HarvestApi.credentials.js",
+      "dist/credentials/HarvestOAuth2Api.credentials.js",
       "dist/credentials/HelpScoutOAuth2Api.credentials.js",
       "dist/credentials/HttpBasicAuth.credentials.js",
       "dist/credentials/HttpDigestAuth.credentials.js",
