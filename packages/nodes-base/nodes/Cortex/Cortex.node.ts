@@ -47,6 +47,8 @@ import {
 	createHash,
 } from 'crypto';
 
+import * as changeCase from 'change-case';
+
 export class Cortex implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cortex',
@@ -181,7 +183,7 @@ export class Cortex implements INodeType {
 					returnData.push(
 						{
 							value: (dataType as string).split(':')[1],
-							name: (dataType as string).split(':')[1]
+							name: changeCase.capitalCase((dataType as string).split(':')[1])
 						},
 					);
 				}

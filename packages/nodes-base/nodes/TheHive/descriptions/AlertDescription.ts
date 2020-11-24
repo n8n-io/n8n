@@ -772,6 +772,7 @@ export const alertFields = [
 				displayName: 'Follow',
 				name: 'follow',
 				type: 'boolean',
+				default: false,
 				description: 'if true, the alert becomes active when updated default=true',
 			},
 			{

@@ -250,7 +250,7 @@ export const caseFields = [
 		description: 'Traffict Light Protocol (TLP). Default=Amber'
 	},
 	{
-		displayName: 'Case Tags',
+		displayName: 'Tags',
 		name: 'tags',
 		type: 'string',
 		required: true,

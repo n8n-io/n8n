@@ -106,10 +106,11 @@ export const responderFields: INodeProperties[] = [
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
+		placeholder: 'Add Parameter',
 		required: false,
 		options: [
 			{
-				displayName: 'Case attributes',
+				displayName: 'Case Attributes',
 				name: 'values',
 				values: [
 					{
@@ -230,16 +231,17 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: ''
+		default: {}
 	},
 	{
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
-		required:false,
+		placeholder: 'Add Parameter',
+		required: false,
 		options: [
 			{
-				displayName: 'Alert attributes',
+				displayName: 'Alert Attributes',
 				name: 'values',
 				values: [
 					{
@@ -285,7 +287,7 @@ export const responderFields: INodeProperties[] = [
 						description: 'Date and time when the alert was raised default=now',
 					},
 					{
-						displayName: 'Case Tags',
+						displayName: 'Tags',
 						name: 'tags',
 						type: 'string',
 						placeholder:'tag1,tag2,...',
@@ -375,7 +377,7 @@ export const responderFields: INodeProperties[] = [
 						required: false,
 						typeOptions: {
 							multipleValues: true,
-							multipleValueButtonText: 'Add an artifact',
+							multipleValueButtonText: 'Add an Artifact',
 						},
 						default: [],
 						options: [
@@ -418,7 +420,7 @@ export const responderFields: INodeProperties[] = [
 												value: 'mail'
 											},
 											{
-												name: 'Mail_subject',
+												name: 'Mail Subject',
 												value: 'mail_subject'
 											},
 											{
@@ -434,7 +436,7 @@ export const responderFields: INodeProperties[] = [
 												value: 'registry'
 											},
 											{
-												name: 'Uri_path',
+												name: 'Uri Path',
 												value: 'uri_path'
 											},
 											{
@@ -442,7 +444,7 @@ export const responderFields: INodeProperties[] = [
 												value: 'url'
 											},
 											{
-												name: 'User-agent',
+												name: 'User Agent',
 												value: 'user-agent'
 											},
 										],
@@ -527,16 +529,17 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: ''
+		default: {},
 	},
 	{
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
-		required:false,
+		placeholder: 'Add Parameter',
+		required: false,
 		options: [
 			{
-				displayName: 'Observable attributes',
+				displayName: 'Observable Attributes',
 				name: 'values',
 				values: [
 					{
@@ -574,7 +577,7 @@ export const responderFields: INodeProperties[] = [
 								value: 'mail'
 							},
 							{
-								name: 'Mail_subject',
+								name: 'Mail Subject',
 								value: 'mail_subject'
 							},
 							{
@@ -590,7 +593,7 @@ export const responderFields: INodeProperties[] = [
 								value: 'registry'
 							},
 							{
-								name: 'Uri_path',
+								name: 'Uri Path',
 								value: 'uri_path'
 							},
 							{
@@ -598,7 +601,7 @@ export const responderFields: INodeProperties[] = [
 								value: 'url'
 							},
 							{
-								name: 'User-agent',
+								name: 'User Agent',
 								value: 'user-agent'
 							},
 						],
@@ -637,7 +640,7 @@ export const responderFields: INodeProperties[] = [
 						default: ''
 					},
 					{
-						displayName: 'StartDate',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
@@ -724,16 +727,17 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: ''
+		default: {},
 	},
 	{
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
-		required:false,
+		placeholder: 'Add Parameter',
+		required: false,
 		options: [
 			{
-				displayName: 'Task attributes',
+				displayName: 'Task Attributes',
 				name: 'values',
 				values: [
 					{
@@ -772,7 +776,6 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Flag',
 						name: 'flag',
 						type: 'boolean',
-						required: false,
 						default: false
 					}
 				]
@@ -808,16 +811,17 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 	},
 	{
 		displayName: 'Parameters',
 		name: 'parameters',
 		type: 'fixedCollection',
-		required:false,
+		placeholder: 'Add Parameter',
+		required: false,
 		options: [
 			{
-				displayName: 'Log attributes',
+				displayName: 'Log Attributes',
 				name: 'values',
 				values: [
 					{
@@ -827,7 +831,7 @@ export const responderFields: INodeProperties[] = [
 						default: ''
 					},
 					{
-						displayName: 'StartDate',
+						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
@@ -883,6 +887,6 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: '',
+		default: {},
 	},
 ];

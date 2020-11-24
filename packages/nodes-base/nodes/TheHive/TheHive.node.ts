@@ -56,79 +56,12 @@ import {
 
 import {
 	theHiveApiRequest,
+	mapResource,
+	splitTags,
+	prepareOptional,
+	prepareSortQuery,
+	prepareRangeQuery,
 } from './GenericFunctions';
-
-import * as moment from 'moment';
-import { query } from 'express';
-
-// Helpers functions
-function mapResource(resource: string): string {
-	switch (resource) {
-		case 'alert':
-			return 'alert';
-		case 'case':
-			return 'case';
-		case 'observable':
-			return 'case_artifact';
-		case 'task':
-			return 'case_task';
-		case 'log':
-			return 'case_task_log';
-		default:
-			return '';
-	}
-}
-
-function splitTags(tags: string): string[] {
-	return tags.split(',').filter(tag => tag !== ' ' && tag);
-}
-
-function prepareOptional(optionals: IDataObject): IDataObject {
-	const response: IDataObject = {};
-	for (const key in optionals) {
-		if (optionals[key]!== undefined && optionals[key]!==null && optionals[key]!=='') {
-			if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
-				response[key] = Date.parse(optionals[key] as string);
-			} else if (key === 'artifacts') {
-				response[key] = JSON.parse(optionals[key] as string);
-			} else if (key === 'tags') {
-				response[key] = splitTags(optionals[key] as string);
-			} else {
-				response[key] = optionals[key];
-			}
-		}
-	}
-	return response;
-}
-
-function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {
-	if (sort) {
-		const field = sort.substring(1);
-		const value = sort.charAt(0) === '+' ? 'asc' : 'desc';
-		const sortOption: IDataObject = {};
-		sortOption[field] = value;
-		body.query.push(
-			{
-				'_name': 'sort',
-				'_fields': [
-					sortOption,
-				],
-			},
-		);
-	}
-}
-
-function prepareRangeQuery(range: string, body: { 'query': Array<{}> }) {
-	if (range && range !== 'all') {
-		body['query'].push(
-			{
-				'_name': 'page',
-				'from': parseInt(range.split('-')[0], 10),
-				'to': parseInt(range.split('-')[1], 10)
-			}
-		);
-	}
-}
 
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
@@ -248,7 +181,7 @@ export class TheHive implements INodeType {
 			},
 			async loadObservableOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// if v1 is not used we remove 'count' option
-				const version = this.getCredentials('theHiveApi')?.version;
+				const version = this.getCredentials('theHiveApi')?.apiVersion;
 
 				const options= [
 					...(version==='v1')?[{name:'Count',value:'count',description:'Count observables'}]:[],
@@ -263,7 +196,7 @@ export class TheHive implements INodeType {
 				return options;
 			},
 			async loadTaskOptions(this:ILoadOptionsFunctions): Promise<INodePropertyOptions[]>{
-				const version = this.getCredentials('theHiveApi')?.version;
+				const version = this.getCredentials('theHiveApi')?.apiVersion;
 				const options =[
 					...(version==='v1')?[{name:'Count',value:'count',description:'Count tasks'}]:[],
 					{name:'Create',value:'create',description:'Create a task'},
@@ -276,7 +209,7 @@ export class TheHive implements INodeType {
 				return options;
 			},
 			async loadAlertOptions(this:ILoadOptionsFunctions):Promise<INodePropertyOptions[]>{
-				const version = this.getCredentials('theHiveApi')?.version;
+				const version = this.getCredentials('theHiveApi')?.apiVersion;
 				const options = [
 					...(version ==='v1')?[{ name: 'Count', value: 'count', description: 'Count alerts' }]:[],
 					{ name: 'Create', value: 'create', description: 'Create alert' },
@@ -290,7 +223,7 @@ export class TheHive implements INodeType {
 				return options;
 			},
 			async loadCaseOptions(this:ILoadOptionsFunctions):Promise<INodePropertyOptions[]>{
-				const version = this.getCredentials('theHiveApi')?.version;
+				const version = this.getCredentials('theHiveApi')?.apiVersion;
 				const options=[
 					...(version ==='v1')?[{ name: 'Count', value: 'count', description: 'Count a case' }]:[],
 					{ name: 'Create', value: 'create', description: 'Create a case' },
