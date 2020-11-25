@@ -43,6 +43,8 @@ import * as config from '../config';
 
 import { LessThanOrEqual } from "typeorm";
 
+const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
@@ -77,7 +79,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 			},
 		};
 		// Run the error workflow
-		if(workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === 'n8n-nodes-base.errorTrigger')) {
+		if(workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
 			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
 		}
 		if(workflowData.settings !== undefined && workflowData.settings.errorWorkflow) {
