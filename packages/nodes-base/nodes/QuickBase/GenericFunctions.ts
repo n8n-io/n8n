@@ -72,7 +72,7 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 }
 
 //@ts-ignore
-export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any {
+export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any { // tslint:disable-line:no-any
 	const fieldsLabelKey: { [key: string]: number } = {};
 	const fieldsIdKey: { [key: number]: string } = {};
 	const data = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
