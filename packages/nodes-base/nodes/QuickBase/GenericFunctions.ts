@@ -17,11 +17,15 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 
 	const credentials = this.getCredentials('quickbaseApi') as IDataObject;
 
-	if (credentials.hostname === '') {
+	if (credentials === undefined) {
+		throw new Error('No credentials got returned!');
+	}
+
+	if (!credentials.hostname) {
 		throw new Error('Hostname must be defined');
 	}
 
-	if (credentials.userKey === '') {
+	if (!credentials.userToken) {
 		throw new Error('User Token must be defined');
 	}
 
@@ -71,14 +75,14 @@ export async function quickbaseApiRequest(this: IExecuteFunctions | ILoadOptions
 export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any {
 	const fieldsLabelKey: { [key: string]: number } = {};
 	const fieldsIdKey: { [key: number]: string } = {};
-	const data  = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
+	const data = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
 	for (const field of data) {
 		fieldsLabelKey[field.label] = field.id;
 		fieldsIdKey[field.id] = field.label;
 	}
 	return { fieldsLabelKey, fieldsIdKey };
 }
-				
+
 export async function quickbaseApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
@@ -125,7 +129,7 @@ export async function quickbaseApiRequestAllItems(this: IHookFunctions | ILoadOp
 		returnData.push.apply(returnData, responseData);
 		responseData = [];
 	} while (
-		returnData.length < metadata.totalRecords 
+		returnData.length < metadata.totalRecords
 	);
 
 	return returnData;

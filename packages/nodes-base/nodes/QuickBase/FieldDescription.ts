@@ -21,7 +21,7 @@ export const fieldOperations = [
 				description: 'Get all fields',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
