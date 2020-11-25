@@ -52,7 +52,7 @@ export const fileFields = [
 				],
 			},
 		},
-		description: 'The table identifier',
+		description: 'The table identifier.',
 	},
 	{
 		displayName: 'Record ID',
@@ -71,7 +71,7 @@ export const fileFields = [
 				],
 			},
 		},
-		description: 'The unique identifier of the record',
+		description: 'The unique identifier of the record.',
 	},
 	{
 		displayName: 'Field ID',
