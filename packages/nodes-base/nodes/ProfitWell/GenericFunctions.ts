@@ -50,7 +50,7 @@ export function simplifyDailyMetrics(responseData: { [key: string]: [{ date: str
 	const data: IDataObject[] = [];
 	const keys = Object.keys(responseData);
 	const dates = responseData[keys[0]].map(e => e.date);
-	for  (const [index, date] of dates.entries()) {
+	for (const [index, date] of dates.entries()) {
 		const element: IDataObject = {
 			date,
 		};
