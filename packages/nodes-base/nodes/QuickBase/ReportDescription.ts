@@ -51,7 +51,7 @@ export const reportFields = [
 				],
 			},
 		},
-		description: 'The table identifier',
+		description: 'The table identifier.',
 	},
 	{
 		displayName: 'Report ID',
@@ -69,7 +69,7 @@ export const reportFields = [
 				],
 			},
 		},
-		description: 'The identifier of the report, unique to the table',
+		description: 'The identifier of the report, unique to the table.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                report:run                                  */
@@ -90,7 +90,7 @@ export const reportFields = [
 				],
 			},
 		},
-		description: 'The table identifier',
+		description: 'The table identifier.',
 	},
 	{
 		displayName: 'Report ID',
@@ -108,7 +108,7 @@ export const reportFields = [
 				],
 			},
 		},
-		description: 'The identifier of the report, unique to the table',
+		description: 'The identifier of the report, unique to the table.',
 	},
 	{
 		displayName: 'Return All',

@@ -42,7 +42,7 @@ export class QuickBase implements INodeType {
 		displayName: 'Quick Base',
 		name: 'quickbase',
 		icon: 'file:quickbase.png',
-		group: [ 'input' ],
+		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Integrate with the Quick Base RESTful API.',
@@ -50,11 +50,12 @@ export class QuickBase implements INodeType {
 			name: 'Quick Base',
 			color: '#73489d',
 		},
-		inputs: [ 'main' ],
-		outputs: [ 'main' ],
+		inputs: ['main'],
+		outputs: ['main'],
 		credentials: [
 			{
 				name: 'quickbaseApi',
+				required: true,
 			},
 		],
 		properties: [
@@ -158,8 +159,8 @@ export class QuickBase implements INodeType {
 						const limit = this.getNodeParameter('limit', i) as number;
 
 						responseData = responseData.splice(0, limit);
-					} 
- 
+					}
+
 					returnData.push.apply(returnData, responseData);
 				}
 			}
@@ -176,7 +177,7 @@ export class QuickBase implements INodeType {
 
 					const versionNumber = this.getNodeParameter('versionNumber', i) as string;
 
-					responseData = await quickbaseApiRequest.call(this,'DELETE', `/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`);
+					responseData = await quickbaseApiRequest.call(this, 'DELETE', `/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`);
 
 					returnData.push(responseData);
 				}
@@ -210,20 +211,20 @@ export class QuickBase implements INodeType {
 
 					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
 
-					responseData = await quickbaseApiRequest.call(this,'GET', `/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`, {}, {}, { json: false, resolveWithFullResponse: true });
+					responseData = await quickbaseApiRequest.call(this, 'GET', `/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`, {}, {}, { json: false, resolveWithFullResponse: true });
 
 					//content-disposition': 'attachment; filename="dog-puppy-on-garden-royalty-free-image-1586966191.jpg"',
 					const contentDisposition = responseData.headers['content-disposition'];
 
 					const data = Buffer.from(responseData.body as string, 'base64');
 
-					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer,  contentDisposition.split('=')[1]);
+					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, contentDisposition.split('=')[1]);
 				}
-		
+
 				return this.prepareOutputData(items);
 			}
 		}
-		
+
 		if (resource === 'record') {
 			if (operation === 'create') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
@@ -248,7 +249,7 @@ export class QuickBase implements INodeType {
 							record[fieldsLabelKey[key].toString()] = { value: items[i].json[key] };
 						}
 					}
-					
+
 					data.push(record);
 				}
 
@@ -269,7 +270,7 @@ export class QuickBase implements INodeType {
 				if (simple === true) {
 					const { data: records } = responseData;
 					responseData = [];
-					
+
 					for (const record of records) {
 						const data: IDataObject = {};
 						for (const [key, value] of Object.entries(record)) {
@@ -285,7 +286,7 @@ export class QuickBase implements INodeType {
 					returnData.push(responseData);
 				}
 			}
-			
+
 			if (operation === 'delete') {
 				for (let i = 0; i < length; i++) {
 					const tableId = this.getNodeParameter('tableId', i) as string;
@@ -329,14 +330,14 @@ export class QuickBase implements INodeType {
 					// 	body.groupBy = group;
 					// 	delete body.groupByUi;
 					// }
-					
+
 					if (returnAll) {
 						responseData = await quickbaseApiRequestAllItems.call(this, 'POST', '/records/query', body, qs);
 					} else {
-						body.options = { top: this.getNodeParameter('limit', i) as number }; 
+						body.options = { top: this.getNodeParameter('limit', i) as number };
 
 						responseData = await quickbaseApiRequest.call(this, 'POST', '/records/query', body, qs);
-						
+
 						const { data: records, fields } = responseData;
 						responseData = [];
 
@@ -345,7 +346,7 @@ export class QuickBase implements INodeType {
 						for (const field of fields) {
 							fieldsIdKey[field.id] = field.label;
 						}
-						
+
 						for (const record of records) {
 							const data: IDataObject = {};
 							for (const [key, value] of Object.entries(record)) {
@@ -389,7 +390,7 @@ export class QuickBase implements INodeType {
 					}
 
 					record[fieldsLabelKey['Record ID#']] = { value: items[i].json[updateKey] };
-					
+
 					data.push(record);
 				}
 
@@ -410,7 +411,7 @@ export class QuickBase implements INodeType {
 				if (simple === true) {
 					const { data: records } = responseData;
 					responseData = [];
-					
+
 					for (const record of records) {
 						const data: IDataObject = {};
 						for (const [key, value] of Object.entries(record)) {
@@ -460,7 +461,7 @@ export class QuickBase implements INodeType {
 					}
 
 					record[mergeFieldId] = { value: items[i].json[updateKey] };
-					
+
 					data.push(record);
 				}
 
@@ -482,7 +483,7 @@ export class QuickBase implements INodeType {
 				if (simple === true) {
 					const { data: records } = responseData;
 					responseData = [];
-					
+
 					for (const record of records) {
 						const data: IDataObject = {};
 						for (const [key, value] of Object.entries(record)) {
@@ -516,7 +517,7 @@ export class QuickBase implements INodeType {
 					if (returnAll) {
 						responseData = await quickbaseApiRequestAllItems.call(this, 'POST', `/reports/${reportId}/run`, {}, qs);
 					} else {
-						qs.top = this.getNodeParameter('limit', i) as number; 
+						qs.top = this.getNodeParameter('limit', i) as number;
 
 						responseData = await quickbaseApiRequest.call(this, 'POST', `/reports/${reportId}/run`, {}, qs);
 
@@ -528,7 +529,7 @@ export class QuickBase implements INodeType {
 						for (const field of fields) {
 							fieldsIdKey[field.id] = field.label;
 						}
-						
+
 						for (const record of records) {
 							const data: IDataObject = {};
 							for (const [key, value] of Object.entries(record)) {

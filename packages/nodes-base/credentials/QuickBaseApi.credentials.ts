@@ -13,13 +13,15 @@ export class QuickBaseApi implements ICredentialType {
 			name: 'hostname',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			required: true,
 			placeholder: 'demo.quickbase.com',
-		}, 
+		},
 		{
 			displayName: 'User Token',
 			name: 'userToken',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			required: true,
 		},
 	];
 }
