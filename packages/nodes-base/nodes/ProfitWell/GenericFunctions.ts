@@ -46,21 +46,28 @@ export async function profitWellApiRequest(this: IHookFunctions | IExecuteFuncti
 	}
 }
 
-export function simplify(responseData: { [key: string]: [{ date: string, value: number | null }] }) {
+export function simplifyDailyMetrics(responseData: { [key: string]: [{ date: string, value: number | null }] }) {
 	const data: IDataObject[] = [];
+	const keys = Object.keys(responseData);
+	const dates = responseData[keys[0]].map(e => e.date);
+	for  (const [index, date] of dates.entries()) {
+		const element: IDataObject = {
+			date,
+		};
+		for (const key of keys) {
+			element[key] = responseData[key][index].value;
+		}
+		data.push(element);
+	}
+	return data;
+}
+
+export function simplifyMontlyMetrics(responseData: { [key: string]: [{ date: string, value: number | null }] }) {
+	const data: IDataObject = {};
 	for (const key of Object.keys(responseData)) {
-		if (responseData[key].length === 1) {
-			data.push({
-				[key]: responseData[key][0].value,
-				date: responseData[key][0].date,
-			});
-		} else {
-			for (const [index] of responseData[key].entries()) {
-				data.push({
-					[key]: responseData[key][index].value,
-					date: responseData[key][index].date,
-				});
-			}
+		for (const [index] of responseData[key].entries()) {
+			data[key] = responseData[key][index].value;
+			data['date'] = responseData[key][index].date;
 		}
 	}
 	return data;
