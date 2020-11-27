@@ -2320,6 +2320,7 @@ export class Pipedrive implements INodeType {
 			// select them easily
 			async getPersonLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
 				for (const field of data) {
 					if (field.key === 'label') {
@@ -2333,12 +2334,19 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
+				if (operation === 'update')  {
+					returnData.push({
+						name: 'No Label',
+						value: 'null',
+					});
+				}
 				return returnData;
 			},
 			// Get all the labels to display them to user so that he can
 			// select them easily
 			async getOrganizationLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
 				for (const field of data) {
 					if (field.key === 'label') {
@@ -2352,12 +2360,19 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
+				if (operation === 'update')  {
+					returnData.push({
+						name: 'No Label',
+						value: 'null',
+					});
+				}
 				return returnData;
 			},
 			// Get all the labels to display them to user so that he can
 			// select them easily
 			async getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
 				for (const field of data) {
 					if (field.key === 'label') {
@@ -2370,6 +2385,12 @@ export class Pipedrive implements INodeType {
 							}
 						}
 					}
+				}
+				if (operation === 'update')  {
+					returnData.push({
+						name: 'No Label',
+						value: 'null',
+					});
 				}
 				return returnData;
 			},
@@ -2557,6 +2578,9 @@ export class Pipedrive implements INodeType {
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					addAdditionalFields(body, updateFields);
 
+					if (body.label === 'null') {
+						body.label = null;
+					}
 				}
 			} else if (resource === 'file') {
 				if (operation === 'create') {
@@ -2836,6 +2860,10 @@ export class Pipedrive implements INodeType {
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					addAdditionalFields(body, updateFields);
+
+					if (body.label === 'null') {
+						body.label = null;
+					}
 
 				}
 			} else if (resource === 'product') {
