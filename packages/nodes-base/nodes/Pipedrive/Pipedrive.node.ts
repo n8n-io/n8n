@@ -353,12 +353,11 @@ export class Pipedrive implements INodeType {
 						value: 'getAll',
 						description: 'Get data of all organizations',
 					},
-					// TODO: Currently missing
-					// {
-					// 	name: 'Update',
-					// 	value: 'update',
-					// 	description: 'Update an organization',
-					// },
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update an organization',
+					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
@@ -1737,6 +1736,120 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the organization to get.',
 			},
 
+			// ----------------------------------
+			//         organization:update
+			// ----------------------------------
+			{
+				displayName: 'Organization ID',
+				name: 'organizationId',
+				type: 'number',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				description: 'The ID of the organization to create',
+			},
+			{
+				displayName: 'Update Fields',
+				name: 'updateFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'organization',
+						],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Custom Properties',
+						name: 'customProperties',
+						placeholder: 'Add Custom Property',
+						description: 'Adds a custom property to set also values which have not been predefined.',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'property',
+								displayName: 'Property',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'name',
+										type: 'string',
+										default: '',
+										description: 'Name of the property to set.',
+									},
+									{
+										displayName: 'Property Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+										description: 'Value of the property to set.',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'Label',
+						name: 'label',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getOrganizationLabels',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						default: '',
+						description: 'Organization name',
+					},
+					{
+						displayName: 'Owner ID',
+						name: 'owner_id',
+						type: 'number',
+						default: 0,
+						description: 'The ID of the user who will be marked as the owner of this Organization. When omitted, the authorized User ID will be used.',
+					},
+					{
+						displayName: 'Visible to',
+						name: 'visible_to',
+						type: 'options',
+						options: [
+							{
+								name: 'Owner & followers (private)',
+								value: '1',
+							},
+							{
+								name: 'Entire company (shared)',
+								value: '3',
+							},
+						],
+						default: '3',
+						description: 'Visibility of the person. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+					},
+				],
+			},
+
 
 
 			// ----------------------------------
@@ -2757,6 +2870,19 @@ export class Pipedrive implements INodeType {
 
 					endpoint = `/organizations`;
 
+				}
+				if (operation === 'update') {
+					// ----------------------------------
+					//         organization:update
+					// ----------------------------------
+
+					const id = this.getNodeParameter('organizationId', i) as string;
+
+					requestMethod = 'PUT';
+					endpoint = `/organizations/${id}`;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					addAdditionalFields(body, updateFields);
 				}
 			} else if (resource === 'person') {
 				if (operation === 'create') {
