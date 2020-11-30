@@ -82,7 +82,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 		if(workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
 			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
 		}
-		if(workflowData.settings !== undefined && workflowData.settings.errorWorkflow) {
+		if(workflowData.settings !== undefined && workflowData.settings.errorWorkflow && workflowData.settings.errorWorkflow != workflowData.id) {
 			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
 		}
 	}
