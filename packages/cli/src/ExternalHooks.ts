@@ -20,6 +20,19 @@ class ExternalHooksClass implements IExternalHooksClass {
 			return;
 		}
 
+		await this.loadHooksFiles();
+
+		this.initDidRun = true;
+	}
+
+
+	async reload() {
+		this.externalHooks = {};
+		await this.loadHooksFiles(true);
+	}
+
+
+	async loadHooksFiles(reload = false) {
 		const externalHookFiles = config.get('externalHookFiles').split(':');
 
 		// Load all the provided hook-files
@@ -27,6 +40,11 @@ class ExternalHooksClass implements IExternalHooksClass {
 			hookFilePath = hookFilePath.trim();
 			if (hookFilePath !== '') {
 				try {
+
+					if (reload === true) {
+						delete require.cache[require.resolve(hookFilePath)];
+					}
+
 					const hookFile = require(hookFilePath);
 
 					for (const resource of Object.keys(hookFile)) {
@@ -46,9 +64,8 @@ class ExternalHooksClass implements IExternalHooksClass {
 				}
 			}
 		}
-
-		this.initDidRun = true;
 	}
+
 
 	async run(hookName: string, hookParameters?: any[]): Promise<void> { // tslint:disable-line:no-any
 		const externalHookFunctions: IExternalHooksFunctions = {
@@ -63,6 +80,7 @@ class ExternalHooksClass implements IExternalHooksClass {
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
 	}
+
 
 	exists(hookName: string): boolean {
 		return !!this.externalHooks[hookName];
