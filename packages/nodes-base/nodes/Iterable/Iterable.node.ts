@@ -24,6 +24,7 @@ import {
 } from './UserDescription';
 
 import * as moment from 'moment-timezone';
+import { isDate } from 'util';
 
 export class Iterable implements INodeType {
 	description: INodeTypeDescription = {
@@ -99,7 +100,12 @@ export class Iterable implements INodeType {
 
 					if (body.dataFieldsUi) {
 						const dataFields = (body.dataFieldsUi as IDataObject).dataFieldValues as IDataObject[];
-						body.dataFields = dataFields;
+						const data: IDataObject = {};
+						for (const dataField of dataFields) {
+							data[dataField.key as string] = dataField.value;
+						}
+						body.dataFields = data;
+						delete body.dataFieldsUi;
 					}
 
 					if (body.createdAt) {
@@ -138,7 +144,12 @@ export class Iterable implements INodeType {
 
 					if (body.dataFieldsUi) {
 						const dataFields = (body.dataFieldsUi as IDataObject).dataFieldValues as IDataObject[];
-						body.dataFields = dataFields;
+						const data: IDataObject = {};
+						for (const dataField of dataFields) {
+							data[dataField.key as string] = dataField.value;
+						}
+						body.dataFields = data;
+						delete body.dataFieldsUi;
 					}
 
 					responseData = await iterableApiRequest.call(this, 'POST', '/users/update', body);
