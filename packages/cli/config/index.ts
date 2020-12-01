@@ -413,6 +413,30 @@ const config = convict({
 	},
 
 	nodes: {
+		include: {
+			doc: 'Nodes to load',
+			format: function check(rawValue) {
+				if (rawValue === '') {
+					return;
+				}
+				try {
+					const values = JSON.parse(rawValue);
+					if (!Array.isArray(values)) {
+						throw new Error();
+					}
+
+					for (const value of values) {
+						if (typeof value !== 'string') {
+							throw new Error();
+						}
+					}
+				} catch (error) {
+					throw new TypeError(`The Nodes to include is not a valid Array of strings.`);
+				}
+			},
+			default: undefined,
+			env: 'NODES_INCLUDE',
+		},
 		exclude: {
 			doc: 'Nodes not to load',
 			format: function check(rawValue) {
