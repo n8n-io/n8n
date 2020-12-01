@@ -166,7 +166,7 @@ export const eventFields = [
 					multipleValueButtonText: 'Add Attendee',
 				},
 				default: '',
-				description: 'The attendees of the event',
+				description: 'The attendees of the event. Multiple ones can be separated by comma.',
 			},
 			{
 				displayName: 'Color',
@@ -810,7 +810,7 @@ export const eventFields = [
 					multipleValueButtonText: 'Add Attendee',
 				},
 				default: '',
-				description: 'The attendees of the event',
+				description: 'The attendees of the event. Multiple ones can be separated by comma.',
 			},
 			{
 				displayName: 'Color',
