@@ -18,7 +18,7 @@ export const eventOperations = [
 			{
 				name: 'Track',
 				value: 'track',
-				description: 'Track an event',
+				description: 'Record the actions a user perform',
 			},
 		],
 		default: 'track',
@@ -96,7 +96,7 @@ export const eventFields = [
 							{
 								displayName: 'Key',
 								name: 'key',
-								type: 'options',
+								type: 'string',
 								default: '',
 								description: 'The end event specified key of the event defined data.',
 							},

@@ -141,7 +141,7 @@ export const userFields = [
 							{
 								displayName: 'Key',
 								name: 'key',
-								type: 'options',
+								type: 'string',
 								default: '',
 								description: 'The end user specified key of the user defined data.',
 							},
