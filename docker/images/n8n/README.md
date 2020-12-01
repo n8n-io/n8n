@@ -2,7 +2,7 @@
 
 ![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
 
-n8n is a free and open [fair-code](http://faircode.io) licensed node based Workflow Automation Tool. It can be self-hosted, easily extended, and so also used with internal tools.
+n8n is a free and open [fair-code](http://faircode.io) distributed node based Workflow Automation Tool. It can be self-hosted, easily extended, and so also used with internal tools.
 
 <a href="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png"><img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png" width="550" alt="n8n.io - Screenshot"></a>
 
@@ -305,6 +305,6 @@ Before you upgrade to the latest version make sure to check here if there are an
 
 ## License
 
-n8n is [fair-code](http://faircode.io) licensed under [**Apache 2.0 with Commons Clause**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md)
+n8n is [fair-code](http://faircode.io) distributed under [**Apache 2.0 with Commons Clause**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md) license
 
 Additional information about license can be found in the [FAQ](https://docs.n8n.io/#/faq?id=license)
