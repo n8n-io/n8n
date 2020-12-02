@@ -313,7 +313,7 @@ export const responderFields: INodeProperties[] = [
 							}, {
 								name: 'Red',
 								value: TLP.red,
-							}
+							},
 						],
 						description: 'Traffict Light Protocol (TLP). Default=Amber',
 					},
