@@ -66,7 +66,7 @@ for(const tool of (tools as IDataObject).processors as IDataObject[]) {
 	for (const param of (tool as IDataObject).p as IDataObject[]) {
 		const displayName = param.n as string;
 		const capitalizedDisplayName = capitalize(displayName.replace(/_/g, " "));
-		const description = "The '" + capitalizedDisplayName + "' value to use as a parameter";
+		const description = "The '" + capitalizedDisplayName + "' value to use as a parameter for this Operation";
 		const parameter = {
 			displayName: capitalizedDisplayName,
 			name: param.n,
@@ -74,7 +74,7 @@ for(const tool of (tools as IDataObject).processors as IDataObject[]) {
 			default: '',
 			placeholder: param.p,
 			required: param.r,
-//			options: param.o,
+			options: param.o,
 			displayOptions: {
 				show: {
 					group: [
@@ -88,7 +88,7 @@ for(const tool of (tools as IDataObject).processors as IDataObject[]) {
 			},
 			description: JSON.parse(JSON.stringify(description)),
 		};
-		console.log(parameter);
+		//console.log(parameter);
 		let modifiedParam = null;
 		//Check if param exists previously
 		for (const currentParam of parameters) {

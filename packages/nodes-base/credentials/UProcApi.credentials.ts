@@ -5,7 +5,7 @@ import {
 
 export class UProcApi implements ICredentialType {
 	name = 'uprocApi';
-	displayName = 'UProc API';
+	displayName = 'uProc API';
 	properties = [
     {
 			displayName: 'Email',
