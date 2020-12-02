@@ -14,9 +14,9 @@ import {
 import {
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
- } from './GenericFunctions';
+} from './GenericFunctions';
 
- import {
+import {
 	contactFields,
 	contactOperations,
 } from './ContactDescription';
@@ -26,7 +26,7 @@ import {
 	contactListOperations,
 } from './ContactListDescription';
 
- import {
+import {
 	companyFields,
 	companyOperations,
 } from './CompanyDescription';
@@ -39,9 +39,9 @@ import {
 import {
 	formFields,
 	formOperations,
- } from './FormDescription';
+} from './FormDescription';
 
- import {
+import {
 	ticketFields,
 	ticketOperations,
 } from './TicketDescription';
@@ -57,7 +57,7 @@ import {
 
 import {
 	snakeCase,
- } from 'change-case';
+} from 'change-case';
 
 export class Hubspot implements INodeType {
 	description: INodeTypeDescription = {
@@ -555,7 +555,7 @@ export class Hubspot implements INodeType {
 				const endpoint = '/properties/v1/deals/properties/named/dealtype';
 				const dealTypes = await hubspotApiRequest.call(this, 'GET', endpoint);
 				for (const dealType of dealTypes.options) {
-					const dealTypeName = dealType.label ;
+					const dealTypeName = dealType.label;
 					const dealTypeId = dealType.value;
 					returnData.push({
 						name: dealTypeName,
@@ -564,7 +564,7 @@ export class Hubspot implements INodeType {
 				}
 				return returnData;
 			},
-			
+
 			// Get all the deal properties to display them to user so that he can
 			// select them easily
 			async getDealCustomProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -830,7 +830,7 @@ export class Hubspot implements INodeType {
 				const endpoint = '/contacts/v1/lists/all/contacts/all';
 				const contacts = await hubspotApiRequestAllItems.call(this, 'contacts', 'GET', endpoint);
 				for (const contact of contacts) {
-					const contactName = `${contact.properties.firstname.value} ${contact.properties.lastname.value}` ;
+					const contactName = `${contact.properties.firstname.value} ${contact.properties.lastname.value}`;
 					const contactId = contact.vid;
 					returnData.push({
 						name: contactName,
@@ -1162,10 +1162,10 @@ export class Hubspot implements INodeType {
 								value: additionalFields.workEmail,
 							});
 						}
-	
+
 						if (additionalFields.customPropertiesUi) {
 							const customProperties = (additionalFields.customPropertiesUi as IDataObject).customPropertiesValues as IDataObject[];
-	
+
 							if (customProperties) {
 								for (const customProperty of customProperties) {
 									body.push({
@@ -1175,21 +1175,21 @@ export class Hubspot implements INodeType {
 								}
 							}
 						}
-	
+
 						const endpoint = `/contacts/v1/contact/createOrUpdate/email/${email}`;
 						responseData = await hubspotApiRequest.call(this, 'POST', endpoint, { properties: body });
-	
+
 						if (additionalFields.associatedCompanyId) {
 							const companyAssociations: IDataObject[] = [];
-								companyAssociations.push({
-									fromObjectId: responseData.vid,
-									toObjectId: additionalFields.associatedCompanyId,
-									category: 'HUBSPOT_DEFINED',
-									definitionId: 1,
-								});
+							companyAssociations.push({
+								fromObjectId: responseData.vid,
+								toObjectId: additionalFields.associatedCompanyId,
+								category: 'HUBSPOT_DEFINED',
+								definitionId: 1,
+							});
 							await hubspotApiRequest.call(this, 'PUT', '/crm-associations/v1/associations/create-batch', companyAssociations);
 						}
-	
+
 						if (resolveData) {
 							const isNew = responseData.isNew;
 							const qs: IDataObject = {};
@@ -1261,9 +1261,9 @@ export class Hubspot implements INodeType {
 						if (filters.propertyMode) {
 							qs.propertyMode = snakeCase(filters.propertyMode as string);
 						}
-	
+
 						endpoint = '/contacts/v1/lists/recently_updated/contacts/recent';
-	
+
 						if (returnAll) {
 							responseData = await hubspotApiRequestAllItems.call(this, 'contacts', 'GET', endpoint, {}, qs);
 						} else {
@@ -1285,7 +1285,7 @@ export class Hubspot implements INodeType {
 						const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
 						const sortBy = additionalFields.sortBy || 'createdate';
 						const direction = additionalFields.direction || 'DESCENDING';
-	
+
 						const body: IDataObject = {
 							sorts: [
 								{
@@ -1294,7 +1294,7 @@ export class Hubspot implements INodeType {
 								},
 							],
 						};
-	
+
 						if (filtersGroupsUi) {
 							const filterGroupValues = (filtersGroupsUi as IDataObject).filterGroupsValues as IDataObject[];
 							if (filterGroupValues) {
@@ -1310,15 +1310,15 @@ export class Hubspot implements INodeType {
 								}
 							}
 						}
-	
+
 						Object.assign(body, additionalFields);
-	
+
 						const endpoint = '/crm/v3/objects/contacts/search';
-	
+
 						if (returnAll) {
-	
+
 							responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
-	
+
 						} else {
 							qs.count = this.getNodeParameter('limit', 0) as number;
 							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
@@ -1812,7 +1812,7 @@ export class Hubspot implements INodeType {
 							requestOptions: {},
 						};
 						if (options.properties) {
-							body.requestOptions  = { properties: options.properties as string[] };
+							body.requestOptions = { properties: options.properties as string[] };
 						}
 						const endpoint = `/companies/v2/domains/${domain}/companies`;
 						if (returnAll) {
@@ -2015,7 +2015,7 @@ export class Hubspot implements INodeType {
 						const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
 						const sortBy = additionalFields.sortBy || 'createdate';
 						const direction = additionalFields.direction || 'DESCENDING';
-	
+
 						const body: IDataObject = {
 							sorts: [
 								{
@@ -2024,7 +2024,7 @@ export class Hubspot implements INodeType {
 								},
 							],
 						};
-	
+
 						if (filtersGroupsUi) {
 							const filterGroupValues = (filtersGroupsUi as IDataObject).filterGroupsValues as IDataObject[];
 							if (filterGroupValues) {
@@ -2040,15 +2040,15 @@ export class Hubspot implements INodeType {
 								}
 							}
 						}
-	
+
 						Object.assign(body, additionalFields);
-	
+
 						const endpoint = '/crm/v3/objects/deals/search';
-	
+
 						if (returnAll) {
-	
+
 							responseData = await hubspotApiRequestAllItems.call(this, 'results', 'POST', endpoint, body, qs);
-	
+
 						} else {
 							qs.count = this.getNodeParameter('limit', 0) as number;
 							responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
@@ -2182,7 +2182,7 @@ export class Hubspot implements INodeType {
 						}
 						const endpoint = '/crm-objects/v1/objects/tickets';
 						responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
-	
+
 						if (additionalFields.associatedCompanyIds) {
 							const companyAssociations: IDataObject[] = [];
 							for (const companyId of additionalFields.associatedCompanyIds as IDataObject[]) {
@@ -2195,7 +2195,7 @@ export class Hubspot implements INodeType {
 							}
 							await hubspotApiRequest.call(this, 'PUT', '/crm-associations/v1/associations/create-batch', companyAssociations);
 						}
-	
+
 						if (additionalFields.associatedContactIds) {
 							const contactAssociations: IDataObject[] = [];
 							for (const contactId of additionalFields.associatedContactIds as IDataObject[]) {
@@ -2318,7 +2318,7 @@ export class Hubspot implements INodeType {
 						}
 						const endpoint = `/crm-objects/v1/objects/tickets/${ticketId}`;
 						responseData = await hubspotApiRequest.call(this, 'PUT', endpoint, body);
-	
+
 						if (updateFields.associatedCompanyIds) {
 							const companyAssociations: IDataObject[] = [];
 							for (const companyId of updateFields.associatedCompanyIds as IDataObject[]) {
@@ -2331,7 +2331,7 @@ export class Hubspot implements INodeType {
 							}
 							await hubspotApiRequest.call(this, 'PUT', '/crm-associations/v1/associations/create-batch', companyAssociations);
 						}
-	
+
 						if (updateFields.associatedContactIds) {
 							const contactAssociations: IDataObject[] = [];
 							for (const contactId of updateFields.associatedContactIds as IDataObject[]) {
