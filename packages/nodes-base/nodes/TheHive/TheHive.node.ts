@@ -1,42 +1,42 @@
 import {
-	IExecuteFunctions,
-	BINARY_ENCODING
+	BINARY_ENCODING,
+	IExecuteFunctions
 } from 'n8n-core';
 
 import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+	IBinaryData,
 	IDataObject,
-	INodeParameters,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodeParameters,
 	INodePropertyOptions,
-	IBinaryData
+	INodeType,
+	INodeTypeDescription
 } from 'n8n-workflow';
 
 import {
-	alertOperations,
 	alertFields,
+	alertOperations,
 } from './descriptions/AlertDescription';
 
 import {
-	observableOperations,
 	observableFields,
+	observableOperations,
 } from './descriptions/ObservableDescription';
 
 import {
-	caseOperations,
 	caseFields,
+	caseOperations,
 } from './descriptions/CaseDescription';
 
 import {
-	taskOperations,
 	taskFields,
+	taskOperations,
 } from './descriptions/TaskDescription';
 
 import {
-	logOperations,
 	logFields,
+	logOperations,
 } from './descriptions/LogDescription';
 
 import {
@@ -44,23 +44,23 @@ import {
 } from 'buffer';
 
 import {
-	IQueryObject,
-	Parent,
-	Id,
-	Eq,
 	And,
 	Between,
-	In,
 	ContainsString,
+	Eq,
+	Id,
+	In,
+	IQueryObject,
+	Parent,
 } from './QueryFunctions';
 
 import {
-	theHiveApiRequest,
 	mapResource,
-	splitTags,
 	prepareOptional,
-	prepareSortQuery,
 	prepareRangeQuery,
+	prepareSortQuery,
+	splitTags,
+	theHiveApiRequest,
 } from './GenericFunctions';
 
 export class TheHive implements INodeType {
@@ -164,7 +164,7 @@ export class TheHive implements INodeType {
 				const requestResult = await theHiveApiRequest.call(
 					this,
 					'GET',
-					endpoint as string
+					endpoint as string,
 				);
 				const returnData: INodePropertyOptions[] = [];
 
@@ -183,35 +183,35 @@ export class TheHive implements INodeType {
 				// if v1 is not used we remove 'count' option
 				const version = this.getCredentials('theHiveApi')?.apiVersion;
 
-				const options= [
-					...(version==='v1')?[{name:'Count',value:'count',description:'Count observables'}]:[],
-					{name:'Create',value:'create',description:'Create observable'},
-					{name:'Execute Analyzer',value:'executeAnalyzer',description:'Execute an responder on selected observable'},
-					{name:'Execute Responder',value:'executeResponder',description:'Execute a responder on selected observable'},
-					{name:'Get All',value:'getAll',description:'Get all observables of a specific case'},
-					{name:'Get', value: 'get', description: 'Get a single observable' },
-					{name:'Search',value:'search',description:'Search observables'},
-					{name:'Update',value:'update',description:'Update observable'},
+				const options = [
+					...(version === 'v1') ? [{ name: 'Count', value: 'count', description: 'Count observables' }] : [],
+					{ name: 'Create', value: 'create', description: 'Create observable' },
+					{ name: 'Execute Analyzer', value: 'executeAnalyzer', description: 'Execute an responder on selected observable' },
+					{ name: 'Execute Responder', value: 'executeResponder', description: 'Execute a responder on selected observable' },
+					{ name: 'Get All', value: 'getAll', description: 'Get all observables of a specific case' },
+					{ name: 'Get', value: 'get', description: 'Get a single observable' },
+					{ name: 'Search', value: 'search', description: 'Search observables' },
+					{ name: 'Update', value: 'update', description: 'Update observable' },
 				];
 				return options;
 			},
-			async loadTaskOptions(this:ILoadOptionsFunctions): Promise<INodePropertyOptions[]>{
-				const version = this.getCredentials('theHiveApi')?.apiVersion;
-				const options =[
-					...(version==='v1')?[{name:'Count',value:'count',description:'Count tasks'}]:[],
-					{name:'Create',value:'create',description:'Create a task'},
-					{name:'Execute Responder', value: 'executeResponder', description: 'Execute a responder on the specified task' },
-					{name:'Get All',value:'getAll',description:'Get all asks of a specific case'},
-					{name:'Get', value: 'get', description: 'Get a single task' },
-					{name:'Search',value:'search',description:'Search tasks'},
-					{name:'Update',value:'update',description:'Update a task'},
-				];
-				return options;
-			},
-			async loadAlertOptions(this:ILoadOptionsFunctions):Promise<INodePropertyOptions[]>{
+			async loadTaskOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const version = this.getCredentials('theHiveApi')?.apiVersion;
 				const options = [
-					...(version ==='v1')?[{ name: 'Count', value: 'count', description: 'Count alerts' }]:[],
+					...(version === 'v1') ? [{ name: 'Count', value: 'count', description: 'Count tasks' }] : [],
+					{ name: 'Create', value: 'create', description: 'Create a task' },
+					{ name: 'Execute Responder', value: 'executeResponder', description: 'Execute a responder on the specified task' },
+					{ name: 'Get All', value: 'getAll', description: 'Get all asks of a specific case' },
+					{ name: 'Get', value: 'get', description: 'Get a single task' },
+					{ name: 'Search', value: 'search', description: 'Search tasks' },
+					{ name: 'Update', value: 'update', description: 'Update a task' },
+				];
+				return options;
+			},
+			async loadAlertOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const version = this.getCredentials('theHiveApi')?.apiVersion;
+				const options = [
+					...(version === 'v1') ? [{ name: 'Count', value: 'count', description: 'Count alerts' }] : [],
 					{ name: 'Create', value: 'create', description: 'Create alert' },
 					{ name: 'Execute Responder', value: 'executeResponder', description: 'Execute a responder on the specified alert' },
 					{ name: 'Get', value: 'get', description: 'Get an alert' },
@@ -222,10 +222,10 @@ export class TheHive implements INodeType {
 				];
 				return options;
 			},
-			async loadCaseOptions(this:ILoadOptionsFunctions):Promise<INodePropertyOptions[]>{
+			async loadCaseOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const version = this.getCredentials('theHiveApi')?.apiVersion;
-				const options=[
-					...(version ==='v1')?[{ name: 'Count', value: 'count', description: 'Count a case' }]:[],
+				const options = [
+					...(version === 'v1') ? [{ name: 'Count', value: 'count', description: 'Count a case' }] : [],
 					{ name: 'Create', value: 'create', description: 'Create a case' },
 					{ name: 'Execute Responder', value: 'executeResponder', description: 'Execute a responder on the specified case' },
 					{ name: 'Get All', value: 'getAll', description: 'Get all cases' },
@@ -233,8 +233,8 @@ export class TheHive implements INodeType {
 					{ name: 'Update', value: 'update', description: 'Update a case' },
 				];
 				return options;
-			}
-		}
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -249,22 +249,22 @@ export class TheHive implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'alert') {
 				if (operation === 'count') {
-					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
 
 					const _countSearchQuery: IQueryObject = And();
 
 					for (const key of Object.keys(countQueryAttributs)) {
-						if ( key === 'tags') {
+						if (key === 'tags') {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								In(key, countQueryAttributs[key] as string[])
+								In(key, countQueryAttributs[key] as string[]),
 							);
-						} else if (key === 'description' || key === 'title' ) {
+						} else if (key === 'description' || key === 'title') {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								ContainsString(key, countQueryAttributs[key] as string)
+								ContainsString(key, countQueryAttributs[key] as string),
 							);
 						} else {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								Eq(key, countQueryAttributs[key] as string)
+								Eq(key, countQueryAttributs[key] as string),
 							);
 						}
 					}
@@ -276,19 +276,18 @@ export class TheHive implements INodeType {
 							},
 							{
 								'_name': 'filter',
-								'_and': _countSearchQuery['_and']
+								'_and': _countSearchQuery['_and'],
 							},
-						]
+						],
 					};
 
 					body['query'].push(
 						{
 							'_name': 'count',
-						}
+						},
 					);
 
 					qs.name = 'count-Alert';
-
 
 					responseData = await theHiveApiRequest.call(
 						this,
@@ -299,7 +298,6 @@ export class TheHive implements INodeType {
 					);
 
 					responseData = { count: responseData };
-
 				}
 
 				if (operation === 'create') {
@@ -315,10 +313,10 @@ export class TheHive implements INodeType {
 						source: this.getNodeParameter('source', i),
 						sourceRef: this.getNodeParameter('sourceRef', i),
 						follow: this.getNodeParameter('follow', i, true),
-						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters)
+						...prepareOptional(this.getNodeParameter('optionals', i, {}) as INodeParameters),
 					};
 
-					const artifactUi = this.getNodeParameter('artifactUi', i)as IDataObject;
+					const artifactUi = this.getNodeParameter('artifactUi', i) as IDataObject;
 
 					if (artifactUi) {
 
@@ -378,16 +376,16 @@ export class TheHive implements INodeType {
 					if it doesn't interfere with n8n standards then we should keep it
 				*/
 
-				if (operation === 'executeResponder'){
+				if (operation === 'executeResponder') {
 					const alertId = this.getNodeParameter('id', i);
 					const responderId = this.getNodeParameter('responder', i) as string;
-					let body:IDataObject;
+					let body: IDataObject;
 					let response;
 					responseData = [];
 					body = {
 						responderId,
-						objectId:alertId,
-						objectType: 'alert'
+						objectId: alertId,
+						objectType: 'alert',
 					};
 					response = await theHiveApiRequest.call(
 						this,
@@ -398,26 +396,26 @@ export class TheHive implements INodeType {
 					body = {
 						query: [
 							{
-								'_name': 'listAction'
+								'_name': 'listAction',
 							},
 							{
 								'_name': 'filter',
 								'_and': [
 									{
 										'_field': 'cortexId',
-										'_value': response.cortexId
+										'_value': response.cortexId,
 									},
 									{
 										'_field': 'objectId',
-										'_value': response.objectId
+										'_value': response.objectId,
 									},
 									{
 										'_field': 'startDate',
-										'_value': response.startDate
-									}
+										'_value': response.startDate,
+									},
 
-								]
-							}
+								],
+							},
 						],
 					};
 					qs.name = 'log-actions';
@@ -427,9 +425,9 @@ export class TheHive implements INodeType {
 							'POST',
 							`/v1/query`,
 							body,
-							qs
+							qs,
 						);
-					} while (response.status === 'Waiting' || response.status === 'InProgress' );
+					} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 					responseData = response;
 				}
@@ -452,24 +450,24 @@ export class TheHive implements INodeType {
 
 					const version = credentials.apiVersion;
 
-					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
 
-					const options =  this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					const _searchQuery: IQueryObject = And();
 
 					for (const key of Object.keys(queryAttributs)) {
-						if ( key === 'tags') {
+						if (key === 'tags') {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								In(key, queryAttributs[key] as string[])
+								In(key, queryAttributs[key] as string[]),
 							);
-						} else if (key === 'description' || key === 'title' ) {
+						} else if (key === 'description' || key === 'title') {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								ContainsString(key, queryAttributs[key] as string)
+								ContainsString(key, queryAttributs[key] as string),
 							);
 						} else {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								Eq(key, queryAttributs[key] as string)
+								Eq(key, queryAttributs[key] as string),
 							);
 						}
 					}
@@ -498,7 +496,7 @@ export class TheHive implements INodeType {
 								},
 								{
 									'_name': 'filter',
-									'_and': _searchQuery['_and']
+									'_and': _searchQuery['_and'],
 								},
 							],
 						};
@@ -631,32 +629,32 @@ export class TheHive implements INodeType {
 				}
 			}
 
-			if(resource === 'observable'){
-				if(operation === 'count'){
-					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+			if (resource === 'observable') {
+				if (operation === 'count') {
+					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
 
 					const _countSearchQuery: IQueryObject = And();
 
 					for (const key of Object.keys(countQueryAttributs)) {
 						if (key === 'dataType' || key === 'tags') {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								In(key, countQueryAttributs[key] as string[])
+								In(key, countQueryAttributs[key] as string[]),
 							);
 						} else if (key === 'description' || key === 'keywork' || key === 'message') {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								ContainsString(key, countQueryAttributs[key] as string)
+								ContainsString(key, countQueryAttributs[key] as string),
 							);
 						} else if (key === 'range') {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
 								Between(
 									'startDate',
 									countQueryAttributs['range']['dateRange']['fromDate'],
-									countQueryAttributs['range']['dateRange']['toDate']
-								)
+									countQueryAttributs['range']['dateRange']['toDate'],
+								),
 							);
 						} else {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								Eq(key, countQueryAttributs[key] as string)
+								Eq(key, countQueryAttributs[key] as string),
 							);
 						}
 					}
@@ -664,19 +662,19 @@ export class TheHive implements INodeType {
 					const body = {
 						'query': [
 							{
-								'_name': 'listObservable'
+								'_name': 'listObservable',
 							},
 							{
 								'_name': 'filter',
-								'_and': _countSearchQuery['_and']
+								'_and': _countSearchQuery['_and'],
 							},
-						]
+						],
 					};
 
 					body['query'].push(
 						{
-							'_name': 'count'
-						}
+							'_name': 'count',
+						},
 					);
 
 					qs.name = 'count-observables';
@@ -692,23 +690,23 @@ export class TheHive implements INodeType {
 					responseData = { count: responseData };
 				}
 
-				if (operation === 'executeAnalyzer'){
+				if (operation === 'executeAnalyzer') {
 					const observableId = this.getNodeParameter('id', i);
 					const analyzers = (this.getNodeParameter('analyzers', i) as string[])
 						.map(analyzer => {
 							const parts = analyzer.split('::');
 							return {
 								analyzerId: parts[0],
-								cortexId: parts[1]
+								cortexId: parts[1],
 							};
 						});
-					let response: any;
+					let response: any; // tslint:disable-line:no-any
 					let body: IDataObject;
 					responseData = [];
 					for (const analyzer of analyzers) {
 						body = {
 							...analyzer,
-							artifactId:observableId,
+							artifactId: observableId,
 						};
 						// execute the analyzer
 						response = await theHiveApiRequest.call(
@@ -716,19 +714,19 @@ export class TheHive implements INodeType {
 							'POST',
 							'/connector/cortex/job' as string,
 							body,
-							qs
+							qs,
 						);
 						const jobId = response.id;
 						qs.name = 'observable-jobs';
 						// query the job result (including the report)
 						do {
-							responseData = await theHiveApiRequest.call(this,'GET',`/connector/cortex/job/${jobId}`,body,qs);
-						} while (responseData.status === 'Waiting' || responseData.status === 'InProgress' );
+							responseData = await theHiveApiRequest.call(this, 'GET', `/connector/cortex/job/${jobId}`, body, qs);
+						} while (responseData.status === 'Waiting' || responseData.status === 'InProgress');
 					}
 
 				}
 
-				if (operation === 'executeResponder'){
+				if (operation === 'executeResponder') {
 					const observableId = this.getNodeParameter('id', i);
 					const responderId = this.getNodeParameter('responder', i) as string;
 					let body: IDataObject;
@@ -736,8 +734,8 @@ export class TheHive implements INodeType {
 					responseData = [];
 					body = {
 						responderId,
-						objectId:observableId,
-						objectType: 'case_artifact'
+						objectId: observableId,
+						objectType: 'case_artifact',
 					};
 					response = await theHiveApiRequest.call(
 						this,
@@ -748,27 +746,27 @@ export class TheHive implements INodeType {
 					body = {
 						query: [
 							{
-								'_name': 'listAction'
+								'_name': 'listAction',
 							},
 							{
 								'_name': 'filter',
 								'_and': [
 									{
 										'_field': 'cortexId',
-										'_value': response.cortexId
+										'_value': response.cortexId,
 									},
 									{
 										'_field': 'objectId',
-										'_value': response.objectId
+										'_value': response.objectId,
 									},
 									{
 										'_field': 'startDate',
-										'_value': response.startDate
-									}
+										'_value': response.startDate,
+									},
 
-								]
-							}
-						]
+								],
+							},
+						],
 					};
 					qs.name = 'log-actions';
 					do {
@@ -777,14 +775,14 @@ export class TheHive implements INodeType {
 							'POST',
 							`/v1/query`,
 							body,
-							qs
+							qs,
 						);
-					} while (response.status === 'Waiting' || response.status === 'InProgress' );
+					} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 					responseData = response;
 				}
 
-				if(operation === 'create'){
+				if (operation === 'create') {
 					const caseId = this.getNodeParameter('caseId', i);
 
 					let body: IDataObject = {
@@ -795,7 +793,7 @@ export class TheHive implements INodeType {
 						ioc: this.getNodeParameter('ioc', i) as boolean,
 						sighted: this.getNodeParameter('sighted', i) as boolean,
 						status: this.getNodeParameter('status', i) as string,
-						...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters)
+						...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters),
 					};
 
 					let options: IDataObject = {};
@@ -820,15 +818,15 @@ export class TheHive implements INodeType {
 								attachment: {
 									value: Buffer.from(binaryData.data, BINARY_ENCODING),
 									options: {
-										contentType:  binaryData.mimeType,
+										contentType: binaryData.mimeType,
 										filename: binaryData.fileName,
-									}
+									},
 								},
-								_json: JSON.stringify(body)
-							}
+								_json: JSON.stringify(body),
+							},
 						};
 						body = {};
-					}else{
+					} else {
 						body.data = this.getNodeParameter('data', i) as string;
 					}
 
@@ -839,11 +837,11 @@ export class TheHive implements INodeType {
 						body,
 						qs,
 						'',
-						options
+						options,
 					);
 				}
 
-				if(operation === 'get'){
+				if (operation === 'get') {
 					const observableId = this.getNodeParameter('id', i) as string;
 
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
@@ -866,9 +864,9 @@ export class TheHive implements INodeType {
 							'query': [
 								{
 									'_name': 'getObservable',
-									'idOrName': observableId
-								}
-							]
+									'idOrName': observableId,
+								},
+							],
 						};
 
 						qs.name = `get-observable-${observableId}`;
@@ -890,14 +888,14 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if(operation === 'getAll'){
+				if (operation === 'getAll') {
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const version = credentials.apiVersion;
 
-					const options =  this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					const caseId = this.getNodeParameter('caseId', i);
 
@@ -914,8 +912,6 @@ export class TheHive implements INodeType {
 					}
 
 					if (version === 'v1') {
-
-
 						endpoint = '/v1/query';
 
 						method = 'POST';
@@ -924,12 +920,12 @@ export class TheHive implements INodeType {
 							'query': [
 								{
 									'_name': 'getCase',
-									'idOrName': caseId
+									'idOrName': caseId,
 								},
 								{
-									'_name': 'observables'
+									'_name': 'observables',
 								},
-							]
+							],
 						};
 
 						//@ts-ignore
@@ -943,7 +939,6 @@ export class TheHive implements INodeType {
 						qs.name = 'observables';
 
 					} else {
-
 						method = 'POST';
 
 						endpoint = '/case/artifact/_search';
@@ -952,7 +947,7 @@ export class TheHive implements INodeType {
 							qs.range = `0-${limit}`;
 						}
 
-						body.query =  Parent('case', Id(caseId as string));
+						body.query = Parent('case', Id(caseId as string));
 
 						Object.assign(qs, prepareOptional(options));
 					}
@@ -966,39 +961,39 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if(operation === 'search'){
+				if (operation === 'search') {
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const version = credentials.apiVersion;
 
-					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
 
 					const _searchQuery: IQueryObject = And();
 
-					const options =  this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					for (const key of Object.keys(queryAttributs)) {
 						if (key === 'dataType' || key === 'tags') {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								In(key, queryAttributs[key] as string[])
+								In(key, queryAttributs[key] as string[]),
 							);
 						} else if (key === 'description' || key === 'keywork' || key === 'message') {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								ContainsString(key, queryAttributs[key] as string)
+								ContainsString(key, queryAttributs[key] as string),
 							);
 						} else if (key === 'range') {
 							(_searchQuery['_and'] as IQueryObject[]).push(
 								Between(
 									'startDate',
 									queryAttributs['range']['dateRange']['fromDate'],
-									queryAttributs['range']['dateRange']['toDate']
-								)
+									queryAttributs['range']['dateRange']['toDate'],
+								),
 							);
 						} else {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								Eq(key, queryAttributs[key] as string)
+								Eq(key, queryAttributs[key] as string),
 							);
 						}
 					}
@@ -1016,7 +1011,6 @@ export class TheHive implements INodeType {
 					}
 
 					if (version === 'v1') {
-
 						endpoint = '/v1/query';
 
 						method = 'POST';
@@ -1024,13 +1018,13 @@ export class TheHive implements INodeType {
 						body = {
 							'query': [
 								{
-									'_name': 'listObservable'
+									'_name': 'listObservable',
 								},
 								{
 									'_name': 'filter',
-									'_and': _searchQuery['_and']
+									'_and': _searchQuery['_and'],
 								},
-							]
+							],
 						};
 
 						//@ts-ignore
@@ -1044,7 +1038,6 @@ export class TheHive implements INodeType {
 						qs.name = 'observables';
 
 					} else {
-
 						method = 'POST';
 
 						endpoint = '/case/artifact/_search';
@@ -1068,11 +1061,11 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if(operation === 'update'){
+				if (operation === 'update') {
 					const id = this.getNodeParameter('id', i) as string;
 
 					const body: IDataObject = {
-						...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters)
+						...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters),
 					};
 
 					responseData = await theHiveApiRequest.call(
@@ -1087,24 +1080,24 @@ export class TheHive implements INodeType {
 				}
 			}
 
-			if (resource === 'case'){
-				if(operation === 'count'){
-					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+			if (resource === 'case') {
+				if (operation === 'count') {
+					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
 
 					const _countSearchQuery: IQueryObject = And();
 
 					for (const key of Object.keys(countQueryAttributs)) {
-						if ( key === 'tags') {
+						if (key === 'tags') {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								In(key, countQueryAttributs[key] as string[])
+								In(key, countQueryAttributs[key] as string[]),
 							);
 						} else if (key === 'description' || key === 'summary' || key === 'title') {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								ContainsString(key, countQueryAttributs[key] as string)
+								ContainsString(key, countQueryAttributs[key] as string),
 							);
 						} else {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								Eq(key, countQueryAttributs[key] as string)
+								Eq(key, countQueryAttributs[key] as string),
 							);
 						}
 					}
@@ -1116,15 +1109,15 @@ export class TheHive implements INodeType {
 							},
 							{
 								'_name': 'filter',
-								'_and': _countSearchQuery['_and']
+								'_and': _countSearchQuery['_and'],
 							},
-						]
+						],
 					};
 
 					body['query'].push(
 						{
 							'_name': 'count',
-						}
+						},
 					);
 
 					qs.name = 'count-cases';
@@ -1141,7 +1134,7 @@ export class TheHive implements INodeType {
 					responseData = { count: responseData };
 				}
 
-				if (operation === 'executeResponder'){
+				if (operation === 'executeResponder') {
 					const caseId = this.getNodeParameter('id', i);
 					const responderId = this.getNodeParameter('responder', i) as string;
 					let body: IDataObject;
@@ -1149,8 +1142,8 @@ export class TheHive implements INodeType {
 					responseData = [];
 					body = {
 						responderId,
-						objectId:caseId,
-						objectType: 'case'
+						objectId: caseId,
+						objectType: 'case',
 					};
 					response = await theHiveApiRequest.call(
 						this,
@@ -1161,27 +1154,27 @@ export class TheHive implements INodeType {
 					body = {
 						query: [
 							{
-								'_name': 'listAction'
+								'_name': 'listAction',
 							},
 							{
 								'_name': 'filter',
 								'_and': [
 									{
 										'_field': 'cortexId',
-										'_value': response.cortexId
+										'_value': response.cortexId,
 									},
 									{
 										'_field': 'objectId',
-										'_value': response.objectId
+										'_value': response.objectId,
 									},
 									{
 										'_field': 'startDate',
-										'_value': response.startDate
-									}
+										'_value': response.startDate,
+									},
 
-								]
-							}
-						]
+								],
+							},
+						],
 					};
 					qs.name = 'log-actions';
 					do {
@@ -1190,14 +1183,14 @@ export class TheHive implements INodeType {
 							'POST',
 							`/v1/query`,
 							body,
-							qs
+							qs,
 						);
-					} while (response.status === 'Waiting' || response.status === 'InProgress' );
+					} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 					responseData = response;
 				}
 
-				if(operation === 'create'){
+				if (operation === 'create') {
 
 					const body: IDataObject = {
 						title: this.getNodeParameter('title', i),
@@ -1208,7 +1201,7 @@ export class TheHive implements INodeType {
 						flag: this.getNodeParameter('flag', i),
 						tlp: this.getNodeParameter('tlp', i),
 						tags: splitTags(this.getNodeParameter('tags', i) as string),
-						...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters)
+						...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters),
 					};
 
 					responseData = await theHiveApiRequest.call(
@@ -1219,7 +1212,7 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if(operation === 'get'){
+				if (operation === 'get') {
 					const caseId = this.getNodeParameter('id', i) as string;
 
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
@@ -1242,9 +1235,9 @@ export class TheHive implements INodeType {
 							'query': [
 								{
 									'_name': 'getCase',
-									'idOrName': caseId
-								}
-							]
+									'idOrName': caseId,
+								},
+							],
 						};
 
 						qs.name = `get-case-${caseId}`;
@@ -1266,31 +1259,31 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if(operation === 'getAll'){
+				if (operation === 'getAll') {
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const version = credentials.apiVersion;
 
-					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
 
 					const _searchQuery: IQueryObject = And();
 
-					const options =  this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					for (const key of Object.keys(queryAttributs)) {
-						if ( key === 'tags') {
+						if (key === 'tags') {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								In(key, queryAttributs[key] as string[])
+								In(key, queryAttributs[key] as string[]),
 							);
 						} else if (key === 'description' || key === 'summary' || key === 'title') {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								ContainsString(key, queryAttributs[key] as string)
+								ContainsString(key, queryAttributs[key] as string),
 							);
 						} else {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								Eq(key, queryAttributs[key] as string)
+								Eq(key, queryAttributs[key] as string),
 							);
 						}
 					}
@@ -1315,13 +1308,13 @@ export class TheHive implements INodeType {
 						body = {
 							'query': [
 								{
-									'_name': 'listCase'
+									'_name': 'listCase',
 								},
 								{
 									'_name': 'filter',
-									'_and': _searchQuery['_and']
+									'_and': _searchQuery['_and'],
 								},
-							]
+							],
 						};
 
 						//@ts-ignore
@@ -1357,11 +1350,11 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if(operation === 'update'){
+				if (operation === 'update') {
 					const id = this.getNodeParameter('id', i) as string;
 
 					const body: IDataObject = {
-						...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters)
+						...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters),
 					};
 
 					responseData = await theHiveApiRequest.call(
@@ -1373,20 +1366,20 @@ export class TheHive implements INodeType {
 				}
 			}
 
-			if (resource === 'task'){
-				if (operation === 'count'){
-					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+			if (resource === 'task') {
+				if (operation === 'count') {
+					const countQueryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
 
 					const _countSearchQuery: IQueryObject = And();
 
 					for (const key of Object.keys(countQueryAttributs)) {
 						if (key === 'title' || key === 'description') {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								ContainsString(key, countQueryAttributs[key] as string)
+								ContainsString(key, countQueryAttributs[key] as string),
 							);
 						} else {
 							(_countSearchQuery['_and'] as IQueryObject[]).push(
-								Eq(key, countQueryAttributs[key] as string)
+								Eq(key, countQueryAttributs[key] as string),
 							);
 						}
 					}
@@ -1394,19 +1387,19 @@ export class TheHive implements INodeType {
 					const body = {
 						'query': [
 							{
-								'_name': 'listTask'
+								'_name': 'listTask',
 							},
 							{
 								'_name': 'filter',
-								'_and': _countSearchQuery['_and']
+								'_and': _countSearchQuery['_and'],
 							},
-						]
+						],
 					};
 
 					body['query'].push(
 						{
 							'_name': 'count',
-						}
+						},
 					);
 
 					qs.name = 'count-tasks';
@@ -1422,14 +1415,14 @@ export class TheHive implements INodeType {
 					responseData = { count: responseData };
 				}
 
-				if (operation === 'create'){
+				if (operation === 'create') {
 					const caseId = this.getNodeParameter('caseId', i) as string;
 
 					const body: IDataObject = {
 						title: this.getNodeParameter('title', i) as string,
 						status: this.getNodeParameter('status', i) as string,
 						flag: this.getNodeParameter('flag', i),
-						...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters)
+						...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters),
 					};
 
 					responseData = await theHiveApiRequest.call(
@@ -1440,63 +1433,63 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if (operation === 'executeResponder'){
+				if (operation === 'executeResponder') {
 					const taskId = this.getNodeParameter('id', i);
 					const responderId = this.getNodeParameter('responder', i) as string;
-					let body:IDataObject;
+					let body: IDataObject;
 					let response;
 					responseData = [];
-						body = {
-							responderId,
-							objectId: taskId,
-							objectType: 'case_task'
-						};
+					body = {
+						responderId,
+						objectId: taskId,
+						objectType: 'case_task',
+					};
+					response = await theHiveApiRequest.call(
+						this,
+						'POST',
+						'/connector/cortex/action' as string,
+						body,
+					);
+					body = {
+						query: [
+							{
+								'_name': 'listAction',
+							},
+							{
+								'_name': 'filter',
+								'_and': [
+									{
+										'_field': 'cortexId',
+										'_value': response.cortexId,
+									},
+									{
+										'_field': 'objectId',
+										'_value': response.objectId,
+									},
+									{
+										'_field': 'startDate',
+										'_value': response.startDate,
+									},
+
+								],
+							},
+						],
+					};
+					qs.name = 'task-actions';
+					do {
 						response = await theHiveApiRequest.call(
 							this,
 							'POST',
-							'/connector/cortex/action' as string,
+							`/v1/query`,
 							body,
+							qs,
 						);
-						body = {
-							query: [
-								{
-									'_name': 'listAction'
-								},
-								{
-									'_name': 'filter',
-									'_and': [
-										{
-											'_field': 'cortexId',
-											'_value': response.cortexId
-										},
-										{
-											'_field': 'objectId',
-											'_value': response.objectId
-										},
-										{
-											'_field': 'startDate',
-											'_value': response.startDate
-										}
+					} while (response.status === 'Waiting' || response.status === 'InProgress');
 
-									]
-								}
-							],
-						};
-						qs.name = 'task-actions';
-						do {
-							response = await theHiveApiRequest.call(
-								this,
-								'POST',
-								`/v1/query`,
-								body,
-								qs
-							);
-						} while (response.status === 'Waiting' || response.status === 'InProgress' );
-
-						responseData = response;
+					responseData = response;
 				}
 
-				if (operation === 'get'){
+				if (operation === 'get') {
 					const taskId = this.getNodeParameter('id', i) as string;
 
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
@@ -1518,9 +1511,9 @@ export class TheHive implements INodeType {
 							'query': [
 								{
 									'_name': 'getTask',
-									'idOrName': taskId
-								}
-							]
+									'idOrName': taskId,
+								},
+							],
 						};
 
 						qs.name = `get-task-${taskId}`;
@@ -1541,7 +1534,7 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if(operation === 'getAll'){
+				if (operation === 'getAll') {
 					// get all require a case id (it retursn all tasks for a specific case)
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
@@ -1551,7 +1544,7 @@ export class TheHive implements INodeType {
 
 					const caseId = this.getNodeParameter('caseId', i) as string;
 
-					const options =  this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					let endpoint;
 
@@ -1574,12 +1567,12 @@ export class TheHive implements INodeType {
 							'query': [
 								{
 									'_name': 'getCase',
-									'idOrName': caseId
+									'idOrName': caseId,
 								},
 								{
-									'_name': 'tasks'
+									'_name': 'tasks',
 								},
-							]
+							],
 						};
 
 						//@ts-ignore
@@ -1617,27 +1610,27 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if(operation === 'search'){
+				if (operation === 'search') {
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const version = credentials.apiVersion;
 
-					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters);
+					const queryAttributs: any = prepareOptional(this.getNodeParameter('filters', i, {}) as INodeParameters); // tslint:disable-line:no-any
 
 					const _searchQuery: IQueryObject = And();
 
-					const options =  this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 
 					for (const key of Object.keys(queryAttributs)) {
 						if (key === 'title' || key === 'description') {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								ContainsString(key, queryAttributs[key] as string)
+								ContainsString(key, queryAttributs[key] as string),
 							);
 						} else {
 							(_searchQuery['_and'] as IQueryObject[]).push(
-								Eq(key, queryAttributs[key] as string)
+								Eq(key, queryAttributs[key] as string),
 							);
 						}
 					}
@@ -1662,13 +1655,13 @@ export class TheHive implements INodeType {
 						body = {
 							'query': [
 								{
-									'_name': 'listTask'
+									'_name': 'listTask',
 								},
 								{
 									'_name': 'filter',
-									'_and': _searchQuery['_and']
+									'_and': _searchQuery['_and'],
 								},
-							]
+							],
 						};
 
 						//@ts-ignore
@@ -1705,11 +1698,11 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if(operation === 'update'){
+				if (operation === 'update') {
 					const id = this.getNodeParameter('id', i) as string;
 
 					const body: IDataObject = {
-						...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters)
+						...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters),
 					};
 
 					responseData = await theHiveApiRequest.call(
@@ -1718,15 +1711,13 @@ export class TheHive implements INodeType {
 						`/case/task/${id}` as string,
 						body,
 					);
-
 				}
-
 			}
 
-			if (resource === 'log'){
+			if (resource === 'log') {
 				if (operation === 'create') {
 
-					const taskId =  this.getNodeParameter('taskId', i) as string;
+					const taskId = this.getNodeParameter('taskId', i) as string;
 
 					let body: IDataObject = {
 						message: this.getNodeParameter('message', i),
@@ -1735,7 +1726,7 @@ export class TheHive implements INodeType {
 					};
 					const optionals = this.getNodeParameter('options', i) as IDataObject;
 
-					let options: IDataObject ={};
+					let options: IDataObject = {};
 
 					if (optionals.attachementUi) {
 						const attachmentValues = (optionals.attachementUi as IDataObject).attachmentValues as IDataObject;
@@ -1760,12 +1751,12 @@ export class TheHive implements INodeType {
 									attachment: {
 										value: Buffer.from(binaryData.data, BINARY_ENCODING),
 										options: {
-											contentType:  binaryData.mimeType,
+											contentType: binaryData.mimeType,
 											filename: binaryData.fileName,
-										}
+										},
 									},
-									_json: JSON.stringify(body)
-								}
+									_json: JSON.stringify(body),
+								},
 							};
 
 							body = {};
@@ -1779,20 +1770,20 @@ export class TheHive implements INodeType {
 						body,
 						qs,
 						'',
-						options
+						options,
 					);
 				}
 
-				if (operation === 'executeResponder'){
+				if (operation === 'executeResponder') {
 					const logId = this.getNodeParameter('id', i);
 					const responderId = this.getNodeParameter('responder', i) as string;
-					let body:IDataObject;
+					let body: IDataObject;
 					let response;
 					responseData = [];
 					body = {
 						responderId,
-						objectId:logId,
-						objectType: 'case_task_log'
+						objectId: logId,
+						objectType: 'case_task_log',
 					};
 					response = await theHiveApiRequest.call(
 						this,
@@ -1803,27 +1794,27 @@ export class TheHive implements INodeType {
 					body = {
 						query: [
 							{
-								'_name': 'listAction'
+								'_name': 'listAction',
 							},
 							{
 								'_name': 'filter',
 								'_and': [
 									{
 										'_field': 'cortexId',
-										'_value': response.cortexId
+										'_value': response.cortexId,
 									},
 									{
 										'_field': 'objectId',
-										'_value': response.objectId
+										'_value': response.objectId,
 									},
 									{
 										'_field': 'startDate',
-										'_value': response.startDate
-									}
+										'_value': response.startDate,
+									},
 
-								]
-							}
-						]
+								],
+							},
+						],
 					};
 					qs.name = 'log-actions';
 					do {
@@ -1832,9 +1823,9 @@ export class TheHive implements INodeType {
 							'POST',
 							`/v1/query`,
 							body,
-							qs
+							qs,
 						);
-					} while (response.status ==='Waiting' || response.status === 'InProgress' );
+					} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 					responseData = response;
 				}
@@ -1862,21 +1853,18 @@ export class TheHive implements INodeType {
 							query: [
 								{
 									_name: 'getLog',
-									idOrName: logId
-								}
-							]
+									idOrName: logId,
+								},
+							],
 						};
 
 						qs.name = `get-log-${logId}`;
-
 					} else {
-
 						method = 'POST';
 
 						endpoint = '/case/task/log/_search';
 
 						body.query = { _id: logId };
-
 					}
 
 					responseData = await theHiveApiRequest.call(
@@ -1888,15 +1876,14 @@ export class TheHive implements INodeType {
 					);
 				}
 
-				if (operation === 'getAll'){
-
+				if (operation === 'getAll') {
 					const credentials = this.getCredentials('theHiveApi') as IDataObject;
 
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 					const version = credentials.apiVersion;
 
-					const taskId =  this.getNodeParameter('taskId', i) as string;
+					const taskId = this.getNodeParameter('taskId', i) as string;
 
 					let endpoint;
 
@@ -1919,12 +1906,12 @@ export class TheHive implements INodeType {
 							'query': [
 								{
 									'_name': 'getTask',
-									'idOrName': taskId
+									'idOrName': taskId,
 								},
 								{
-									'_name': 'logs'
+									'_name': 'logs',
 								},
-							]
+							],
 						};
 
 						if (limit !== undefined) {
@@ -1945,7 +1932,7 @@ export class TheHive implements INodeType {
 
 						body.query = And(Parent(
 							'task',
-							Id(taskId)
+							Id(taskId),
 						));
 					}
 

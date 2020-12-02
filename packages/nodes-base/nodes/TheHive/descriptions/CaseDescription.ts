@@ -247,7 +247,7 @@ export const caseFields = [
 				],
 			},
 		},
-		description: 'Traffict Light Protocol (TLP). Default=Amber'
+		description: 'Traffict Light Protocol (TLP). Default=Amber',
 	},
 	{
 		displayName: 'Tags',
@@ -385,15 +385,15 @@ export const caseFields = [
 				options: [
 					{
 						name: 'No Impact',
-						value: 'NoImpact'
+						value: 'NoImpact',
 					},
 					{
 						name: 'With Impact',
-						value: 'WithImpact'
+						value: 'WithImpact',
 					},
 					{
 						name: 'Not Applicable',
-						value: 'NotApplicable'
+						value: 'NotApplicable',
 					},
 				],
 				description: 'Impact status of the case',
@@ -419,23 +419,23 @@ export const caseFields = [
 				options: [
 					{
 						value: 'Indeterminate',
-						name: 'Indeterminate'
+						name: 'Indeterminate',
 					},
 					{
 						value: 'False Positive',
-						name: 'FalsePositive'
+						name: 'FalsePositive',
 					},
 					{
 						value: 'True Positive',
-						name: 'TruePositive'
+						name: 'TruePositive',
 					},
 					{
 						value: 'Other',
-						name: 'Other'
+						name: 'Other',
 					},
 					{
 						value: 'Duplicated',
-						name: 'Duplicated'
+						name: 'Duplicated',
 					},
 				],
 				description: 'Resolution status of the case',
@@ -447,15 +447,15 @@ export const caseFields = [
 				options: [
 					{
 						name: 'Low',
-						value: 1
+						value: 1,
 					},
 					{
 						name: 'Medium',
-						value: 2
+						value: 2,
 					},
 					{
 						name: 'High',
-						value: 3
+						value: 3,
 					},
 				],
 				default: 2,
@@ -493,7 +493,7 @@ export const caseFields = [
 				name: 'summary',
 				type: 'string',
 				default: '',
-				description: 'Summary of the case, to be provided when closing a case'
+				description: 'Summary of the case, to be provided when closing a case',
 			},
 			{
 				displayName: 'Tags',
@@ -531,7 +531,7 @@ export const caseFields = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber'
+				description: 'Traffict Light Protocol (TLP). Default=Amber',
 			},
 		],
 	},
@@ -574,7 +574,7 @@ export const caseFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'case'
+					'case',
 				],
 				operation: [
 					'getAll',
@@ -665,15 +665,15 @@ export const caseFields = [
 				options: [
 					{
 						name: 'Low',
-						value: 1
+						value: 1,
 					},
 					{
 						name: 'Medium',
-						value: 2
+						value: 2,
 					},
 					{
 						name: 'High',
-						value: 3
+						value: 3,
 					},
 				],
 				default: 2,

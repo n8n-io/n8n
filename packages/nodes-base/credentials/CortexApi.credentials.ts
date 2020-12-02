@@ -20,7 +20,7 @@ export class CortexApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			description: 'The URL of the Cortex instance',
 			default: '',
-			placeholder:'https://localhost:9001'
+			placeholder: 'https://localhost:9001',
 		},
 	];
 }

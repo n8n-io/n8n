@@ -27,16 +27,16 @@ export class TheHiveApi implements ICredentialType {
 			default: '',
 			type: 'options' as NodePropertyTypes,
 			description: 'The version of api to be used',
-			options:[
+			options: [
 				{
-					name:'Version 1',
-					value:'v1',
-					description:'API version supported by TheHive 4'
+					name: 'Version 1',
+					value: 'v1',
+					description: 'API version supported by TheHive 4',
 				},
 				{
-					name:'Version 0',
-					value:'',
-					description:'API version supported by TheHive 3'
+					name: 'Version 0',
+					value: '',
+					description: 'API version supported by TheHive 3',
 				},
 			],
 		},
