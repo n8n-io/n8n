@@ -132,20 +132,20 @@ export const taskFields = [
 		default: 'Waiting',
 		options: [
 			{
-				name: 'Waiting',
-				value: 'Waiting',
-			},
-			{
-				name: 'InProgress',
-				value: 'InProgress',
+				name: 'Cancel',
+				value: 'Cancel',
 			},
 			{
 				name: 'Completed',
 				value: 'Completed',
 			},
 			{
-				name: 'Cancel',
-				value: 'Cancel',
+				name: 'InProgress',
+				value: 'InProgress',
+			},
+			{
+				name: 'Waiting',
+				value: 'Waiting',
 			},
 		],
 		required: true,
@@ -313,26 +313,26 @@ export const taskFields = [
 				description: 'Date of the beginning of the task. This is automatically set when status is set to Open',
 			},
 			{
-				displayName: 'status',
+				displayName: 'Status',
 				name: 'status',
 				type: 'options',
 				default: 'Waiting',
 				options: [
 					{
-						name: 'Waiting',
-						value: 'Waiting',
-					},
-					{
-						name: 'In Progress',
-						value: 'InProgress',
+						name: 'Cancel',
+						value: 'Cancel',
 					},
 					{
 						name: 'Completed',
 						value: 'Completed',
 					},
 					{
-						name: 'Cancel',
-						value: 'Cancel',
+						name: 'In Progress',
+						value: 'InProgress',
+					},
+					{
+						name: 'Waiting',
+						value: 'Waiting',
 					},
 				],
 				description: 'Status of the task. Default=Waiting',
@@ -438,20 +438,20 @@ export const taskFields = [
 				default: 'Waiting',
 				options: [
 					{
-						name: 'Waiting',
-						value: 'Waiting',
-					},
-					{
-						name: 'In Progress',
-						value: 'InProgress'
+						name: 'Cancel',
+						value: 'Cancel',
 					},
 					{
 						name: 'Completed',
-						value: 'Completed'
+						value: 'Completed',
 					},
 					{
-						name: 'Cancel',
-						value: 'Cancel'
+						name: 'In Progress',
+						value: 'InProgress',
+					},
+					{
+						name: 'Waiting',
+						value: 'Waiting',
 					},
 				],
 				description: 'Status of the task. Default=Waiting',

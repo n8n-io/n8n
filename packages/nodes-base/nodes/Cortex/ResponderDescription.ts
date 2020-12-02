@@ -1,8 +1,8 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { 
+import {
 	TLP,
 } from './AnalyzerInterface';
 
@@ -12,7 +12,7 @@ export const respondersOperations = [
 		name: 'operation',
 		type: 'options',
 		required: true,
-		description: 'Choose an operation',
+		description: 'Choose an operation.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -24,11 +24,11 @@ export const respondersOperations = [
 			{
 				name: 'Execute',
 				value: 'execute',
-				description: 'Execute Responder'
-			}
+				description: 'Execute Responder',
+			},
 		],
-		default: 'execute'
-	}
+		default: 'execute',
+	},
 ] as INodeProperties[];
 
 export const responderFields: INodeProperties[] = [
@@ -38,7 +38,7 @@ export const responderFields: INodeProperties[] = [
 		type: 'options',
 		required: true,
 		typeOptions: {
-			loadOptionsMethod: 'loadActiveResponders'
+			loadOptionsMethod: 'loadActiveResponders',
 		},
 		default: '',
 		displayOptions: {
@@ -48,7 +48,7 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		description: 'Choose the responder'
+		description: 'Choose the responder.',
 	},
 	{
 		displayName: 'Entity Type',
@@ -59,7 +59,7 @@ export const responderFields: INodeProperties[] = [
 			show: {
 				resource: [
 					'responder',
-				]
+				],
 			},
 		},
 		typeOptions: {
@@ -69,14 +69,14 @@ export const responderFields: INodeProperties[] = [
 			],
 		},
 		default: '',
-		description: 'Choose the Data type',
+		description: 'Choose the Data type.',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonObject',
 		type: 'boolean',
 		default: false,
-		description: 'Choose between providing JSON object or seperated attributes',
+		description: 'Choose between providing JSON object or seperated attributes.',
 		displayOptions: {
 			show: {
 				resource: [
@@ -100,7 +100,7 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: ''
+		default: '',
 	},
 	{
 		displayName: 'Parameters',
@@ -125,7 +125,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'Description of the case',	
+						description: 'Description of the case',
 					},
 					{
 						displayName: 'Severity',
@@ -160,14 +160,14 @@ export const responderFields: INodeProperties[] = [
 						name: 'owner',
 						type: 'string',
 						default: '',
-						description: `User who owns the case. This is automatically set to current user when status is set to InProgress`,
+						description: `User who owns the case. This is automatically set to current user when status is set to InProgress.`,
 					},
 					{
 						displayName: 'Flag',
 						name: 'flag',
 						type: 'boolean',
 						default: false,
-						description: 'Flag of the case default=false',
+						description: 'Flag of the case default=false.',
 					},
 					{
 						displayName: 'TLP',
@@ -199,13 +199,13 @@ export const responderFields: INodeProperties[] = [
 						name: 'tags',
 						type: 'string',
 						default: '',
-						placeholder:'tag1,tag2,...',
+						placeholder: 'tag1,tag2,...',
 					},
 				],
 			},
 		],
-		typeOptions:{
-			loadOptionsDependsOn:[
+		typeOptions: {
+			loadOptionsDependsOn: [
 				'entityType',
 			],
 		},
@@ -231,7 +231,7 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		},
-		default: {}
+		default: {},
 	},
 	{
 		displayName: 'Parameters',
@@ -263,14 +263,14 @@ export const responderFields: INodeProperties[] = [
 						name: 'severity',
 						type: 'options',
 						default: 2,
-						options:[
+						options: [
 							{
 								name: 'Low',
-								value: 1
+								value: 1,
 							},
 							{
 								name: 'Medium',
-								value: 2
+								value: 2,
 							},
 							{
 								name: 'High',
@@ -284,14 +284,14 @@ export const responderFields: INodeProperties[] = [
 						name: 'date',
 						type: 'dateTime',
 						default: '',
-						description: 'Date and time when the alert was raised default=now',
+						description: 'Date and time when the alert was raised default=now.',
 					},
 					{
 						displayName: 'Tags',
 						name: 'tags',
 						type: 'string',
-						placeholder:'tag1,tag2,...',
-						default: ''
+						placeholder: 'tag1,tag2,...',
+						default: '',
 					},
 					{
 						displayName: 'TLP',
@@ -300,19 +300,19 @@ export const responderFields: INodeProperties[] = [
 						default: 2,
 						options: [
 							{
-								name:'White',
-								value:TLP.white,
+								name: 'White',
+								value: TLP.white,
 							},
 							{
-								name:'Green',
-								value:TLP.green,
+								name: 'Green',
+								value: TLP.green,
 							},
 							{
-								name:'Amber',
-								value:TLP.amber,
-							},{
-								name:'Red',
-								value:TLP.red,
+								name: 'Amber',
+								value: TLP.amber,
+							}, {
+								name: 'Red',
+								value: TLP.red,
 							}
 						],
 						description: 'Traffict Light Protocol (TLP). Default=Amber',
@@ -322,7 +322,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'status',
 						type: 'options',
 						default: 'New',
-						options:[
+						options: [
 							{
 								name: 'New',
 								value: 'New',
@@ -333,28 +333,28 @@ export const responderFields: INodeProperties[] = [
 							},
 							{
 								name: 'Ignored',
-								value: 'Ignored'
+								value: 'Ignored',
 							},
 							{
 								name: 'Imported',
 								value: 'Imported',
 							},
 						],
-						description: 'Status of the alert. Default=New'
+						description: 'Status of the alert. Default=New',
 					},
 					{
 						displayName: 'Type',
 						name: 'type',
 						type: 'string',
 						default: '',
-						description: 'Type of the alert',
+						description: 'Type of the alert.',
 					},
 					{
 						displayName: 'Source',
 						name: 'source',
 						type: 'string',
 						default: '',
-						description: 'Source of the alert',
+						description: 'Source of the alert.',
 					},
 					{
 						displayName: 'SourceRef',
@@ -367,13 +367,13 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Follow',
 						name: 'follow',
 						type: 'boolean',
-						default: false
+						default: false,
 					},
 					{
 						displayName: 'Artifacts',
 						name: 'artifacts',
 						type: 'fixedCollection',
-						placeholder:'Add an artifact',
+						placeholder: 'Add an artifact',
 						required: false,
 						typeOptions: {
 							multipleValues: true,
@@ -397,55 +397,55 @@ export const responderFields: INodeProperties[] = [
 											},
 											{
 												name: 'File',
-												value: 'file'
+												value: 'file',
 											},
 											{
 												name: 'Filename',
-												value: 'filename'
+												value: 'filename',
 											},
 											{
 												name: 'Fqdn',
-												value: 'fqdn'
+												value: 'fqdn',
 											},
 											{
 												name: 'Hash',
-												value: 'hash'
+												value: 'hash',
 											},
 											{
 												name: 'IP',
-												value: 'ip'
+												value: 'ip',
 											},
 											{
 												name: 'Mail',
-												value: 'mail'
+												value: 'mail',
 											},
 											{
 												name: 'Mail Subject',
-												value: 'mail_subject'
+												value: 'mail_subject',
 											},
 											{
 												name: 'Other',
-												value: 'other'
+												value: 'other',
 											},
 											{
 												name: 'Regexp',
-												value: 'regexp'
+												value: 'regexp',
 											},
 											{
 												name: 'Registry',
-												value: 'registry'
+												value: 'registry',
 											},
 											{
 												name: 'Uri Path',
-												value: 'uri_path'
+												value: 'uri_path',
 											},
 											{
 												name: 'URL',
-												value: 'url'
+												value: 'url',
 											},
 											{
 												name: 'User Agent',
-												value: 'user-agent'
+												value: 'user-agent',
 											},
 										],
 										description: '',
@@ -493,14 +493,14 @@ export const responderFields: INodeProperties[] = [
 										description: '',
 									},
 								],
-							}
-						]
+							},
+						],
 					},
-				]
-			}
+				],
+			},
 		],
-		typeOptions:{
-			loadOptionsDependsOn:[
+		typeOptions: {
+			loadOptionsDependsOn: [
 				'entityType',
 			],
 		},
@@ -554,55 +554,55 @@ export const responderFields: INodeProperties[] = [
 							},
 							{
 								name: 'File',
-								value: 'file'
+								value: 'file',
 							},
 							{
 								name: 'Filename',
-								value: 'filename'
+								value: 'filename',
 							},
 							{
 								name: 'Fqdn',
-								value: 'fqdn'
+								value: 'fqdn',
 							},
 							{
 								name: 'Hash',
-								value: 'hash'
+								value: 'hash',
 							},
 							{
 								name: 'IP',
-								value: 'ip'
+								value: 'ip',
 							},
 							{
 								name: 'Mail',
-								value: 'mail'
+								value: 'mail',
 							},
 							{
 								name: 'Mail Subject',
-								value: 'mail_subject'
+								value: 'mail_subject',
 							},
 							{
 								name: 'Other',
-								value: 'other'
+								value: 'other',
 							},
 							{
 								name: 'Regexp',
-								value: 'regexp'
+								value: 'regexp',
 							},
 							{
 								name: 'Registry',
-								value: 'registry'
+								value: 'registry',
 							},
 							{
 								name: 'Uri Path',
-								value: 'uri_path'
+								value: 'uri_path',
 							},
 							{
 								name: 'URL',
-								value: 'url'
+								value: 'url',
 							},
 							{
 								name: 'User Agent',
-								value: 'user-agent'
+								value: 'user-agent',
 							},
 						],
 					},
@@ -611,9 +611,9 @@ export const responderFields: INodeProperties[] = [
 						name: 'data',
 						type: 'string',
 						default: '',
-						displayOptions:{
-							hide:{
-								dataType:[
+						displayOptions: {
+							hide: {
+								dataType: [
 									'file',
 								],
 							},
@@ -626,25 +626,25 @@ export const responderFields: INodeProperties[] = [
 						default: 'data',
 						displayOptions: {
 							show: {
-								dataType:[
+								dataType: [
 									'file',
 								],
 							},
 						},
-						description: 'Name of the binary property which contains the attachement data',
+						description: 'Name of the binary property which contains the attachement data.',
 					},
 					{
 						displayName: 'Message',
 						name: 'message',
 						type: 'string',
-						default: ''
+						default: '',
 					},
 					{
 						displayName: 'Start Date',
 						name: 'startDate',
 						type: 'dateTime',
 						default: '',
-						description: 'Date and time of the begin of the case default=now',
+						description: 'Date and time of the begin of the case default=now.',
 					},
 					{
 						displayName: 'TLP',
@@ -653,20 +653,20 @@ export const responderFields: INodeProperties[] = [
 						default: 2,
 						options: [
 							{
-								name:'White',
-								value:TLP.white,
+								name: 'White',
+								value: TLP.white,
 							},
 							{
-								name:'Green',
-								value:TLP.green,
+								name: 'Green',
+								value: TLP.green,
 							},
 							{
-								name:'Amber',
-								value:TLP.amber,
-							},{
-								name:'Red',
-								value:TLP.red,
-							}
+								name: 'Amber',
+								value: TLP.amber,
+							}, {
+								name: 'Red',
+								value: TLP.red,
+							},
 						],
 						description: 'Traffict Light Protocol (TLP). Default=Amber',
 					},
@@ -675,7 +675,7 @@ export const responderFields: INodeProperties[] = [
 						name: 'ioc',
 						type: 'boolean',
 						default: false,
-						description: 'Indicates if the observable is an IOC (Indicator of compromise)',
+						description: 'Indicates if the observable is an IOC (Indicator of compromise).',
 					},
 					{
 						displayName: 'Status',
@@ -692,13 +692,13 @@ export const responderFields: INodeProperties[] = [
 								value: 'Deleted',
 							},
 						],
-						description: 'Status of the observable (Ok or Deleted) default=Ok',
-					}
+						description: 'Status of the observable (Ok or Deleted) default=Ok.',
+					},
 				],
 			},
 		],
-		typeOptions:{
-			loadOptionsDependsOn:[
+		typeOptions: {
+			loadOptionsDependsOn: [
 				'entityType',
 			],
 		},
@@ -746,7 +746,7 @@ export const responderFields: INodeProperties[] = [
 						type: 'string',
 						required: false,
 						default: '',
-						description: 'Title of the task',
+						description: 'Title of the task.',
 					},
 					{
 						displayName: 'Status',
@@ -776,13 +776,13 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Flag',
 						name: 'flag',
 						type: 'boolean',
-						default: false
-					}
-				]
-			}
+						default: false,
+					},
+				],
+			},
 		],
-		typeOptions:{
-			loadOptionsDependsOn:[
+		typeOptions: {
+			loadOptionsDependsOn: [
 				'entityType',
 			],
 		},
@@ -828,7 +828,7 @@ export const responderFields: INodeProperties[] = [
 						displayName: 'Message',
 						name: 'message',
 						type: 'string',
-						default: ''
+						default: '',
 					},
 					{
 						displayName: 'Start Date',
@@ -857,8 +857,8 @@ export const responderFields: INodeProperties[] = [
 				],
 			},
 		],
-		typeOptions:{
-			loadOptionsDependsOn:[
+		typeOptions: {
+			loadOptionsDependsOn: [
 				'entityType',
 			],
 		},

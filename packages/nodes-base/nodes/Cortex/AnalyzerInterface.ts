@@ -1,39 +1,39 @@
 import {
- IDataObject,
-}from 'n8n-workflow';
+	IDataObject,
+} from 'n8n-workflow';
 
 export enum JobStatus {
 	WAITING = 'Waiting',
 	INPROGRESS = 'InProgress',
 	SUCCESS = 'Success',
 	FAILURE = 'Failure',
-	DELETED = 'Deleted'
+	DELETED = 'Deleted',
 }
 
 export enum TLP {
-  white,
-  green,
-  amber,
-  red
+	white,
+	green,
+	amber,
+	red,
 }
 
 export enum ObservableDataType {
-	'domain'= 'domain',
-	'file'= 'file',
-	'filename'= 'filename',
-	'fqdn'= 'fqdn',
-	'hash'= 'hash',
-	'ip'= 'ip',
-	'mail'= 'mail',
-	'mail_subject'= 'mail_subject',
-	'other'= 'other',
-	'regexp'= 'regexp',
-	'registry'= 'registry',
-	'uri_path'= 'uri_path',
-	'url'= 'url',
-	'user-agent'= 'user-agent'
+	'domain' = 'domain',
+	'file' = 'file',
+	'filename' = 'filename',
+	'fqdn' = 'fqdn',
+	'hash' = 'hash',
+	'ip' = 'ip',
+	'mail' = 'mail',
+	'mail_subject' = 'mail_subject',
+	'other' = 'other',
+	'regexp' = 'regexp',
+	'registry' = 'registry',
+	'uri_path' = 'uri_path',
+	'url' = 'url',
+	'user-agent' = 'user-agent',
 }
-export interface IJob{
+export interface IJob {
 	id?: string;
 	organization?: string;
 	analyzerDefinitionId?: string;
@@ -44,7 +44,7 @@ export interface IJob{
 	data?: string;
 	attachment?: IDataObject;
 	parameters?: IDataObject;
-	message? :string;
+	message?: string;
 	tlp?: TLP;
 	startDate?: Date;
 	endDate?: Date;
@@ -54,10 +54,10 @@ export interface IJob{
 	updatedBy?: Date;
 	report?: IDataObject | string;
 }
-export interface IAnalyzer{
+export interface IAnalyzer {
 	id?: string;
 	analyzerDefinitionId?: string;
-	name? :string;
+	name?: string;
 	version?: string;
 	description?: string;
 	author?: string;
@@ -74,7 +74,7 @@ export interface IAnalyzer{
 	updatedBy?: Date;
 }
 
-export interface IResponder{
+export interface IResponder {
 	id?: string;
 	name?: string;
 	version?: string;

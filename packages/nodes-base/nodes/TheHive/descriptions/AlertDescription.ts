@@ -78,7 +78,7 @@ export const alertFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'alert'
+					'alert',
 				],
 				operation: [
 					'promote',
@@ -89,7 +89,7 @@ export const alertFields = [
 				],
 			},
 		},
-		description: 'Title of the alert'
+		description: 'Title of the alert',
 	},
 	{
 		displayName: 'Case ID',
@@ -148,14 +148,14 @@ export const alertFields = [
 		displayName: 'Severity',
 		name: 'severity',
 		type: 'options',
-		options:[
+		options: [
 			{
 				name: 'Low',
-				value: 1
+				value: 1,
 			},
 			{
 				name: 'Medium',
-				value: 2
+				value: 2,
 			},
 			{
 				name: 'High',
@@ -192,7 +192,7 @@ export const alertFields = [
 				],
 			},
 		},
-		description: 'Date and time when the alert was raised default=now'
+		description: 'Date and time when the alert was raised default=now',
 	},
 	{
 		displayName: 'Tags',
@@ -200,7 +200,7 @@ export const alertFields = [
 		type: 'string',
 		required: true,
 		default: '',
-		placeholder:'tag,tag2,tag3...',
+		placeholder: 'tag,tag2,tag3...',
 		displayOptions: {
 			show: {
 				resource: [
@@ -211,7 +211,7 @@ export const alertFields = [
 				],
 			},
 		},
-		description: 'Case Tags'
+		description: 'Case Tags',
 	},
 	{
 		displayName: 'TLP',
@@ -221,20 +221,20 @@ export const alertFields = [
 		default: 2,
 		options: [
 			{
-				name:'White',
-				value:TLP.white,
+				name: 'White',
+				value: TLP.white,
 			},
 			{
-				name:'Green',
-				value:TLP.green,
+				name: 'Green',
+				value: TLP.green,
 			},
 			{
-				name:'Amber',
-				value:TLP.amber,
-			},{
-				name:'Red',
-				value:TLP.red,
-			}
+				name: 'Amber',
+				value: TLP.amber,
+			}, {
+				name: 'Red',
+				value: TLP.red,
+			},
 		],
 		displayOptions: {
 			show: {
@@ -246,14 +246,14 @@ export const alertFields = [
 				],
 			},
 		},
-		description: 'Traffict Light Protocol (TLP). Default=Amber'
+		description: 'Traffict Light Protocol (TLP). Default=Amber',
 	},
 	{
 		displayName: 'Status',
 		name: 'status',
 		type: 'options',
 		required: true,
-		options:[
+		options: [
 			{
 				name: 'New',
 				value: 'New',
@@ -264,7 +264,7 @@ export const alertFields = [
 			},
 			{
 				name: 'Ignored',
-				value: 'Ignored'
+				value: 'Ignored',
 			},
 			{
 				name: 'Imported',
@@ -300,7 +300,7 @@ export const alertFields = [
 				],
 			},
 		},
-		description: 'Type of the alert'
+		description: 'Type of the alert',
 	},
 	{
 		displayName: 'Source',
@@ -318,7 +318,7 @@ export const alertFields = [
 				],
 			},
 		},
-		description: 'Source of the alert'
+		description: 'Source of the alert',
 	},
 	{
 		displayName: 'SourceRef',
@@ -336,7 +336,7 @@ export const alertFields = [
 				],
 			},
 		},
-		description: 'Source reference of the alert'
+		description: 'Source reference of the alert',
 	},
 	{
 		displayName: 'Follow',
@@ -446,7 +446,7 @@ export const alertFields = [
 				],
 			},
 		],
-		description: 'Artifact attributes'
+		description: 'Artifact attributes',
 	},
 	// required for responder execution
 	{
@@ -461,7 +461,7 @@ export const alertFields = [
 			],
 			loadOptionsMethod: 'loadResponders',
 		},
-		displayOptions:{
+		displayOptions: {
 			show: {
 				resource: [
 					'alert',
@@ -496,13 +496,13 @@ export const alertFields = [
 				],
 			},
 		},
-		options:[
+		options: [
 			{
 				displayName: 'Case Template',
 				name: 'caseTemplate',
-				type:'string',
+				type: 'string',
 				default: '',
-				description: `Case template to use when a case is created from this alert`,
+				description: `Case template to use when a case is created from this alert.`,
 			},
 		],
 	},
@@ -557,7 +557,6 @@ export const alertFields = [
 										value: 'file',
 									},
 								],
-								description: '',
 							},
 							{
 								displayName: 'Data',
@@ -571,7 +570,6 @@ export const alertFields = [
 									},
 								},
 								default: '',
-								description: '',
 							},
 							{
 								displayName: 'Binary Property',
@@ -585,21 +583,18 @@ export const alertFields = [
 									},
 								},
 								default: 'data',
-								description: '',
 							},
 							{
 								displayName: 'Message',
 								name: 'message',
 								type: 'string',
 								default: '',
-								description: '',
 							},
 							{
 								displayName: 'Case Tags',
 								name: 'tags',
 								type: 'string',
 								default: '',
-								description: '',
 							},
 						],
 					},
@@ -611,7 +606,7 @@ export const alertFields = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: `Case template to use when a case is created from this alert`,
+				description: `Case template to use when a case is created from this alert.`,
 			},
 			{
 				displayName: 'Description',
@@ -619,20 +614,20 @@ export const alertFields = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: 'Description of the alert',
+				description: 'Description of the alert.',
 			},
 			{
 				displayName: 'Follow',
 				name: 'follow',
 				type: 'boolean',
 				default: true,
-				description: 'if true, the alert becomes active when updated default=true',
+				description: 'if true, the alert becomes active when updated default=true.',
 			},
 			{
 				displayName: 'Severity',
 				name: ' severity',
 				type: 'options',
-				options:[
+				options: [
 					{
 						name: 'Low',
 						value: 1,
@@ -653,22 +648,22 @@ export const alertFields = [
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
-				options:[
+				options: [
 					{
 						name: 'New',
 						value: 'New',
 					},
 					{
-						name:'Updated',
-						value:'Updated',
+						name: 'Updated',
+						value: 'Updated',
 					},
 					{
 						name: 'Ignored',
-						value:'Ignored',
+						value: 'Ignored',
 					},
 					{
-						name:'Imported',
-						value:'Imported',
+						name: 'Imported',
+						value: 'Imported',
 					},
 				],
 				default: 'New',
@@ -678,7 +673,7 @@ export const alertFields = [
 				name: 'tags',
 				type: 'string',
 				default: '',
-				placeholder:'tag,tag2,tag3...',
+				placeholder: 'tag,tag2,tag3...',
 			},
 			{
 				displayName: 'Title',
@@ -686,7 +681,7 @@ export const alertFields = [
 				type: 'string',
 				required: false,
 				default: '',
-				description: 'Title of the alert'
+				description: 'Title of the alert.',
 			},
 			{
 				displayName: 'TLP',
@@ -712,7 +707,7 @@ export const alertFields = [
 						value: TLP.red,
 					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber'
+				description: 'Traffict Light Protocol (TLP). Default=Amber',
 			},
 		],
 	},
@@ -752,7 +747,7 @@ export const alertFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'alert'
+					'alert',
 				],
 				operation: [
 					'getAll',
@@ -760,13 +755,13 @@ export const alertFields = [
 				],
 			},
 		},
-		options:[
+		options: [
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'Description of the alert',
+				description: 'Description of the alert.',
 			},
 			{
 				displayName: 'Follow',
@@ -782,15 +777,15 @@ export const alertFields = [
 				options: [
 					{
 						name: 'Low',
-						value: 1
+						value: 1,
 					},
 					{
 						name: 'Medium',
-						value: 2
+						value: 2,
 					},
 					{
 						name: 'High',
-						value: 3
+						value: 3,
 					},
 				],
 				default: 2,
@@ -816,24 +811,24 @@ export const alertFields = [
 				default: 2,
 				options: [
 					{
-						name:'White',
-						value:TLP.white,
+						name: 'White',
+						value: TLP.white,
 					},
 					{
-						name:'Green',
-						value:TLP.green,
+						name: 'Green',
+						value: TLP.green,
 					},
 					{
-						name:'Amber',
-						value:TLP.amber,
+						name: 'Amber',
+						value: TLP.amber,
 					},
 					{
-						name:'Red',
-						value:TLP.red,
-					}
+						name: 'Red',
+						value: TLP.red,
+					},
 				],
-				description: 'Traffict Light Protocol (TLP). Default=Amber'
+				description: 'Traffict Light Protocol (TLP). Default=Amber',
 			},
 		],
-	}
-]  as INodeProperties[];
+	},
+] as INodeProperties[];

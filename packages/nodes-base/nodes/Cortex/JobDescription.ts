@@ -7,7 +7,7 @@ export const jobOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		description:'Choose an operation',
+		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
 			show: {
@@ -32,13 +32,13 @@ export const jobOperations = [
 	},
 ] as INodeProperties[];
 
-export const jobFields: INodeProperties[] =[
+export const jobFields: INodeProperties[] = [
 	{
 		displayName: 'Job ID',
 		name: 'jobId',
 		type: 'string',
 		required: true,
-		displayOptions:{
+		displayOptions: {
 			show: {
 				resource: [
 					'job',
@@ -49,7 +49,7 @@ export const jobFields: INodeProperties[] =[
 				],
 			},
 		},
-		default:'',
+		default: '',
 		description: 'ID of the job',
 	},
 ];

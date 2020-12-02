@@ -4,10 +4,10 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IHookFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 export class TheHiveTrigger implements INodeType {
@@ -111,9 +111,9 @@ export class TheHiveTrigger implements INodeType {
 						value: 'case_task_log_create',
 						description: 'Triggered when a task log is created',
 					},
-				]
-			}
-		]
+				],
+			},
+		],
 	};
 	// @ts-ignore (because of request)
 	webhookMethods = {
@@ -134,14 +134,14 @@ export class TheHiveTrigger implements INodeType {
 		// Get the request body
 		const bodyData = this.getBodyData();
 		const events = this.getNodeParameter('events', []) as string[];
-		if(!bodyData.operation || !bodyData.objectType) {
+		if (!bodyData.operation || !bodyData.objectType) {
 			// Don't start the workflow if mandatory fields are not specified
 			return {};
 		}
 
 		// Don't start the workflow if the event is not fired
 		const event = `${(bodyData.objectType as string).toLowerCase()}_${(bodyData.operation as string).toLowerCase()}`;
-		if(events.indexOf('*') === -1 && events.indexOf(event) === -1) {
+		if (events.indexOf('*') === -1 && events.indexOf(event) === -1) {
 			return {};
 		}
 
@@ -158,7 +158,7 @@ export class TheHiveTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(returnData)
+				this.helpers.returnJsonArray(returnData),
 			],
 		};
 	}
