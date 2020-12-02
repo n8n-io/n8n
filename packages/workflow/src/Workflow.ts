@@ -916,14 +916,20 @@ export class Workflow {
 		}
 
 		let connectionInputData: INodeExecutionData[] = [];
-		if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
-			// We always use the data of main input and the first input for executeSingle
-			connectionInputData = (inputData.main[0] as INodeExecutionData[]);
-		}
+		if (nodeType.execute || nodeType.executeSingle) {
+			// Only stop if first input is empty for execute & executeSingle runs. For all others run anyways
+			// because then it is a trigger node. As they only pass data through and so the input-data
+			// becomes output-data it has to be possible.
 
-		if (connectionInputData.length === 0) {
-			// No data for node so return
-			return undefined;
+			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
+				// We always use the data of main input and the first input for executeSingle
+				connectionInputData = (inputData.main[0] as INodeExecutionData[]);
+			}
+
+			if (connectionInputData.length === 0) {
+				// No data for node so return
+				return undefined;
+			}
 		}
 
 		if (runExecutionData.resultData.lastNodeExecuted === node.name && runExecutionData.resultData.error !== undefined) {
@@ -936,7 +942,7 @@ export class Workflow {
 		}
 
 		if (node.executeOnce === true) {
-			// If node should be executed only use only the first input item
+			// If node should be executed only once so use only the first input item
 			connectionInputData = connectionInputData.slice(0, 1);
 			const newInputData: ITaskDataConnections = {};
 			for (const inputName of Object.keys(inputData)) {
