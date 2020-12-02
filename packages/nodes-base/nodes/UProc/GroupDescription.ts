@@ -12,7 +12,7 @@ const finalGroups = {
 	name: 'group',
 	type: 'options',
 	default: 'communication',
-	description: 'Group to consume.',
+	description: 'The Resource to consume.',
 	options: [],
 };
 
@@ -22,7 +22,7 @@ for(const group of (groups as IDataObject).groups as IDataObject[]){
 	const item = {
 		name: group.translated,
 		value: group.name,
-		description: 'The ' + group.translated + ' Group allows you to get tools from this group',
+		description: 'The ' + group.translated + ' Resource allows you to get tools from this resource',
 	};
 	options.push(item);
 }
