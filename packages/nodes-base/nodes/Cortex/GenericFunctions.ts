@@ -10,9 +10,9 @@ import {
 
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 } from 'n8n-core';
 
 import {
@@ -29,7 +29,7 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 		throw new Error('No credentials got returned!');
 	}
 
-	const headerWithAuthentication = Object.assign({}, { Authorization: ` Bearer ${credentials.cortexApiKey}`});
+	const headerWithAuthentication = Object.assign({}, { Authorization: ` Bearer ${credentials.cortexApiKey}` });
 
 	let options: OptionsWithUri = {
 		headers: headerWithAuthentication,
@@ -41,45 +41,45 @@ export async function cortexApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 	};
 	if (Object.keys(option).length !== 0) {
-		options = Object.assign({},options, option);
+		options = Object.assign({}, options, option);
 	}
-	if (Object.keys(body).length ===  0) {
+	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
-	if (Object.keys(query).length ===  0) {
+	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.error ) {
+		if (error.error) {
 			const errorMessage = `Cortex error response [${error.statusCode}]: ${error.error.message}`;
 			throw new Error(errorMessage);
 		} else throw error;
 	}
 }
 
-export function getEntityLabel(entity: IDataObject): string{
+export function getEntityLabel(entity: IDataObject): string {
 	let label = '';
 	switch (entity._type) {
-		case  'case':
+		case 'case':
 			label = `#${entity.caseId} ${entity.title}`;
 			break;
-		case  'case_artifact':
+		case 'case_artifact':
 			//@ts-ignore
-			label = `[${entity.dataType}] ${entity.data?entity.data:(entity.attachment.name)}`;
+			label = `[${entity.dataType}] ${entity.data ? entity.data : (entity.attachment.name)}`;
 			break;
-		case  'alert':
+		case 'alert':
 			label = `[${entity.source}:${entity.sourceRef}] ${entity.title}`;
 			break;
-		case  'case_task_log':
+		case 'case_task_log':
 			label = `${entity.message} from ${entity.createdBy}`;
 			break;
-		case  'case_task':
+		case 'case_task':
 			label = `${entity.title} (${entity.status})`;
 			break;
-		case  'job':
+		case 'job':
 			label = `${entity.analyzerName} (${entity.status})`;
 			break;
 		default:
@@ -95,7 +95,7 @@ export function splitTags(tags: string): string[] {
 export function prepareParameters(values: IDataObject): IDataObject {
 	const response: IDataObject = {};
 	for (const key in values) {
-		if (values[key]!== undefined && values[key]!==null && values[key]!=='') {
+		if (values[key] !== undefined && values[key] !== null && values[key] !== '') {
 			if (moment(values[key] as string, moment.ISO_8601).isValid()) {
 				response[key] = Date.parse(values[key] as string);
 			} else if (key === 'tags') {

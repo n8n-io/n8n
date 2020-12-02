@@ -4,7 +4,7 @@ import {
 
 import {
 	TLP,
-}from './AnalyzerInterface';
+} from './AnalyzerInterface';
 
 export const analyzersOperations = [
 	{
@@ -31,7 +31,7 @@ export const analyzersOperations = [
 	},
 ] as INodeProperties[];
 
-export const analyzerFields: INodeProperties[] =[
+export const analyzerFields: INodeProperties[] = [
 	{
 		displayName: 'Analyzer Type',
 		name: 'analyzer',
@@ -40,12 +40,12 @@ export const analyzerFields: INodeProperties[] =[
 		typeOptions: {
 			loadOptionsMethod: 'loadActiveAnalyzers',
 		},
-		displayOptions:{
+		displayOptions: {
 			show: {
 				resource: [
 					'analyzer',
 				],
-				operation:[
+				operation: [
 					'execute',
 				],
 			},
@@ -58,22 +58,22 @@ export const analyzerFields: INodeProperties[] =[
 		name: 'observableType',
 		type: 'options',
 		required: true,
-		displayOptions:{
+		displayOptions: {
 			show: {
 				resource: [
 					'analyzer',
 				],
-				operation:[
+				operation: [
 					'execute',
 				],
 			},
-			hide:{
-				analyzer:[
+			hide: {
+				analyzer: [
 					'',
 				],
 			},
 		},
-		typeOptions:{
+		typeOptions: {
 			loadOptionsMethod: 'loadObservableOptions',
 			loadOptionsDependsOn: [
 				'analyzer',
@@ -94,15 +94,15 @@ export const analyzerFields: INodeProperties[] =[
 				resource: [
 					'analyzer',
 				],
-				operation:[
+				operation: [
 					'execute',
 				],
 			},
-			hide:{
+			hide: {
 				observableType: [
 					'file',
 				],
-				analyzer:[
+				analyzer: [
 					'',
 				],
 			},
@@ -136,7 +136,7 @@ export const analyzerFields: INodeProperties[] =[
 		name: 'tlp',
 		type: 'options',
 		required: false,
-		displayOptions:{
+		displayOptions: {
 			show: {
 				resource: [
 					'analyzer',
@@ -145,7 +145,7 @@ export const analyzerFields: INodeProperties[] =[
 					'execute',
 				],
 			},
-			hide:{
+			hide: {
 				observableType: [
 					'',
 				],
@@ -166,10 +166,10 @@ export const analyzerFields: INodeProperties[] =[
 			{
 				name: 'Amber',
 				value: TLP.amber,
-			},{
+			}, {
 				name: 'Red',
 				value: TLP.red,
-			}
+			},
 		],
 		default: 2,
 		description: 'The TLP of the analyzed observable',

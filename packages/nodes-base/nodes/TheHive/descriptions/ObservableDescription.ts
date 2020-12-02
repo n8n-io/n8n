@@ -127,55 +127,55 @@ export const observableFields = [
 			},
 			{
 				name: 'file',
-				value: 'file'
+				value: 'file',
 			},
 			{
 				name: 'filename',
-				value: 'filename'
+				value: 'filename',
 			},
 			{
 				name: 'fqdn',
-				value: 'fqdn'
+				value: 'fqdn',
 			},
 			{
 				name: 'hash',
-				value: 'hash'
+				value: 'hash',
 			},
 			{
 				name: 'ip',
-				value: 'ip'
+				value: 'ip',
 			},
 			{
 				name: 'mail',
-				value: 'mail'
+				value: 'mail',
 			},
 			{
 				name: 'mail_subject',
-				value: 'mail_subject'
+				value: 'mail_subject',
 			},
 			{
 				name: 'other',
-				value: 'other'
+				value: 'other',
 			},
 			{
 				name: 'regexp',
-				value: 'regexp'
+				value: 'regexp',
 			},
 			{
 				name: 'registry',
-				value: 'registry'
+				value: 'registry',
 			},
 			{
 				name: 'uri_path',
-				value: 'uri_path'
+				value: 'uri_path',
 			},
 			{
 				name: 'url',
-				value: 'url'
+				value: 'url',
 			},
 			{
 				name: 'user-agent',
-				value: 'user-agent'
+				value: 'user-agent',
 			},
 		],
 		displayOptions: {
@@ -243,7 +243,7 @@ export const observableFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'observable'
+					'observable',
 				],
 				operation: [
 					'create',
@@ -607,59 +607,59 @@ export const observableFields = [
 				options: [
 					{
 						name: 'domain',
-						value: 'domain'
+						value: 'domain',
 					},
 					{
 						name: 'file',
-						value: 'file'
+						value: 'file',
 					},
 					{
 						name: 'filename',
-						value: 'filename'
+						value: 'filename',
 					},
 					{
 						name: 'fqdn',
-						value: 'fqdn'
+						value: 'fqdn',
 					},
 					{
 						name: 'hash',
-						value: 'hash'
+						value: 'hash',
 					},
 					{
 						name: 'ip',
-						value: 'ip'
+						value: 'ip',
 					},
 					{
 						name: 'mail',
-						value: 'mail'
+						value: 'mail',
 					},
 					{
 						name: 'mail_subject',
-						value: 'mail_subject'
+						value: 'mail_subject',
 					},
 					{
 						name: 'other',
-						value: 'other'
+						value: 'other',
 					},
 					{
 						name: 'regexp',
-						value: 'regexp'
+						value: 'regexp',
 					},
 					{
 						name: 'registry',
-						value: 'registry'
+						value: 'registry',
 					},
 					{
 						name: 'uri_path',
-						value: 'uri_path'
+						value: 'uri_path',
 					},
 					{
 						name: 'url',
-						value: 'url'
+						value: 'url',
 					},
 					{
 						name: 'user-agent',
-						value: 'user-agent'
+						value: 'user-agent',
 					},
 				],
 				description: 'Type of the observable',

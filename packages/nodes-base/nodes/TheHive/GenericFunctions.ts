@@ -33,20 +33,20 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	if (Object.keys(option).length !== 0) {
-		options = Object.assign({},options, option);
+		options = Object.assign({}, options, option);
 	}
 
-	if (Object.keys(body).length ===  0) {
+	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
 
-	if (Object.keys(query).length ===  0) {
+	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		if (error.error ) {
+		if (error.error) {
 			const errorMessage = `TheHive error response [${error.statusCode}]: ${error.error.message || error.error.type}`;
 			throw new Error(errorMessage);
 		} else throw error;
@@ -78,7 +78,7 @@ export function splitTags(tags: string): string[] {
 export function prepareOptional(optionals: IDataObject): IDataObject {
 	const response: IDataObject = {};
 	for (const key in optionals) {
-		if (optionals[key]!== undefined && optionals[key]!==null && optionals[key]!=='') {
+		if (optionals[key] !== undefined && optionals[key] !== null && optionals[key] !== '') {
 			if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
 				response[key] = Date.parse(optionals[key] as string);
 			} else if (key === 'artifacts') {
@@ -116,8 +116,8 @@ export function prepareRangeQuery(range: string, body: { 'query': Array<{}> }) {
 			{
 				'_name': 'page',
 				'from': parseInt(range.split('-')[0], 10),
-				'to': parseInt(range.split('-')[1], 10)
-			}
+				'to': parseInt(range.split('-')[1], 10),
+			},
 		);
 	}
 }

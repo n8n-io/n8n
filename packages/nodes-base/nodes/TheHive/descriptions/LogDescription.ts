@@ -25,12 +25,12 @@ export const logOperations = [
 			{
 				name: 'Execute Responder',
 				value: 'executeResponder',
-				description: 'Execute a responder on a selected log'
+				description: 'Execute a responder on a selected log',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all task logs'
+				description: 'Get all task logs',
 			},
 			{
 				name: 'Get',
@@ -38,7 +38,7 @@ export const logOperations = [
 				description: 'Get a single log',
 			},
 		],
-	}
+	},
 ] as INodeProperties[];
 
 export const logFields = [
@@ -195,7 +195,7 @@ export const logFields = [
 			loadOptionsDependsOn: [
 				'id',
 			],
-			loadOptionsMethod: 'loadResponders'
+			loadOptionsMethod: 'loadResponders',
 		},
 		displayOptions: {
 			show: {
@@ -258,5 +258,5 @@ export const logFields = [
 				description: 'File attached to the log',
 			},
 		],
-	}
+	},
 ] as INodeProperties[];

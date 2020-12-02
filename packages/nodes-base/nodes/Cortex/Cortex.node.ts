@@ -1,6 +1,6 @@
 import {
-	IExecuteFunctions,
 	BINARY_ENCODING,
+	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
@@ -11,23 +11,23 @@ import {
 } from './GenericFunctions';
 
 import {
-	analyzersOperations,
 	analyzerFields,
+	analyzersOperations,
 } from './AnalyzerDescriptions';
 
 import {
+	IBinaryData,
+	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	INodePropertyOptions,
-	ILoadOptionsFunctions,
-	IDataObject,
-	IBinaryData,
 } from 'n8n-workflow';
 
 import {
-	respondersOperations,
 	responderFields,
+	respondersOperations,
 } from './ResponderDescription';
 
 import {
@@ -43,7 +43,7 @@ import {
 	IJob,
 } from './AnalyzerInterface';
 
-import { 
+import {
 	createHash,
 } from 'crypto';
 
@@ -74,21 +74,21 @@ export class Cortex implements INodeType {
 			// Node properties which the user gets displayed and
 			// can change on the node.
 			{
-				displayName:'Resource',
-				name:'resource',
-				type:'options',
-				options:[
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				options: [
 					{
 						name: 'Analyzer',
-						value:'analyzer',
-					},
-					{
-						name: 'Responder',
-						value:'responder',
+						value: 'analyzer',
 					},
 					{
 						name: 'Job',
-						value:'job',
+						value: 'job',
+					},
+					{
+						name: 'Responder',
+						value: 'responder',
 					},
 				],
 				default: 'analyzer',
@@ -100,7 +100,7 @@ export class Cortex implements INodeType {
 			...respondersOperations,
 			...responderFields,
 			...jobOperations,
-			...jobFields
+			...jobFields,
 		],
 	};
 
@@ -183,7 +183,7 @@ export class Cortex implements INodeType {
 					returnData.push(
 						{
 							value: (dataType as string).split(':')[1],
-							name: changeCase.capitalCase((dataType as string).split(':')[1])
+							name: changeCase.capitalCase((dataType as string).split(':')[1]),
 						},
 					);
 				}
@@ -249,13 +249,13 @@ export class Cortex implements INodeType {
 									options: {
 										contentType: item.binary[binaryPropertyName].mimeType,
 										filename: item.binary[binaryPropertyName].fileName,
-									}
+									},
 								},
 								_json: JSON.stringify({
 									dataType: observableType,
 									tlp,
-								})
-							}
+								}),
+							},
 						};
 
 						responseData = await cortexApiRequest.call(
@@ -327,15 +327,13 @@ export class Cortex implements INodeType {
 
 					const entityType = this.getNodeParameter('entityType', i) as string;
 
-					const isJSON = this.getNodeParameter('jsonObject',i) as boolean;
-					let body:IDataObject;
-					
-
-					if(isJSON){
+					const isJSON = this.getNodeParameter('jsonObject', i) as boolean;
+					let body: IDataObject;
 
 
+					if (isJSON) {
 						const entityJson = JSON.parse(this.getNodeParameter('objectData', i) as string);
-						
+
 						body = {
 							responderId,
 							label: getEntityLabel(entityJson),
@@ -344,29 +342,29 @@ export class Cortex implements INodeType {
 							tlp: entityJson.tlp || 2,
 							pap: entityJson.pap || 2,
 							message: entityJson.message || '',
-							parameters:[],
+							parameters: [],
 						};
-						
-					}else{
 
-						const values = (this.getNodeParameter('parameters',i) as IDataObject).values as IDataObject;
+					} else {
 
-						body= {
+						const values = (this.getNodeParameter('parameters', i) as IDataObject).values as IDataObject;
+
+						body = {
 							responderId,
 							dataType: `thehive:${entityType}`,
-							data: { 
+							data: {
 								_type: entityType,
-								...prepareParameters(values)
-							}
+								...prepareParameters(values),
+							},
 						};
-						if( entityType === 'alert'){
+						if (entityType === 'alert') {
 							// deal with alert artifacts
 							const artifacts = (body.data as IDataObject).artifacts as IDataObject;
 
 							if (artifacts) {
-								
+
 								const artifactValues = (artifacts as IDataObject).artifactValues as IDataObject[];
-								
+
 								if (artifactValues) {
 
 									const artifactData = [];
@@ -404,51 +402,51 @@ export class Cortex implements INodeType {
 
 										artifactData.push(element);
 									}
-									
+
 									(body.data as IDataObject).artifacts = artifactData;
 								}
 							}
 						}
-						if(entityType ==='case_artifact'){							
+						if (entityType === 'case_artifact') {
 							// deal with file observable
 
 							if ((body.data as IDataObject).dataType === 'file') {
 
 								const item = items[i];
-		
+
 								if (item.binary === undefined) {
 									throw new Error('No binary data exists on item!');
 								}
-		
+
 								const binaryPropertyName = (body.data as IDataObject).binaryPropertyName as string;
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
 								}
-		
+
 								const fileBufferData = Buffer.from(item.binary[binaryPropertyName].data, BINARY_ENCODING);
 								const sha256 = createHash('sha256').update(fileBufferData).digest('hex');
-								
+
 								(body.data as IDataObject).attachment = {
 									name: item.binary[binaryPropertyName].fileName,
 									hashes: [
-									  sha256,
-									  createHash('sha1').update(fileBufferData).digest('hex'),
-									  createHash('md5').update(fileBufferData).digest('hex')
+										sha256,
+										createHash('sha1').update(fileBufferData).digest('hex'),
+										createHash('md5').update(fileBufferData).digest('hex'),
 									],
-									size:fileBufferData.byteLength,
+									size: fileBufferData.byteLength,
 									contentType: item.binary[binaryPropertyName].mimeType,
-									id:sha256,
-								  };
-								  
+									id: sha256,
+								};
+
 								delete (body.data as IDataObject).binaryPropertyName;
 							}
 						}
 						// add the job label after getting all entity attributes
 						body = {
 							label: getEntityLabel(body.data as IDataObject),
-							...body
+							...body,
 						};
-						
+
 					}
 					responseData = await cortexApiRequest.call(
 						this,
