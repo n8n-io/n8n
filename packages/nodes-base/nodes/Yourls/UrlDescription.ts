@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const urlOperations = [
 	{
@@ -18,12 +18,12 @@ export const urlOperations = [
 			{
 				name: 'Expand',
 				value: 'expand',
-				description: 'Expand a url',
+				description: 'Expand a URL',
 			},
 			{
 				name: 'Shorten',
 				value: 'shorten',
-				description: 'Shorten a url',
+				description: 'Shorten a URL',
 			},
 			{
 				name: 'Stats',
@@ -38,9 +38,9 @@ export const urlOperations = [
 
 export const urlFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                url:shorten                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                url:shorten                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'URL',
 		name: 'url',
@@ -57,7 +57,7 @@ export const urlFields = [
 			},
 		},
 		default: '',
-		description: 'The url to shorten',
+		description: 'The URL to shorten.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -81,7 +81,6 @@ export const urlFields = [
 				name: 'keyword',
 				type: 'string',
 				default: '',
-				description: '',
 			},
 			{
 				displayName: 'Title',
@@ -92,9 +91,9 @@ export const urlFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                url:expand                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                url:expand                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Short URL',
 		name: 'shortUrl',
@@ -111,11 +110,12 @@ export const urlFields = [
 			},
 		},
 		default: '',
-		description: 'The shorturl to expand',
+		description: 'The short URL to expand.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                url:stats                                   */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                url:stats                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Short URL',
 		name: 'shortUrl',
@@ -132,6 +132,6 @@ export const urlFields = [
 			},
 		},
 		default: '',
-		description: 'The shorturl for which to get stats',
+		description: 'The short URL for which to get stats.',
 	},
 ] as INodeProperties[];

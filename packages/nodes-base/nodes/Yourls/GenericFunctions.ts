@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -13,12 +13,12 @@ import {
 } from 'n8n-workflow';
 
 export async function yourlsApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, body: any = {}, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	
+
 	const credentials = this.getCredentials('yourlsApi') as IDataObject;
 
 	qs.signature = credentials.signature as string;
 	qs.format = 'json';
-	
+
 	const options: OptionsWithUri = {
 		method,
 		body,
@@ -37,7 +37,6 @@ export async function yourlsApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 
 		return response;
-		
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.msg) {
 
