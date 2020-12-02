@@ -23,7 +23,7 @@ const operations = [];
 
 for(const group of (groups as IDataObject).groups as IDataObject[]) {
 	const item = {
-		displayName: 'Tool',
+		displayName: 'Operation',
 		name: 'tool',
 		type: 'options',
 		displayOptions: {
@@ -41,7 +41,7 @@ for(const group of (groups as IDataObject).groups as IDataObject[]) {
 
 	for(const tool of (tools as IDataObject).processors as IDataObject[]){
 		if (tool.g === group.name) {
-			const link = 'https://app.uproc.io/#/tools/processor/' + (tool.k as string).replace(/ /g, '-').toLowerCase().replace('-', '/').replace('-', '/');
+			const link = 'https://app.uproc.io/#/tools/processor/' + (tool.k as string).replace(/([A-Z]+)/g, "-$1").toLowerCase().replace('-', '/').replace('-', '/');
 			const option = {
 				name: tool.d as string,
 				value: tool.k,
@@ -63,9 +63,11 @@ let parameters = [];
 //all tools
 for(const tool of (tools as IDataObject).processors as IDataObject[]) {
 	//all parameters in tool
+	const isCheckType = (tool.d as string).toLowerCase().indexOf("check ") !== -1;
 	for (const param of (tool as IDataObject).p as IDataObject[]) {
 		const displayName = param.n as string;
 		const capitalizedDisplayName = capitalize(displayName.replace(/_/g, " "));
+		const description = "The " + capitalizedDisplayName + " value to "  + (isCheckType ? "be checked": "be completed") + ".";
 		const parameter = {
 			displayName: capitalizedDisplayName,
 			name: param.n,
@@ -85,7 +87,7 @@ for(const tool of (tools as IDataObject).processors as IDataObject[]) {
 					],
 				},
 			},
-			description: 'The ' + capitalizedDisplayName + ' to be completed.',
+			description: description,
 		};
 		let modifiedParam = null;
 		//Check if param exists previously

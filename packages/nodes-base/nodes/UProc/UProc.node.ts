@@ -24,7 +24,7 @@ import {
 
 export class UProc implements INodeType {
   description: INodeTypeDescription = {
-    displayName: 'UProc',
+    displayName: 'uProc',
     name: 'uproc',
     icon: 'file:uproc.png',
     group: ['output'],
@@ -32,7 +32,7 @@ export class UProc implements INodeType {
     subtitle: '={{$parameter["tool"]}}',
     description: 'Consume uProc API',
     defaults: {
-      name: 'UProc',
+      name: 'uProc',
       color: '#219ef9',
     },
     inputs: ['main'],
@@ -72,24 +72,10 @@ export class UProc implements INodeType {
         },
         options: [
           {
-            displayName: 'Start Webhook',
-            name: 'startWebhook',
-            type: 'string',
-            description: 'URL to send "Start notification" when tool has started your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
-            default: '',
-          },
-          {
-            displayName: 'End Webhook',
-            name: 'endWebhook',
-            type: 'string',
-            description: 'URL to send "End notification" when tool has ended your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
-            default: '',
-          },
-          {
             displayName: 'Data Webhook',
             name: 'dataWebhook',
             type: 'string',
-            description: 'URL to send "Data notification" when tool has resolved your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
+            description: 'URL to send tool response when tool has resolved your request. You can create your own webhook at en <a href="https://beeceptor.com" target="_blank">Beeceptor</a>, <a href="https://www.integromat.com/" target="_blank">Integromat</a>, <a href="https://zapier.com/" target="_blank">Zapier</a> or <a href="https://n8n.io/" target="_blank">n8n</a>',
             default: '',
           }
         ]
@@ -138,10 +124,13 @@ export class UProc implements INodeType {
         }
       });
 
+      if (dataWebhook && dataWebhook.length) {
+        body.callback = {};
+      }
+      /*
       if (startWebhook && startWebhook.length || progressWebhook && progressWebhook.length || endWebhook && endWebhook.length || dataWebhook && dataWebhook.length) {
         body.callback = {};
       }
-
       if (startWebhook && startWebhook.length) {
         body.callback.start = startWebhook;
       }
@@ -150,7 +139,7 @@ export class UProc implements INodeType {
       }
       if (endWebhook && endWebhook.length) {
         body.callback.end = endWebhook;
-      }
+      }*/
       if (dataWebhook && dataWebhook.length) {
         body.callback.data = dataWebhook;
       }

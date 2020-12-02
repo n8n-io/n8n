@@ -8,7 +8,7 @@ import {
 } from './Json/Groups';
 
 const finalGroups = {
-	displayName: 'Group',
+	displayName: 'Resource',
 	name: 'group',
 	type: 'options',
 	default: 'communication',
