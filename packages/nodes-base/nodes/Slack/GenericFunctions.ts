@@ -35,7 +35,6 @@ export async function slackApiRequest(this: IExecuteFunctions | IExecuteSingleFu
 		delete options.qs;
 	}
 	try {
-
 		let response: any; // tslint:disable-line:no-any
 
 		if (authenticationMethod === 'accessToken') {
