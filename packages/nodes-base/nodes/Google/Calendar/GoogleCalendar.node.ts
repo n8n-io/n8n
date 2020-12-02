@@ -259,11 +259,10 @@ export class GoogleCalendar implements INodeType {
 						},
 					};
 					if (additionalFields.attendees) {
-						body.attendees = (additionalFields.attendees as string[]).map(
-							attendee => {
-								return { email: attendee };
-							},
-						);
+						body.attendees = [];
+						(additionalFields.attendees as string[]).forEach(attendee => {
+							body.attendees!.push.apply(body.attendees, attendee.split(',').map(a => a.trim()).map(email => ({ email })));
+						});
 					}
 					if (additionalFields.color) {
 						body.colorId = additionalFields.color as string;
@@ -504,11 +503,10 @@ export class GoogleCalendar implements INodeType {
 						};
 					}
 					if (updateFields.attendees) {
-						body.attendees = (updateFields.attendees as string[]).map(
-							attendee => {
-								return { email: attendee };
-							},
-						);
+						body.attendees = [];
+						(updateFields.attendees as string[]).forEach(attendee => {
+							body.attendees!.push.apply(body.attendees, attendee.split(',').map(a => a.trim()).map(email => ({ email })));
+						});
 					}
 					if (updateFields.color) {
 						body.colorId = updateFields.color as string;
