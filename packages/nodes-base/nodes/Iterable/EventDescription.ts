@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const eventOperations = [
 	{
@@ -28,9 +28,9 @@ export const eventOperations = [
 
 export const eventFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                event:track                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                event:track                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -46,6 +46,7 @@ export const eventFields = [
 				],
 			},
 		},
+		description: 'The name of the event to track.',
 		default: '',
 	},
 	{

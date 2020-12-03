@@ -24,7 +24,6 @@ import {
 } from './UserDescription';
 
 import * as moment from 'moment-timezone';
-import { isDate } from 'util';
 
 export class Iterable implements INodeType {
 	description: INodeTypeDescription = {
@@ -84,6 +83,7 @@ export class Iterable implements INodeType {
 
 		if (resource === 'event') {
 			if (operation === 'track') {
+				// https://api.iterable.com/api/docs#events_trackBulk
 				const events = [];
 
 				for (let i = 0; i < length; i++) {
@@ -91,6 +91,10 @@ export class Iterable implements INodeType {
 					const name = this.getNodeParameter('name', i) as string;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (!additionalFields.email && !additionalFields.id) {
+						throw new Error('Either email or userId must be passed in to identify the user. Please add one of both via "Additional Fields". If both are passed in, email takes precedence.');
+					}
 
 					const body: IDataObject = {
 						eventName: name,
@@ -120,9 +124,10 @@ export class Iterable implements INodeType {
 				returnData.push(responseData);
 			}
 		}
-		
+
 		if (resource === 'user') {
 			if (operation === 'upsert') {
+				// https://api.iterable.com/api/docs#users_updateUser
 				for (let i = 0; i < length; i++) {
 
 					const identifier = this.getNodeParameter('identifier', i) as string;
@@ -167,8 +172,9 @@ export class Iterable implements INodeType {
 			}
 
 			if (operation === 'delete') {
+				// https://api.iterable.com/api/docs#users_delete
+				// https://api.iterable.com/api/docs#users_delete_0
 				for (let i = 0; i < length; i++) {
-
 					const by = this.getNodeParameter('by', i) as string;
 
 					let endpoint;
@@ -196,6 +202,8 @@ export class Iterable implements INodeType {
 			}
 
 			if (operation === 'get') {
+				// https://api.iterable.com/api/docs#users_getUser
+				// https://api.iterable.com/api/docs#users_getUserById
 				for (let i = 0; i < length; i++) {
 
 					const by = this.getNodeParameter('by', i) as string;
@@ -219,8 +227,8 @@ export class Iterable implements INodeType {
 								`Iterable error response [404]: User not found`,
 							);
 						}
-					}	
-					
+					}
+
 					responseData = responseData.user || {};
 					returnData.push(responseData);
 				}

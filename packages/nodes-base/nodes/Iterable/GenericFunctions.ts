@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -13,9 +13,9 @@ import {
 } from 'n8n-workflow';
 
 export async function iterableApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	
+
 	const credentials = this.getCredentials('iterableApi') as IDataObject;
-	
+
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -36,7 +36,7 @@ export async function iterableApiRequest(this: IExecuteFunctions | IExecuteSingl
 		}
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
-		
+
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.msg) {
 
@@ -51,7 +51,7 @@ export async function iterableApiRequest(this: IExecuteFunctions | IExecuteSingl
 	}
 }
 
-export async function iterableApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function iterableApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
