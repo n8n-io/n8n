@@ -1,10 +1,11 @@
 import {
 	Kafka as apacheKafka,
 	KafkaConfig,
+	logLevel,
 	SASLOptions,
 } from 'kafkajs';
 
-import { 
+import {
 	ITriggerFunctions,
 } from 'n8n-core';
 
@@ -79,6 +80,13 @@ export class KafkaTrigger implements INodeType {
 						displayName: 'Only Message',
 						name: 'onlyMessage',
 						type: 'boolean',
+						displayOptions: {
+							show: {
+								jsonParseMessage: [
+									true,
+								],
+							},
+						},
 						default: false,
 						description: 'Returns only the message property.',
 					},
@@ -112,6 +120,7 @@ export class KafkaTrigger implements INodeType {
 			clientId,
 			brokers,
 			ssl,
+			logLevel: logLevel.ERROR,
 		};
 
 		if (credentials.username || credentials.password) {
