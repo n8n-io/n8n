@@ -4,14 +4,16 @@ import {
 	SASLOptions,
 } from 'kafkajs';
 
-import { ITriggerFunctions } from 'n8n-core';
+import { 
+	ITriggerFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +25,7 @@ export class KafkaTrigger implements INodeType {
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
-			color: '#00FF00',
+			color: '#000000',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -39,6 +41,7 @@ export class KafkaTrigger implements INodeType {
 				name: 'topic',
 				type: 'string',
 				default: '',
+				required: true,
 				placeholder: 'topic-name',
 				description: 'Name of the queue of topic to consume from.',
 			},
@@ -47,8 +50,9 @@ export class KafkaTrigger implements INodeType {
 				name: 'groupId',
 				type: 'string',
 				default: '',
+				required: true,
 				placeholder: 'n8n-kafka',
-				description: 'Id of the consumer group.',
+				description: 'ID of the consumer group.',
 			},
 			{
 				displayName: 'Options',
@@ -58,11 +62,11 @@ export class KafkaTrigger implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'Only Message',
-						name: 'onlyMessage',
+						displayName: 'Allow Topic Creation',
+						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the message property.',
+						description: 'Allow sending message to a previously non exisiting topic .',
 					},
 					{
 						displayName: 'JSON Parse Message',
@@ -72,11 +76,11 @@ export class KafkaTrigger implements INodeType {
 						description: 'Try to parse the message to an object.',
 					},
 					{
-						displayName: 'Allow topic creation',
-						name: 'allowAutoTopicCreation',
+						displayName: 'Only Message',
+						name: 'onlyMessage',
 						type: 'boolean',
 						default: false,
-						description: 'Allow sending message to a previously non exisiting topic .',
+						description: 'Returns only the message property.',
 					},
 					{
 						displayName: 'Session Timeout',
@@ -90,18 +94,11 @@ export class KafkaTrigger implements INodeType {
 		],
 	};
 
-
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 
-		const topic = this.getNodeParameter('topic', "") as string;
-		if (topic === '') {
-			throw new Error('The topic is required.');
-		}
+		const topic = this.getNodeParameter('topic') as string;
 
-		const groupId = this.getNodeParameter('groupId', "") as string;
-		if (groupId === '') {
-			throw new Error('The Group ID is required.');
-		}
+		const groupId = this.getNodeParameter('groupId') as string;
 
 		const credentials = this.getCredentials('kafka') as IDataObject;
 
@@ -184,6 +181,5 @@ export class KafkaTrigger implements INodeType {
 			closeFunction,
 			manualTriggerFunction,
 		};
-
 	}
 }
