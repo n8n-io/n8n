@@ -6,7 +6,7 @@ import {
 
 export class EgoiApi implements ICredentialType {
 	name = 'egoiApi';
-	displayName = 'Egoi Api';
+	displayName = 'e-goi API';
 	properties = [
 		// The credentials to get from user and save encrypted.
 		// Properties can be defined exactly in the same way

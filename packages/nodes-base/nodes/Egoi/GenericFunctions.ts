@@ -13,18 +13,19 @@ import {
 	IDataObject,
  } from 'n8n-workflow';
 
-export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, qs: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
 
-	const host = 'api.egoiapp.com';
+	const credentials = this.getCredentials('egoiApi') as IDataObject;
 
 	const options: OptionsWithUrl = {
 		headers: {
 			'accept': 'application/json',
+			'Apikey':`${credentials.apiKey}`,
 		},
 		method,
 		qs,
 		body,
-		url: ``,
+		url: `https://api.egoiapp.com${endpoint}`,
 		json: true,
 	};
 
@@ -33,27 +34,28 @@ export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | 
 	}
 
 	try {
-			const credentials = this.getCredentials('egoiApi');
 
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
+		return await this.helpers.request!(options);
+
+	} catch (error) {
+		let errorMessage;
+
+		if (error.response && error.response.body) {
+
+			if (Array.isArray(error.response.body.errors)) {
+				const errors = error.response.body.errors;
+				errorMessage = errors.map((e: IDataObject) => e.detail);
+			} else {
+				errorMessage = error.response.body.detail;
 			}
 
-			options.headers = Object.assign({}, headers, { 'Apikey':`${credentials.apiKey}` });
-
-			options.url = `https://${host}${endpoint}`;
-
-			return await this.helpers.request!(options);
-		
-	} catch (error) {
-		if (error.respose && error.response.body && error.response.body.detail) {
-			throw new Error(`E-goi Error response [${error.statusCode}]: ${error.response.body.detail}`);
+			throw new Error(`e-goi Error response [${error.statusCode}]: ${errorMessage}`);
 		}
 		throw error;
 	}
 }
 
-export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, endpoint: string, method: string, propertyName: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string,  method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -61,17 +63,14 @@ export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOpti
 
 	query.offset = 0;
 	query.count = 500;
-
-		responseData = await egoiApiRequest.call(this, endpoint, method, body);
 		
 		do {
-			responseData = await egoiApiRequest.call(this, endpoint, method, body, query);
-			returnData.push(responseData as IDataObject);
+			responseData = await egoiApiRequest.call(this, method, endpoint, body, query);
+			returnData.push.apply(returnData, responseData[propertyName]);
 			query.offset += query.count;
 		} while (
 			responseData[propertyName] && responseData[propertyName].length !== 0
 		);
-
 
 	return returnData;
 }

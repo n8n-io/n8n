@@ -1,5 +1,8 @@
 
-import { IExecuteFunctions } from 'n8n-core';
+import { 
+	IExecuteFunctions,
+} from 'n8n-core';
+
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -8,32 +11,30 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { Options } from 'promise-ftp';
-import {egoiApiRequest, egoiApiRequestAllItems } from './GenericFunctions';
 
-interface ICreateMemberBody {
-	base:{
-		email?: string;
-		first_name?: string;
-		last_name?: string;
-		cellphone?: string;
-		birth_date?: string;
-		subscription_status?: Options;
-	};	
-	extra : [];
-}
+import {
+	egoiApiRequest,
+	egoiApiRequestAllItems,
+} from './GenericFunctions';
+
+import {
+	ICreateMemberBody,
+} from './Interfaces';
+
+import * as moment from 'moment-timezone';
 
 export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'E-goi',
+		displayName: 'e-goi',
 		name: 'egoi',
-		icon: 'file:egoi.png',
+		icon: 'file:e-goi.png',
 		group: ['output'],
 		version: 1,
-		description: 'Consume Egoi Api',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume e-goi API',
 		defaults: {
-			name: 'Egoi',
-			color: '#772244',
+			name: 'e-goi',
+			color: '#4cacd6',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -41,48 +42,22 @@ export class Egoi implements INodeType {
 			{
 				name: 'egoiApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: [
-							'apiKey',
-						],
-					},
-				},
-			},],
+			},
+		],
 		properties: [
-			// Node properties which the user gets displayed and
-			// can change on the node.
-			
 			{
-				displayName: 'Authentication',
-				name: 'authentication',
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
+				required: true,
 				options: [
 					{
-						name: 'API Key',
-						value: 'apiKey',
+						name: 'Contact',
+						value: 'contact',
 					},
 				],
-				default: 'apiKey',
-				description: 'Method of authentication.',
-			},
-			{
-				displayName: 'List',
-				name: 'list',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getLists',
-				},
-				displayOptions: {
-					show: {
-						operation: [
-							'getAll', 'create', 'delete', 'update', 'get',
-						],
-					},
-				},
-				default: '',
-				options: [],
-				description: 'List of lists',
+				default: 'contact',
+				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
@@ -93,26 +68,46 @@ export class Egoi implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Create a new member on list',
+						description: 'Create a member',
 					},
 					{
 						name: 'Get',
 						value: 'get',
-						description: 'Get a member on list',
+						description: 'Get a member',
 					},
 					{
 						name: 'Get All',
 						value: 'getAll',
-						description: 'Get all members on list',
+						description: 'Get all members',
 					},
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Update a new member on list',
+						description: 'Update a member',
 					},
 				],
 				default: 'create',
 				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'List ID',
+				name: 'list',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getLists',
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll', 
+							'create',
+							'update',
+							'get',
+						],
+					},
+				},
+				default: '',
+				description: 'List of lists',
 			},
 			{
 				displayName: 'Email',
@@ -121,7 +116,7 @@ export class Egoi implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'create', 'update', 'get',
+							'create',
 						],
 					},
 				},
@@ -129,100 +124,126 @@ export class Egoi implements INodeType {
 				description: 'Email address for a subscriber.',
 			},
 			{
-				displayName: 'First Name',
-				name: 'firstName',
+				displayName: 'Contact ID',
+				name: 'contactId',
 				type: 'string',
 				displayOptions: {
 					show: {
+						resource: [
+							'contact',
+						],
 						operation: [
-							'create',
+							'update',
 						],
 					},
 				},
 				default: '',
-				description: 'Name of a subscriber.',
+				description: 'Contact ID of the subscriber.',
 			},
 			{
-				displayName: 'Last Name',
-				name: 'lastName',
-				type: 'string',
-				default: '',
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+							'update',
+						],
+					},
+				},
+				default: true,
+				description: 'By default the response just includes the contact id. If this option gets activated it<br />will resolve the data automatically.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
 						operation: [
 							'create',
 						],
-					},
-				},
-				description: 'Name of a subscriber.',
-			},
-			{
-				displayName: 'Birth Date',
-				name: 'birthdate',
-				type: 'dateTime',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
+						resource: [
+							'contact',
 						],
 					},
 				},
-				default: '',
-				description: 'Birth date of a subscriber.',
-			},
-			{
-				displayName: 'Cellphone',
-				name: 'cellphone',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-					},
-				},
-				default: '',
-				description: 'Cellphone of a subscriber.',
-			},
-			{
-				displayName: 'Status',
-				name: 'status',
-				type: 'options',
+				default: {},
 				options: [
 					{
-						name: 'Unconfirmed',
-						value: 'unconfirmed',
+						displayName: 'Birth Date',
+						name: 'birth_date',
+						type: 'dateTime',
+						default: '',
+						description: 'Birth date of a subscriber.',
 					},
 					{
-						name: 'Active',
-						value: 'active',
+						displayName: 'Cellphone',
+						name: 'cellphone',
+						type: 'string',
+						default: '',
+						description: 'Cellphone of a subscriber.',
 					},
 					{
-						name: 'Inactive',
-						value: 'inactive',
+						displayName: 'First Name',
+						name: 'first_name',
+						type: 'string',
+						default: '',
+						description: 'Name of a subscriber.',
 					},
 					{
-						name: 'Removed',
-						value: 'removed',
+						displayName: 'Last Name',
+						name: 'last_name',
+						type: 'string',
+						default: '',
+						description: 'Name of a subscriber.',
 					},
 					{
-						name: 'NewConfirmation',
-						value: 'newConfirmation',
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{
+								name: 'Unconfirmed',
+								value: 'unconfirmed',
+							},
+							{
+								name: 'Active',
+								value: 'active',
+							},
+							{
+								name: 'Inactive',
+								value: 'inactive',
+							},
+							{
+								name: 'Removed',
+								value: 'removed',
+							},
+							{
+								name: 'New Confirmation',
+								value: 'newConfirmation',
+							},
+							{
+								name: 'Moved',
+								value: 'moved',
+							},
+						],
+						default: 'active',
+						description: `Subscriber's current status.`,
 					},
 					{
-						name: 'Moved',
-						value: 'moved',
+						displayName: 'Tags IDs',
+						name: 'tagIds',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getListTags',
+						},
+						default: [],
+						description: 'List of tag ids to be added',
 					},
 				],
-				displayOptions: {
-					show: {
-						operation: [
-							'create',
-						],
-					},
-				},
-				default: 'active',
-				description: `Subscriber's current status.`,
 			},
 			//--------------------
 			//----UPDATE MEMBER---
@@ -242,22 +263,8 @@ export class Egoi implements INodeType {
 				},
 				options: [
 					{
-						displayName: 'First Name',
-						name: 'firstName',
-						type: 'string',
-						default: '',
-						description: 'Name of a subscriber.',
-					},
-					{
-						displayName: 'Last Name',
-						name: 'lastName',
-						type: 'string',
-						default: '',
-						description: 'Name of a subscriber.',
-					},
-					{
 						displayName: 'Birth Date',
-						name: 'birthdate',
+						name: 'birth_date',
 						type: 'dateTime',
 						default: '',
 						description: 'Birth date of a subscriber.',
@@ -268,6 +275,66 @@ export class Egoi implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'Cellphone of a subscriber.',
+					},
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						default: '',
+						description: 'Email address for a subscriber.',
+					},
+					{
+						displayName: 'Extra Fields',
+						name: 'extraFieldsUi',
+						type: 'fixedCollection',
+						placeholder: 'Add Field',
+						default: {},
+						typeOptions: {
+							multipleValues: true,
+						},
+						options: [
+							{
+								displayName: 'Extra Field',
+								name: 'extraFieldValues',
+								typeOptions: {
+									multipleValueButtonText: 'Add Field',
+								},
+								values: [
+									{
+										displayName: 'Field ID',
+										name: 'field_id',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getExtraFields',
+											loadOptionsDependsOn: [
+												'list',
+											],
+										},
+										default: '',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
+					},
+					{
+						displayName: 'First Name',
+						name: 'first_name',
+						type: 'string',
+						default: '',
+						description: 'Name of a subscriber.',
+					},
+					{
+						displayName: 'Last Name',
+						name: 'last_name',
+						type: 'string',
+						default: '',
+						description: 'Name of a subscriber.',
 					},
 					{
 						displayName: 'Status',
@@ -302,116 +369,142 @@ export class Egoi implements INodeType {
 						default: 'active',
 						description: `Subscriber's current status.`,
 					},
+					{
+						displayName: 'Tags IDs',
+						name: 'tagIds',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getListTags',
+						},
+						default: [],
+						description: 'List of tag ids to be added',
+					},
 				],
-				},
-				//------------------------
-				//----ExtraFields e Tags---
-				//-------------------------		
-				{
-					displayName: 'Extra Fields',
-					name: 'extraFieldsUi',
-					type: 'fixedCollection',
-					placeholder: 'Add Field',
-					default: {},
-					typeOptions: {
-						loadOptionsDependsOn: [
-							'list',
+			},
+			{
+				displayName: 'By',
+				name: 'by',
+				type: 'options',
+				options: [
+					{
+						name: 'Contact ID',
+						value: 'id',
+					},
+					{
+						name: 'Email',
+						value: 'email',
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
 						],
-					multipleValues: true,
-					},
-					options: [
-						{
-							name: 'extraFields',
-							displayName: 'Extra Fields',
-							typeOptions: {
-								multipleValueButtonText: 'Add Field',
-							},
-							values: [
-								{
-									displayName: 'Extra Field Name',
-									name: 'extraFieldName',
-									type: 'options',
-									typeOptions: {
-										loadOptionsMethod: 'getExtraFields',
-										loadOptionsDependsOn: [
-											'list',
-										],
-									},
-									default: '',
-								},
-								{
-									displayName: 'Extra Field Value',
-									name: 'extraFieldValue',
-									type: 'json',
-									typeOptions: {
-										loadOptionsDependsOn: [
-											'extraFieldName',
-										],
-									},
-									default: '',
-								},
-							],
-						},
-					],
-					displayOptions: {
-						show: {
-							operation: [
-								'create',
-							],
-						},
+						resource: [
+							'contact',
+						],
 					},
 				},
-				
-				{
-					displayName: 'Add Tags',
-					name: 'options',
-					type: 'collection',
-					placeholder: 'Add Option',
-					default: {},
-					description: `Add Tag`,
-					displayOptions: {
-						show: {
-							operation: [
-								'create', 'update',
-							],
-						},
+				default: 'id',
+				description: 'Search by',
+			},
+			{
+				displayName: 'Contact ID',
+				name: 'contactId',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'contact',
+						],
+						operation: [
+							'get',
+						],
+						by: [
+							'id',
+						],
 					},
-					options: [
-						{
-							displayName: 'Tags',
-							name: 'listTags',
-							type: 'multiOptions',
-							typeOptions: {
-								loadOptionsMethod: 'getListTags',
-							},
-							default: '',
-							options: [],
-							description: 'List of lists',
-						},
-					],
 				},
-
-
+				default: '',
+				description: 'Contact ID of the subscriber.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				displayOptions: {
+					show: {
+						resource: [
+							'contact',
+						],
+						operation: [
+							'get',
+						],
+						by: [
+							'email',
+						],
+					},
+				},
+				default: '',
+				description: 'Email address for a subscriber.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'contact',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'contact',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
 		],
 	};
 
 	methods = {
 		loadOptions: {
-			
-
 			// Obter as listas de contactos existentes para mostrar num select box
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await egoiApiRequestAllItems.call(this, '/lists', 'GET', 'lists');
+				const lists = await egoiApiRequestAllItems.call(this, 'items', 'GET', '/lists');
 				for (const list of lists) {
-					for(const items of list.items){
-					const listName = items.internal_name;
-					const listId = items.list_id;
+					const listName = list.internal_name;
+					const listId = list.list_id;
 					returnData.push({
 						name: listName,
 						value: listId,
 					});
-				}
 				}
 				return returnData;
 			},
@@ -420,10 +513,9 @@ export class Egoi implements INodeType {
 			async getExtraFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const listId = this.getCurrentNodeParameter('list');
-				const extraFields= await egoiApiRequestAllItems.call(this, `/lists/${listId}/fields`, 'GET', 'fields');
-				for (const field of extraFields[0]) {
-					
-					if(field.type === "extra" && field.format === "string"){
+				const extraFields = await egoiApiRequestAllItems.call(this, 'items', 'GET', `/lists/${listId}/fields`);
+				for (const field of extraFields) {
+					if(field.type === 'extra' && field.format === 'string'){
 						const fieldName = field.name;
 						const fieldId = field.field_id;
 						const fieldType = field.type;
@@ -441,10 +533,8 @@ export class Egoi implements INodeType {
 			// Obter as tags
 			async getListTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-
-				const tagList = await egoiApiRequestAllItems.call(this, `/tags`, 'GET', 'tags');
-
-				for (const tag of tagList[0].items) {
+				const tagList = await egoiApiRequestAllItems.call(this, 'items', 'GET', '/tags');
+				for (const tag of tagList) {
 					const tagName = tag.name;
 					const tagId = tag.tag_id;
 					returnData.push({
@@ -452,242 +542,154 @@ export class Egoi implements INodeType {
 						value: tagId,
 					});
 				}
-
 				return returnData;
 			},
 		},
 	};
-
 	
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
 		let responseData;
+		const returnData: IDataObject[] = [];
 		const items = this.getInputData();
 		const length = items.length as unknown as number;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		
+		const resource = this.getNodeParameter('resource', 0) as string;
+		for(let i = 0; i < length; i++){
 
-		for(let i=0; i<length; i++){
-
-			//OPERAÇÃO CRIAR CONTACTO
-			if(operation === 'create'){
-				
-				//Obter os parametros
-				let contactId = "";
-				const listId = this.getNodeParameter('list', i) as string;
-				const email = this.getNodeParameter('email', i) as string;
-				const firstName = this.getNodeParameter('firstName', i) as string;
-				const lastName = this.getNodeParameter('lastName', i) as string;
-				const cellphone = this.getNodeParameter('cellphone', i) as string;
-				const birthdate = this.getNodeParameter('birthdate', i) as string;
-				const status = this.getNodeParameter('status', i) as Options;
-				const tagsList = this.getNodeParameter('options', i) as IDataObject;
-
-				//Construir o body do pedido à api
-				const body: ICreateMemberBody = {
-					base:{
-						email,
-						first_name: firstName,
-						last_name: lastName,
-						cellphone,
-						birth_date: birthdate.substring(0,10),
-						subscription_status: status,
-					},
-					extra: [],
-				};
-				
-				//Tratar dos fields extra
-				//Percorre todos os fields que foram adicionados
-				const extraFieldsValues = (this.getNodeParameter('extraFieldsUi', i) as IDataObject).extraFields as IDataObject[];
-					if (extraFieldsValues) {
-						
-						for (let i = 0; i < extraFieldsValues.length; i++) {
-
-							// @ts-ignore
-							body.extra[i] = {
-								field_id: extraFieldsValues[i].extraFieldName as never,
-								value: extraFieldsValues[i].extraFieldValue as never,
-							};	
-
-						}
-					}
-
-				
-				try{
-					//Fazer o pedido à api
-					responseData = await egoiApiRequest.call(this, `/lists/${listId}/contacts`, 'POST', body);
-				} catch (error) {
-					if (error.respose && error.response.body && error.response.body.detail) {
-						throw new Error(`E-goi Error response [${error.statusCode}]: ${error.response.body.detail}`);
-					}
-					throw error;
-				}
-				
-				//Verifica se a lista de tags existe
-				if(tagsList.listTags){
-					//Obtem o id do contacto da resposta à adição na api
-					contactId = responseData.contact_id;
-					const array = tagsList.listTags as [number];
-
-					for (let i = 0; i< array.length; i++){
-						const bodyTag = {
-							tag_id: array[i],
-							contacts: [contactId],
-									};
-						responseData = bodyTag;
-						
-					try{
-						responseData = await egoiApiRequest.call(this, `/lists/${listId}/contacts/actions/attach-tag`, 'POST', bodyTag);
-					} catch (error) {
-						if (error.respose && error.response.body && error.response.body.detail) {
-							throw new Error(`E-goi Error response [${error.statusCode}]: ${error.response.body.detail}`);
-						}
-						throw error;
-					}
-					}
-				}
+			if (resource === 'contact') {
+				if(operation === 'create'){
+					const listId = this.getNodeParameter('list', i) as string;
 					
-			}
-			//OPERAÇÃO PARA OBTER TODOS OS CONTACTOS
-			if(operation==='getAll'){
-
-				//variavel auxiliar para obter a lista de todos os contacto e ser percorrida
-				let responseDataAux;
-				//Array para adicionar todos os contactos
-				const returnData = [];
-				const listId = this.getNodeParameter('list', i) as string;
-
-				try{
-					//pedido à api
-					responseDataAux = await egoiApiRequest.call(this, `/lists/${listId}/contacts`, 'GET', {});
-				} catch (error) {
-					if (error.respose && error.response.body && error.response.body.detail) {
-						throw new Error(`E-goi Error response [${error.statusCode}]: ${error.response.body.detail}`);
-					}
-					throw error;
-				}
-
-				for(const items of responseDataAux.items){
-					const data = items.base;
-					returnData.push(data);
-				}
-				
-				responseData = returnData;
-			}
-			//OPERAÇÃO PARA OBTER UM CONTACTO ESPECIFICO
-			if(operation==='get'){
-
-				const listId = this.getNodeParameter('list', i) as string;
-				const email = this.getNodeParameter('email', i) as string;
-
-				try{
-					//pedido à api
-					responseData = await egoiApiRequest.call(this, `/lists/${listId}/contacts?email=${email}`, 'GET', {});
-				} catch (error) {
-					if (error.respose && error.response.body && error.response.body.detail) {
-						throw new Error(`E-goi Error response [${error.statusCode}]: ${error.response.body.detail}`);
-					}
-					throw error;
-				}
+					const email = this.getNodeParameter('email', i) as string;
 					
-				responseData = responseData.items;
-			}
-			
-			//OPERAÇÃO PARA DAR UPDATE NUM CONTACTO ESPECIFICO
-			if(operation==='update'){
+					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
 
-			let contactId = "";
-			let getId;
-			//variavel para verificar se algum parametro base foi alterado
-			let alterado = false;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					
+					const body: ICreateMemberBody = {
+						base:{
+							email,
+						},
+						extra: [],
+					};
 
-			//Obter os parametros
-			const listId = this.getNodeParameter('list', i) as string;
-			const email = this.getNodeParameter('email', i) as string;
-			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-			const tagsList = this.getNodeParameter('options', i) as IDataObject;
-			
-
-				//Construir o body do pedido à api
-				const body: ICreateMemberBody = {
-					base:{
-					},
-					extra: [],
-				};	
-
-				if (updateFields.status) {
-					alterado = true;
-					body.base.subscription_status = updateFields.status as Options;
-				}
-				if (updateFields.firstName) {
-					alterado = true;
-					body.base.first_name = updateFields.firstName as string;
-				}
-				if (updateFields.lastName) {
-					alterado = true;
-					body.base.last_name = updateFields.lastName as string;
-				}
-				if (updateFields.cellphone) {
-					alterado = true;
-					body.base.cellphone = updateFields.cellphone as string;
-				}
-				if (updateFields.birthdate) {
-					alterado = true;
-					body.base.birth_date = updateFields.birthdate as string;
-				}
-				
-				try{
-					//pedido à api para obter o id do contacto
-					getId = await egoiApiRequest.call(this, `/lists/${listId}/contacts?email=${email}`, 'GET', {});
-				} catch (error) {
-					if (error.respose && error.response.body && error.response.body.detail) {
-						throw new Error(`E-goi Error response [${error.statusCode}]: ${error.response.body.detail}`);
+					if (additionalFields.birth_date) {
+						additionalFields.birth_date = moment(additionalFields.birth_date as string).format('YYYY-MM-DD');
 					}
-					throw error;
-				}
-				
-				//verificar se existe esse contacto
-				if(getId.total_items > 0){
-					contactId = getId.items[0].base.contact_id;
-					const array = tagsList.listTags as [number];
 
-					//Percorrer a lista de tags para serem adicionadas ao contacto
-					for (let i = 0; i< array.length; i++){
-						const bodyTag = {
-							tag_id: array[i],
-							contacts: [contactId],
-						};
-						responseData = bodyTag;
-
-						try{
-							//pedido à api
-							responseData = await egoiApiRequest.call(this, `/lists/${listId}/contacts/actions/attach-tag`, 'POST', bodyTag);
-						} catch (error) {
-							if (error.respose && error.response.body && error.response.body.detail) {
-								throw new Error(`E-goi Error response [${error.statusCode}]: ${error.response.body.detail}`);
-							}
-							throw error;
+					if (additionalFields.extraFieldsUi) {
+						const extraFields = (additionalFields.extraFieldsUi as IDataObject).extraFieldValues as IDataObject[];
+						if (extraFields) {
+							body.extra = extraFields as unknown as [];
 						}
 					}
 
-					//Verificar se algum parametro base foi alterado
-					if(alterado === true){
-						try{
-							//pedido à api
-							responseData = await egoiApiRequest.call(this, `/lists/${listId}/contacts/${contactId}`, 'PATCH', body);
-						} catch (error) {
-							if (error.respose && error.response.body && error.response.body.detail) {
-								throw new Error(`E-goi Error response [${error.statusCode}]: ${error.response.body.detail}`);
-							}
-						throw error;
+					Object.assign(body.base, additionalFields);
+	
+					responseData = await egoiApiRequest.call(this, 'POST', `/lists/${listId}/contacts`, body);
+
+					const contactId = responseData.contact_id;
+
+					if (additionalFields.tagIds) {
+						const tags = additionalFields.tagIds as string[];
+						for (const tag of tags) {
+							await egoiApiRequest.call(this, 'POST', `/lists/${listId}/contacts/actions/attach-tag`, { tag_id: tag, contacts: [contactId] });
+						}
 					}
+
+					if (resolveData) {
+						responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts/${contactId}`);
+					}
+				}
+				
+				if(operation === 'get'){
+	
+					const listId = this.getNodeParameter('list', i) as string;
+					
+					const by = this.getNodeParameter('by', 0) as string;
+
+					let endpoint = '';
+
+					if (by === 'id') {
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						endpoint = `/lists/${listId}/contacts/${contactId}`;
+					} else {
+						const email = this.getNodeParameter('email', i) as string;
+						endpoint = `/lists/${listId}/contacts?email=${email}`;
+					}
+	
+					responseData = await egoiApiRequest.call(this, 'GET', endpoint, {});
+
+					if (responseData.items) {
 						responseData = responseData.items;
 					}
+				}
+
+				if(operation === 'getAll'){
+	
+					const listId = this.getNodeParameter('list', i) as string;
+	
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					if (returnAll) {
+						
+						responseData = await egoiApiRequestAllItems.call(this, 'items', 'GET', `/lists/${listId}/contacts`, {});
+
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						
+						responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts`, {}, { limit } );
+						
+						responseData = responseData.items;
+					}
+				}
 				
+				if(operation === 'update'){
+					const listId = this.getNodeParameter('list', i) as string;
+					const contactId = this.getNodeParameter('contactId', i) as string;
+					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const body: ICreateMemberBody = {
+						base:{
+						},
+						extra: [],
+					};
+
+					if (updateFields.birth_date) {
+						updateFields.birth_date = moment(updateFields.birth_date as string).format('YYYY-MM-DD');
+					}
+
+					if (updateFields.extraFieldsUi) {
+						const extraFields = (updateFields.extraFieldsUi as IDataObject).extraFieldValues as IDataObject[];
+						if (extraFields) {
+							body.extra = extraFields as unknown as [];
+						}
+					}
+
+					Object.assign(body.base, updateFields);
+	
+					responseData = await egoiApiRequest.call(this, 'PATCH', `/lists/${listId}/contacts/${contactId}`, body);
+
+					if (updateFields.tagIds) {
+						const tags = updateFields.tagIds as string[];
+						for (const tag of tags) {
+							await egoiApiRequest.call(this, 'POST', `/lists/${listId}/contacts/actions/attach-tag`, { tag_id: tag, contacts: [contactId] });
+						}
+					}
+
+					if (resolveData) {
+						responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts/${contactId}`);
+					}
 				}
 			}
+			if (Array.isArray(responseData)) {
+				returnData.push.apply(returnData, responseData as IDataObject[]);
+			} else {
+				returnData.push(responseData as IDataObject);
+			}
 		}
-		
-	return [this.helpers.returnJsonArray(responseData)];
+		return [this.helpers.returnJsonArray(responseData)];
 	}
 }
