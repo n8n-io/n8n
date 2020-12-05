@@ -50,7 +50,6 @@ services:
       - NODE_ENV=production
       - N8N_PATH
       - WEBHOOK_TUNNEL_URL=https://${DOMAIN_NAME}${N8N_PATH}
-      - VUE_APP_URL_BASE_API=https://${DOMAIN_NAME}${N8N_PATH}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_FOLDER}/.n8n:/root/.n8n
