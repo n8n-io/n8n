@@ -221,14 +221,6 @@ export class Egoi implements INodeType {
 								name: 'Removed',
 								value: 'removed',
 							},
-							{
-								name: 'New Confirmation',
-								value: 'newConfirmation',
-							},
-							{
-								name: 'Moved',
-								value: 'moved',
-							},
 						],
 						default: 'active',
 						description: `Subscriber's current status.`,
@@ -357,14 +349,7 @@ export class Egoi implements INodeType {
 								name: 'Removed',
 								value: 'removed',
 							},
-							{
-								name: 'NewConfirmation',
-								value: 'newConfirmation',
-							},
-							{
-								name: 'Moved',
-								value: 'moved',
-							},
+
 						],
 						default: 'active',
 						description: `Subscriber's current status.`,
@@ -494,7 +479,6 @@ export class Egoi implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Obter as listas de contactos existentes para mostrar num select box
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const lists = await egoiApiRequestAllItems.call(this, 'items', 'GET', '/lists');
@@ -509,28 +493,23 @@ export class Egoi implements INodeType {
 				return returnData;
 			},
 
-			//Obter extra fields disponiveis de uma lista
 			async getExtraFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const listId = this.getCurrentNodeParameter('list');
-				const extraFields = await egoiApiRequestAllItems.call(this, 'items', 'GET', `/lists/${listId}/fields`);
+				const extraFields = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
 				for (const field of extraFields) {
-					if(field.type === 'extra' && field.format === 'string'){
+					if(field.type === 'extra'){
 						const fieldName = field.name;
 						const fieldId = field.field_id;
-						const fieldType = field.type;
 						returnData.push({
 							name: fieldName,
 							value: fieldId,
-							description: fieldType,
 						});
 					}
 				}
-
 				return returnData;
 			},
 
-			// Obter as tags
 			async getListTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tagList = await egoiApiRequestAllItems.call(this, 'items', 'GET', '/tags');
