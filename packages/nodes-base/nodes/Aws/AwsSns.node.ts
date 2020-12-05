@@ -1,11 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	INodeTypeDescription,
-	INodeExecutionData,
-	INodeType,
-	INodePropertyOptions,
+	IDataObject,
 	ILoadOptionsFunctions,
-	IDataObject
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';
@@ -29,7 +29,7 @@ export class AwsSns implements INodeType {
 			{
 				name: 'aws',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -133,7 +133,7 @@ export class AwsSns implements INodeType {
 				}
 
 				return returnData;
-			}
+			},
 		},
 	};
 

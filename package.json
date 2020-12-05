@@ -11,6 +11,7 @@
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "lerna run test",
+    "tslint": "lerna exec npm run tslint",
     "watch": "lerna run --parallel watch"
   },
   "devDependencies": {

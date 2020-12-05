@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const accountOperations = [
 	{
@@ -72,7 +74,7 @@ export const accountFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Name of the account. Maximum size is 255 characters.',
@@ -148,6 +150,42 @@ export const accountFields = [
 				type: 'string',
 				default: '',
 				description: 'Street address for the billing address of this account.',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getLeadCustomFields',
+								},
+								default: '',
+								description: 'The ID of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Description',
@@ -290,7 +328,7 @@ export const accountFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of account that needs to be fetched',
@@ -366,6 +404,42 @@ export const accountFields = [
 				type: 'string',
 				default: '',
 				description: 'Street address for the billing address of this account.',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getLeadCustomFields',
+								},
+								default: '',
+								description: 'The ID of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Description',
@@ -516,7 +590,7 @@ export const accountFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of account that needs to be fetched',
@@ -537,7 +611,7 @@ export const accountFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of account that needs to be fetched',
@@ -610,7 +684,7 @@ export const accountFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                             account:addNote                                */
@@ -628,7 +702,7 @@ export const accountFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Id of account that needs to be fetched',
@@ -646,7 +720,7 @@ export const accountFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Title of the note.',
@@ -695,6 +769,6 @@ export const accountFields = [
 				default: '',
 				description: 'ID of the user who owns the note.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

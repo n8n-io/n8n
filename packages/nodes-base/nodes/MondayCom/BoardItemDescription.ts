@@ -48,7 +48,7 @@ export const boardItemOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all item',
+				description: 'Get all items',
 			},
 			{
 				name: 'Get By Column Value',
@@ -151,7 +151,7 @@ export const boardItemFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: [
-				'boardId'
+				'boardId',
 			],
 		},
 		default: '',
@@ -226,7 +226,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: `Item's ID`
+		description: `Item's ID`,
 	},
 	{
 		displayName: 'Column Values',
@@ -280,7 +280,7 @@ export const boardItemFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 			loadOptionsDependsOn: [
-				'boardId'
+				'boardId',
 			],
 		},
 		required: true,
@@ -361,7 +361,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: `Item's ID`
+		description: `Item's ID`,
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 boardItem:get                              */
@@ -382,7 +382,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: `Item's ID (Multiple can be added separated by comma)`
+		description: `Item's ID (Multiple can be added separated by comma)`,
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 boardItem:getAll                           */
@@ -502,7 +502,7 @@ export const boardItemFields = [
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: [
-				'boardId'
+				'boardId',
 			],
 		},
 		default: '',
@@ -535,7 +535,7 @@ export const boardItemFields = [
 				],
 			},
 		},
-		description: 'The column value to search items by.'
+		description: 'The column value to search items by.',
 	},
 	{
 		displayName: 'Return All',

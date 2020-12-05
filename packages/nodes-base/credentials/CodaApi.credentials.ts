@@ -6,6 +6,7 @@ import {
 export class CodaApi implements ICredentialType {
 	name = 'codaApi';
 	displayName = 'Coda API';
+	documentationUrl = 'coda';
 	properties = [
 		{
 			displayName: 'Access Token',

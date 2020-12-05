@@ -173,7 +173,7 @@ export const companyFields = [
 				default: '',
 				description: 'Tag representing the Lead',
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -335,7 +335,7 @@ export const companyFields = [
 				default: '',
 				description: `The URL for this company's website. Please note that the value<br />specified here is not validated. Accepts any string.`,
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -404,7 +404,7 @@ export const companyFields = [
 						default: '',
 					},
 				],
-			}
+			},
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},

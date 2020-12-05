@@ -7,6 +7,7 @@ import {
 export class PipedriveApi implements ICredentialType {
 	name = 'pipedriveApi';
 	displayName = 'Pipedrive API';
+	documentationUrl = 'pipedrive';
 	properties = [
 		{
 			displayName: 'API Token',

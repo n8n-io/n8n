@@ -7,6 +7,7 @@ import {
 export class TogglApi implements ICredentialType {
 	name = 'togglApi';
 	displayName = 'Toggl API';
+	documentationUrl = 'toggl';
 	properties = [
 		{
 			displayName: 'Username',

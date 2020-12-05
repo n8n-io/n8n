@@ -88,17 +88,17 @@ export class Spotify implements INodeType {
 					{
 						name: 'Add Song to Queue',
 						value: 'addSongToQueue',
-						description: 'Add a song to your queue.'
+						description: 'Add a song to your queue.',
 					},
 					{
 						name: 'Currently Playing',
 						value: 'currentlyPlaying',
-						description: 'Get your currently playing track.'
+						description: 'Get your currently playing track.',
 					},
 					{
 						name: 'Next Song',
 						value: 'nextSong',
-						description: 'Skip to your next track.'
+						description: 'Skip to your next track.',
 					},
 					{
 						name: 'Pause',
@@ -108,17 +108,17 @@ export class Spotify implements INodeType {
 					{
 						name: 'Previous Song',
 						value: 'previousSong',
-						description: 'Skip to your previous song.'
+						description: 'Skip to your previous song.',
 					},
 					{
 						name: 'Recently Played',
 						value: 'recentlyPlayed',
-						description: 'Get your recently played tracks.'
+						description: 'Get your recently played tracks.',
 					},
 					{
 						name: 'Start Music',
 						value: 'startMusic',
-						description: 'Start playing a playlist, artist, or album.'
+						description: 'Start playing a playlist, artist, or album.',
 					},
 				],
 				default: 'addSongToQueue',
@@ -133,7 +133,7 @@ export class Spotify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'player'
+							'player',
 						],
 						operation: [
 							'startMusic',
@@ -152,7 +152,7 @@ export class Spotify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'player'
+							'player',
 						],
 						operation: [
 							'addSongToQueue',
@@ -273,7 +273,7 @@ export class Spotify implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'artist'
+							'artist',
 						],
 						operation: [
 							'getTopTracks',
@@ -449,7 +449,7 @@ export class Spotify implements INodeType {
 						resource: [
 							'album',
 							'artist',
-							'playlist'
+							'playlist',
 						],
 						operation: [
 							'getTracks',
@@ -489,7 +489,7 @@ export class Spotify implements INodeType {
 				},
 				description: `The number of items to return.`,
 			},
-		]
+		],
 	};
 
 
@@ -594,7 +594,7 @@ export class Spotify implements INodeType {
 					const id = this.getNodeParameter('id', i) as string;
 
 					qs = {
-						uri: id
+						uri: id,
 					};
 
 					responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -739,7 +739,7 @@ export class Spotify implements INodeType {
 							const limit = this.getNodeParameter('limit', i) as number;
 
 							qs = {
-								'limit': limit
+								'limit': limit,
 							};
 
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -752,7 +752,7 @@ export class Spotify implements INodeType {
 						const trackId = this.getNodeParameter('trackID', i) as string;
 
 						qs = {
-							uris: trackId
+							uris: trackId,
 						};
 
 						endpoint = `/playlists/${id}/tracks`;

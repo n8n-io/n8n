@@ -74,12 +74,14 @@ export const workflowSave = mixins(
 
 						this.$store.commit('setActive', workflowData.active || false);
 						this.$store.commit('setWorkflowId', workflowData.id);
-						this.$store.commit('setWorkflowName', workflowData.name);
+						this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
 						this.$store.commit('setWorkflowSettings', workflowData.settings || {});
 					} else {
 						// Workflow exists already so update it
 						await this.restApi().updateWorkflow(currentWorkflow, workflowData);
 					}
+					// Set dirty = false before pushing route so unsaved changes message doesnt trigger.
+					this.$store.commit('setStateDirty', false);
 
 					if (this.$route.params.name !== workflowData.id) {
 						this.$router.push({
@@ -89,7 +91,6 @@ export const workflowSave = mixins(
 					}
 
 					this.$store.commit('removeActiveAction', 'workflowSaving');
-
 					this.$showMessage({
 						title: 'Workflow saved',
 						message: `The workflow "${workflowData.name}" got saved!`,

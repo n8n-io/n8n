@@ -154,7 +154,7 @@ export const userFields = [
 					'user',
 				],
 				operation: [
-					'get', 'getAll'
+					'get', 'getAll',
 				],
 			},
 		},
@@ -173,7 +173,7 @@ export const userFields = [
 				default: false,
 				description: 'Whether the client wants custom profile field data to be included in the response.',
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -209,7 +209,7 @@ export const userFields = [
 					'user',
 				],
 				operation: [
-					'update'
+					'update',
 				],
 			},
 		},
@@ -263,12 +263,12 @@ export const userFields = [
 								type: 'string',
 								default: '',
 								description: 'Value of custom profile data.',
-							}
+							},
 						],
 					},
 				],
 			},
-		]
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */

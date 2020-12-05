@@ -66,7 +66,7 @@ export const attachmentFields = [
 					'attachment',
 				],
 				operation: [
-					'create'
+					'create',
 				],
 			},
 		},
@@ -84,7 +84,7 @@ export const attachmentFields = [
 					'attachment',
 				],
 				operation: [
-					'create'
+					'create',
 				],
 			},
 		},
@@ -102,7 +102,7 @@ export const attachmentFields = [
 					'attachment',
 				],
 				operation: [
-					'create'
+					'create',
 				],
 			},
 		},
@@ -168,7 +168,7 @@ export const attachmentFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of attachment that needs to be fetched',
@@ -248,7 +248,7 @@ export const attachmentFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of attachment that needs to be fetched',
@@ -269,7 +269,7 @@ export const attachmentFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of attachment that needs to be fetched',
@@ -342,6 +342,6 @@ export const attachmentFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

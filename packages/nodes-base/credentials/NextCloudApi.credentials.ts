@@ -7,12 +7,13 @@ import {
 export class NextCloudApi implements ICredentialType {
 	name = 'nextCloudApi';
 	displayName = 'NextCloud API';
+	documentationUrl = 'nextCloud';
 	properties = [
 		{
 			displayName: 'Web DAV URL',
 			name: 'webDavUrl',
 			type: 'string' as NodePropertyTypes,
-			placeholder: 'https://nextcloud.example.com/remote.php/webdav/',
+			placeholder: 'https://nextcloud.example.com/remote.php/webdav',
 			default: '',
 		},
 		{

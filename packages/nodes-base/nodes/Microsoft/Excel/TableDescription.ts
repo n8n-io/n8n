@@ -16,7 +16,7 @@ export const tableOperations = [
 			{
 				name: 'Add Row',
 				value: 'addRow',
-				description: 'Adds rows to the end of the table'
+				description: 'Adds rows to the end of the table',
 			},
 			{
 				name: 'Get Columns',
@@ -31,7 +31,7 @@ export const tableOperations = [
 			{
 				name: 'Lookup',
 				value: 'lookup',
-				description: 'Looks for a specific column value and then returns the matching row'
+				description: 'Looks for a specific column value and then returns the matching row',
 			},
 		],
 		default: 'addRow',
@@ -273,7 +273,7 @@ export const tableFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getRows'
+					'getRows',
 				],
 				resource: [
 					'table',
@@ -312,7 +312,7 @@ export const tableFields = [
 				default: '',
 				description: `Fields the response will containt. Multiple can be added separated by ,.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 table:getColumns                           */
@@ -448,7 +448,7 @@ export const tableFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getColumns'
+					'getColumns',
 				],
 				resource: [
 					'table',
@@ -475,7 +475,7 @@ export const tableFields = [
 					'table',
 				],
 				rawData: [
-					true
+					true,
 				],
 			},
 		},
@@ -487,7 +487,7 @@ export const tableFields = [
 				default: '',
 				description: `Fields the response will containt. Multiple can be added separated by ,.`,
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 table:lookup                               */
@@ -571,7 +571,7 @@ export const tableFields = [
 					'table',
 				],
 				operation: [
-					'lookup'
+					'lookup',
 				],
 			},
 		},
@@ -590,7 +590,7 @@ export const tableFields = [
 					'table',
 				],
 				operation: [
-					'lookup'
+					'lookup',
 				],
 			},
 		},
@@ -621,5 +621,5 @@ export const tableFields = [
 				description: 'By default only the first result gets returned. If options gets set all found matches get returned.',
 			},
 		],
-	}
+	},
 ] as INodeProperties[];

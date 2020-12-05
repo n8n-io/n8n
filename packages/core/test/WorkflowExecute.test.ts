@@ -47,8 +47,8 @@ describe('WorkflowExecute', () => {
 								"typeVersion": 1,
 								"position": [
 									100,
-									300
-								]
+									300,
+								],
 							},
 							{
 								"parameters": {
@@ -56,19 +56,19 @@ describe('WorkflowExecute', () => {
 										"number": [
 											{
 												"name": "value1",
-												"value": 1
-											}
-										]
-									}
+												"value": 1,
+											},
+										],
+									},
 								},
 								"name": "Set",
 								"type": "n8n-nodes-base.set",
 								"typeVersion": 1,
 								"position": [
 									280,
-									300
-								]
-							}
+									300,
+								],
+							},
 						],
 						"connections": {
 							"Start": {
@@ -77,12 +77,12 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Set",
 											"type": "main",
-											"index": 0
-										}
-									]
-								]
-							}
-						}
+											"index": 0,
+										},
+									],
+								],
+							},
+						},
 					},
 				},
 				output: {
@@ -115,8 +115,8 @@ describe('WorkflowExecute', () => {
 								"typeVersion": 1,
 								"position": [
 									100,
-									300
-								]
+									300,
+								],
 							},
 							{
 								"parameters": {
@@ -124,18 +124,18 @@ describe('WorkflowExecute', () => {
 										"number": [
 											{
 												"name": "value1",
-												"value": 1
-											}
-										]
-									}
+												"value": 1,
+											},
+										],
+									},
 								},
 								"name": "Set1",
 								"type": "n8n-nodes-base.set",
 								"typeVersion": 1,
 								"position": [
 									300,
-									250
-								]
+									250,
+								],
 							},
 							{
 								"parameters": {
@@ -143,19 +143,19 @@ describe('WorkflowExecute', () => {
 										"number": [
 											{
 												"name": "value2",
-												"value": 2
-											}
-										]
-									}
+												"value": 2,
+											},
+										],
+									},
 								},
 								"name": "Set2",
 								"type": "n8n-nodes-base.set",
 								"typeVersion": 1,
 								"position": [
 									500,
-									400
-								]
-							}
+									400,
+								],
+							},
 						],
 						"connections": {
 							"Start": {
@@ -164,15 +164,15 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Set1",
 											"type": "main",
-											"index": 0
+											"index": 0,
 										},
 										{
 											"node": "Set2",
 											"type": "main",
-											"index": 0
-										}
-									]
-								]
+											"index": 0,
+										},
+									],
+								],
 							},
 							"Set1": {
 								"main": [
@@ -180,12 +180,12 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Set2",
 											"type": "main",
-											"index": 0
-										}
-									]
-								]
-							}
-						}
+											"index": 0,
+										},
+									],
+								],
+							},
+						},
 					},
 				},
 				output: {
@@ -201,7 +201,7 @@ describe('WorkflowExecute', () => {
 								{
 									value1: 1,
 								},
-							]
+							],
 						],
 						Set2: [
 							[
@@ -228,15 +228,15 @@ describe('WorkflowExecute', () => {
 						"nodes": [
 							{
 								"parameters": {
-									"mode": "passThrough"
+									"mode": "passThrough",
 								},
 								"name": "Merge4",
 								"type": "n8n-nodes-base.merge",
 								"typeVersion": 1,
 								"position": [
 									1150,
-									500
-								]
+									500,
+								],
 							},
 							{
 								"parameters": {
@@ -244,18 +244,18 @@ describe('WorkflowExecute', () => {
 										"number": [
 											{
 												"name": "value2",
-												"value": 2
-											}
-										]
-									}
+												"value": 2,
+											},
+										],
+									},
 								},
 								"name": "Set2",
 								"type": "n8n-nodes-base.set",
 								"typeVersion": 1,
 								"position": [
 									290,
-									400
-								]
+									400,
+								],
 							},
 							{
 								"parameters": {
@@ -263,18 +263,18 @@ describe('WorkflowExecute', () => {
 										"number": [
 											{
 												"name": "value4",
-												"value": 4
-											}
-										]
-									}
+												"value": 4,
+											},
+										],
+									},
 								},
 								"name": "Set4",
 								"type": "n8n-nodes-base.set",
 								"typeVersion": 1,
 								"position": [
 									850,
-									200
-								]
+									200,
+								],
 							},
 							{
 								"parameters": {
@@ -282,30 +282,30 @@ describe('WorkflowExecute', () => {
 										"number": [
 											{
 												"name": "value3",
-												"value": 3
-											}
-										]
-									}
+												"value": 3,
+											},
+										],
+									},
 								},
 								"name": "Set3",
 								"type": "n8n-nodes-base.set",
 								"typeVersion": 1,
 								"position": [
 									650,
-									200
-								]
+									200,
+								],
 							},
 							{
 								"parameters": {
-									"mode": "passThrough"
+									"mode": "passThrough",
 								},
 								"name": "Merge4",
 								"type": "n8n-nodes-base.merge",
 								"typeVersion": 1,
 								"position": [
 									1150,
-									500
-								]
+									500,
+								],
 							},
 							{
 								"parameters": {},
@@ -314,21 +314,21 @@ describe('WorkflowExecute', () => {
 								"typeVersion": 1,
 								"position": [
 									1000,
-									400
-								]
+									400,
+								],
 							},
 							{
 								"parameters": {
 									"mode": "passThrough",
-									"output": "input2"
+									"output": "input2",
 								},
 								"name": "Merge2",
 								"type": "n8n-nodes-base.merge",
 								"typeVersion": 1,
 								"position": [
 									700,
-									400
-								]
+									400,
+								],
 							},
 							{
 								"parameters": {},
@@ -337,8 +337,8 @@ describe('WorkflowExecute', () => {
 								"typeVersion": 1,
 								"position": [
 									500,
-									300
-								]
+									300,
+								],
 							},
 							{
 								"parameters": {
@@ -346,18 +346,18 @@ describe('WorkflowExecute', () => {
 										"number": [
 											{
 												"name": "value1",
-												"value": 1
-											}
-										]
-									}
+												"value": 1,
+											},
+										],
+									},
 								},
 								"name": "Set1",
 								"type": "n8n-nodes-base.set",
 								"typeVersion": 1,
 								"position": [
 									300,
-									200
-								]
+									200,
+								],
 							},
 							{
 								"parameters": {},
@@ -366,9 +366,9 @@ describe('WorkflowExecute', () => {
 								"typeVersion": 1,
 								"position": [
 									100,
-									300
-								]
-							}
+									300,
+								],
+							},
 						],
 						"connections": {
 							"Set2": {
@@ -377,15 +377,15 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Merge1",
 											"type": "main",
-											"index": 1
+											"index": 1,
 										},
 										{
 											"node": "Merge2",
 											"type": "main",
-											"index": 1
-										}
-									]
-								]
+											"index": 1,
+										},
+									],
+								],
 							},
 							"Set4": {
 								"main": [
@@ -393,10 +393,10 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Merge3",
 											"type": "main",
-											"index": 0
-										}
-									]
-								]
+											"index": 0,
+										},
+									],
+								],
 							},
 							"Set3": {
 								"main": [
@@ -404,10 +404,10 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Set4",
 											"type": "main",
-											"index": 0
-										}
-									]
-								]
+											"index": 0,
+										},
+									],
+								],
 							},
 							"Merge3": {
 								"main": [
@@ -415,10 +415,10 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Merge4",
 											"type": "main",
-											"index": 0
-										}
-									]
-								]
+											"index": 0,
+										},
+									],
+								],
 							},
 							"Merge2": {
 								"main": [
@@ -426,10 +426,10 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Merge3",
 											"type": "main",
-											"index": 1
-										}
-									]
-								]
+											"index": 1,
+										},
+									],
+								],
 							},
 							"Merge1": {
 								"main": [
@@ -437,10 +437,10 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Merge2",
 											"type": "main",
-											"index": 0
-										}
-									]
-								]
+											"index": 0,
+										},
+									],
+								],
 							},
 							"Set1": {
 								"main": [
@@ -448,15 +448,15 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Merge1",
 											"type": "main",
-											"index": 0
+											"index": 0,
 										},
 										{
 											"node": "Set3",
 											"type": "main",
-											"index": 0
-										}
-									]
-								]
+											"index": 0,
+										},
+									],
+								],
 							},
 							"Start": {
 								"main": [
@@ -464,22 +464,22 @@ describe('WorkflowExecute', () => {
 										{
 											"node": "Set1",
 											"type": "main",
-											"index": 0
+											"index": 0,
 										},
 										{
 											"node": "Set2",
 											"type": "main",
-											"index": 0
+											"index": 0,
 										},
 										{
 											"node": "Merge4",
 											"type": "main",
-											"index": 1
-										}
-									]
-								]
-							}
-						}
+											"index": 1,
+										},
+									],
+								],
+							},
+						},
 					},
 				},
 				output: {
@@ -534,14 +534,14 @@ describe('WorkflowExecute', () => {
 								{
 									value2: 2,
 								},
-							]
+							],
 						],
 						Merge2: [
 							[
 								{
 									value2: 2,
 								},
-							]
+							],
 						],
 						Merge3: [
 							[
@@ -553,7 +553,7 @@ describe('WorkflowExecute', () => {
 								{
 									value2: 2,
 								},
-							]
+							],
 						],
 						Merge4: [
 							[
@@ -565,7 +565,7 @@ describe('WorkflowExecute', () => {
 								{
 									value2: 2,
 								},
-							]
+							],
 						],
 					},
 				},

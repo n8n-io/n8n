@@ -7,6 +7,7 @@ import {
 export class MySql implements ICredentialType {
 	name = 'mySql';
 	displayName = 'MySQL';
+	documentationUrl = 'mySql';
 	properties = [
 		{
 			displayName: 'Host',

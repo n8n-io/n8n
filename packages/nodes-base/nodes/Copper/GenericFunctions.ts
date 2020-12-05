@@ -30,7 +30,7 @@ export async function copperApiRequest(this: IHookFunctions | IExecuteFunctions 
 		qs,
 		body,
 		uri: uri ||`https://api.prosperworks.com/developer_api/v1${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

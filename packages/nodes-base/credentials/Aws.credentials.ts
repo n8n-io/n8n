@@ -7,6 +7,7 @@ import {
 export class Aws implements ICredentialType {
 	name = 'aws';
 	displayName = 'AWS';
+	documentationUrl = 'aws';
 	properties = [
 		{
 			displayName: 'Region',

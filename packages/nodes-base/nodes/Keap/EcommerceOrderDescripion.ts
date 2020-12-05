@@ -156,7 +156,7 @@ export const ecommerceOrderFields = [
 				type: 'string',
 				default: '',
 				description: `Uses multiple strings separated by comma as promo codes.</br>
-				The corresponding discount will be applied to the order.`
+				The corresponding discount will be applied to the order.`,
 			},
 			{
 				displayName: 'Sales Affiliate ID',

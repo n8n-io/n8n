@@ -4,9 +4,9 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
@@ -30,7 +30,7 @@ export class EmailSend implements INodeType {
 			{
 				name: 'smtp',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			// TODO: Add choice for text as text or html  (maybe also from name)
@@ -152,14 +152,14 @@ export class EmailSend implements INodeType {
 		if(credentials.user || credentials.password) {
 			// @ts-ignore
 			connectionOptions.auth = {
-				user: credentials.user,
-				pass: credentials.password
+				user: credentials.user as string,
+				pass: credentials.password as string,
 			};
 		}
 
 		if (options.allowUnauthorizedCerts === true) {
 			connectionOptions.tls = {
-				rejectUnauthorized: false
+				rejectUnauthorized: false,
 			};
 		}
 

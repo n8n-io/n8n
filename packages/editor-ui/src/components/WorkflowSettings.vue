@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="50%" title="Workflow Settings" :before-close="closeDialog">
+		<el-dialog class="workflow-settings" :visible="dialogVisible" append-to-body width="65%" title="Workflow Settings" :before-close="closeDialog">
 			<div v-loading="isLoading">
 				<el-row>
 					<el-col :span="10" class="setting-name">
@@ -97,6 +97,44 @@
 						</el-select>
 					</el-col>
 				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						Timeout Workflow:
+						<el-tooltip class="setting-info" placement="top" effect="light">
+							<div slot="content" v-html="helpTexts.executionTimeoutToggle"></div>
+							<font-awesome-icon icon="question-circle" />
+						</el-tooltip>
+					</el-col>
+					<el-col :span="14">
+						<div>
+							<el-switch ref="inputField" :value="workflowSettings.executionTimeout > -1" @change="toggleTimeout" active-color="#13ce66"></el-switch>
+							<div class="expression-info clickable" @click="expressionEditDialogVisible = true">Edit Expression</div>
+						</div>
+					</el-col>
+				</el-row>
+				<div v-if="workflowSettings.executionTimeout > -1">
+					<el-row>
+						<el-col :span="10" class="setting-name">
+							Timeout After:
+							<el-tooltip class="setting-info" placement="top" effect="light">
+								<div slot="content" v-html="helpTexts.executionTimeout"></div>
+								<font-awesome-icon icon="question-circle" />
+							</el-tooltip>
+						</el-col>
+						<el-col :span="4">
+							<el-input-number size="small" v-model="timeoutHMS.hours" :min="0" placeholder="hours" type="number" class="el-input_inner"></el-input-number><br />
+							<div class="timeout-setting-name">hours</div>
+						</el-col>
+						<el-col :span="4">
+							<el-input-number size="small" v-model="timeoutHMS.minutes" :min="0" placeholder="minutes" type="number" class="el-input_inner"></el-input-number><br />
+							<div class="timeout-setting-name">minutes</div>
+						</el-col>
+						<el-col :span="4">
+							<el-input-number size="small" v-model="timeoutHMS.seconds" :min="0" placeholder="seconds" type="number" class="el-input_inner"></el-input-number><br />
+							<div class="timeout-setting-name">seconds</div>
+						</el-col>
+					</el-row>
+				</div>
 
 				<div class="action-buttons">
 					<el-button type="success" @click="saveSettings">
@@ -115,6 +153,7 @@ import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import {
+	ITimeoutHMS,
 	IWorkflowDataUpdate,
 	IWorkflowSettings,
 	IWorkflowShortResponse,
@@ -140,6 +179,8 @@ export default mixins(
 				saveDataErrorExecution: 'If data data of executions should be saved in case they failed.',
 				saveDataSuccessExecution: 'If data data of executions should be saved in case they succeed.',
 				saveManualExecutions: 'If data data of executions should be saved when started manually from the editor.',
+				executionTimeoutToggle: 'Cancel workflow execution after defined time',
+				executionTimeout: 'After what time the workflow should timeout.',
 			},
 			defaultValues: {
 				timezone: 'America/New_York',
@@ -153,6 +194,9 @@ export default mixins(
 			timezones: [] as Array<{ key: string, value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
 			workflows: [] as IWorkflowShortResponse[],
+			executionTimeout: this.$store.getters.executionTimeout,
+			maxExecutionTimeout: this.$store.getters.maxExecutionTimeout,
+			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
 		};
 	},
 	watch: {
@@ -313,8 +357,15 @@ export default mixins(
 			if (workflowSettings.saveManualExecutions === undefined) {
 				workflowSettings.saveManualExecutions = 'DEFAULT';
 			}
+			if (workflowSettings.executionTimeout === undefined) {
+				workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
+			}
+			if (workflowSettings.maxExecutionTimeout === undefined) {
+				workflowSettings.maxExecutionTimeout = this.$store.getters.maxExecutionTimeout;
+			}
 
 			Vue.set(this, 'workflowSettings', workflowSettings);
+			this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 			this.isLoading = false;
 		},
 		async saveSettings () {
@@ -322,6 +373,26 @@ export default mixins(
 			const data: IWorkflowDataUpdate = {
 				settings: this.workflowSettings,
 			};
+
+			// Convert hours, minutes, seconds into seconds for the workflow timeout
+			const { hours, minutes, seconds } = this.timeoutHMS;
+			data.settings!.executionTimeout =
+				data.settings!.executionTimeout !== -1
+					? hours * 3600 + minutes * 60 + seconds
+					: -1;
+
+			if (data.settings!.executionTimeout === 0) {
+				this.$showError(new Error('timeout is activated but set to 0'), 'Problem saving settings', 'There was a problem saving the settings:');
+				return;
+			}
+
+			// @ts-ignore
+			if (data.settings!.executionTimeout > this.workflowSettings.maxExecutionTimeout) {
+				const { hours, minutes, seconds } = this.convertToHMS(this.workflowSettings.maxExecutionTimeout as number);
+				this.$showError(new Error(`Maximum Timeout is: ${hours} hours, ${minutes} minutes, ${seconds} seconds`), 'Problem saving settings', 'Set timeout is exceeding the maximum timeout!');
+				return;
+			}
+			delete data.settings!.maxExecutionTimeout;
 
 			this.isLoading = true;
 
@@ -353,6 +424,20 @@ export default mixins(
 
 			this.closeDialog();
 		},
+		toggleTimeout() {
+			this.workflowSettings.executionTimeout = this.workflowSettings.executionTimeout === -1 ? 0 : -1;
+		},
+		convertToHMS(num: number): ITimeoutHMS {
+			if (num > 0) {
+				let remainder: number;
+				const hours = Math.floor(num / 3600);
+				remainder = num % 3600;
+				const minutes = Math.floor(remainder / 60);
+				const seconds = remainder % 60;
+				return { hours, minutes, seconds };
+			}
+			return { hours: 0, minutes: 0, seconds: 0 };
+		},
 	},
 });
 </script>
@@ -381,6 +466,11 @@ export default mixins(
 	.setting-info {
 		display: inline;
 	}
+}
+
+.timeout-setting-name {
+	text-align: center;
+	width: calc(100% - 20px);
 }
 
 </style>

@@ -46,7 +46,7 @@ export const starFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'add'
+					'add',
 				],
 				resource: [
 					'star',
@@ -100,7 +100,7 @@ export const starFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'delete'
+					'delete',
 				],
 				resource: [
 					'star',

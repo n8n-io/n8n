@@ -4,18 +4,19 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IDataObject,
 } from 'n8n-workflow';
 
 import {
 	read as xlsxRead,
+	Sheet2JSONOpts,
 	utils as xlsxUtils,
+	WorkBook,
 	write as xlsxWrite,
 	WritingOptions,
-	WorkBook,
 } from 'xlsx';
 
 
@@ -143,7 +144,7 @@ export class SpreadsheetFile implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'toFile'
+							'toFile',
 						],
 					},
 				},
@@ -212,7 +213,7 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
@@ -226,12 +227,26 @@ export class SpreadsheetFile implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
-									'fromFile'
+									'fromFile',
 								],
 							},
 						},
 						default: false,
 						description: 'In some cases and file formats, it is necessary to read<br />specifically as string else some special character get interpreted wrong.',
+					},
+					{
+						displayName: 'Range',
+						name: 'range',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile',
+								],
+							},
+						},
+						default: '',
+						description: 'The range to read from the table.<br />If set to a number it will be the starting row.<br />If set to string it will be used as A1-style bounded range.',
 					},
 					{
 						displayName: 'Sheet Name',
@@ -268,7 +283,7 @@ export class SpreadsheetFile implements INodeType {
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -317,7 +332,16 @@ export class SpreadsheetFile implements INodeType {
 				}
 
 				// Convert it to json
-				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName]);
+				const sheetToJsonOptions: Sheet2JSONOpts = {};
+				if (options.range) {
+					if (isNaN(options.range as number)) {
+						sheetToJsonOptions.range = options.range;
+					} else {
+						sheetToJsonOptions.range = parseInt(options.range as string, 10);
+					}
+				}
+
+				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
 
 				// Check if data could be found in file
 				if (sheetJson.length === 0) {
@@ -349,7 +373,7 @@ export class SpreadsheetFile implements INodeType {
 
 			const wopts: WritingOptions = {
 				bookSST: false,
-				type: 'buffer'
+				type: 'buffer',
 			};
 
 			if (fileFormat === 'csv') {
@@ -378,7 +402,7 @@ export class SpreadsheetFile implements INodeType {
 				SheetNames: [sheetName],
 				Sheets: {
 					[sheetName]: ws,
-				}
+				},
 			};
 			const wbout = xlsxWrite(wb, wopts);
 

@@ -22,9 +22,9 @@ import {
 import {
 	IAnswer,
 	IChoice,
+	IOther,
 	IQuestion,
 	IRow,
-	IOther,
 } from './Interfaces';
 
 import {
@@ -124,7 +124,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						objectType: [
-							'survey'
+							'survey',
 						],
 					},
 				},
@@ -529,7 +529,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				let returnItem: INodeExecutionData[] = [
 					{
 						json: responseData,
-					}
+					},
 				];
 
 				if (event === 'response_completed') {
@@ -725,7 +725,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						returnItem = [
 							{
 								json: responseData,
-							}
+							},
 						];
 					}
 				}

@@ -9,6 +9,7 @@ export class TwitterOAuth1Api implements ICredentialType {
 		'oAuth1Api',
 	];
 	displayName = 'Twitter OAuth API';
+	documentationUrl = 'twitter';
 	properties = [
 		{
 			displayName: 'Request Token URL',

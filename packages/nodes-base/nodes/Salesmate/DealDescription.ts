@@ -31,7 +31,7 @@ export const dealOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all companies',
+				description: 'Get all deals',
 			},
 			{
 				name: 'Update',
@@ -716,7 +716,7 @@ export const dealFields = [
 				],
 				default: 'desc',
 				description: 'Sort order',
-			}
+			},
 		],
 	},
 	{
@@ -864,12 +864,12 @@ export const dealFields = [
 										name: 'value',
 										type: 'string',
 										default: '',
-									}
-								]
+									},
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},

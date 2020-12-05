@@ -6,8 +6,8 @@ import {
 import {
 	IDataObject,
 	INodeExecutionData,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -77,6 +77,7 @@ export class Webhook implements INodeType {
 			{
 				name: 'default',
 				httpMethod: '={{$parameter["httpMethod"]}}',
+				isFullPath: true,
 				responseCode: '={{$parameter["responseCode"]}}',
 				responseMode: '={{$parameter["responseMode"]}}',
 				responseData: '={{$parameter["responseData"]}}',
@@ -95,15 +96,15 @@ export class Webhook implements INodeType {
 				options: [
 					{
 						name: 'Basic Auth',
-						value: 'basicAuth'
+						value: 'basicAuth',
 					},
 					{
 						name: 'Header Auth',
-						value: 'headerAuth'
+						value: 'headerAuth',
 					},
 					{
 						name: 'None',
-						value: 'none'
+						value: 'none',
 					},
 				],
 				default: 'none',
@@ -133,7 +134,7 @@ export class Webhook implements INodeType {
 				default: '',
 				placeholder: 'webhook',
 				required: true,
-				description: 'The path to listen to. Slashes("/") in the path are not allowed.',
+				description: 'The path to listen to.',
 			},
 			{
 				displayName: 'Response Code',
@@ -205,7 +206,7 @@ export class Webhook implements INodeType {
 				displayOptions: {
 					show: {
 						responseData: [
-							'firstEntryBinary'
+							'firstEntryBinary',
 						],
 					},
 				},
@@ -296,7 +297,7 @@ export class Webhook implements INodeType {
 										default: '',
 										description: 'Value of the header.',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -417,7 +418,7 @@ export class Webhook implements INodeType {
 						workflowData: [
 							[
 								returnItem,
-							]
+							],
 						],
 					});
 				});
@@ -449,8 +450,8 @@ export class Webhook implements INodeType {
 					return resolve({
 						workflowData: [
 							[
-								returnItem
-							]
+								returnItem,
+							],
 						],
 					});
 				});
@@ -475,7 +476,7 @@ export class Webhook implements INodeType {
 					// @ts-ignore
 					data: req.rawBody.toString(BINARY_ENCODING),
 					mimeType,
-				}
+				},
 			};
 		}
 

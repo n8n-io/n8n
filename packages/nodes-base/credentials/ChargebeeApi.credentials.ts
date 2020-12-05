@@ -7,6 +7,7 @@ import {
 export class ChargebeeApi implements ICredentialType {
 	name = 'chargebeeApi';
 	displayName = 'Chargebee API';
+	documentationUrl = 'chargebee';
 	properties = [
 		{
 			displayName: 'Account Name',

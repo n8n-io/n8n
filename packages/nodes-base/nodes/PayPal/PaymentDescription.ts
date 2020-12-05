@@ -62,11 +62,11 @@ export const payoutFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payout'
+					'payout',
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 	},
@@ -84,8 +84,8 @@ export const payoutFields = [
 					'create',
 				],
 				jsonParameters: [
-					false
-				]
+					false,
+				],
 			},
 		},
 		typeOptions: {
@@ -136,32 +136,32 @@ export const payoutFields = [
 						options: [
 							{
 								name: 'Australian dollar',
-								value: 'AUD'
+								value: 'AUD',
 							},
 							{
 								name: 'Brazilian real',
-								value: 'BRL'
+								value: 'BRL',
 							},
 							{
 								name: 'Canadian dollar',
-								value: 'CAD'
+								value: 'CAD',
 							},
 							{
 								name: 'Czech koruna',
-								value: 'CZK'
+								value: 'CZK',
 							},
 							{
 								name: 'Danish krone',
-								value: 'DKK'
+								value: 'DKK',
 							},
 							{
 								name: 'Euro',
-								value: 'EUR'
+								value: 'EUR',
 							},
 							{
 								name: 'United States dollar',
-								value: 'USD'
-							}
+								value: 'USD',
+							},
 						],
 						default: 'USD',
 						description: 'Currency',
@@ -208,7 +208,7 @@ export const payoutFields = [
 						default: 'paypal',
 						description: 'The recipient wallet',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -223,14 +223,14 @@ export const payoutFields = [
 		displayOptions: {
 			show: {
 				resource: [
-					'payout'
+					'payout',
 				],
 				operation: [
 					'create',
 				],
 				jsonParameters: [
 					true,
-				]
+				],
 			},
 		},
 	},
@@ -319,7 +319,7 @@ export const payoutFields = [
 		type: 'number',
 		typeOptions: {
 			maxValue: 1000,
-			minValue: 1
+			minValue: 1,
 		},
 		default: 100,
 		displayOptions: {

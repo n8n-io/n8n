@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const contactOperations = [
 	{
@@ -62,7 +64,7 @@ export const contactOperations = [
 export const contactFields = [
 
 /* -------------------------------------------------------------------------- */
-/*                                contact:create                                 */
+/*                                contact:create                              */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Last Name',
@@ -77,7 +79,7 @@ export const contactFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'Required. Last name of the contact. Limited to 80 characters.',
@@ -129,6 +131,42 @@ export const contactFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'The birth date of the contact.',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getLeadCustomFields',
+								},
+								default: '',
+								description: 'The ID of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Department',
@@ -314,7 +352,7 @@ export const contactFields = [
 		],
 	},
 /* -------------------------------------------------------------------------- */
-/*                                 contact:update                                */
+/*                                 contact:update                             */
 /* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
@@ -329,7 +367,7 @@ export const contactFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -381,6 +419,42 @@ export const contactFields = [
 				type: 'dateTime',
 				default: '',
 				description: 'The birth date of the contact.',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Field',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'Filter by custom fields ',
+				default: {},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getLeadCustomFields',
+								},
+								default: '',
+								description: 'The ID of the field to add custom field to.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'The value to set on custom field.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Department',
@@ -582,7 +656,7 @@ export const contactFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -603,7 +677,7 @@ export const contactFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -676,7 +750,7 @@ export const contactFields = [
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -695,7 +769,7 @@ export const contactFields = [
 				],
 				operation: [
 					'addToCampaign',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -716,7 +790,7 @@ export const contactFields = [
 				],
 				operation: [
 					'addToCampaign',
-				]
+				],
 			},
 		},
 		description: 'Id of the campaign that needs to be fetched',
@@ -745,7 +819,7 @@ export const contactFields = [
 				default: '',
 				description: 'Controls the HasResponded flag on this object',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                             contact:addNote                                */
@@ -763,7 +837,7 @@ export const contactFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Id of contact that needs to be fetched',
@@ -781,7 +855,7 @@ export const contactFields = [
 				],
 				operation: [
 					'addNote',
-				]
+				],
 			},
 		},
 		description: 'Title of the note.',
@@ -830,6 +904,6 @@ export const contactFields = [
 				default: '',
 				description: 'ID of the user who owns the note.',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

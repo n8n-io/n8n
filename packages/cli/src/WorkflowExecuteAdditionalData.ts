@@ -25,8 +25,8 @@ import {
 	IExecuteData,
 	IExecuteWorkflowInfo,
 	INode,
-	INodeParameters,
 	INodeExecutionData,
+	INodeParameters,
 	IRun,
 	IRunExecutionData,
 	ITaskData,
@@ -40,6 +40,8 @@ import {
 } from 'n8n-workflow';
 
 import * as config from '../config';
+
+import { LessThanOrEqual } from "typeorm";
 
 
 /**
@@ -72,10 +74,34 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 			workflow: {
 				id: workflowData.id !== undefined ? workflowData.id.toString() as string : undefined,
 				name: workflowData.name,
-			}
+			},
 		};
 		// Run the error workflow
 		WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
+	}
+}
+
+/**
+ * Prunes Saved Execution which are older than configured.
+ * Throttled to be executed just once in configured timeframe.
+ *
+ */
+let throttling = false;
+function pruneExecutionData(): void {
+	if (!throttling) {
+		throttling = true;
+		const timeout = config.get('executions.pruneDataTimeout') as number; // in seconds
+		const maxAge = config.get('executions.pruneDataMaxAge') as number; // in h
+		const date = new Date(); // today
+		date.setHours(date.getHours() - maxAge);
+
+		// throttle just on success to allow for self healing on failure
+		Db.collections.Execution!.delete({ stoppedAt: LessThanOrEqual(date.toISOString()) })
+		.then(data =>
+			setTimeout(() => {
+				throttling = false;
+			}, timeout * 1000)
+		).catch(err => throttling = false);
 	}
 }
 
@@ -165,16 +191,28 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id as string,
 					workflowName: this.workflowData.name,
 				});
-			}
+			},
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
 				pushExecutionFinished(this.mode, fullRunData, this.executionId, undefined, this.retryOf);
 			},
-		]
+		],
 	};
 }
 
+
+export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowExecuteHooks {
+	const externalHooks = ExternalHooks();
+
+	return {
+		workflowExecuteBefore: [
+			async function (this: WorkflowHooks, workflow: Workflow): Promise<void> {
+				await externalHooks.run('workflow.preExecute', [workflow, this.mode]);
+			},
+		],
+	};
+}
 
 /**
  * Returns hook functions to save workflow execution and call error workflow
@@ -188,6 +226,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 		workflowExecuteBefore: [],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
+
+				// Prune old execution data
+				if (config.get('executions.pruneData')) {
+					pruneExecutionData();
+				}
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 
@@ -267,7 +310,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 				}
 			},
-		]
+		],
 	};
 }
 
@@ -306,7 +349,6 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 
 	const externalHooks = ExternalHooks();
 	await externalHooks.init();
-	await externalHooks.run('workflow.execute', [workflowData, mode]);
 
 	const nodeTypes = NodeTypes();
 
@@ -316,14 +358,14 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// Does not get used so set it simply to empty string
 	const executionId = '';
 
-	// Create new additionalData to have different workflow loaded and to call
-	// different webooks
-	const additionalDataIntegrated = await getBase(additionalData.credentials);
-	additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(mode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
-
 	// Get the needed credentials for the current workflow as they will differ to the ones of the
 	// calling workflow.
-	additionalDataIntegrated.credentials = await WorkflowCredentials(workflowData!.nodes);
+	const credentials = await WorkflowCredentials(workflowData!.nodes);
+
+	// Create new additionalData to have different workflow loaded and to call
+	// different webooks
+	const additionalDataIntegrated = await getBase(credentials);
+	additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(mode, executionId, workflowData!, { parentProcessMode: additionalData.hooks!.mode });
 
 	// Find Start-Node
 	const requiredNodeTypes = ['n8n-nodes-base.start'];
@@ -343,8 +385,8 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [
 		{
-			json: {}
-		}
+			json: {},
+		},
 	];
 
 	// Initialize the incoming data
@@ -355,7 +397,7 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 			data: {
 				main: [inputData],
 			},
-		},
+		}
 	);
 
 	const runExecutionData: IRunExecutionData = {
@@ -374,6 +416,8 @@ export async function executeWorkflow(workflowInfo: IExecuteWorkflowInfo, additi
 	// Execute the workflow
 	const workflowExecute = new WorkflowExecute(additionalDataIntegrated, mode, runExecutionData);
 	const data = await workflowExecute.processRunExecutionData(workflow);
+
+	await externalHooks.run('workflow.postExecute', [data, workflowData]);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully
@@ -429,6 +473,10 @@ export async function getBase(credentials: IWorkflowCredentials, currentNodePara
 export function getWorkflowHooksIntegrated(mode: WorkflowExecuteMode, executionId: string, workflowData: IWorkflowBase, optionalParameters?: IWorkflowHooksOptionalParameters): WorkflowHooks {
 	optionalParameters = optionalParameters || {};
 	const hookFunctions = hookFunctionsSave(optionalParameters.parentProcessMode);
+	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	for (const key of Object.keys(preExecuteFunctions)) {
+		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	}
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
@@ -441,11 +489,18 @@ export function getWorkflowHooksIntegrated(mode: WorkflowExecuteMode, executionI
  * @param {string} executionId
  * @returns {WorkflowHooks}
  */
-export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, executionId: string): WorkflowHooks {
+export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, executionId: string, isMainProcess = false): WorkflowHooks {
 	const hookFunctions = hookFunctionsSave();
 	const pushFunctions = hookFunctionsPush();
 	for (const key of Object.keys(pushFunctions)) {
 		hookFunctions[key]!.push.apply(hookFunctions[key], pushFunctions[key]);
+	}
+
+	if (isMainProcess) {
+		const preExecuteFunctions = hookFunctionsPreExecute();
+		for (const key of Object.keys(preExecuteFunctions)) {
+			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+		}
 	}
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string});

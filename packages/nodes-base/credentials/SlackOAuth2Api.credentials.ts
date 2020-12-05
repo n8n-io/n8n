@@ -10,6 +10,11 @@ const userScopes = [
 	'files:write',
 	'stars:read',
 	'stars:write',
+	'users.profile:read',
+	'users.profile:write',
+	'groups:read',
+	'im:read',
+	'mpim:read',
 ];
 
 export class SlackOAuth2Api implements ICredentialType {
@@ -18,6 +23,7 @@ export class SlackOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Slack OAuth2 API';
+	documentationUrl = 'slack';
 	properties = [
 		{
 			displayName: 'Authorization URL',

@@ -41,6 +41,11 @@ export const listOperations = [
 				description: 'Get all lists',
 			},
 			{
+				name: 'Member',
+				value: 'member',
+				description: 'Get list members',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a list',
@@ -95,7 +100,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -229,6 +234,68 @@ export const listFields = [
 		],
 	},
 /* -------------------------------------------------------------------------- */
+/*                                list:member                                 */
+/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'List ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		description: 'Task ID',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		default: true,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'member',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		default: 50,
+		description: 'How many results to return.',
+	},
+/* -------------------------------------------------------------------------- */
 /*                                list:customFields                           */
 /* -------------------------------------------------------------------------- */
 	{
@@ -270,7 +337,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'teamId',
-			]
+			],
 		},
 		required: true,
 	},
@@ -365,7 +432,7 @@ export const listFields = [
 			loadOptionsMethod: 'getLists',
 			loadOptionsDependsOn: [
 				'folder',
-			]
+			],
 		},
 		required: true,
 	},
@@ -411,7 +478,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -517,7 +584,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -623,7 +690,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},
@@ -758,7 +825,7 @@ export const listFields = [
 			loadOptionsMethod: 'getSpaces',
 			loadOptionsDependsOn: [
 				'team',
-			]
+			],
 		},
 		required: true,
 	},

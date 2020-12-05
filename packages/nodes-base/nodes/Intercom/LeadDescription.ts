@@ -37,7 +37,7 @@ export const leadOpeations = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a lead',
-			}
+			},
 		],
 		default: 'create',
 		description: 'The operation to perform.',
@@ -235,7 +235,7 @@ export const leadFields = [
 				default: '',
 				description: 'The phone number of the lead',
 			},
-		]
+		],
 	},
 
 /* -------------------------------------------------------------------------- */
@@ -445,7 +445,7 @@ export const leadFields = [
 				default: '',
 				description: 'Identifies what specifically was clicked to bring the user to the site',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -514,7 +514,7 @@ export const leadFields = [
 						default: '',
 					},
 				],
-			}
+			},
 		],
 		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user.',
 	},

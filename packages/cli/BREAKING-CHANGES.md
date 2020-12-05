@@ -2,6 +2,128 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.95.0
+
+### What changed?
+
+In the Harvest Node, we moved the account field from the credentials to the node parameters. This will allow you to work witn multiples accounts without having to create multiples credentials.
+
+### When is action necessary?
+
+If you are using the Harvest Node.
+
+### How to upgrade:
+
+Open the node set the parameter `Account ID`.
+
+## 0.94.0
+
+### What changed?
+
+In the Segment Node, we have changed how the properties 'traits' and 'properties' are defined. Now, key/value pairs can be provided, allowing you to send customs traits/properties.
+
+### When is action necessary?
+
+When the properties 'traits' or 'properties' are set, and one of the following resources/operations is used:
+
+| Resource | Operation |
+|--|--|
+| Identify | Create |
+| Track | Event |
+| Track | Page |
+| Group | Add |
+
+### How to upgrade:
+
+Open the affected resource/operation and set the parameters 'traits' or 'properties' again.
+
+## 0.93.0
+
+### What changed?
+
+Change in naming of the Authentication field for the Pipedrive Trigger node.
+
+### When is action necessary?
+
+If you had set "Basic Auth" for the "Authentication" field in the node.
+
+### How to upgrade:
+
+The "Authentication" field has been renamed to "Incoming Authentication". Please set the parameter “Incoming Authentication” to “Basic Auth” to activate it again.
+
+
+## 0.90.0
+
+### What changed?
+
+Node.js version 12.9 or newer is required to run n8n.
+
+### When is action necessary?
+
+If you are running Node.js version older than 12.9.
+
+### How to upgrade:
+
+You can find download and install the latest version of Node.js from [here](https://nodejs.org/en/download/).
+
+
+## 0.87.0
+
+### What changed?
+
+The link.fish node got removed because the service is shutting down.
+
+### When is action necessary?
+
+If you are are actively using the link.fish node.
+
+### How to upgrade:
+
+Unfortunately, that's not possible. We'd recommend you to look for an alternative service.
+
+
+## 0.83.0
+
+### What changed?
+
+In the Active Campaign Node, we have changed how the `getAll` operation works with various resources for the sake of consistency. To achieve this, a new parameter called 'Simple' has been added.
+
+### When is action necessary?
+
+When one of the following resources/operations is used:
+
+| Resource | Operation |
+|--|--|
+| Deal | Get All |
+| Connector | Get All |
+|  E-commerce Order | Get All |
+|  E-commerce Customer | Get All |
+|  E-commerce Order Products | Get All |
+
+### How to upgrade:
+
+Open the affected resource/operation and set the parameter `Simple` to false.
+
+## 0.79.0
+
+### What changed?
+
+We have renamed the operations in the Todoist Node for consistency with the codebase. We also deleted the `close_match` and `delete_match` operations as these can be accomplished using the following operations: `getAll`, `close`, and `delete`.
+
+### When is action necessary?
+
+When one of the following operations is used:
+
+- close_by
+- close_match
+- delete_id
+- delete_match
+
+### How to upgrade:
+
+After upgrading, open all workflows which contain the Todoist Node. Set the corresponding operation, and then save the workflow.
+
+If the operations `close_match` or `delete_match` are used, recreate them using the operations: `getAll`, `delete`, and `close`.
 
 ## 0.69.0
 

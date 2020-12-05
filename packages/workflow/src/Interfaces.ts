@@ -12,6 +12,12 @@ export interface IBinaryData {
 	fileExtension?: string;
 }
 
+export interface IOAuth2Options {
+	includeCredentialsOnRefreshOnBody?: boolean;
+	property?: string;
+	tokenType?: string;
+	keepBearer?: boolean;
+}
 
 export interface IConnection {
 	// The node the connection is to
@@ -97,6 +103,7 @@ export interface ICredentialType {
 	displayName: string;
 	extends?: string[];
 	properties: INodeProperties[];
+	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 }
 
@@ -179,7 +186,6 @@ export interface IExecuteData {
 	data: ITaskDataConnections;
 	node: INode;
 }
-
 
 export type IContextObject = {
 	[key: string]: any; // tslint:disable-line:no-any
@@ -333,9 +339,11 @@ export interface INode {
 	maxTries?: number;
 	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
+	executeOnce?: boolean;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
+	webhookId?: string;
 }
 
 
@@ -375,7 +383,7 @@ export interface INodeExecuteFunctions {
 
 
 // The values a node property can have
-export type NodeParameterValue = string | number | boolean;
+export type NodeParameterValue = string | number | boolean | undefined | null;
 
 export interface INodeParameters {
 	// TODO: Later also has to be possible to add multiple ones with the name name. So array has to be possible
@@ -400,6 +408,7 @@ export interface INodePropertyTypeOptions {
 	numberStepSize?: number;     // Supported by: number
 	password?: boolean;          // Supported by: string
 	rows?: number;               // Supported by: string
+	showAlpha?: boolean;         // Supported by: color
 	[key: string]: boolean | number | string | EditorTypes | undefined | string[];
 }
 
@@ -527,6 +536,7 @@ export interface INodeTypeDescription {
 	version: number;
 	description: string;
 	defaults: INodeParameters;
+	documentationUrl?: string;
 	inputs: string[];
 	inputNames?: string[];
 	outputs: string[];
@@ -558,8 +568,9 @@ export interface IWebhookData {
 }
 
 export interface IWebhookDescription {
-	[key: string]: WebhookHttpMethod | WebhookResponseMode | string | undefined;
+	[key: string]: WebhookHttpMethod | WebhookResponseMode | boolean | string | undefined;
 	httpMethod: WebhookHttpMethod | string;
+	isFullPath?: boolean;
 	name: string;
 	path: string;
 	responseBinaryPropertyName?: string;
@@ -588,7 +599,7 @@ export interface IWorkflowMetadata {
 	active: boolean;
 }
 
-export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD';
+export type WebhookHttpMethod = 'GET' | 'POST' | 'HEAD' | 'OPTIONS';
 
 export interface IWebhookResponseData {
 	workflowData?: INodeExecutionData[][];
@@ -705,7 +716,7 @@ export interface IWorkflowExecuteHooks {
 	nodeExecuteAfter?: Array<((nodeName: string, data: ITaskData) => Promise<void>)>;
 	nodeExecuteBefore?: Array<((nodeName: string) => Promise<void>)>;
 	workflowExecuteAfter?: Array<((data: IRun, newStaticData: IDataObject) => Promise<void>)>;
-	workflowExecuteBefore?: Array<(() => Promise<void>)>;
+	workflowExecuteBefore?: Array<((workflow: Workflow, data: IRunExecutionData) => Promise<void>)>;
 }
 
 export interface IWorkflowExecuteAdditionalData {

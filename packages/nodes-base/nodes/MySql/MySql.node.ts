@@ -17,7 +17,7 @@ export class MySql implements INodeType {
 		icon: 'file:mysql.png',
 		group: ['input'],
 		version: 1,
-		description: 'Gets, add and update data in MySQL.',
+		description: 'Get, add and update data in MySQL.',
 		defaults: {
 			name: 'MySQL',
 			color: '#4279a2',
@@ -28,7 +28,7 @@ export class MySql implements INodeType {
 			{
 				name: 'mySql',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -39,7 +39,7 @@ export class MySql implements INodeType {
 					{
 						name: 'Execute Query',
 						value: 'executeQuery',
-						description: 'Executes a SQL query.',
+						description: 'Execute an SQL query.',
 					},
 					{
 						name: 'Insert',
@@ -49,7 +49,7 @@ export class MySql implements INodeType {
 					{
 						name: 'Update',
 						value: 'update',
-						description: 'Updates rows in database.',
+						description: 'Update rows in database.',
 					},
 				],
 				default: 'insert',
@@ -69,7 +69,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'executeQuery'
+							'executeQuery',
 						],
 					},
 				},
@@ -90,7 +90,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'insert'
+							'insert',
 						],
 					},
 				},
@@ -105,7 +105,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'insert'
+							'insert',
 						],
 					},
 				},
@@ -125,7 +125,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 					},
 				},
@@ -140,7 +140,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 					},
 				},
@@ -155,7 +155,7 @@ export class MySql implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'update'
+							'update',
 						],
 					},
 				},
@@ -164,7 +164,7 @@ export class MySql implements INodeType {
 				description: 'Comma separated list of the properties which should used as columns for rows to update.',
 			},
 
-		]
+		],
 	};
 
 

@@ -50,7 +50,7 @@ export const formulaFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -68,7 +68,7 @@ export const formulaFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'The formula to get the row from.',
@@ -92,7 +92,7 @@ export const formulaFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		description: 'ID of the doc.',
@@ -108,7 +108,7 @@ export const formulaFields = [
 				],
 				operation: [
 					'getAll',
-				]
+				],
 			},
 		},
 		default: false,
