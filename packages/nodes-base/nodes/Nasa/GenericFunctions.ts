@@ -1,4 +1,6 @@
-import { OptionsWithUri } from 'request';
+import { 
+	OptionsWithUri,
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,43 +11,16 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-/**
- * Format a JavaScript date as a YYYY-MM-DD string
- *
- * @param {date} date
- * @returns {string}
- */
-export function formatDate(date: Date): string {
-	let month = (date.getMonth() + 1).toString();
-	let day = '' + date.getDate().toString();
-	const year = date.getFullYear();
+export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, qs: IDataObject, option: IDataObject = {}, uri?: string | undefined): Promise<any> { // tslint:disable-line:no-any
 
-	if (month.length < 2) {
-		month = '0' + month;
-	}
+	const credentials = this.getCredentials('nasaApi') as IDataObject;
 
-	if (day.length < 2) {
-		day = '0' + day;
-	}
-
-	return [year, month, day].join('-');
-}
-
-/**
- * Make an API request to NASA
- *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
- */
-export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, qs: IDataObject, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	qs.api_key = credentials['api_key'] as string;
 
 	const options: OptionsWithUri = {
 		method,
 		qs,
-		uri: '',
+		uri: uri || `https://api.nasa.gov${endpoint}`,
 		json: true,
 	};
 
@@ -54,23 +29,7 @@ export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, m
 	}
 
 	try {
-			const credentials = this.getCredentials('nasaApi');
-			if (credentials === undefined) {
-				throw new Error('No credentials got returned!');
-			}
-
-			options.qs.api_key = credentials["api_key"];
-
-			const baseUrl = 'https://api.nasa.gov';
-			options.uri = `${baseUrl}${endpoint}`;
-
-			console.log("URL:\n" + options.uri);
-			console.log("QUERY STRINGS:")
-			console.log(options.qs);
-
-			console.log(options);
-
-			return await this.helpers.request(options);
+		return await this.helpers.request(options);
 
 	} catch (error) {
 		if (error.statusCode === 401) {
@@ -78,13 +37,35 @@ export async function nasaApiRequest(this: IHookFunctions | IExecuteFunctions, m
 			throw new Error('The NASA credentials are not valid!');
 		}
 
-		if (error.response && error.response.body && error.response.body.message) {
+		if (error.response && error.response.body && error.response.body.msg) {
 			// Try to return the error prettier
-			throw new Error(`NASA error response [${error.statusCode}]: ${error.response.body.message}`);
+			throw new Error(`NASA error response [${error.statusCode}]: ${error.response.body.msg}`);
 		}
 
 		// If that data does not exist for some reason return the actual error
 		throw error;
 	}
 }
+
+export async function nasaApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, method: string, resource: string, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.size = 20;
+
+	let uri: string | undefined = undefined;
+
+	do {
+		responseData = await nasaApiRequest.call(this, method, resource, query, {},  uri);
+		uri = responseData.links.next;
+		returnData.push.apply(returnData, responseData[propertyName]);
+	} while (
+		responseData.links.next !== undefined
+	);
+
+	return returnData;
+}
+
 
