@@ -71,7 +71,7 @@ To use it simply start n8n with `--tunnel`
 docker run -it --rm \
 	--name n8n \
 	-p 5678:5678 \
-	-v ~/.n8n:/root/.n8n \
+	-v ~/.n8n:/home/node/.n8n \
 	n8nio/n8n \
 	n8n start --tunnel
 ```
@@ -93,14 +93,14 @@ N8N_BASIC_AUTH_PASSWORD=<PASSWORD>
 ## Persist data
 
 The workflow data gets by default saved in an SQLite database in the user
-folder (`/root/.n8n`). That folder also additionally contains the
+folder (`/home/node/.n8n`). That folder also additionally contains the
 settings like webhook URL and encryption key.
 
 ```
 docker run -it --rm \
 	--name n8n \
 	-p 5678:5678 \
-	-v ~/.n8n:/root/.n8n \
+	-v ~/.n8n:/home/node/.n8n \
 	n8nio/n8n
 ```
 
@@ -136,7 +136,7 @@ docker run -it --rm \
 	-p 5678:5678 \
 	-e DB_TYPE=mongodb \
 	-e DB_MONGODB_CONNECTION_URL="mongodb://<MONGO_USER>:<MONGO_PASSWORD>@<MONGO_SERVER>:<MONGO_PORT>/<MONGO_DATABASE>" \
-	-v ~/.n8n:/root/.n8n \
+	-v ~/.n8n:/home/node/.n8n \
 	n8nio/n8n \
 	n8n start
 ```
@@ -164,7 +164,7 @@ docker run -it --rm \
 	-e DB_POSTGRESDB_USER=<POSTGRES_USER> \
 	-e DB_POSTGRESDB_SCHEMA=<POSTGRES_SCHEMA> \
 	-e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
-	-v ~/.n8n:/root/.n8n \
+	-v ~/.n8n:/home/node/.n8n \
 	n8nio/n8n \
 	n8n start
 ```
@@ -190,7 +190,7 @@ docker run -it --rm \
 	-e DB_MYSQLDB_PORT=<MYSQLDB_PORT> \
 	-e DB_MYSQLDB_USER=<MYSQLDB_USER> \
 	-e DB_MYSQLDB_PASSWORD=<MYSQLDB_PASSWORD> \
-	-v ~/.n8n:/root/.n8n \
+	-v ~/.n8n:/home/node/.n8n \
 	n8nio/n8n \
 	n8n start
 ```
