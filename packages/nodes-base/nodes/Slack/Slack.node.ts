@@ -33,6 +33,11 @@ import {
 } from './FileDescription';
 
 import {
+	reactionFields,
+	reactionOperations,
+} from './ReactionDescription';
+
+import {
 	userProfileFields,
 	userProfileOperations,
 } from './UserProfileDescription';
@@ -744,17 +749,37 @@ export class Slack implements INodeType {
 					Object.assign(body, updateFields);
 					responseData = await slackApiRequest.call(this, 'POST', '/chat.update', body, qs);
 				}
+			}
+			if (resource === 'reaction') {
+				const channel = this.getNodeParameter('channelId', i) as string;
+				const timestamp = this.getNodeParameter('timestamp', i) as string;
 				//https://api.slack.com/methods/reactions.add
-				if (operation === 'react') {
-					const channel = this.getNodeParameter('channelId', i) as string;
+				if (operation === 'add') {
 					const name = this.getNodeParameter('emoji', i) as string;
-					const ts = this.getNodeParameter('ts', i) as string;
 					const body: IDataObject = {
 						channel,
 						name,
-						ts,
+						timestamp,
 					};
 					responseData = await slackApiRequest.call(this, 'POST', '/reactions.add', body, qs);
+				}
+				//https://api.slack.com/methods/reactions.remove
+				if (operation === 'add') {
+					const name = this.getNodeParameter('emoji', i) as string;
+					const body: IDataObject = {
+						channel,
+						name,
+						timestamp,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/reactions.remove', body, qs);
+				}
+				//https://api.slack.com/methods/reactions.get
+				if (operation === 'get') {
+					const body: IDataObject = {
+						channel,
+						timestamp,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/reactions.get', body, qs);
 				}
 			}
 			if (resource === 'star') {
