@@ -111,6 +111,16 @@ export class TheHiveTrigger implements INodeType {
 						value: 'case_task_log_create',
 						description: 'Triggered when a task log is created',
 					},
+					{
+						name: 'Log Updated',
+						value: 'case_task_log_update',
+						description: 'Triggered when a task log is updated',
+					},
+					{
+						name: 'Log Deleted',
+						value: 'case_task_log_delete',
+						description: 'Triggered when a task log is deleted',
+					},
 				],
 			},
 			{
