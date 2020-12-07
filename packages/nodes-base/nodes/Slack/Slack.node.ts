@@ -189,6 +189,8 @@ export class Slack implements INodeType {
 			...starFields,
 			...fileOperations,
 			...fileFields,
+			...reactionOperations,
+			...reactionFields,
 			...userProfileOperations,
 			...userProfileFields,
 		],
