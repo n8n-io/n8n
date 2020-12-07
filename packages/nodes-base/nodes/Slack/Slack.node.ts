@@ -217,7 +217,7 @@ export class Slack implements INodeType {
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const qs = { types: 'public_channel,private_channel' };
+				const qs = { types: 'public_channel,private_channel', limit: 1000 }; // big companies have lots of channels
 				const channels = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list', {}, qs);
 				for (const channel of channels) {
 					const channelName = channel.name;
@@ -754,9 +754,6 @@ export class Slack implements INodeType {
 						name,
 						ts,
 					};
-					// Add all the other options to the request
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					Object.assign(body, updateFields);
 					responseData = await slackApiRequest.call(this, 'POST', '/reactions.add', body, qs);
 				}
 			}
