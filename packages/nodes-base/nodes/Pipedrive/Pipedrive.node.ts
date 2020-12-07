@@ -2447,7 +2447,7 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
-				if (operation === 'update')  {
+				if (operation === 'update') {
 					returnData.push({
 						name: 'No Label',
 						value: 'null',
@@ -2473,7 +2473,7 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
-				if (operation === 'update')  {
+				if (operation === 'update') {
 					returnData.push({
 						name: 'No Label',
 						value: 'null',
@@ -2499,7 +2499,7 @@ export class Pipedrive implements INodeType {
 						}
 					}
 				}
-				if (operation === 'update')  {
+				if (operation === 'update') {
 					returnData.push({
 						name: 'No Label',
 						value: 'null',
@@ -2883,6 +2883,11 @@ export class Pipedrive implements INodeType {
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					addAdditionalFields(body, updateFields);
+
+					if (body.label === 'null') {
+						body.label = null;
+					}
+
 				}
 			} else if (resource === 'person') {
 				if (operation === 'create') {
