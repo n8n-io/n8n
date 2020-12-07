@@ -744,6 +744,21 @@ export class Slack implements INodeType {
 					Object.assign(body, updateFields);
 					responseData = await slackApiRequest.call(this, 'POST', '/chat.update', body, qs);
 				}
+				//https://api.slack.com/methods/reactions.add
+				if (operation === 'react') {
+					const channel = this.getNodeParameter('channelId', i) as string;
+					const name = this.getNodeParameter('emoji', i) as string;
+					const ts = this.getNodeParameter('ts', i) as string;
+					const body: IDataObject = {
+						channel,
+						name,
+						ts,
+					};
+					// Add all the other options to the request
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					Object.assign(body, updateFields);
+					responseData = await slackApiRequest.call(this, 'POST', '/reactions.add', body, qs);
+				}
 			}
 			if (resource === 'star') {
 				//https://api.slack.com/methods/stars.add

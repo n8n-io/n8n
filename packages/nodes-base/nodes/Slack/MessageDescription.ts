@@ -23,6 +23,11 @@ export const messageOperations = [
 				value: 'update',
 				description: 'Updates a message.',
 			},
+			{
+				name: 'React',
+				value: 'react',
+				description: 'React to a message.',
+			},
 		],
 		default: 'post',
 		description: 'The operation to perform.',
@@ -427,7 +432,7 @@ export const messageFields = [
 		],
 	},
 /* ----------------------------------------------------------------------- */
-/*                                 message:update                          */
+/*                          message:update, react                          */
 /* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
@@ -445,6 +450,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
+					'react',
 				],
 			},
 		},
@@ -469,6 +475,24 @@ export const messageFields = [
 		description: `New text for the message, using the default formatting rules. It's not required when presenting attachments.`,
 	},
 	{
+		displayName: 'Emoji',
+		name: 'emoji',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'react',
+				],
+			},
+		},
+		description: `Name of emoji to use.`,
+	},
+	{
 		displayName: 'TS',
 		name: 'ts',
 		type: 'string',
@@ -481,6 +505,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
+					'react',
 				],
 			},
 		},
