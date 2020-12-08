@@ -781,11 +781,9 @@ export class Slack implements INodeType {
 				}
 				//https://api.slack.com/methods/reactions.get
 				if (operation === 'get') {
-					const body: IDataObject = {
-						channel,
-						timestamp,
-					};
-					responseData = await slackApiRequest.call(this, 'POST', '/reactions.get', body, qs);
+					qs.channel = channel;
+					qs.timestampe = timestamp;
+					responseData = await slackApiRequest.call(this, 'GET', '/reactions.get', {}, qs);
 				}
 			}
 			if (resource === 'star') {
