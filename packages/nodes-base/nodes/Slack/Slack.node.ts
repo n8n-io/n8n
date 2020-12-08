@@ -761,7 +761,7 @@ export class Slack implements INodeType {
 				const timestamp = this.getNodeParameter('timestamp', i) as string;
 				//https://api.slack.com/methods/reactions.add
 				if (operation === 'add') {
-					const name = this.getNodeParameter('emoji', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
 					const body: IDataObject = {
 						channel,
 						name,
@@ -771,7 +771,7 @@ export class Slack implements INodeType {
 				}
 				//https://api.slack.com/methods/reactions.remove
 				if (operation === 'add') {
-					const name = this.getNodeParameter('emoji', i) as string;
+					const name = this.getNodeParameter('name', i) as string;
 					const body: IDataObject = {
 						channel,
 						name,
