@@ -170,7 +170,7 @@ export class GoogleSheets implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
+						resource: [
 							'sheet',
 						],
 					},
@@ -660,7 +660,7 @@ export class GoogleSheets implements INodeType {
 					{
 						name: 'Create',
 						value: 'create',
-						description: 'Append data to a sheet',
+						description: 'Create a spreadsheet',
 					},
 				],
 				default: 'create',
