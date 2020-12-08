@@ -64,6 +64,11 @@ export const channelOperations = [
 				description: 'Leaves a conversation.',
 			},
 			{
+				name: 'Members',
+				value: 'members',
+				description: 'List members of a conversation.',
+			},
+			{
 				name: 'Open',
 				value: 'open',
 				description: 'Opens or resumes a direct message or multi-person direct message.',
@@ -580,6 +585,48 @@ export const channelFields = [
 		default: '',
 		required: true,
 		description: 'The name of the channel to leave.',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  channel:members                           */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		default: '',
+		placeholder: 'Channel name',
+		displayOptions: {
+			show: {
+				operation: [
+					'members',
+				],
+				resource: [
+					'channel',
+				],
+			},
+		},
+		required: true,
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 100,
+		placeholder: 'Limit',
+		displayOptions: {
+			show: {
+				operation: [
+					'members',
+				],
+				resource: [
+					'channel',
+				],
+			},
+		},
+		required: false,
 	},
 /* -------------------------------------------------------------------------- */
 /*                                channel:open                                */
