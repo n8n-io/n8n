@@ -788,7 +788,7 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/reactions.get
 				if (operation === 'get') {
 					qs.channel = channel;
-					qs.timestampe = timestamp;
+					qs.timestamp = timestamp;
 					responseData = await slackApiRequest.call(this, 'GET', '/reactions.get', {}, qs);
 				}
 			}
