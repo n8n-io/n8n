@@ -57,6 +57,7 @@ import {
 	IAttachment,
 } from './MessageInterface';
 import moment = require('moment');
+import { response } from 'express';
 
 interface Attachment {
 	fields: {
@@ -239,7 +240,7 @@ export class Slack implements INodeType {
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const qs = { types: 'public_channel,private_channel', limit: 1000 }; // big companies have lots of channels
+				const qs = { types: 'public_channel,private_channel', limit: 1000 };
 				const channels = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list', {}, qs);
 				for (const channel of channels) {
 					const channelName = channel.name;
@@ -406,10 +407,17 @@ export class Slack implements INodeType {
 					responseData = await slackApiRequest.call(this, 'POST', '/conversations.leave', body, qs);
 				}
 				//https://api.slack.com/methods/conversations.members
-				if (operation === 'members') {
+				if (operation === 'member') {
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					qs.channel = this.getNodeParameter('channelId', i) as string;
-					qs.limit = this.getNodeParameter('limit', i) as number;
-					responseData = await slackApiRequest.call(this, 'GET', '/conversations.members', {}, qs);
+					if (returnAll) {
+						responseData = await slackApiRequestAllItems.call(this, 'members', 'GET', '/conversations.members', {}, qs);
+						responseData = responseData.map((member: string) => ({ member }));
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await slackApiRequest.call(this, 'GET', '/conversations.members', {}, qs);
+						responseData = responseData.members.map((member: string) => ({ member }));
+					}
 				}
 				//https://api.slack.com/methods/conversations.open
 				if (operation === 'open') {
@@ -942,6 +950,7 @@ export class Slack implements INodeType {
 				if (operation === 'info') {
 					qs.user = this.getNodeParameter('user', i) as string;
 					responseData = await slackApiRequest.call(this, 'GET', '/users.info', {}, qs);
+					responseData = responseData.user;
 				}
 				//https://api.slack.com/methods/users.getPresence
 				if (operation === 'getPresence') {

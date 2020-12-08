@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const channelOperations = [
 	{
@@ -64,8 +66,8 @@ export const channelOperations = [
 				description: 'Leaves a conversation.',
 			},
 			{
-				name: 'Members',
-				value: 'members',
+				name: 'Member',
+				value: 'member',
 				description: 'List members of a conversation.',
 			},
 			{
@@ -587,7 +589,7 @@ export const channelFields = [
 		description: 'The name of the channel to leave.',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  channel:members                           */
+	/*                                  channel:member                            */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
@@ -597,11 +599,10 @@ export const channelFields = [
 			loadOptionsMethod: 'getChannels',
 		},
 		default: '',
-		placeholder: 'Channel name',
 		displayOptions: {
 			show: {
 				operation: [
-					'members',
+					'member',
 				],
 				resource: [
 					'channel',
@@ -609,6 +610,23 @@ export const channelFields = [
 			},
 		},
 		required: true,
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'channel',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
 	},
 	{
 		displayName: 'Limit',
@@ -619,10 +637,13 @@ export const channelFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'members',
+					'member',
 				],
 				resource: [
 					'channel',
+				],
+				returnAll: [
+					false,
 				],
 			},
 		},
