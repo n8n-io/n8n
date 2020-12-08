@@ -38,6 +38,11 @@ import {
 } from './ReactionDescription';
 
 import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+
+import {
 	userProfileFields,
 	userProfileOperations,
 } from './UserProfileDescription';
@@ -177,6 +182,10 @@ export class Slack implements INodeType {
 						value: 'star',
 					},
 					{
+						name: 'User',
+						value: 'user',
+					},
+					{
 						name: 'User Profile',
 						value: 'userProfile',
 					},
@@ -195,6 +204,8 @@ export class Slack implements INodeType {
 			...fileFields,
 			...reactionOperations,
 			...reactionFields,
+			...userOperations,
+			...userFields,
 			...userProfileOperations,
 			...userProfileFields,
 		],
@@ -924,6 +935,18 @@ export class Slack implements INodeType {
 					qs.file = fileId;
 					responseData = await slackApiRequest.call(this, 'GET', '/files.info', {}, qs);
 					responseData = responseData.file;
+				}
+			}
+			if (resource === 'user') {
+				//https://api.slack.com/methods/users.info
+				if (operation === 'get') {
+					qs.user = this.getNodeParameter('user', i) as string;
+					responseData = await slackApiRequest.call(this, 'GET', '/users.info', {}, qs);
+				}
+				//https://api.slack.com/methods/users.getPresence
+				if (operation === 'get') {
+					qs.user = this.getNodeParameter('user', i) as string;
+					responseData = await slackApiRequest.call(this, 'GET', '/users.getPresence', {}, qs);
 				}
 			}
 			if (resource === 'userProfile') {
