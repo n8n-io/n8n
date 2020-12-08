@@ -64,7 +64,7 @@ export const channelFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the messageConversation.',
+		description: 'The id of the workspace.',
 	},
 	{
 		displayName: 'Name',
@@ -176,8 +176,8 @@ export const channelFields = [
 				displayName: 'Temp ID',
 				name: 'temp_id',
 				type: 'number',
-				default: 0,
-				description: 'The temporary id of the channel.',
+				default: -1,
+				description: 'The temporary id of the channel. It needs to be a negative number.',
 			},
 			{
 				displayName: 'User IDs',
@@ -213,7 +213,7 @@ export const channelFields = [
 			},
 		},
 		required: true,
-		description: 'Channel ID to learn more about',
+		description: 'The id of the channel',
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 channel:getAll                             */
@@ -237,7 +237,7 @@ export const channelFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the messageConversation.',
+		description: 'The id of the workspace.',
 	},
 	{
 		displayName: 'Return All',

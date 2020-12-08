@@ -125,6 +125,23 @@ export class Twist implements INodeType {
 				}
 				return returnData;
 			},
+
+			// Get all the available groups to display them to user so that he can
+			// select them easily
+			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs: IDataObject = {
+					workspace_id: this.getCurrentNodeParameter('workspaceId') as string,
+				};
+				const groups = await twistApiRequest.call(this, 'GET', '/groups/get', {}, qs);
+				for (const group of groups) {
+					returnData.push({
+						name: group.name,
+						value: group.id,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -245,6 +262,22 @@ export class Twist implements INodeType {
 
 						body.attachments = attachments;
 					}
+
+					if (body.direct_mentions) {
+						const direcMentions: string[] = [];
+						for (const directMention of body.direct_mentions as number[]) {
+							direcMentions.push(`[name](twist-mention://${directMention})`);
+						}
+						body.content = `${direcMentions.join(' ')} ${body.content}`;
+					}
+
+					// if (body.direct_group_mentions) {
+					// 	const directGroupMentions: string[] = [];
+					// 	for (const directGroupMention of body.direct_group_mentions as number[]) {
+					// 		directGroupMentions.push(`[Group name](twist-group-mention://${directGroupMention})`);
+					// 	}
+					// 	body.content = `${directGroupMentions.join(' ')} ${body.content}`;
+					// }
 
 					responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/add', body);
 				}

@@ -74,7 +74,7 @@ export const messageConversationFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the messageConversation.',
+		description: 'The id of the conversation.',
 	},
 	{
 		displayName: 'Content',
@@ -215,16 +215,16 @@ export const messageConversationFields = [
 				default: [],
 				description: `The users that are directly mentioned.`,
 			},
-			{
-				displayName: 'Direct Group Mentions ',
-				name: 'direct_group_mentions',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: [],
-				description: `The groups that are directly mentioned`,
-			},
+			// {
+			// 	displayName: 'Direct Group Mentions ',
+			// 	name: 'direct_group_mentions',
+			// 	type: 'multiOptions',
+			// 	typeOptions: {
+			// 		loadOptionsMethod: 'getGroups',
+			// 	},
+			// 	default: [],
+			// 	description: `The groups that are directly mentioned`,
+			// },
 		],
 	},
 ] as INodeProperties[];
