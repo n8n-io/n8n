@@ -939,12 +939,12 @@ export class Slack implements INodeType {
 			}
 			if (resource === 'user') {
 				//https://api.slack.com/methods/users.info
-				if (operation === 'get') {
+				if (operation === 'info') {
 					qs.user = this.getNodeParameter('user', i) as string;
 					responseData = await slackApiRequest.call(this, 'GET', '/users.info', {}, qs);
 				}
 				//https://api.slack.com/methods/users.getPresence
-				if (operation === 'get') {
+				if (operation === 'getPresence') {
 					qs.user = this.getNodeParameter('user', i) as string;
 					responseData = await slackApiRequest.call(this, 'GET', '/users.getPresence', {}, qs);
 				}
