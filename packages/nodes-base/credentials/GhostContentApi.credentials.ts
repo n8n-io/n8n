@@ -13,6 +13,7 @@ export class GhostContentApi implements ICredentialType {
 			name: 'url',
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			placeholder: 'http://localhost:3001',
 		},
 		{
 			displayName: 'API Key',

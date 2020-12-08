@@ -41,23 +41,23 @@ export class Ghost implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'ghostContentApi',
-				required: true,
-				displayOptions: {
-					show: {
-						source: [
-							'contentApi',
-						],
-					},
-				},
-			},
-			{
 				name: 'ghostAdminApi',
 				required: true,
 				displayOptions: {
 					show: {
 						source: [
 							'adminApi',
+						],
+					},
+				},
+			},
+			{
+				name: 'ghostContentApi',
+				required: true,
+				displayOptions: {
+					show: {
+						source: [
+							'contentApi',
 						],
 					},
 				},
@@ -71,12 +71,12 @@ export class Ghost implements INodeType {
 				description: 'Pick where your data comes from, Content or Admin API',
 				options: [
 					{
-						name: 'Content API',
-						value: 'contentApi',
-					},
-					{
 						name: 'Admin API',
 						value: 'adminApi',
+					},
+					{
+						name: 'Content API',
+						value: 'contentApi',
 					},
 				],
 				default: 'contentApi',
@@ -161,15 +161,15 @@ export class Ghost implements INodeType {
 				if (operation === 'get') {
 					for (let i = 0; i < items.length; i++) {
 						const by = this.getNodeParameter('by', i) as string;
-						
+
 						const identifier = this.getNodeParameter('identifier', i) as string;
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						Object.assign(qs, options);
-						
+
 						let endpoint;
-						
+
 						if (by === 'slug') {
 							endpoint = `/content/posts/slug/${identifier}`;
 						} else {
@@ -183,7 +183,7 @@ export class Ghost implements INodeType {
 
 				if (operation === 'getAll') {
 					for (let i = 0; i < items.length; i++) {
-						
+
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
@@ -209,9 +209,9 @@ export class Ghost implements INodeType {
 				if (operation === 'create') {
 					for (let i = 0; i < length; i++) {
 						const title = this.getNodeParameter('title', i) as string;
-						
+
 						const contentFormat = this.getNodeParameter('contentFormat', i) as string;
-					
+
 						const content = this.getNodeParameter('content', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -230,7 +230,7 @@ export class Ghost implements INodeType {
 							}
 							post.mobiledoc = content;
 						}
-						
+
 						delete post.content;
 
 						Object.assign(post, additionalFields);
@@ -244,15 +244,15 @@ export class Ghost implements INodeType {
 						}
 
 						responseData = await ghostApiRequest.call(this, 'POST', '/admin/posts', { posts: [post] }, qs);
-					
+
 						returnData.push.apply(returnData, responseData.posts);
 					}
 				}
-				
+
 				if (operation === 'delete') {
-					for (let i = 0; i < length; i++) {						
+					for (let i = 0; i < length; i++) {
 						const postId = this.getNodeParameter('postId', i) as string;
-						
+
 						responseData = await ghostApiRequest.call(this, 'DELETE', `/admin/posts/${postId}`);
 
 						returnData.push({ success: true });
@@ -262,15 +262,15 @@ export class Ghost implements INodeType {
 				if (operation === 'get') {
 					for (let i = 0; i < length; i++) {
 						const by = this.getNodeParameter('by', i) as string;
-						
+
 						const identifier = this.getNodeParameter('identifier', i) as string;
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						Object.assign(qs, options);
-						
+
 						let endpoint;
-						
+
 						if (by === 'slug') {
 							endpoint = `/admin/posts/slug/${identifier}`;
 						} else {
@@ -284,7 +284,7 @@ export class Ghost implements INodeType {
 
 				if (operation === 'getAll') {
 					for (let i = 0; i < length; i++) {
-						
+
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
@@ -304,11 +304,11 @@ export class Ghost implements INodeType {
 				}
 
 				if (operation === 'update') {
-					for (let i = 0; i < length; i++) {			
+					for (let i = 0; i < length; i++) {
 						const postId = this.getNodeParameter('postId', i) as string;
 
 						const contentFormat = this.getNodeParameter('contentFormat', i) as string;
-								
+
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 						const post: IDataObject = {};
@@ -341,7 +341,7 @@ export class Ghost implements INodeType {
 						post.updated_at = posts[0].updated_at;
 
 						responseData = await ghostApiRequest.call(this, 'PUT', `/admin/posts/${postId}`, { posts: [post] }, qs);
-					
+
 						returnData.push.apply(returnData, responseData.posts);
 					}
 				}

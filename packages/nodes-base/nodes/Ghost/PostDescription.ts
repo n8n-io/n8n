@@ -101,7 +101,7 @@ export const postFields = [
 				],
 			},
 		},
-		description: `Post's title`,
+		description: `Post's title.`,
 	},
 	{
 		displayName: 'Content Format',
@@ -122,15 +122,16 @@ export const postFields = [
 		},
 		options: [
 			{
-				name: 'Mobile Doc',
-				value: 'mobileDoc',
-			},
-			{
 				name: 'HTML',
 				value: 'html',
 			},
+			{
+				name: 'Mobile Doc',
+				value: 'mobileDoc',
+			},
 		],
 		default: 'html',
+		description: `The format of the post.`,
 	},
 	{
 		displayName: 'Content',
@@ -156,6 +157,7 @@ export const postFields = [
 			},
 		},
 		default: '',
+		description: 'The content of the post to create.',
 	},
 	{
 		displayName: 'Content (JSON)',
@@ -177,9 +179,9 @@ export const postFields = [
 				],
 			},
 		},
-		
+
 		default: '',
-		description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage" target="_blank">Info.</a>',
+		description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage" target="_blank">Info</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -275,6 +277,12 @@ export const postFields = [
 				default: '',
 			},
 			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
@@ -304,12 +312,6 @@ export const postFields = [
 				default: [],
 			},
 			{
-				displayName: 'Slug',
-				name: 'slug',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Twitter Description',
 				name: 'twitter_description',
 				type: 'string',
@@ -328,8 +330,9 @@ export const postFields = [
 				type: 'string',
 				default: '',
 			},
-		],	
+		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                post:delete                                 */
 	/* -------------------------------------------------------------------------- */
@@ -352,8 +355,9 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'The ID of the post to delete',
+		description: 'The ID of the post to delete.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                post:get                                    */
 	/* -------------------------------------------------------------------------- */
@@ -387,7 +391,7 @@ export const postFields = [
 				],
 			},
 		},
-		description: 'Get the post either by slug or id',
+		description: 'Get the post either by slug or ID.',
 	},
 	{
 		displayName: 'Identifier',
@@ -505,6 +509,7 @@ export const postFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                post:getAll                                 */
 	/* -------------------------------------------------------------------------- */
@@ -686,6 +691,7 @@ export const postFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                post:update                                 */
 	/* -------------------------------------------------------------------------- */
@@ -707,6 +713,7 @@ export const postFields = [
 			},
 		},
 		default: '',
+		description: 'The ID of the post to update.',
 	},
 	{
 		displayName: 'Content Format',
@@ -727,15 +734,16 @@ export const postFields = [
 		},
 		options: [
 			{
-				name: 'Mobile Doc',
-				value: 'mobileDoc',
-			},
-			{
 				name: 'HTML',
 				value: 'html',
 			},
+			{
+				name: 'Mobile Doc',
+				value: 'mobileDoc',
+			},
 		],
 		default: 'html',
+		description: `The format of the post.`,
 	},
 	{
 		displayName: 'Update Fields',
@@ -803,14 +811,14 @@ export const postFields = [
 			{
 				displayName: 'Content (JSON)',
 				name: 'contentJson',
-				type: 'json',		
+				type: 'json',
 				displayOptions: {
 					show: {
 						'/contentFormat': [
 							'mobileDoc',
 						],
 					},
-				},		
+				},
 				default: '',
 				description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage" target="_blank">Info.</a>',
 			},
@@ -858,6 +866,12 @@ export const postFields = [
 				default: '',
 			},
 			{
+				displayName: 'Slug',
+				name: 'slug',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
@@ -894,12 +908,6 @@ export const postFields = [
 				description: `Post's title`,
 			},
 			{
-				displayName: 'Slug',
-				name: 'slug',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Twitter Description',
 				name: 'twitter_description',
 				type: 'string',
@@ -918,6 +926,6 @@ export const postFields = [
 				type: 'string',
 				default: '',
 			},
-		],	
+		],
 	},
 ] as INodeProperties[];
