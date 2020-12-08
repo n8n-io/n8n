@@ -169,6 +169,10 @@ export class Slack implements INodeType {
 						value: 'message',
 					},
 					{
+						name: 'Reaction',
+						value: 'reaction',
+					},
+					{
 						name: 'Star',
 						value: 'star',
 					},
