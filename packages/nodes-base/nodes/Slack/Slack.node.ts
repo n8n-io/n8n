@@ -770,7 +770,7 @@ export class Slack implements INodeType {
 					responseData = await slackApiRequest.call(this, 'POST', '/reactions.add', body, qs);
 				}
 				//https://api.slack.com/methods/reactions.remove
-				if (operation === 'add') {
+				if (operation === 'remove') {
 					const name = this.getNodeParameter('name', i) as string;
 					const body: IDataObject = {
 						channel,
