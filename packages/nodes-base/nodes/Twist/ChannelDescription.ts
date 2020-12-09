@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -325,7 +325,7 @@ export const channelFields = [
 			},
 		},
 		required: true,
-		description: 'Channel ID to learn more about',
+		description: 'The ID of the Channel',
 	},
 	{
 		displayName: 'Update Fields',

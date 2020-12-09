@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties
 } from 'n8n-workflow';
 
@@ -50,7 +50,7 @@ export const messageConversationFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the messageConversation.',
+		description: 'The id of the Workspace',
 	},
 	{
 		displayName: 'Conversation ID',
@@ -74,7 +74,7 @@ export const messageConversationFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the conversation.',
+		description: 'The id of the conversation',
 	},
 	{
 		displayName: 'Content',
@@ -213,7 +213,7 @@ export const messageConversationFields = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: [],
-				description: `The users that are directly mentioned.`,
+				description: `The users that are directly mentioned`,
 			},
 			// {
 			// 	displayName: 'Direct Group Mentions ',
