@@ -172,6 +172,10 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 						client_secret: credentials.clientSecret as string,
 					};
 					tokenRefreshOptions.body = body;
+					// Override authorization property so the credentails are not included in it
+					tokenRefreshOptions.headers = {
+						Authorization: '',
+					};
 				}
 
 				const newToken = await token.refresh(tokenRefreshOptions);
