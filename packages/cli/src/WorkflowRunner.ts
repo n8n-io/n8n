@@ -144,7 +144,7 @@ export class WorkflowRunner {
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(data.credentials);
 
 		// Register the active execution
-		const executionId = this.activeExecutions.add(data, undefined);
+		const executionId = await this.activeExecutions.add(data, undefined);
 
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
@@ -209,7 +209,7 @@ export class WorkflowRunner {
 		}
 
 		// Register the active execution
-		const executionId = this.activeExecutions.add(data, subprocess);
+		const executionId = await this.activeExecutions.add(data, subprocess);
 
 		// Check if workflow contains a "executeWorkflow" Node as in this
 		// case we can not know which nodeTypes and credentialTypes will

@@ -1642,7 +1642,7 @@ class App {
 			const returnData: IExecutionsStopData = {
 				mode: result.mode,
 				startedAt: new Date(result.startedAt),
-				stoppedAt: new Date(result.stoppedAt),
+				stoppedAt: result.stoppedAt ?  new Date(result.stoppedAt) : undefined,
 				finished: result.finished,
 			};
 

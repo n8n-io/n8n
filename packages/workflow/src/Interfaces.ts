@@ -630,7 +630,7 @@ export interface IRun {
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
-	stoppedAt: Date;
+	stoppedAt?: Date;
 }
 
 

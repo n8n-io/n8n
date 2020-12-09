@@ -252,6 +252,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					if (isManualMode && saveManualExecutions === false) {
+						// Data is always saved, so we remove from database
+						Db.collections.Execution!.delete(this.executionId);
 						return;
 					}
 
@@ -270,6 +272,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						if (!isManualMode) {
 							executeErrorWorkflow(this.workflowData, fullRunData, this.mode, undefined, this.retryOf);
 						}
+						// Data is always saved, so we remove from database
+						Db.collections.Execution!.delete(this.executionId);
 						return;
 					}
 
@@ -293,16 +297,16 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 					// Save the Execution in DB
-					const executionResult = await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
+					await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
 
 					if (fullRunData.finished === true && this.retryOf !== undefined) {
 						// If the retry was successful save the reference it on the original execution
 						// await Db.collections.Execution!.save(executionData as IExecutionFlattedDb);
-						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: executionResult.id });
+						await Db.collections.Execution!.update(this.retryOf, { retrySuccessId: this.executionId });
 					}
 
 					if (!isManualMode) {
-						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, executionResult ? executionResult.id as string : undefined, this.retryOf);
+						executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, this.retryOf);
 					}
 				} catch (error) {
 					if (!isManualMode) {
