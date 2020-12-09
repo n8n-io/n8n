@@ -66,10 +66,10 @@ export class Nasa implements INodeType {
 						name: 'DONKI Coronal Mass Ejection',
 						value: 'donkiCoronalMassEjection',
 					},
-					{
-						name: 'DONKI Geomagnetic Storm',
-						value: 'donkiGeomagneticStorm',
-					},
+					// {
+					// 	name: 'DONKI Geomagnetic Storm',
+					// 	value: 'donkiGeomagneticStorm',
+					// },
 					{
 						name: 'DONKI Interplanetary Shock',
 						value: 'donkiInterplanetaryShock',
@@ -588,6 +588,41 @@ export class Nasa implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Download Image',
+				name: 'download',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'astronomyPictureOfTheDay',
+						],
+					},
+				},
+				default: true,
+				description: 'By default just the url of the image is returned. When set to true the image will be downloaded',
+			},
+			{
+				displayName: 'Binary Property',
+				name: 'binaryPropertyName',
+				type: 'string',
+				required: true,
+				default: 'data',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'astronomyPictureOfTheDay',
+						],
+						download: [
+							true,
+						],
+					},
+				},
+				description: 'Name of the binary property to which to write to',
+			},
 
 			/* date for astronomyPictureOfTheDay */
 			{
@@ -610,7 +645,7 @@ export class Nasa implements INodeType {
 					{
 						displayName: 'Date',
 						name: 'date',
-						type: 'string',
+						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
@@ -648,14 +683,14 @@ export class Nasa implements INodeType {
 					{
 						displayName: 'Start date',
 						name: 'startDate',
-						type: 'string',
+						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
 						displayName: 'End date',
 						name: 'endDate',
-						type: 'string',
+						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
@@ -687,14 +722,14 @@ export class Nasa implements INodeType {
 					{
 						displayName: 'Start date',
 						name: 'startDate',
-						type: 'string',
+						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
 					{
 						displayName: 'End date',
 						name: 'endDate',
-						type: 'string',
+						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 					},
@@ -808,6 +843,9 @@ export class Nasa implements INodeType {
 				},
 				description: 'Name of the binary property to which to write to',
 			},
+
+
+			//aqui
 			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
@@ -829,7 +867,7 @@ export class Nasa implements INodeType {
 					{
 						displayName: 'Date',
 						name: 'date',
-						type: 'string',
+						type: 'dateTime',
 						default: '',
 						placeholder: 'YYYY-MM-DD',
 						description: 'Date of the image',
@@ -890,6 +928,7 @@ export class Nasa implements INodeType {
 		const qs: IDataObject = {};
 		let returnAll = false;
 		let propertyName = '';
+		let download = false;
 
 		for (let i = 0; i < items.length; i++) {
 
@@ -912,7 +951,7 @@ export class Nasa implements INodeType {
 
 					endpoint = '/planetary/apod';
 
-					qs.date = additionalFields.date as string || moment().format('YYYY-MM-DD');
+					qs.date = moment(additionalFields.date as string).format('YYYY-MM-DD')|| moment().format('YYYY-MM-DD');
 
 				}
 			}
@@ -926,8 +965,8 @@ export class Nasa implements INodeType {
 
 					// The range defaults to the current date to reduce the number of results.
 					const currentDate = moment().format('YYYY-MM-DD');
-					qs.start_date = additionalFields.startDate as string || currentDate;
-					qs.end_date = additionalFields.endDate as string || currentDate;
+					qs.start_date = moment(additionalFields.startDate as string).format('YYYY-MM-DD') || currentDate;
+					qs.end_date = moment(additionalFields.endDate as string).format('YYYY-MM-DD') || currentDate;
 
 				}
 			} 
@@ -968,13 +1007,13 @@ export class Nasa implements INodeType {
 			if (resource.startsWith('donki')) {
 
 				if (additionalFields.startDate) {
-					qs.startDate = additionalFields.startDate as string;
+					qs.startDate = moment(additionalFields.startDate as string).format('YYYY-MM-DD');
 				} else {
 					qs.startDate = moment().subtract(30, 'days').format('YYYY-MM-DD');
 				}
 
 				if (additionalFields.endDate) {
-					qs.endDate = additionalFields.endDate as string;
+					qs.endDate = moment(additionalFields.endDate as string).format('YYYY-MM-DD');
 				} else {
 					qs.endDate = moment().format('YYYY-MM-DD');
 				}
@@ -1077,9 +1116,10 @@ export class Nasa implements INodeType {
 					qs.dim = additionalFields.dim as string || 0.025; // default per API
 
 					if (additionalFields.date) {
-						qs.date = additionalFields.date as string;
+						qs.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
+					} else {
+						qs.date = moment().format('YYYY-MM-DD');
 					}
-
 				}
 
 			}
@@ -1095,11 +1135,9 @@ export class Nasa implements INodeType {
 					qs.dim = additionalFields.dim as string || 0.025; // default per API
 
 					if (additionalFields.date) {
-						qs.date = additionalFields.date as string;
+						qs.date = moment(additionalFields.date as string).format('YYYY-MM-DD');
 					}
-
 				}
-
 
 				if (operation === 'get') {
 
@@ -1111,7 +1149,7 @@ export class Nasa implements INodeType {
 
 				}
 			}
-				
+
 			if (returnAll) {
 				responseData = nasaApiRequestAllItems.call(this, propertyName, 'GET', endpoint, qs);
 			} else {
@@ -1133,24 +1171,52 @@ export class Nasa implements INodeType {
 
 			if (resource === 'earthImagery') {
 
-				const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
 
-				responseData = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null });
+					const data = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null });
 
-				const newItem: INodeExecutionData = {
-					json: items[i].json,
-					binary: {},
-				};
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
 
-				if (items[i].binary !== undefined) {
-					Object.assign(newItem.binary, items[i].binary);
-				}
+					if (items[i].binary !== undefined) {
+						Object.assign(newItem.binary, items[i].binary);
+					}
 
-				items[i] = newItem;
+					items[i] = newItem;
 
-				items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(responseData);
+					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
 			}
 
+			if (resource === 'astronomyPictureOfTheDay') {
+				download = this.getNodeParameter('download', 0) as boolean;
+
+				if (download === true) {
+
+					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+
+					const data = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null }, responseData.hdurl);
+
+					const filename = (responseData.hdurl as string).split('/');
+
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
+
+					Object.assign(newItem.json, responseData);
+
+					if (items[i].binary !== undefined) {
+						Object.assign(newItem.binary, items[i].binary);
+					}
+
+					items[i] = newItem;
+
+					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data, filename[filename.length - 1]);
+				}
+			}
+		
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
@@ -1159,6 +1225,8 @@ export class Nasa implements INodeType {
 		}
 
 		if (resource === 'earthImagery' && operation === 'get') {
+			return this.prepareOutputData(items);
+		} else if (resource === 'astronomyPictureOfTheDay' && operation === 'get' && download === true) {
 			return this.prepareOutputData(items);
 		} else {
 			return [this.helpers.returnJsonArray(returnData)];
