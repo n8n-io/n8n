@@ -1,4 +1,4 @@
-import { 
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -180,7 +180,7 @@ export class Snowflake implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const connection = snowflake.createConnection(credentials); 
+		const connection = snowflake.createConnection(credentials);
 
 		await connect(connection);
 
