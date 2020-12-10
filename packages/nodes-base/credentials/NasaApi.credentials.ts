@@ -12,6 +12,6 @@ export class NasaApi implements ICredentialType {
 			name: 'api_key',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-		}
+		},
 	];
 }

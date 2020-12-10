@@ -951,7 +951,7 @@ export class Nasa implements INodeType {
 
 					endpoint = '/planetary/apod';
 
-					qs.date = moment(additionalFields.date as string).format('YYYY-MM-DD')|| moment().format('YYYY-MM-DD');
+					qs.date = moment(additionalFields.date as string).format('YYYY-MM-DD') || moment().format('YYYY-MM-DD');
 
 				}
 			}
@@ -969,7 +969,7 @@ export class Nasa implements INodeType {
 					qs.end_date = moment(additionalFields.endDate as string).format('YYYY-MM-DD') || currentDate;
 
 				}
-			} 
+			}
 			if (resource === 'asteroidNeoLookup') {
 
 				if (operation === 'get') {
@@ -994,7 +994,7 @@ export class Nasa implements INodeType {
 					if (returnAll === false) {
 						qs.size = this.getNodeParameter('limit', 0) as number;
 					}
- 
+
 					propertyName = 'near_earth_objects';
 
 					endpoint = `/neo/rest/v1/neo/browse`;
@@ -1100,7 +1100,7 @@ export class Nasa implements INodeType {
 
 						qs.type = additionalFields.type as string || 'all'; // default per API
 
-					} 
+					}
 				}
 
 			}
@@ -1157,7 +1157,7 @@ export class Nasa implements INodeType {
 
 				if (propertyName !== '') {
 					responseData = responseData[propertyName];
-				}	
+				}
 			}
 
 			if (resource === 'asteroidNeoLookup' && operation === 'get' && !includeCloseApproachData) {
@@ -1171,22 +1171,22 @@ export class Nasa implements INodeType {
 
 			if (resource === 'earthImagery') {
 
-					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+				const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
 
-					const data = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null });
+				const data = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null });
 
-					const newItem: INodeExecutionData = {
-						json: items[i].json,
-						binary: {},
-					};
+				const newItem: INodeExecutionData = {
+					json: items[i].json,
+					binary: {},
+				};
 
-					if (items[i].binary !== undefined) {
-						Object.assign(newItem.binary, items[i].binary);
-					}
+				if (items[i].binary !== undefined) {
+					Object.assign(newItem.binary, items[i].binary);
+				}
 
-					items[i] = newItem;
+				items[i] = newItem;
 
-					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+				items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
 			}
 
 			if (resource === 'astronomyPictureOfTheDay') {
@@ -1216,7 +1216,7 @@ export class Nasa implements INodeType {
 					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data, filename[filename.length - 1]);
 				}
 			}
-		
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {

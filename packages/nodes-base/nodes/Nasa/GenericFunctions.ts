@@ -1,4 +1,4 @@
-import { 
+import {
 	OptionsWithUri,
 } from 'request';
 
@@ -58,7 +58,7 @@ export async function nasaApiRequestAllItems(this: IHookFunctions | IExecuteFunc
 	let uri: string | undefined = undefined;
 
 	do {
-		responseData = await nasaApiRequest.call(this, method, resource, query, {},  uri);
+		responseData = await nasaApiRequest.call(this, method, resource, query, {}, uri);
 		uri = responseData.links.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
