@@ -1,6 +1,6 @@
 import {
 	OptionsWithUrl,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -11,16 +11,16 @@ import {
 
 import {
 	IDataObject,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
-export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {} ,headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('egoiApi') as IDataObject;
 
 	const options: OptionsWithUrl = {
 		headers: {
 			'accept': 'application/json',
-			'Apikey':`${credentials.apiKey}`,
+			'Apikey': `${credentials.apiKey}`,
 		},
 		method,
 		qs,
@@ -55,7 +55,7 @@ export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | 
 	}
 }
 
-export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string,  method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -63,14 +63,14 @@ export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOpti
 
 	query.offset = 0;
 	query.count = 500;
-		
-		do {
-			responseData = await egoiApiRequest.call(this, method, endpoint, body, query);
-			returnData.push.apply(returnData, responseData[propertyName]);
-			query.offset += query.count;
-		} while (
-			responseData[propertyName] && responseData[propertyName].length !== 0
-		);
+
+	do {
+		responseData = await egoiApiRequest.call(this, method, endpoint, body, query);
+		returnData.push.apply(returnData, responseData[propertyName]);
+		query.offset += query.count;
+	} while (
+		responseData[propertyName] && responseData[propertyName].length !== 0
+	);
 
 	return returnData;
 }
