@@ -39,10 +39,10 @@ export class ActiveExecutions {
 	async add(executionData: IWorkflowExecutionDataProcess, process?: ChildProcess): Promise<string> {
 		
 		const fullExecutionData: IExecutionDb = {
-			data: executionData.executionData!, // check if we can use ! here
+			data: executionData.executionData!, // this is only empty for CLI executions but works fine.
 			mode: executionData.executionMode,
 			finished: false,
-			startedAt: new Date(), // check if this is right
+			startedAt: new Date(),
 			workflowData: executionData.workflowData,
 		};
 

@@ -35,29 +35,29 @@ export let collections: IDatabaseCollections = {
 import {
 	CreateIndexStoppedAt1594828256133,
 	InitialMigration1587669153312,
-	WebhookModel1589476000887,
 	MakeStoppedAtNullable1607431743768,
+	WebhookModel1589476000887,
 } from './databases/postgresdb/migrations';
 
 import {
 	CreateIndexStoppedAt1594910478695,
 	InitialMigration1587563438936,
-	WebhookModel1592679094242,
 	MakeStoppedAtNullable1607431743766,
+	WebhookModel1592679094242,
 } from './databases/mongodb/migrations';
 
 import {
 	CreateIndexStoppedAt1594902918301,
 	InitialMigration1588157391238,
-	WebhookModel1592447867632,
 	MakeStoppedAtNullable1607431743767,
+	WebhookModel1592447867632,
 } from './databases/mysqldb/migrations';
 
 import {
 	CreateIndexStoppedAt1594825041918,
 	InitialMigration1588102412422,
-	WebhookModel1592445003908,
 	MakeStoppedAtNullable1607431743769,
+	WebhookModel1592445003908,
 } from './databases/sqlite/migrations';
 
 import * as path from 'path';
