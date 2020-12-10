@@ -218,7 +218,7 @@ export class Twist implements INodeType {
 
 					if (body.actionsUi) {
 						const actions = (body.actionsUi as IDataObject).actionValues as IDataObject[];
-						
+
 						if (actions) {
 							body.actions = actions;
 							delete body.actionsUi;
@@ -229,9 +229,9 @@ export class Twist implements INodeType {
 						const binaryProperties = (body.binaryProperties as string).split(',') as string[];
 
 						const attachments: IDataObject[] = [];
-						
+
 						for (const binaryProperty of binaryProperties) {
-							
+
 							const item = items[i].binary as IBinaryKeyData;
 
 							const binaryData = item[binaryProperty] as IBinaryData;

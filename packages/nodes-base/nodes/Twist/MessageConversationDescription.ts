@@ -28,9 +28,9 @@ export const messageConversationOperations = [
 
 export const messageConversationFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                messageConversation:create                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                messageConversation:create                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
@@ -50,7 +50,7 @@ export const messageConversationFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the Workspace',
+		description: 'The ID of the workspace.',
 	},
 	{
 		displayName: 'Conversation ID',
@@ -74,7 +74,7 @@ export const messageConversationFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the conversation',
+		description: 'The ID of the conversation.',
 	},
 	{
 		displayName: 'Content',
@@ -91,7 +91,7 @@ export const messageConversationFields = [
 				],
 			},
 		},
-		description: `The content of the new message. Mentions can be used as [Name](twist-mention://user_id) for users or [Group name](twist-group-mention://group_id) for groups`,
+		description: `The content of the new message. Mentions can be used as [Name](twist-mention://user_id) for users or [Group name](twist-group-mention://group_id) for groups.`,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -146,19 +146,6 @@ export const messageConversationFields = [
 								default: '',
 							},
 							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								description: 'The type of the button, for now just action is available.',
-								options: [
-									{
-										name: 'Action',
-										value: 'action',
-									},
-								],
-								default: '',
-							},
-							{
 								displayName: 'Button Text',
 								name: 'button_text',
 								type: 'string',
@@ -178,6 +165,19 @@ export const messageConversationFields = [
 									},
 								},
 								description: 'The text for the action button.',
+								default: '',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								description: 'The type of the button, for now just action is available.',
+								options: [
+									{
+										name: 'Action',
+										value: 'action',
+									},
+								],
 								default: '',
 							},
 							{

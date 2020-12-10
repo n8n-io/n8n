@@ -42,9 +42,9 @@ export const channelOperations = [
 ] as INodeProperties[];
 
 export const channelFields = [
-/*-------------------------------------------------------------------------- */
-/*                                channel:create                             */
-/* ------------------------------------------------------------------------- */
+	/*-------------------------------------------------------------------------- */
+	/*                                channel:create                             */
+	/* ------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
@@ -107,52 +107,52 @@ export const channelFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Grey',
-						value: 0,
+						name: 'Berry Red',
+						value: 6,
 					},
 					{
 						name: 'Blue',
 						value: 1,
 					},
 					{
-						name: 'Turquoise',
-						value: 2,
-					},
-					{
-						name: 'Teal Blue',
-						value: 3,
-					},
-					{
 						name: 'Green',
 						value: 4,
 					},
 					{
-						name: 'Red',
-						value: 5,
-					},
-					{
-						name: 'Berry Red',
-						value: 6,
+						name: 'Grey',
+						value: 0,
 					},
 					{
 						name: 'Magenta',
 						value: 7,
 					},
 					{
-						name: 'Sky Blue',
-						value: 8,
-					},
-					{
 						name: 'Mint Green',
 						value: 9,
 					},
 					{
-						name: 'Yellow',
-						value: 10,
+						name: 'Red',
+						value: 5,
 					},
 					{
 						name: 'Salmon',
 						value: 11,
+					},
+					{
+						name: 'Sky Blue',
+						value: 8,
+					},
+					{
+						name: 'Teal Blue',
+						value: 3,
+					},
+					{
+						name: 'Turquoise',
+						value: 2,
+					},
+					{
+						name: 'Yellow',
+						value: 10,
 					},
 				],
 				default: 0,
@@ -194,9 +194,9 @@ export const channelFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  channel:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  channel:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -213,11 +213,11 @@ export const channelFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the channel',
+		description: 'The ID of the channel',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 channel:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 channel:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workspace ID',
 		name: 'workspaceId',
@@ -237,7 +237,7 @@ export const channelFields = [
 			},
 		},
 		required: true,
-		description: 'The id of the workspace.',
+		description: 'The ID of the workspace.',
 	},
 	{
 		displayName: 'Return All',
@@ -306,9 +306,10 @@ export const channelFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  channel:update                            */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  channel:update                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel ID',
 		name: 'channelId',
@@ -325,7 +326,7 @@ export const channelFields = [
 			},
 		},
 		required: true,
-		description: 'The ID of the Channel',
+		description: 'The ID of the channel.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -350,52 +351,52 @@ export const channelFields = [
 				type: 'options',
 				options: [
 					{
-						name: 'Grey',
-						value: 0,
+						name: 'Berry Red',
+						value: 6,
 					},
 					{
 						name: 'Blue',
 						value: 1,
 					},
 					{
-						name: 'Turquoise',
-						value: 2,
-					},
-					{
-						name: 'Teal Blue',
-						value: 3,
-					},
-					{
 						name: 'Green',
 						value: 4,
 					},
 					{
-						name: 'Red',
-						value: 5,
-					},
-					{
-						name: 'Berry Red',
-						value: 6,
+						name: 'Grey',
+						value: 0,
 					},
 					{
 						name: 'Magenta',
 						value: 7,
 					},
 					{
-						name: 'Sky Blue',
-						value: 8,
-					},
-					{
 						name: 'Mint Green',
 						value: 9,
 					},
 					{
-						name: 'Yellow',
-						value: 10,
+						name: 'Red',
+						value: 5,
 					},
 					{
 						name: 'Salmon',
 						value: 11,
+					},
+					{
+						name: 'Sky Blue',
+						value: 8,
+					},
+					{
+						name: 'Teal Blue',
+						value: 3,
+					},
+					{
+						name: 'Turquoise',
+						value: 2,
+					},
+					{
+						name: 'Yellow',
+						value: 10,
 					},
 				],
 				default: 0,
