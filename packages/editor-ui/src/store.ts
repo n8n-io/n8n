@@ -138,14 +138,12 @@ export const store = new Vuex.Store({
 			state.activeWorkflows = newActiveWorkflows;
 		},
 		setWorkflowActive (state, workflowId: string) {
-			state.stateIsDirty = true;
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index === -1) {
 				state.activeWorkflows.push(workflowId);
 			}
 		},
 		setWorkflowInactive (state, workflowId: string) {
-			state.stateIsDirty = true;
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
 				state.selectedNodes.splice(index, 1);
