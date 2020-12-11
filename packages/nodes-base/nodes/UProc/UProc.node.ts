@@ -93,9 +93,6 @@ export class UProc implements INodeType {
     const additionalOptions = this.getNodeParameter('additionalOptions', 0) as IDataObject;
 
 
-    const startWebhook = additionalOptions.startWebhook as string;
-    const progressWebhook = additionalOptions.progressWebhook as string;
-    const endWebhook = additionalOptions.endWebhook as string;
     const dataWebhook = additionalOptions.dataWebhook as string;
 
     interface LooseObject {
@@ -117,33 +114,22 @@ export class UProc implements INodeType {
         params: {}
       };
 
+      //console.log(fields);
       fields.forEach((field) => {
         if (field && field.length) {
           const data = this.getNodeParameter(field, i) as string;
-          body.params[field] = data;
+          //console.log(field, data);
+          body.params[field] = data + "";
         }
       });
 
       if (dataWebhook && dataWebhook.length) {
         body.callback = {};
       }
-      /*
-      if (startWebhook && startWebhook.length || progressWebhook && progressWebhook.length || endWebhook && endWebhook.length || dataWebhook && dataWebhook.length) {
-        body.callback = {};
-      }
-      if (startWebhook && startWebhook.length) {
-        body.callback.start = startWebhook;
-      }
-      if (progressWebhook && progressWebhook.length) {
-        body.callback.progress = progressWebhook;
-      }
-      if (endWebhook && endWebhook.length) {
-        body.callback.end = endWebhook;
-      }*/
+
       if (dataWebhook && dataWebhook.length) {
         body.callback.data = dataWebhook;
       }
-
 
       //Change to multiple requests
       responseData = await uprocApiRequest.call(this, 'POST', body);

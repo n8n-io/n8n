@@ -88,7 +88,7 @@ for(const tool of (tools as IDataObject).processors as IDataObject[]) {
 			},
 			description: JSON.parse(JSON.stringify(description)),
 		};
-		//console.log(parameter);
+
 		let modifiedParam = null;
 		//Check if param exists previously
 		for (const currentParam of parameters) {
