@@ -30,7 +30,7 @@ import {
 
 export class CloudFirestore implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Google Firebase Cloud Firestore',
+		displayName: 'Google Cloud Firestore',
 		name: 'googleFirebaseCloudFirestore',
 		icon: 'file:googleFirebaseCloudFirestore.png',
 		group: ['input'],

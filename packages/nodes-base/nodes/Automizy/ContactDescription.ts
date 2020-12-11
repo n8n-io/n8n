@@ -381,6 +381,16 @@ export const contactFields = [
 		placeholder: 'Add Field',
 		options: [
 			{
+				displayName: 'Add Tags',
+				name: 'addTags',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				default: [],
+				description: 'The tags you want to add to the contact.',
+			},
+			{
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
@@ -415,6 +425,16 @@ export const contactFields = [
 						],
 					},
 				],
+			},
+			{
+				displayName: 'Remove Tags',
+				name: 'removeTags',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getTags',
+				},
+				default: [],
+				description: 'The tags you want to add to the contact.',
 			},
 			{
 				displayName: 'Status',
