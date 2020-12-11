@@ -46,7 +46,7 @@ export class RssFeedRead implements INodeType {
 
 		const parser = new Parser();
 
-		let feed: Parser.Output;
+		let feed: Parser.Output<IDataObject>;
 		try {
 			feed = await parser.parseURL(url);
 		} catch (e) {
