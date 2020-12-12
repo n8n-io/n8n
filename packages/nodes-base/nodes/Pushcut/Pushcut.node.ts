@@ -88,7 +88,7 @@ export class Pushcut implements INodeType {
 						],
 					},
 				},
-				default: 'Notification Name',
+				default: '',
 			},
 			{
 				displayName: 'Additional Fields',
