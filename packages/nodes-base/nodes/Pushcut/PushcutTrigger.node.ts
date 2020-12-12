@@ -21,7 +21,7 @@ export class PushcutTrigger implements INodeType {
 		icon: 'file:pushcut.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when a Github events occurs.',
+		description: 'Starts the workflow when a Pushcut events occurs.',
 		defaults: {
 			name: 'Pushcut Trigger',
 			color: '#1f2957',
