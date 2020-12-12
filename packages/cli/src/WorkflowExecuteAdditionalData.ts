@@ -81,7 +81,7 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
-		if (workflowData.settings !== undefined && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
+		if (workflowData.settings !== undefined && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.id && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
 			// If a specific error workflow is set run only that one
 			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
 		} else if (mode !== 'error' && workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
