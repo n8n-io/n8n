@@ -63,7 +63,7 @@ export async function mauticApiRequest(this: IHookFunctions | IExecuteFunctions 
 
 			options.uri = `${credentials.url}${options.uri}`;
 			//@ts-ignore
-			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options);
+			returnData = await this.helpers.requestOAuth2.call(this, 'mauticOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
 		}
 
 		if (returnData.errors) {
