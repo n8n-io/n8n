@@ -207,6 +207,20 @@ export class SpreadsheetFile implements INodeType {
 						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
 					},
 					{
+						displayName: 'Include empty cells',
+						name: 'includeEmptyCells',
+						type: 'boolean',
+						displayOptions: {
+							show: {
+								'/operation': [
+									'fromFile',
+								],
+							},
+						},
+						default: false,
+						description: 'When reading from file the empty cells will be filled with an empty string in the JSON.',
+					},
+					{
 						displayName: 'RAW Data',
 						name: 'rawData',
 						type: 'boolean',
@@ -339,6 +353,10 @@ export class SpreadsheetFile implements INodeType {
 					} else {
 						sheetToJsonOptions.range = parseInt(options.range as string, 10);
 					}
+				}
+
+				if (options.includeEmptyCells) {
+					sheetToJsonOptions.defval = '';
 				}
 
 				const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
