@@ -43,9 +43,11 @@ import * as config from '../config';
 
 import { LessThanOrEqual } from "typeorm";
 
+const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+
 
 /**
- * Checks if there was an error and if errorWorkflow is defined. If so it collects
+ * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
  * all the data and executes it
  *
  * @param {IWorkflowBase} workflowData The workflow which got executed
@@ -54,14 +56,14 @@ import { LessThanOrEqual } from "typeorm";
  * @param {string} [executionId] The id the execution got saved as
  */
 function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mode: WorkflowExecuteMode, executionId?: string, retryOf?: string): void {
-	// Check if there was an error and if so if an errorWorkflow is set
+	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 
 	let pastExecutionUrl: string | undefined = undefined;
 	if (executionId !== undefined) {
 		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}execution/${executionId}`;
 	}
 
-	if (fullRunData.data.resultData.error !== undefined && workflowData.settings !== undefined && workflowData.settings.errorWorkflow) {
+	if (fullRunData.data.resultData.error !== undefined) {
 		const workflowErrorData = {
 			execution: {
 				id: executionId,
@@ -77,7 +79,12 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 			},
 		};
 		// Run the error workflow
-		WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
+		if(workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
+			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
+		}
+		if(workflowData.settings !== undefined && workflowData.settings.errorWorkflow && workflowData.settings.errorWorkflow != workflowData.id) {
+			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
+		}
 	}
 }
 
