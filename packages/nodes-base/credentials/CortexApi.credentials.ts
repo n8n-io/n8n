@@ -7,6 +7,7 @@ import {
 export class CortexApi implements ICredentialType {
 	name = 'cortexApi';
 	displayName = 'Cortex API';
+	documentationUrl = 'cortex';
 	properties = [
 		{
 			displayName: 'API Key',
