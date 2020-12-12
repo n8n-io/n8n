@@ -42,7 +42,7 @@ export async function pushcutApiRequest(this: IExecuteFunctions | ILoadOptionsFu
 
 			// Try to return the error prettier
 			throw new Error(
-				`Pushcut error response [${error.statusCode}]: ${message}`
+				`Pushcut error response [${error.statusCode}]: ${message}`,
 			);
 		}
 		throw error;
