@@ -78,12 +78,15 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 				name: workflowData.name,
 			},
 		};
+
 		// Run the error workflow
-		if(workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
-			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
-		}
-		if(workflowData.settings !== undefined && workflowData.settings.errorWorkflow && workflowData.settings.errorWorkflow != workflowData.id) {
+		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
+		if (workflowData.settings !== undefined && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
+			// If a specific error workflow is set run only that one
 			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
+		} else if (mode !== 'error' && workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
+			// If the workflow contains
+			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
 		}
 	}
 }
