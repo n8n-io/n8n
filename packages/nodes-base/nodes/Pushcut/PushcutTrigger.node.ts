@@ -84,7 +84,7 @@ export class PushcutTrigger implements INodeType {
 
 				const body = {
 					actionName,
-					url: webhookUrl
+					url: webhookUrl,
 				};
 
 				const responseData = await pushcutApiRequest.call(this, 'POST', endpoint, body);
@@ -123,7 +123,7 @@ export class PushcutTrigger implements INodeType {
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(body)
+				this.helpers.returnJsonArray(body),
 			],
 		};
 	}
