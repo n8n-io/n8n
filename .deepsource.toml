@@ -1,0 +1,37 @@
+version = 1
+
+test_patterns = ["/packages/**/*.test.ts"]
+
+exclude_patterns = [
+    "/packages/cli/migrations/**",
+    "/packages/node-dev/bin/**",
+    "/assets/**",
+    "/docker/**"
+]
+
+[[analyzers]]
+name = "javascript"
+enabled = true
+
+  [analyzers.meta]
+  environment = [
+    "nodejs",
+    "browser",
+    "jest"
+  ]
+  module_system = "es-modules"
+  dialect = "typescript"
+  plugins = ["vue"]
+  dependency_file_paths = [
+    "/package.json",
+    "/packages/cli/package.json",
+    "/packages/core/package.json",
+    "/packages/editor-ui/package.json",
+    "/packages/node-dev/package.json",
+    "/packages/nodes-base/package.json",
+    "/packages/workflow/package.json"
+    ]
+
+[[transformers]]
+name = "prettier"
+enabled = true
