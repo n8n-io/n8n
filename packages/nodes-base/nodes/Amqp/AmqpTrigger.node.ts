@@ -62,11 +62,11 @@ export class AmqpTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Only Body',
-						name: 'onlyBody',
+						displayName: 'Convert Body To String',
+						name: 'jsonConvertByteArrayToString',
 						type: 'boolean',
 						default: false,
-						description: 'Returns only the body property.',
+						description: 'Convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -74,6 +74,27 @@ export class AmqpTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Parse the body to an object.',
+					},
+					{
+						displayName: 'Only Body',
+						name: 'onlyBody',
+						type: 'boolean',
+						default: false,
+						description: 'Returns only the body property.',
+					},
+					{
+						displayName: 'Messages per Cicle',
+						name: 'pullMessagesNumber',
+						type: 'number',
+						default: 100,
+						description: 'Number of messages to pull from the bus for every cicle',
+					},
+					{
+						displayName: 'Sleep Time',
+						name: 'sleepTime',
+						type: 'number',
+						default: 10,
+						description: 'Milliseconds to sleep after every cicle.',
 					},
 				],
 			},
@@ -92,6 +113,7 @@ export class AmqpTrigger implements INodeType {
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const pullMessagesNumber = options.pullMessagesNumber || 100;
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
@@ -106,27 +128,50 @@ export class AmqpTrigger implements INodeType {
 		const container = require('rhea');
 		const connectOptions: ContainerOptions = {
 			host: credentials.hostname,
+			hostname: credentials.hostname,
 			port: credentials.port,
 			reconnect: true,		// this id the default anyway
 			reconnect_limit: 50,	// try for max 50 times, based on a back-off algorithm
 			container_id: (durable ? clientname : null),
 		};
 		if (credentials.username || credentials.password) {
+			// Old rhea implementation. not shure if it is neccessary
 			container.options.username = credentials.username;
 			container.options.password = credentials.password;
+			connectOptions.username = credentials.username;
+			connectOptions.password = credentials.password;
+		}
+		if (credentials.transportType) {
+			connectOptions.transport = credentials.transportType;
 		}
 
 		let lastMsgId: number | undefined = undefined;
 		const self = this;
 
+		container.on('receiver_open', (context: any) => { // tslint:disable-line:no-any
+			context.receiver.add_credit(pullMessagesNumber);
+		});
+
 		container.on('message', (context: any) => { // tslint:disable-line:no-any
+			// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
 			if (context.message.message_id && context.message.message_id === lastMsgId) {
-				// ignore duplicate message check, don't think it's necessary, but it was in the rhea-lib example code
-				lastMsgId = context.message.message_id;
 				return;
 			}
+			lastMsgId = context.message.message_id;
 
 			let data = context.message;
+
+			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+				// The buffer is not ready... Stringify and parse back to load it.
+				const cont = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+			}
+
+			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
+				// The buffer is not ready... Stringify and parse back to load it.
+				const content = JSON.stringify(data.body.content);
+				data.body = String.fromCharCode.apply(null, JSON.parse(content).data);
+			}
 
 			if (options.jsonParseBody === true) {
 				data.body = JSON.parse(data.body);
@@ -135,7 +180,14 @@ export class AmqpTrigger implements INodeType {
 				data = data.body;
 			}
 
+
 			self.emit([self.helpers.returnJsonArray([data])]);
+
+			if (context.receiver.credit === 0) {
+				setTimeout(() => {
+					context.receiver.add_credit(pullMessagesNumber);
+				}, options.sleepTime as number || 10);
+			}
 		});
 
 		const connection = container.connect(connectOptions);
@@ -148,14 +200,14 @@ export class AmqpTrigger implements INodeType {
 					durable: 2,
 					expiry_policy: 'never',
 				},
-				credit_window: 1,	// prefetch 1
+				credit_window: 0,	// prefetch 1
 			};
 		} else {
 			clientOptions = {
 				source: {
 					address: sink,
 				},
-				credit_window: 1,	// prefetch 1
+				credit_window: 0,	// prefetch 1
 			};
 		}
 		connection.open_receiver(clientOptions);
@@ -164,6 +216,8 @@ export class AmqpTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
+			container.removeAllListeners('receiver_open');
+			container.removeAllListeners('message');
 			connection.close();
 		}
 
@@ -173,7 +227,7 @@ export class AmqpTrigger implements INodeType {
 		// for AMQP it doesn't make much sense to wait here but
 		// for a new user who doesn't know how this works, it's better to wait and show a respective info message
 		async function manualTriggerFunction() {
-			await new Promise(( resolve, reject ) => {
+			await new Promise((resolve, reject) => {
 				const timeoutHandler = setTimeout(() => {
 					reject(new Error('Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.'));
 				}, 30000);

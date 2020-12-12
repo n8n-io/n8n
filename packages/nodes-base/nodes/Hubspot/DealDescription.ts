@@ -1,6 +1,6 @@
 import {
 	INodeProperties,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export const dealOperations = [
 	{
@@ -46,6 +46,11 @@ export const dealOperations = [
 				description: 'Get recently modified deals',
 			},
 			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search deals',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a deal',
@@ -58,9 +63,9 @@ export const dealOperations = [
 
 export const dealFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                deal:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                deal:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Deal Stage',
 		name: 'stage',
@@ -101,16 +106,28 @@ export const dealFields = [
 		},
 		options: [
 			{
-				displayName: 'Deal Name',
-				name: 'dealName',
+				displayName: 'Amount',
+				name: 'amount',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Pipeline',
-				name: 'pipeline',
-				type: 'string',
-				default: '',
+				displayName: 'Associated Company',
+				name: 'associatedCompany',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getCompanies',
+				},
+				default: [],
+			},
+			{
+				displayName: 'Associated Vids',
+				name: 'associatedVids',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getContacts',
+				},
+				default: [],
 			},
 			{
 				displayName: 'Close Date',
@@ -119,8 +136,43 @@ export const dealFields = [
 				default: '',
 			},
 			{
-				displayName: 'Amount',
-				name: 'amount',
+				displayName: 'Custom Properties',
+				name: 'customPropertiesUi',
+				placeholder: 'Add Custom Property',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customPropertiesValues',
+						displayName: 'Custom Property',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDealCustomProperties',
+								},
+								default: '',
+								description: 'Name of the property.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the property',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Deal Name',
+				name: 'dealName',
 				type: 'string',
 				default: '',
 			},
@@ -134,28 +186,17 @@ export const dealFields = [
 				default: '',
 			},
 			{
-				displayName: 'Associated Company',
-				name: 'associatedCompany',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod:'getCompanies' ,
-				},
-				default: [],
-			},
-			{
-				displayName: 'Associated Vids',
-				name: 'associatedVids',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod:'getContacts' ,
-				},
-				default: [],
+				displayName: 'Pipeline',
+				name: 'pipeline',
+				type: 'string',
+				default: '',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 deal:update                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 deal:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
@@ -192,6 +233,53 @@ export const dealFields = [
 		},
 		options: [
 			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Close Date',
+				name: 'closeDate',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Custom Properties',
+				name: 'customPropertiesUi',
+				placeholder: 'Add Custom Property',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customPropertiesValues',
+						displayName: 'Custom Property',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getDealCustomProperties',
+								},
+								default: '',
+								description: 'Name of the property.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the property',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Deal Name',
 				name: 'dealName',
 				type: 'string',
@@ -209,24 +297,6 @@ export const dealFields = [
 				description: 'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages.',
 			},
 			{
-				displayName: 'Pipeline',
-				name: 'pipeline',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Close Date',
-				name: 'closeDate',
-				type: 'dateTime',
-				default: '',
-			},
-			{
-				displayName: 'Amount',
-				name: 'amount',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Deal Type',
 				name: 'dealType',
 				type: 'options',
@@ -235,11 +305,18 @@ export const dealFields = [
 				},
 				default: '',
 			},
+			{
+				displayName: 'Pipeline',
+				name: 'pipeline',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  deal:get                                  */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  deal:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
@@ -285,9 +362,10 @@ export const dealFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 deal:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 deal:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -374,9 +452,10 @@ export const dealFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 deal:delete                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 deal:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Deal ID',
 		name: 'dealId',
@@ -395,9 +474,10 @@ export const dealFields = [
 		default: '',
 		description: 'Unique identifier for a particular deal',
 	},
-/* -------------------------------------------------------------------------- */
-/*               deal:getRecentlyCreated deal:getRecentlyModified             */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*               deal:getRecentlyCreated deal:getRecentlyModified             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -473,6 +553,240 @@ export const dealFields = [
 				default: false,
 				description: `By default, you will only get data for the most recent version of a property in the "versions" data.<br/>
 				If you include this parameter, you will get data for all previous versions.`,
+			},
+		],
+	},
+
+	/*--------------------------------------------------------------------------- */
+	/*                                 deal:search                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'deal',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'deal',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 250,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Filter Groups',
+		name: 'filterGroupsUi',
+		type: 'fixedCollection',
+		default: '',
+		placeholder: 'Add Filter Group',
+		typeOptions: {
+			multipleValues: true,
+		},
+		required: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'deal',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'filterGroupsValues',
+				displayName: 'Filter Group',
+				values: [
+					{
+						displayName: 'Filters',
+						name: 'filtersUi',
+						type: 'fixedCollection',
+						default: '',
+						placeholder: 'Add Filter',
+						typeOptions: {
+							multipleValues: true,
+						},
+						required: false,
+						options: [
+							{
+								name: 'filterValues',
+								displayName: 'Filter',
+								values: [
+									{
+										displayName: 'Property Name',
+										name: 'propertyName',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getDealProperties',
+										},
+										default: '',
+									},
+									{
+										displayName: 'Operator',
+										name: 'operator',
+										type: 'options',
+										options: [
+											{
+												name: 'Equal',
+												value: 'EQ',
+											},
+											{
+												name: 'Not Equal',
+												value: 'NEQ',
+											},
+											{
+												name: 'Less Than',
+												value: 'LT',
+											},
+											{
+												name: 'Less Than Or Equal',
+												value: 'LTE',
+											},
+											{
+												name: 'Greater Than',
+												value: 'GT',
+											},
+											{
+												name: 'Greater Than Or Equal',
+												value: 'GTE',
+											},
+											{
+												name: 'Is Known',
+												value: 'HAS_PROPERTY',
+											},
+											{
+												name: 'Is Unknown',
+												value: 'NOT_HAS_PROPERTY',
+											},
+											{
+												name: 'Contains Exactly',
+												value: 'CONSTAIN_TOKEN',
+											},
+											{
+												name: `Doesn't Contain Exactly`,
+												value: 'NOT_CONSTAIN_TOKEN',
+											},
+										],
+										default: 'EQ',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										displayOptions: {
+											hide: {
+												operator: [
+													'HAS_PROPERTY',
+													'NOT_HAS_PROPERTY',
+												],
+											},
+										},
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
+						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+					},
+				],
+			},
+		],
+		description: `When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator.<br>
+		When multiple filterGroups are provided, they will be combined using a logical OR operator.<br>
+		The system supports a maximum of three filterGroups with up to three filters each.<br>
+		More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>`,
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'deal',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Direction',
+				name: 'direction',
+				type: 'options',
+				options: [
+					{
+						name: 'ASC',
+						value: 'ASCENDING',
+					},
+					{
+						name: 'DESC',
+						value: 'DESCENDING',
+					},
+				],
+				default: 'DESCENDING',
+				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
+			},
+			{
+				displayName: 'Fields',
+				name: 'properties',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getDealProperties',
+				},
+				default: [],
+				description: `Used to include specific deal properties in the results.<br/>
+				By default, the results will only include Deal ID and will not include the values for any properties for your companys.<br/>
+				Including this parameter will include the data for the specified property in the results.<br/>
+				You can include this parameter multiple times to request multiple properties separed by ,.`,
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'Perform a text search against all property values for an object type',
+			},
+			{
+				displayName: 'Sort By',
+				name: 'sortBy',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getDealProperties',
+				},
+				default: 'createdate',
 			},
 		],
 	},

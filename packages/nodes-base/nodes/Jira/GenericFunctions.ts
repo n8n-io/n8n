@@ -73,7 +73,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	}
 }
 
-export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

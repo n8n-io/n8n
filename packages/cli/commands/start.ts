@@ -15,7 +15,6 @@ import {
 	Db,
 	ExternalHooks,
 	GenericHelpers,
-	IExecutionsCurrentSummary,
 	LoadNodesAndCredentials,
 	NodeTypes,
 	Server,

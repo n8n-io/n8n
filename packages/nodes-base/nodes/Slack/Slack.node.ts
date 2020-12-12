@@ -217,7 +217,8 @@ export class Slack implements INodeType {
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const channels = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list');
+				const qs = { types: 'public_channel,private_channel' };
+				const channels = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list', {}, qs);
 				for (const channel of channels) {
 					const channelName = channel.name;
 					const channelId = channel.id;
@@ -240,7 +241,6 @@ export class Slack implements INodeType {
 			async getTeamFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { profile: { fields } } = await slackApiRequest.call(this, 'GET', '/team.profile.get');
-				console.log(fields);
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.id;
@@ -293,9 +293,6 @@ export class Slack implements INodeType {
 					};
 					if (additionalFields.isPrivate) {
 						body.is_private = additionalFields.isPrivate as boolean;
-					}
-					if (additionalFields.users) {
-						body.user_ids = (additionalFields.users as string[]).join(',');
 					}
 					responseData = await slackApiRequest.call(this, 'POST', '/conversations.create', body, qs);
 					responseData = responseData.channel;
@@ -370,10 +367,10 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/conversations.invite
 				if (operation === 'invite') {
 					const channel = this.getNodeParameter('channelId', i) as string;
-					const userId = this.getNodeParameter('userId', i) as string;
+					const userIds = (this.getNodeParameter('userIds', i) as string[]).join(',');
 					const body: IDataObject = {
 						channel,
-						user: userId,
+						users: userIds,
 					};
 					responseData = await slackApiRequest.call(this, 'POST', '/conversations.invite', body, qs);
 					responseData = responseData.channel;

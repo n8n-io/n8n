@@ -195,16 +195,6 @@ export const channelFields = [
 				default: false,
 				description: 'Create a private channel instead of a public one',
 			},
-			{
-				displayName: 'Users',
-				name: 'users',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: [],
-				description: `Required for workspace apps. A list of between 1 and 30 human users that will be added to the newly-created conversation`,
-			},
 		],
 	},
 /* -------------------------------------------------------------------------- */
@@ -232,9 +222,9 @@ export const channelFields = [
 		description: 'The ID of the channel to invite user to.',
 	},
 	{
-		displayName: 'User ID',
-		name: 'userId',
-		type: 'options',
+		displayName: 'User IDs',
+		name: 'userIds',
+		type: 'multiOptions',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},

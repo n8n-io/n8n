@@ -1520,17 +1520,23 @@ export class Mattermost implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				let name: string;
 				for (const data of responseData) {
-					if (data.delete_at !== 0) {
+					if (data.delete_at !== 0 || (!data.display_name || !data.name)) {
 						continue;
 					}
 
-					name = `${data.name} (${data.type === 'O' ? 'public' : 'private'})`;
+					name = `${data.team_display_name} - ${data.display_name || data.name} (${data.type === 'O' ? 'public' : 'private'})`;
 
 					returnData.push({
 						name,
 						value: data.id,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -1548,23 +1554,30 @@ export class Mattermost implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				let name: string;
 				for (const data of responseData) {
-					if (data.delete_at !== 0) {
+					if (data.delete_at !== 0 || (!data.display_name || !data.name)) {
 						continue;
 					}
 
 					const channelTypes: IDataObject = {
+						'D': 'direct',
+						'G': 'group',
 						'O': 'public',
 						'P': 'private',
-						'D': 'direct',
 					};
 
-					name = `${data.name} (${channelTypes[data.type as string]})`;
+					name = `${data.display_name} (${channelTypes[data.type as string]})`;
 
 					returnData.push({
 						name,
 						value: data.id,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},
@@ -1593,6 +1606,12 @@ export class Mattermost implements INodeType {
 					});
 				}
 
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
+
 				return returnData;
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -1615,6 +1634,12 @@ export class Mattermost implements INodeType {
 						value: data.id,
 					});
 				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) { return -1; }
+					if (a.name > b.name) { return 1; }
+					return 0;
+				});
 
 				return returnData;
 			},

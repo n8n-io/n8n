@@ -53,10 +53,15 @@
 					Connected
 				</span>
 				<span v-else>
-					<el-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
-						<font-awesome-icon icon="sign-in-alt" />
-					</el-button>
-					Not connected
+					<span v-if="isGoogleOAuthType">
+						<img :src="basePath + 'google-signin.png'" class="google-icon clickable" alt="Sign in with Google" @click.stop="oAuthCredentialAuthorize()" />
+					</span>
+					<span v-else>
+						<el-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
+							<font-awesome-icon icon="sign-in-alt" />
+						</el-button>
+						Not connected
+					</span>
 				</span>
 
 				<div v-if="credentialProperties.length">
@@ -160,6 +165,7 @@ export default mixins(
 	},
 	data () {
 		return {
+			basePath: this.$store.getters.getBaseUrl,
 			isMinimized: true,
 			helpTexts: {
 				credentialsData: 'The credentials to set.',
@@ -217,6 +223,13 @@ export default mixins(
 			}
 
 			return this.credentialDataTemp;
+		},
+		isGoogleOAuthType (): boolean {
+			if (this.credentialTypeData.name === 'googleOAuth2Api') {
+				return true;
+			}
+			const types = this.parentTypes(this.credentialTypeData.name);
+			return types.includes('googleOAuth2Api');
 		},
 		isOAuthType (): boolean {
 			if (['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeData.name)) {
@@ -531,6 +544,10 @@ export default mixins(
 	.oauth-information {
 		line-height: 2.5em;
 		margin: 2em 0;
+
+		.google-icon {
+			width: 191px;
+		}
 	}
 
 	.parameter-wrapper {

@@ -112,6 +112,10 @@ export class If implements INodeType {
 										name: 'Larger Equal',
 										value: 'largerEqual',
 									},
+									{
+										name: 'Is Empty',
+										value: 'isEmpty',
+									},
 								],
 								default: 'smaller',
 								description: 'Operation to decide where the the data should be mapped to.',
@@ -120,6 +124,13 @@ export class If implements INodeType {
 								displayName: 'Value 2',
 								name: 'value2',
 								type: 'number',
+								displayOptions: {
+									hide: {
+										operation: [
+											'isEmpty',
+										],
+									},
+								},
 								default: 0,
 								description: 'The value to compare with the first one.',
 							},
@@ -161,6 +172,10 @@ export class If implements INodeType {
 										name: 'Regex',
 										value: 'regex',
 									},
+									{
+										name: 'Is Empty',
+										value: 'isEmpty',
+									},
 								],
 								default: 'equal',
 								description: 'Operation to decide where the the data should be mapped to.',
@@ -172,6 +187,7 @@ export class If implements INodeType {
 								displayOptions: {
 									hide: {
 										operation: [
+											'isEmpty',
 											'regex',
 										],
 									},
@@ -242,6 +258,7 @@ export class If implements INodeType {
 			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) >= (value2 || 0),
 			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
 			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) <= (value2 || 0),
+			isEmpty: (value1: NodeParameterValue) => [undefined, null, ''].includes(value1 as string),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
 				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimy]*)$'));
 

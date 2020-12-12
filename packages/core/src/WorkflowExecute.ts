@@ -468,7 +468,6 @@ export class WorkflowExecute {
 			this.runExecutionData.startData = {};
 		}
 
-		this.executeHook('workflowExecuteBefore', []);
 
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
@@ -482,6 +481,35 @@ export class WorkflowExecute {
 			});
 
 			const returnPromise = (async () => {
+				try {
+					await this.executeHook('workflowExecuteBefore', [workflow]);
+				} catch (error) {
+					// Set the error that it can be saved correctly
+					executionError = {
+						message: error.message,
+						stack: error.stack,
+					};
+
+					// Set the incoming data of the node that it can be saved correctly
+					executionData = this.runExecutionData.executionData!.nodeExecutionStack[0] as IExecuteData;
+					this.runExecutionData.resultData = {
+						runData: {
+							[executionData.node.name]: [
+								{
+									startTime,
+									executionTime: (new Date().getTime()) - startTime,
+									data: ({
+										'main': executionData.data.main,
+									} as ITaskDataConnections),
+								},
+							],
+						},
+						lastNodeExecuted: executionData.node.name,
+						error: executionError,
+					};
+
+					throw error;
+				}
 
 				executionLoop:
 				while (this.runExecutionData.executionData!.nodeExecutionStack.length !== 0) {
@@ -733,7 +761,9 @@ export class WorkflowExecute {
 					newStaticData = workflow.staticData;
 				}
 
-				await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+				await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(error => {
+					console.error('There was a problem running hook "workflowExecuteAfter"', error);
+				});
 
 				return fullRunData;
 			});

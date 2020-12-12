@@ -329,7 +329,7 @@ export class Gmail implements INodeType {
 					method = 'POST';
 
 					body = {
-						raw: encodeEmail(email),
+						raw: await encodeEmail(email),
 					};
 
 					responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
@@ -427,7 +427,7 @@ export class Gmail implements INodeType {
 					email.reference = id;
 
 					body = {
-						raw: encodeEmail(email),
+						raw: await encodeEmail(email),
 						threadId: this.getNodeParameter('threadId', i) as string,
 					};
 
@@ -625,7 +625,7 @@ export class Gmail implements INodeType {
 
 					body = {
 						message: {
-							raw: encodeEmail(email),
+							raw: await encodeEmail(email),
 						},
 					};
 
