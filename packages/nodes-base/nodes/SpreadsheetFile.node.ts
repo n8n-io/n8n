@@ -207,7 +207,7 @@ export class SpreadsheetFile implements INodeType {
 						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
 					},
 					{
-						displayName: 'Include empty cells',
+						displayName: 'Include Empty Cells',
 						name: 'includeEmptyCells',
 						type: 'boolean',
 						displayOptions: {
