@@ -3,60 +3,53 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-//https://api.slack.com/authentication/oauth-v2
-const userScopes = [
-	'chat:write',
-	'files:read',
-	'files:write',
-	'groups:read',
-	'im:read',
-	'mpim:read',
-	'reactions:read',
-	'reactions:write',
-	'stars:read',
-	'stars:write',
-	'users.profile:read',
-	'users.profile:write',
+const scopes = [
+	'attachments:write',
+	'channels:remove',
+	'messages:remove',
+	'workspaces:read',
 ];
 
-export class SlackOAuth2Api implements ICredentialType {
-	name = 'slackOAuth2Api';
+export class TwistOAuth2Api implements ICredentialType {
+	name = 'twistOAuth2Api';
 	extends = [
 		'oAuth2Api',
 	];
-	displayName = 'Slack OAuth2 API';
-	documentationUrl = 'slack';
+	displayName = 'Twist OAuth2 API';
+	documentationUrl = 'twist';
 	properties = [
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'https://slack.com/oauth/v2/authorize',
+			default: 'https://twist.com/oauth/authorize',
+			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'https://slack.com/api/oauth.v2.access',
+			default: 'https://twist.com/oauth/access_token',
+			required: true,
 		},
-		//https://api.slack.com/scopes
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'chat:write',
+			default: scopes.join(','),
 		},
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: `user_scope=${userScopes.join(' ')}`,
+			default: '',
 		},
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'body',
+			description: 'Resource to consume.',
 		},
 	];
 }

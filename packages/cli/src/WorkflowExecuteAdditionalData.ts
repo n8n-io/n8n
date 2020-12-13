@@ -43,9 +43,11 @@ import * as config from '../config';
 
 import { LessThanOrEqual } from "typeorm";
 
+const ERROR_TRIGGER_TYPE = config.get('nodes.errorTriggerType') as string;
+
 
 /**
- * Checks if there was an error and if errorWorkflow is defined. If so it collects
+ * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
  * all the data and executes it
  *
  * @param {IWorkflowBase} workflowData The workflow which got executed
@@ -54,14 +56,14 @@ import { LessThanOrEqual } from "typeorm";
  * @param {string} [executionId] The id the execution got saved as
  */
 function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mode: WorkflowExecuteMode, executionId?: string, retryOf?: string): void {
-	// Check if there was an error and if so if an errorWorkflow is set
+	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 
 	let pastExecutionUrl: string | undefined = undefined;
 	if (executionId !== undefined) {
 		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}execution/${executionId}`;
 	}
 
-	if (fullRunData.data.resultData.error !== undefined && workflowData.settings !== undefined && workflowData.settings.errorWorkflow) {
+	if (fullRunData.data.resultData.error !== undefined) {
 		const workflowErrorData = {
 			execution: {
 				id: executionId,
@@ -76,8 +78,16 @@ function executeErrorWorkflow(workflowData: IWorkflowBase, fullRunData: IRun, mo
 				name: workflowData.name,
 			},
 		};
+
 		// Run the error workflow
-		WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
+		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
+		if (workflowData.settings !== undefined && workflowData.settings.errorWorkflow && !(mode === 'error' && workflowData.id && workflowData.settings.errorWorkflow.toString() === workflowData.id.toString())) {
+			// If a specific error workflow is set run only that one
+			WorkflowHelpers.executeErrorWorkflow(workflowData.settings.errorWorkflow as string, workflowErrorData);
+		} else if (mode !== 'error' && workflowData.id !== undefined && workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)) {
+			// If the workflow contains
+			WorkflowHelpers.executeErrorWorkflow(workflowData.id.toString(), workflowErrorData);
+		}
 	}
 }
 
