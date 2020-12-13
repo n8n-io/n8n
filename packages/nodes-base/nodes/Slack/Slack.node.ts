@@ -288,7 +288,7 @@ export class Slack implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			responseData = { error: 'Resource ' + resource + ' / operation ' + operation + ' not found!'};
+			responseData = { error: 'Resource ' + resource + ' / operation ' + operation + ' not found!' };
 			qs = {};
 			if (resource === 'channel') {
 				//https://api.slack.com/methods/conversations.archive

@@ -75,7 +75,8 @@ export const reactionFields = [
 				],
 			},
 		},
-		description: `Name of emoji`,
+		description: 'Name of emoji.',
+		placeholder: '+1',
 	},
 	{
 		displayName: 'Timestamp',
@@ -95,6 +96,6 @@ export const reactionFields = [
 				],
 			},
 		},
-		description: `Timestamp of the message`,
+		description: `Timestamp of the message.`,
 	},
 ] as INodeProperties[];
