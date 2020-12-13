@@ -56,8 +56,8 @@ import {
 import {
 	IAttachment,
 } from './MessageInterface';
+
 import moment = require('moment');
-import { response } from 'express';
 
 interface Attachment {
 	fields: {
@@ -409,6 +409,7 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/conversations.members
 				if (operation === 'member') {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
 					qs.channel = this.getNodeParameter('channelId', i) as string;
 					if (returnAll) {
 						responseData = await slackApiRequestAllItems.call(this, 'members', 'GET', '/conversations.members', {}, qs);
@@ -417,6 +418,15 @@ export class Slack implements INodeType {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 						responseData = await slackApiRequest.call(this, 'GET', '/conversations.members', {}, qs);
 						responseData = responseData.members.map((member: string) => ({ member }));
+					}
+
+					if (resolveData) {
+						const data: IDataObject[] = [];
+						for (const { member } of responseData) {
+							const { user } = await slackApiRequest.call(this, 'GET', '/users.info', {}, { user: member });
+							data.push(user);
+						}
+						responseData = data;
 					}
 				}
 				//https://api.slack.com/methods/conversations.open

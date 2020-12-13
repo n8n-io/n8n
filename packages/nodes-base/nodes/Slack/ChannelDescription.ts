@@ -649,6 +649,23 @@ export const channelFields = [
 		},
 		required: false,
 	},
+	{
+		displayName: 'Resolve Data',
+		name: 'resolveData',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: [
+					'channel',
+				],
+				operation: [
+					'member',
+				],
+			},
+		},
+		description: 'By default the response only contain the ID to resource<br />. If this option gets activated it<br />will resolve the data automatically.',
+	},
 /* -------------------------------------------------------------------------- */
 /*                                channel:open                                */
 /* -------------------------------------------------------------------------- */
