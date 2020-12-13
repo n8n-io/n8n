@@ -36,9 +36,9 @@ export const starOperations = [
 
 export const starFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                star:add                                    */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                star:add                                    */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -68,18 +68,18 @@ export const starFields = [
 				description: 'Channel to add star to, or channel where the message to add star to was posted (used with timestamp).',
 			},
 			{
-				displayName: 'File ID',
-				name: 'fileId',
-				type: 'string',
-				default: '',
-				description: 'File to add star to.',
-			},
-			{
 				displayName: 'File Comment',
 				name: 'fileComment',
 				type: 'string',
 				default: '',
 				description: 'File comment to add star to.',
+			},
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'string',
+				default: '',
+				description: 'File to add star to.',
 			},
 			{
 				displayName: 'Timestamp',
@@ -90,9 +90,10 @@ export const starFields = [
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 star:delete                             */
-/* ----------------------------------------------------------------------- */
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 star:delete                             */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -144,9 +145,10 @@ export const starFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 star:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 star:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
