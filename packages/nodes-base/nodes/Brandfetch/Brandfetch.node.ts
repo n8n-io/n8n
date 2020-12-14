@@ -80,6 +80,100 @@ export class Brandfetch implements INodeType {
 				description: 'The domain name of the company',
 				required: true,
 			},
+			{
+				displayName: 'Download',
+				name: 'download',
+				type: 'boolean',
+				default: false,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'logo',
+						],
+					},
+				},
+				description: 'Name of the binary property to which to<br />write the data of the read file.',
+			},
+			{
+				displayName: 'Image Type',
+				name: 'imageTypes',
+				type: 'multiOptions',
+				displayOptions: {
+					show: {
+						operation: [
+							'logo',
+						],
+						download: [
+							true,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Logo',
+						value: 'logo',
+					},
+					{
+						name: 'Icon',
+						value: 'icon',
+					},
+				],
+				default: [
+					'logo',
+					'icon',
+				],
+				description: '',
+				required: true,
+			},
+			{
+				displayName: 'Image Format',
+				name: 'imageFormats',
+				type: 'multiOptions',
+				displayOptions: {
+					show: {
+						operation: [
+							'logo',
+						],
+						download: [
+							true,
+						],
+					},
+				},
+				options: [
+					{
+						name: 'PNG',
+						value: 'png',
+					},
+					{
+						name: 'SVG',
+						value: 'svg',
+					},
+				],
+				default: [
+					'svg',
+				],
+				description: '',
+				required: true,
+			},
+			{
+				displayName: 'Image Prefix',
+				name: 'imagePrefix',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'logo',
+						],
+						download: [
+							true,
+						],
+					},
+				},
+				description: 'Name of the binary property to which to<br />write the data of the read file.',
+			},
 		],
 	};
 
@@ -92,13 +186,51 @@ export class Brandfetch implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (operation === 'logo') {
 				const domain = this.getNodeParameter('domain', i) as string;
+				const download = this.getNodeParameter('download', i) as boolean;
 
 				const body: IDataObject = {
 					domain,
 				};
 
 				const response = await brandfetchApiRequest.call(this, 'POST', `/logo`, body);
-				responseData.push(response.response);
+
+				if (download === true) {
+
+					const imageTypes = this.getNodeParameter('imageTypes', i) as string[];
+
+					const imageFormats = this.getNodeParameter('imageFormats', i) as string[];
+
+					const imagePrefix = this.getNodeParameter('imagePrefix', i) as string;
+
+					const newItem: INodeExecutionData = {
+						json: {},
+						binary: {},
+					};
+
+					if (items[i].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary, items[i].binary);
+					}
+
+					newItem.json = response.response;
+
+					for (const imageType of imageTypes) {
+						for (const imageFormat of imageFormats) {
+
+							const url = response.response[imageType][(imageFormat === 'png') ? 'image' : imageFormat] as string;
+
+							if (url !== null) {
+								const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, url, { json: false, encoding: null });
+
+								newItem.binary![`${imagePrefix}_${imageType}_${imageFormat}`] = await this.helpers.prepareBinaryData(data);
+	
+								items[i] = newItem;
+							}
+						}
+					}
+				}
 			}
 			if (operation === 'color') {
 				const domain = this.getNodeParameter('domain', i) as string;
@@ -141,6 +273,12 @@ export class Brandfetch implements INodeType {
 				responseData.push.apply(responseData, response.response);
 			}
 		}
-		return [this.helpers.returnJsonArray(responseData)];
+
+		if (operation === 'logo' && this.getNodeParameter('download', 0) === true) {
+			// For file downloads the files get attached to the existing items
+			return this.prepareOutputData(items);
+		} else {
+			return [this.helpers.returnJsonArray(responseData)];
+		}
 	}
 }

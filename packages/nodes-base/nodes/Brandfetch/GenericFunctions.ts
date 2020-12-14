@@ -22,7 +22,6 @@ export async function brandfetchApiRequest(this: IHookFunctions | IExecuteFuncti
 		let options: OptionsWithUri = {
 			headers: {
 				'x-api-key': credentials.apiKey,
-				'Content-Type': 'application/json',
 			},
 			method,
 			qs,
@@ -33,11 +32,23 @@ export async function brandfetchApiRequest(this: IHookFunctions | IExecuteFuncti
 
 		options = Object.assign({}, options, option);
 
-		const response = await this.helpers.request!(options);
+		if (this.getNodeParameter('operation', 0) === 'logo' && options.json === false) {
+			delete options.headers;
+		}
 
-		if (response.statusCode !== 200) {
+		if (!Object.keys(body).length) {
+			delete options.body;
+		}
+		if (!Object.keys(qs).length) {
+			delete options.qs;
+		}
+
+		const response = await this.helpers.request!(options);
+		
+		if (response.statusCode && response.statusCode !== 200) {
 			throw new Error(`Brandfetch error response [${response.statusCode}]: ${response.response}`);
 		}
+		
 		return response;
 
 	} catch (error) {
