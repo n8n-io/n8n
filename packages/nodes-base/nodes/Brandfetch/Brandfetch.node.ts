@@ -138,7 +138,7 @@ export class Brandfetch implements INodeType {
 				};
 
 				const response = await brandfetchApiRequest.call(this, 'POST', `/industry`, body);
-				responseData.push(response.response);
+				responseData.push.apply(responseData, response.response);
 			}
 		}
 		return [this.helpers.returnJsonArray(responseData)];
