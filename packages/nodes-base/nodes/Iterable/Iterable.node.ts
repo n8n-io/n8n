@@ -23,6 +23,11 @@ import {
 	userOperations,
 } from './UserDescription';
 
+import {
+	userListFields,
+	userListOperations,
+} from './UserListDescription';
+
 import * as moment from 'moment-timezone';
 
 export class Iterable implements INodeType {
@@ -60,6 +65,10 @@ export class Iterable implements INodeType {
 						name: 'User',
 						value: 'user',
 					},
+					{
+						name: 'User List',
+						value: 'userList',
+					},
 				],
 				default: 'user',
 				description: 'The resource to operate on.',
@@ -68,6 +77,8 @@ export class Iterable implements INodeType {
 			...eventFields,
 			...userOperations,
 			...userFields,
+			...userListOperations,
+			...userListFields,
 		],
 	};
 
@@ -232,6 +243,74 @@ export class Iterable implements INodeType {
 					responseData = responseData.user || {};
 					returnData.push(responseData);
 				}
+			}
+		}
+
+		if (resource === 'userList') {
+			if (operation === 'add') {
+				//https://api.iterable.com/api/docs#lists_subscribe
+				const listId = this.getNodeParameter('listId', 0) as string;
+
+				const identifier = this.getNodeParameter('identifier', 0) as string;
+
+				const body: IDataObject = {
+					listId: parseInt(listId, 10),
+					subscribers: [],
+				};
+
+				const subscribers: IDataObject[] = [];
+
+				for (let i = 0; i < length; i++) {
+
+					const value = this.getNodeParameter('value', i) as string;
+
+					if (identifier === 'email') {
+						subscribers.push({ email: value });
+					} else {
+						subscribers.push({ userId: value });
+					}
+				}
+
+				body.subscribers = subscribers;
+
+				responseData = await iterableApiRequest.call(this, 'POST', '/lists/subscribe', body);
+
+				returnData.push(responseData);
+			}
+
+			if (operation === 'remove') {
+				//https://api.iterable.com/api/docs#lists_unsubscribe
+				const listId = this.getNodeParameter('listId', 0) as string;
+
+				const identifier = this.getNodeParameter('identifier', 0) as string;
+
+				const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+
+				const body: IDataObject = {
+					listId: parseInt(listId, 10),
+					subscribers: [],
+					campaignId: additionalFields.campaignId as number,
+					channelUnsubscribe: additionalFields.channelUnsubscribe as boolean,
+				};
+
+				const subscribers: IDataObject[] = [];
+
+				for (let i = 0; i < length; i++) {
+
+					const value = this.getNodeParameter('value', i) as string;
+
+					if (identifier === 'email') {
+						subscribers.push({ email: value });
+					} else {
+						subscribers.push({ userId: value });
+					}
+				}
+
+				body.subscribers = subscribers;
+
+				responseData = await iterableApiRequest.call(this, 'POST', '/lists/unsubscribe', body);
+
+				returnData.push(responseData);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];
