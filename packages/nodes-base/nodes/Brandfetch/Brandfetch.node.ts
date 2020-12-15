@@ -224,12 +224,18 @@ export class Brandfetch implements INodeType {
 							if (url !== null) {
 								const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, url, { json: false, encoding: null });
 
-								newItem.binary![`${imagePrefix}_${imageType}_${imageFormat}`] = await this.helpers.prepareBinaryData(data);
-	
+								newItem.binary![`${imagePrefix}_${imageType}_${imageFormat}`] = await this.helpers.prepareBinaryData(data, `${imageType}_${domain}.${imageFormat}`);
+
 								items[i] = newItem;
 							}
+							items[i] = newItem;
 						}
 					}
+					if (Object.keys(items[i].binary!).length === 0) {
+						delete items[i].binary;
+					}
+				} else {
+					responseData.push(response.response);
 				}
 			}
 			if (operation === 'color') {
