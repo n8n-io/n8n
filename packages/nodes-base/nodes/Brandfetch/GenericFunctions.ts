@@ -44,11 +44,11 @@ export async function brandfetchApiRequest(this: IHookFunctions | IExecuteFuncti
 		}
 
 		const response = await this.helpers.request!(options);
-		
+
 		if (response.statusCode && response.statusCode !== 200) {
 			throw new Error(`Brandfetch error response [${response.statusCode}]: ${response.response}`);
 		}
-		
+
 		return response;
 
 	} catch (error) {

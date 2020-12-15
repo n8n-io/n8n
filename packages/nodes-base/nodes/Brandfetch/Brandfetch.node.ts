@@ -40,20 +40,11 @@ export class Brandfetch implements INodeType {
 				name: 'operation',
 				type: 'options',
 				options: [
-					{
-						name: 'Logo',
-						value: 'logo',
-						description: 'Return a company\'s logo & icon',
-					},
+
 					{
 						name: 'Color',
 						value: 'color',
 						description: 'Return a company\'s colors',
-					},
-					{
-						name: 'Font',
-						value: 'font',
-						description: 'Return a company\'s fonts',
 					},
 					{
 						name: 'Company',
@@ -61,14 +52,25 @@ export class Brandfetch implements INodeType {
 						description: 'Return a company\'s data',
 					},
 					{
+						name: 'Font',
+						value: 'font',
+						description: 'Return a company\'s fonts',
+					},
+					{
 						name: 'Industry',
 						value: 'industry',
 						description: 'Return a company\'s industry',
+					},
+					{
+						name: 'Logo',
+						value: 'logo',
+						description: 'Return a company\'s logo & icon',
 					},
 				],
 				default: 'logo',
 				description: 'The operation to perform',
 			},
+
 			// ----------------------------------
 			//         All
 			// ----------------------------------
@@ -77,7 +79,7 @@ export class Brandfetch implements INodeType {
 				name: 'domain',
 				type: 'string',
 				default: '',
-				description: 'The domain name of the company',
+				description: 'The domain name of the company.',
 				required: true,
 			},
 			{
@@ -111,19 +113,18 @@ export class Brandfetch implements INodeType {
 				},
 				options: [
 					{
-						name: 'Logo',
-						value: 'logo',
-					},
-					{
 						name: 'Icon',
 						value: 'icon',
+					},
+					{
+						name: 'Logo',
+						value: 'logo',
 					},
 				],
 				default: [
 					'logo',
 					'icon',
 				],
-				description: '',
 				required: true,
 			},
 			{
@@ -151,28 +152,10 @@ export class Brandfetch implements INodeType {
 					},
 				],
 				default: [
-					'svg',
+					'png',
 				],
-				description: '',
+				description: 'The image format in which the logo should be returned as.',
 				required: true,
-			},
-			{
-				displayName: 'Image Prefix',
-				name: 'imagePrefix',
-				type: 'string',
-				default: 'data',
-				required: true,
-				displayOptions: {
-					show: {
-						operation: [
-							'logo',
-						],
-						download: [
-							true,
-						],
-					},
-				},
-				description: 'Name of the binary property to which to<br />write the data of the read file.',
 			},
 		],
 	};
@@ -200,8 +183,6 @@ export class Brandfetch implements INodeType {
 
 					const imageFormats = this.getNodeParameter('imageFormats', i) as string[];
 
-					const imagePrefix = this.getNodeParameter('imagePrefix', i) as string;
-
 					const newItem: INodeExecutionData = {
 						json: {},
 						binary: {},
@@ -224,7 +205,7 @@ export class Brandfetch implements INodeType {
 							if (url !== null) {
 								const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, url, { json: false, encoding: null });
 
-								newItem.binary![`${imagePrefix}_${imageType}_${imageFormat}`] = await this.helpers.prepareBinaryData(data, `${imageType}_${domain}.${imageFormat}`);
+								newItem.binary![`${imageType}_${imageFormat}`] = await this.helpers.prepareBinaryData(data, `${imageType}_${domain}.${imageFormat}`);
 
 								items[i] = newItem;
 							}
