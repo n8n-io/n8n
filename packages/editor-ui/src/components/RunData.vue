@@ -519,27 +519,33 @@ export default mixins(
 			convertPath (path: string): string {
 				// TODO: That can for sure be done fancier but for now it works
 				const placeholder = '*___~#^#~___*';
-				const inBrackets = path.match(/\[(.*?)\]/g).map(item => item.slice(1, -1)).map(item => {
-					if (item.startsWith('"') && item.endsWith('"')) {
-						return item.slice(1, -1);
-					}
-					return item;
-				});
+				let inBrackets = path.match(/\[(.*?)\]/g);
+
+				if (inBrackets === null) {
+					inBrackets = [];
+				} else {
+					inBrackets = inBrackets.map(item => item.slice(1, -1)).map(item => {
+						if (item.startsWith('"') && item.endsWith('"')) {
+							return item.slice(1, -1);
+						}
+						return item;
+					});
+				}
 				const withoutBrackets = path.replace(/\[(.*?)\]/g, placeholder);
 				const pathParts = withoutBrackets.split('.');
-				const allParts = [];
+				const allParts = [] as string[];
 				pathParts.forEach(part => {
 					let index = part.indexOf(placeholder);
 					while(index !== -1) {
 						if (index === 0) {
-							allParts.push(inBrackets.shift());
+							allParts.push(inBrackets!.shift() as string);
 							part = part.substr(placeholder.length + 1);
 						} else {
 							allParts.push(part.substr(0, index));
 							part = part.substr(index);
 						}
 						index = part.indexOf(placeholder);
-					};
+					}
 					if (part !== '') {
 						allParts.push(part);
 					}
