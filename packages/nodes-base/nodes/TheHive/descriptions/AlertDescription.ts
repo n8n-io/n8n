@@ -82,6 +82,7 @@ export const alertFields = [
 				],
 				operation: [
 					'promote',
+					'markAsRead',
 					'merge',
 					'update',
 					'executeResponder',

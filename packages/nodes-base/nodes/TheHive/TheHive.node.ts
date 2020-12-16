@@ -216,6 +216,7 @@ export class TheHive implements INodeType {
 					{ name: 'Execute Responder', value: 'executeResponder', description: 'Execute a responder on the specified alert' },
 					{ name: 'Get', value: 'get', description: 'Get an alert' },
 					{ name: 'Get All', value: 'getAll', description: 'Get all alerts' },
+					...(version === 'v1') ? [{ name: 'Mark as Read', value: 'markAsRead', description: 'Mark the alert as read' }] : [],
 					{ name: 'Merge', value: 'merge', description: 'Merge alert into an existing case' },
 					{ name: 'Promote', value: 'promote', description: 'Promote an alert into a case' },
 					{ name: 'Update', value: 'update', description: 'Update alert' },
@@ -532,6 +533,16 @@ export class TheHive implements INodeType {
 						endpoint as string,
 						body,
 						qs,
+					);
+				}
+
+				if (operation === 'markAsRead') {
+					const alertId = this.getNodeParameter('id', i) as string;
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						`/alert/${alertId}/markAsRead`
 					);
 				}
 
