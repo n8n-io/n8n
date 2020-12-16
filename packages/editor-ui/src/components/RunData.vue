@@ -516,7 +516,40 @@ export default mixins(
 
 				return nodeType.outputNames[outputIndex];
 			},
+			convertPath (path: string): string {
+				// TODO: That can for sure be done fancier but for now it works
+				const placeholder = '*___~#^#~___*';
+				const inBrackets = path.match(/\[(.*?)\]/g).map(item => item.slice(1, -1)).map(item => {
+					if (item.startsWith('"') && item.endsWith('"')) {
+						return item.slice(1, -1);
+					}
+					return item;
+				});
+				const withoutBrackets = path.replace(/\[(.*?)\]/g, placeholder);
+				const pathParts = withoutBrackets.split('.');
+				const allParts = [];
+				pathParts.forEach(part => {
+					let index = part.indexOf(placeholder);
+					while(index !== -1) {
+						if (index === 0) {
+							allParts.push(inBrackets.shift());
+							part = part.substr(placeholder.length + 1);
+						} else {
+							allParts.push(part.substr(0, index));
+							part = part.substr(index);
+						}
+						index = part.indexOf(placeholder);
+					};
+					if (part !== '') {
+						allParts.push(part);
+					}
+				});
+
+				return '["' + allParts.join('"]["') + '"]';
+			},
 			handleCopyClick (commandData: { command: string }) {
+				const newPath = this.convertPath(this.state.path);
+
 				let value: string;
 				if (commandData.command === 'value') {
 					if (typeof this.state.value === 'object') {
@@ -527,14 +560,15 @@ export default mixins(
 				} else {
 					let startPath = '';
 					let path = '';
-					// TODO: Improve as it still makes problems with some paths
+					// TODO: Also still issue that by default everything is selected.
+					// TODO: Check if still old not needed css from previous library is around which has to get adjusted for new one
 					if (commandData.command === 'itemPath') {
-						const pathParts = this.state.path.split(']');
+						const pathParts = newPath.split(']');
 						const index = pathParts[0].slice(1);
 						path = pathParts.slice(1).join(']');
 						startPath = `$item(${index}).$node["${this.node!.name}"].json`;
 					} else if (commandData.command === 'parameterPath') {
-						path = this.state.path.split(']').slice(1).join(']');
+						path = newPath.split(']').slice(1).join(']');
 						startPath = `$node["${this.node!.name}"].json`;
 					}
 					if (!path.startsWith('[') && !path.startsWith('.')) {
