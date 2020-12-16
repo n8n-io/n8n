@@ -123,13 +123,6 @@ export class TheHiveTrigger implements INodeType {
 					},
 				],
 			},
-			{
-				displayName: 'TheHive 3 Support',
-				name: 'hive3Support',
-				default: false,
-				type: 'boolean',
-				description: 'Enable support for TheHive 3 webhook events',
-			},
 		],
 	};
 	// @ts-ignore (because of request)
@@ -151,16 +144,14 @@ export class TheHiveTrigger implements INodeType {
 		// Get the request body
 		const bodyData = this.getBodyData();
 		const events = this.getNodeParameter('events', []) as string[];
-		const hive3Support = this.getNodeParameter('hive3Support', false);
-
 		if (!bodyData.operation || !bodyData.objectType) {
 			// Don't start the workflow if mandatory fields are not specified
 			return {};
 		}
 
 		// Don't start the workflow if the event is not fired
-		const operation = hive3Support ? 
-			(bodyData.operation as string).replace("Creation", "Create") : bodyData.operation as string;
+		// Replace Creation with Create for TheHive 3 support
+		const operation = (bodyData.operation as string).replace("Creation", "Create")
 		const event = `${(bodyData.objectType as string).toLowerCase()}_${operation.toLowerCase()}`;
 		if (events.indexOf('*') === -1 && events.indexOf(event) === -1) {
 			return {};
