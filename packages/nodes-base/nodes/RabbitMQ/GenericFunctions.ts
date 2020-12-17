@@ -4,6 +4,8 @@ import {
 	ITriggerFunctions,
 } from 'n8n-workflow';
 
+const amqplib = require('amqplib');
+
 export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('rabbitmq') as IDataObject;
 
@@ -27,23 +29,34 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 		optsData.key = credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
 		optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
 		optsData.ca = credentials.ca === '' ? undefined : [Buffer.from(credentials.ca as string)];
-		optsData.credentials = require('amqplib').credentials.external();
+		optsData.credentials = amqplib.credentials.external();
 	}
 
-	const connection = await require('amqplib').connect(credentialData, optsData);
 
-	const channel = await connection.createChannel();
+	return new Promise(async (resolve, reject) => {
+		try {
+			const connection = await amqplib.connect(credentialData, optsData);
 
-	if (options.arguments && ((options.arguments as IDataObject).argument! as IDataObject[]).length) {
-		const additionalArguments: IDataObject = {};
-		((options.arguments as IDataObject).argument as IDataObject[]).forEach((argument: IDataObject) => {
-			additionalArguments[argument.key as string] = argument.value;
-		});
-		options.arguments = additionalArguments;
-	}
+			connection.on('error', (error: Error) => {
+				reject(error);
+			});
 
-	// TODO: Throws error here I can not catch if for example arguments are missing
-	await channel.assertQueue(queue, options);
+			const channel = await connection.createChannel().catch(console.warn);
 
-	return channel;
+			if (options.arguments && ((options.arguments as IDataObject).argument! as IDataObject[]).length) {
+				const additionalArguments: IDataObject = {};
+				((options.arguments as IDataObject).argument as IDataObject[]).forEach((argument: IDataObject) => {
+					additionalArguments[argument.key as string] = argument.value;
+				});
+				options.arguments = additionalArguments;
+			}
+
+			await channel.assertQueue(queue, options);
+
+			resolve(channel);
+		} catch (error) {
+			reject(error);
+		}
+	});
+
 }
