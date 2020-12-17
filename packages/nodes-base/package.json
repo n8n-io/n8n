@@ -404,6 +404,7 @@
       "dist/nodes/QuestDb/QuestDb.node.js",
       "dist/nodes/QuickBase/QuickBase.node.js",
       "dist/nodes/RabbitMQ/RabbitMQ.node.js",
+      "dist/nodes/RabbitMQ/RabbitMQTrigger.node.js",
       "dist/nodes/ReadBinaryFile.node.js",
       "dist/nodes/ReadBinaryFiles.node.js",
       "dist/nodes/ReadPdf.node.js",

@@ -9,6 +9,14 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import {
+	rabbitDefaultOptions,
+} from './DefaultOptions';
+
+import {
+	rabbitmqConnect,
+} from './GenericFunctions';
+
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ',
@@ -31,7 +39,7 @@ export class RabbitMQ implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Queue',
+				displayName: 'Queue / Topic',
 				name: 'queue',
 				type: 'string',
 				default: '',
@@ -65,60 +73,7 @@ export class RabbitMQ implements INodeType {
 				type: 'collection',
 				default: {},
 				placeholder: 'Add Option',
-				options: [
-					{
-						displayName: 'Arguments',
-						name: 'arguments',
-						placeholder: 'Add Argument',
-						description: 'Arguments to add.',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: true,
-						},
-						default: {},
-						options: [
-							{
-								name: 'argument',
-								displayName: 'Argument',
-								values: [
-									{
-										displayName: 'Key',
-										name: 'key',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Value',
-										name: 'value',
-										type: 'string',
-										default: '',
-									},
-								],
-							},
-						],
-					},
-					{
-						displayName: 'Auto Delete',
-						name: 'autoDelete',
-						type: 'boolean',
-						default: false,
-						description: 'The queue will be deleted when the number of consumers drops to zero .',
-					},
-					{
-						displayName: 'Durable',
-						name: 'durable',
-						type: 'boolean',
-						default: true,
-						description: 'The queue will survive broker restarts.',
-					},
-					{
-						displayName: 'Exclusive',
-						name: 'exclusive',
-						type: 'boolean',
-						default: false,
-						description: 'Scopes the queue to the connection.',
-					},
-				],
+				options: rabbitDefaultOptions,
 			},
 		],
 	};
@@ -128,48 +83,12 @@ export class RabbitMQ implements INodeType {
 		try {
 			const items = this.getInputData();
 
-			const credentials = this.getCredentials('rabbitmq') as IDataObject;
-
-			const credentialKeys = [
-				'hostname',
-				'port',
-				'username',
-				'password',
-				'vhost',
-			];
-			const credentialData: IDataObject = {};
-			credentialKeys.forEach(key => {
-				credentialData[key] = credentials[key] === '' ? undefined : credentials[key];
-			});
-
-			const optsData: IDataObject = {};
-			if (credentials.ssl === true) {
-				credentialData.protocol = 'amqps';
-
-				optsData.cert = credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
-				optsData.key = credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
-				optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
-				optsData.ca = credentials.ca === '' ? undefined : [Buffer.from(credentials.ca as string)];
-				optsData.credentials = require('amqplib').credentials.external();
-			}
-
-			const connection = await require('amqplib').connect(credentialData, optsData);
-			channel = await connection.createChannel();
-
 			const queue = this.getNodeParameter('queue', 0) as string;
 
-			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
-			if (options.arguments && ((options.arguments as IDataObject).argument! as IDataObject[]).length) {
-				const additionalArguments: IDataObject = {};
-				((options.arguments as IDataObject).argument as IDataObject[]).forEach((argument: IDataObject) => {
-					additionalArguments[argument.key as string] = argument.value;
-				});
-				options.arguments = additionalArguments;
-			}
+			channel = await rabbitmqConnect.call(this, queue, options);
 
-			// TODO: Throws error here I can not catch if for example arguments are missing
-			await channel.assertQueue(queue, options);
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 			let message: string;
@@ -186,7 +105,7 @@ export class RabbitMQ implements INodeType {
 			}
 
 			// @ts-ignore
-			const promisesResponses = await Promise.allSettled(queuePromises)
+			const promisesResponses = await Promise.allSettled(queuePromises);
 
 			const returnItems: INodeExecutionData[] = [];
 
@@ -204,14 +123,14 @@ export class RabbitMQ implements INodeType {
 								},
 							},
 						);
-						return;;
+						return;
 					}
 				}
 
 				returnItems.push({
 					json: {
-						success: response.value
-					}
+						success: response.value,
+					},
 				});
 			});
 
