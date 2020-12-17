@@ -13,6 +13,12 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
+interface IContact {
+	tags: [], 
+	base: IDataObject,
+	extra: IDataObject[],
+}
+
 export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 
 	const credentials = this.getCredentials('egoiApi') as IDataObject;
@@ -73,4 +79,31 @@ export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOpti
 	);
 
 	return returnData;
+}
+
+export function simplify(contacts: IContact[], fields: IDataObject[]) {
+	fields = fields.filter((element: IDataObject) => element.type === 'extra');
+	const fieldsKeyValue: IDataObject = {};
+	for (const field of fields) {
+		fieldsKeyValue[field.field_id as string] = field.name;
+	}
+	
+	const data: IDataObject[] = [];
+
+	for (const contact of contacts) {
+		const extras = contact.extra.reduce(
+			(acumulator: IDataObject, currentValue: IDataObject): any => {
+				const key = fieldsKeyValue[currentValue.field_id as string] as string
+				return { [key]: currentValue.value, ...acumulator }
+			},
+			{}
+		);
+		data.push({
+			...contact.base,
+			...extras,
+			tags: contact.tags,
+		})
+	}
+
+	return data;
 }

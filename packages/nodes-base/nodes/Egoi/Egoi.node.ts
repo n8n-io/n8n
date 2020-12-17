@@ -15,6 +15,7 @@ import {
 import {
 	egoiApiRequest,
 	egoiApiRequestAllItems,
+	simplify,
 } from './GenericFunctions';
 
 import {
@@ -185,6 +186,45 @@ export class Egoi implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'Cellphone of a subscriber.',
+					},
+					{
+						displayName: 'Extra Fields',
+						name: 'extraFieldsUi',
+						type: 'fixedCollection',
+						placeholder: 'Add Field',
+						default: {},
+						typeOptions: {
+							multipleValues: true,
+						},
+						options: [
+							{
+								displayName: 'Extra Field',
+								name: 'extraFieldValues',
+								typeOptions: {
+									multipleValueButtonText: 'Add Field',
+								},
+								values: [
+									{
+										displayName: 'Field ID',
+										name: 'field_id',
+										type: 'options',
+										typeOptions: {
+											loadOptionsMethod: 'getExtraFields',
+											loadOptionsDependsOn: [
+												'list',
+											],
+										},
+										default: '',
+									},
+									{
+										displayName: 'Value',
+										name: 'value',
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
 					},
 					{
 						displayName: 'First Name',
@@ -474,6 +514,24 @@ export class Egoi implements INodeType {
 				default: 100,
 				description: 'How many results to return.',
 			},
+			{
+				displayName: 'Simple',
+				name: 'simple',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+							'getAll',
+						],
+						resource: [
+							'contact',
+						],
+					},
+				},
+				default: true,
+				description: 'When set to true a simplify version of the response will be used else the raw data.',
+			},
 		],
 	};
 
@@ -586,6 +644,8 @@ export class Egoi implements INodeType {
 
 					const listId = this.getNodeParameter('list', i) as string;
 
+					const simple = this.getNodeParameter('simple', 0) as boolean;
+
 					const by = this.getNodeParameter('by', 0) as string;
 
 					let endpoint = '';
@@ -603,6 +663,21 @@ export class Egoi implements INodeType {
 					if (responseData.items) {
 						responseData = responseData.items;
 					}
+
+					if (simple === true) {
+						const fields = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+
+						const data = simplify([responseData], fields)[0];
+
+						responseData = {
+							...data,
+							email_stats: responseData.email_stats,
+							sms_stats: responseData.sms_stats,
+							push_stats: responseData.push_stats,
+							webpush_stats: responseData.webpush_stats,
+							voice_stats: responseData.voice_stats,
+						}
+					}
 				}
 
 				if (operation === 'getAll') {
@@ -610,6 +685,8 @@ export class Egoi implements INodeType {
 					const listId = this.getNodeParameter('list', i) as string;
 
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					const simple = this.getNodeParameter('simple', 0) as boolean;
 
 					if (returnAll) {
 
@@ -622,6 +699,14 @@ export class Egoi implements INodeType {
 
 						responseData = responseData.items;
 					}
+
+					if (simple === true) {
+
+						const fields = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+
+						responseData = simplify(responseData, fields);
+					}
+
 				}
 
 				if (operation === 'update') {
