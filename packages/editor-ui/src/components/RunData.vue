@@ -539,7 +539,7 @@ export default mixins(
 					while(index !== -1) {
 						if (index === 0) {
 							allParts.push(inBrackets!.shift() as string);
-							part = part.substr(placeholder.length + 1);
+							part = part.substr(placeholder.length);
 						} else {
 							allParts.push(part.substr(0, index));
 							part = part.substr(index);
@@ -577,13 +577,13 @@ export default mixins(
 						path = newPath.split(']').slice(1).join(']');
 						startPath = `$node["${this.node!.name}"].json`;
 					}
-					if (!path.startsWith('[') && !path.startsWith('.')) {
+					if (!path.startsWith('[') && !path.startsWith('.') && path) {
 						path += '.';
 					}
 					value = startPath + path;
 				}
 
-				this.copyToClipboard(value);
+				this.copyToClipboard(`{{ ${value} }}`);
 			},
 			refreshDataSize () {
 				// Hide by default the data from being displayed
