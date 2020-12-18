@@ -62,17 +62,17 @@
 					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
-			<div class="select-button" v-if="displayMode === 'JSON' && state.path">
+			<div class="select-button" v-if="displayMode === 'JSON' && state.path !== deselectedPlaceholder">
 				<el-dropdown trigger="click" @command="handleCopyClick">
 					<span class="el-dropdown-link">
 						<el-button class="retry-button" circle type="text" size="small" title="Copy">
-							<font-awesome-icon icon="clone" />
+							<font-awesome-icon icon="copy" />
 						</el-button>
 					</span>
 					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
 						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
 						<el-dropdown-item :command="{command: 'parameterPath'}">Copy Parameter Path</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
 
@@ -231,6 +231,9 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
 
+// A path that does not exist so that nothing is selected by default
+const deselectedPlaceholder = '_!^&*';
+
 export default mixins(
 	copyPaste,
 	genericHelpers,
@@ -247,10 +250,11 @@ export default mixins(
 			return {
 				binaryDataPreviewActive: false,
 				dataSize: 0,
+				deselectedPlaceholder,
 				displayMode: 'Table',
 				state: {
 					value: '' as object | number | string,
-					path: '',
+					path: deselectedPlaceholder,
 				},
 				runIndex: 0,
 				showData: false,
@@ -566,8 +570,6 @@ export default mixins(
 				} else {
 					let startPath = '';
 					let path = '';
-					// TODO: Also still issue that by default everything is selected.
-					// TODO: Check if still old not needed css from previous library is around which has to get adjusted for new one
 					if (commandData.command === 'itemPath') {
 						const pathParts = newPath.split(']');
 						const index = pathParts[0].slice(1);
@@ -580,10 +582,10 @@ export default mixins(
 					if (!path.startsWith('[') && !path.startsWith('.') && path) {
 						path += '.';
 					}
-					value = startPath + path;
+					value = `{{ ${startPath + path} }}`;
 				}
 
-				this.copyToClipboard(`{{ ${value} }}`);
+				this.copyToClipboard(value);
 			},
 			refreshDataSize () {
 				// Hide by default the data from being displayed
@@ -718,15 +720,8 @@ export default mixins(
 		}
 
 		.json-data {
-			.json-tree {
+			&.vjs-tree {
 				color: $--custom-input-font;
-
-				.json-tree-value-number {
-					color: #b03030;
-				}
-				.json-tree-value-string {
-					color: #8aab1a;
-				}
 			}
 		}
 
