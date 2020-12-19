@@ -32,7 +32,7 @@ services:
     links:
       - postgres
     volumes:
-      - ~/.n8n:/root/.n8n
+      - ~/.n8n:/home/node/.n8n
     # Wait 5 seconds to start n8n to make sure that PostgreSQL is ready
     # when n8n tries to connect to it
     command: /bin/sh -c "sleep 5; n8n start"

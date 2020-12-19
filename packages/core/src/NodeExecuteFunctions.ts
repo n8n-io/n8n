@@ -172,6 +172,10 @@ export function requestOAuth2(this: IAllExecuteFunctions, credentialsType: strin
 						client_secret: credentials.clientSecret as string,
 					};
 					tokenRefreshOptions.body = body;
+					// Override authorization property so the credentails are not included in it
+					tokenRefreshOptions.headers = {
+						Authorization: '',
+					};
 				}
 
 				const newToken = await token.refresh(tokenRefreshOptions);
@@ -240,6 +244,15 @@ export function requestOAuth1(this: IAllExecuteFunctions, credentialsType: strin
 
 	//@ts-ignore
 	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
+
+	// Fixes issue that OAuth1 library only works with "url" property and not with "uri"
+	// @ts-ignore
+	if (requestOptions.uri && !requestOptions.url) {
+		// @ts-ignore
+		requestOptions.url = requestOptions.uri;
+		// @ts-ignore
+		delete requestOptions.uri;
+	}
 
 	//@ts-ignore
 	requestOptions.headers = oauth.toHeader(oauth.authorize(requestOptions, token));
