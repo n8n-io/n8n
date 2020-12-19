@@ -14,9 +14,9 @@ import {
 } from 'n8n-workflow';
 
 interface IContact {
-	tags: [],
-	base: IDataObject,
-	extra: IDataObject[],
+	tags: [];
+	base: IDataObject;
+	extra: IDataObject[];
 }
 
 const fieldCache: {
@@ -29,7 +29,7 @@ export async function getFields(this: IExecuteFunctions, listId: string) {
 		return fieldCache[listId];
 	}
 	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
-	return fieldCache[listId]
+	return fieldCache[listId];
 }
 
 
@@ -109,17 +109,17 @@ export async function simplify(this: IExecuteFunctions, contacts: IContact[], li
 
 	for (const contact of contacts) {
 		const extras = contact.extra.reduce(
-			(acumulator: IDataObject, currentValue: IDataObject): any => {
-				const key = fieldsKeyValue[currentValue.field_id as string] as string
-				return { [key]: currentValue.value, ...acumulator }
+			(acumulator: IDataObject, currentValue: IDataObject): any => { // tslint:disable-line:no-any
+				const key = fieldsKeyValue[currentValue.field_id as string] as string;
+				return { [key]: currentValue.value, ...acumulator };
 			},
-			{}
+			{},
 		);
 		data.push({
 			...contact.base,
 			...extras,
 			tags: contact.tags,
-		})
+		});
 	}
 
 	return data;
