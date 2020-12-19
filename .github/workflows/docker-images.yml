@@ -28,7 +28,7 @@ jobs:
     - name: Push docker images of latest
       run: docker push n8nio/n8n:latest
 
-    - name: Build the Docker image of version (Ubuntu)
-      run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}}-ubuntu docker/images/n8n-ubuntu
-    - name: Push Docker image of version (Ubuntu)
-      run: docker push n8nio/n8n:${{steps.vars.outputs.tag}}-ubuntu
+    - name: Build the Docker image of version (Debian)
+      run: docker build --build-arg N8N_VERSION=${{steps.vars.outputs.tag}} -t n8nio/n8n:${{steps.vars.outputs.tag}}-debian docker/images/n8n-debian
+    - name: Push Docker image of version (Debian)
+      run: docker push n8nio/n8n:${{steps.vars.outputs.tag}}-debian
