@@ -14,10 +14,24 @@ import {
 } from 'n8n-workflow';
 
 interface IContact {
-	tags: [], 
+	tags: [],
 	base: IDataObject,
 	extra: IDataObject[],
 }
+
+const fieldCache: {
+	[key: string]: IDataObject[];
+} = {};
+
+
+export async function getFields(this: IExecuteFunctions, listId: string) {
+	if (fieldCache[listId]) {
+		return fieldCache[listId];
+	}
+	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+	return fieldCache[listId]
+}
+
 
 export async function egoiApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
 
@@ -81,13 +95,16 @@ export async function egoiApiRequestAllItems(this: IExecuteFunctions | ILoadOpti
 	return returnData;
 }
 
-export function simplify(contacts: IContact[], fields: IDataObject[]) {
+
+export async function simplify(this: IExecuteFunctions, contacts: IContact[], listId: string) {
+	let fields = await getFields.call(this, listId);
+
 	fields = fields.filter((element: IDataObject) => element.type === 'extra');
 	const fieldsKeyValue: IDataObject = {};
 	for (const field of fields) {
 		fieldsKeyValue[field.field_id as string] = field.name;
 	}
-	
+
 	const data: IDataObject[] = [];
 
 	for (const contact of contacts) {

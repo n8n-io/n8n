@@ -299,21 +299,21 @@ export class Egoi implements INodeType {
 						name: 'birth_date',
 						type: 'dateTime',
 						default: '',
-						description: 'Birth date of a subscriber.',
+						description: 'Birth date of subscriber.',
 					},
 					{
 						displayName: 'Cellphone',
 						name: 'cellphone',
 						type: 'string',
 						default: '',
-						description: 'Cellphone of a subscriber.',
+						description: 'Cellphone of subscriber.',
 					},
 					{
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
 						default: '',
-						description: 'Email address for a subscriber.',
+						description: 'Email address for subscriber.',
 					},
 					{
 						displayName: 'Extra Fields',
@@ -359,14 +359,14 @@ export class Egoi implements INodeType {
 						name: 'first_name',
 						type: 'string',
 						default: '',
-						description: 'Name of a subscriber.',
+						description: 'Name of subscriber.',
 					},
 					{
 						displayName: 'Last Name',
 						name: 'last_name',
 						type: 'string',
 						default: '',
-						description: 'Name of a subscriber.',
+						description: 'Name of subscriber.',
 					},
 					{
 						displayName: 'Status',
@@ -471,7 +471,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Email address for a subscriber.',
+				description: 'Email address for subscriber.',
 			},
 			{
 				displayName: 'Return All',
@@ -530,7 +530,7 @@ export class Egoi implements INodeType {
 					},
 				},
 				default: true,
-				description: 'When set to true a simplify version of the response will be used else the raw data.',
+				description: 'When set to true a simple version of the response will be returned else the RAW data.',
 			},
 		],
 	};
@@ -593,167 +593,175 @@ export class Egoi implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		for (let i = 0; i < length; i++) {
+			try {
+				if (resource === 'contact') {
+					if (operation === 'create') {
+						const listId = this.getNodeParameter('list', i) as string;
 
-			if (resource === 'contact') {
-				if (operation === 'create') {
-					const listId = this.getNodeParameter('list', i) as string;
-
-					const email = this.getNodeParameter('email', i) as string;
-
-					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
-
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
-					const body: ICreateMemberBody = {
-						base: {
-							email,
-						},
-						extra: [],
-					};
-
-					if (additionalFields.birth_date) {
-						additionalFields.birth_date = moment(additionalFields.birth_date as string).format('YYYY-MM-DD');
-					}
-
-					if (additionalFields.extraFieldsUi) {
-						const extraFields = (additionalFields.extraFieldsUi as IDataObject).extraFieldValues as IDataObject[];
-						if (extraFields) {
-							body.extra = extraFields as unknown as [];
-						}
-					}
-
-					Object.assign(body.base, additionalFields);
-
-					responseData = await egoiApiRequest.call(this, 'POST', `/lists/${listId}/contacts`, body);
-
-					const contactId = responseData.contact_id;
-
-					if (additionalFields.tagIds) {
-						const tags = additionalFields.tagIds as string[];
-						for (const tag of tags) {
-							await egoiApiRequest.call(this, 'POST', `/lists/${listId}/contacts/actions/attach-tag`, { tag_id: tag, contacts: [contactId] });
-						}
-					}
-
-					if (resolveData) {
-						responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts/${contactId}`);
-					}
-				}
-
-				if (operation === 'get') {
-
-					const listId = this.getNodeParameter('list', i) as string;
-
-					const simple = this.getNodeParameter('simple', 0) as boolean;
-
-					const by = this.getNodeParameter('by', 0) as string;
-
-					let endpoint = '';
-
-					if (by === 'id') {
-						const contactId = this.getNodeParameter('contactId', i) as string;
-						endpoint = `/lists/${listId}/contacts/${contactId}`;
-					} else {
 						const email = this.getNodeParameter('email', i) as string;
-						endpoint = `/lists/${listId}/contacts?email=${email}`;
+
+						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+						const body: ICreateMemberBody = {
+							base: {
+								email,
+							},
+							extra: [],
+						};
+
+						if (additionalFields.birth_date) {
+							additionalFields.birth_date = moment(additionalFields.birth_date as string).format('YYYY-MM-DD');
+						}
+
+						if (additionalFields.extraFieldsUi) {
+							const extraFields = (additionalFields.extraFieldsUi as IDataObject).extraFieldValues as IDataObject[];
+							if (extraFields) {
+								body.extra = extraFields as unknown as [];
+							}
+						}
+
+						Object.assign(body.base, additionalFields);
+
+						responseData = await egoiApiRequest.call(this, 'POST', `/lists/${listId}/contacts`, body);
+
+						const contactId = responseData.contact_id;
+
+						if (additionalFields.tagIds) {
+							const tags = additionalFields.tagIds as string[];
+							for (const tag of tags) {
+								await egoiApiRequest.call(this, 'POST', `/lists/${listId}/contacts/actions/attach-tag`, { tag_id: tag, contacts: [contactId] });
+							}
+						}
+
+						if (resolveData) {
+							responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts/${contactId}`);
+						}
 					}
 
-					responseData = await egoiApiRequest.call(this, 'GET', endpoint, {});
+					if (operation === 'get') {
 
-					if (responseData.items) {
-						responseData = responseData.items;
+						const listId = this.getNodeParameter('list', i) as string;
+
+						const simple = this.getNodeParameter('simple', i) as boolean;
+
+						const by = this.getNodeParameter('by', 0) as string;
+
+						let endpoint = '';
+
+						if (by === 'id') {
+							const contactId = this.getNodeParameter('contactId', i) as string;
+							endpoint = `/lists/${listId}/contacts/${contactId}`;
+						} else {
+							const email = this.getNodeParameter('email', i) as string;
+							endpoint = `/lists/${listId}/contacts?email=${email}`;
+						}
+
+						responseData = await egoiApiRequest.call(this, 'GET', endpoint, {});
+
+						if (responseData.items) {
+							responseData = responseData.items;
+						}
+
+						if (simple === true) {
+							const data = (await simplify.call(this, [responseData], listId))[0];
+
+							responseData = {
+								...data,
+								email_stats: responseData.email_stats,
+								sms_stats: responseData.sms_stats,
+								push_stats: responseData.push_stats,
+								webpush_stats: responseData.webpush_stats,
+								voice_stats: responseData.voice_stats,
+							}
+						}
 					}
 
-					if (simple === true) {
-						const fields = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+					if (operation === 'getAll') {
 
-						const data = simplify([responseData], fields)[0];
+						const listId = this.getNodeParameter('list', i) as string;
 
-						responseData = {
-							...data,
-							email_stats: responseData.email_stats,
-							sms_stats: responseData.sms_stats,
-							push_stats: responseData.push_stats,
-							webpush_stats: responseData.webpush_stats,
-							voice_stats: responseData.voice_stats,
+						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+						const simple = this.getNodeParameter('simple', i) as boolean;
+
+						if (returnAll) {
+
+							responseData = await egoiApiRequestAllItems.call(this, 'items', 'GET', `/lists/${listId}/contacts`, {});
+
+						} else {
+							const limit = this.getNodeParameter('limit', i) as number;
+
+							responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts`, {}, { limit });
+
+							responseData = responseData.items;
+						}
+
+						if (simple === true) {
+							responseData = await simplify.call(this, responseData, listId);
+						}
+					}
+
+					if (operation === 'update') {
+						const listId = this.getNodeParameter('list', i) as string;
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+
+						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body: ICreateMemberBody = {
+							base: {
+							},
+							extra: [],
+						};
+
+						if (updateFields.birth_date) {
+							updateFields.birth_date = moment(updateFields.birth_date as string).format('YYYY-MM-DD');
+						}
+
+						if (updateFields.extraFieldsUi) {
+							const extraFields = (updateFields.extraFieldsUi as IDataObject).extraFieldValues as IDataObject[];
+							if (extraFields) {
+								body.extra = extraFields as unknown as [];
+							}
+						}
+
+						Object.assign(body.base, updateFields);
+
+						responseData = await egoiApiRequest.call(this, 'PATCH', `/lists/${listId}/contacts/${contactId}`, body);
+
+						if (updateFields.tagIds) {
+							const tags = updateFields.tagIds as string[];
+							for (const tag of tags) {
+								await egoiApiRequest.call(this, 'POST', `/lists/${listId}/contacts/actions/attach-tag`, { tag_id: tag, contacts: [contactId] });
+							}
+						}
+
+						if (resolveData) {
+							responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts/${contactId}`);
 						}
 					}
 				}
-
-				if (operation === 'getAll') {
-
-					const listId = this.getNodeParameter('list', i) as string;
-
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-
-					const simple = this.getNodeParameter('simple', 0) as boolean;
-
-					if (returnAll) {
-
-						responseData = await egoiApiRequestAllItems.call(this, 'items', 'GET', `/lists/${listId}/contacts`, {});
-
-					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-
-						responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts`, {}, { limit });
-
-						responseData = responseData.items;
-					}
-
-					if (simple === true) {
-
-						const fields = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
-
-						responseData = simplify(responseData, fields);
-					}
-
-				}
-
-				if (operation === 'update') {
-					const listId = this.getNodeParameter('list', i) as string;
-					const contactId = this.getNodeParameter('contactId', i) as string;
-					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
-
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const body: ICreateMemberBody = {
-						base: {
+			} catch (error) {
+				if (this.continueOnFail() !== true) {
+					throw error;
+				} else {
+					// Return the actual reason as error
+					returnData.push(
+						{
+							error: error.message,
 						},
-						extra: [],
-					};
-
-					if (updateFields.birth_date) {
-						updateFields.birth_date = moment(updateFields.birth_date as string).format('YYYY-MM-DD');
-					}
-
-					if (updateFields.extraFieldsUi) {
-						const extraFields = (updateFields.extraFieldsUi as IDataObject).extraFieldValues as IDataObject[];
-						if (extraFields) {
-							body.extra = extraFields as unknown as [];
-						}
-					}
-
-					Object.assign(body.base, updateFields);
-
-					responseData = await egoiApiRequest.call(this, 'PATCH', `/lists/${listId}/contacts/${contactId}`, body);
-
-					if (updateFields.tagIds) {
-						const tags = updateFields.tagIds as string[];
-						for (const tag of tags) {
-							await egoiApiRequest.call(this, 'POST', `/lists/${listId}/contacts/actions/attach-tag`, { tag_id: tag, contacts: [contactId] });
-						}
-					}
-
-					if (resolveData) {
-						responseData = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/contacts/${contactId}`);
-					}
+					);
+					continue;
 				}
 			}
+
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
 				returnData.push(responseData as IDataObject);
 			}
 		}
-		return [this.helpers.returnJsonArray(responseData)];
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }
