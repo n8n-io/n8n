@@ -151,7 +151,7 @@ export class TheHiveTrigger implements INodeType {
 
 		// Don't start the workflow if the event is not fired
 		// Replace Creation with Create for TheHive 3 support
-		const operation = (bodyData.operation as string).replace('Creation', 'Create')
+		const operation = (bodyData.operation as string).replace('Creation', 'Create');
 		const event = `${(bodyData.objectType as string).toLowerCase()}_${operation.toLowerCase()}`;
 		if (events.indexOf('*') === -1 && events.indexOf(event) === -1) {
 			return {};
