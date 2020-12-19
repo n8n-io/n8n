@@ -674,7 +674,7 @@ export class Egoi implements INodeType {
 								push_stats: responseData.push_stats,
 								webpush_stats: responseData.webpush_stats,
 								voice_stats: responseData.voice_stats,
-							}
+							};
 						}
 					}
 
