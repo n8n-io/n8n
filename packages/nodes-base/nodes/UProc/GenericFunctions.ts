@@ -20,12 +20,12 @@ export async function uprocApiRequest(this: IHookFunctions | IExecuteFunctions |
 	}
 	const token = Buffer.from(`${credentials.email}:${credentials.apiKey}`).toString('base64');
 	const options: OptionsWithUri = {
-		headers: { Authorization: `Basic ${token}`},
+		headers: { Authorization: `Basic ${token}` },
 		method,
 		qs,
 		body,
 		uri: uri || `https://api.uproc.io/api/v2/process`,
-		json: true
+		json: true,
 	};
 
 	try {
