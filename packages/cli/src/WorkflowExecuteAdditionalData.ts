@@ -4,6 +4,7 @@ import {
 	ExternalHooks,
 	IExecutionDb,
 	IExecutionFlattedDb,
+	IExecutionResponse,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
@@ -222,7 +223,55 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 	return {
 		nodeExecuteBefore: [],
-		nodeExecuteAfter: [],
+		nodeExecuteAfter: [
+			async function (nodeName: string, data: ITaskData): Promise<void> {
+				const execution = await Db.collections.Execution!.findOne(this.executionId);
+
+				if (execution === undefined) {
+					// Something went badly wrong if this happens.
+					// This check is here mostly to make typescript happy.
+					return undefined; 
+				}
+				const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
+
+
+				if (fullExecutionData.data === undefined) {
+					fullExecutionData.data = {
+						startData: {
+						},
+						resultData: {
+							runData: {},
+						},
+						executionData: {
+							contextData: {},
+							nodeExecutionStack: [],
+							waitingExecution: {},
+						},
+					}
+					
+				}
+
+				if (Array.isArray(fullExecutionData.data.resultData.runData[nodeName])) {
+					// Append data if array exists
+					fullExecutionData.data.resultData.runData[nodeName].push(data);
+				} else {
+					// Initialize array and save data
+					fullExecutionData.data.resultData.runData[nodeName] = [data];
+				}
+				
+				console.log("====================================");
+				console.log("Full exec data:");
+				console.log(fullExecutionData);
+
+				const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+				console.log("Would try to save:");
+				console.log(executionData);
+				console.log("====================================");
+
+				// await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
+			}
+		],
 		workflowExecuteBefore: [],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
@@ -296,6 +345,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
+					console.log("====================================");
+					console.log("Saving final execution data:");
+					console.log(fullExecutionData);
+					console.log("====================================");
+					
 					// Save the Execution in DB
 					await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
 
