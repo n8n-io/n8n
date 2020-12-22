@@ -401,17 +401,17 @@ export class Ftp implements INodeType {
 					const path = this.getNodeParameter('path', i) as string;
 
 					responseData = await sftp!.delete(path);
-					
+
 					returnItems.push({ json: { success: true } });
 				}
 
 				if (operation === 'rename') {
 					const oldPath = this.getNodeParameter('oldPath', i) as string;
-					
+
 					const newPath = this.getNodeParameter('newPath', i) as string;
 
 					responseData = await sftp!.rename(oldPath, newPath);
-					
+
 					returnItems.push({ json: { success: true } });
 				}
 
@@ -488,7 +488,7 @@ export class Ftp implements INodeType {
 					const path = this.getNodeParameter('path', i) as string;
 
 					responseData = await ftp!.delete(path);
-					
+
 					returnItems.push({ json: { success: true } });
 				}
 
@@ -517,11 +517,11 @@ export class Ftp implements INodeType {
 				if (operation === 'rename') {
 
 					const oldPath = this.getNodeParameter('oldPath', i) as string;
-					
+
 					const newPath = this.getNodeParameter('newPath', i) as string;
 
 					responseData = await ftp!.rename(oldPath, newPath);
-					
+
 					returnItems.push({ json: { success: true } });
 				}
 
