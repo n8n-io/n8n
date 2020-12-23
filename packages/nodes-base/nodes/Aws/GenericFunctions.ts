@@ -1,3 +1,4 @@
+import { URL } from 'url';
 import { sign } from 'aws4';
 import { OptionsWithUri } from 'request';
 import { parseString } from 'xml2js';
@@ -9,6 +10,25 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
+import {
+	ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
+
+function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject) {
+	let endpoint;
+	switch(service) {
+		case "lambda":
+			endpoint = credentials.lambdaEndpoint;
+			break;
+		case "sns":
+			endpoint = credentials.snsEndpoint;
+			break;
+		default:
+			endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
+			break;
+	}
+	return (endpoint as string).replace('{region}', credentials.region as string);
+}
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
@@ -16,7 +36,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		throw new Error('No credentials got returned!');
 	}
 
-	const endpoint = `${service}.${credentials.region}.amazonaws.com`;
+	const endpoint = getEndpointForService(service, credentials)
 
 	// Sign AWS API request with the user credentials
 	const signOpts = { headers: headers || {}, host: endpoint, method, path, body };
