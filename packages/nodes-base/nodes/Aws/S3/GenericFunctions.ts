@@ -46,7 +46,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		headers: signOpts.headers,
 		method,
 		qs: query,
-		uri: `https://${endpoint}${signOpts.path}`,
+		uri: new URL(signOpts.path, endpoint).href,
 		body: signOpts.body,
 	};
 
@@ -56,7 +56,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message || error.message;
+		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
 
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
