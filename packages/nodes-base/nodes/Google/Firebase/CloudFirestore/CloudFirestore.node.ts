@@ -121,6 +121,13 @@ export class CloudFirestore implements INodeType {
 					{ documents: documentList },
 				);
 
+				responseData = responseData.map((element: { found: { id: string, name: string } }) => {
+					if (element.found) {
+						element.found.id = (element.found.name as string).split('/').pop() as string;
+					}
+					return element;
+				});
+
 				if (simple === false) {
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				} else {
@@ -148,6 +155,9 @@ export class CloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents/${collection}`,
 						document,
 					);
+
+					responseData.id = (responseData.name as string).split('/').pop();
+
 					if (simple === false) {
 						returnData.push(responseData);
 					} else {
@@ -179,11 +189,16 @@ export class CloudFirestore implements INodeType {
 					) as IDataObject;
 					responseData = getAllResponse.documents;
 				}
+				responseData = responseData.map((element: IDataObject) => {
+					element.id = (element.name as string).split('/').pop();
+					return element;
+				});
 				if (simple === false) {
 					returnData.push.apply(returnData, responseData);
 				} else {
 					returnData.push.apply(returnData, responseData.map((element: IDataObject) => fullDocumentToJson(element as IDataObject)));
 				}
+
 			} else if (operation === 'delete') {
 				const responseData: IDataObject[] = [];
 
@@ -295,6 +310,14 @@ export class CloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents:runQuery`,
 						JSON.parse(query),
 					);
+
+					responseData = responseData.map((element: { document: { id: string, name: string } }) => {
+						if (element.document) {
+							element.document.id = (element.document.name as string).split('/').pop() as string;
+						}
+						return element;
+					});
+
 					if (simple === false) {
 						returnData.push.apply(returnData, responseData);
 					} else {
