@@ -158,6 +158,16 @@ export class MessageBird implements INodeType {
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
 				placeholder: 'Add Fields',
 				default: {},
 				options: [
