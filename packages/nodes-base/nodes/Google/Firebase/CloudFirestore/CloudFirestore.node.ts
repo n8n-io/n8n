@@ -122,7 +122,9 @@ export class CloudFirestore implements INodeType {
 				);
 
 				responseData = responseData.map((element: { found: { id: string, name: string } }) => {
-					element.found.id = (element.found.name as string).split('/').pop() as string;
+					if (element.found) {
+						element.found.id = (element.found.name as string).split('/').pop() as string;
+					}
 					return element;
 				});
 
@@ -153,9 +155,9 @@ export class CloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents/${collection}`,
 						document,
 					);
-						
+
 					responseData.id = (responseData.name as string).split('/').pop();
-					
+
 					if (simple === false) {
 						returnData.push(responseData);
 					} else {
@@ -308,6 +310,14 @@ export class CloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents:runQuery`,
 						JSON.parse(query),
 					);
+
+					responseData = responseData.map((element: { document: { id: string, name: string } }) => {
+						if (element.document) {
+							element.document.id = (element.document.name as string).split('/').pop() as string;
+						}
+						return element;
+					});
+
 					if (simple === false) {
 						returnData.push.apply(returnData, responseData);
 					} else {
