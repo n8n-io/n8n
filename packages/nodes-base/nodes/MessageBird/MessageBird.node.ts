@@ -1,6 +1,6 @@
 import {
 	IExecuteFunctions,
- } from 'n8n-core';
+} from 'n8n-core';
 
 import {
 	IDataObject,
@@ -44,6 +44,10 @@ export class MessageBird implements INodeType {
 						name: 'SMS',
 						value: 'sms',
 					},
+					{
+						name: 'Balance',
+						value: 'balance',
+					},
 				],
 				default: 'sms',
 				description: 'The resource to operate on.',
@@ -67,6 +71,27 @@ export class MessageBird implements INodeType {
 					},
 				],
 				default: 'send',
+				description: 'The operation to perform.',
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'balance',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get the balance',
+					},
+				],
+				default: 'get',
 				description: 'The operation to perform.',
 			},
 
@@ -133,6 +158,16 @@ export class MessageBird implements INodeType {
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'send',
+						],
+						resource: [
+							'sms',
+						],
+					},
+				},
 				placeholder: 'Add Fields',
 				default: {},
 				options: [
@@ -269,11 +304,12 @@ export class MessageBird implements INodeType {
 		let resource: string;
 
 		// For POST
-		let bodyRequest: IDataObject;
+		let bodyRequest: IDataObject = {};
 		// For Query string
 		let qs: IDataObject;
 
 		let requestMethod;
+		let requestPath;
 
 		for (let i = 0; i < items.length; i++) {
 			qs = {};
@@ -289,6 +325,7 @@ export class MessageBird implements INodeType {
 					// ----------------------------------
 
 					requestMethod = 'POST';
+					requestPath = '/messages';
 					const originator = this.getNodeParameter('originator', i) as string;
 					const body = this.getNodeParameter('message', i) as string;
 
@@ -337,21 +374,27 @@ export class MessageBird implements INodeType {
 					}
 
 					const receivers = this.getNodeParameter('recipients', i) as string;
-
 					bodyRequest.recipients = receivers.split(',').map(item => {
+
 						return parseInt(item, 10);
 					});
-				} else {
+				}
+				else {
 					throw new Error(`The operation "${operation}" is not known!`);
 				}
-			} else {
+
+			} else if (resource === 'balance') {
+				requestMethod = 'GET';
+				requestPath = '/balance';
+			}
+			else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
 			const responseData = await messageBirdApiRequest.call(
 				this,
 				requestMethod,
-				'/messages',
+				requestPath,
 				bodyRequest,
 				qs,
 			);
