@@ -90,9 +90,9 @@ export function createMessage(fields: IDataObject) {
 			contentType: fields.bodyContentType,
 		};
 
-		message["body"] = bodyObject;
-		delete fields["bodyContent"];
-		delete fields["bodyContentType"];
+		message['body'] = bodyObject;
+		delete fields['bodyContent'];
+		delete fields['bodyContentType'];
 	}
 
 	// Handle custom headers

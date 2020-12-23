@@ -102,7 +102,7 @@ export class MicrosoftOutlook implements INodeType {
 						const uploadUrl = responseData.uploadUrl;
 
 						if (uploadUrl === undefined)
-							throw new Error("Failed to get upload session");	
+							throw new Error('Failed to get upload session');	
 
 						for (let bytesUploaded = 0; bytesUploaded < dataBuffer.length; bytesUploaded += chunkSize) {
 							// Upload the file chunk by chunk
@@ -202,7 +202,7 @@ export class MicrosoftOutlook implements INodeType {
 						'DELETE',
 						`/messages/${messageId}`
 					)
-					returnData.push({"success": true});
+					returnData.push({success: true});
 				}
 
 				if (operation === 'downloadAttachment') {
