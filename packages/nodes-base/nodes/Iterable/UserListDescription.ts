@@ -39,7 +39,10 @@ export const userListFields = [
 	{
 		displayName: 'List ID',
 		name: 'listId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getLists',
+		},
 		required: true,
 		displayOptions: {
 			show: {
@@ -105,7 +108,10 @@ export const userListFields = [
 	{
 		displayName: 'List ID',
 		name: 'listId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getLists',
+		},
 		required: true,
 		displayOptions: {
 			show: {

@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -80,6 +82,23 @@ export class Iterable implements INodeType {
 			...userListOperations,
 			...userListFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			// Get all the lists available channels
+			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const { lists } = await iterableApiRequest.call(this, 'GET', '/lists');
+				const returnData: INodePropertyOptions[] = [];
+				for (const list of lists) {
+					returnData.push({
+						name: list.name,
+						value: list.id,
+					});
+				}
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
