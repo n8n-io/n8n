@@ -18,12 +18,12 @@ import {
 
 export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'RabbitMQTrigger',
+		displayName: 'RabbitMQ Trigger',
 		name: 'rabbitmqTrigger',
 		icon: 'file:rabbitmq.png',
 		group: ['trigger'],
 		version: 1,
-		description: 'Sends messages to a RabbitMQ topic',
+		description: 'Listens to RabbitMQ messages',
 		defaults: {
 			name: 'RabbitMQ',
 			color: '#ff6600',
