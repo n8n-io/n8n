@@ -117,6 +117,7 @@ export function fullDocumentToJson(data: IDataObject): IDataObject {
 
 	return {
 		_name: data.name,
+		_id: data.id,
 		_createTime: data.createTime,
 		_updateTime: data.updateTime,
 		...documentToJson(data.fields as IDataObject),
