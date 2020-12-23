@@ -7,7 +7,6 @@ import {
 import {
 	IDataObject
 } from 'n8n-workflow';
-import { IData } from '../../Google/CloudNaturalLanguage/Interface';
 
 export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
