@@ -217,6 +217,7 @@ export class TheHive implements INodeType {
 					{ name: 'Get', value: 'get', description: 'Get an alert' },
 					{ name: 'Get All', value: 'getAll', description: 'Get all alerts' },
 					{ name: 'Mark as Read', value: 'markAsRead', description: 'Mark the alert as read' },
+					{ name: 'Mark as Unread', value: 'markAsUnread', description: 'Mark the alert as unread' },
 					{ name: 'Merge', value: 'merge', description: 'Merge alert into an existing case' },
 					{ name: 'Promote', value: 'promote', description: 'Promote an alert into a case' },
 					{ name: 'Update', value: 'update', description: 'Update alert' },
@@ -543,6 +544,16 @@ export class TheHive implements INodeType {
 						this,
 						'POST',
 						`/alert/${alertId}/markAsRead`
+					);
+				}
+				
+				if (operation === 'markAsUnread') {
+					const alertId = this.getNodeParameter('id', i) as string;
+
+					responseData = await theHiveApiRequest.call(
+						this,
+						'POST',
+						`/alert/${alertId}/markAsUnread`
 					);
 				}
 
