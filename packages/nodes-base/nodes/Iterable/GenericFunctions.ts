@@ -34,7 +34,6 @@ export async function iterableApiRequest(this: IExecuteFunctions | IExecuteSingl
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		console.log(options);
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 
