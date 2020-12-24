@@ -35,17 +35,17 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		throw new Error('No credentials got returned!');
 	}
 
-	const endpoint = (credentials.rekognitionEndpoint as string).replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`;
+	const endpoint = new URL((credentials.rekognitionEndpoint as string).replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = {headers: headers || {}, host: endpoint, method, path, body};
+	const signOpts = {headers: headers || {}, host: endpoint.host, method, path, body};
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim()});
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
 		method,
-		uri: new URL(signOpts.path, endpoint).href,
+		uri: endpoint.href,
 		body: signOpts.body,
 	};
 

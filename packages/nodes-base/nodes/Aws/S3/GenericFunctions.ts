@@ -35,10 +35,11 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		throw new Error('No credentials got returned!');
 	}
 
-	const endpoint = (credentials.s3Endpoint as string).replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`;
+	const endpoint = new URL((credentials.s3Endpoint as string).replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = {headers: headers || {}, host: endpoint, method, path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`, body};
+	const signOpts = {headers: headers || {}, host: endpoint.host, method, path: `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`, body};
+	endpoint.pathname = path;
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim()});
 
@@ -46,7 +47,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		headers: signOpts.headers,
 		method,
 		qs: query,
-		uri: new URL(signOpts.path, endpoint).href,
+		uri: endpoint.href,
 		body: signOpts.body,
 	};
 

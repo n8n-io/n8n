@@ -14,20 +14,16 @@ import {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 
-function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject) {
+function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): URL {
 	let endpoint;
-	switch(service) {
-		case "lambda":
-			endpoint = credentials.lambdaEndpoint;
-			break;
-		case "sns":
-			endpoint = credentials.snsEndpoint;
-			break;
-		default:
-			endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
-			break;
+	if (service == "lambda" && credentials.lambdaEndpoint) {
+		endpoint = credentials.lambdaEndpoint;
+	} else if (service == "sns" && credentials.snsEndpoint) {
+		endpoint = credentials.snsEndpoint;
+	} else {
+		endpoint = new URL(`https://${service}.${credentials.region}.amazonaws.com`);
 	}
-	return (endpoint as string).replace('{region}', credentials.region as string);
+	return new URL((endpoint as string).replace('{region}', credentials.region as string));
 }
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
@@ -37,15 +33,17 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	}
 
 	const endpoint = getEndpointForService(service, credentials)
+	endpoint.pathname = path;
 
 	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint, method, path, body };
+	const signOpts = { headers: headers || {}, host: endpoint.host, method, path: endpoint.pathname, body };
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
+
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
 		method,
-		uri: new URL(signOpts.path, endpoint).href,
+		uri: endpoint.href,
 		body: signOpts.body,
 	};
 
