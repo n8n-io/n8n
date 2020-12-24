@@ -389,7 +389,7 @@ export const messageFields = [
 						value: 'High',
 					},
 				],
-				default: 'low',
+				default: 'Low',
 			},
 			{
 				displayName: 'Read',
@@ -565,7 +565,7 @@ export const messageFields = [
 						value: 'High',
 					},
 				],
-				default: 'low',
+				default: 'Low',
 			},
 			{
 				displayName: 'Read',
