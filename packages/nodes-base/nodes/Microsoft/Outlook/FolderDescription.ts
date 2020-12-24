@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -122,11 +122,11 @@ export const folderFields = [
 		description: 'Folder Type',
 		type: 'options',
 		options: [
-			{ 
+			{
 				name: 'Folder',
 				value: 'folder',
 			},
-			{ 
+			{
 				name: 'Search Folder',
 				value: 'searchFolder',
 			},
@@ -260,7 +260,7 @@ export const folderFields = [
 			},
 		],
 	},
-	
+
 	// folder:update
 	{
 		displayName: 'Update Fields',
@@ -287,6 +287,13 @@ export const folderFields = [
 				default: '',
 			},
 			{
+				displayName: 'Filter Query',
+				name: 'filterQuery',
+				description: 'The OData query to filter the messages. Only for search folders.',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Include Nested Folders',
 				name: 'includeNestedFolders',
 				description: 'Include child folders in the search. Only for search folders.',
@@ -303,14 +310,7 @@ export const folderFields = [
 				},
 				default: [],
 			},
-			{
-				displayName: 'Filter Query',
-				name: 'filterQuery',
-				description: 'The OData query to filter the messages. Only for search folders.',
-				type: 'string',
-				default: '',
-			},
 		],
 	},
-	
+
 ] as INodeProperties[];

@@ -1,4 +1,4 @@
-import { 
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -10,28 +10,28 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { 
+import {
 	createMessage,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems
 } from './GenericFunctions';
 
-import { 
+import {
 	messageFields,
 	messageOperations,
 } from './MessageDescription';
 
-import { 
+import {
 	messageAttachmentFields,
 	messageAttachmentOperations,
 } from './MessageAttachmentDescription';
 
-import { 
+import {
 	folderFields,
 	folderOperations,
 } from './FolderDescription';
 
-import { 
+import {
 	folderMessageFields,
 	folderMessageOperations,
 } from './FolderMessageDecription';
@@ -64,21 +64,21 @@ export class MicrosoftOutlook implements INodeType {
 				type: 'options',
 				default: 'message',
 				options: [
-					{ 
-						name: 'Message',
-						value: 'message',
-					},
-					{ 
-						name: 'Message Attachment',
-						value: 'messageAttachment',
-					},
-					{ 
+					{
 						name: 'Folder',
 						value: 'folder',
 					},
-					{ 
+					{
 						name: 'Folder Message',
 						value: 'folderMessage',
+					},
+					{
+						name: 'Message',
+						value: 'message',
+					},
+					{
+						name: 'Message Attachment',
+						value: 'messageAttachment',
 					},
 				],
 			},
@@ -121,7 +121,7 @@ export class MicrosoftOutlook implements INodeType {
 					additionalFields.subject = subject;
 
 					additionalFields.bodyContent = bodyContent;
-					
+
 					// Create message object from optional fields
 					const body : IDataObject = createMessage(additionalFields);
 
@@ -241,7 +241,7 @@ export class MicrosoftOutlook implements INodeType {
 
 					items[i] = newItem;
 
-					
+
 					const fileName = `${messageId}.eml`;
 					const data = Buffer.from(response.body as string, 'utf8');
 					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
@@ -258,7 +258,7 @@ export class MicrosoftOutlook implements INodeType {
 					if (additionalFields.filter) {
 						qs['$filter'] = additionalFields.filter;
 					}
-					
+
 					const endpoint = '/messages';
 					if (returnAll === true) {
 						responseData = await microsoftApiRequestAllItems.call(
@@ -302,7 +302,7 @@ export class MicrosoftOutlook implements INodeType {
 				if (operation === 'update') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					
+
 					// Create message from optional fields
 					const body : IDataObject = createMessage(updateFields);
 
@@ -318,7 +318,7 @@ export class MicrosoftOutlook implements INodeType {
 
 				if (operation === 'send') {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					
+
 					const saveToSentItems = this.getNodeParameter('saveToSentItems', i) as boolean;
 
 					const toRecipients = this.getNodeParameter('toRecipients', i) as string[];
@@ -332,7 +332,7 @@ export class MicrosoftOutlook implements INodeType {
 					additionalFields.bodyContent = bodyContent;
 
 					additionalFields.toRecipients = toRecipients;
-					
+
 					// Create message object from optional fields
 					const message : IDataObject = createMessage(additionalFields);
 
@@ -415,7 +415,7 @@ export class MicrosoftOutlook implements INodeType {
 								size: dataBuffer.length,
 							},
 						};
-						
+
 						// Create upload session
 						responseData = await microsoftApiRequest.call(
 							this,
@@ -427,7 +427,7 @@ export class MicrosoftOutlook implements INodeType {
 
 						if (uploadUrl === undefined) {
 							throw new Error('Failed to get upload session');
-						}	
+						}
 
 						for (let bytesUploaded = 0; bytesUploaded < dataBuffer.length; bytesUploaded += chunkSize) {
 							// Upload the file chunk by chunk
@@ -454,7 +454,7 @@ export class MicrosoftOutlook implements INodeType {
 							name: fileName,
 							contentBytes: binaryData.data,
 						};
-	
+
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
@@ -479,7 +479,7 @@ export class MicrosoftOutlook implements INodeType {
 						undefined,
 						{ '$select': 'id,name,contentType' },
 					);
-						
+
 					let mimeType: string | undefined;
 					if (attachmentDetails.contentType) {
 						mimeType = attachmentDetails.contentType;
@@ -539,7 +539,7 @@ export class MicrosoftOutlook implements INodeType {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-				
+
 					// Have sane defaults so we don't fetch attachment data in this operation
 					qs['$select'] = 'id,lastModifiedDateTime,name,contentType,size,isInline';
 					if (additionalFields.fields) {
@@ -582,7 +582,7 @@ export class MicrosoftOutlook implements INodeType {
 					const body : IDataObject = {
 						displayName,
 					};
-					
+
 					let endpoint = '/mailFolders';
 
 					if (folderType === 'searchFolder') {

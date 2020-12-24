@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -98,11 +98,11 @@ export const messageFields = [
 		name: 'replyType',
 		type: 'options',
 		options: [
-			{ 
+			{
 				name: 'Reply',
 				value: 'reply',
 			},
-			{ 
+			{
 				name: 'Reply All',
 				value: 'replyAll',
 			},
@@ -281,7 +281,7 @@ export const messageFields = [
 						],
 					},
 				],
-				
+
 			},
 			{
 				displayName: 'BCC Recipients',
@@ -300,11 +300,11 @@ export const messageFields = [
 				description: 'Message body content type.',
 				type: 'options',
 				options: [
-					{ 
+					{
 						name: 'HTML',
 						value: 'html',
 					},
-					{ 
+					{
 						name: 'Text',
 						value: 'Text',
 					},
@@ -376,20 +376,20 @@ export const messageFields = [
 				description: 'The importance of the message.',
 				type: 'options',
 				options: [
-					{ 
-						name: 'Low', 
+					{
+						name: 'Low',
 						value: 'Low',
 					},
-					{ 
+					{
 						name: 'Normal',
 						value: 'Normal',
 					},
-					{ 
+					{
 						name: 'High',
 						value: 'High',
 					},
 				],
-				default: 'Low',
+				default: 'low',
 			},
 			{
 				displayName: 'Read',
@@ -476,11 +476,11 @@ export const messageFields = [
 				description: 'Message body content type.',
 				type: 'options',
 				options: [
-					{ 
+					{
 						name: 'HTML',
 						value: 'html',
 					},
-					{ 
+					{
 						name: 'Text',
 						value: 'Text',
 					},
@@ -552,15 +552,15 @@ export const messageFields = [
 				description: 'The importance of the message.',
 				type: 'options',
 				options: [
-					{ 
-						name: 'Low', 
+					{
+						name: 'Low',
 						value: 'Low',
 					},
-					{ 
+					{
 						name: 'Normal',
 						value: 'Normal',
 					},
-					{ 
+					{
 						name: 'High',
 						value: 'High',
 					},
@@ -656,14 +656,14 @@ export const messageFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will contain. Multiple can be added separated by ,.',
+				description: 'Fields the response will contain. Multiple can be added separated by comma.',
 			},
 			{
 				displayName: 'Filter',
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'Microsoft Graph API OData $filter query.',
+				description: 'Microsoft Graph API OData $filter query. Information about the syntac can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter" target="_blank">here</a>.',
 			},
 		],
 	},
