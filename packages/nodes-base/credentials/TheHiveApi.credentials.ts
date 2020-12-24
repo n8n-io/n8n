@@ -6,6 +6,7 @@ import {
 export class TheHiveApi implements ICredentialType {
 	name = 'theHiveApi';
 	displayName = 'The Hive API';
+	documentationUrl = 'theHive';
 	properties = [
 		{
 			displayName: 'API Key',

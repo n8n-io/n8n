@@ -31,9 +31,9 @@ export const messageOperations = [
 
 export const messageFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                message:post                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                message:post                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channel',
@@ -383,25 +383,18 @@ export const messageFields = [
 				description: 'URL to an image to use as the icon for this message.',
 			},
 			{
+				displayName: 'Link Names',
+				name: 'link_names',
+				type: 'boolean',
+				default: false,
+				description: 'Find and link channel names and usernames.',
+			},
+			{
 				displayName: 'Make Reply',
 				name: 'thread_ts',
 				type: 'string',
 				default: '',
 				description: 'Provide another message\'s ts value to make this message a reply.',
-			},
-			{
-				displayName: 'Unfurl Links',
-				name: 'unfurl_links',
-				type: 'boolean',
-				default: false,
-				description: 'Pass true to enable unfurling of primarily text-based content.',
-			},
-			{
-				displayName: 'Unfurl Media',
-				name: 'unfurl_media',
-				type: 'boolean',
-				default: true,
-				description: 'Pass false to disable unfurling of media content.',
 			},
 			{
 				displayName: 'Markdown',
@@ -418,17 +411,25 @@ export const messageFields = [
 				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
 			},
 			{
-				displayName: 'Link Names',
-				name: 'link_names',
+				displayName: 'Unfurl Links',
+				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
-				description: 'Find and link channel names and usernames.',
+				description: 'Pass true to enable unfurling of primarily text-based content.',
+			},
+			{
+				displayName: 'Unfurl Media',
+				name: 'unfurl_media',
+				type: 'boolean',
+				default: true,
+				description: 'Pass false to disable unfurling of media content.',
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 message:update                          */
-/* ----------------------------------------------------------------------- */
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:update                          */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',

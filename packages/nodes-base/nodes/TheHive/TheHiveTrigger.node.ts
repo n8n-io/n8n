@@ -111,6 +111,16 @@ export class TheHiveTrigger implements INodeType {
 						value: 'case_task_log_create',
 						description: 'Triggered when a task log is created',
 					},
+					{
+						name: 'Log Updated',
+						value: 'case_task_log_update',
+						description: 'Triggered when a task log is updated',
+					},
+					{
+						name: 'Log Deleted',
+						value: 'case_task_log_delete',
+						description: 'Triggered when a task log is deleted',
+					},
 				],
 			},
 		],
@@ -140,7 +150,9 @@ export class TheHiveTrigger implements INodeType {
 		}
 
 		// Don't start the workflow if the event is not fired
-		const event = `${(bodyData.objectType as string).toLowerCase()}_${(bodyData.operation as string).toLowerCase()}`;
+		// Replace Creation with Create for TheHive 3 support
+		const operation = (bodyData.operation as string).replace('Creation', 'Create');
+		const event = `${(bodyData.objectType as string).toLowerCase()}_${operation.toLowerCase()}`;
 		if (events.indexOf('*') === -1 && events.indexOf(event) === -1) {
 			return {};
 		}

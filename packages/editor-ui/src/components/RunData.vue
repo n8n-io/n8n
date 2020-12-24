@@ -62,6 +62,21 @@
 					<el-radio-button label="Binary" v-if="binaryData.length !== 0"></el-radio-button>
 				</el-radio-group>
 			</div>
+			<div class="select-button" v-if="displayMode === 'JSON' && state.path !== deselectedPlaceholder">
+				<el-dropdown trigger="click" @command="handleCopyClick">
+					<span class="el-dropdown-link">
+						<el-button class="retry-button" circle type="text" size="small" title="Copy">
+							<font-awesome-icon icon="copy" />
+						</el-button>
+					</span>
+					<el-dropdown-menu slot="dropdown">
+						<el-dropdown-item :command="{command: 'itemPath'}">Copy Item Path</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'parameterPath'}">Copy Parameter Path</el-dropdown-item>
+						<el-dropdown-item :command="{command: 'value'}">Copy Value</el-dropdown-item>
+					</el-dropdown-menu>
+				</el-dropdown>
+
+			</div>
 		</div>
 		<div class="data-display-content">
 			<span v-if="node && workflowRunData !== null && workflowRunData.hasOwnProperty(node.name)">
@@ -104,10 +119,19 @@
 								</tr>
 							</table>
 						</div>
-						<json-tree
+						<vue-json-pretty
 							v-else-if="displayMode === 'JSON'"
 							:data="jsonData"
-							:level="10"
+							:deep="10"
+							v-model="state.path"
+							:showLine="true"
+							:showLength="true"
+							selectableType="single"
+							path=""
+							:highlightSelectedNode="true"
+							:selectOnClickNode="true"
+							:custom-value-formatter="customLinkFormatter"
+							@click="dataItemClicked"
 							class="json-data"
 						/>
 					</div>
@@ -171,8 +195,8 @@
 
 <script lang="ts">
 import Vue from 'vue';
-// @ts-ignore
-import JsonTree from 'vue-json-tree';
+//@ts-ignore
+import VueJsonPretty from 'vue-json-pretty';
 import {
 	GenericValue,
 	IBinaryData,
@@ -200,13 +224,18 @@ import {
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 
+import { copyPaste } from '@/components/mixins/copyPaste';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
 
+// A path that does not exist so that nothing is selected by default
+const deselectedPlaceholder = '_!^&*';
+
 export default mixins(
+	copyPaste,
 	genericHelpers,
 	nodeHelpers,
 	workflowRun,
@@ -215,13 +244,18 @@ export default mixins(
 		name: 'RunData',
 		components: {
 			BinaryDataDisplay,
-			JsonTree,
+			VueJsonPretty,
 		},
 		data () {
 			return {
 				binaryDataPreviewActive: false,
 				dataSize: 0,
+				deselectedPlaceholder,
 				displayMode: 'Table',
+				state: {
+					value: '' as object | number | string,
+					path: deselectedPlaceholder,
+				},
 				runIndex: 0,
 				showData: false,
 				outputIndex: 0,
@@ -380,21 +414,16 @@ export default mixins(
 			},
 		},
 		methods: {
-			getOutputName (outputIndex: number) {
-				if (this.node === null) {
-					return outputIndex + 1;
-				}
-
-				const nodeType = this.$store.getters.nodeType(this.node.type);
-				if (!nodeType.hasOwnProperty('outputNames') || nodeType.outputNames.length <= outputIndex) {
-					return outputIndex + 1;
-				}
-
-				return nodeType.outputNames[outputIndex];
-			},
 			closeBinaryDataDisplay () {
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
+			},
+			customLinkFormatter (data: object | number | string, key: string, parent: object, defaultFormatted: () => string) {
+				if (typeof data === 'string' && data.startsWith('http://')) {
+					return `<a style="color:red;" href="${data}" target="_blank">"${data}"</a>`;
+				} else {
+					return defaultFormatted;
+				}
 			},
 			convertToJson (inputData: INodeExecutionData[]): IDataObject[] {
 				const returnData: IDataObject[] = [];
@@ -465,7 +494,9 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
 			},
-			// displayBinaryData (binaryData: IBinaryData) {
+			dataItemClicked (path: string, data: object | number | string) {
+				this.state.value = data;
+			},
 			displayBinaryData (index: number, key: string) {
 				this.binaryDataDisplayVisible = true;
 
@@ -476,6 +507,85 @@ export default mixins(
 					index,
 					key,
 				};
+			},
+			getOutputName (outputIndex: number) {
+				if (this.node === null) {
+					return outputIndex + 1;
+				}
+
+				const nodeType = this.$store.getters.nodeType(this.node.type);
+				if (!nodeType.hasOwnProperty('outputNames') || nodeType.outputNames.length <= outputIndex) {
+					return outputIndex + 1;
+				}
+
+				return nodeType.outputNames[outputIndex];
+			},
+			convertPath (path: string): string {
+				// TODO: That can for sure be done fancier but for now it works
+				const placeholder = '*___~#^#~___*';
+				let inBrackets = path.match(/\[(.*?)\]/g);
+
+				if (inBrackets === null) {
+					inBrackets = [];
+				} else {
+					inBrackets = inBrackets.map(item => item.slice(1, -1)).map(item => {
+						if (item.startsWith('"') && item.endsWith('"')) {
+							return item.slice(1, -1);
+						}
+						return item;
+					});
+				}
+				const withoutBrackets = path.replace(/\[(.*?)\]/g, placeholder);
+				const pathParts = withoutBrackets.split('.');
+				const allParts = [] as string[];
+				pathParts.forEach(part => {
+					let index = part.indexOf(placeholder);
+					while(index !== -1) {
+						if (index === 0) {
+							allParts.push(inBrackets!.shift() as string);
+							part = part.substr(placeholder.length);
+						} else {
+							allParts.push(part.substr(0, index));
+							part = part.substr(index);
+						}
+						index = part.indexOf(placeholder);
+					}
+					if (part !== '') {
+						allParts.push(part);
+					}
+				});
+
+				return '["' + allParts.join('"]["') + '"]';
+			},
+			handleCopyClick (commandData: { command: string }) {
+				const newPath = this.convertPath(this.state.path);
+
+				let value: string;
+				if (commandData.command === 'value') {
+					if (typeof this.state.value === 'object') {
+						value = JSON.stringify(this.state.value, null, 2);
+					} else {
+						value = this.state.value.toString();
+					}
+				} else {
+					let startPath = '';
+					let path = '';
+					if (commandData.command === 'itemPath') {
+						const pathParts = newPath.split(']');
+						const index = pathParts[0].slice(1);
+						path = pathParts.slice(1).join(']');
+						startPath = `$item(${index}).$node["${this.node!.name}"].json`;
+					} else if (commandData.command === 'parameterPath') {
+						path = newPath.split(']').slice(1).join(']');
+						startPath = `$node["${this.node!.name}"].json`;
+					}
+					if (!path.startsWith('[') && !path.startsWith('.') && path) {
+						path += '.';
+					}
+					value = `{{ ${startPath + path} }}`;
+				}
+
+				this.copyToClipboard(value);
 			},
 			refreshDataSize () {
 				// Hide by default the data from being displayed
@@ -610,15 +720,8 @@ export default mixins(
 		}
 
 		.json-data {
-			.json-tree {
+			&.vjs-tree {
 				color: $--custom-input-font;
-
-				.json-tree-value-number {
-					color: #b03030;
-				}
-				.json-tree-value-string {
-					color: #8aab1a;
-				}
 			}
 		}
 
@@ -693,6 +796,16 @@ export default mixins(
 	.header {
 		padding-top: 10px;
 		padding-left: 10px;
+
+		.select-button {
+			height: 30px;
+			top: 50px;
+			right: 30px;
+			position: absolute;
+			text-align: right;
+			width: 200px;
+			z-index: 10;
+		}
 
 		.title-text {
 			display: inline-block;
