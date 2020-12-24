@@ -60,7 +60,7 @@ export class Aws implements ICredentialType {
 			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SES using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string' as NodePropertyTypes,
 			default: '',
-			placeholder: 'https://ses.{region}.amazonaws.com',
+			placeholder: 'https://email.{region}.amazonaws.com',
 		},
 		{
 			displayName: 'S3 Endpoint',
