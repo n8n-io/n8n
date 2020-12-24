@@ -1,9 +1,13 @@
-import { OptionsWithUri } from 'request';
+import { 
+	OptionsWithUri,
+} from 'request';
+
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
+
 import {
 	IDataObject
 } from 'n8n-workflow';
@@ -19,10 +23,16 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
 	};
 	try {
-        Object.assign(options, option);
+		Object.assign(options, option);
+		
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
+		
+		if (Object.keys(body).length === 0) {
+			delete options.body;
+		}
+
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftOutlookOAuth2Api', options);
 	} catch (error) {
@@ -102,10 +112,11 @@ export function createMessage(fields: IDataObject) {
 
 	// Handle recipient fields
 	['bccRecipients', 'ccRecipients', 'from', 'replyTo', 'sender', 'toRecipients'].forEach(key => {
-		if (Array.isArray(fields[key]))
-			fields[key] = (fields[key] as Array<string>).map(email => makeRecipient(email));
-		else if (fields[key] !== undefined)
+		if (Array.isArray(fields[key])) {
+			fields[key] = (fields[key] as string[]).map(email => makeRecipient(email));
+		} else if (fields[key] !== undefined) {
 			fields[key] = makeRecipient(fields[key] as string);
+		}
 	});
 	Object.assign(message, fields);
 
