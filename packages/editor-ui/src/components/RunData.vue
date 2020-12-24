@@ -130,7 +130,6 @@
 							path=""
 							:highlightSelectedNode="true"
 							:selectOnClickNode="true"
-							:custom-value-formatter="customLinkFormatter"
 							@click="dataItemClicked"
 							class="json-data"
 						/>
@@ -417,13 +416,6 @@ export default mixins(
 			closeBinaryDataDisplay () {
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
-			},
-			customLinkFormatter (data: object | number | string, key: string, parent: object, defaultFormatted: () => string) {
-				if (typeof data === 'string' && data.startsWith('http://')) {
-					return `<a style="color:red;" href="${data}" target="_blank">"${data}"</a>`;
-				} else {
-					return defaultFormatted;
-				}
 			},
 			convertToJson (inputData: INodeExecutionData[]): IDataObject[] {
 				const returnData: IDataObject[] = [];
