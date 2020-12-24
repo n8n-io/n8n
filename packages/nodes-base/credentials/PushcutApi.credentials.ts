@@ -6,6 +6,7 @@ import {
 export class PushcutApi implements ICredentialType {
 	name = 'pushcutApi';
 	displayName = 'Pushcut API';
+	documentationUrl = 'pushcut';
 	properties = [
 		{
 			displayName: 'API Key',
