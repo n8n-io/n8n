@@ -64,7 +64,11 @@ export function sendSuccessResponse(res: Response, data: any, raw?: boolean, res
 	}
 
 	if (raw === true) {
-		res.json(data);
+		if (typeof data === 'string') {
+			res.send(data);
+		} else {
+			res.json(data);
+		}
 	} else {
 		res.json({
 			data,

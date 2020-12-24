@@ -251,6 +251,21 @@ export class Webhook implements INodeType {
 									it will be the prefix and a number starting with 0 will be attached to it.`,
 					},
 					{
+						displayName: 'Response Data',
+						name: 'responseData',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/responseMode': [
+									'onReceived',
+								],
+							},
+						},
+						default: '',
+						placeholder: 'success',
+						description: 'Custom response data to send.',
+					},
+					{
 						displayName: 'Response Content-Type',
 						name: 'responseContentType',
 						type: 'string',
@@ -480,7 +495,13 @@ export class Webhook implements INodeType {
 			};
 		}
 
+		let webhookResponse: string | undefined;
+		if (options.responseData) {
+			webhookResponse = options.responseData as string;
+		}
+
 		return {
+			webhookResponse,
 			workflowData: [
 				[
 					response,

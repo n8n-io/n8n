@@ -8,13 +8,15 @@ const userScopes = [
 	'chat:write',
 	'files:read',
 	'files:write',
+	'groups:read',
+	'im:read',
+	'mpim:read',
+	'reactions:read',
+	'reactions:write',
 	'stars:read',
 	'stars:write',
 	'users.profile:read',
 	'users.profile:write',
-	'groups:read',
-	'im:read',
-	'mpim:read',
 ];
 
 export class SlackOAuth2Api implements ICredentialType {

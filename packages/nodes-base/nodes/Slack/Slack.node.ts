@@ -33,6 +33,16 @@ import {
 } from './FileDescription';
 
 import {
+	reactionFields,
+	reactionOperations,
+} from './ReactionDescription';
+
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+
+import {
 	userProfileFields,
 	userProfileOperations,
 } from './UserProfileDescription';
@@ -46,6 +56,7 @@ import {
 import {
 	IAttachment,
 } from './MessageInterface';
+
 import moment = require('moment');
 
 interface Attachment {
@@ -164,8 +175,16 @@ export class Slack implements INodeType {
 						value: 'message',
 					},
 					{
+						name: 'Reaction',
+						value: 'reaction',
+					},
+					{
 						name: 'Star',
 						value: 'star',
+					},
+					{
+						name: 'User',
+						value: 'user',
 					},
 					{
 						name: 'User Profile',
@@ -184,6 +203,10 @@ export class Slack implements INodeType {
 			...starFields,
 			...fileOperations,
 			...fileFields,
+			...reactionOperations,
+			...reactionFields,
+			...userOperations,
+			...userFields,
 			...userProfileOperations,
 			...userProfileFields,
 		],
@@ -217,7 +240,7 @@ export class Slack implements INodeType {
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const qs = { types: 'public_channel,private_channel' };
+				const qs = { types: 'public_channel,private_channel', limit: 1000 };
 				const channels = await slackApiRequestAllItems.call(this, 'channels', 'GET', '/conversations.list', {}, qs);
 				for (const channel of channels) {
 					const channelName = channel.name;
@@ -265,7 +288,7 @@ export class Slack implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-			responseData = { error: 'Resource ' + resource + ' / operation ' + operation + ' not found!'};
+			responseData = { error: 'Resource ' + resource + ' / operation ' + operation + ' not found!' };
 			qs = {};
 			if (resource === 'channel') {
 				//https://api.slack.com/methods/conversations.archive
@@ -382,6 +405,29 @@ export class Slack implements INodeType {
 						channel,
 					};
 					responseData = await slackApiRequest.call(this, 'POST', '/conversations.leave', body, qs);
+				}
+				//https://api.slack.com/methods/conversations.members
+				if (operation === 'member') {
+					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
+					qs.channel = this.getNodeParameter('channelId', i) as string;
+					if (returnAll) {
+						responseData = await slackApiRequestAllItems.call(this, 'members', 'GET', '/conversations.members', {}, qs);
+						responseData = responseData.map((member: string) => ({ member }));
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+						responseData = await slackApiRequest.call(this, 'GET', '/conversations.members', {}, qs);
+						responseData = responseData.members.map((member: string) => ({ member }));
+					}
+
+					if (resolveData) {
+						const data: IDataObject[] = [];
+						for (const { member } of responseData) {
+							const { user } = await slackApiRequest.call(this, 'GET', '/users.info', {}, { user: member });
+							data.push(user);
+						}
+						responseData = data;
+					}
 				}
 				//https://api.slack.com/methods/conversations.open
 				if (operation === 'open') {
@@ -745,6 +791,36 @@ export class Slack implements INodeType {
 					responseData = await slackApiRequest.call(this, 'POST', '/chat.update', body, qs);
 				}
 			}
+			if (resource === 'reaction') {
+				const channel = this.getNodeParameter('channelId', i) as string;
+				const timestamp = this.getNodeParameter('timestamp', i) as string;
+				//https://api.slack.com/methods/reactions.add
+				if (operation === 'add') {
+					const name = this.getNodeParameter('name', i) as string;
+					const body: IDataObject = {
+						channel,
+						name,
+						timestamp,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/reactions.add', body, qs);
+				}
+				//https://api.slack.com/methods/reactions.remove
+				if (operation === 'remove') {
+					const name = this.getNodeParameter('name', i) as string;
+					const body: IDataObject = {
+						channel,
+						name,
+						timestamp,
+					};
+					responseData = await slackApiRequest.call(this, 'POST', '/reactions.remove', body, qs);
+				}
+				//https://api.slack.com/methods/reactions.get
+				if (operation === 'get') {
+					qs.channel = channel;
+					qs.timestamp = timestamp;
+					responseData = await slackApiRequest.call(this, 'GET', '/reactions.get', {}, qs);
+				}
+			}
 			if (resource === 'star') {
 				//https://api.slack.com/methods/stars.add
 				if (operation === 'add') {
@@ -877,6 +953,19 @@ export class Slack implements INodeType {
 					qs.file = fileId;
 					responseData = await slackApiRequest.call(this, 'GET', '/files.info', {}, qs);
 					responseData = responseData.file;
+				}
+			}
+			if (resource === 'user') {
+				//https://api.slack.com/methods/users.info
+				if (operation === 'info') {
+					qs.user = this.getNodeParameter('user', i) as string;
+					responseData = await slackApiRequest.call(this, 'GET', '/users.info', {}, qs);
+					responseData = responseData.user;
+				}
+				//https://api.slack.com/methods/users.getPresence
+				if (operation === 'getPresence') {
+					qs.user = this.getNodeParameter('user', i) as string;
+					responseData = await slackApiRequest.call(this, 'GET', '/users.getPresence', {}, qs);
 				}
 			}
 			if (resource === 'userProfile') {
