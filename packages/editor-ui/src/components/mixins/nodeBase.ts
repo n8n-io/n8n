@@ -341,6 +341,14 @@ export const nodeBase = mixins(
 			}
 		},
 		mouseLeftClick (e: MouseEvent) {
+			// @ts-ignore
+			const path = e.path || (e.composedPath && e.composedPath());
+			for (let index = 0; index < path.length; index++) {
+				if (path[index].className && typeof path[index].className === 'string' && path[index].className.includes('no-select-on-click')) {
+					return;
+				}
+			}
+
 			if (!this.isTouchDevice) {
 				if (this.$store.getters.isActionActive('dragActive')) {
 					this.$store.commit('removeActiveAction', 'dragActive');
