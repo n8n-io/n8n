@@ -927,7 +927,7 @@ export class HttpRequest implements INodeType {
 					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response!, fileName);
 				}
 
-				items[itemIndex] = newItem;
+				returnItems.push(newItem);
 			} else if (responseFormat === 'string') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 
@@ -980,12 +980,6 @@ export class HttpRequest implements INodeType {
 			}
 		}
 
-		if (responseFormat === 'file') {
-			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
-		} else {
-			// For all other ones does the output items get replaced
-			return this.prepareOutputData(returnItems);
-		}
+		return this.prepareOutputData(returnItems);
 	}
 }
