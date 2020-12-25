@@ -40,11 +40,6 @@ export const folderOperations = [
 				value: 'getChildren',
 				description: 'Lists all child folders under the folder.',
 			},
-			// {
-			// 	name: 'List Messages',
-			// 	value: 'listMessages',
-			// 	description: 'Lists all the messages in the folder.',
-			// },
 		],
 		default: 'create',
 		description: 'The operation to perform.',

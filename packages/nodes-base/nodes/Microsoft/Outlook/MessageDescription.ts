@@ -92,6 +92,23 @@ export const messageFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Recipients',
+		name: 'recipients',
+		description: 'Email addresses of recipients. Mutiple can be set separated by comma.',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'sendDraft',
+				],
+			},
+		},
+	},
 	// message:createReply
 	{
 		displayName: 'Reply Type',
@@ -119,6 +136,197 @@ export const messageFields = [
 				],
 			},
 		},
+	},
+	{
+		displayName: 'Comment',
+		name: 'comment',
+		description: 'A comment to include. Can be an empty string.',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'createReply',
+				],
+			},
+		},
+		type: 'string',
+		default: '',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'createReply',
+				],
+				replyType: [
+					'reply',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Attachments',
+				name: 'attachments',
+				type: 'fixedCollection',
+				placeholder: 'Add Attachment',
+				default: {},
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'attachments',
+						displayName: 'Attachment',
+						values: [
+							{
+								displayName: 'Binary Property Name',
+								name: 'binaryPropertyName',
+								type: 'string',
+								default: '',
+								description: 'Name of the binary property containing the data to be added to the email as an attachment',
+							},
+						],
+					},
+				],
+
+			},
+			{
+				displayName: 'BCC Recipients',
+				name: 'bccRecipients',
+				description: 'Email addresses of BCC recipients.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Body Content',
+				name: 'bodyContent',
+				description: 'Message body content.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Body Content Type',
+				name: 'bodyContentType',
+				description: 'Message body content type.',
+				type: 'options',
+				options: [
+					{
+						name: 'HTML',
+						value: 'html',
+					},
+					{
+						name: 'Text',
+						value: 'Text',
+					},
+				],
+				default: 'html',
+			},
+			{
+				displayName: 'CC Recipients',
+				name: 'ccRecipients',
+				description: 'Email addresses of CC recipients.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Headers',
+				name: 'internetMessageHeaders',
+				placeholder: 'Add Header',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'headers',
+						displayName: 'Header',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								description: 'Name of the header.',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value to set for the header.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'From',
+				name: 'from',
+				description: 'The owner of the mailbox which the message is sent.<br>Must correspond to the actual mailbox used.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Importance',
+				name: 'importance',
+				description: 'The importance of the message.',
+				type: 'options',
+				options: [
+					{
+						name: 'Low',
+						value: 'Low',
+					},
+					{
+						name: 'Normal',
+						value: 'Normal',
+					},
+					{
+						name: 'High',
+						value: 'High',
+					},
+				],
+				default: 'Low',
+			},
+			{
+				displayName: 'Read Receipt Requested',
+				name: 'isReadReceiptRequested',
+				description: 'Indicates whether a read receipt is requested for the message.',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Recipients',
+				name: 'toRecipients',
+				description: 'Email addresses of recipients. Multiple can be added separated by comma.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Reply To',
+				name: 'replyTo',
+				description: 'Email addresses to use when replying.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				description: 'The subject of the message.',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 	// message:getAll
 	{
@@ -221,11 +429,8 @@ export const messageFields = [
 	{
 		displayName: 'Recipients',
 		name: 'toRecipients',
-		description: 'Email addresses of recipients.',
+		description: 'Email addresses of recipients. Multiple can be added separated by comma.',
 		type: 'string',
-		typeOptions: {
-			multipleValues: true,
-		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -236,8 +441,7 @@ export const messageFields = [
 				],
 			},
 		},
-		placeholder: 'Add Recipient',
-		default: [],
+		default: '',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -288,11 +492,7 @@ export const messageFields = [
 				name: 'bccRecipients',
 				description: 'Email addresses of BCC recipients.',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Recipient',
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Body Content Type',
@@ -314,9 +514,9 @@ export const messageFields = [
 			{
 				displayName: 'Categories',
 				name: 'categories',
-				type: 'string',
+				type: 'multiOptions',
 				typeOptions: {
-					multipleValues: true,
+					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
 			},
@@ -325,11 +525,7 @@ export const messageFields = [
 				name: 'ccRecipients',
 				description: 'Email addresses of CC recipients.',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Recipient',
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Custom Headers',
@@ -392,13 +588,6 @@ export const messageFields = [
 				default: 'Low',
 			},
 			{
-				displayName: 'Read',
-				name: 'isRead',
-				description: 'Indicates whether the message has been read.',
-				type: 'boolean',
-				default: false,
-			},
-			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
 				description: 'Indicates whether a read receipt is requested for the message.',
@@ -408,11 +597,8 @@ export const messageFields = [
 			{
 				displayName: 'Recipients',
 				name: 'toRecipients',
-				description: 'Email addresses of recipients.',
+				description: 'Email addresses of recipients. Multiple can be added separated by comma.',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
 				displayOptions: {
 					show: {
 						'/operation': [
@@ -420,18 +606,14 @@ export const messageFields = [
 						],
 					},
 				},
-				placeholder: 'Add Recipient',
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Reply To',
 				name: 'replyTo',
 				description: 'Email addresses to use when replying.',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: [],
+				default: '',
 			},
 		],
 	},
@@ -457,11 +639,7 @@ export const messageFields = [
 				name: 'bccRecipients',
 				description: 'Email addresses of BCC recipients.',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Recipient',
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Body Content',
@@ -490,9 +668,9 @@ export const messageFields = [
 			{
 				displayName: 'Categories',
 				name: 'categories',
-				type: 'string',
+				type: 'multiOptions',
 				typeOptions: {
-					multipleValues: true,
+					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
 			},
@@ -501,11 +679,7 @@ export const messageFields = [
 				name: 'ccRecipients',
 				description: 'Email addresses of CC recipients.',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Recipient',
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Custom Headers',
@@ -568,13 +742,6 @@ export const messageFields = [
 				default: 'Low',
 			},
 			{
-				displayName: 'Read',
-				name: 'isRead',
-				description: 'Indicates whether the message has been read.',
-				type: 'boolean',
-				default: false,
-			},
-			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
 				description: 'Indicates whether a read receipt is requested for the message.',
@@ -584,23 +751,16 @@ export const messageFields = [
 			{
 				displayName: 'Recipients',
 				name: 'toRecipients',
-				description: 'Email addresses of recipients.',
+				description: 'Email addresses of recipients. Multiple can be added separated by comma.',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				placeholder: 'Add Recipient',
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Reply To',
 				name: 'replyTo',
 				description: 'Email addresses to use when replying.',
 				type: 'string',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: [],
+				default: '',
 			},
 			{
 				displayName: 'Subject',
@@ -651,6 +811,13 @@ export const messageFields = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Attachments Prefix',
+				name: 'dataPropertyAttachmentsPrefixName',
+				type: 'string',
+				default: 'attachment_',
+				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
+			},
 			{
 				displayName: 'Fields',
 				name: 'fields',

@@ -9,7 +9,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject
+	IDataObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }): Promise<any> { // tslint:disable-line:no-any
@@ -111,14 +112,64 @@ export function createMessage(fields: IDataObject) {
 	}
 
 	// Handle recipient fields
-	['bccRecipients', 'ccRecipients', 'from', 'replyTo', 'sender', 'toRecipients'].forEach(key => {
+	['bccRecipients', 'ccRecipients', 'replyTo', 'sender', 'toRecipients'].forEach(key => {
 		if (Array.isArray(fields[key])) {
 			fields[key] = (fields[key] as string[]).map(email => makeRecipient(email));
 		} else if (fields[key] !== undefined) {
+			fields[key] = (fields[key] as string).split(',').map((recipient: string) => makeRecipient(recipient));
+		}
+	});
+
+	['from', 'sender'].forEach(key => {
+		 if (fields[key] !== undefined) {
 			fields[key] = makeRecipient(fields[key] as string);
 		}
 	});
+
+
 	Object.assign(message, fields);
 
 	return message;
+}
+
+export  async function downloadAttachments(this: IExecuteFunctions, messages: IDataObject[] | IDataObject, prefix: string) {
+	const elements: INodeExecutionData[] = [];
+	if (!Array.isArray(messages)) {
+		messages = [messages];
+	}
+	for (const message of messages) {
+		const element: INodeExecutionData = {
+			json: message,
+			binary: {},
+		};
+		if (message.hasAttachments === true) {
+			const attachments = await microsoftApiRequestAllItems.call(
+				this,
+				'value',
+				'GET',
+				`/messages/${message.id}/attachments`,
+				{},
+			);
+			for (const [index, attachment] of attachments.entries()) {
+				const response = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/messages/${message.id}/attachments/${attachment.id}/$value`,
+					undefined,
+					{},
+					undefined,
+					{},
+					{ encoding: null, resolveWithFullResponse: true },
+				);
+
+				const data = Buffer.from(response.body as string, 'utf8');
+				element.binary![`${prefix}${index}`] = await this.helpers.prepareBinaryData(data as unknown as Buffer, attachment.name, attachment.contentType);
+			}
+		}
+		if (Object.keys(element.binary!).length === 0) {
+			delete element.binary;
+		}
+		elements.push(element);
+	}
+	return elements;
 }

@@ -51,7 +51,9 @@ export const messageAttachmentFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['messageAttachment'],
+				resource: [
+					'messageAttachment',
+				],
 				operation: [
 					'add',
 					'download',

@@ -16,7 +16,7 @@ export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'openid offline_access Mail.ReadWrite Mail.Send',
+			default: 'openid offline_access Mail.ReadWrite Mail.Send MailboxSettings.Read',
 		},
 	];
 }
