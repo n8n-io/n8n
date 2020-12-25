@@ -14,10 +14,15 @@ import {
 import {
 	asanaApiRequest,
 	asanaApiRequestAllItems,
+	getTaskFields,
 	getWorkspaces,
 } from './GenericFunctions';
 
 import * as moment from 'moment-timezone';
+
+import { 
+	snakeCase,
+} from 'change-case';
 
 export class Asana implements INodeType {
 	description: INodeTypeDescription = {
@@ -128,6 +133,11 @@ export class Asana implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a subtask',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all substasks',
 					},
 				],
 				default: 'create',
@@ -269,7 +279,108 @@ export class Asana implements INodeType {
 					},
 				],
 			},
-
+			// ----------------------------------
+			//         subtask:getAll
+			// ----------------------------------
+			{
+				displayName: 'Parent Task ID',
+				name: 'taskId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'subtask',
+						],
+					},
+				},
+				description: 'The task to operate on.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'subtask',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'subtask',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 500,
+				},
+				default: 100,
+				description: 'How many results to return.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						operation: [
+							'getAll',
+						],
+						resource: [
+							'subtask',
+						],
+					},
+				},
+				default: {},
+				placeholder: 'Add Field',
+				options: [
+					{
+						displayName: 'Fields',
+						name: 'opt_fields',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getTaskFields',
+						},
+						default: [
+							'gid',
+							'name',
+							'resource_type',
+						],
+						description: 'Defines fields to return.',
+					},
+					{
+						displayName: 'Pretty',
+						name: 'opt_pretty',
+						type: 'boolean',
+						default: false,
+						description: 'Provides “pretty” output.',
+					},
+				],
+			},
 			// ----------------------------------
 			//         task
 			// ----------------------------------
@@ -487,9 +598,16 @@ export class Asana implements INodeType {
 					{
 						displayName: 'Fields',
 						name: 'opt_fields',
-						type: 'string',
-						default: '',
-						description: 'Defines fields to return. Multiple can be set separated by comma.',
+						type: 'multiOptions',
+						typeOptions: {
+							loadOptionsMethod: 'getTaskFields',
+						},
+						default: [
+							'gid',
+							'name',
+							'resource_type',
+						],
+						description: 'Defines fields to return.',
 					},
 					{
 						displayName: 'Pretty',
@@ -519,7 +637,7 @@ export class Asana implements INodeType {
 						description: 'The section to filter tasks on.',
 					},
 					{
-						displayName: 'workspace',
+						displayName: 'Workspace',
 						name: 'workspace',
 						type: 'options',
 						typeOptions: {
@@ -1522,6 +1640,18 @@ export class Asana implements INodeType {
 
 				return returnData;
 			},
+			async getTaskFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+
+				const returnData: INodePropertyOptions[] = [];
+				for (const field of getTaskFields()) {
+					const value = snakeCase(field);
+					returnData.push({
+						name: field,
+						value: (value === '') ? '*' : value,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -1563,6 +1693,40 @@ export class Asana implements INodeType {
 					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					responseData = responseData.data;
+				}
+
+				if (operation === 'getAll') {
+					// ----------------------------------
+					//        subtask:getAll
+					// ----------------------------------
+					const taskId = this.getNodeParameter('taskId', i) as string;
+
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					const options = this.getNodeParameter('options', i) as IDataObject;
+
+					requestMethod = 'GET';
+					endpoint = `/tasks/${taskId}/subtasks`;
+
+					Object.assign(qs, options);
+					
+					if (qs.opt_fields) {
+						const fields = qs.opt_fields as string[];
+						if (fields.includes('*')) {
+							qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
+						} else {
+							qs.opt_fields = (qs.opt_fields as string[]).join(',');
+						}
+					}
+
+					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					responseData = responseData.data;
+
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as boolean;
+						responseData = responseData.splice(0, limit);
+					}
 				}
 			}
 			if (resource === 'task') {
@@ -1624,6 +1788,15 @@ export class Asana implements INodeType {
 
 						Object.assign(qs, filters);
 
+						if (qs.opt_fields) {
+							const fields = qs.opt_fields as string[];
+							if (fields.includes('*')) {
+								qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
+							} else {
+								qs.opt_fields = (qs.opt_fields as string[]).join(',');
+							}
+						}
+
 						if (qs.modified_since) {
 							qs.modified_since = moment.tz(qs.modified_since as string, timezone).format();
 						}
@@ -1631,17 +1804,11 @@ export class Asana implements INodeType {
 						if (qs.completed_since) {
 							qs.completed_since = moment.tz(qs.completed_since as string, timezone).format();
 						}
-
-						if (qs.fields) {
-							qs.fields = (qs.fields as string).split(',');
-						}
 							
 						if (returnAll) {
-	
 							responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 	
 						} else {
-	
 							qs.limit = this.getNodeParameter('limit', i) as boolean;
 	
 							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);

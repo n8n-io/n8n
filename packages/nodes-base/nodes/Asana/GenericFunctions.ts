@@ -121,3 +121,40 @@ export async function getWorkspaces(this: ILoadOptionsFunctions): Promise < INod
 
 	return returnData;
 }
+
+export function getTaskFields() {
+	return [
+		'*',
+		'GID',
+		'Resource Type',
+		'name',
+		'Approval Status',
+		'Assignee Status',
+		'Completed',
+		'Completed At',
+		'Completed By',
+		'Created At',
+		'Dependencies',
+		'Dependents',
+		'Due At',
+		'Due On',
+		'External',
+		'HTML Notes',
+		'Liked',
+		'Likes',
+		'Memberships',
+		'Modified At',
+		'Notes',
+		'Num Likes',
+		'Resource Subtype',
+		'Start On',
+		'Assignee',
+		'Custom Fields',
+		'Followers',
+		'Parent',
+		'Permalink URL',
+		'Projects',
+		'Tags',
+		'Workspace',
+	];
+}
