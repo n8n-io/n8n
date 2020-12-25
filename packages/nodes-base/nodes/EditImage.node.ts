@@ -1070,7 +1070,8 @@ export class EditImage implements INodeType {
 			return item;
 		}
 
-		for (const operationData of operations) {
+		for (let i = 0; i < operations.length; i++) {
+			const operationData = operations[i];
 			if (operationData.operation === 'blur') {
 				gmInstance = gmInstance!.blur(operationData.blur as number, operationData.sigma as number);
 			} else if (operationData.operation === 'border') {
@@ -1085,12 +1086,17 @@ export class EditImage implements INodeType {
 					throw new Error(`Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`);
 				}
 
-				gmInstance = await gmInstance!;
 				const { fd, path, cleanup } = await file();
 				cleanupFunctions.push(cleanup);
 				await fsWriteFileAsync(fd, Buffer.from(item.binary![operationData.dataPropertyNameComposite as string].data, BINARY_ENCODING));
 
 				gmInstance = gmInstance!.composite(path).geometry(geometryString);
+
+				if (operations.length !== i + 1) {
+					// If there are other operations after the current one create a new gm instance
+					// because else things do get messed up
+					gmInstance = gm(gmInstance.stream());
+				}
 			} else if (operationData.operation === 'create') {
 				gmInstance = gm(operationData.width as number, operationData.height as number, operationData.backgroundColor as string);
 					if (!options.format) {
