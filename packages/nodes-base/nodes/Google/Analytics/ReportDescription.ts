@@ -186,7 +186,7 @@ export const reportFields = [
 								displayName: 'Expression',
 								name: 'expression',
 								type: 'string',
-								default: 'ga:users',
+								default: 'ga:newUsers',
 								description: `A metric expression in the request. An expression is constructed from one or more metrics and numbers.<br>
 								Accepted operators include: Plus (+), Minus (-), Negation (Unary -), Divided by (/), Multiplied by (*), Parenthesis,<br>
 								Positive cardinal numbers (0-9), can include decimals and is limited to 1024 characters. Example ga:totalRefunds/ga:users,<br>

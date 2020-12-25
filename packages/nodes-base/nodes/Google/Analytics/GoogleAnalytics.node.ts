@@ -24,9 +24,14 @@ import {
 import { 
 	googleApiRequest,
 	googleApiRequestAllItems,
+	simplify,
 } from './GenericFunctions';
 
 import * as moment from 'moment-timezone';
+
+import { 
+	IData
+} from './Interfaces';
 
 export class GoogleAnalytics implements INodeType {
 	description: INodeTypeDescription = {
@@ -98,7 +103,7 @@ export class GoogleAnalytics implements INodeType {
 				);
 
 				for (const dimesion of dimensions) {
-					if (dimesion.attributes.status !== 'DEPRECATED') {
+					if (dimesion.attributes.type === 'DIMENSION' && dimesion.attributes.status !== 'DEPRECATED') {
 						returnData.push({
 							name: dimesion.attributes.uiName,
 							value: dimesion.id,
@@ -135,24 +140,6 @@ export class GoogleAnalytics implements INodeType {
 					) as IDataObject;
 					const simple = this.getNodeParameter('simple', i) as boolean;
 
-					interface IData {
-						viewId: string;
-						dimensions?: IDimension[];
-						pageSize?: number;
-						metrics?: IMetric[];
-					}
-
-					interface IDimension  {
-						name?: string;
-						histogramBuckets?: string[];
-					}
-
-					interface IMetric  {
-						expression?: string;
-						alias?: string;
-						formattingType?: string;
-					}
-
 					const body: IData = {
 							viewId,
 					};
@@ -179,8 +166,9 @@ export class GoogleAnalytics implements INodeType {
 							);
 						}
 					}
+
 					if(additionalFields.metricsUi) {
-						const metrics = (additionalFields.metricsUi as IDataObject).metricsValues as IDataObject[];
+						const metrics = (additionalFields.metricsUi as IDataObject).metricValues as IDataObject[];
 						body.metrics = metrics;
 					}
 					if(additionalFields.dimensionUi){
@@ -203,16 +191,7 @@ export class GoogleAnalytics implements INodeType {
 					responseData = responseData.reports;		
 
 					if (simple === true) {
-						const { columnHeader: { dimensions }, data: { rows } } = responseData[0];
-						responseData = [];
-						for (const row of rows) {
-							const data: IDataObject = {};
-							for (let i = 0; i < dimensions.length; i++) {
-								data[dimensions[i]] = row.dimensions[i];
-								data['total'] = row.metrics[0].values.join(',');
-							}
-							responseData.push(data);
-						}
+						responseData = simplify(responseData);
 					}
 				}
 			}

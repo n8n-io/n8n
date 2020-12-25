@@ -83,3 +83,21 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 	return returnData;
 }
+
+export function simplify(responseData: any) {
+	const { columnHeader: { dimensions }, data: { rows } } = responseData[0];
+	responseData = [];
+	for (const row of rows) {
+		const data: IDataObject = {};
+		if (dimensions) {
+			for (let i = 0; i < dimensions.length; i++) {
+				data[dimensions[i]] = row.dimensions[i];
+				data['total'] = row.metrics[0].values.join(',');
+			}
+		} else {
+			data['total'] = row.metrics[0].values.join(',');
+		}
+		responseData.push(data);
+	}
+	return responseData;
+}
