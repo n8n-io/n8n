@@ -18,7 +18,6 @@ import {
 } from 'path';
 import {
 	writeFile as fsWriteFile,
-	writeFileSync as fsWriteFileSync,
 } from 'fs';
 import { promisify } from 'util';
 const fsWriteFileAsync = promisify(fsWriteFile);
@@ -1090,7 +1089,13 @@ export class EditImage implements INodeType {
 				cleanupFunctions.push(cleanup);
 				await fsWriteFileAsync(fd, Buffer.from(item.binary![operationData.dataPropertyNameComposite as string].data, BINARY_ENCODING));
 
-				gmInstance = gmInstance!.composite(path).geometry(geometryString);
+				if (operations[0].operation === 'create') {
+					// It seems like if the image gets created newly we have to create a new gm instance
+					// else it fails for some reason
+					gmInstance = gm(gmInstance!.stream('png')).geometry(geometryString).composite(path);
+				} else {
+					gmInstance = gmInstance!.geometry(geometryString).composite(path);
+				}
 
 				if (operations.length !== i + 1) {
 					// If there are other operations after the current one create a new gm instance
@@ -1179,13 +1184,15 @@ export class EditImage implements INodeType {
 			// but the incoming data does not get changed.
 			Object.assign(newItem.binary, item.binary);
 			// Make a deep copy of the binary data we change
-			newItem.binary![dataPropertyName as string] = JSON.parse(JSON.stringify(newItem.binary![dataPropertyName as string]));
-		} else {
-			newItem.binary = {
-				[dataPropertyName as string]: {
-					data: '',
-					mimeType: '',
-				},
+			if (newItem.binary![dataPropertyName as string]) {
+				newItem.binary![dataPropertyName as string] = JSON.parse(JSON.stringify(newItem.binary![dataPropertyName as string]));
+			}
+		}
+
+		if (newItem.binary![dataPropertyName as string] === undefined) {
+			newItem.binary![dataPropertyName as string] = {
+				data: '',
+				mimeType: '',
 			};
 		}
 
