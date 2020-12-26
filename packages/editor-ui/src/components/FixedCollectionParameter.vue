@@ -10,8 +10,12 @@
 			<div v-if="multipleValues === true">
 				<div v-for="(value, index) in values[property.name]" :key="property.name + index" class="parameter-item">
 					<div class="parameter-item-wrapper">
-						<div class="delete-option" title="Delete" v-if="!isReadOnly">
+						<div class="delete-option" v-if="!isReadOnly">
 							<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name, index)" />
+							<div v-if="sortable">
+								<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(property.name, index)" />
+								<font-awesome-icon v-if="index !== (values[property.name].length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(property.name, index)" />
+							</div>
 						</div>
 						<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name, index)" :hideDelete="true" @valueChanged="valueChanged" />
 					</div>
@@ -19,7 +23,7 @@
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
-					<div class="delete-option" title="Delete" v-if="!isReadOnly">
+					<div class="delete-option" v-if="!isReadOnly">
 						<font-awesome-icon icon="trash" class="reset-icon clickable" title="Delete Item" @click="deleteOption(property.name)" />
 					</div>
 					<parameter-input-list :parameters="property.values" :nodeValues="nodeValues" :path="getPropertyPath(property.name)" class="parameter-item" @valueChanged="valueChanged" :hideDelete="true" />
@@ -111,6 +115,9 @@ export default mixins(genericHelpers)
 				}
 				return [];
 			},
+			sortable (): string {
+				return this.parameter.typeOptions && this.parameter.typeOptions.sortable;
+			},
 		},
 		methods: {
 			deleteOption (optionName: string, index?: number) {
@@ -132,6 +139,26 @@ export default mixins(genericHelpers)
 				}
 
 				return undefined;
+			},
+			moveOptionDown (optionName: string, index?: number) {
+				this.values[optionName].splice(index + 1, 0, this.values[optionName].splice(index, 1)[0]);
+
+				const parameterData = {
+					name: this.getPropertyPath(optionName),
+					value: this.values[optionName],
+				};
+
+				this.$emit('valueChanged', parameterData);
+			},
+			moveOptionUp (optionName: string, index?: number) {
+				this.values[optionName].splice(index - 1, 0, this.values[optionName].splice(index, 1)[0]);
+
+				const parameterData = {
+					name: this.getPropertyPath(optionName),
+					value: this.values[optionName],
+				};
+
+				this.$emit('valueChanged', parameterData);
 			},
 			optionSelected (optionName: string) {
 				const option = this.getOptionProperties(optionName);
