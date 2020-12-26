@@ -140,7 +140,7 @@ export default mixins(genericHelpers)
 
 				return undefined;
 			},
-			moveOptionDown (optionName: string, index?: number) {
+			moveOptionDown (optionName: string, index: number) {
 				this.values[optionName].splice(index + 1, 0, this.values[optionName].splice(index, 1)[0]);
 
 				const parameterData = {
@@ -150,7 +150,7 @@ export default mixins(genericHelpers)
 
 				this.$emit('valueChanged', parameterData);
 			},
-			moveOptionUp (optionName: string, index?: number) {
+			moveOptionUp (optionName: string, index: number) {
 				this.values[optionName].splice(index - 1, 0, this.values[optionName].splice(index, 1)[0]);
 
 				const parameterData = {

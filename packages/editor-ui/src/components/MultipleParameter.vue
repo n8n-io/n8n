@@ -104,7 +104,7 @@ export default mixins(genericHelpers)
 			getPath (index?: number): string {
 				return this.path + (index !== undefined ? `[${index}]` : '');
 			},
-			moveOptionDown (index?: number) {
+			moveOptionDown (index: number) {
 				this.values.splice(index + 1, 0, this.values.splice(index, 1)[0]);
 
 				const parameterData = {
@@ -114,7 +114,7 @@ export default mixins(genericHelpers)
 
 				this.$emit('valueChanged', parameterData);
 			},
-			moveOptionUp (index?: number) {
+			moveOptionUp (index: number) {
 				this.values.splice(index - 1, 0, this.values.splice(index, 1)[0]);
 
 				const parameterData = {
