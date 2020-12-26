@@ -10,8 +10,12 @@
 		</div>
 
 		<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
-			<div class="delete-item clickable" v-if="!isReadOnly" title="Delete Item" @click="deleteItem(index)">
-				<font-awesome-icon icon="trash" />
+			<div class="delete-item clickable" v-if="!isReadOnly">
+				<font-awesome-icon icon="trash" title="Delete Item" @click="deleteItem(index)" />
+				<div v-if="sortable">
+					<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" title="Move up" @click="moveOptionUp(index)" />
+					<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" title="Move down" @click="moveOptionDown(index)" />
+				</div>
 			</div>
 			<div v-if="parameter.type === 'collection'">
 				<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
@@ -67,6 +71,9 @@ export default mixins(genericHelpers)
 			hideDelete (): boolean {
 				return this.parameter.options.length === 1;
 			},
+			sortable (): string {
+				return this.parameter.typeOptions && this.parameter.typeOptions.sortable;
+			},
 		},
 		methods: {
 			addItem () {
@@ -97,6 +104,26 @@ export default mixins(genericHelpers)
 			getPath (index?: number): string {
 				return this.path + (index !== undefined ? `[${index}]` : '');
 			},
+			moveOptionDown (index?: number) {
+				this.values.splice(index + 1, 0, this.values.splice(index, 1)[0]);
+
+				const parameterData = {
+					name: this.path,
+					value: this.values,
+				};
+
+				this.$emit('valueChanged', parameterData);
+			},
+			moveOptionUp (index?: number) {
+				this.values.splice(index - 1, 0, this.values.splice(index, 1)[0]);
+
+				const parameterData = {
+					name: this.path,
+					value: this.values,
+				};
+
+				this.$emit('valueChanged', parameterData);
+			},
 			valueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
 			},
@@ -125,6 +152,7 @@ export default mixins(genericHelpers)
 	top: .3em;
 	z-index: 999;
 	color: #f56c6c;
+	width: 15px;
 
 	:hover {
 		color: #ff0000;
