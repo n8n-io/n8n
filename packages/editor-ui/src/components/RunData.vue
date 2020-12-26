@@ -594,10 +594,6 @@ export default mixins(
 					// Data is reasonable small (< 200kb) so display it directly
 					this.showData = true;
 				}
-
-				if (this.displayMode === 'Binary' && this.binaryData.length === 0) {
-					this.displayMode = 'Table';
-				}
 			},
 		},
 		watch: {
@@ -606,6 +602,12 @@ export default mixins(
 				this.outputIndex = 0;
 				this.maxDisplayItems = 25;
 				this.refreshDataSize();
+				if (this.displayMode === 'Binary') {
+					this.closeBinaryDataDisplay();
+					if (this.binaryData.length === 0) {
+						this.displayMode = 'Table';
+					}
+				}
 			},
 			jsonData () {
 				this.refreshDataSize();
