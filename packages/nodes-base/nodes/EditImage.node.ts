@@ -1035,7 +1035,7 @@ export class EditImage implements INodeType {
 				{
 					operation,
 					...operationParameters,
-				}
+				},
 			];
 		}
 
