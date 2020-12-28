@@ -818,7 +818,7 @@ export class StripeTrigger implements INodeType {
 				try {
 					await stripeApiRequest.call(this, 'GET', endpoint, {});
 				} catch (e) {
-					if (e.message.includes('[404]:')) {
+					if (e.message.includes('resource_missing')) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
