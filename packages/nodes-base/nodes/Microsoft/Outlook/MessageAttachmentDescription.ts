@@ -18,22 +18,22 @@ export const messageAttachmentOperations = [
 			{
 				name: 'Add',
 				value: 'add',
-				description: 'Add an attachment to a message.',
+				description: 'Add an attachment to a message',
 			},
 			{
 				name: 'Download',
 				value: 'download',
-				description: 'Download attachment content.',
+				description: 'Download attachment content',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get an attachment from a message.',
+				description: 'Get an attachment from a message',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all the message\'s attachments.',
+				description: 'Get all the message\'s attachments',
 			},
 		],
 		default: 'add',
@@ -82,25 +82,7 @@ export const messageAttachmentFields = [
 			},
 		},
 	},
-	// messageAttachment:add
-	{
-		displayName: 'File Name',
-		name: 'fileName',
-		description: 'Filename of the attachment.',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'messageAttachment',
-				],
-				operation: [
-					'add',
-				],
-			},
-		},
-	},
+
 	// messageAttachment:getAll, messageAttachment:listAttachments
 	{
 		displayName: 'Return All',
@@ -143,6 +125,8 @@ export const messageAttachmentFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
+
+
 	// messageAttachment:create, messageAttachment:update, messageAttachment:send
 
 	// File operations
@@ -165,6 +149,35 @@ export const messageAttachmentFields = [
 			},
 		},
 	},
+
+	// messageAttachment:add
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'messageAttachment',
+				],
+				operation: [
+					'add',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'File Name',
+				name: 'fileName',
+				description: 'Filename of the attachment. If not set will the file-name of the binary property be used, if it exists.',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+
 	// Get & Get All operations
 	{
 		displayName: 'Additional Fields',

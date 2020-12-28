@@ -45,7 +45,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -54,7 +54,7 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 	query['$top'] = 100;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
+		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri, headers);
 		uri = responseData['@odata.nextLink'];
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
@@ -64,7 +64,7 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -73,7 +73,7 @@ export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | 
 	query['$skip'] = 0;
 
 	do {
-		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
+		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, undefined, headers);
 		query['$skip'] += query['$top'];
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
@@ -121,7 +121,7 @@ export function createMessage(fields: IDataObject) {
 	});
 
 	['from', 'sender'].forEach(key => {
-		 if (fields[key] !== undefined) {
+		if (fields[key] !== undefined) {
 			fields[key] = makeRecipient(fields[key] as string);
 		}
 	});
@@ -132,7 +132,7 @@ export function createMessage(fields: IDataObject) {
 	return message;
 }
 
-export  async function downloadAttachments(this: IExecuteFunctions, messages: IDataObject[] | IDataObject, prefix: string) {
+export async function downloadAttachments(this: IExecuteFunctions, messages: IDataObject[] | IDataObject, prefix: string) {
 	const elements: INodeExecutionData[] = [];
 	if (!Array.isArray(messages)) {
 		messages = [messages];

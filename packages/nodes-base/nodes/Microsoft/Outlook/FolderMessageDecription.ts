@@ -18,7 +18,7 @@ export const folderMessageOperations = [
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all the messages in a folder.',
+				description: 'Get all the messages in a folder',
 			},
 		],
 		default: 'create',

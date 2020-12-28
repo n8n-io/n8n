@@ -16,52 +16,42 @@ export const messageOperations = [
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a draft of a new message.',
-			},
-			{
-				name: 'Create Reply',
-				value: 'createReply',
-				description: 'Create a draft of a reply message.',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a message.',
+				description: 'Delete a message',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a single message.',
+				description: 'Get a single message',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all messages in the signed-in user\'s mailbox.',
+				description: 'Get all messages in the signed-in user\'s mailbox',
 			},
 			{
 				name: 'Get MIME Content',
 				value: 'getMime',
-				description: 'Get MIME content of a message.',
+				description: 'Get MIME content of a message',
+			},
+			{
+				name: 'Reply',
+				value: 'reply',
+				description: 'Create reply to a message',
 			},
 			{
 				name: 'Send',
 				value: 'send',
-				description: 'Send a message.',
-			},
-			{
-				name: 'Send Draft',
-				value: 'sendDraft',
-				description: 'Send an existing draft message.',
+				description: 'Send a message',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a message.',
+				description: 'Update a message',
 			},
 		],
-		default: 'create',
+		default: 'send',
 		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
@@ -81,35 +71,18 @@ export const messageFields = [
 				],
 				operation: [
 					'addAttachment',
-					'createReply',
 					'delete',
 					'get',
 					'getAttachment',
 					'getMime',
-					'sendDraft',
 					'update',
+					'reply',
 				],
 			},
 		},
 	},
-	{
-		displayName: 'Recipients',
-		name: 'recipients',
-		description: 'Email addresses of recipients. Mutiple can be set separated by comma.',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'sendDraft',
-				],
-			},
-		},
-	},
-	// message:createReply
+
+	// message:reply
 	{
 		displayName: 'Reply Type',
 		name: 'replyType',
@@ -132,7 +105,7 @@ export const messageFields = [
 					'message',
 				],
 				operation: [
-					'createReply',
+					'reply',
 				],
 			},
 		},
@@ -147,12 +120,29 @@ export const messageFields = [
 					'message',
 				],
 				operation: [
-					'createReply',
+					'reply',
 				],
 			},
 		},
 		type: 'string',
 		default: '',
+	},
+	{
+		displayName: 'Send',
+		name: 'send',
+		description: 'Send the reply message directly. If not set, it will be saved as draft.',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'reply',
+				],
+			},
+		},
+		type: 'boolean',
+		default: true,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -166,7 +156,7 @@ export const messageFields = [
 					'message',
 				],
 				operation: [
-					'createReply',
+					'reply',
 				],
 				replyType: [
 					'reply',
@@ -328,6 +318,7 @@ export const messageFields = [
 			},
 		],
 	},
+
 	// message:getAll
 	{
 		displayName: 'Return All',
@@ -370,26 +361,8 @@ export const messageFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
-	// message:send
-	{
-		displayName: 'Save To Sent Items',
-		name: 'saveToSentItems',
-		description: 'Indicates whether to save the message in Sent Items.',
-		type: 'boolean',
-		default: true,
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-				],
-			},
-		},
-	},
-	// message:create, message:update, message:send
 
+	// message:create, message:update, message:send
 	{
 		displayName: 'Subject',
 		name: 'subject',
@@ -441,6 +414,7 @@ export const messageFields = [
 				],
 			},
 		},
+		required: true,
 		default: '',
 	},
 	{
@@ -455,7 +429,6 @@ export const messageFields = [
 					'message',
 				],
 				operation: [
-					'create',
 					'send',
 				],
 			},
@@ -599,13 +572,6 @@ export const messageFields = [
 				name: 'toRecipients',
 				description: 'Email addresses of recipients. Multiple can be added separated by comma.',
 				type: 'string',
-				displayOptions: {
-					show: {
-						'/operation': [
-							'create',
-						],
-					},
-				},
 				default: '',
 			},
 			{
@@ -615,162 +581,16 @@ export const messageFields = [
 				type: 'string',
 				default: '',
 			},
-		],
-	},
-	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'update',
-				],
-			},
-		},
-		options: [
 			{
-				displayName: 'BCC Recipients',
-				name: 'bccRecipients',
-				description: 'Email addresses of BCC recipients.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Body Content',
-				name: 'bodyContent',
-				description: 'Message body content.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Body Content Type',
-				name: 'bodyContentType',
-				description: 'Message body content type.',
-				type: 'options',
-				options: [
-					{
-						name: 'HTML',
-						value: 'html',
-					},
-					{
-						name: 'Text',
-						value: 'Text',
-					},
-				],
-				default: 'html',
-			},
-			{
-				displayName: 'Categories',
-				name: 'categories',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				default: [],
-			},
-			{
-				displayName: 'CC Recipients',
-				name: 'ccRecipients',
-				description: 'Email addresses of CC recipients.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Headers',
-				name: 'internetMessageHeaders',
-				placeholder: 'Add Header',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
-					{
-						name: 'headers',
-						displayName: 'Header',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								description: 'Name of the header.',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value to set for the header.',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'From',
-				name: 'from',
-				description: 'The owner of the mailbox which the message is sent.<br>Must correspond to the actual mailbox used.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Importance',
-				name: 'importance',
-				description: 'The importance of the message.',
-				type: 'options',
-				options: [
-					{
-						name: 'Low',
-						value: 'Low',
-					},
-					{
-						name: 'Normal',
-						value: 'Normal',
-					},
-					{
-						name: 'High',
-						value: 'High',
-					},
-				],
-				default: 'Low',
-			},
-			{
-				displayName: 'Read Receipt Requested',
-				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message.',
+				displayName: 'Save To Sent Items',
+				name: 'saveToSentItems',
+				description: 'Indicates whether to save the message in Sent Items.',
 				type: 'boolean',
-				default: false,
-			},
-			{
-				displayName: 'Recipients',
-				name: 'toRecipients',
-				description: 'Email addresses of recipients. Multiple can be added separated by comma.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Reply To',
-				name: 'replyTo',
-				description: 'Email addresses to use when replying.',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Subject',
-				name: 'subject',
-				description: 'The subject of the message.',
-				type: 'string',
-				default: '',
+				default: true,
 			},
 		],
 	},
+
 	// File operations
 	{
 		displayName: 'Binary Property',
@@ -790,51 +610,8 @@ export const messageFields = [
 			},
 		},
 	},
-	// message:create, message:send
 
-	// Get & Get All operations
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'get',
-					'getAll',
-				],
-			},
-		},
-		options: [
-			{
-				displayName: 'Attachments Prefix',
-				name: 'dataPropertyAttachmentsPrefixName',
-				type: 'string',
-				default: 'attachment_',
-				description: 'Prefix for name of the binary property to which to<br />write the attachments. An index starting with 0 will be added.<br />So if name is "attachment_" the first attachment is saved to "attachment_0"',
-			},
-			{
-				displayName: 'Fields',
-				name: 'fields',
-				type: 'string',
-				default: '',
-				description: 'Fields the response will contain. Multiple can be added separated by comma.',
-			},
-			{
-				displayName: 'Filter',
-				name: 'filter',
-				type: 'string',
-				default: '',
-				placeholder:'isRead eq false',
-				description: 'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter" target="_blank">here</a>.',
-			},
-		],
-	},
+	// message:move
 	{
 		displayName: 'Folder ID',
 		name: 'folderId',

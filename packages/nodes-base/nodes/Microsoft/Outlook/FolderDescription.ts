@@ -18,27 +18,27 @@ export const folderOperations = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a new mail folder in the root folder of the user\'s mailbox.',
+				description: 'Create a new mail folder in the root folder of the user\'s mailbox',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a folder.',
+				description: 'Delete a folder',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a single folder details.',
+				description: 'Get a single folder details',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all folders under the root folder of the signed-in user.',
+				description: 'Get all folders under the root folder of the signed-in user',
 			},
 			{
 				name: 'Get Children',
 				value: 'getChildren',
-				description: 'Lists all child folders under the folder.',
+				description: 'Lists all child folders under the folder',
 			},
 		],
 		default: 'create',
