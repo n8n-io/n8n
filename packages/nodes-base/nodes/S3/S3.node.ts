@@ -105,11 +105,11 @@ export class S3 implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const qs: IDataObject = {};
-		const headers: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < items.length; i++) {
+			const headers: IDataObject = {};
 			if (resource === 'bucket') {
 				//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 				if (operation === 'create') {
