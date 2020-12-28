@@ -1,4 +1,4 @@
-import { 
+import {
 	OptionsWithUri,
 } from 'request';
 
@@ -9,7 +9,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject
+	IDataObject,
+	INodeExecutionData,
 } from 'n8n-workflow';
 
 export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}, option: IDataObject = { json: true }): Promise<any> { // tslint:disable-line:no-any
@@ -24,11 +25,11 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 	};
 	try {
 		Object.assign(options, option);
-		
+
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		
+
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
@@ -44,7 +45,7 @@ export async function microsoftApiRequest(this: IExecuteFunctions | IExecuteSing
 	}
 }
 
-export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -63,7 +64,7 @@ export async function microsoftApiRequestAllItems(this: IExecuteFunctions | ILoa
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function microsoftApiRequestAllItemsSkip(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -91,7 +92,7 @@ export function makeRecipient(email: string) {
 }
 
 export function createMessage(fields: IDataObject) {
-	const message : IDataObject = {};
+	const message: IDataObject = {};
 
 	// Create body object
 	if (fields.bodyContent || fields.bodyContentType) {
@@ -111,14 +112,64 @@ export function createMessage(fields: IDataObject) {
 	}
 
 	// Handle recipient fields
-	['bccRecipients', 'ccRecipients', 'from', 'replyTo', 'sender', 'toRecipients'].forEach(key => {
+	['bccRecipients', 'ccRecipients', 'replyTo', 'sender', 'toRecipients'].forEach(key => {
 		if (Array.isArray(fields[key])) {
 			fields[key] = (fields[key] as string[]).map(email => makeRecipient(email));
 		} else if (fields[key] !== undefined) {
+			fields[key] = (fields[key] as string).split(',').map((recipient: string) => makeRecipient(recipient));
+		}
+	});
+
+	['from', 'sender'].forEach(key => {
+		 if (fields[key] !== undefined) {
 			fields[key] = makeRecipient(fields[key] as string);
 		}
 	});
+
+
 	Object.assign(message, fields);
 
 	return message;
+}
+
+export  async function downloadAttachments(this: IExecuteFunctions, messages: IDataObject[] | IDataObject, prefix: string) {
+	const elements: INodeExecutionData[] = [];
+	if (!Array.isArray(messages)) {
+		messages = [messages];
+	}
+	for (const message of messages) {
+		const element: INodeExecutionData = {
+			json: message,
+			binary: {},
+		};
+		if (message.hasAttachments === true) {
+			const attachments = await microsoftApiRequestAllItems.call(
+				this,
+				'value',
+				'GET',
+				`/messages/${message.id}/attachments`,
+				{},
+			);
+			for (const [index, attachment] of attachments.entries()) {
+				const response = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/messages/${message.id}/attachments/${attachment.id}/$value`,
+					undefined,
+					{},
+					undefined,
+					{},
+					{ encoding: null, resolveWithFullResponse: true },
+				);
+
+				const data = Buffer.from(response.body as string, 'utf8');
+				element.binary![`${prefix}${index}`] = await this.helpers.prepareBinaryData(data as unknown as Buffer, attachment.name, attachment.contentType);
+			}
+		}
+		if (Object.keys(element.binary!).length === 0) {
+			delete element.binary;
+		}
+		elements.push(element);
+	}
+	return elements;
 }

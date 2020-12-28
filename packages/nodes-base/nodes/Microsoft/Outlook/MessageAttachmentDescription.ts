@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -28,12 +28,12 @@ export const messageAttachmentOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get an attachment from a messageAttachment.',
+				description: 'Get an attachment from a message.',
 			},
 			{
 				name: 'Get All',
 				value: 'getAll',
-				description: 'Get all the messageAttachment\'s attachments.',
+				description: 'Get all the message\'s attachments.',
 			},
 		],
 		default: 'add',
@@ -51,7 +51,9 @@ export const messageAttachmentFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['messageAttachment'],
+				resource: [
+					'messageAttachment',
+				],
 				operation: [
 					'add',
 					'download',
