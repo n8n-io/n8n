@@ -20,7 +20,7 @@ import {
 
 import * as moment from 'moment-timezone';
 
-import { 
+import {
 	snakeCase,
 } from 'change-case';
 
@@ -1709,7 +1709,7 @@ export class Asana implements INodeType {
 					endpoint = `/tasks/${taskId}/subtasks`;
 
 					Object.assign(qs, options);
-					
+
 					if (qs.opt_fields) {
 						const fields = qs.opt_fields as string[];
 						if (fields.includes('*')) {
@@ -1774,48 +1774,48 @@ export class Asana implements INodeType {
 					responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					responseData = responseData.data;
-				
+
 				} else if (operation === 'getAll') {
-						// ----------------------------------
-						//        task:getAll
-						// ----------------------------------
+					// ----------------------------------
+					//        task:getAll
+					// ----------------------------------
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-	
-						requestMethod = 'GET';
-						endpoint = `/tasks`;
+					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
-						Object.assign(qs, filters);
+					requestMethod = 'GET';
+					endpoint = `/tasks`;
 
-						if (qs.opt_fields) {
-							const fields = qs.opt_fields as string[];
-							if (fields.includes('*')) {
-								qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
-							} else {
-								qs.opt_fields = (qs.opt_fields as string[]).join(',');
-							}
-						}
+					Object.assign(qs, filters);
 
-						if (qs.modified_since) {
-							qs.modified_since = moment.tz(qs.modified_since as string, timezone).format();
-						}
-
-						if (qs.completed_since) {
-							qs.completed_since = moment.tz(qs.completed_since as string, timezone).format();
-						}
-							
-						if (returnAll) {
-							responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
-	
+					if (qs.opt_fields) {
+						const fields = qs.opt_fields as string[];
+						if (fields.includes('*')) {
+							qs.opt_fields = getTaskFields().map((e) => snakeCase(e)).join(',');
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as boolean;
-	
-							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
-	
-							responseData = responseData.data;
+							qs.opt_fields = (qs.opt_fields as string[]).join(',');
 						}
-					
+					}
+
+					if (qs.modified_since) {
+						qs.modified_since = moment.tz(qs.modified_since as string, timezone).format();
+					}
+
+					if (qs.completed_since) {
+						qs.completed_since = moment.tz(qs.completed_since as string, timezone).format();
+					}
+
+					if (returnAll) {
+						responseData = await asanaApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+
+					} else {
+						qs.limit = this.getNodeParameter('limit', i) as boolean;
+
+						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+						responseData = responseData.data;
+					}
+
 				} else if (operation === 'move') {
 					// ----------------------------------
 					//         task:move
