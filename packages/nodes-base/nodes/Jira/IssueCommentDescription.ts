@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -151,7 +151,7 @@ export const issueCommentFields = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts renderedBody, which returns the comment body rendered in HTML.',
+				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
@@ -221,7 +221,7 @@ export const issueCommentFields = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts renderedBody, which returns the comment body rendered in HTML.',
+				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
@@ -315,7 +315,7 @@ export const issueCommentFields = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts renderedBody, which returns the comment body rendered in HTML.',
+				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
@@ -477,7 +477,7 @@ export const issueCommentFields = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts renderedBody, which returns the comment body rendered in HTML.',
+				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
