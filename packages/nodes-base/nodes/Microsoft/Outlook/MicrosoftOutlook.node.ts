@@ -116,7 +116,7 @@ export class MicrosoftOutlook implements INodeType {
 			...folderMessageFields,
 
 			// Draft & Message
-			...draftMessageSharedFields
+			...draftMessageSharedFields,
 		],
 	};
 
