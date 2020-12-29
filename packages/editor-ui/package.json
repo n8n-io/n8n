@@ -61,7 +61,7 @@
     "flatted": "^2.0.0",
     "jquery": "^3.4.1",
     "jshint": "^2.9.7",
-    "jsplumb": "^2.10.0",
+    "jsplumb": "2.15.4",
     "lodash.debounce": "^4.0.8",
     "lodash.get": "^4.4.2",
     "lodash.set": "^4.3.2",
