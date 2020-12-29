@@ -422,8 +422,8 @@ export class Webhook implements INodeType {
 							binaryPropertyName = `${options.binaryPropertyName}${count}`;
 						}
 
-						const fileJson = files[file].toJSON() as IDataObject;
-						const fileContent = await fs.promises.readFile(files[file].path);
+						const fileJson = (files[file] as formidable.File).toJSON() as IDataObject;
+						const fileContent = await fs.promises.readFile((files[file] as formidable.File).path);
 
 						returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(Buffer.from(fileContent), fileJson.name as string, fileJson.type as string);
 
