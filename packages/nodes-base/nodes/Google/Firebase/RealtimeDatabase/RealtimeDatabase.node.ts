@@ -18,7 +18,7 @@ import {
 
 export class RealtimeDatabase implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Google Firebase Realtime Database',
+		displayName: 'Google Cloud Realtime Database',
 		name: 'googleFirebaseRealtimeDatabase',
 		icon: 'file:googleFirebaseRealtimeDatabase.png',
 		group: ['input'],

@@ -121,10 +121,16 @@ export class Start extends Command {
 		const { flags } = this.parse(Start);
 
 		// Wrap that the process does not close but we can still use async
-		(async () => {
+		await (async () => {
 			try {
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init();
+				const startDbInitPromise = Db.init().catch(error => {
+					console.error(`There was an error initializing DB: ${error.message}`);
+
+					processExistCode = 1;
+					// @ts-ignore
+					process.emit('SIGINT');
+				});
 
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();

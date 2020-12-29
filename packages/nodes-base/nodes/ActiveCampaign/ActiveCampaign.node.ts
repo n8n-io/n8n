@@ -298,6 +298,19 @@ export class ActiveCampaign implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the available tags to display them to user so that he can
+			// select them easily
+			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { tags } = await activeCampaignApiRequest.call(this, 'GET', '/api/3/tags', {});
+				for (const tag of tags) {
+					returnData.push({
+						name: tag.tag,
+						value: tag.id,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 

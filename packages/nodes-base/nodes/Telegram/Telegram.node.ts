@@ -1178,6 +1178,7 @@ export class Telegram implements INodeType {
 						operation: [
 							'editMessageText',
 							'sendAnimation',
+							'sendAudio',
 							'sendDocument',
 							'sendMessage',
 							'sendMediaGroup',
