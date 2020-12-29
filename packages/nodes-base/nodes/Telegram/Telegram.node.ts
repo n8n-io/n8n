@@ -51,6 +51,10 @@ export class Telegram implements INodeType {
 						value: 'callback',
 					},
 					{
+						name: 'File',
+						value: 'file',
+					},
+					{
 						name: 'Message',
 						value: 'message',
 					},
@@ -126,6 +130,28 @@ export class Telegram implements INodeType {
 					},
 				],
 				default: 'answerQuery',
+				description: 'The operation to perform.',
+			},
+
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'file',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a file.',
+					},
+				],
+				default: 'get',
 				description: 'The operation to perform.',
 			},
 
@@ -389,6 +415,51 @@ export class Telegram implements INodeType {
 			},
 
 
+
+			// ----------------------------------
+			//         file
+			// ----------------------------------
+
+
+			// ----------------------------------
+			//         file:get/download
+			// ----------------------------------
+
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				required: true,
+				description: 'The ID of the file.',
+			},
+			{
+				displayName: 'Download',
+				name: 'download',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+						],
+						resource: [
+							'file',
+						],
+					},
+				},
+				default: true,
+				description: 'Download the file.',
+			},
 
 			// ----------------------------------
 			//         message
@@ -1398,7 +1469,7 @@ export class Telegram implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		// For Post
 		let body: IDataObject;
@@ -1482,6 +1553,18 @@ export class Telegram implements INodeType {
 					body.chat_id = this.getNodeParameter('chatId', i) as string;
 					body.title = this.getNodeParameter('title', i) as string;
 
+				}
+
+			} else if (resource === 'file') {
+
+				if (operation === 'get') {
+					// ----------------------------------
+					//         file:get
+					// ----------------------------------
+
+					endpoint = 'getFile';
+
+					body.file_id = this.getNodeParameter('fileId', i) as string;
 				}
 
 			} else if (resource === 'message') {
@@ -1638,9 +1721,34 @@ export class Telegram implements INodeType {
 			}
 
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-			returnData.push(responseData);
+
+			if (resource === 'file' && operation === 'get') {
+				if (this.getNodeParameter('download', i, false) as boolean === true) {
+					const filePath = responseData.result.file_path;
+
+					const credentials = this.getCredentials('telegramApi');
+
+					if (credentials === undefined) {
+						throw new Error('No credentials got returned!');
+					}
+					const file = await apiRequest.call(this, 'GET', '', {}, {}, { json: false, encoding: null, uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`, resolveWithFullResponse: true });
+
+					const fileName = filePath.split('/').pop();
+					const binaryData = await this.helpers.prepareBinaryData(Buffer.from(file.body as string), fileName);
+
+					returnData.push({
+						json: responseData,
+						binary: {
+							data: binaryData,
+						},
+					});
+					continue;
+				}
+			}
+
+			returnData.push({ json: responseData });
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
