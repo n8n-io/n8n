@@ -60,7 +60,6 @@ export const draftFields = [
 					'draft',
 				],
 				operation: [
-					'create',
 					'delete',
 					'get',
 					'send',
