@@ -18,6 +18,11 @@ import {
 } from './GenericFunctions';
 
 import {
+	issueCommentFields,
+	issueCommentOperations,
+ } from './IssueCommentDescription';
+
+import {
 	issueFields,
 	issueOperations,
 } from './IssueDescription';
@@ -96,12 +101,19 @@ export class Jira implements INodeType {
 						value: 'issue',
 						description: 'Creates an issue or, where the option to create subtasks is enabled in Jira, a subtask',
 					},
+					{
+						name: 'Issue Comment',
+						value: 'issueComment',
+						description: 'Get, create, update, and delete a comment from an issue.',
+					},
 				],
 				default: 'issue',
 				description: 'Resource to consume.',
 			},
 			...issueOperations,
 			...issueFields,
+			...issueCommentOperations,
+			...issueCommentFields,
 		],
 	};
 
@@ -640,6 +652,125 @@ export class Jira implements INodeType {
 					const deleteSubtasks = this.getNodeParameter('deleteSubtasks', i) as boolean;
 					qs.deleteSubtasks = deleteSubtasks;
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'DELETE', {}, qs);
+				}
+			}
+			if (resource === 'issueComment') {
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
+				if (operation === 'add') {
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: IDataObject = {};
+					if (options.expand) {
+						qs.expand = options.expand as string;
+						delete options.expand;
+					}
+
+					Object.assign(body, options);
+					if (jsonParameters === false) {
+						const comment = this.getNodeParameter('comment', i) as string;
+						Object.assign(body, {
+							body: {
+								type: 'doc',
+								version: 1,
+								content: [
+									{
+										type: "paragraph",
+										content: [
+											{
+												type: 'text',
+												text: comment,
+											},
+										],
+									},
+								],
+							},
+						});
+					} else {
+						const commentJson = this.getNodeParameter('commentJson', i) as string;
+						const json = validateJSON(commentJson);
+						if (json === '') {
+							throw new Error('Document Format must be a valid JSON');
+						}
+
+						Object.assign(body, { body: json });
+					}
+
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment`, 'POST', body, qs);
+				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
+				if (operation === 'get') {
+					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const commentId = this.getNodeParameter('commentId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					Object.assign(qs, options);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment/${commentId}`, 'GET', {}, qs);
+
+				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-get
+				if (operation === 'getAll') {
+					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const body: IDataObject = {};
+					Object.assign(qs, options);
+					if (returnAll) {
+						responseData = await jiraSoftwareCloudApiRequestAllItems.call(this, 'comments', `/api/3/issue/${issueKey}/comment`, 'GET', body, qs);
+					} else {
+						const limit = this.getNodeParameter('limit', i) as number;
+						body.maxResults = limit;
+						responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment`, 'GET', body, qs);
+						responseData = responseData.comments;
+					}
+				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-delete
+				if (operation === 'remove') {
+					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const commentId = this.getNodeParameter('commentId', i) as string;
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment/${commentId}`, 'DELETE', {}, qs);
+					responseData = { success: true };
+				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-put
+				if (operation === 'update') {
+					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const commentId = this.getNodeParameter('commentId', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const body: IDataObject = {};
+					if (options.expand) {
+						qs.expand = options.expand as string;
+						delete options.expand;
+					}
+					Object.assign(qs, options);
+					if (jsonParameters === false) {
+						const comment = this.getNodeParameter('comment', i) as string;
+						Object.assign(body, {
+							body: {
+								type: 'doc',
+								version: 1,
+								content: [
+									{
+										type: "paragraph",
+										content: [
+											{
+												type: 'text',
+												text: comment,
+											},
+										],
+									},
+								],
+							},
+						});
+					} else {
+						const commentJson = this.getNodeParameter('commentJson', i) as string;
+						const json = validateJSON(commentJson);
+						if (json === '') {
+							throw new Error('Document Format must be a valid JSON');
+						}
+
+						Object.assign(body, { body: json });
+					}
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment/${commentId}`, 'PUT', body, qs);
 				}
 			}
 			if (Array.isArray(responseData)) {
