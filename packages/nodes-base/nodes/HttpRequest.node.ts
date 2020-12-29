@@ -355,6 +355,13 @@ export class HttpRequest implements INodeType {
 						default: 10000,
 						description: 'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request.',
 					},
+					{
+						displayName: 'Use Querystring',
+						name: 'useQueryString',
+						type: 'boolean',
+						default: false,
+						description: 'Set this option to true if you need arrays to be serialized as foo=bar&foo=baz instead of the default foo[0]=bar&foo[1]=baz.',
+					},
 				],
 			},
 
@@ -681,6 +688,10 @@ export class HttpRequest implements INodeType {
 			}
 			if (options.timeout !== undefined) {
 				requestOptions.timeout = options.timeout as number;
+			}
+
+			if (options.useQueryString === true) {
+				requestOptions.useQuerystring = true;
 			}
 
 			if (parametersAreJson === true) {
