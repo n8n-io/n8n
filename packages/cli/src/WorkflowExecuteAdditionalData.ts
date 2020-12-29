@@ -263,8 +263,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 							nodeExecutionStack: [],
 							waitingExecution: {},
 						},
-					}
-					
+					};
 				}
 
 				if (Array.isArray(fullExecutionData.data.resultData.runData[nodeName])) {
