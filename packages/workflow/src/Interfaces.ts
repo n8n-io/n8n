@@ -409,6 +409,7 @@ export interface INodePropertyTypeOptions {
 	password?: boolean;          // Supported by: string
 	rows?: number;               // Supported by: string
 	showAlpha?: boolean;         // Supported by: color
+	sortable?: boolean;          // Supported when "multipleValues" set to true
 	[key: string]: boolean | number | string | EditorTypes | undefined | string[];
 }
 
