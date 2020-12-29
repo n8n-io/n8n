@@ -122,7 +122,7 @@ export class TelegramTrigger implements INodeType {
 						name: 'download',
 						type: 'boolean',
 						default: false,
-						description: `Telegram develiers the image in 3 sizes.<br>
+						description: `Telegram delivers the image in 3 sizes.<br>
 						By default, just the larger image would be downloaded.<br>
 						if you want to change the size set the field 'Image Size'`,
 					},
@@ -153,20 +153,6 @@ export class TelegramTrigger implements INodeType {
 						],
 						default: 'large',
 						description: 'The size of the image to be downloaded',
-					},
-					{
-						displayName: 'Include Download Link',
-						name: 'includeDownloadLink',
-						type: 'boolean',
-						displayOptions: {
-							show: {
-								download: [
-									true,
-								],
-							},
-						},
-						default: false,
-						description: `When set to true, the download_link will be included in the response.`,
 					},
 				],
 			},
@@ -270,10 +256,6 @@ export class TelegramTrigger implements INodeType {
 				const fileName = file_path.split('/').pop();
 
 				const binaryData = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName);
-
-				if (additionalFields.includeDownloadLink === true) {
-					bodyData['download_link'] = `https://api.telegram.org/file/bot${credentials.accessToken}/${file_path}`;
-				}
 
 				return {
 					workflowData: [
