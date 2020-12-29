@@ -48,9 +48,9 @@ export const issueCommentOperations = [
 
 export const issueCommentFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                issueComment:add                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issueComment:add                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -147,17 +147,18 @@ export const issueCommentFields = [
 				options: [
 					{
 						name: 'Rendered Body',
-						value: 'renderedBody'
+						value: 'renderedBody',
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+				description: 'Use expand to include additional information about comments<br />in the response. This parameter accepts Rendered Body, which<br />returns the comment body rendered in HTML.',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                issueComment:get                            */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                issueComment:get                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -221,13 +222,14 @@ export const issueCommentFields = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+				description: 'Use expand to include additional information about comments in<br />the response. This parameter accepts Rendered Body, which<br />returns the comment body rendered in HTML.',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  issueComment:getAll                       */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  issueComment:getAll                       */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -315,13 +317,14 @@ export const issueCommentFields = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+				description: 'Use expand to include additional information about comments in the<br />response. This parameter accepts Rendered Body, which returns the comment<br />body rendered in HTML.',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                issueComment:remove                         */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                issueComment:remove                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -355,11 +358,12 @@ export const issueCommentFields = [
 				],
 			},
 		},
-		description: 'The ID of the comment',
+		description: 'The ID of the comment.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                issueComment:update                         */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                issueComment:update                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -376,7 +380,7 @@ export const issueCommentFields = [
 			},
 		},
 		default: '',
-		description: 'issueComment Key',
+		description: 'The Issue Comment key.',
 	},
 	{
 		displayName: 'Comment ID',
@@ -393,7 +397,7 @@ export const issueCommentFields = [
 				],
 			},
 		},
-		description: 'The ID of the comment',
+		description: 'The ID of the comment.',
 	},
 	{
 		displayName: 'JSON Parameters',
@@ -428,7 +432,7 @@ export const issueCommentFields = [
 				],
 			},
 		},
-		description: `Comment's text`,
+		description: `Comment's text.`,
 	},
 	{
 		displayName: 'Document Format (JSON)',

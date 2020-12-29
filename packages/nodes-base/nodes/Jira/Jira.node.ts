@@ -17,7 +17,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import { 
+import {
 	issueCommentFields,
 	issueCommentOperations,
  } from './IssueCommentDescription';
@@ -665,7 +665,7 @@ export class Jira implements INodeType {
 						qs.expand = options.expand as string;
 						delete options.expand;
 					}
-					
+
 					Object.assign(body, options);
 					if (jsonParameters === false) {
 						const comment = this.getNodeParameter('comment', i) as string;
@@ -728,7 +728,7 @@ export class Jira implements INodeType {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const commentId = this.getNodeParameter('commentId', i) as string;
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment/${commentId}`, 'DELETE', {}, qs);
-					responseData = { success: true }; 
+					responseData = { success: true };
 				}
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-id-put
 				if (operation === 'update') {
