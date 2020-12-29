@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: "0 2 * * *"
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Name of the GitHub branch to create image off.'
+        required: true
+        default: 'master'
+      tag:
+        description: 'Name of the docker tag to create.'
+        required: true
+        default: 'nightly'
 
 jobs:
 
@@ -15,6 +24,8 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.branch }}
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -35,4 +46,4 @@ jobs:
           file: ./docker/images/n8n-custom/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: n8nio/n8n:nightly
+          tags: n8nio/n8n:${{ github.event.inputs.tag }}
