@@ -689,7 +689,7 @@ export class WorkflowExecute {
 							// Add the execution data again so that it can get restarted
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 
-							this.executeHook('nodeExecuteAfter', [executionNode.name, taskData]);
+							this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData.executionData!.nodeExecutionStack]);
 
 							break;
 						}
@@ -699,8 +699,6 @@ export class WorkflowExecute {
 					taskData.data = ({
 						'main': nodeSuccessData,
 					} as ITaskDataConnections);
-
-					this.executeHook('nodeExecuteAfter', [executionNode.name, taskData]);
 
 					this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
 
@@ -736,6 +734,12 @@ export class WorkflowExecute {
 							}
 						}
 					}
+
+					
+					// Await is needed to make sure that we don't fall into concurrency problems
+					// When saving node execution data
+					await this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData.executionData!.nodeExecutionStack]);
+
 				}
 
 				return Promise.resolve();
@@ -760,7 +764,6 @@ export class WorkflowExecute {
 					// Static data of workflow changed
 					newStaticData = workflow.staticData;
 				}
-
 				await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(error => {
 					console.error('There was a problem running hook "workflowExecuteAfter"', error);
 				});

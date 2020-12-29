@@ -154,7 +154,7 @@ export class WorkflowRunner {
 			workflowExecution = workflowExecute.processRunExecutionData(workflow);
 		} else if (data.runData === undefined || data.startNodes === undefined || data.startNodes.length === 0 || data.destinationNode === undefined) {
 			// Execute all nodes
-
+			
 			// Can execute without webhook so go on
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 			workflowExecution = workflowExecute.run(workflow, undefined, data.destinationNode);

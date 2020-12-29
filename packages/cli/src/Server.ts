@@ -1524,12 +1524,14 @@ class App {
 				workflowData: fullExecutionData.workflowData,
 			};
 
-			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string;
+			const lastNodeExecuted = data!.executionData!.resultData.lastNodeExecuted as string | undefined;
 
-			// Remove the old error and the data of the last run of the node that it can be replaced
-			delete data!.executionData!.resultData.error;
-			data!.executionData!.resultData.runData[lastNodeExecuted].pop();
-
+			if (lastNodeExecuted) {
+				// Remove the old error and the data of the last run of the node that it can be replaced
+				delete data!.executionData!.resultData.error;
+				data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+			}
+			
 			if (req.body.loadWorkflow === true) {
 				// Loads the currently saved workflow to execute instead of the
 				// one saved at the time of the execution.

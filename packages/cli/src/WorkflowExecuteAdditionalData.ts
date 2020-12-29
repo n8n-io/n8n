@@ -212,19 +212,18 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 				await externalHooks.run('workflow.preExecute', [workflow, this.mode]);
 			},
 		],
-	};
-}
-
-/**
- * Returns hook functions to save workflow execution and call error workflow
- *
- * @returns {IWorkflowExecuteHooks}
- */
-function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
-	return {
-		nodeExecuteBefore: [],
 		nodeExecuteAfter: [
-			async function (nodeName: string, data: ITaskData): Promise<void> {
+			async function (nodeName: string, data: ITaskData, executionStack: IExecuteData[]): Promise<void> {
+				if (this.workflowData.settings !== undefined) {
+					if (this.workflowData.settings.saveExecutionProgress === false) {
+						return;
+					} else if (this.workflowData.settings.saveExecutionProgress !== true && !config.get('executions.saveExecutionProgress') as boolean) {
+						return;
+					}
+				} else if (!config.get('executions.saveExecutionProgress') as boolean) {
+					return;
+				}
+
 				const execution = await Db.collections.Execution!.findOne(this.executionId);
 
 				if (execution === undefined) {
@@ -233,6 +232,13 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					return undefined; 
 				}
 				const fullExecutionData: IExecutionResponse = ResponseHelper.unflattenExecutionData(execution);
+
+				if (fullExecutionData.finished) {
+					// We already received ´workflowExecuteAfter´ webhook, so this is just an async call
+					// that was left behind. We skip saving because the other call should have saved everything
+					// so this one is safe to ignore
+					return;
+				}
 
 
 				if (fullExecutionData.data === undefined) {
@@ -258,20 +264,29 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					// Initialize array and save data
 					fullExecutionData.data.resultData.runData[nodeName] = [data];
 				}
-				
-				console.log("====================================");
-				console.log("Full exec data:");
-				console.log(fullExecutionData);
 
+				fullExecutionData.data.executionData!.nodeExecutionStack = executionStack;
+
+				// Set last executed node so that it may resume on failure
+				fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
+				
 				const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-				console.log("Would try to save:");
-				console.log(executionData);
-				console.log("====================================");
+				await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
+			},
+		]
+	};
+}
 
-				// await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
-			}
-		],
+/**
+ * Returns hook functions to save workflow execution and call error workflow
+ *
+ * @returns {IWorkflowExecuteHooks}
+ */
+function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
+	return {
+		nodeExecuteBefore: [],
+		nodeExecuteAfter: [],
 		workflowExecuteBefore: [],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject): Promise<void> {
@@ -345,11 +360,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-					console.log("====================================");
-					console.log("Saving final execution data:");
-					console.log(fullExecutionData);
-					console.log("====================================");
-					
 					// Save the Execution in DB
 					await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
 

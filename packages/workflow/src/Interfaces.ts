@@ -713,7 +713,7 @@ export interface IWorkflowCredentials {
 
 export interface IWorkflowExecuteHooks {
 	[key: string]: Array<((...args: any[]) => Promise<void>)> | undefined; // tslint:disable-line:no-any
-	nodeExecuteAfter?: Array<((nodeName: string, data: ITaskData) => Promise<void>)>;
+	nodeExecuteAfter?: Array<((nodeName: string, data: ITaskData, executionStack: IExecuteData[]) => Promise<void>)>;
 	nodeExecuteBefore?: Array<((nodeName: string) => Promise<void>)>;
 	workflowExecuteAfter?: Array<((data: IRun, newStaticData: IDataObject) => Promise<void>)>;
 	workflowExecuteBefore?: Array<((workflow: Workflow, data: IRunExecutionData) => Promise<void>)>;

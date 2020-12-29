@@ -201,6 +201,12 @@ const config = convict({
 			default: 'all',
 			env: 'EXECUTIONS_DATA_SAVE_ON_SUCCESS',
 		},
+		saveExecutionProgress: {
+			doc: 'Wether or not to save progress for each node executed',
+			format: 'Boolean',
+			default: false,
+			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
+		},
 
 		// If the executions of workflows which got started via the editor
 		// should be saved. By default they will not be saved as this runs
