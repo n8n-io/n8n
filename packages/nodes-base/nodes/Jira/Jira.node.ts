@@ -659,8 +659,13 @@ export class Jira implements INodeType {
 				if (operation === 'add') {
 					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const options = this.getNodeParameter('options', i) as string;
+					const options = this.getNodeParameter('options', i) as IDataObject;
 					const body: IDataObject = {};
+					if (options.expand) {
+						qs.expand = options.expand as string;
+						delete options.expand;
+					}
+					
 					Object.assign(body, options);
 					if (jsonParameters === false) {
 						const comment = this.getNodeParameter('comment', i) as string;
@@ -691,7 +696,7 @@ export class Jira implements INodeType {
 						Object.assign(body, { body: json });
 					}
 
-					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment`, 'POST', body);
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/issue/${issueKey}/comment`, 'POST', body, qs);
 				}
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-issue-issueIdOrKey-get
 				if (operation === 'get') {
@@ -732,6 +737,10 @@ export class Jira implements INodeType {
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
 					const body: IDataObject = {};
+					if (options.expand) {
+						qs.expand = options.expand as string;
+						delete options.expand;
+					}
 					Object.assign(qs, options);
 					if (jsonParameters === false) {
 						const comment = this.getNodeParameter('comment', i) as string;
