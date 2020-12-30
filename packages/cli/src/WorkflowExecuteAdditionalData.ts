@@ -283,7 +283,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 
 				await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
 			},
-		]
+		],
 	};
 }
 
