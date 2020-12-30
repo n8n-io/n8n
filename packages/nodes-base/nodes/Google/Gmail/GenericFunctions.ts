@@ -142,7 +142,7 @@ export async function encodeEmail(email: IEmail) {
 	} as IDataObject;
 	if (email.htmlContent) {
 		mailOptions.html = email.body;
-		mailOptions.text = removeTags(email.body)
+		mailOptions.text = removeTags(email.body);
 	}
 
 	if (email.attachments !== undefined && Array.isArray(email.attachments) && email.attachments.length > 0) {
@@ -193,11 +193,12 @@ export function extractEmail(s: string) {
 }
 
 function removeTags(str: string | undefined) { 
-    if (!str) 
-        return false; 
-          
-    // Regular expression to identify HTML tags in  
-    // the input string. Replacing the identified  
-    // HTML tag with a null string. 
-    return str.replace( /(<([^>]+)>)/ig, ''); 
+	if (!str) {
+		return false; 
+	}
+
+	// Regular expression to identify HTML tags in  
+	// the input string. Replacing the identified  
+	// HTML tag with a null string. 
+	return str.replace( /(<([^>]+)>)/ig, ''); 
 } 
