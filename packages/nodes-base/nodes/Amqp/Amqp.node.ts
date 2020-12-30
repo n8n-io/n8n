@@ -1,4 +1,5 @@
-import { ContainerOptions, Delivery, Dictionary, EventContext } from 'rhea';
+import { ContainerOptions, Dictionary, EventContext } from 'rhea';
+import rhea = require('rhea');
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -114,7 +115,7 @@ export class Amqp implements INodeType {
 			throw new Error('Queue or Topic required!');
 		}
 
-		const container = require('rhea');
+		const container = rhea.create_container();
 
 		/*
 			Values are documentet here: https://github.com/amqp/rhea#container
