@@ -98,7 +98,7 @@ export const draftFields = [
 			},
 		},
 		placeholder: 'Hello World!',
-		description: 'The message body. This can be in HTML.',
+		description:  'The message body. If HTML formatted, then you have to add and activate the option "HTML content" in the "Additional Options" section.'
 	},
 	{
 		displayName: 'Additional Fields',
