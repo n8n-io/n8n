@@ -43,6 +43,10 @@ export class Telegram implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'Bot',
+						value: 'bot',
+					},
+					{
 						name: 'Chat',
 						value: 'chat',
 					},
@@ -63,7 +67,31 @@ export class Telegram implements INodeType {
 				description: 'The resource to operate on.',
 			},
 
+			// ----------------------------------
+			//         operation
+			// ----------------------------------
 
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'bot',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Info',
+						value: 'info',
+						description: 'Get information about the bot associated with the access token.',
+					},
+				],
+				default: 'info',
+				description: 'The operation to perform.',
+			},
 
 			// ----------------------------------
 			//         operation
@@ -926,6 +954,7 @@ export class Telegram implements INodeType {
 							'sendPhoto',
 							'sendSticker',
 							'sendVideo',
+							'sendAudio',
 						],
 						resource: [
 							'message',
@@ -1554,7 +1583,11 @@ export class Telegram implements INodeType {
 					body.title = this.getNodeParameter('title', i) as string;
 
 				}
-
+			} else if (resource === 'bot') {
+				if (operation === 'info') {
+					endpoint = 'getUpdates';
+				}
+			
 			} else if (resource === 'file') {
 
 				if (operation === 'get') {
@@ -1720,7 +1753,7 @@ export class Telegram implements INodeType {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
-			const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+			let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 			if (resource === 'file' && operation === 'get') {
 				if (this.getNodeParameter('download', i, false) as boolean === true) {
@@ -1744,6 +1777,13 @@ export class Telegram implements INodeType {
 					});
 					continue;
 				}
+			}
+
+			if (resource === 'bot' && operation === 'info') {
+				responseData = {
+					user: responseData.result[0].message.from,
+					chat: responseData.result[0].message.chat,
+				};
 			}
 
 			returnData.push({ json: responseData });
