@@ -120,6 +120,10 @@ export class Webhook implements INodeType {
 						value: 'GET',
 					},
 					{
+						name: 'HEAD',
+						value: 'HEAD',
+					},
+					{
 						name: 'POST',
 						value: 'POST',
 					},
