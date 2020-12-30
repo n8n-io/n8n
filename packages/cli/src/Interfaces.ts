@@ -219,6 +219,12 @@ export interface IExternalHooks {
 	};
 }
 
+export interface IExternalHooksFileData {
+	[key: string]: {
+		[key: string]: Array<(...args: any[]) => Promise<void>>; //tslint:disable-line:no-any
+	};
+}
+
 export interface IExternalHooksFunctions {
 	dbCollections: IDatabaseCollections;
 }
