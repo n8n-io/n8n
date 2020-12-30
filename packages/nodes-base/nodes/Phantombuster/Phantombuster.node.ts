@@ -111,9 +111,10 @@ export class Phantombuster implements INodeType {
 						this,
 						'POST',
 						'/agents/delete',
-						{},
 						{ id: agentId },
 					);
+
+					responseData = { success: true };
 				}
 				//https://hub.phantombuster.com/reference#get_agents-fetch-1
 				if (operation === 'get') {
