@@ -96,6 +96,27 @@ export class AmqpTrigger implements INodeType {
 						default: 10,
 						description: 'Milliseconds to sleep after every cicle.',
 					},
+					{
+						displayName: 'Container ID',
+						name: 'containerID',
+						type: 'string',
+						default: '',
+						description: 'Will be used to pass to the RHEA Backend as container_id',
+					},
+					{
+						displayName: 'Reconnect',
+						name: 'reconnect',
+						type: 'boolean',
+						default: true,
+						description: 'If on, the library will automatically attempt to reconnect if disconnected',
+					},
+					{
+						displayName: 'Reconnect limit',
+						name: 'reconnectLimit',
+						type: 'number',
+						default: 50,
+						description: 'maximum number of reconnect attempts',
+					},				
 				],
 			},
 		],
@@ -114,6 +135,9 @@ export class AmqpTrigger implements INodeType {
 		const subscription = this.getNodeParameter('subscription', '') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const pullMessagesNumber = options.pullMessagesNumber || 100;
+		const container_id = options.containerID as string;
+		const containerReconnect = options.reconnect || true as boolean;
+		const containerReconnectLimit = options.reconnectLimit || 50 as number;
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
@@ -126,23 +150,27 @@ export class AmqpTrigger implements INodeType {
 		}
 
 		const container = require('rhea');
+
+		/*
+			Values are documentet here: https://github.com/amqp/rhea#container
+		 */
 		const connectOptions: ContainerOptions = {
 			host: credentials.hostname,
 			hostname: credentials.hostname,
 			port: credentials.port,
-			reconnect: true,		// this id the default anyway
-			reconnect_limit: 50,	// try for max 50 times, based on a back-off algorithm
-			container_id: (durable ? clientname : null),
+			reconnect: containerReconnect,			    
+			reconnect_limit: containerReconnectLimit,	
 		};
 		if (credentials.username || credentials.password) {
-			// Old rhea implementation. not shure if it is neccessary
-			container.options.username = credentials.username;
-			container.options.password = credentials.password;
 			connectOptions.username = credentials.username;
 			connectOptions.password = credentials.password;
 		}
 		if (credentials.transportType) {
 			connectOptions.transport = credentials.transportType;
+		}
+		if(container_id) {
+			connectOptions.id = container_id;
+			connectOptions.container_id = container_id;
 		}
 
 		let lastMsgId: number | undefined = undefined;
