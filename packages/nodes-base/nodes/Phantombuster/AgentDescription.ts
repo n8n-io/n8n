@@ -49,6 +49,27 @@ export const agentOperations = [
 export const agentFields = [
 
 	/* -------------------------------------------------------------------------- */
+	/*                                 agent:delete                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Agent ID',
+		name: 'agentId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+				resource: [
+					'agent',
+				],
+			},
+		},
+		default: '',
+	},
+
+	/* -------------------------------------------------------------------------- */
 	/*                                 agent:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
@@ -166,13 +187,6 @@ export const agentFields = [
 		},
 		default: {},
 		options: [
-			{
-				displayName: 'From Output Pos',
-				name: 'fromOutputPos',
-				type: 'number',
-				default: 0,
-				description: 'If set, the returned output will start from the specified position.',
-			},
 			{
 				displayName: 'Prev Container ID',
 				name: 'prevContainerId',
@@ -416,8 +430,8 @@ export const agentFields = [
 			{
 				displayName: 'Max Instance Count',
 				name: 'maxInstanceCount',
-				type: 'boolean',
-				default: false,
+				type: 'number',
+				default: 0,
 				description: 'If set, the agent will only be launched if the number of already running instances is below the specified number.',
 			},
 		],
