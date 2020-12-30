@@ -53,6 +53,7 @@ export interface IEmail {
 	subject: string;
 	body: string;
 	attachments?: IDataObject[];
+	htmlContent?: boolean;
 }
 
 interface IAttachments {
@@ -260,6 +261,7 @@ export class Gmail implements INodeType {
 					// https://developers.google.com/gmail/api/v1/reference/users/messages/send
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalOptions = this.getNodeParameter('additionalOptions', i) as IDataObject;
 
 					let toStr = '';
 					let ccStr = '';
@@ -323,6 +325,7 @@ export class Gmail implements INodeType {
 						subject: this.getNodeParameter('subject', i) as string,
 						body: this.getNodeParameter('message', i) as string,
 						attachments: attachmentsList,
+						htmlContent: additionalOptions.htmlContent ? true : false,
 					};
 
 					endpoint = '/gmail/v1/users/me/messages/send';
@@ -339,6 +342,7 @@ export class Gmail implements INodeType {
 					const id = this.getNodeParameter('messageId', i) as string;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalOptions = this.getNodeParameter('additionalOptions', i) as IDataObject;
 
 					let toStr = '';
 					let ccStr = '';
@@ -418,6 +422,7 @@ export class Gmail implements INodeType {
 						subject: this.getNodeParameter('subject', i) as string,
 						body: this.getNodeParameter('message', i) as string,
 						attachments: attachmentsList,
+						htmlContent: additionalOptions.htmlContent ? true : false,
 					};
 
 					endpoint = '/gmail/v1/users/me/messages/send';
@@ -553,6 +558,7 @@ export class Gmail implements INodeType {
 					// https://developers.google.com/gmail/api/v1/reference/users/drafts/create
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalOptions = this.getNodeParameter('additionalOptions', i) as IDataObject;
 
 					let toStr = '';
 					let ccStr = '';
@@ -618,6 +624,7 @@ export class Gmail implements INodeType {
 						subject: this.getNodeParameter('subject', i) as string,
 						body: this.getNodeParameter('message', i) as string,
 						attachments: attachmentsList,
+						htmlContent: additionalOptions.htmlContent ? true : false,
 					};
 
 					endpoint = '/gmail/v1/users/me/drafts';

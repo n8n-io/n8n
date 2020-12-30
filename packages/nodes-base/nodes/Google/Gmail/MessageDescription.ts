@@ -240,6 +240,34 @@ export const messageFields = [
 		],
 	},
 	{
+		displayName: 'Additional Options',
+		name: 'additionalOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'send',
+					'reply',
+				],
+			},
+		},
+		default: {},
+		description: 'Additional options to the message',
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'HTML content',
+				name: 'htmlContent',
+				type: 'boolean',
+				default: false,
+				description: 'Switch ON if the message is in HTML format.',
+			},
+		],
+	},
+	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
