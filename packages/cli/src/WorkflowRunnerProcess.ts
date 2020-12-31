@@ -152,6 +152,9 @@ export class WorkflowRunnerProcess {
 
 		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();
 		for (const key of Object.keys(preExecuteFunctions)) {
+			if (hookFunctions[key] === undefined) {
+				hookFunctions[key] = [];
+			}
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 		}
 

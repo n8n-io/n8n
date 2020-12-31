@@ -485,6 +485,26 @@ export function getWorkflowHooksIntegrated(mode: WorkflowExecuteMode, executionI
 	const hookFunctions = hookFunctionsSave(optionalParameters.parentProcessMode);
 	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
 	for (const key of Object.keys(preExecuteFunctions)) {
+		if (hookFunctions[key] === undefined) {
+			hookFunctions[key] = [];
+		}
+		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	}
+	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
+}
+
+
+/**
+ * Returns WorkflowHooks instance for main process if workflow runs via worker
+ */
+export function getWorkflowHooksWorkerMain(mode: WorkflowExecuteMode, executionId: string, workflowData: IWorkflowBase, optionalParameters?: IWorkflowHooksOptionalParameters): WorkflowHooks {
+	optionalParameters = optionalParameters || {};
+	const hookFunctions = hookFunctionsPush();
+	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	for (const key of Object.keys(preExecuteFunctions)) {
+		if (hookFunctions[key] === undefined) {
+			hookFunctions[key] = [];
+		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
@@ -503,15 +523,22 @@ export function getWorkflowHooksMain(data: IWorkflowExecutionDataProcess, execut
 	const hookFunctions = hookFunctionsSave();
 	const pushFunctions = hookFunctionsPush();
 	for (const key of Object.keys(pushFunctions)) {
+		if (hookFunctions[key] === undefined) {
+			hookFunctions[key] = [];
+		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], pushFunctions[key]);
 	}
 
 	if (isMainProcess) {
 		const preExecuteFunctions = hookFunctionsPreExecute();
 		for (const key of Object.keys(preExecuteFunctions)) {
+			if (hookFunctions[key] === undefined) {
+				hookFunctions[key] = [];
+			}
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 		}
 	}
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, { sessionId: data.sessionId, retryOf: data.retryOf as string});
 }
+
