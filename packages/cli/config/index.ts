@@ -124,6 +124,14 @@ const config = convict({
 				env: 'DB_MYSQLDB_USER',
 			},
 		},
+		sqlite: {
+			vacuumInterval: {
+				doc: 'SQLite Vacuum operation interval',
+				format: Number,
+				default: 86400, // Given in seconds; -1 disables. 0 executes only at startup.
+				env: 'DB_SQLITE_VACUUM_INTERVAL',	
+			}, 
+		},
 	},
 
 	credentials: {
