@@ -385,7 +385,7 @@ export class WorkflowExecute {
 						}
 
 						if (workflow.connectionsByDestinationNode[nodeToAdd] === undefined)  {
-							// Add only node if it does not have any inputs becuase else it will
+							// Add only node if it does not have any inputs because else it will
 							// be added by its input node later anyway.
 							this.runExecutionData.executionData!.nodeExecutionStack.push(
 								{
@@ -728,8 +728,8 @@ export class WorkflowExecute {
 										return Promise.reject(new Error(`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`));
 									}
 
-									if (nodeSuccessData![outputIndex] && nodeSuccessData![outputIndex].length !== 0) {
-										// Add the node only if there is data for it to process
+									if (nodeSuccessData![outputIndex]) {
+										// Add the node only if it did execute
 										this.addNodeToBeExecuted(workflow, connectionData, parseInt(outputIndex, 10), executionNode.name, nodeSuccessData!, runIndex);
 									}
 								}
