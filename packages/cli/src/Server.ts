@@ -470,6 +470,7 @@ class App {
 
 			// Save the workflow in DB
 			const result = await Db.collections.Workflow!.save(newWorkflowData);
+			const id = result.id;
 			
 			if (result.active === true) {
 				// When the workflow is supposed to be active add it
@@ -491,7 +492,7 @@ class App {
 			}
 
 			// Convert to response format in which the id is a string
-			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
+			(result as IWorkflowBase as IWorkflowResponse).id = id.toString();
 			return result as IWorkflowBase as IWorkflowResponse;
 
 		}));
