@@ -224,7 +224,7 @@ export class ActiveWorkflowRunner {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async addWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode): Promise<void> {
+	async addWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivationMode): Promise<void> {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
 		let path = '' as string | undefined;
 
@@ -258,10 +258,10 @@ export class ActiveWorkflowRunner {
 
 				await Db.collections.Webhook?.insert(webhook);
 
-				const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, false);
+				const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, activation, false);
 				if (webhookExists !== true) {
 					// If webhook does not exist yet create it
-					await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, false);
+					await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, activation, false);
 				}
 
 			} catch (error) {
@@ -319,7 +319,7 @@ export class ActiveWorkflowRunner {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
 
 		for (const webhookData of webhooks) {
-			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, false);
+			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, 'update', false);
 		}
 
 		await WorkflowHelpers.saveStaticData(workflow);
@@ -461,11 +461,11 @@ export class ActiveWorkflowRunner {
 			const getPollFunctions = this.getExecutePollFunctions(workflowData, additionalData, mode, activation);
 
 			// Add the workflows which have webhooks defined
-			await this.addWorkflowWebhooks(workflowInstance, additionalData, mode);
+			await this.addWorkflowWebhooks(workflowInstance, additionalData, mode, activation);
 
 			if (workflowInstance.getTriggerNodes().length !== 0
 				|| workflowInstance.getPollNodes().length !== 0) {
-					await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, getTriggerFunctions, getPollFunctions);
+					await this.activeWorkflows.add(workflowId, workflowInstance, additionalData, mode, activation, getTriggerFunctions, getPollFunctions);
 			}
 
 			if (this.activationErrors[workflowId] !== undefined) {

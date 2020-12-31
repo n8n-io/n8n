@@ -900,7 +900,7 @@ export function getLoadOptionsFunctions(workflow: Workflow, node: INode, additio
  * @param {WorkflowExecuteMode} mode
  * @returns {IHookFunctions}
  */
-export function getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions {
+export function getExecuteHookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivationMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		const that = {
 			getCredentials(type: string): ICredentialDataDecryptedObject | undefined {
@@ -971,7 +971,7 @@ export function getExecuteHookFunctions(workflow: Workflow, node: INode, additio
  * @param {WorkflowExecuteMode} mode
  * @returns {IWebhookFunctions}
  */
-export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivationMode, webhookData: IWebhookData): IWebhookFunctions {
+export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, webhookData: IWebhookData): IWebhookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			getBodyData(): IDataObject {
@@ -991,9 +991,6 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
-			},
-			getActivationMode: (): WorkflowActivationMode => {
-				return activation;
 			},
 			getNode: () => {
 				return getNode(node);
