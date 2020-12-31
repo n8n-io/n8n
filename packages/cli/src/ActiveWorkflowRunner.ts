@@ -392,9 +392,9 @@ export class ActiveWorkflowRunner {
 	 * @returns {IGetExecutePollFunctions}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	getExecutePollFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode): IGetExecutePollFunctions {
+	getExecutePollFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivationMode): IGetExecutePollFunctions {
 		return ((workflow: Workflow, node: INode) => {
-			const returnFunctions = NodeExecuteFunctions.getExecutePollFunctions(workflow, node, additionalData, mode);
+			const returnFunctions = NodeExecuteFunctions.getExecutePollFunctions(workflow, node, additionalData, mode, activation);
 			returnFunctions.__emit = (data: INodeExecutionData[][]): void => {
 				this.runWorkflow(workflowData, node, data, additionalData, mode);
 			};

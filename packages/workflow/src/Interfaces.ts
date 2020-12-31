@@ -740,7 +740,7 @@ export interface IWorkflowExecuteAdditionalData {
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
-export type WorkflowActivationMode = 'init' | 'create' | 'update' | 'activate';
+export type WorkflowActivationMode = 'init' | 'create' | 'update' | 'activate' | 'manual';
 
 export interface IWorkflowHooksOptionalParameters {
 	parentProcessMode?: string;

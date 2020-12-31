@@ -3,6 +3,7 @@ import {
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
+	WorkFlowActivationMode,
 } from 'n8n-workflow';
 
 import {
@@ -30,7 +31,7 @@ export class ActiveWebhooks {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWebhooks
 	 */
-	async add(workflow: Workflow, webhookData: IWebhookData, mode: WorkflowExecuteMode): Promise<void> {
+	async add(workflow: Workflow, webhookData: IWebhookData, mode: WorkflowExecuteMode, activation: WorkFlowActivationMode): Promise<void> {
 		if (workflow.id === undefined) {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
@@ -51,10 +52,10 @@ export class ActiveWebhooks {
 		this.webhookUrls[webhookKey] = webhookData;
 
 		try {
-			const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+			const webhookExists = await workflow.runWebhookMethod('checkExists', webhookData, NodeExecuteFunctions, mode, activation, this.testWebhooks);
 			if (webhookExists !== true) {
 				// If webhook does not exist yet create it
-				await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+				await workflow.runWebhookMethod('create', webhookData, NodeExecuteFunctions, mode, activation, this.testWebhooks);
 
 			}
 		} catch (error) {

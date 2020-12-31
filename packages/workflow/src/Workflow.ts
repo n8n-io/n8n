@@ -983,7 +983,7 @@ export class Workflow {
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
-				const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(this, node, additionalData, mode);
+				const thisArgs = nodeExecuteFunctions.getExecutePollFunctions(this, node, additionalData, mode, 'manual');
 				return nodeType.poll.call(thisArgs);
 			} else {
 				// In any other mode pass data through as it already contains the result of the poll
@@ -992,7 +992,7 @@ export class Workflow {
 		} else if (nodeType.trigger) {
 			if (mode === 'manual') {
 				// In manual mode start the trigger
-				const triggerResponse = await this.runTrigger(node, nodeExecuteFunctions.getExecuteTriggerFunctions, additionalData, mode);
+				const triggerResponse = await this.runTrigger(node, nodeExecuteFunctions.getExecuteTriggerFunctions, additionalData, mode, 'manual');
 
 				if (triggerResponse === undefined) {
 					return null;

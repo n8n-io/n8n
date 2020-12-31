@@ -26,7 +26,7 @@ export class N8nStartTrigger implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const self = this;
 		async function manualTriggerFunction() {
-			self.emit([self.helpers.returnJsonArray([{}])]);
+			self.emit([self.helpers.returnJsonArray([{activation: self.getActivationMode()}])]);
 		}
 		
 		manualTriggerFunction();
