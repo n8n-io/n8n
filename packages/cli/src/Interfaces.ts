@@ -45,7 +45,7 @@ export interface IBullJobData {
 }
 
 export interface IBullJobResponse {
-	runData: IRun,
+	runData: IRun;
 }
 
 export interface ICustomRequest extends Request {

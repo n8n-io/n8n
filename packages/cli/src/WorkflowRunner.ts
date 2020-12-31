@@ -1,10 +1,10 @@
 import {
 	ActiveExecutions,
-	IBullJobResponse,
 	CredentialsOverwrites,
 	CredentialTypes,
 	ExternalHooks,
 	IBullJobData,
+	IBullJobResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
 	IProcessMessageDataHook,
@@ -265,7 +265,7 @@ export class WorkflowRunner {
 									message: 'Workflow has been canceled!',
 								} as IExecutionError,
 								runData: {},
-							}
+							},
 						},
 						mode: data.executionMode,
 						startedAt: new Date(),
