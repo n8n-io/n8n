@@ -178,7 +178,7 @@ export interface IGetExecuteHookFunctions {
 
 
 export interface IGetExecuteWebhookFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivationMode, webhookData: IWebhookData): IWebhookFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, webhookData: IWebhookData): IWebhookFunctions;
 }
 
 
@@ -311,7 +311,6 @@ export interface IWebhookFunctions {
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getHeaderData(): object;
 	getMode(): WorkflowExecuteMode;
-	getActivationMode(): WorkflowActivationMode;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getNodeWebhookUrl: (name: string) => string | undefined;
