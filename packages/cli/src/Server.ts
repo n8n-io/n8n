@@ -470,6 +470,25 @@ class App {
 
 			// Save the workflow in DB
 			const result = await Db.collections.Workflow!.save(newWorkflowData);
+			
+			if (result.active === true) {
+				// When the workflow is supposed to be active add it
+				try {
+					await this.externalHooks.run('workflow.activate', [result]);
+
+					await this.activeWorkflowRunner.add(id, 'create');
+				} catch (error) {
+					// If workflow could not be activated set it to inactive
+					newWorkflowData.active = false;
+					await Db.collections.Workflow!.update(id, newWorkflowData);
+
+					// Also set it in the returned data
+					result.active = false;
+
+					// Now return the original error for UI to display
+					throw error;
+				}
+			}
 
 			// Convert to response format in which the id is a string
 			(result as IWorkflowBase as IWorkflowResponse).id = result.id.toString();
@@ -597,7 +616,7 @@ class App {
 				try {
 					await this.externalHooks.run('workflow.activate', [responseData]);
 
-					await this.activeWorkflowRunner.add(id);
+					await this.activeWorkflowRunner.add(id, isActive ? 'update' : 'activate');
 				} catch (error) {
 					// If workflow could not be activated set it again to inactive
 					newWorkflowData.active = false;

@@ -35,6 +35,7 @@ import {
 	Workflow,
 	WorkflowDataProxy,
 	WorkflowExecuteMode,
+	WorkflowActivationMode,
 } from 'n8n-workflow';
 
 import * as clientOAuth1 from 'oauth-1.0a';
