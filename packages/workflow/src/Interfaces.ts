@@ -154,11 +154,11 @@ export interface IDataObject {
 
 
 export interface IGetExecutePollFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): IPollFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivationMode): IPollFunctions;
 }
 
 export interface IGetExecuteTriggerFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode): ITriggerFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivationMode): ITriggerFunctions;
 }
 
 
@@ -173,12 +173,12 @@ export interface IGetExecuteSingleFunctions {
 
 
 export interface IGetExecuteHookFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivationMode, isTest?: boolean, webhookData?: IWebhookData): IHookFunctions;
 }
 
 
 export interface IGetExecuteWebhookFunctions {
-	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, webhookData: IWebhookData): IWebhookFunctions;
+	(workflow: Workflow, node: INode, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivationMode, webhookData: IWebhookData): IWebhookFunctions;
 }
 
 
@@ -260,6 +260,7 @@ export interface ILoadOptionsFunctions {
 export interface IHookFunctions {
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivationMode;
 	getNode(): INode;
 	getNodeWebhookUrl: (name: string) => string | undefined;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
@@ -277,6 +278,7 @@ export interface IPollFunctions {
 	__emit(data: INodeExecutionData[][]): void;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivationMode;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
@@ -292,6 +294,7 @@ export interface ITriggerFunctions {
 	emit(data: INodeExecutionData[][]): void;
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivationMode;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getRestApiUrl(): string;
@@ -308,6 +311,7 @@ export interface IWebhookFunctions {
 	getCredentials(type: string): ICredentialDataDecryptedObject | undefined;
 	getHeaderData(): object;
 	getMode(): WorkflowExecuteMode;
+	getActivationMode(): WorkflowActivationMode;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
 	getNodeWebhookUrl: (name: string) => string | undefined;
@@ -737,6 +741,7 @@ export interface IWorkflowExecuteAdditionalData {
 }
 
 export type WorkflowExecuteMode = 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook';
+export type WorkflowActivationMode = 'init' | 'create' | 'update' | 'activate';
 
 export interface IWorkflowHooksOptionalParameters {
 	parentProcessMode?: string;
