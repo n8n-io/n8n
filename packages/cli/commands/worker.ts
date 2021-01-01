@@ -89,7 +89,7 @@ export class Worker extends Command {
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
-					let waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
+					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
 					console.log(`Waiting for ${Object.keys(Worker.runningJobs).length} active executions to finish... (wait ${waitLeft} more seconds)`);
 				}
 				await new Promise((resolve) => {
