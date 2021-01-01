@@ -221,6 +221,7 @@ export class WorkflowRunner {
 			executionId,
 			executionMode: data.executionMode,
 			executionData: data.executionData,
+			loadStaticData: !!loadStaticData,
 			retryOf: data.retryOf,
 			runData: data.runData,
 			startNodes: data.startNodes,

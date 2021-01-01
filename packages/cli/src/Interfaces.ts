@@ -38,6 +38,7 @@ export interface IBullJobData {
 	executionId: string;
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
+	loadStaticData: boolean;
 	runData?: IRunData;
 	retryOf?: number | string | ObjectID;
 	startNodes?: string[];

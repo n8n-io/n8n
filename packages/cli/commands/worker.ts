@@ -15,6 +15,10 @@ import {
 } from 'n8n-workflow';
 
 import {
+	FindOneOptions,
+} from 'type-orm';
+
+import {
 	ActiveExecutions,
 	CredentialsOverwrites,
 	CredentialTypes,
@@ -42,9 +46,7 @@ export class Worker extends Command {
 	static flags = {
 		help: flags.help({ char: 'h' }),
 		concurrency: flags.integer({
-			// default: 10,
-			// TODO: Change setting
-			default: 1,
+			default: 10,
 			description: 'How many jobs can run in parallel.',
 		}),
 	};
@@ -123,7 +125,19 @@ export class Worker extends Command {
 		console.log(`Start job: ${job.id} (Workflow ID: ${jobData.workflowData.id})`);
 		// TODO: Can in the future query most of that data from the DB to lighten redis load
 
-		const workflow = new Workflow({ id: jobData.workflowData.id as string, name: jobData.workflowData.name, nodes: jobData.workflowData!.nodes, connections: jobData.workflowData!.connections, active: jobData.workflowData!.active, nodeTypes, staticData: jobData.workflowData!.staticData, settings: jobData.workflowData!.settings });
+		let staticData = jobData.workflowData!.staticData;
+		if (jobData.loadStaticData === true) {
+			const findOptions = {
+				select: ['id', 'staticData'],
+			} as FindOneOptions;
+			const workflowData = await Db.collections!.Workflow!.findOne(jobData.workflowData.id, findOptions);
+			if (workflowData === undefined) {
+				throw new Error(`The workflow with the ID "${jobData.workflowData.id}" could not be found`);
+			}
+			staticData = workflowData.staticData;
+		}
+
+		const workflow = new Workflow({ id: jobData.workflowData.id as string, name: jobData.workflowData.name, nodes: jobData.workflowData!.nodes, connections: jobData.workflowData!.connections, active: jobData.workflowData!.active, nodeTypes, staticData, settings: jobData.workflowData!.settings });
 
 		const credentials = await WorkflowCredentials(jobData.workflowData.nodes);
 
