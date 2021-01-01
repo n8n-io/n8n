@@ -16,7 +16,7 @@ import {
 
 import {
 	FindOneOptions,
-} from 'type-orm';
+} from 'typeorm';
 
 import {
 	ActiveExecutions,
