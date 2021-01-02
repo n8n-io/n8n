@@ -89,9 +89,10 @@ export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteF
 	do {
 		responseData = await hubspotApiRequest.call(this, method, endpoint, body, query);
 		query.offset = responseData.offset;
-		query['vid-offset'] = responseData['vid-offset'];
+		query.vidOffset = responseData['vid-offset'];
 		returnData.push.apply(returnData, responseData[propertyName]);
-		if (query.limit && query.limit <= returnData.length) {
+		//ticket:getAll endpoint does not support setting a limit, so return once the limit is reached
+		if (query.limit && query.limit <= returnData.length && endpoint.includes('/tickets/paged')) {
 			return returnData;
 		}
 	} while (
@@ -101,7 +102,6 @@ export async function hubspotApiRequestAllItems(this: IHookFunctions | IExecuteF
 	);
 	return returnData;
 }
-
 
 export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
 	let result;

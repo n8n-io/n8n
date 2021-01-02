@@ -695,6 +695,16 @@ export class GoogleSheets implements INodeType {
 					multipleValues: true,
 				},
 				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'spreadsheet',
+						],
+						operation: [
+							'create',
+						],
+					},
+				},
 				options: [
 					{
 						name: 'sheetValues',
