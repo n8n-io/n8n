@@ -53,35 +53,29 @@ export class N8nStartTrigger implements INodeType {
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const init     = this.getNodeParameter('init') as boolean;
-		const create   = this.getNodeParameter('create') as boolean;
-		const update   = this.getNodeParameter('update') as boolean;
+		const init		 = this.getNodeParameter('init') as boolean;
+		const create	 = this.getNodeParameter('create') as boolean;
+		const update	 = this.getNodeParameter('update') as boolean;
 		const activate = this.getNodeParameter('activate') as boolean;
-		 
-		const executeTrigger = (activation: string) => {
-			this.emit([this.helpers.returnJsonArray([{activation: activation}])]);
-		};
-
-		async function manualTriggerFunction() {
-			executeTrigger('manual');
-		}
 
 		switch(this.getActivationMode()) {
 			case 'init':
-				if(init) executeTrigger('init');
+				if(init) this.emit([this.helpers.returnJsonArray([{activation: 'init'}])]);
 				break;
 			case 'create':
-				if(create) executeTrigger('create');
+				if(create) this.emit([this.helpers.returnJsonArray([{activation: 'create'}])]);
 				break;
 			case 'update':
-				if(update) executeTrigger('update');
+				if(update) this.emit([this.helpers.returnJsonArray([{activation: 'update'}])]);
 				break;
 			case 'activate':
-				if(activate) executeTrigger('activate');
+				if(activate) this.emit([this.helpers.returnJsonArray([{activation: 'activate'}])]);
 				break;
-			case 'manual':
-				manualTriggerFunction();
-				break;
+		}
+		
+		const self = this;
+		async function manualTriggerFunction() {
+			self.emit([self.helpers.returnJsonArray([{activation: 'manual'}])]);
 		}
 
 		return {
