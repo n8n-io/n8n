@@ -53,9 +53,9 @@ export class N8nStartTrigger implements INodeType {
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const init		 = this.getNodeParameter('init') as boolean;
-		const create	 = this.getNodeParameter('create') as boolean;
-		const update	 = this.getNodeParameter('update') as boolean;
+		const init = this.getNodeParameter('init') as boolean;
+		const create = this.getNodeParameter('create') as boolean;
+		const update = this.getNodeParameter('update') as boolean;
 		const activate = this.getNodeParameter('activate') as boolean;
 
 		switch(this.getActivationMode()) {
