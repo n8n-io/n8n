@@ -78,9 +78,6 @@ export class Phantombuster implements INodeType {
 				);
 
 				for (const item of responseData) {
-					console.log();
-					console.log(item.id);
-					console.log(item.name);
 					returnData.push({
 						name: item.name,
 						value: item.id,
