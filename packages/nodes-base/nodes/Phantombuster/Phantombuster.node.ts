@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -65,6 +67,28 @@ export class Phantombuster implements INodeType {
 
 	methods = {
 		loadOptions: {
+
+			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const responseData = await phantombusterApiRequest.call(
+					this,
+					'GET',
+					'/agents/fetch-all',
+				);
+
+				for (const item of responseData) {
+					console.log();
+					console.log(item.id);
+					console.log(item.name);
+					returnData.push({
+						name: item.name,
+						value: item.id,
+					});
+				}
+				return returnData;
+			},
+
 			// Get all the arguments to display them to user so that he can
 			// select them easily
 			// async getArguments(
@@ -186,7 +210,7 @@ export class Phantombuster implements INodeType {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 					const resolveData = this.getNodeParameter('resolveData', i) as boolean;
-					
+
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const body: IDataObject = {
@@ -209,7 +233,7 @@ export class Phantombuster implements INodeType {
 							return object;
 						}, {});
 						delete additionalFields.argumentsUi;
-						
+
 						const bonusParameters = ((additionalFields.bonusArgumentUi as IDataObject || {}).bonusArgumentValue as IDataObject[]) || [];
 						body.bonusArgument = bonusParameters.reduce((object, currentValue) => {
 							object[currentValue.key as string] = currentValue.value;

@@ -52,9 +52,12 @@ export const agentFields = [
 	/*                                 agent:delete                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent ID',
+		displayName: 'Agent',
 		name: 'agentId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAgents',
+		},
 		required: true,
 		displayOptions: {
 			show: {
@@ -89,6 +92,7 @@ export const agentFields = [
 		},
 		default: '',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 agent:getAll                               */
 	/* -------------------------------------------------------------------------- */
@@ -133,13 +137,17 @@ export const agentFields = [
 		default: 25,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 agent:getOutput                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent ID',
+		displayName: 'Agent',
 		name: 'agentId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAgents',
+		},
 		required: true,
 		displayOptions: {
 			show: {
@@ -236,13 +244,17 @@ export const agentFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 agent:launch                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Agent ID',
+		displayName: 'Agent',
 		name: 'agentId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getAgents',
+		},
 		required: true,
 		displayOptions: {
 			show: {
@@ -361,20 +373,6 @@ export const agentFields = [
 				],
 			},
 			{
-				displayName: 'Bonus Argument (JSON)',
-				name: 'bonusArgumentJson',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/jsonParameters': [
-							true,
-						],
-					},
-				},
-				default: '',
-				description: `Agent bonus argument. Can either be a JSON string or a plain object. This bonus argument is single-use, it will only be used for the current launch. If present, it will be merged with the original argument, resulting in an effective argument that can be retrieved with buster.argument in the agent’s script.`,
-			},
-			{
 				displayName: 'Bonus Argument',
 				name: 'bonusArgumentUi',
 				placeholder: 'Add Bonus Argument',
@@ -414,11 +412,18 @@ export const agentFields = [
 				],
 			},
 			{
-				displayName: 'Save Argument',
-				name: 'saveArgument',
+				displayName: 'Bonus Argument (JSON)',
+				name: 'bonusArgumentJson',
 				type: 'string',
+				displayOptions: {
+					show: {
+						'/jsonParameters': [
+							true,
+						],
+					},
+				},
 				default: '',
-				description: 'If true, argument will be saved as the default launch options for the agent.',
+				description: `Agent bonus argument. Can either be a JSON string or a plain object. This bonus argument is single-use, it will only be used for the current launch. If present, it will be merged with the original argument, resulting in an effective argument that can be retrieved with buster.argument in the agent’s script.`,
 			},
 			{
 				displayName: 'Manual Launch',
@@ -433,6 +438,13 @@ export const agentFields = [
 				type: 'number',
 				default: 0,
 				description: 'If set, the agent will only be launched if the number of already running instances is below the specified number.',
+			},
+			{
+				displayName: 'Save Argument',
+				name: 'saveArgument',
+				type: 'string',
+				default: '',
+				description: 'If true, argument will be saved as the default launch options for the agent.',
 			},
 		],
 	},
