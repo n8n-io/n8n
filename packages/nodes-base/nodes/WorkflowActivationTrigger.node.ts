@@ -5,16 +5,16 @@ import {
 	ITriggerResponse,
 } from 'n8n-workflow';
 
-export class N8nStartTrigger implements INodeType {
+export class WorkflowActivationTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'n8n Start Trigger',
-		name: 'n8nStartTrigger',
+		displayName: 'Workflow Activation Trigger',
+		name: 'WorkflowActivationTrigger',
 		icon: 'fa:play-circle',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when n8n starts',
+		description: 'Starts the workflow when the workflow gets activated',
 		defaults: {
-			name: 'n8n Start Trigger',
+			name: 'Workflow Activation Trigger',
 			color: '#00e000',
 		},
 		inputs: [],
