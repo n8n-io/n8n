@@ -3,7 +3,7 @@ import {
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
-	WorkFlowActivationMode,
+	WorkflowActivateMode,
 } from 'n8n-workflow';
 
 import {
@@ -31,7 +31,7 @@ export class ActiveWebhooks {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWebhooks
 	 */
-	async add(workflow: Workflow, webhookData: IWebhookData, mode: WorkflowExecuteMode, activation: WorkFlowActivationMode): Promise<void> {
+	async add(workflow: Workflow, webhookData: IWebhookData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<void> {
 		if (workflow.id === undefined) {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
@@ -146,7 +146,7 @@ export class ActiveWebhooks {
 
 		// Go through all the registered webhooks of the workflow and remove them
 		for (const webhookData of webhooks) {
-			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
+			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, 'update', this.testWebhooks);
 
 			delete this.webhookUrls[this.getWebhookKey(webhookData.httpMethod, webhookData.path)];
 		}

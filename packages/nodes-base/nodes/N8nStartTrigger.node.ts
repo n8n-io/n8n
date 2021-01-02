@@ -19,17 +19,70 @@ export class N8nStartTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
-		properties: []
+		properties: [
+			{
+				displayName: 'Trigger On Init',
+				name: 'init',
+				type: 'boolean',
+				default: true,
+				description: 'Gets triggered when the workflow gets activated on n8n server start.',
+			},
+			{
+				displayName: 'Trigger On Create',
+				name: 'create',
+				type: 'boolean',
+				default: false,
+				description: 'Gets triggered when the workflow created active.',
+			},
+			{
+				displayName: 'Trigger On Update',
+				name: 'update',
+				type: 'boolean',
+				default: false,
+				description: 'Gets triggered when the workflow gets updated and keeps activated.',
+			},
+			{
+				displayName: 'Trigger On Activate',
+				name: 'activate',
+				type: 'boolean',
+				default: false,
+				description: 'Gets triggered when the workflow gets activated.',
+			}
+		]
 	};
 
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const self = this;
+		const init     = this.getNodeParameter('init') as boolean;
+		const create   = this.getNodeParameter('create') as boolean;
+		const update   = this.getNodeParameter('update') as boolean;
+		const activate = this.getNodeParameter('activate') as boolean;
+		 
+		const executeTrigger = (activation: string) => {
+			this.emit([this.helpers.returnJsonArray([{activation: activation}])]);
+		};
+
 		async function manualTriggerFunction() {
-			self.emit([self.helpers.returnJsonArray([{activation: self.getActivationMode()}])]);
+			executeTrigger('manual');
 		}
-		
-		manualTriggerFunction();
+
+		switch(this.getActivationMode()) {
+			case 'init':
+				if(init) executeTrigger('init');
+				break;
+			case 'create':
+				if(create) executeTrigger('create');
+				break;
+			case 'update':
+				if(update) executeTrigger('update');
+				break;
+			case 'activate':
+				if(activate) executeTrigger('activate');
+				break;
+			case 'manual':
+				manualTriggerFunction();
+				break;
+		}
 
 		return {
 			manualTriggerFunction

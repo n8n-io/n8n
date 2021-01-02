@@ -8,8 +8,8 @@ import {
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
-	WorkflowExecutionMode,
-	WorkflowActivationMode,
+	WorkflowExecuteMode,
+	WorkflowActivateMode,
 } from 'n8n-workflow';
 
 import {
@@ -68,7 +68,7 @@ export class ActiveWorkflows {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflows
 	 */
-	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecutionMode, activation: WorkflowActivationMode, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
+	async add(id: string, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, getTriggerFunctions: IGetExecuteTriggerFunctions, getPollFunctions: IGetExecutePollFunctions): Promise<void> {
 		this.workflowData[id] = {};
 		const triggerNodes = workflow.getTriggerNodes();
 
@@ -102,7 +102,7 @@ export class ActiveWorkflows {
 	 * @returns {Promise<IPollResponse>}
 	 * @memberof ActiveWorkflows
 	 */
-	async activatePolling(node: INode, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getPollFunctions: IGetExecutePollFunctions, mode: WorkflowExecutionMode, activation: WorkflowActivationMode): Promise<IPollResponse> {
+	async activatePolling(node: INode, workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData, getPollFunctions: IGetExecutePollFunctions, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<IPollResponse> {
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, mode, activation);
 
 		const pollTimes = pollFunctions.getNodeParameter('pollTimes') as unknown as {

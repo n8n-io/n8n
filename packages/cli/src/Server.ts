@@ -470,7 +470,7 @@ class App {
 
 			// Save the workflow in DB
 			const result = await Db.collections.Workflow!.save(newWorkflowData);
-			const id = result.id;
+			const id = result.id.toString();
 			
 			if (result.active === true) {
 				// When the workflow is supposed to be active add it
@@ -492,7 +492,7 @@ class App {
 			}
 
 			// Convert to response format in which the id is a string
-			(result as IWorkflowBase as IWorkflowResponse).id = id.toString();
+			(result as IWorkflowBase as IWorkflowResponse).id = id;
 			return result as IWorkflowBase as IWorkflowResponse;
 
 		}));
@@ -663,6 +663,7 @@ class App {
 			const startNodes: string[] | undefined = req.body.startNodes;
 			const destinationNode: string | undefined = req.body.destinationNode;
 			const executionMode = 'manual';
+			const activationMode = 'manual';
 
 			const sessionId = GenericHelpers.getSessionId(req);
 
@@ -672,7 +673,7 @@ class App {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
 				const nodeTypes = NodeTypes();
 				const workflowInstance = new Workflow({ id: workflowData.id, name: workflowData.name, nodes: workflowData.nodes, connections: workflowData.connections, active: false, nodeTypes, staticData: undefined, settings: workflowData.settings });
-				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, sessionId, destinationNode);
+				const needsWebhook = await this.testWebhooks.needsWebhookData(workflowData, workflowInstance, additionalData, executionMode, activationMode, sessionId, destinationNode);
 				if (needsWebhook === true) {
 					return {
 						waitingForWebhook: true,

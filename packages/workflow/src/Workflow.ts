@@ -25,7 +25,7 @@ import {
 	ObservableObject,
 	WebhookSetupMethodNames,
 	WorkflowExecuteMode,
-	WorkflowActivationMode,
+	WorkflowActivateMode,
 } from './';
 
 import { IConnection, IDataObject, IObservableObject } from './Interfaces';
@@ -770,7 +770,7 @@ export class Workflow {
 	 * @returns {(Promise<boolean | undefined>)}
 	 * @memberof Workflow
 	 */
-	async runWebhookMethod(method: WebhookSetupMethodNames, webhookData: IWebhookData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode, activation: WorkflowActivationMode, isTest?: boolean): Promise<boolean | undefined> {
+	async runWebhookMethod(method: WebhookSetupMethodNames, webhookData: IWebhookData, nodeExecuteFunctions: INodeExecuteFunctions, mode: WorkflowExecuteMode, activation: WorkflowActivateMode, isTest?: boolean): Promise<boolean | undefined> {
 		const node = this.getNode(webhookData.node) as INode;
 		const nodeType = this.nodeTypes.getByName(node.type) as INodeType;
 
@@ -803,7 +803,7 @@ export class Workflow {
 	 * @returns {(Promise<ITriggerResponse | undefined>)}
 	 * @memberof Workflow
 	 */
-	async runTrigger(node: INode, getTriggerFunctions: IGetExecuteTriggerFunctions, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivationMode): Promise<ITriggerResponse | undefined> {
+	async runTrigger(node: INode, getTriggerFunctions: IGetExecuteTriggerFunctions, additionalData: IWorkflowExecuteAdditionalData, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<ITriggerResponse | undefined> {
 		const triggerFunctions = getTriggerFunctions(this, node, additionalData, mode, activation);
 
 		const nodeType = this.nodeTypes.getByName(node.type);

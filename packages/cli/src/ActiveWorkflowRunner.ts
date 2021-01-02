@@ -31,7 +31,7 @@ import {
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
-	WorkflowActivationMode,
+	WorkflowActivateMode,
 } from 'n8n-workflow';
 
 import * as express from 'express';
@@ -224,7 +224,7 @@ export class ActiveWorkflowRunner {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async addWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivationMode): Promise<void> {
+	async addWorkflowWebhooks(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): Promise<void> {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData);
 		let path = '' as string | undefined;
 
@@ -392,7 +392,7 @@ export class ActiveWorkflowRunner {
 	 * @returns {IGetExecutePollFunctions}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	getExecutePollFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivationMode): IGetExecutePollFunctions {
+	getExecutePollFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IGetExecutePollFunctions {
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecutePollFunctions(workflow, node, additionalData, mode, activation);
 			returnFunctions.__emit = (data: INodeExecutionData[][]): void => {
@@ -413,7 +413,7 @@ export class ActiveWorkflowRunner {
 	 * @returns {IGetExecuteTriggerFunctions}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	getExecuteTriggerFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivationMode): IGetExecuteTriggerFunctions{
+	getExecuteTriggerFunctions(workflowData: IWorkflowDb, additionalData: IWorkflowExecuteAdditionalDataWorkflow, mode: WorkflowExecuteMode, activation: WorkflowActivateMode): IGetExecuteTriggerFunctions{
 		return ((workflow: Workflow, node: INode) => {
 			const returnFunctions = NodeExecuteFunctions.getExecuteTriggerFunctions(workflow, node, additionalData, mode, activation);
 			returnFunctions.emit = (data: INodeExecutionData[][]): void => {
@@ -432,7 +432,7 @@ export class ActiveWorkflowRunner {
 	 * @returns {Promise<void>}
 	 * @memberof ActiveWorkflowRunner
 	 */
-	async add(workflowId: string, activation: WorkflowActivationMode, workflowData?: IWorkflowDb): Promise<void> {
+	async add(workflowId: string, activation: WorkflowActivateMode, workflowData?: IWorkflowDb): Promise<void> {
 		if (this.activeWorkflows === null) {
 			throw new Error(`The "activeWorkflows" instance did not get initialized yet.`);
 		}
