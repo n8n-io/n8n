@@ -95,7 +95,7 @@ export class RabbitMQ implements INodeType {
 			},
 			{
 				displayName: 'Type',
-				name: 'type',
+				name: 'exchangeType',
 				type: 'options',
 				displayOptions: {
 					show: {
@@ -126,12 +126,12 @@ export class RabbitMQ implements INodeType {
 						description: 'Fanout exchange type.',
 					},
 				],
-				default: 'direct',
+				default: 'fanout',
 				description: 'Type of exchange.',
 			},
 			{
 				displayName: 'Routing key',
-				name: 'routing-key',
+				name: 'routingKey',
 				type: 'string',
 				displayOptions: {
 					show: {
@@ -212,14 +212,6 @@ export class RabbitMQ implements INodeType {
 						displayName: 'Auto Delete',
 						name: 'autoDelete',
 						type: 'boolean',
-						displayOptions: {
-							show: {
-								mode: [
-									'queue',
-									'exchange'
-								],
-							},
-						},
 						default: false,
 						description: 'The queue will be deleted when the number of consumers drops to zero .',
 					},
@@ -227,14 +219,6 @@ export class RabbitMQ implements INodeType {
 						displayName: 'Durable',
 						name: 'durable',
 						type: 'boolean',
-						displayOptions: {
-							show: {
-								mode: [
-									'queue',
-									'exchange'
-								],
-							},
-						},
 						default: true,
 						description: 'The queue will survive broker restarts.',
 					},
@@ -244,7 +228,7 @@ export class RabbitMQ implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							show: {
-								mode: [
+								'/mode': [
 									'queue',
 								],
 							},
@@ -253,26 +237,12 @@ export class RabbitMQ implements INodeType {
 						description: 'Scopes the queue to the connection.',
 					},
 					{
-						displayName: 'Internal',
-						name: 'internal',
-						type: 'boolean',
-						displayOptions: {
-							show: {
-								mode: [
-									'exchange',
-								],
-							},
-						},
-						default: false,
-						description: 'If true, messages cannot be published directly to the exchange (i.e., it can only be the target of bindings, or possibly create messages ex-nihilo). Defaults to false.',
-					},
-					{
 						displayName: 'Alternate Exchange',
 						name: 'alternateExchange',
 						type: 'string',
 						displayOptions: {
 							show: {
-								mode: [
+								'/mode': [
 									'exchange',
 								],
 							},
@@ -347,8 +317,8 @@ export class RabbitMQ implements INodeType {
 			}
 			else if (mode === 'exchange') {
 				const exchange = this.getNodeParameter('exchange', 0) as string;
-				const type = this.getNodeParameter('type', 0) as string;
-				const routingKey = this.getNodeParameter('routing-key', 0) as string;
+				const type = this.getNodeParameter('exchangeType', 0) as string;
+				const routingKey = this.getNodeParameter('routingKey', 0) as string;
 
 				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
