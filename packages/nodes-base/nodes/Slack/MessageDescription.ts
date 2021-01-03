@@ -19,6 +19,11 @@ export const messageOperations = [
 				description: 'Post a message into a channel',
 			},
 			{
+				name: 'Post Ephemeral',
+				value: 'postEphemeral',
+				description: 'Post an ephemeral message to an user',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Updates a message.',
@@ -44,6 +49,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -52,6 +58,25 @@ export const messageFields = [
 		},
 		required: true,
 		description: 'The channel to send the message to.',
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		type: 'string',
+		default: '',
+		placeholder: 'User ID',
+		displayOptions: {
+			show: {
+				operation: [
+					'postEphemeral',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		required: true,
+		description: 'The user ID to send the message to.',
 	},
 	{
 		displayName: 'Text',
@@ -65,6 +90,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -85,6 +111,7 @@ export const messageFields = [
 				],
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -105,6 +132,7 @@ export const messageFields = [
 				],
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -122,6 +150,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -141,6 +170,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -332,6 +362,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',

@@ -757,6 +757,60 @@ export class Slack implements INodeType {
 					Object.assign(body, otherOptions);
 					responseData = await slackApiRequest.call(this, 'POST', '/chat.postMessage', body, qs);
 				}
+				//https://api.slack.com/methods/chat.postEphemeral
+				if (operation === 'postEphemeral') {
+					const channel = this.getNodeParameter('channel', i) as string;
+					const text = this.getNodeParameter('text', i) as string;
+					const user = this.getNodeParameter('user', i) as string;
+					const body: IDataObject = {
+						channel,
+						text,
+						user,
+					};
+
+					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+
+					if (authentication === 'accessToken') {
+						body.as_user = this.getNodeParameter('as_user', i) as boolean;
+					}
+					if (body.as_user === false) {
+						body.username = this.getNodeParameter('username', i) as string;
+						delete body.as_user;
+					}
+
+					if (!jsonParameters) {
+						const attachments = this.getNodeParameter('attachments', i, []) as unknown as Attachment[];
+
+						// The node does save the fields data differently than the API
+						// expects so fix the data befre we send the request
+						for (const attachment of attachments) {
+							if (attachment.fields !== undefined) {
+								if (attachment.fields.item !== undefined) {
+									// Move the field-content up
+									// @ts-ignore
+									attachment.fields = attachment.fields.item;
+								} else {
+									// If it does not have any items set remove it
+									delete attachment.fields;
+								}
+							}
+						}
+						body['attachments'] = attachments;
+
+					} else {
+						const attachmentsJson = this.getNodeParameter('attachmentsJson', i, []) as string;
+						if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
+							throw new Error('Attachments it is not a valid json');
+						}
+						if (attachmentsJson !== '') {
+							body.attachments = attachmentsJson;
+						}
+					}
+					// Add all the other options to the request
+					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
+					Object.assign(body, otherOptions);
+					responseData = await slackApiRequest.call(this, 'POST', '/chat.postEphemeral', body, qs);
+				}
 				//https://api.slack.com/methods/chat.update
 				if (operation === 'update') {
 					const channel = this.getNodeParameter('channelId', i) as string;
