@@ -164,7 +164,7 @@ export async function init(): Promise<IDatabaseCollections> {
 					CreateIndexStoppedAt1594825041918,
 					MakeStoppedAtNullable1607431743769,
 				],
-				migrationsRun: true,
+				migrationsRun: false, // migrations for sqlite will be ran manually for now; see below
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
 			break;
@@ -181,27 +181,26 @@ export async function init(): Promise<IDatabaseCollections> {
 
 	let connection = await createConnection(connectionOptions);
 
-	let mustReconnect = false;
 
 	if (dbType === 'sqlite') {
 		// This specific migration changes database metadata.
 		// A field is now nullable. We need to reconnect so that
 		// n8n knows it has changed. Happens only on sqlite.
-		const migrations = await connection.query('SELECT id FROM migrations where name = "MakeStoppedAtNullable1607431743769"');
+		const migrations = await connection.query(`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`);
+		
+		// If you remove this call, remember to turn back on the
+		// setting to run migrations automatically above.
+		await connection.runMigrations({
+			transaction: 'none',
+		});
+		
 		if (migrations.length === 0) {
-			mustReconnect = true;
+			await connection.close();
+			connection = await createConnection(connectionOptions);
 		}
 	}
 
-	await connection.runMigrations({
-		transaction: 'none',
-	});
 
-	if (mustReconnect) {
-		console.log('is reconnecting');
-		await connection.close();
-		connection = await createConnection(connectionOptions);
-	}
 
 	
 	collections.Credentials = getRepository(entities.CredentialsEntity);
