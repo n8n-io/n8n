@@ -1,8 +1,11 @@
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 } from 'n8n-core';
 
 import {
+	IBinaryData,
+	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -16,6 +19,11 @@ import {
 	jiraSoftwareCloudApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
+
+import { 
+	issueAttachmentFields,
+	issueAttachmentOperations,
+} from './IssueAttachmentDescription';
 
 import {
 	issueCommentFields,
@@ -102,6 +110,11 @@ export class Jira implements INodeType {
 						description: 'Creates an issue or, where the option to create subtasks is enabled in Jira, a subtask',
 					},
 					{
+						name: 'Issue Attachment',
+						value: 'issueAttachment',
+						description: 'Add, remove, and get an attachment from an issue.',
+					},
+					{
 						name: 'Issue Comment',
 						value: 'issueComment',
 						description: 'Get, create, update, and delete a comment from an issue.',
@@ -112,6 +125,8 @@ export class Jira implements INodeType {
 			},
 			...issueOperations,
 			...issueFields,
+			...issueAttachmentOperations,
+			...issueAttachmentFields,
 			...issueCommentOperations,
 			...issueCommentFields,
 		],
@@ -654,6 +669,66 @@ export class Jira implements INodeType {
 					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'DELETE', {}, qs);
 				}
 			}
+			if (resource === 'issueAttachment') {
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-issue-issueidorkey-attachments-post
+				if (operation === 'add') {
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const issueKey = this.getNodeParameter('issueKey', i) as string;
+
+					if (items[i].binary === undefined) {
+						throw new Error('No binary data exists on item!');
+					}
+
+					const item = items[i].binary as IBinaryKeyData;
+
+					const binaryData = item[binaryPropertyName] as IBinaryData;
+
+					if (binaryData === undefined) {
+						throw new Error(`No binary data property "${binaryPropertyName}" does not exists on item!`);
+					}
+
+					responseData = await jiraSoftwareCloudApiRequest.call(
+						this,
+						`/api/3/issue/${issueKey}/attachments`,
+						'POST',
+						{},
+						{},
+						undefined,
+						{
+							formData: {
+								file: {
+									value: Buffer.from(binaryData.data, BINARY_ENCODING),
+									options: {
+										filename: binaryData.fileName,
+									},
+								},
+							},
+						},
+					);
+				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-delete
+				if (operation === 'remove') {
+					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/attachment/${attachmentId}`, 'DELETE', {}, qs);
+					responseData = { success: true };
+				}
+				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-get
+				if (operation === 'get') {
+					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
+					responseData = await jiraSoftwareCloudApiRequest.call(this, `/api/3/attachment/${attachmentId}`, 'GET', {}, qs);
+				}
+				if (operation === 'getAll') {
+					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const { fields: { attachment } } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, qs);
+					responseData = attachment;
+					if (returnAll === false) {
+						const limit = this.getNodeParameter('limit', i) as number;
+						responseData = responseData.slice(0, limit);
+					}
+				}
+			}
+				
 			if (resource === 'issueComment') {
 				//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
 				if (operation === 'add') {

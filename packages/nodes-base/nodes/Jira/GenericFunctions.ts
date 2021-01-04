@@ -14,7 +14,7 @@ import {
 	IDataObject,
 } from 'n8n-workflow';
 
-export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	let data; let domain;
 
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
@@ -43,6 +43,7 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 			Authorization: `Basic ${data}`,
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
+			'X-Atlassian-Token': 'no-check',
 		},
 		method,
 		qs: query,
@@ -50,6 +51,18 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 		body,
 		json: true,
 	};
+
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
+	}
+
+	if (Object.keys(body).length === 0) {
+		delete options.body;
+	}
+
+	if (Object.keys(query || {}).length === 0) {
+		delete options.qs;
+	}
 
 	try {
 		return await this.helpers.request!(options);
