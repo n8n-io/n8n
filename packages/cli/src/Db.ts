@@ -179,12 +179,31 @@ export async function init(): Promise<IDatabaseCollections> {
 		logging: false,
 	});
 
-	const connection = await createConnection(connectionOptions);
+	let connection = await createConnection(connectionOptions);
+
+	let mustReconnect = false;
+
+	if (dbType === 'sqlite') {
+		// This specific migration changes database metadata.
+		// A field is now nullable. We need to reconnect so that
+		// n8n knows it has changed. Happens only on sqlite.
+		const migrations = await connection.query('SELECT id FROM migrations where name = "MakeStoppedAtNullable1607431743769"');
+		if (migrations.length === 0) {
+			mustReconnect = true;
+		}
+	}
 
 	await connection.runMigrations({
 		transaction: 'none',
 	});
 
+	if (mustReconnect) {
+		console.log('is reconnecting');
+		await connection.close();
+		connection = await createConnection(connectionOptions);
+	}
+
+	
 	collections.Credentials = getRepository(entities.CredentialsEntity);
 	collections.Execution = getRepository(entities.ExecutionEntity);
 	collections.Workflow = getRepository(entities.WorkflowEntity);
