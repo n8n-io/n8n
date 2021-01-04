@@ -5,6 +5,7 @@ import Vue from 'vue';
 import 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'vue-prism-editor/dist/VuePrismEditor.css';
+import 'vue-json-pretty/lib/styles.css';
 import Vue2TouchEvents from 'vue2-touch-events';
 
 import * as ElementUI from 'element-ui';

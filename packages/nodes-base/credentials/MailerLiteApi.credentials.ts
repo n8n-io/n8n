@@ -6,6 +6,7 @@ import {
 export class MailerLiteApi implements ICredentialType {
 	name = 'mailerLiteApi';
 	displayName = 'Mailer Lite API';
+	documentationUrl = 'mailerLite';
 	properties = [
 		{
 			displayName: 'API Key',

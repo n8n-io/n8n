@@ -15,7 +15,9 @@ import {
 	woocommerceApiRequest,
 } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+import {
+	createHmac,
+} from 'crypto';
 
 export class WooCommerceTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -112,17 +114,22 @@ export class WooCommerceTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId === undefined) {
-					return false;
+				const currentEvent = this.getNodeParameter('event') as string;
+				const endpoint = `/webhooks`;
+				
+				const webhooks = await woocommerceApiRequest.call(this, 'GET', endpoint, {}, { status: 'active', per_page: 100 });
+
+				for (const webhook of webhooks) {
+					if (webhook.status === 'active'
+					&& webhook.delivery_url === webhookUrl
+					&& webhook.topic === currentEvent) {
+						webhookData.webhookId = webhook.id;
+						return true;
+					}
 				}
-				const endpoint = `/webhooks/${webhookData.webhookId}`;
-				try {
-					await woocommerceApiRequest.call(this, 'GET', endpoint);
-				} catch (e) {
-					return false;
-				}
-				return true;
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const credentials = this.getCredentials('wooCommerceApi');

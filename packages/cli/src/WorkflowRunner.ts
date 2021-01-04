@@ -100,9 +100,6 @@ export class WorkflowRunner {
 	 * @memberof WorkflowRunner
 	 */
 	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
-		const externalHooks = ExternalHooks();
-		await externalHooks.run('workflow.execute', [data.workflowData, data.executionMode]);
-
 		const executionsProcess = config.get('executions.process') as string;
 
 		let executionId: string;
@@ -112,6 +109,7 @@ export class WorkflowRunner {
 			executionId = await this.runSubprocess(data, loadStaticData);
 		}
 
+		const externalHooks = ExternalHooks();
 		if (externalHooks.exists('workflow.postExecute')) {
 			this.activeExecutions.getPostExecutePromise(executionId)
 				.then(async (executionData) => {
@@ -148,7 +146,7 @@ export class WorkflowRunner {
 		// Register the active execution
 		const executionId = this.activeExecutions.add(data, undefined);
 
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId, true);
 
 		let workflowExecution: PCancelable<IRun>;
 		if (data.executionData !== undefined) {

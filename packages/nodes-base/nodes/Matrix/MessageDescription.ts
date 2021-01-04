@@ -79,10 +79,95 @@ export const messageFields = [
 		},
 		description: 'The text to send.',
 	},
+	{
+		displayName: 'Message Type',
+		name: 'messageType',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		type: 'options',
+		options: [
+			{
+				name: 'Emote',
+				value: 'm.emote',
+				description: 'Perform an action (similar to /me in IRC).',
+			},
+			{
+				name: 'Notice',
+				value: 'm.notice',
+				description: 'Send a notice.',
+			},
+			{
+				name: 'Text',
+				value: 'm.text',
+				description: 'Send a text message.',
+			},
+		],
+		default: 'm.text',
+		description: 'The type of message to send.',
+	},
+	{
+		displayName: 'Message Format',
+		name: 'messageFormat',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		type: 'options',
+		options: [
+			{
+				name: 'Plain Text',
+				value: 'plain',
+				description: 'Text only',
+			},
+			{
+				name: 'HTML',
+				value: 'org.matrix.custom.html',
+				description: 'HTML-formatted text',
+			},
+		],
+		default: 'plain',
+		description: `The format of the message's body.`,
+	},
+	{
+		displayName: 'Fallback Text',
+		name: 'fallbackText',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'create',
+				],
+				messageFormat: [
+					'org.matrix.custom.html',
+				],
+			},
+		},
+		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
+		description: 'A plain text message to display in case the HTML cannot be rendered by the Matrix client.',
+	},
 
 
 	/* ----------------------------------------------------------------------- */
-	/*                                message:getAll                          */
+	/*                                message:getAll                           */
 	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Room ID',

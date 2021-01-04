@@ -2,6 +2,56 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.95.0
+
+### What changed?
+
+In the Harvest Node, we moved the account field from the credentials to the node parameters. This will allow you to work witn multiples accounts without having to create multiples credentials.
+
+### When is action necessary?
+
+If you are using the Harvest Node.
+
+### How to upgrade:
+
+Open the node set the parameter `Account ID`.
+
+## 0.94.0
+
+### What changed?
+
+In the Segment Node, we have changed how the properties 'traits' and 'properties' are defined. Now, key/value pairs can be provided, allowing you to send customs traits/properties.
+
+### When is action necessary?
+
+When the properties 'traits' or 'properties' are set, and one of the following resources/operations is used:
+
+| Resource | Operation |
+|--|--|
+| Identify | Create |
+| Track | Event |
+| Track | Page |
+| Group | Add |
+
+### How to upgrade:
+
+Open the affected resource/operation and set the parameters 'traits' or 'properties' again.
+
+## 0.93.0
+
+### What changed?
+
+Change in naming of the Authentication field for the Pipedrive Trigger node.
+
+### When is action necessary?
+
+If you had set "Basic Auth" for the "Authentication" field in the node.
+
+### How to upgrade:
+
+The "Authentication" field has been renamed to "Incoming Authentication". Please set the parameter “Incoming Authentication” to “Basic Auth” to activate it again.
+
+
 ## 0.90.0
 
 ### What changed?

@@ -122,7 +122,7 @@ export class TelegramTrigger implements INodeType {
 						name: 'download',
 						type: 'boolean',
 						default: false,
-						description: `Telegram develiers the image in 3 sizes.<br>
+						description: `Telegram delivers the image in 3 sizes.<br>
 						By default, just the larger image would be downloaded.<br>
 						if you want to change the size set the field 'Image Size'`,
 					},
@@ -225,7 +225,6 @@ export class TelegramTrigger implements INodeType {
 				if (additionalFields.imageSize) {
 
 					imageSize = additionalFields.imageSize as string;
-
 				}
 
 				let fileId;

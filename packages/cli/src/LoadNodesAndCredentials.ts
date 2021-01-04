@@ -33,6 +33,7 @@ class LoadNodesAndCredentialsClass {
 	} = {};
 
 	excludeNodes: string[] | undefined = undefined;
+	includeNodes: string[] | undefined = undefined;
 
 	nodeModulesPath = '';
 
@@ -63,6 +64,7 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		this.excludeNodes = config.get('nodes.exclude');
+		this.includeNodes = config.get('nodes.include');
 
 		// Get all the installed packages which contain n8n nodes
 		const packages = await this.getN8nNodePackages();
@@ -173,6 +175,10 @@ class LoadNodesAndCredentialsClass {
 			tempNode.description.icon.startsWith('file:')) {
 			// If a file icon gets used add the full path
 			tempNode.description.icon = 'file:' + path.join(path.dirname(filePath), tempNode.description.icon.substr(5));
+		}
+
+		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
+			return;
 		}
 
 		// Check if the node should be skiped

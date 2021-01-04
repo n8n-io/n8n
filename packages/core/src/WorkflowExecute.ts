@@ -385,7 +385,7 @@ export class WorkflowExecute {
 						}
 
 						if (workflow.connectionsByDestinationNode[nodeToAdd] === undefined)  {
-							// Add only node if it does not have any inputs becuase else it will
+							// Add only node if it does not have any inputs because else it will
 							// be added by its input node later anyway.
 							this.runExecutionData.executionData!.nodeExecutionStack.push(
 								{
@@ -468,7 +468,6 @@ export class WorkflowExecute {
 			this.runExecutionData.startData = {};
 		}
 
-		this.executeHook('workflowExecuteBefore', []);
 
 		let currentExecutionTry = '';
 		let lastExecutionTry = '';
@@ -482,6 +481,35 @@ export class WorkflowExecute {
 			});
 
 			const returnPromise = (async () => {
+				try {
+					await this.executeHook('workflowExecuteBefore', [workflow]);
+				} catch (error) {
+					// Set the error that it can be saved correctly
+					executionError = {
+						message: error.message,
+						stack: error.stack,
+					};
+
+					// Set the incoming data of the node that it can be saved correctly
+					executionData = this.runExecutionData.executionData!.nodeExecutionStack[0] as IExecuteData;
+					this.runExecutionData.resultData = {
+						runData: {
+							[executionData.node.name]: [
+								{
+									startTime,
+									executionTime: (new Date().getTime()) - startTime,
+									data: ({
+										'main': executionData.data.main,
+									} as ITaskDataConnections),
+								},
+							],
+						},
+						lastNodeExecuted: executionData.node.name,
+						error: executionError,
+					};
+
+					throw error;
+				}
 
 				executionLoop:
 				while (this.runExecutionData.executionData!.nodeExecutionStack.length !== 0) {
@@ -700,8 +728,8 @@ export class WorkflowExecute {
 										return Promise.reject(new Error(`The node "${executionNode.name}" connects to not found node "${connectionData.node}"`));
 									}
 
-									if (nodeSuccessData![outputIndex] && nodeSuccessData![outputIndex].length !== 0) {
-										// Add the node only if there is data for it to process
+									if (nodeSuccessData![outputIndex]) {
+										// Add the node only if it did execute
 										this.addNodeToBeExecuted(workflow, connectionData, parseInt(outputIndex, 10), executionNode.name, nodeSuccessData!, runIndex);
 									}
 								}
@@ -733,7 +761,9 @@ export class WorkflowExecute {
 					newStaticData = workflow.staticData;
 				}
 
-				await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
+				await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(error => {
+					console.error('There was a problem running hook "workflowExecuteAfter"', error);
+				});
 
 				return fullRunData;
 			});

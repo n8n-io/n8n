@@ -25,6 +25,7 @@ export class ShopifyTrigger implements INodeType {
 		icon: 'file:shopify.png',
 		group: ['trigger'],
 		version: 1,
+		subtitle: '={{$parameter["event"]}}',
 		description: 'Handle Shopify events via webhooks',
 		defaults: {
 			name: 'Shopify Trigger',
@@ -55,271 +56,268 @@ export class ShopifyTrigger implements INodeType {
 				options:
 					[
 						{
-							name: 'App uninstalled',
+							name: 'App Uninstalled',
 							value: 'app/uninstalled',
 						},
 						{
-							name: 'Carts create',
+							name: 'Cart Created',
 							value: 'carts/create',
 						},
 						{
-							name: 'Carts update',
+							name: 'Cart Updated',
 							value: 'carts/update',
 						},
 						{
-							name: 'Checkouts create',
+							name: 'Checkout Created',
 							value: 'checkouts/create',
 						},
 						{
-							name: 'Checkouts delete',
+							name: 'Checkout Delete',
 							value: 'checkouts/delete',
 						},
 						{
-							name: 'Checkouts update',
+							name: 'Checkout Update',
 							value: 'checkouts/update',
 						},
 						{
-							name: 'Collection listings add',
+							name: 'Collection Listings Added',
 							value: 'collection_listings/add',
 						},
 						{
-							name: 'Collection listings remove',
+							name: 'Collection Listings Removed',
 							value: 'collection_listings/remove',
 						},
 						{
-							name: 'Collection listings update',
+							name: 'Collection Listings Updated',
 							value: 'collection_listings/update',
 						},
 						{
-							name: 'Collections create',
+							name: 'Collection Created',
 							value: 'collections/create',
 						},
 						{
-							name: 'Collections delete',
+							name: 'Collection Deleted',
 							value: 'collections/delete',
 						},
 						{
-							name: 'Collections update',
+							name: 'Collection Updated',
 							value: 'collections/update',
 						},
 						{
-							name: 'Customer groups create',
+							name: 'Customer Groups Created',
 							value: 'customer_groups/create',
 						},
 						{
-							name: 'Customer groups delete',
+							name: 'Customer Groups Deleted',
 							value: 'customer_groups/delete',
 						},
 						{
-							name: 'Customer groups update',
+							name: 'Customer Groups Updated',
 							value: 'customer_groups/update',
 						},
 						{
-							name: 'Customers create',
+							name: 'Customer Created',
 							value: 'customers/create',
 						},
 						{
-							name: 'Customers delete',
+							name: 'Customer Deleted',
 							value: 'customers/delete',
 						},
 						{
-							name: 'Customers disable',
+							name: 'Customer disabled',
 							value: 'customers/disable',
 						},
 						{
-							name: 'Customers enable',
+							name: 'Customer Enabled',
 							value: 'customers/enable',
 						},
 						{
-							name: 'Customers update',
+							name: 'Customer Updated',
 							value: 'customers/update',
 						},
 						{
-							name: 'Draft orders create',
+							name: 'Draft Orders Created',
 							value: 'draft_orders/create',
 						},
 						{
-							name: 'Draft orders delete',
+							name: 'Draft Orders Deleted',
 							value: 'draft_orders/delete',
 						},
 						{
-							name: 'Draft orders update',
+							name: 'Draft orders Updated',
 							value: 'draft_orders/update',
 						},
 						{
-							name: 'Fulfillment events create',
+							name: 'Fulfillment Events Created',
 							value: 'fulfillment_events/create',
 						},
 						{
-							name: 'Fulfillment events delete',
+							name: 'Fulfillment Events Deleted',
 							value: 'fulfillment_events/delete',
 						},
 						{
-							name: 'Fulfillments create',
+							name: 'Fulfillment created',
 							value: 'fulfillments/create',
 						},
 						{
-							name: 'Fulfillments update',
+							name: 'Fulfillment Updated',
 							value: 'fulfillments/update',
 						},
 						{
-							name: 'Inventory_items create',
+							name: 'Inventory Items Created',
 							value: 'inventory_items/create',
 						},
 						{
-							name: 'Inventory_items delete',
+							name: 'Inventory Items Deleted',
 							value: 'inventory_items/delete',
 						},
 						{
-							name: 'Inventory_items update',
+							name: 'Inventory Items Updated',
 							value: 'inventory_items/update',
 						},
 						{
-							name: 'Inventory_levels connect',
+							name: 'Inventory Levels Connected',
 							value: 'inventory_levels/connect',
 						},
 						{
-							name: 'Inventory_levels disconnect',
+							name: 'Inventory Levels Disconnected',
 							value: 'inventory_levels/disconnect',
 						},
 						{
-							name: 'Inventory_levels update',
+							name: 'Inventory Levels Updated',
 							value: 'inventory_levels/update',
 						},
 						{
-							name: 'Locales create',
+							name: 'Locale Created',
 							value: 'locales/create',
 						},
 						{
-							name: 'Locales update',
+							name: 'Locale Updated',
 							value: 'locales/update',
 						},
 						{
-							name: 'Locations create',
+							name: 'Location Created',
 							value: 'locations/create',
 						},
 						{
-							name: 'Locations delete',
+							name: 'Location Deleted',
 							value: 'locations/delete',
 						},
 						{
-							name: 'Locations update',
+							name: 'Location Updated',
 							value: 'locations/update',
 						},
 						{
-							name: 'Order transactions create',
+							name: 'Order transactions Created',
 							value: 'order_transactions/create',
 						},
 						{
-							name: 'Orders cancelled',
+							name: 'Order cancelled',
 							value: 'orders/cancelled',
 						},
 						{
-							name: 'Orders create',
+							name: 'Order Created',
 							value: 'orders/create',
 						},
 						{
-							name: 'Orders delete',
+							name: 'Orders Deleted',
 							value: 'orders/delete',
 						},
 						{
-							name: 'Orders fulfilled',
+							name: 'Order Fulfilled',
 							value: 'orders/fulfilled',
 						},
 						{
-							name: 'Orders paid',
+							name: 'Order Paid',
 							value: 'orders/paid',
 						},
 						{
-							name: 'Orders partially fulfilled',
+							name: 'Order Partially Fulfilled',
 							value: 'orders/partially_fulfilled',
 						},
 						{
-							name: 'Orders updated',
+							name: 'Order Updated',
 							value: 'orders/updated',
 						},
 						{
-							name: 'Product listings add',
+							name: 'Product Listings Added',
 							value: 'product_listings/add',
 						},
 						{
-							name: 'Product listings remove',
+							name: 'Product Listings Removed',
 							value: 'product_listings/remove',
 						},
 						{
-							name: 'Product listings update',
+							name: 'Product Listings Updated',
 							value: 'product_listings/update',
 						},
 						{
-							name: 'Products create',
+							name: 'Product Created',
 							value: 'products/create',
 						},
 						{
-							name: 'Products delete',
+							name: 'Product Deleted',
 							value: 'products/delete',
 						},
 						{
-							name: 'Products update',
+							name: 'Product Updated',
 							value: 'products/update',
 						},
 						{
-							name: 'Refunds create',
+							name: 'Refund Created',
 							value: 'refunds/create',
 						},
 						{
-							name: 'Shop update',
+							name: 'Shop Updated',
 							value: 'shop/update',
 						},
 						{
-							name: 'Tender transactions create',
+							name: 'Tender Transactions Created',
 							value: 'tender_transactions/create',
 						},
 						{
-							name: 'Themes create',
+							name: 'Theme Created',
 							value: 'themes/create',
 						},
 						{
-							name: 'Themes delete',
+							name: 'Theme Deleted',
 							value: 'themes/delete',
 						},
 						{
-							name: 'Themes publish',
+							name: 'Theme Published',
 							value: 'themes/publish',
 						},
 						{
-							name: 'Themes update',
+							name: 'Theme Updated',
 							value: 'themes/update',
 						},
 					],
 				description: 'Event that triggers the webhook',
 			},
 		],
-
 	};
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId === undefined) {
-					return false;
-				}
-				const endpoint = `/webhooks/${webhookData.webhookId}.json`;
-				try {
-					await shopifyApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
-					if (e.statusCode === 404) {
-						delete webhookData.webhookId;
-						return false;
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const endpoint = `/webhooks`;
+				
+				const { webhooks }  = await shopifyApiRequest.call(this, 'GET', endpoint, {}, { topic });
+				for (const webhook of webhooks) {
+					if (webhook.address === webhookUrl) {
+						webhookData.webhookId = webhook.id;
+						return true;
 					}
-					throw e;
 				}
-				return true;
+				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				const credentials = this.getCredentials('shopifyApi');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const topic = this.getNodeParameter('topic') as string;
+				const webhookData = this.getWorkflowStaticData('node');
 				const endpoint = `/webhooks.json`;
 				const body = {
 					webhook: {
@@ -330,21 +328,15 @@ export class ShopifyTrigger implements INodeType {
 				};
 
 				let responseData;
-				try {
-					responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
-				} catch (error) {
-					return false;
-				}
+				
+				responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.webhook === undefined || responseData.webhook.id === undefined) {
 					// Required data is missing so was not successful
 					return false;
 				}
 
-				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = responseData.webhook.id as string;
-				webhookData.sharedSecret = credentials!.sharedSecret as string;
-				webhookData.topic = topic as string;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
@@ -357,8 +349,6 @@ export class ShopifyTrigger implements INodeType {
 						return false;
 					}
 					delete webhookData.webhookId;
-					delete webhookData.sharedSecret;
-					delete webhookData.topic;
 				}
 				return true;
 			},
@@ -368,17 +358,18 @@ export class ShopifyTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
-		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+		const credentials = this.getCredentials('shopifyApi') as IDataObject;
+		const topic = this.getNodeParameter('topic') as string;
 		if (headerData['x-shopify-topic'] !== undefined
 			&& headerData['x-shopify-hmac-sha256'] !== undefined
 			&& headerData['x-shopify-shop-domain'] !== undefined
 			&& headerData['x-shopify-api-version'] !== undefined) {
 			// @ts-ignore
-			const computedSignature = createHmac('sha256', webhookData.sharedSecret as string).update(req.rawBody).digest('base64');
+			const computedSignature = createHmac('sha256', credentials.sharedSecret as string).update(req.rawBody).digest('base64');
 			if (headerData['x-shopify-hmac-sha256'] !== computedSignature) {
 				return {};
 			}
-			if (webhookData.topic !== headerData['x-shopify-topic']) {
+			if (topic !== headerData['x-shopify-topic']) {
 				return {};
 			}
 		} else {
