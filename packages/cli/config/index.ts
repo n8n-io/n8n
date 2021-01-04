@@ -125,11 +125,11 @@ const config = convict({
 			},
 		},
 		sqlite: {
-			vacuumInterval: {
-				doc: 'SQLite Vacuum operation interval',
-				format: Number,
-				default: 86400, // Given in seconds; -1 disables. 0 executes only at startup.
-				env: 'DB_SQLITE_VACUUM_INTERVAL',	
+			executeVacuumOnStartup: {
+				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase boot time.',
+				format: Boolean,
+				default: false,
+				env: 'DB_SQLITE_VACUUM_ON_STARTUP',	
 			}, 
 		},
 	},
