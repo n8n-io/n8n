@@ -40,7 +40,7 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	startedAt: Date;
 
 	@Index()
-	@Column('timestamp')
+	@Column('timestamp', { nullable: true })
 	stoppedAt: Date;
 
 	@Column('json')
