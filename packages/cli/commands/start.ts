@@ -160,12 +160,10 @@ export class Start extends Command {
 				const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
 
 				if (dbType === 'sqlite') {
-					const vacuumInterval = config.get('database.sqlite.vacuumInterval') as number;
-					if (vacuumInterval >= 0) {
+					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
+					if (shouldRunVacuum) {
+						console.log('ran vacuum');
 						Db.collections.Execution!.query("VACUUM;");
-						if (vacuumInterval > 0) {
-							setInterval(() => Db.collections.Execution!.query("VACUUM;"), vacuumInterval * 1000);
-						}
 					}
 				}
 
