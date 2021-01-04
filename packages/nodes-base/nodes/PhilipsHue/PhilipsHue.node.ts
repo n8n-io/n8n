@@ -89,8 +89,8 @@ export class PhilipsHue implements INodeType {
 					const lightId = light;
 					
 					for (const groupId of Object.keys(groups)) {
-						if(groups[groupId].type == "Room" && groups[groupId].lights.includes(lightId)) {
-							lightName = groups[groupId].name + ": " + lightName
+						if(groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
+							lightName = `${groups[groupId].name}: ${lightName}`;
 						}
 					}
 					
