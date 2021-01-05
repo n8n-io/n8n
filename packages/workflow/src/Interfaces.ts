@@ -748,3 +748,15 @@ export interface IWorkflowHooksOptionalParameters {
 export interface IWorkflowSettings {
 	[key: string]: IDataObject | string | number | boolean | undefined;
 }
+
+export interface IN8nErrorPathMapping {
+	[key: string]: string[];
+	code: string[];
+	message: string[];
+}
+
+export interface IN8nApiResponseError {
+	[key: string]: string;
+	code: string;
+	message: string;
+}
