@@ -43,9 +43,6 @@ export const messageFields = [
 		default: false,
 		displayOptions: {
 			show: {
-				authentication: [
-					'accessToken',
-				],
 				operation: [
 					'post',
 				],
