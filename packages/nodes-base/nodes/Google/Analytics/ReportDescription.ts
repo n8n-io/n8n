@@ -30,7 +30,10 @@ export const reportFields = [
 	{
 		displayName: 'View ID',
 		name: 'viewId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getViews',
+		},
 		default: '',
 		required: true,
 		displayOptions: {

@@ -113,6 +113,30 @@ export class GoogleAnalytics implements INodeType {
 				}
 				return returnData;
 			},
+			// Get all the views to display them to user so that he can
+			// select them easily
+			async getViews(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { items } = await googleApiRequest.call(
+					this,
+					'GET',
+					'',
+					{},
+					{},
+					'https://www.googleapis.com/analytics/v3/management/accounts/~all/webproperties/~all/profiles',
+				);
+
+				for (const item of items) {
+					returnData.push({
+						name: item.name,
+						value: item.id,
+						description: item.websiteUrl,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -187,7 +211,7 @@ export class GoogleAnalytics implements INodeType {
 						Object.assign(body, { hideTotals: additionalFields.hideTotals });
 					}
 
-					responseData = await googleApiRequest.call(this, method, endpoint,  { reportRequests: [body] }, qs);
+					responseData = await googleApiRequest.call(this, method, endpoint, { reportRequests: [body] }, qs);
 					responseData = responseData.reports;
 
 					if (simple === true) {
@@ -213,8 +237,8 @@ export class GoogleAnalytics implements INodeType {
 							userId,
 						},
 					};
-					if(additionalFields.activityTypes){
-						Object.assign(body,{activityTypes:additionalFields.activityTypes});
+					if(additionalFields.activityTypes) {
+						Object.assign(body, { activityTypes: additionalFields.activityTypes });
 					}
 
 					if (returnAll) {
