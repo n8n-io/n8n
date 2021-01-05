@@ -22,7 +22,7 @@ export const reportOperations = [
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
+		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
@@ -40,7 +40,7 @@ export const reportFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		placeholder: '123456',
@@ -76,14 +76,14 @@ export const reportFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		options: [
 			{
 				displayName: 'Date Ranges',
 				name: 'dateRangesUi',
-				placeholder:'Add Date Range',
+				placeholder: 'Add Date Range',
 				type: 'fixedCollection',
 				default: {},
 				description: 'Date ranges in the request',
@@ -91,24 +91,24 @@ export const reportFields = [
 					{
 						displayName: 'Date Range',
 						name: 'dateRanges',
-						values:[
+						values: [
 							{
 								displayName: 'Start Date',
 								name: 'startDate',
 								type: 'dateTime',
-								default:'',
-								description: 'Start date'
+								default: '',
+								description: 'Start date',
 							},
 							{
 								displayName: 'End Date',
 								name: 'endDate',
 								type: 'dateTime',
-								default:'',
-								description: 'End date'
-							}
-						]
-					}
-				]
+								default: '',
+								description: 'End date',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Dimensions',
@@ -116,15 +116,15 @@ export const reportFields = [
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
-					multipleValues: true,	
+					multipleValues: true,
 				},
-				placeholder:'Add Dimension',
+				placeholder: 'Add Dimension',
 				description: 'Dimensions are attributes of your data. For example, the dimension ga:city indicates the city, for example, "Paris" or "New York", from which a session originates.',
 				options: [
 					{
 						displayName: 'Dimension',
 						name: 'dimensionValues',
-						values:[
+						values: [
 							{
 								displayName: 'Name',
 								name: 'name',
@@ -132,8 +132,8 @@ export const reportFields = [
 								typeOptions: {
 									loadOptionsMethod: 'getDimensions',
 								},
-								default:'',
-								description: 'Name of the dimension to fetch, for example ga:browser.'
+								default: '',
+								description: 'Name of the dimension to fetch, for example ga:browser.',
 							},
 						],
 					},
@@ -168,13 +168,13 @@ export const reportFields = [
 				typeOptions: {
 					multipleValues: true,
 				},
-				placeholder:'Add Metrics',
+				placeholder: 'Add Metrics',
 				description: 'Metrics in the request',
 				options: [
 					{
 						displayName: 'Metric',
 						name: 'metricValues',
-						values:[
+						values: [
 							{
 								displayName: 'Alias',
 								name: 'alias',
@@ -197,28 +197,28 @@ export const reportFields = [
 								displayName: 'Formatting Type',
 								name: 'formattingType',
 								type: 'options',
-								default:'INTEGER',
-								description: 'Specifies how the metric expression should be formatted',
+								default: 'INTEGER',
+								description: 'Specifies how the metric expression should be formatted.',
 								options: [
 									{
 										name: 'Currency',
-										value:'CURRENCY'
+										value: 'CURRENCY',
 									},
 									{
 										name: 'Float',
-										value:'FLOAT'
+										value: 'FLOAT',
 									},
 									{
 										name: 'Integer',
-										value:'INTEGER'
+										value: 'INTEGER',
 									},
 									{
 										name: 'Percent',
-										value:'PERCENT'
+										value: 'PERCENT',
 									},
 									{
 										name: 'Time',
-										value:'TIME'
+										value: 'TIME',
 									},
 								],
 							},
@@ -231,8 +231,8 @@ export const reportFields = [
 				name: 'useResourceQuotas',
 				type: 'boolean',
 				default: false,
-				description: 'Enables resource based quotas',
+				description: 'Enables resource based quotas.',
 			},
 		],
-	}
+	},
 ] as INodeProperties[];

@@ -58,7 +58,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string ,method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 
@@ -75,16 +75,172 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
 		(responseData['nextPageToken'] !== undefined &&
-		responseData['nextPageToken'] !== '') ||
+			responseData['nextPageToken'] !== '') ||
 		(responseData['reports'] &&
-		responseData['reports'][0].nextPageToken &&
-		responseData['reports'][0].nextPageToken !== undefined)
+			responseData['reports'][0].nextPageToken &&
+			responseData['reports'][0].nextPageToken !== undefined)
 	);
 
 	return returnData;
 }
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
-export function simplify(responseData: any) {
+export const userActivityOperations = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'userActivity',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Return user activity data.',
+			},
+		],
+		default: 'search',
+		description: 'The operation to perform',
+	},
+] as INodeProperties[];
+
+export const userActivityFields = [
+	{
+		displayName: 'View ID',
+		name: 'viewId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'userActivity',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		placeholder: '123456',
+		description: 'The View ID of Google Analytics',
+	},
+	{
+		displayName: 'User ID',
+		name: 'userId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'userActivity',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+		placeholder: '123456',
+		description: 'User ID of a user',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'userActivity',
+				],
+			},
+		},
+		default: false,
+		description: 'If all results should be returned or only up to a given limit.',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'userActivity',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: [
+					'search',
+				],
+				resource: [
+					'userActivity',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Activity Types',
+				name: 'activityTypes',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'Ecommerce',
+						value: 'ECOMMERCE',
+					},
+					{
+						name: 'Event',
+						value: 'EVENT',
+					},
+					{
+						name: 'Goal',
+						value: 'GOAL',
+					},
+					{
+						name: 'Pageview',
+						value: 'PAGEVIEW',
+					},
+					{
+						name: 'Screenview',
+						value: 'SCREENVIEW',
+					},
+				],
+				description: 'Type of activites requested',
+				default: [],
+			},
+		],
+	},
+] as INodeProperties[];
+export function simplify(responseData: any) { // tslint:disable-line:no-any
 	const { columnHeader: { dimensions }, data: { rows } } = responseData[0];
 	responseData = [];
 	for (const row of rows) {

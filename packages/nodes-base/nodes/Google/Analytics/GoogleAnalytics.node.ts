@@ -1,4 +1,4 @@
-import { 
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -11,17 +11,17 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { 
+import {
 	reportFields,
 	reportOperations,
-} from './reportDescription';
+} from './ReportDescription';
 
-import { 
+import {
 	userActivityFields,
 	userActivityOperations,
-} from './userActivityDescription';
+} from './UserActivityDescription';
 
-import { 
+import {
 	googleApiRequest,
 	googleApiRequestAllItems,
 	simplify,
@@ -29,7 +29,7 @@ import {
 
 import * as moment from 'moment-timezone';
 
-import { 
+import {
 	IData
 } from './Interfaces';
 
@@ -153,7 +153,7 @@ export class GoogleAnalytics implements INodeType {
 							const start = dateValues.startDate as string;
 							const end = dateValues.endDate as string;
 							Object.assign(
-								body, 
+								body,
 								{
 									dateRanges:
 									[
@@ -188,7 +188,7 @@ export class GoogleAnalytics implements INodeType {
 					}
 
 					responseData = await googleApiRequest.call(this, method, endpoint,  { reportRequests: [body] }, qs);
-					responseData = responseData.reports;		
+					responseData = responseData.reports;
 
 					if (simple === true) {
 						responseData = simplify(responseData);

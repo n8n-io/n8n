@@ -5,12 +5,12 @@ export interface IData {
 	metrics?: IMetric[];
 }
 
-export interface IDimension  {
+export interface IDimension {
 	name?: string;
 	histogramBuckets?: string[];
 }
 
-export interface IMetric  {
+export interface IMetric {
 	expression?: string;
 	alias?: string;
 	formattingType?: string;

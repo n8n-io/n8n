@@ -4,8 +4,8 @@ import {
 } from 'n8n-workflow';
 
 const scopes = [
-    'https://www.googleapis.com/auth/analytics',
-	'https://www.googleapis.com/auth/analytics.readonly'
+	'https://www.googleapis.com/auth/analytics',
+	'https://www.googleapis.com/auth/analytics.readonly',
 ];
 
 

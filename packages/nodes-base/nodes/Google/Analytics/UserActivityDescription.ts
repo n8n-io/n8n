@@ -22,7 +22,7 @@ export const userActivityOperations = [
 			},
 		],
 		default: 'search',
-		description: 'The operation to perform',
+		description: 'The operation to perform.',
 	},
 ] as INodeProperties[];
 
@@ -44,7 +44,7 @@ export const userActivityFields = [
 			},
 		},
 		placeholder: '123456',
-		description: 'The View ID of Google Analytics',
+		description: 'The View ID of Google Analytics.',
 	},
 	{
 		displayName: 'User ID',
@@ -63,7 +63,7 @@ export const userActivityFields = [
 			},
 		},
 		placeholder: '123456',
-		description: 'User ID of a user',
+		description: 'ID of a user.',
 	},
 	{
 		displayName: 'Return All',
@@ -129,27 +129,27 @@ export const userActivityFields = [
 				type: 'multiOptions',
 				options: [
 					{
-						name:'Ecommerce',
-						value:'ECOMMERCE',
+						name: 'Ecommerce',
+						value: 'ECOMMERCE',
 					},
 					{
-						name:'Event',
-						value:'EVENT',
+						name: 'Event',
+						value: 'EVENT',
 					},
 					{
-						name:'Goal',
-						value:'GOAL',
+						name: 'Goal',
+						value: 'GOAL',
 					},
 					{
-						name:'Pageview',
-						value:'PAGEVIEW',
+						name: 'Pageview',
+						value: 'PAGEVIEW',
 					},
 					{
-						name:'Screenview',
-						value:'SCREENVIEW',
+						name: 'Screenview',
+						value: 'SCREENVIEW',
 					},
 				],
-				description: 'Type of activites requested',
+				description: 'Type of activites requested.',
 				default: [],
 			},
 		],
