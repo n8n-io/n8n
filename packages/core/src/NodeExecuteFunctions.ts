@@ -19,6 +19,8 @@ import {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
+	IN8nErrorPathMapping,
+	IN8nApiResponseError,
 	IOAuth2Options,
 	IPollFunctions,
 	IRunExecutionData,
@@ -1042,3 +1044,45 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 	})(workflow, node);
 
 }
+
+/**
+ * Converts an API error object into a standard N8N error object based on the error path mapping provided.
+ *
+ * @export
+ * @param {object} errorObject
+ * @param {IN8nErrorPathMapping} errorPathMapping
+ * @returns {IN8nApiResponseError}
+ */
+export function errorHandler(errorObject: object, errorPathMapping: IN8nErrorPathMapping): IN8nApiResponseError {
+	const apiResponseError: IN8nApiResponseError = {
+		code: '',
+		message: '',
+	};
+
+	const findValueRecursively = (accumulator: any, currentValue: any) => accumulator[currentValue]; // tslint:disable-line:no-any
+
+	Object.entries(errorPathMapping).forEach(([key, path]) => {
+		apiResponseError[key] = path.reduce(findValueRecursively, errorObject).toString();
+	});
+
+	return apiResponseError;
+};
+
+/**
+ * Throws an error with a standard N8N error message.
+ *
+ * @export
+ * @param {object} obj
+ * @param {string} obj.nodeName
+ * @param {IN8nApiResponseError} obj.apiResponseError
+ * @returns {never}
+ */
+export function throwApiResponseError({
+	nodeName,
+	apiResponseError,
+}: {
+	nodeName: string;
+	apiResponseError: IN8nApiResponseError;
+}): never {
+	throw new Error(`${nodeName} error response [${apiResponseError.code}]: ${apiResponseError.message}`);
+};
