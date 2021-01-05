@@ -130,7 +130,6 @@
 							path=""
 							:highlightSelectedNode="true"
 							:selectOnClickNode="true"
-							:custom-value-formatter="customLinkFormatter"
 							@click="dataItemClicked"
 							class="json-data"
 						/>
@@ -418,13 +417,6 @@ export default mixins(
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
 			},
-			customLinkFormatter (data: object | number | string, key: string, parent: object, defaultFormatted: () => string) {
-				if (typeof data === 'string' && data.startsWith('http://')) {
-					return `<a style="color:red;" href="${data}" target="_blank">"${data}"</a>`;
-				} else {
-					return defaultFormatted;
-				}
-			},
 			convertToJson (inputData: INodeExecutionData[]): IDataObject[] {
 				const returnData: IDataObject[] = [];
 				inputData.forEach((data) => {
@@ -602,10 +594,6 @@ export default mixins(
 					// Data is reasonable small (< 200kb) so display it directly
 					this.showData = true;
 				}
-
-				if (this.displayMode === 'Binary' && this.binaryData.length === 0) {
-					this.displayMode = 'Table';
-				}
 			},
 		},
 		watch: {
@@ -614,6 +602,12 @@ export default mixins(
 				this.outputIndex = 0;
 				this.maxDisplayItems = 25;
 				this.refreshDataSize();
+				if (this.displayMode === 'Binary') {
+					this.closeBinaryDataDisplay();
+					if (this.binaryData.length === 0) {
+						this.displayMode = 'Table';
+					}
+				}
 			},
 			jsonData () {
 				this.refreshDataSize();

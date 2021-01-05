@@ -157,6 +157,10 @@ export class If implements INodeType {
 										value: 'contains',
 									},
 									{
+										name: 'Ends With',
+										value: 'endsWith',
+									},
+									{
 										name: 'Equal',
 										value: 'equal',
 									},
@@ -171,6 +175,10 @@ export class If implements INodeType {
 									{
 										name: 'Regex',
 										value: 'regex',
+									},
+									{
+										name: 'Starts With',
+										value: 'startsWith',
 									},
 									{
 										name: 'Is Empty',
@@ -252,12 +260,14 @@ export class If implements INodeType {
 		} = {
 			contains: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || '').toString().includes((value2 || '').toString()),
 			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) => !(value1 || '').toString().includes((value2 || '').toString()),
+			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).endsWith(value2 as string),
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
 			larger: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) > (value2 || 0),
 			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) >= (value2 || 0),
 			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) < (value2 || 0),
 			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 || 0) <= (value2 || 0),
+			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) => (value1 as string).startsWith(value2 as string),
 			isEmpty: (value1: NodeParameterValue) => [undefined, null, ''].includes(value1 as string),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
 				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimy]*)$'));
