@@ -140,7 +140,8 @@ export function getConditions(options: IDataObject) {
 	let data = undefined;
 	if (Array.isArray(conditions) && conditions.length !== 0) {
 		data = conditions.map((condition: IDataObject) => `${condition.field}${(condition.operation) === 'equal' ? '=' : condition.operation}${getValue(condition.value)}`);
-		data = `WHERE ${data.join('AND')}`;
+		console.log(data);
+		data = `WHERE ${data.join(' AND ')}`;
 	}
 	return data;
 }
