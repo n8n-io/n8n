@@ -6,12 +6,16 @@ import {
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	IN8nErrorPathMapping,
 } from 'n8n-workflow';
 
 import {
 	OptionsWithUri,
 } from 'request';
 
+import {
+	handleError,
+} from 'n8n-core';
 
 /**
  * Make an API request to HackerNews
@@ -34,12 +38,12 @@ export async function hackerNewsApiRequest(this: IHookFunctions | IExecuteFuncti
 		return await this.helpers.request!(options);
 	} catch (error) {
 
-		if (error.response && error.response.body && error.response.body.error) {
-			// Try to return the error prettier
-			throw new Error(`Hacker News error response [${error.statusCode}]: ${error.response.body.error}`);
-		}
+		const errorPathMapping: IN8nErrorPathMapping = {
+			code: ["error", "status"],
+			message: ["error", "error"],
+		};
 
-		throw error;
+		handleError("Hacker News", error, errorPathMapping);
 	}
 }
 
