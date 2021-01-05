@@ -1046,6 +1046,24 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 }
 
 /**
+ * Standardizes an API response error and throws it.
+ *
+ * @export
+ * @param {string} nodeName
+ * @param {object} errorObject
+ * @param {IN8nErrorPathMapping} errorPathMapping
+ * @returns {never}
+ */
+export function handleError(
+	nodeName: string,
+	errorObject: object,
+	errorPathMapping: IN8nErrorPathMapping
+): never {
+	const apiResponseError = standardizeError(errorObject, errorPathMapping);
+	throwApiResponseError(nodeName, apiResponseError);
+}
+
+/**
  * Converts an API error object into a standard N8N error object based on the error path mapping provided.
  *
  * @export
@@ -1053,7 +1071,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
  * @param {IN8nErrorPathMapping} errorPathMapping
  * @returns {IN8nApiResponseError}
  */
-export function errorHandler(errorObject: object, errorPathMapping: IN8nErrorPathMapping): IN8nApiResponseError {
+function standardizeError(errorObject: object, errorPathMapping: IN8nErrorPathMapping): IN8nApiResponseError {
 	const apiResponseError: IN8nApiResponseError = {
 		code: '',
 		message: '',
@@ -1072,17 +1090,13 @@ export function errorHandler(errorObject: object, errorPathMapping: IN8nErrorPat
  * Throws an error with a standard N8N error message.
  *
  * @export
- * @param {object} obj
- * @param {string} obj.nodeName
- * @param {IN8nApiResponseError} obj.apiResponseError
+ * @param {string} nodeName
+ * @param {IN8nApiResponseError} apiResponseError
  * @returns {never}
  */
-export function throwApiResponseError({
-	nodeName,
-	apiResponseError,
-}: {
-	nodeName: string;
-	apiResponseError: IN8nApiResponseError;
-}): never {
+function throwApiResponseError(
+	nodeName: string,
+	apiResponseError: IN8nApiResponseError,
+): never {
 	throw new Error(`${nodeName} error response [${apiResponseError.code}]: ${apiResponseError.message}`);
 };
