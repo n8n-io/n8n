@@ -15,12 +15,12 @@ import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
+	IN8nApiResponseError,
+	IN8nErrorPathMapping,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
-	IN8nErrorPathMapping,
-	IN8nApiResponseError,
 	IOAuth2Options,
 	IPollFunctions,
 	IRunExecutionData,
@@ -1057,7 +1057,7 @@ export function getExecuteWebhookFunctions(workflow: Workflow, node: INode, addi
 export function handleError(
 	nodeName: string,
 	errorObject: object,
-	errorPathMapping: IN8nErrorPathMapping
+	errorPathMapping: IN8nErrorPathMapping,
 ): never {
 	const apiResponseError = standardizeError(errorObject, errorPathMapping);
 	throwApiResponseError(nodeName, apiResponseError);
@@ -1084,7 +1084,7 @@ function standardizeError(errorObject: object, errorPathMapping: IN8nErrorPathMa
 	});
 
 	return apiResponseError;
-};
+}
 
 /**
  * Throws an error with a standard N8N error message.
@@ -1099,4 +1099,4 @@ function throwApiResponseError(
 	apiResponseError: IN8nApiResponseError,
 ): never {
 	throw new Error(`${nodeName} error response [${apiResponseError.code}]: ${apiResponseError.message}`);
-};
+}
