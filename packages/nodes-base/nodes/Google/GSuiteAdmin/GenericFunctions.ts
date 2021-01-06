@@ -3,6 +3,7 @@ import {
  } from 'request';
 
 import {
+	handleError,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
@@ -10,6 +11,7 @@ import {
 
 import {
 	IDataObject,
+	IN8nErrorPathMapping,
 } from 'n8n-workflow';
 
 export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
@@ -33,17 +35,13 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'gSuiteAdminOAuth2Api', options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
 
-			let errors = error.response.body.error.errors;
+		const errorPathMapping: IN8nErrorPathMapping = {
+			code: ["error", "error", "code"],
+			message: ["error", "error", "message"],
+		};
 
-			errors = errors.map((e: IDataObject) => e.message);
-			// Try to return the error prettier
-			throw new Error(
-				`G Suite Admin error response [${error.statusCode}]: ${errors.join('|')}`,
-			);
-		}
-		throw error;
+		handleError("GSuite Admin", error, errorPathMapping);
 	}
 }
 
