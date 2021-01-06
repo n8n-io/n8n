@@ -162,7 +162,6 @@ export class Start extends Command {
 				if (dbType === 'sqlite') {
 					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
 					if (shouldRunVacuum) {
-						console.log('ran vacuum');
 						Db.collections.Execution!.query("VACUUM;");
 					}
 				}
