@@ -133,7 +133,7 @@ export class SpreadsheetFile implements INodeType {
 				default: 'data',
 				required: true,
 				placeholder: 'data',
-				description: 'The name of the binary key to get data from.<br />It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
+				description: 'The name of the JSON key to get data from.<br />It is also possible to define deep keys by using dot-notation like for example:<br />"level1.level2.currentKey"',
 			},
 
 			// ----------------------------------
@@ -300,7 +300,7 @@ export class SpreadsheetFile implements INodeType {
 						description: 'In some cases and file formats, it is necessary to read<br />specifically as string else some special character get interpreted wrong.',
 					},
 					{
-						displayName: 'String delimiter',
+						displayName: 'Delimiter',
 						name: 'delimiter',
 						type: 'string',
 						displayOptions: {
@@ -311,7 +311,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Change the delimiter of the file to read.',
+						description: 'Change the delimiter for reading.',
 					},
 					{
 						displayName: 'Range',
@@ -359,7 +359,7 @@ export class SpreadsheetFile implements INodeType {
 						description: 'If the data should be returned RAW instead of parsed.',
 					},
 					{
-						displayName: 'String delimiter',
+						displayName: 'Delimiter',
 						name: 'delimiter',
 						type: 'string',
 						displayOptions: {
@@ -370,7 +370,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Change the delimiter of the file to read.',
+						description: 'Change the delimiter for reading.',
 					},
 					// ----------------------------------
 					//         toFile
@@ -408,7 +408,7 @@ export class SpreadsheetFile implements INodeType {
 						description: 'File name to set in binary data. By default will "spreadsheet.<fileFormat>" be used.',
 					},
 					{
-						displayName: 'String delimiter',
+						displayName: 'Delimiter',
 						name: 'delimiter',
 						type: 'string',
 						displayOptions: {
@@ -422,7 +422,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Change the delimiter of the file to write.',
+						description: 'Change the delimiter for writing.',
 					},
 					{
 						displayName: 'Sheet Name',
@@ -447,7 +447,7 @@ export class SpreadsheetFile implements INodeType {
 					//         toJson
 					// ----------------------------------
 					{
-						displayName: 'String delimiter',
+						displayName: 'Delimiter',
 						name: 'delimiter',
 						type: 'string',
 						displayOptions: {
@@ -461,7 +461,7 @@ export class SpreadsheetFile implements INodeType {
 							},
 						},
 						default: '',
-						description: 'Change the delimiter of the file to write.',
+						description: 'Change the delimiter for writing.',
 					},
 				],
 			},
