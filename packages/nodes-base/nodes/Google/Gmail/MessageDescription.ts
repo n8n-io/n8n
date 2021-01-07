@@ -126,6 +126,46 @@ export const messageFields = [
 		description: 'The message subject.',
 	},
 	{
+		displayName: 'HTML',
+		name: 'includeHtml',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'send',
+					'reply',
+				],
+			},
+		},
+		default: false,
+		description: 'Switch ON if the message should also be included as HTML.',
+	},
+	{
+		displayName: 'HTML Message',
+		name: 'htmlMessage',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				includeHtml: [
+					true,
+				],
+				resource: [
+					'message',
+				],
+				operation: [
+					'reply',
+					'send',
+				],
+			},
+		},
+		description: 'The HTML message body.',
+	},
+	{
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
@@ -142,8 +182,7 @@ export const messageFields = [
 				],
 			},
 		},
-		placeholder: 'Hello World!',
-		description: 'The message body. If HTML formatted, then you have to add and activate the option "HTML content" in the "Additional Options" section.',
+		description: 'Plain text message body.',
 	},
 	{
 		displayName: 'To Email',
@@ -236,34 +275,6 @@ export const messageFields = [
 				],
 				default: '',
 				description: 'Array of supported attachments to add to the message.',
-			},
-		],
-	},
-	{
-		displayName: 'Additional Options',
-		name: 'additionalOptions',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				resource: [
-					'message',
-				],
-				operation: [
-					'send',
-					'reply',
-				],
-			},
-		},
-		default: {},
-		description: 'Additional options to the message',
-		placeholder: 'Add Option',
-		options: [
-			{
-				displayName: 'HTML content',
-				name: 'htmlContent',
-				type: 'boolean',
-				default: false,
-				description: 'Switch ON if the message is in HTML format.',
 			},
 		],
 	},

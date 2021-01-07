@@ -82,6 +82,44 @@ export const draftFields = [
 		description: 'The message subject.',
 	},
 	{
+		displayName: 'HTML',
+		name: 'includeHtml',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'draft',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		default: false,
+		description: 'Switch ON if the message should also be included as HTML.',
+	},
+	{
+		displayName: 'HTML Message',
+		name: 'htmlMessage',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				includeHtml: [
+					true,
+				],
+				resource: [
+					'draft',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		description: 'The HTML message body.',
+	},
+	{
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
@@ -178,33 +216,6 @@ export const draftFields = [
 				],
 				default: '',
 				description: 'Array of supported attachments to add to the message.',
-			},
-		],
-	},
-	{
-		displayName: 'Additional Options',
-		name: 'additionalOptions',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'create',
-				],
-			},
-		},
-		default: {},
-		description: 'Additional options to the message',
-		placeholder: 'Add Option',
-		options: [
-			{
-				displayName: 'HTML content',
-				name: 'htmlContent',
-				type: 'boolean',
-				default: false,
-				description: 'Switch ON if the message is in HTML format.',
 			},
 		],
 	},
