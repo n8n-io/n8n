@@ -35,7 +35,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		throw new Error('No credentials got returned!');
 	}
 
-	const endpoint = new URL(((credentials.sesEndpoint as string).replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`) + path);
+	const endpoint = new URL(((credentials.sesEndpoint as string || '').replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`) + path);
 
 	// Sign AWS API request with the user credentials
 

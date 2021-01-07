@@ -44,7 +44,7 @@ export class Aws implements ICredentialType {
 			displayOptions: {
 				show: {
 					customEndpoints: [
-						'true',
+						true,
 					],
 				},
 			},
@@ -59,7 +59,7 @@ export class Aws implements ICredentialType {
 			displayOptions: {
 				show: {
 					customEndpoints: [
-						'true',
+						true,
 					],
 				},
 			},
@@ -74,7 +74,7 @@ export class Aws implements ICredentialType {
 			displayOptions: {
 				show: {
 					customEndpoints: [
-						'true',
+						true,
 					],
 				},
 			},
@@ -89,7 +89,7 @@ export class Aws implements ICredentialType {
 			displayOptions: {
 				show: {
 					customEndpoints: [
-						'true',
+						true,
 					],
 				},
 			},
@@ -104,7 +104,7 @@ export class Aws implements ICredentialType {
 			displayOptions: {
 				show: {
 					customEndpoints: [
-						'true',
+						true,
 					],
 				},
 			},
