@@ -656,7 +656,7 @@ export class HttpRequest implements INodeType {
 			if (itemIndex > 0 && options.batchSize as number >= 0 && options.batchInterval as number > 0) {
 				// defaults batch size to 1 of it's set to 0
 				const batchSize: number = options.batchSize as number > 0 ? options.batchSize as number : 1;
-				if (itemIndex % batchSize === 1) {
+				if (itemIndex % batchSize === 0) {
 					await new Promise(resolve => setTimeout(resolve, options.batchInterval as number));
 				}
 			}
