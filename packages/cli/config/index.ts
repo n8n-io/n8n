@@ -126,11 +126,11 @@ const config = convict({
 		},
 		sqlite: {
 			executeVacuumOnStartup: {
-				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase boot time.',
+				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
 				format: Boolean,
 				default: false,
-				env: 'DB_SQLITE_VACUUM_ON_STARTUP',	
-			}, 
+				env: 'DB_SQLITE_VACUUM_ON_STARTUP',
+			},
 		},
 	},
 
