@@ -25,6 +25,7 @@ import {
 	faAngleUp,
 	faArrowRight,
 	faAt,
+	faFileArchive,
 	faBook,
 	faBug,
 	faCalendar,
@@ -106,6 +107,7 @@ library.add(faArrowRight);
 library.add(faAt);
 library.add(faBook);
 library.add(faBug);
+library.add(faFileArchive);
 library.add(faCalendar);
 library.add(faCheck);
 library.add(faCode);
