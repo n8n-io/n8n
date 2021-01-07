@@ -31,10 +31,23 @@ export class Aws implements ICredentialType {
 			},
 		},
 		{
+			displayName: 'Custom Endpoints',
+			name: 'customEndpoints',
+			type: 'boolean' as NodePropertyTypes,
+			default: false,
+		},
+		{
 			displayName: 'Rekognition Endpoint',
 			name: 'rekognitionEndpoint',
 			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Rekognition using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					customEndpoints: [
+						'true',
+					],
+				},
+			},
 			default: '',
 			placeholder: 'https://rekognition.{region}.amazonaws.com',
 		},
@@ -43,6 +56,13 @@ export class Aws implements ICredentialType {
 			name: 'lambdaEndpoint',
 			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and Lambda using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					customEndpoints: [
+						'true',
+					],
+				},
+			},
 			default: '',
 			placeholder: 'https://lambda.{region}.amazonaws.com',
 		},
@@ -51,6 +71,13 @@ export class Aws implements ICredentialType {
 			name: 'snsEndpoint',
 			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SNS using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					customEndpoints: [
+						'true',
+					],
+				},
+			},
 			default: '',
 			placeholder: 'https://sns.{region}.amazonaws.com',
 		},
@@ -59,6 +86,13 @@ export class Aws implements ICredentialType {
 			name: 'sesEndpoint',
 			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and SES using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					customEndpoints: [
+						'true',
+					],
+				},
+			},
 			default: '',
 			placeholder: 'https://email.{region}.amazonaws.com',
 		},
@@ -67,6 +101,13 @@ export class Aws implements ICredentialType {
 			name: 's3Endpoint',
 			description: 'If you use Amazon VPC to host n8n, you can establish a connection between your VPC and S3 using a VPC endpoint. Leave blank to use the default endpoint.',
 			type: 'string' as NodePropertyTypes,
+			displayOptions: {
+				show: {
+					customEndpoints: [
+						'true',
+					],
+				},
+			},
 			default: '',
 			placeholder: 'https://s3.{region}.amazonaws.com',
 		},
