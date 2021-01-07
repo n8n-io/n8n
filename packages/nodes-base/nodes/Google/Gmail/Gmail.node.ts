@@ -52,6 +52,7 @@ export interface IEmail {
 	reference?: string;
 	subject: string;
 	body: string;
+	htmlBody?: string;
 	attachments?: IDataObject[];
 }
 
@@ -325,6 +326,10 @@ export class Gmail implements INodeType {
 						attachments: attachmentsList,
 					};
 
+					if (this.getNodeParameter('includeHtml', i, false) as boolean === true) {
+						email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
+					}
+
 					endpoint = '/gmail/v1/users/me/messages/send';
 					method = 'POST';
 
@@ -419,6 +424,10 @@ export class Gmail implements INodeType {
 						body: this.getNodeParameter('message', i) as string,
 						attachments: attachmentsList,
 					};
+
+					if (this.getNodeParameter('includeHtml', i, false) as boolean === true) {
+						email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
+					}
 
 					endpoint = '/gmail/v1/users/me/messages/send';
 					method = 'POST';
@@ -619,6 +628,10 @@ export class Gmail implements INodeType {
 						body: this.getNodeParameter('message', i) as string,
 						attachments: attachmentsList,
 					};
+
+					if (this.getNodeParameter('includeHtml', i, false) as boolean === true) {
+						email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
+					}
 
 					endpoint = '/gmail/v1/users/me/drafts';
 					method = 'POST';
