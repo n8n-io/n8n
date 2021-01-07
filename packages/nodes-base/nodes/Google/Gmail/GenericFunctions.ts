@@ -133,20 +133,23 @@ export async function encodeEmail(email: IEmail) {
 
 	const mailOptions = {
 		to: email.to,
-		cc : email.cc,
+		cc: email.cc,
 		bcc: email.bcc,
 		replyTo: email.inReplyTo,
 		references: email.reference,
 		subject: email.subject,
 		text: email.body,
 	} as IDataObject;
+	if (email.htmlBody) {
+		mailOptions.html = email.htmlBody;
+	}
 
 	if (email.attachments !== undefined && Array.isArray(email.attachments) && email.attachments.length > 0) {
 		const attachments = email.attachments.map((attachment) => ({
 			filename: attachment.name,
 			content: attachment.content,
 			contentType: attachment.type,
-			encoding : 'base64',
+			encoding: 'base64',
 		}));
 
 		mailOptions.attachments = attachments;
