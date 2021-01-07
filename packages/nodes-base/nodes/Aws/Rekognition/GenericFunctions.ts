@@ -1,4 +1,8 @@
 import {
+	URL,
+} from 'url';
+
+import {
 	sign,
 } from 'aws4';
 
@@ -31,17 +35,17 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		throw new Error('No credentials got returned!');
 	}
 
-	const endpoint = `${service}.${region || credentials.region}.amazonaws.com`;
+	const endpoint = new URL(((credentials.rekognitionEndpoint as string || '').replace('{region}', credentials.region as string) || `https://${service}.${credentials.region}.amazonaws.com`) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = {headers: headers || {}, host: endpoint, method, path, body};
+	const signOpts = {headers: headers || {}, host: endpoint.host, method, path, body};
 
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim()});
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
 		method,
-		uri: `https://${endpoint}${signOpts.path}`,
+		uri: endpoint.href,
 		body: signOpts.body,
 	};
 
@@ -51,7 +55,7 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message || error.message;
+		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
 
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
