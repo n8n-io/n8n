@@ -516,11 +516,19 @@ export class Slack implements INodeType {
 				//https://api.slack.com/methods/chat.postMessage
 				if (operation === 'post') {
 					const channel = this.getNodeParameter('channel', i) as string;
+					const ephemeral = this.getNodeParameter('ephemeral', i) as boolean;
 					const text = this.getNodeParameter('text', i) as string;
 					const body: IDataObject = {
 						channel,
 						text,
 					};
+
+					let action = 'postMessage';
+
+					if (ephemeral) {
+						body.user = this.getNodeParameter('user', i) as string;
+						action = 'postEphemeral';
+					}
 
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
@@ -752,10 +760,11 @@ export class Slack implements INodeType {
 							body.blocks = blocksJson;
 						}
 					}
+
 					// Add all the other options to the request
 					const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 					Object.assign(body, otherOptions);
-					responseData = await slackApiRequest.call(this, 'POST', '/chat.postMessage', body, qs);
+					responseData = await slackApiRequest.call(this, 'POST', `/chat.${action}`, body, qs);
 				}
 				//https://api.slack.com/methods/chat.update
 				if (operation === 'update') {
