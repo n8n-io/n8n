@@ -1,0 +1,325 @@
+import {
+	INodeProperties,
+} from 'n8n-workflow';
+
+export const contactOperations = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+			},
+		},
+		options: [
+			{
+				name: 'Upsert',
+				value: 'upsert',
+				description: 'Add or update a contact',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a contact',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a contact by ID',
+			},
+			{
+				name: 'Get All',
+				value: 'getAll',
+				description: 'Get all contacts',
+			},
+		],
+		default: 'upsert',
+		description: 'The operation to perform.',
+	},
+] as INodeProperties[];
+
+export const contactFields = [
+	/* -------------------------------------------------------------------------- */
+	/*                                 contacts: getALL                               */
+	/* -------------------------------------------------------------------------- */
+	{
+        displayName: 'Return All',
+        name: 'returnAll',
+        type: 'boolean',
+        displayOptions: {
+            show: {
+                resource: [
+                    'contact',
+                ],
+                operation: [
+                    'getAll',
+                ],
+            },
+        },
+        default: false,
+        description: 'If set to true, all the results will be returned',
+    },
+    {
+        displayName: 'Limit',
+        name: 'limit',
+        type: 'number',
+        displayOptions: {
+            show: {
+                resource: [
+                    'contact',
+                ],
+                operation: [
+                    'getAll',
+                ],
+                returnAll: [
+                    false,
+                ],
+            },
+        },
+        typeOptions: {
+            minValue: 1,
+            maxValue: 1000,
+        },
+        default: 100,
+        description: 'How many results to return.',
+    },
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 contacts:create                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required:true,
+		displayOptions: {
+			show: {
+				operation: [
+					'upsert',
+				],
+				resource: [
+					'contact'
+				]
+			}
+		},
+		default:'',
+		description:'Primary email for the contact'
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'upsert',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Address',
+				name: 'addressUi',
+				placeholder: 'Address',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {},
+				options: [
+					{
+						name: 'addressValues',
+						displayName: 'Address',
+						values: [
+							{
+								displayName: 'Address Line 1',
+								name: 'address1',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Address Line 2',
+								name: 'address2',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Alternate Emails',
+				name: 'alternateEmails',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'City',
+				name: 'city',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Country',
+				name: 'country',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'First Name',
+				name: 'firstName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'lastName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Postal Code',
+				name: 'postalCode',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'State/Province/Region',
+				name: 'stateProvinceRegion',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'List IDs',
+				name: 'listIdsUi',
+				placeholder: 'List IDs',
+				description: 'Adds a custom fields to set also values which have not been predefined.',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						name: 'listIdValues',
+						displayName: 'List IDs',
+						values: [
+							{
+								displayName: 'List IDs',
+								name: 'listIds',
+								type: 'multiOptions',
+								typeOptions: {
+									loadOptionsMethod: 'getListIds',
+								},
+								default: '',
+								description: 'ID of the field to set.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				placeholder: 'Add Custom Fields',
+				description: 'Adds custom fields',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customFieldValues',
+						displayName: 'Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+								},
+								default: '',
+								description: 'ID of the field',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								default: '',
+								description: 'Value for the field',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 contacts:delete                               */
+	/* -------------------------------------------------------------------------- */
+	{
+        displayName: 'Delete All',
+        name: 'deleteAll',
+        type: 'boolean',
+        displayOptions: {
+            show: {
+                resource: [
+                    'contact',
+                ],
+                operation: [
+                    'delete',
+                ],
+            },
+        },
+        default: false,
+        description: 'If set to true, all contacts will be deleted',
+    },
+    {
+        displayName: 'IDs',
+        name: 'ids',
+        type: 'string',
+        displayOptions: {
+            show: {
+                resource: [
+                    'contact',
+                ],
+                operation: [
+                    'delete',
+                ],
+                deleteAll: [
+                    false,
+                ],
+            },
+        },
+        description: 'ID of the contact. Multiple can be added separated by comma.',
+    },
+	/* -------------------------------------------------------------------------- */
+	/*                                 contacts:get                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Contact ID',
+		name: 'contactId',
+		type: 'string',
+		required:true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'contact'
+				]
+			}
+		},
+		default:'',
+		description:'ID of the contact'
+	},
+] as INodeProperties[];
