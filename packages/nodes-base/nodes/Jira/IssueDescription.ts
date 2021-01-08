@@ -167,6 +167,41 @@ export const issueFields = [
 				description: 'Description',
 			},
 			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: '',
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+								},
+								description: 'ID of the field to set.',
+								default: '',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								description: 'Value of the field to set.',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Labels',
 				name: 'labels',
 				type: 'multiOptions',
@@ -289,6 +324,41 @@ export const issueFields = [
 				default: '',
 				required : false,
 				description: 'Description',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: '',
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field ID',
+								name: 'fieldId',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCustomFields',
+								},
+								description: 'ID of the field to set.',
+								default: '',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								description: 'Value of the field to set.',
+								default: '',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Issue Type',

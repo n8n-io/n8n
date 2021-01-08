@@ -191,7 +191,7 @@ export class Jira implements INodeType {
 					}
 				} else {
 					for (const issueType of issueTypes) {
-						if (issueType.scope === undefined || issueType.scope.project.id === projectId) {
+						if (issueType.scope !== undefined && issueType.scope.project.id === projectId) {
 							const issueTypeName = issueType.name;
 							const issueTypeId = issueType.id;
 
@@ -208,7 +208,6 @@ export class Jira implements INodeType {
 					if (a.name > b.name) { return 1; }
 					return 0;
 				});
-
 				return returnData;
 			},
 
@@ -357,6 +356,24 @@ export class Jira implements INodeType {
 
 				return returnData;
 			},
+
+			// Get all the custom fields to display them to user so that he can
+			// select them easily
+			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const fields = await jiraSoftwareCloudApiRequest.call(this, `/api/2/field`, 'GET');
+
+				for (const field of fields) {
+					if (field.custom === true) {
+						returnData.push({
+							name: field.name,
+							value: field.id,
+						});
+					}
+				}
+				return returnData;
+			},
 		},
 	};
 
@@ -418,6 +435,13 @@ export class Jira implements INodeType {
 					if (additionalFields.updateHistory) {
 						qs.updateHistory = additionalFields.updateHistory as boolean;
 					}
+					if (additionalFields.customFieldsUi) {
+						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+							Object.assign(fields, data);
+						}
+					}
 					const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issuetype', 'GET', body, qs);
 					const subtaskIssues = [];
 					for (const issueType of issueTypes) {
@@ -476,6 +500,13 @@ export class Jira implements INodeType {
 					}
 					if (updateFields.description) {
 						fields.description = updateFields.description as string;
+					}
+					if (updateFields.customFieldsUi) {
+						const customFields = (updateFields.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						if (customFields) {
+							const data = customFields.reduce((obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }), {});
+							Object.assign(fields, data);
+						}
 					}
 					const issueTypes = await jiraSoftwareCloudApiRequest.call(this, '/api/2/issuetype', 'GET', body);
 					const subtaskIssues = [];
