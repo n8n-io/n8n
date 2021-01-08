@@ -2,8 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,
 	INodeType,
-  INodeTypeDescription,
-  IDataObject
+  INodeTypeDescription
 } from 'n8n-workflow';
 import { sendDatpoint } from './Beeminder.node.functions';
 
