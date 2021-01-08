@@ -20,13 +20,13 @@ export async function sendgridApiRequest(this: IHookFunctions | IExecuteFunction
 
 	const options: OptionsWithUri = {
 		headers: {
-            'Accept': 'application/json',
-            // 'Authorization': `Bearer ${credentials.apiKey}`,
+						'Accept': 'application/json',
+						// 'Authorization': `Bearer ${credentials.apiKey}`,
 		},
 		method,
 		qs,
-        body,
-        uri: `https://${host}${endpoint}`,
+				body,
+				uri: `https://${host}${endpoint}`,
 		json: true,
 	};
 
@@ -35,8 +35,8 @@ export async function sendgridApiRequest(this: IHookFunctions | IExecuteFunction
 	}
 
 	try {
-        //@ts-ignore
-        options.headers = Object.assign({}, headers, { Authorization: `Bearer ${credentials.apiKey}` });
+				//@ts-ignore
+				options.headers = Object.assign({}, headers, { Authorization: `Bearer ${credentials.apiKey}` });
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.response && error.response.body && error.response.body.error) {

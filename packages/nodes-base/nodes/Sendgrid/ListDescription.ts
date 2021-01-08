@@ -39,7 +39,7 @@ export const listOperations = [
 			// 	name: 'Remove Contact',
 			// 	value: 'removeContact',
 			// 	description: 'Remove contacts from a list',
-            // },
+						// },
 			{
 				name: 'Update',
 				value: 'update',
@@ -56,46 +56,46 @@ export const listFields = [
 	/*                                 list:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-        displayName: 'Return All',
-        name: 'returnAll',
-        type: 'boolean',
-        displayOptions: {
-            show: {
-                resource: [
-                    'list',
-                ],
-                operation: [
-                    'getAll',
-                ],
-            },
-        },
-        default: false,
-        description: 'If set to true, all the results will be returned',
-    },
-    {
-        displayName: 'Limit',
-        name: 'limit',
-        type: 'number',
-        displayOptions: {
-            show: {
-                resource: [
-                    'list',
-                ],
-                operation: [
-                    'getAll',
-                ],
-                returnAll: [
-                    false,
-                ],
-            },
-        },
-        typeOptions: {
-            minValue: 1,
-            maxValue: 1000,
-        },
-        default: 100,
-        description: 'How many results to return.',
-    },
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+						show: {
+								resource: [
+										'list',
+								],
+								operation: [
+										'getAll',
+								],
+						},
+				},
+				default: false,
+				description: 'If set to true, all the results will be returned',
+		},
+		{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+						show: {
+								resource: [
+										'list',
+								],
+								operation: [
+										'getAll',
+								],
+								returnAll: [
+										false,
+								],
+						},
+				},
+				typeOptions: {
+						minValue: 1,
+						maxValue: 1000,
+				},
+				default: 100,
+				description: 'How many results to return.',
+		},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:create                               */
@@ -109,15 +109,15 @@ export const listFields = [
 			show: {
 				operation: [
 					'create',
-					'update'
+					'update',
 				],
 				resource: [
-					'list'
-				]
-			}
+					'list',
+				],
+			},
 		},
 		default:'',
-		description:'Name of your list'
+		description:'Name of your list',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -131,14 +131,14 @@ export const listFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'delete'
+					'delete',
 				],
 				resource: [
-					'list'
-				]
-			}
+					'list',
+				],
+			},
 		},
-		description: 'Indicates that all contacts on the list are also to be deleted'
+		description: 'Indicates that all contacts on the list are also to be deleted',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:get                                  */
@@ -153,15 +153,15 @@ export const listFields = [
 				operation: [
 					'get',
 					'delete',
-					'update'
+					'update',
 				],
 				resource: [
-					'list'
-				]
-			}
+					'list',
+				],
+			},
 		},
 		default:'',
-		description:'ID of your list'
+		description:'ID of your list',
 	},
 	{
 		displayName: 'Contact Sample',
@@ -171,13 +171,13 @@ export const listFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'get'
+					'get',
 				],
 				resource: [
-					'list'
-				]
-			}
+					'list',
+				],
+			},
 		},
-		description: 'Setting this parameter to the true will cause the contact_sample to be returned'
+		description: 'Setting this parameter to the true will cause the contact_sample to be returned',
 	},
 ] as INodeProperties[];

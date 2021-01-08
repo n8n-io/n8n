@@ -1,12 +1,12 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	INodePropertyOptions,
 	IDataObject,
-	ILoadOptionsFunctions
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription
 } from 'n8n-workflow';
 
 import {
@@ -19,7 +19,7 @@ import {
 	contactOperations
 } from './ContactDescription';
 
-import { sendgridApiRequest, sendgridApiRequestAllItems } from './GenericFunctions'
+import { sendgridApiRequest, sendgridApiRequestAllItems } from './GenericFunctions';
 
 export class Sendgrid implements INodeType {
 	description: INodeTypeDescription = {
@@ -65,8 +65,8 @@ export class Sendgrid implements INodeType {
 			...listOperations,
 			...listFields,
 			...contactOperations,
-			...contactFields
-		]
+			...contactFields,
+		],
 	};
 
 	methods ={
@@ -75,11 +75,11 @@ export class Sendgrid implements INodeType {
 			async getCustomFields(this: ILoadOptionsFunctions,):Promise<INodePropertyOptions[]>{
 				const returnData: INodePropertyOptions[] = [];
 				const {custom_fields} = await sendgridApiRequest.call(this, '/marketing/field_definitions', 'GET', {}, {});
-				for (const custom_field of custom_fields){
+				for (const customField of custom_fields){
 					returnData.push({
-						name: custom_field.name,
-						value: custom_field.id
-					})
+						name: customField.name,
+						value: customField.id,
+					});
 				}
 				return returnData;
 			},
@@ -95,9 +95,9 @@ export class Sendgrid implements INodeType {
 			}
 			return returnData;
 
-		}
-		}
-	}
+		},
+		},
+	};
 
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -126,17 +126,17 @@ export class Sendgrid implements INodeType {
 					responseData = await sendgridApiRequest.call(this, `/marketing/lists/${listId}`, 'GET', {}, qs);
 				}
 				if (operation === 'create') {
-					const name = this.getNodeParameter('name',i) as String;
-					responseData = await sendgridApiRequest.call(this, '/marketing/lists', 'POST', {name}, qs)
+					const name = this.getNodeParameter('name',i) as string;
+					responseData = await sendgridApiRequest.call(this, '/marketing/lists', 'POST', {name}, qs);
 				}
 				if(operation === 'delete') {
 					const listId = this.getNodeParameter('listId',i) as string;
 					qs.delete_contacts = this.getNodeParameter('deleteContacts', i) as boolean;
 					const response = await sendgridApiRequest.call(this, `/marketing/lists/${listId}`, 'DELETE', {}, qs);
-					responseData={success: true}
+					responseData={success: true};
 				}
 				if(operation=== 'update'){
-					const name = this.getNodeParameter('name',i) as String;
+					const name = this.getNodeParameter('name',i) as string;
 					const listId = this.getNodeParameter('listId',i) as string;
 					responseData = await sendgridApiRequest.call(this, `/marketing/lists/${listId}`, 'PATCH', {name}, qs);
 				}
@@ -157,7 +157,7 @@ export class Sendgrid implements INodeType {
 					responseData = await sendgridApiRequest.call(this, `/marketing/contacts/${contactId}`, 'GET', {}, qs);
 				}
 				if (operation === 'upsert') {
-					const email = this.getNodeParameter('email',i) as String;
+					const email = this.getNodeParameter('email',i) as string;
 					const additionalFields = this.getNodeParameter(
 						'additionalFields',
 						i,
@@ -168,47 +168,47 @@ export class Sendgrid implements INodeType {
 					const body: IDataObject = {contacts:[contacts]};
 					if(additionalFields.addressUi) {
 						const addressValues = (additionalFields.addressUi as IDataObject).addressValues as IDataObject;
-						const address_line_1 = addressValues.address1 as string;
-						const address_line_2 = addressValues.address2 as string;
-						if(address_line_2){
-							Object.assign(contacts, {address_line_2})
+						const addressLine1 = addressValues.address1 as string;
+						const addressLine2 = addressValues.address2 as string;
+						if(addressLine2){
+							Object.assign(contacts, {address_line_2:addressLine2});
 						}
-						Object.assign(contacts, {address_line_1})
+						Object.assign(contacts, {address_line_1:addressLine1});
 					}
 					if(additionalFields.city){
 						const city = additionalFields.city as string;
-						Object.assign(contacts,{city})
+						Object.assign(contacts,{city});
 					}
 					if(additionalFields.country){
 						const country = additionalFields.country as string;
-						Object.assign(contacts,{country})
+						Object.assign(contacts,{country});
 					}
 					if(additionalFields.firstName){
-						const first_name = additionalFields.firstName as string;
-						Object.assign(contacts,{first_name})
+						const firstName = additionalFields.firstName as string;
+						Object.assign(contacts,{first_name:firstName});
 					}
 					if(additionalFields.lastName){
-						const last_name = additionalFields.lastName as string;
-						Object.assign(contacts,{last_name})
+						const lastName = additionalFields.lastName as string;
+						Object.assign(contacts,{last_name:lastName});
 					}
 					if(additionalFields.postalCode){
-						const postal_code = additionalFields.postalCode as string;
-						Object.assign(contacts,{postal_code})
+						const postalCode = additionalFields.postalCode as string;
+						Object.assign(contacts,{postal_code:postalCode});
 					}
 					if(additionalFields.stateProvinceRegion){
-						const state_province_region = additionalFields.stateProvinceRegion as string;
-						Object.assign(contacts,{state_province_region})
+						const stateProvinceRegion = additionalFields.stateProvinceRegion as string;
+						Object.assign(contacts,{state_province_region:stateProvinceRegion});
 					}
 					if(additionalFields.alternateEmails){
-						const alternate_emails = ((additionalFields.alternateEmails as string).split(',') as string[]).filter(email => !!email);
-						if(alternate_emails.length !== 0) {
-							Object.assign(contacts, {alternate_emails})
+						const alternateEmails = ((additionalFields.alternateEmails as string).split(',') as string[]).filter(email => !!email);
+						if(alternateEmails.length !== 0) {
+							Object.assign(contacts, {alternate_emails:alternateEmails});
 						}
 					}
 					if(additionalFields.listIdsUi){
 						const listIdValues = (additionalFields.listIdsUi as IDataObject).listIdValues as IDataObject;
-						const list_ids = listIdValues.listIds as IDataObject[];
-						Object.assign(body, {list_ids})
+						const listIds = listIdValues.listIds as IDataObject[];
+						Object.assign(body, {list_ids:listIds});
 					}
 					if(additionalFields.customFieldsUi) {
 						const customFields = (additionalFields.customFieldsUi as IDataObject).customFieldValues as IDataObject[];
@@ -217,12 +217,12 @@ export class Sendgrid implements INodeType {
 							Object.assign(contacts, {custom_fields:data});
 						}
 					}
-					responseData = await sendgridApiRequest.call(this, '/marketing/contacts', 'PUT', body, qs)
+					responseData = await sendgridApiRequest.call(this, '/marketing/contacts', 'PUT', body, qs);
 				}
 				if(operation === 'delete') {
 					const deleteAll = this.getNodeParameter('deleteAll', i) as boolean;
 					if(deleteAll === true) {
-						qs.delete_all_contacts = 'true'
+						qs.delete_all_contacts = 'true';
 						responseData = await sendgridApiRequest.call(this, `/marketing/contacts`, 'DELETE', {}, qs);
 					} else {
 						 qs.ids = (this.getNodeParameter('ids',i) as string).replace(/\s/g, '');

@@ -7,7 +7,7 @@ import {
 export class SendgridApi implements ICredentialType {
 	name = 'sendgridApi';
 	displayName = 'SendGrid Api';
-	documentationUrl = 'sendgrid'
+	documentationUrl = 'sendgrid';
 	properties = [
 		{
 			displayName: 'API Key',
