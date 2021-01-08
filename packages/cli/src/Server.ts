@@ -1831,6 +1831,10 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
 		});
 
+		this.app.get("/domain-verification", (req: express.Request, res: express.Response) => {
+			res.sendFile('../google5d22bee53b42c9f7.html', {root: __dirname });
+		});
+
 		// POST webhook requests (test for UI)
 		this.app.post(`/${this.endpointWebhookTest}/*`, async (req: express.Request, res: express.Response) => {
 			// Cut away the "/webhook-test/" to get the registred part of the url
