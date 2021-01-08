@@ -323,6 +323,7 @@
       "dist/nodes/Google/CloudNaturalLanguage/GoogleCloudNaturalLanguage.node.js",
       "dist/nodes/Google/Contacts/GoogleContacts.node.js",
       "dist/nodes/Google/Drive/GoogleDrive.node.js",
+      "dist/nodes/Google/Drive/GoogleDriveTrigger.node.js",
       "dist/nodes/Google/Firebase/CloudFirestore/CloudFirestore.node.js",
       "dist/nodes/Google/Firebase/RealtimeDatabase/RealtimeDatabase.node.js",
       "dist/nodes/Google/Gmail/Gmail.node.js",
