@@ -2,7 +2,8 @@ import { IExecuteFunctions } from 'n8n-core';
 import {
 	INodeExecutionData,
 	INodeType,
-	INodeTypeDescription
+	INodeTypeDescription,
+	INodeParameters
 } from 'n8n-workflow';
 import {
 	createDatapoint,
@@ -28,6 +29,10 @@ const PAGE_PROP = 'page';
 const PER_PROP = 'per';
 const TIMESTAMP_PROP = 'timestamp';
 const REQUEST_ID_PROP = 'requestId';
+
+const CREATE_OPTIONS = 'createOptions';
+const READ_OPTIONS = 'readOptions';
+const UPDATE_OPTIONS = 'updateOptions';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -65,83 +70,96 @@ export class Beeminder implements INodeType {
 				description: 'The resource to operate on.',
 			},
 			{
-				displayName: 'Options',
-				name: 'options',
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				options: [
+					{
+						name: 'Create',
+						value: CREATE_OPERATION,
+						description: 'Create datapoint for goal.',
+					},
+					{
+						name: 'Read',
+						value: READ_OPERATION,
+						description: 'Get all datapoints for goal.',
+					},
+					{
+						name: 'Update',
+						value: UPDATE_OPERATION,
+						description: 'Update a datapoint.',
+					},
+					{
+						name: 'Delete',
+						value: DELETE_OPERATION,
+						description: 'Delete a datapoint.',
+					}
+				],
+				default: CREATE_OPERATION,
+				description: 'The operation to perform.',
+				required: true
+			},
+			{
+				displayName: 'Goal name',
+				name: GOAL_NAME_PROP,
+				type: 'string',
+				default: '',
+				placeholder: 'Goal name',
+				description: 'Goal name',
+				required: true
+			},
+			{
+				displayName: 'Value',
+				name: VALUE_PROP,
+				type: 'number',
+				default: 1,
+				placeholder: '',
+				description: 'Datapoint value to send.',
+				displayOptions: {
+					show: {
+						operation: [CREATE_OPERATION]
+					}
+				},
+				required: true
+			},
+			{
+				displayName: 'Datapoint id',
+				name: DATAPOINT_ID_PROP,
+				type: 'string',
+				default: '',
+				placeholder: '',
+				description: 'Datapoint id',
+				displayOptions: {
+					show: {
+						operation: [UPDATE_OPERATION, DELETE_OPERATION]
+					}
+				},
+				required: true
+			},
+			{
+				displayName: 'Additional options',
+				name: CREATE_OPTIONS,
 				type: 'collection',
-				placeholder: 'Add Option',
+				placeholder: 'Add options',
 				default: {},
 				displayOptions: {
-					hide: {
+					show: {
 						resource: [
 							DATAPOINT_RESOURCE,
 						],
+						operation: [
+							CREATE_OPERATION
+						]
 					},
 				},
 				options: [
-					{
-						displayName: 'Operation',
-						name: 'operation',
-						type: 'options',
-						options: [
-							{
-								name: 'Create',
-								value: CREATE_OPERATION,
-								description: 'Create datapoint for goal.',
-							},
-							{
-								name: 'Read',
-								value: READ_OPERATION,
-								description: 'Get all datapoints for goal.',
-							},
-							{
-								name: 'Update',
-								value: UPDATE_OPERATION,
-								description: 'Update a datapoint.',
-							},
-							{
-								name: 'Delete',
-								value: DELETE_OPERATION,
-								description: 'Delete a datapoint.',
-							}
-						],
-						default: CREATE_OPERATION,
-						description: 'The operation to perform.',
-					},
-					{
-						displayName: 'Goal name',
-						name: GOAL_NAME_PROP,
-						type: 'string',
-						default: '',
-						placeholder: 'Goal name',
-						description: 'Goal name',
-						required: true
-					},
-					{
-						displayName: 'Datapoint value',
-						name: VALUE_PROP,
-						type: 'number',
-						default: 1,
-						placeholder: '',
-						description: 'Datapoint value to send.',
-						displayOptions: {
-							show: {
-								operation: [CREATE_OPERATION, UPDATE_OPERATION]
-							},
-						},
-						required: true
-					},
 					{
 						displayName: 'Comment',
 						name: COMMENT_PROP,
 						type: 'string',
 						default: '',
 						placeholder: 'Comment',
-						description: 'Comment',
-						displayOptions: {
-							show: {
-								operation: [CREATE_OPERATION, UPDATE_OPERATION]
-							}
-						}
+						description: 'Comment'
 					},
 					{
 						displayName: 'Timestamp',
@@ -149,12 +167,7 @@ export class Beeminder implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: 'Unix timestamp (or ISO datetime standard). Defaults to "now" if none is passed in.',
-						displayOptions: {
-							show: {
-								operation: [CREATE_OPERATION, UPDATE_OPERATION]
-							}
-						}
+						description: 'Unix timestamp (seconds) or ISO datetime standard. Defaults to "now" if none is passed in.'
 					},
 					{
 						displayName: 'Request Id',
@@ -162,39 +175,34 @@ export class Beeminder implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: '',
-						description: 'String to uniquely identify a datapoint.',
-						displayOptions: {
-							show: {
-								operation: [CREATE_OPERATION]
-							}
-						}
+						description: 'String to uniquely identify a datapoint.'
+					}
+				]
+			},
+			{
+				displayName: 'Additional options',
+				name: READ_OPTIONS,
+				type: 'collection',
+				placeholder: 'Add pagination and sort options',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							DATAPOINT_RESOURCE,
+						],
+						operation: [
+							READ_OPERATION
+						]
 					},
-					{
-						displayName: 'Datapoint id',
-						name: DATAPOINT_ID_PROP,
-						type: 'string',
-						default: '',
-						placeholder: '',
-						description: 'Datapoint id',
-						displayOptions: {
-							show: {
-								operation: [UPDATE_OPERATION, DELETE_OPERATION]
-							}
-						},
-						required: true
-					},
+				},
+				options: [
 					{
 						displayName: 'Sort',
 						name: SORT_PROP,
 						type: 'string',
 						default: 'id',
 						placeholder: '',
-						description: 'Attribute to sort on.',
-						displayOptions: {
-							show: {
-								operation: [READ_OPERATION]
-							}
-						}
+						description: 'Attribute to sort on.'
 					},
 					{
 						displayName: 'Count',
@@ -202,12 +210,7 @@ export class Beeminder implements INodeType {
 						type: 'number',
 						default: '',
 						placeholder: '',
-						description: 'Limit results to count number of datapoints. Defaults to all datapoints if not set.',
-						displayOptions: {
-							show: {
-								operation: [READ_OPERATION]
-							}
-						}
+						description: 'Limit results to count number of datapoints. Defaults to all datapoints if not set.'
 					},
 					{
 						displayName: 'Page number',
@@ -215,12 +218,7 @@ export class Beeminder implements INodeType {
 						type: 'number',
 						default: '',
 						placeholder: '',
-						description: 'Used to paginate results.',
-						displayOptions: {
-							show: {
-								operation: [READ_OPERATION]
-							}
-						}
+						description: 'Used to paginate results.'
 					},
 					{
 						displayName: 'Number of results per page',
@@ -229,11 +227,49 @@ export class Beeminder implements INodeType {
 						default: '',
 						placeholder: '',
 						description: 'Number of results per page. Default 25. Ignored without page parameter.',
-						displayOptions: {
-							show: {
-								operation: [READ_OPERATION]
-							}
-						}
+					}
+				]
+			},
+			{
+				displayName: 'Additional options',
+				name: UPDATE_OPTIONS,
+				type: 'collection',
+				placeholder: 'Add properties to update',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							DATAPOINT_RESOURCE,
+						],
+						operation: [
+							UPDATE_OPERATION
+						]
+					},
+				},
+				options: [
+					{
+						displayName: 'Value',
+						name: VALUE_PROP,
+						type: 'number',
+						default: 1,
+						placeholder: '',
+						description: 'Datapoint value to send.'
+					},
+					{
+						displayName: 'Comment',
+						name: COMMENT_PROP,
+						type: 'string',
+						default: '',
+						placeholder: 'Comment',
+						description: 'Comment'
+					},
+					{
+						displayName: 'Timestamp',
+						name: TIMESTAMP_PROP,
+						type: 'dateTime',
+						default: '',
+						placeholder: '',
+						description: 'Unix timestamp (seconds) or ISO datetime standard.'
 					}
 				]
 			}
@@ -255,24 +291,31 @@ export class Beeminder implements INodeType {
 				let results;
 				if (operation === CREATE_OPERATION) {
 					const value = this.getNodeParameter(VALUE_PROP, i) as number;
-					const comment = this.getNodeParameter(COMMENT_PROP, i) as string;
-					const timestamp = this.getNodeParameter(TIMESTAMP_PROP, i) as string;
+					const options = this.getNodeParameter(CREATE_OPTIONS, i) as INodeParameters;
 
-					results = await createDatapoint.call(this, goalName, value, comment, timestamp);
+					const comment = options[COMMENT_PROP] as string;
+					const timestamp = options[TIMESTAMP_PROP] as string;
+					const requestId = options[REQUEST_ID_PROP] as string;
+
+					results = await createDatapoint.call(this, goalName, value, comment, timestamp, requestId);
 				}
 				else if (operation === READ_OPERATION) {
-					const sort = this.getNodeParameter(SORT_PROP, i) as string;
-					const count = this.getNodeParameter(COUNT_PROP, i) as number;
-					const page = this.getNodeParameter(PAGE_PROP, i) as number;
-					const per = this.getNodeParameter(PER_PROP, i) as number;
+					const options = this.getNodeParameter(READ_OPTIONS, i) as INodeParameters;
+
+					const sort = options[SORT_PROP] as string;
+					const count = options[COUNT_PROP] as number;
+					const page = options[PAGE_PROP] as number;
+					const per = options[PER_PROP] as number;
 
 					results = await getAllDatapoints.call(this, goalName, sort, count, page, per);
 				}
 				else if (operation === UPDATE_OPERATION) {
 					const datapointId = this.getNodeParameter(DATAPOINT_ID_PROP, i) as string;
-					const value = this.getNodeParameter(VALUE_PROP, i) as number;
-					const comment = this.getNodeParameter(COMMENT_PROP, i) as string;
-					const timestamp = this.getNodeParameter(TIMESTAMP_PROP, i) as string;
+					const options = this.getNodeParameter(UPDATE_OPTIONS, i) as INodeParameters;
+
+					const value = options[VALUE_PROP] as number;
+					const comment = options[COMMENT_PROP] as string;
+					const timestamp = options[TIMESTAMP_PROP] as string;
 
 					results = await updateDatapoint.call(this, goalName, datapointId, value, comment, timestamp);
 				}

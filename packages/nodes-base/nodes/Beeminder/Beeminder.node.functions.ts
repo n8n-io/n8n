@@ -12,7 +12,7 @@ import {
   beeminderApiRequest
 } from './GenericFunctions';
 
-export async function createDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, goalName: string, value: number, comment: string, timestamp: string) {
+export async function createDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, goalName: string, value: number, comment: string, timestamp: string, requestId: string) {
 	const credentials = this.getCredentials('beeminderApi');
 
 	if (credentials === undefined) {
