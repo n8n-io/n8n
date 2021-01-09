@@ -12,6 +12,10 @@ import {
   beeminderApiRequest
 } from './GenericFunctions';
 
+function toUnix(timestamp: string) {
+  return Math.round(new Date(timestamp).getTime() / 1000);
+};
+
 export async function createDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, goalName: string, value: number, comment: string, timestamp: string, requestId: string) {
 	const credentials = this.getCredentials('beeminderApi');
 
@@ -23,11 +27,12 @@ export async function createDatapoint(this: IExecuteFunctions | IWebhookFunction
 
   return await beeminderApiRequest.call(this, credentials, 'POST', endpoint, {
     value,
-    comment
+    comment,
+    timestamp: timestamp && toUnix(timestamp),
+    requestid: requestId
   });
 };
 
-// todo
 export async function getAllDatapoints(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, goalName: string, sort: string, count: number, page: number, per: number) {
 	const credentials = this.getCredentials('beeminderApi');
 
@@ -37,7 +42,12 @@ export async function getAllDatapoints(this: IExecuteFunctions | IWebhookFunctio
   
   const endpoint = `/users/${credentials.user}/goals/${goalName}/datapoints.json`;
 
-  return await beeminderApiRequest.call(this, credentials, 'GET', endpoint);
+  return await beeminderApiRequest.call(this, credentials, 'GET', endpoint, {}, {
+    sort,
+    count,
+    page,
+    per
+  });
 }
 
 export async function updateDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, goalName: string, datapointId: string, value: number, comment: string, timestamp: string) {
@@ -52,7 +62,7 @@ export async function updateDatapoint(this: IExecuteFunctions | IWebhookFunction
   return await beeminderApiRequest.call(this, credentials, 'PUT', endpoint, {
     value,
     comment,
-    timestamp
+    timestamp: timestamp && toUnix(timestamp)
   });
 }
 

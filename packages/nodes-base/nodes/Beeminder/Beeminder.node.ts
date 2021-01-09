@@ -167,7 +167,7 @@ export class Beeminder implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: 'Unix timestamp (seconds) or ISO datetime standard. Defaults to "now" if none is passed in.'
+						description: 'Timestamp datapoint measured at.'
 					},
 					{
 						displayName: 'Request Id',
@@ -269,7 +269,7 @@ export class Beeminder implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: 'Unix timestamp (seconds) or ISO datetime standard.'
+						description: 'Timestamp datapoint measured at.'
 					}
 				]
 			}
