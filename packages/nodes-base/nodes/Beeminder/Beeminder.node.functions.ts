@@ -1,80 +1,68 @@
 import {
 	IExecuteFunctions,
-  ILoadOptionsFunctions
+	ILoadOptionsFunctions
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
 import {
-  beeminderApiRequest
+	beeminderApiRequest,
+	beeminderpiRequestAllItems,
 } from './GenericFunctions';
 
-function toUnix(timestamp: string) {
-  return Math.round(new Date(timestamp).getTime() / 1000);
-};
-
-export async function createDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, goalName: string, value: number, comment: string, timestamp: string, requestId: string) {
+export async function createDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, data: IDataObject) {
 	const credentials = this.getCredentials('beeminderApi');
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
-  }
-  
-  const endpoint = `/users/${credentials.user}/goals/${goalName}/datapoints.json`;
+	}
+	
+	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints.json`;
 
-  return await beeminderApiRequest.call(this, credentials, 'POST', endpoint, {
-    value,
-    comment,
-    timestamp: timestamp && toUnix(timestamp),
-    requestid: requestId
-  });
-};
-
-export async function getAllDatapoints(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, goalName: string, sort: string, count: number, page: number, per: number) {
-	const credentials = this.getCredentials('beeminderApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-  }
-  
-  const endpoint = `/users/${credentials.user}/goals/${goalName}/datapoints.json`;
-
-  return await beeminderApiRequest.call(this, credentials, 'GET', endpoint, {}, {
-    sort,
-    count,
-    page,
-    per
-  });
+	return await beeminderApiRequest.call(this, 'POST', endpoint, data);
 }
 
-export async function updateDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, goalName: string, datapointId: string, value: number, comment: string, timestamp: string) {
+export async function getAllDatapoints(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, data: IDataObject) {
 	const credentials = this.getCredentials('beeminderApi');
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
-  }
-  
-  const endpoint = `/users/${credentials.user}/goals/${goalName}/datapoints/${datapointId}.json`;
+	}
+	
+	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints.json`;
 
-  return await beeminderApiRequest.call(this, credentials, 'PUT', endpoint, {
-    value,
-    comment,
-    timestamp: timestamp && toUnix(timestamp)
-  });
+	if (data.count !== undefined) {
+		return beeminderApiRequest.call(this, 'GET', endpoint, {}, data); 
+	}
+
+	return await beeminderpiRequestAllItems.call(this, 'GET', endpoint, {}, data); 
 }
 
-export async function deleteDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, goalName: string, datapointId: string) {
+export async function updateDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, data: IDataObject) {
 	const credentials = this.getCredentials('beeminderApi');
 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
-  }
-  
-  const endpoint = `/users/${credentials.user}/goals/${goalName}/datapoints/${datapointId}.json`;
+	}
+	
+	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
-  return await beeminderApiRequest.call(this, credentials, 'DELETE', endpoint);
-};
+	return await beeminderApiRequest.call(this, 'PUT', endpoint, data);
+}
+
+export async function deleteDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, data: IDataObject) {
+	const credentials = this.getCredentials('beeminderApi');
+
+	if (credentials === undefined) {
+		throw new Error('No credentials got returned!');
+	}
+	
+	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
+
+	return await beeminderApiRequest.call(this, 'DELETE', endpoint);
+}
 

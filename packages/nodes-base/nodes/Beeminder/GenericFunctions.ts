@@ -3,12 +3,8 @@ import {
  } from 'request';
 
 import {
-	ICredentialDataDecryptedObject
-} from 'n8n-workflow'
-
-import {
 	IExecuteFunctions,
-  ILoadOptionsFunctions
+	ILoadOptionsFunctions,
 } from 'n8n-core';
 
 import {
@@ -19,20 +15,22 @@ import {
 
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
 
-export async function beeminderApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, credentials: ICredentialDataDecryptedObject, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function beeminderApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	
+	const credentials = this.getCredentials('beeminderApi') as IDataObject;
+
+	Object.assign(body, { auth_token: credentials.authToken });
+	
 	const options: OptionsWithUri = {
-    method,
-		body: {
-      ...body,
-      auth_token: credentials.authToken
-		},
+		method,
+		body,
 		qs: query,
-    uri: `${BEEMINDER_URI}${endpoint}`,
-    json: true
+		uri: `${BEEMINDER_URI}${endpoint}`,
+		json: true,
 	};
 
 	if (!Object.keys(body).length) {
-		delete options.form;
+		delete options.body;
 	}
 
 	if (!Object.keys(query).length) {
@@ -42,9 +40,26 @@ export async function beeminderApiRequest(this: IExecuteFunctions | IWebhookFunc
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-    if (error?.message) {
-      throw new Error(`Beeminder API ${error.message}`);
-    }
+	if (error?.message) {
+		throw new Error(`Beeminder error response [${error.statusCode}]: ${error.message}`);
+	}
 		throw error;
 	}
+}
+
+export async function beeminderpiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.page = 1;
+	do {
+		responseData = await beeminderApiRequest.call(this, method, endpoint, body, query);
+		query.page++;
+		returnData.push.apply(returnData, responseData);
+	} while (
+		responseData.length !== 0
+	);
+
+	return returnData;
 }

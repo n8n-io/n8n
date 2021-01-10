@@ -5,7 +5,7 @@ import {
 
 export class BeeminderApi implements ICredentialType {
 	name = 'beeminderApi';
-	displayName = 'Beeminder Api';
+	displayName = 'Beeminder API';
 	properties = [
 		{
 			displayName: 'User',
