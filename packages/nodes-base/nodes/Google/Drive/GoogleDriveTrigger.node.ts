@@ -53,13 +53,38 @@ export class GoogleDriveTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Resource ID',
-				name: 'resourceId',
-				type: 'string',
-				default: '',
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
 				required: true,
-				placeholder: '',
-				description: 'ID of the resource to watch, for example a file ID.',
+				default: '',
+				description: 'The resource whose events can trigger the webhook.',
+				options: [
+					{
+						name: 'Changes',
+						value: 'changes',
+						description: 'Changes to all files',
+					},
+					{
+						name: 'Files',
+						value: 'files',
+						description: 'Changes to a single file',
+					},
+				],
+			},
+			{
+				displayName: 'File ID',
+				name: 'fileId',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						resource: [
+							'files',
+						],
+					},
+				},
 			},
 		],
 	};
@@ -88,27 +113,45 @@ export class GoogleDriveTrigger implements INodeType {
         //     }
         // }
         return false;
-      },
+			},
+
 			async create(this: IHookFunctions): Promise<boolean> {
-        const webhookUrl = this.getNodeWebhookUrl('default');
+
         const webhookData = this.getWorkflowStaticData('node');
+				const resource = this.getNodeParameter('resource', 0);
+
 
         //const endpoint = `https://www.googleapis.com/drive/v3/files/1I_jvGUOcEN1-2TSmg42pM57jF6GVLixvb-KPCoeXniw/watch`;
 
-        const { startPageToken } = await googleApiRequest.call(this, 'GET', '', {}, {}, 'https://www.googleapis.com/drive/v3/changes/startPageToken');
 
-        const endpoint = `https://www.googleapis.com/drive/v3/changes/watch`;
-        const body: IDataObject = {
-            id: uuid(),
-            type: 'web_hook',
-            address: webhookUrl,
-            expiration: moment().add('2', 'hours').valueOf(),
-        };
+				if (resource === 'files') {
+					const fileId = this.getNodeParameter('fileId', 0);
+					const endpoint = `https://www.googleapis.com/drive/v3/files/${fileId}/watch`
 
-        const { id, resourceId } = await googleApiRequest.call(this, 'POST', '', body, { pageToken: startPageToken }, endpoint);
+					// call pending
 
-        webhookData.webhookId = id;
-        webhookData.resourceId = resourceId;
+				} else if (resource === 'changes') {
+					const endpoint = 'https://www.googleapis.com/drive/v3/changes/watch';
+
+					const { startPageToken } = await googleApiRequest.call(this, 'GET', '', {}, {}, 'https://www.googleapis.com/drive/v3/changes/startPageToken');
+
+					// const endpoint = 'https://www.googleapis.com/drive/v3/changes/watch';
+					const body: IDataObject = {
+							id: uuid(),
+							type: 'web_hook',
+							address: this.getNodeWebhookUrl('default'),
+							expiration: moment().add('2', 'hours').valueOf(),
+					};
+
+					const { id: channelId, resourceId } = await googleApiRequest.call(this, 'POST', '', body, { pageToken: startPageToken }, endpoint);
+
+					webhookData.webhookId = channelId;
+					webhookData.resourceId = resourceId;
+				}
+
+
+
+
 
           // if (responseData.id === undefined) {
           //     // Required data is missing so was not successful

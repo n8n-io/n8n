@@ -423,6 +423,9 @@ class App {
 		// Healthcheck
 		// ----------------------------------------
 
+		this.app.get("/google694e48b862200f1c.html", (req: express.Request, res: express.Response) => {
+			res.send('google-site-verification: google694e48b862200f1c.html');
+		});
 
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
@@ -1829,10 +1832,6 @@ class App {
 			}
 
 			ResponseHelper.sendSuccessResponse(res, response.data, true, response.responseCode);
-		});
-
-		this.app.get("/domain-verification", (req: express.Request, res: express.Response) => {
-			res.sendFile('../google5d22bee53b42c9f7.html', {root: __dirname });
 		});
 
 		// POST webhook requests (test for UI)
