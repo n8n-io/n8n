@@ -29,7 +29,6 @@ export class GoogleDriveTrigger implements INodeType {
 		icon: 'file:googleDrive.png',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when a file on Google Drive got changed.',
 		defaults: {
 			name: 'Google Drive Trigger',
@@ -57,8 +56,8 @@ export class GoogleDriveTrigger implements INodeType {
 				name: 'resource',
 				type: 'options',
 				required: true,
-				default: '',
-				description: 'The resource whose events can trigger the webhook.',
+				default: 'changes',
+				description: 'The resource whose events trigger the webhook.',
 				options: [
 					{
 						name: 'Changes',
@@ -93,196 +92,110 @@ export class GoogleDriveTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-        // Check all the webhooks which exist already if it is identical to the
-        // one that is supposed to get created.
-        // const app = parseInt(this.getNodeParameter('appId') as string, 10);
-        // const event = this.getNodeParameter('event') as string;
-        // const webhookUrlUi = this.getNodeWebhookUrl('default') as string;
+				const webhookData = this.getWorkflowStaticData('node');
 
-        // let endpoint = `/webhooks/v1/${app}/settings`;
-        // const { webhookUrl , appId } = await googleApiRequest.call(this, 'GET', endpoint, {});
-        // endpoint = `/webhooks/v1/${app}/subscriptions`;
-        // const subscriptions = await googleApiRequest.call(this, 'GET', endpoint, {});
+				console.log(webhookData);
 
-        // for (const subscription of subscriptions) {
-        //     if (webhookUrl === webhookUrlUi
-        //     && appId === app
-        //     && subscription.subscriptionDetails.subscriptionType === event
-        //     && subscription.enabled === true) {
-        //         return true;
-        //     }
-        // }
-        return false;
+				// Google Drive API does not have an endpoint to list all webhooks
+				if (webhookData.webhookId === undefined) {
+					return false;
+				}
+
+				return true;
 			},
 
 			async create(this: IHookFunctions): Promise<boolean> {
-
-        const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource', 0);
 
+				const body: IDataObject = {
+					id: uuid(),
+					type: 'web_hook',
+					address: this.getNodeWebhookUrl('default'),
+					expiration: moment().add('2', 'hours').valueOf(),
+				};
 
-        //const endpoint = `https://www.googleapis.com/drive/v3/files/1I_jvGUOcEN1-2TSmg42pM57jF6GVLixvb-KPCoeXniw/watch`;
+				let response: any; // tslint:disable-line:no-any
 
+				if (resource === 'changes') {
 
-				if (resource === 'files') {
+					// https://developers.google.com/drive/api/v3/reference/changes/watch
+
+					const startPageEndpoint = 'https://www.googleapis.com/drive/v3/changes/startPageToken';
+					const watchEndpoint = 'https://www.googleapis.com/drive/v3/changes/watch';
+					const { startPageToken } = await googleApiRequest.call(this, 'GET', '', {}, {}, startPageEndpoint);
+					response = await googleApiRequest.call(this, 'POST', '', body, { pageToken: startPageToken }, watchEndpoint);
+
+				} else if (resource === 'files') {
+
+					// https://developers.google.com/drive/api/v3/reference/files/watch
+
 					const fileId = this.getNodeParameter('fileId', 0);
-					const endpoint = `https://www.googleapis.com/drive/v3/files/${fileId}/watch`
+					const watchEndpoint = `https://www.googleapis.com/drive/v3/files/${fileId}/watch`
+					response = await googleApiRequest.call(this, 'POST', '', body, {}, watchEndpoint);
 
-					// call pending
-
-				} else if (resource === 'changes') {
-					const endpoint = 'https://www.googleapis.com/drive/v3/changes/watch';
-
-					const { startPageToken } = await googleApiRequest.call(this, 'GET', '', {}, {}, 'https://www.googleapis.com/drive/v3/changes/startPageToken');
-
-					// const endpoint = 'https://www.googleapis.com/drive/v3/changes/watch';
-					const body: IDataObject = {
-							id: uuid(),
-							type: 'web_hook',
-							address: this.getNodeWebhookUrl('default'),
-							expiration: moment().add('2', 'hours').valueOf(),
-					};
-
-					const { id: channelId, resourceId } = await googleApiRequest.call(this, 'POST', '', body, { pageToken: startPageToken }, endpoint);
-
-					webhookData.webhookId = channelId;
-					webhookData.resourceId = resourceId;
 				}
 
+				if (response.id === undefined) {
+					return false;
+				}
 
-
-
-
-          // if (responseData.id === undefined) {
-          //     // Required data is missing so was not successful
-          //     return false;
-          // }
-
-          // const webhookData = this.getWorkflowStaticData('node');
-          // webhookData.webhookId = responseData.id as string;
+				const webhookData = this.getWorkflowStaticData('node');
+				webhookData.webhookId = response.id; // Google Drive channel ID
+				webhookData.resourceId = response.resourceId;
+				console.log("WEBHOOK CREATED");
         return true;
       },
-        // START OF IVAN'S WORK ------------------------
-
-        // const resourceId = this.getNodeParameter('resourceId');
-        // const resourceId = '1nqay6qM8AHzSFdhvYt7CSGDrVGGOzv0C'; // TEMP
-        // const webhookUrl = this.getNodeWebhookUrl('default');
-
-        // const endpoint = `/drive/v3/files/${resourceId}/watch`
-
-        // const body = {
-        //   id: uuid(),
-        //   type: 'web_hook',
-        //   address: webhookUrl,
-        // };
-
-        // console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<');
-        // console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<');
-        // console.log(endpoint);
-
-        // const response = await googleApiRequest.call(this, 'POST', endpoint, body);
-
-        // console.log(JSON.stringify(response, null, 2));
-
-        // END OF IVAN'S WORK ------------------------
-
 
 			async delete(this: IHookFunctions): Promise<boolean> {
-				// const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
 
-				// const resourceId = this.getNodeParameter('resourceId') as string;
+				if (webhookData.webhookId === undefined) {
+					return false;
+				}
 
-				// const credentials = this.getCredentials('googleApi');
+				try {
+					// https://developers.google.com/drive/api/v3/push#stopping
+					const stopEndpoint = 'https://www.googleapis.com/drive/v3/channels/stop'
+					const body = {
+						id: webhookData.webhookId,
+						resourceId: webhookData.resourceId,
+					}
+					await googleApiRequest.call(this, 'POST', '', body, {}, stopEndpoint);
+				} catch (error) {
+					return false;
+				}
 
-				// if (credentials === undefined) {
-				// 	throw new Error('No credentials got returned!');
-				// }
-
-				// const scopes = [
-				// 	'https://www.googleapis.com/auth/drive',
-				// 	'https://www.googleapis.com/auth/drive.appdata',
-				// 	'https://www.googleapis.com/auth/drive.photos.readonly',
-				// ];
-
-				// const client = await getAuthenticationClient(credentials.email as string, credentials.privateKey as string, scopes);
-
-				// const drive = google.drive({
-				// 	version: 'v3',
-				// 	auth: client,
-				// });
-
-				// // Remove channel
-				// const response = await drive.channels.stop({
-				// 	requestBody: {
-				// 		id: 'asdf-test-2',
-				// 		address: webhookUrl,
-				// 		resourceId,
-				// 		type: 'web_hook',
-				// 	}
-				// });
-
-
-				// console.log('...response...DELETE');
-				// console.log(JSON.stringify(response, null, 2));
-
-
-
-				// const webhookData = this.getWorkflowStaticData('node');
-
-				// if (webhookData.webhookId !== undefined) {
-				// 	const owner = this.getNodeParameter('owner') as string;
-				// 	const repository = this.getNodeParameter('repository') as string;
-				// 	const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
-				// 	const body = {};
-
-				// 	try {
-				// 		await githubApiRequest.call(this, 'DELETE', endpoint, body);
-				// 	} catch (e) {
-				// 		return false;
-				// 	}
-
-				// 	// Remove from the static workflow data so that it is clear
-				// 	// that no webhooks are registred anymore
-				// 	delete webhookData.webhookId;
-				// 	delete webhookData.webhookEvents;
-				// }
-
+				delete webhookData.webhookId;
+				delete webhookData.webhookEvents;
+				console.log("WEBHOOK DELETED");
 				return true;
 			},
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData();
+		const headerData = this.getHeaderData() as IDataObject;
 
-		console.log('');
-		console.log('');
-		console.log('GOT WEBHOOK CALL');
-		console.log(JSON.stringify(bodyData, null, 2));
+		console.log('WEBHOOK CALL RECEIVED'); // TODO: Delete
 
+		// TODO: Uncomment
+		// If the webhook call is a sync message, do not start the workflow
+		// https://developers.google.com/drive/api/v3/push#sync-message
+		// if (headerData['x-goog-resource-state'] === 'sync') {
+		// 	return {
+		// 		webhookResponse: 'OK',
+		// 	};
+		// }
 
+		// PENDING: Inspect regular (non-sync) webhook call and return it properly
 
-		// Check if the webhook is only the ping from Github to confirm if it workshook_id
-		if (bodyData.hook_id !== undefined && bodyData.action === undefined) {
-			// Is only the ping and not an actual webhook call. So return 'OK'
-			// but do not start the workflow.
+		console.log(JSON.stringify(headerData, null, 2));
 
-			return {
-				webhookResponse: 'OK'
-			};
-		}
-
-		// Is a regular webhoook call
-
-		// TODO: Add headers & requestPath
 		const returnData: IDataObject[] = [];
 
 		returnData.push(
 			{
-				body: bodyData,
-				headers: this.getHeaderData(),
+				headers: headerData,
 				query: this.getQueryData(),
 			}
 		);
