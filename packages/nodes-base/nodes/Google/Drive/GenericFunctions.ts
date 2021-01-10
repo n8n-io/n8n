@@ -66,6 +66,8 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 
 			} else if (error.response.body.error.message) {
 				errorMessages = error.response.body.error.message;
+			} else if (error.response.body.error_description) {
+				errorMessages = error.response.body.error_description;
 			}
 
 			throw new Error(`Google Drive error response [${error.statusCode}]: ${errorMessages}`);
@@ -107,7 +109,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	const signature = jwt.sign(
 		{
 			'iss': credentials.email as string,
-			'sub': credentials.email as string,
+			'sub': credentials.delegatedEmail || credentials.email as string,
 			'scope': scopes.join(' '),
 			'aud': `https://oauth2.googleapis.com/token`,
 			'iat': now,
