@@ -169,13 +169,15 @@ export class SecurityScorecard implements INodeType {
 
 				if (operation === 'edit') {
 					const portfolioId = this.getNodeParameter('portfolioId', i);
-					const editFields = this.getNodeParameter('editFields', i) as IDataObject;
+					const name = this.getNodeParameter('name', i) as string;
+					const description = this.getNodeParameter('description', i) as string;
+					const privacy = this.getNodeParameter('privacy', i) as string;
 
 					const body: IDataObject = {
-						'name': this.getNodeParameter('name', i),
+						name,
+						description,
+						privacy,
 					};
-					// Add optional fields
-					Object.assign(body, editFields);
 
 					responseData = await scorecardApiRequest.call(
 						this,

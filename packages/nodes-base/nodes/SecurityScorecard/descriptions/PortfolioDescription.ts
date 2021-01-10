@@ -71,8 +71,13 @@ export const portfolioFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['portfolios'],
-				operation: ['create'],
+				resource: [
+					'portfolios',
+				],
+				operation: [
+					'create',
+					'edit',
+				],
 			},
 		},
 		description: 'Description',
@@ -84,8 +89,13 @@ export const portfolioFields = [
 		required: false,
 		displayOptions: {
 			show: {
-				resource: ['portfolios'],
-				operation: ['create'],
+				resource: [
+					'portfolios',
+				],
+				operation: [
+					'create',
+					'edit',
+				],
 			},
 		},
 		options: [
@@ -163,53 +173,6 @@ export const portfolioFields = [
 				],
 				placeholder: '',
 				default: '',
-			},
-		],
-	},
-	// portfolio:edit
-	{
-		displayName: 'Edit Fields',
-		name: 'editFields',
-		description: 'The fields to edit.',
-		displayOptions: {
-			show: {
-				resource: ['portfolios'],
-				operation: ['edit'],
-			},
-		},
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		options: [
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				placeholder: '',
-				default: '',
-			},
-			{
-				displayName: 'Privacy',
-				name: 'privacy',
-				type: 'options',
-				options: [
-					{
-						name: 'Private',
-						value: 'private',
-						description: 'Only visible to you',
-					},
-					{
-						name: 'Shared',
-						value: 'shared',
-						description: 'Visible to everyone in your company',
-					},
-					{
-						name: 'Team',
-						value: 'team',
-						description: 'Visible to the people on your team',
-					},
-				],
-				default: 'shared',
 			},
 		],
 	},
