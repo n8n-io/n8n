@@ -342,7 +342,6 @@ export class Crypto implements INodeType {
 			async getHashes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const hashes = getHashes();
-				console.log(hashes)
 				for (const hash of hashes) {
 					const hashName = hash;
 					const hashId = hash;
