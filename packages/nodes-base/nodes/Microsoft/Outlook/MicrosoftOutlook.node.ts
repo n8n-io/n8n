@@ -926,6 +926,10 @@ export class MicrosoftOutlook implements INodeType {
 						qs['$select'] = additionalFields.fields;
 					}
 
+					if (additionalFields.filter) {
+						qs['$filter'] = additionalFields.filter;
+					}
+
 					const endpoint = `/mailFolders/${folderId}/messages`;
 					if (returnAll) {
 						responseData = await microsoftApiRequestAllItems.call(

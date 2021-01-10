@@ -115,7 +115,7 @@ export const folderMessageFields = [
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'Microsoft Graph API OData $filter query.',
+				description: 'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter" target="_blank">here</a>.',
 			},
 		],
 	},
