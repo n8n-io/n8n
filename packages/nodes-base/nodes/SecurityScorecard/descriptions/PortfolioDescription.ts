@@ -35,7 +35,9 @@ export const portfolioFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['portfolios'],
+				resource: [
+					'portfolios',
+				],
 				operation: [
 					'edit',
 					'delete',
@@ -54,7 +56,9 @@ export const portfolioFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['portfolios'],
+				resource: [
+					'portfolios',
+				],
 				operation: [
 					'create',
 					'edit',
@@ -122,9 +126,12 @@ export const portfolioFields = [
 		name: 'filters',
 		displayOptions: {
 			show: {
-				resource: ['portfolios'],
-				operation: ['getCompanies'],
-				
+				resource: [
+					'portfolios',
+				],
+				operation: [
+					'getCompanies',
+				],
 			},
 		},
 		type: 'collection',
@@ -184,8 +191,13 @@ export const portfolioFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['portfolios'],
-				operation: ['addCompany', 'deleteCompany'],
+				resource: [
+					'portfolios',
+				],
+				operation: [
+					'addCompany',
+					'deleteCompany',
+				],
 			},
 		},
 		description: 'Company\'s domain name',

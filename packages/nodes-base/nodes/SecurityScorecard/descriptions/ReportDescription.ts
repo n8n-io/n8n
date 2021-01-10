@@ -10,7 +10,9 @@ export const reportOperations = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['reports'],
+				resource: [
+					'reports',
+				],
 			},
 		},
 		options: [
@@ -30,8 +32,12 @@ export const reportFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['reports'],
-				operation: ['generate'],
+				resource: [
+					'reports',
+				],
+				operation: [
+					'generate',
+				],
 			},
 		},
 		options: [
@@ -55,8 +61,12 @@ export const reportFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['reports'],
-				operation: ['generate'],
+				resource: [
+					'reports',
+				],
+				operation: [
+					'generate',
+				],
 				report: [
 					'detailed',
 					'events-json',
@@ -77,9 +87,15 @@ export const reportFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['reports'],
-				operation: ['generate'],
-				report: ['portfolio'],
+				resource: [
+					'reports',
+				],
+				operation: [
+					'generate',
+				],
+				report: [
+					'portfolio',
+				],
 			},
 		},
 		description: 'Portfolio ID',
@@ -91,7 +107,9 @@ export const reportFields = [
 		required: false,
 		displayOptions: {
 			show: {
-				resource: ['reports'],
+				resource: [
+					'reports',
+				],
 				operation: [
 					'generate',
 				],
@@ -145,9 +163,16 @@ export const reportFields = [
 		placeholder: 'Add Optional Field',
 		displayOptions: {
 			show: {
-				resource: ['reports'],
-				operation: ['generate'],
-				report: ['issues', 'portfolio'],
+				resource: [
+					'reports',
+				],
+				operation: [
+					'generate',
+				],
+				report: [
+					'issues',
+					'portfolio',
+				],
 			},
 		},
 		options: [
@@ -173,9 +198,15 @@ export const reportFields = [
 		placeholder: 'Add Optional Field',
 		displayOptions: {
 			show: {
-				resource: ['reports'],
-				operation: ['generate'],
-				report: ['scorecard-footprint'],
+				resource: [
+					'reports',
+				],
+				operation: [
+					'generate',
+				],
+				report: [
+					'scorecard-footprint',
+				],
 			},
 		},
 		options: [
@@ -231,8 +262,12 @@ export const reportFields = [
 		description: 'URL to a generated report',
 		displayOptions: {
 			show: {
-				resource: ['reports'],
-				operation: ['download'],
+				resource: [
+					'reports',
+				],
+				operation: [
+					'download',
+				],
 			},
 		},
 	},
@@ -244,8 +279,12 @@ export const reportFields = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				resource: ['reports'],
-				operation: ['download'],
+				resource: [
+					'reports',
+				],
+				operation: [
+					'download',
+				],
 			},
 		},
 		description: 'Name of the binary property to which to<br />write the data of the read file.',

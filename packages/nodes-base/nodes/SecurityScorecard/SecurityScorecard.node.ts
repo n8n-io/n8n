@@ -121,7 +121,7 @@ export class SecurityScorecard implements INodeType {
 			
 			if (resource === 'portfolios') {
 				if (operation === 'addCompany') {
-					const portfolioId = this.getNodeParameter('portfolioId', i);
+					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
 					const domain = this.getNodeParameter('domain', i);
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -132,11 +132,16 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'create') {
+					const name = this.getNodeParameter('name', i) as string;
+					const description = this.getNodeParameter('description', i) as string;
+					const privacy = this.getNodeParameter('privacy', i) as string;
+					
 					const body: IDataObject = {
-						'name': this.getNodeParameter('name', i),
-						'description': this.getNodeParameter('description', i),
-						'privacy': this.getNodeParameter('privacy', i),
+						name,
+						description,
+						privacy,
 					};
+
 					responseData = await scorecardApiRequest.call(
 						this,
 						'POST',
@@ -147,7 +152,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'delete') {
-					const portfolioId = this.getNodeParameter('portfolioId', i);
+					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
 					responseData = await scorecardApiRequest.call(
 						this,
 						'DELETE',
@@ -157,7 +162,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'deleteCompany') {
-					const portfolioId = this.getNodeParameter('portfolioId', i);
+					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
 					const domain = this.getNodeParameter('domain', i);
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -168,11 +173,11 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'edit') {
-					const portfolioId = this.getNodeParameter('portfolioId', i);
+					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
 					const description = this.getNodeParameter('description', i) as string;
 					const privacy = this.getNodeParameter('privacy', i) as string;
-
+					
 					const body: IDataObject = {
 						name,
 						description,
@@ -198,7 +203,7 @@ export class SecurityScorecard implements INodeType {
 				}				
 
 				if (operation === 'getCompanies') {
-					const portfolioId = this.getNodeParameter('portfolioId', i);
+					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
 					const filterParams = this.getNodeParameter('filters', i) as IDataObject;
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -217,7 +222,7 @@ export class SecurityScorecard implements INodeType {
 
 					const response = await scorecardApiRequest.call(
 						this,
-						'GET', 
+						'GET',
 						'',
 						{},
 						{},
@@ -363,7 +368,7 @@ export class SecurityScorecard implements INodeType {
 
 			if (resource === 'companies') {
 				if (operation === 'getScorecard') {
-					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
+					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
@@ -386,7 +391,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getFactorHistorical') {
-					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
+					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					// Convert to YYYY-MM-DD
 					if (options['date_from']) {
@@ -430,7 +435,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getScorePlan') {
-					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
+					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
 					const targetScore = this.getNodeParameter('score', i);
 					responseData = await scorecardApiRequest.call(
 						this,
