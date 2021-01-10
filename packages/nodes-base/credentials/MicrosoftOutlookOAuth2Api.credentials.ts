@@ -16,7 +16,27 @@ export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'openid offline_access Mail.ReadWrite Mail.Send MailboxSettings.Read',
+			default: 'openid offline_access Mail.ReadWrite Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared MailboxSettings.Read',
+		},
+		{
+			displayName: 'Use Shared Mailbox',
+			name: 'useShared',
+			type: 'boolean' as NodePropertyTypes,
+			default: false,
+		},
+		{
+			displayName: 'User Principal Name',
+			name: 'userPrincipalName',
+			description: 'Target user\'s UPN or ID',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			displayOptions: {
+				show: {
+					useShared: [
+						true,
+					],
+				},
+			},
 		},
 	];
 }
