@@ -78,7 +78,7 @@ export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITrigger
 
 	return new Promise(async (resolve, reject) => {
 		try {
-			await channel.assertExchange(exchange, type, options)
+			await channel.assertExchange(exchange, type, options);
 			resolve(channel);
 		} catch (error) {
 			reject(error);

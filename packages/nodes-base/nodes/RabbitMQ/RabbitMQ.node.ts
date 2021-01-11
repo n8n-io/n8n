@@ -247,10 +247,10 @@ export class RabbitMQ implements INodeType {
 								],
 							},
 						},
-						default: false,
+						default: '',
 						description: 'An exchange to send messages to if this exchange can’t route them to any queues',
 					},
-				]
+				],
 			},
 		],
 	};
