@@ -694,7 +694,7 @@ export const accountFields = [
 				},
 				description: 'The condition to set.',
 				default: {},
-				options: [ 
+				options: [
 					{
 						name: 'conditionValues',
 						displayName: 'Condition',
@@ -707,6 +707,7 @@ export const accountFields = [
 									loadOptionsMethod: 'getAccountFields',
 								},
 								default: '',
+								description: 'For date, number, or boolean, please use expressions',
 							},
 							{
 								displayName: 'Operation',

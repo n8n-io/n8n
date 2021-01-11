@@ -882,7 +882,7 @@ export const taskFields = [
 				},
 				description: 'The condition to set.',
 				default: {},
-				options: [ 
+				options: [
 					{
 						name: 'conditionValues',
 						displayName: 'Condition',
@@ -895,6 +895,7 @@ export const taskFields = [
 									loadOptionsMethod: 'getTaskFields',
 								},
 								default: '',
+								description: 'For date, number, or boolean, please use expressions',
 							},
 							{
 								displayName: 'Operation',

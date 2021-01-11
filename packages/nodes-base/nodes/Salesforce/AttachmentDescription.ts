@@ -345,7 +345,7 @@ export const attachmentFields = [
 				},
 				description: 'The condition to set.',
 				default: {},
-				options: [ 
+				options: [
 					{
 						name: 'conditionValues',
 						displayName: 'Condition',
@@ -357,7 +357,7 @@ export const attachmentFields = [
 								typeOptions: {
 									loadOptionsMethod: 'getAtachmentFields',
 								},
-								default: '',
+								default: '',description: 'For date, number, or boolean, please use expressions',
 							},
 							{
 								displayName: 'Operation',

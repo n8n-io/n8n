@@ -753,7 +753,7 @@ export const contactFields = [
 				},
 				description: 'The condition to set.',
 				default: {},
-				options: [ 
+				options: [
 					{
 						name: 'conditionValues',
 						displayName: 'Condition',
@@ -766,6 +766,7 @@ export const contactFields = [
 									loadOptionsMethod: 'getContactFields',
 								},
 								default: '',
+								description: 'For date, number, or boolean, please use expressions',
 							},
 							{
 								displayName: 'Operation',
