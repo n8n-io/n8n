@@ -355,6 +355,13 @@ export class HttpRequest implements INodeType {
 						default: 10000,
 						description: 'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request.',
 					},
+					{
+						displayName: 'Use Querystring',
+						name: 'useQueryString',
+						type: 'boolean',
+						default: false,
+						description: 'Set this option to true if you need arrays to be serialized as foo=bar&foo=baz instead of the default foo[0]=bar&foo[1]=baz.',
+					},
 				],
 			},
 
@@ -649,7 +656,7 @@ export class HttpRequest implements INodeType {
 			if (itemIndex > 0 && options.batchSize as number >= 0 && options.batchInterval as number > 0) {
 				// defaults batch size to 1 of it's set to 0
 				const batchSize: number = options.batchSize as number > 0 ? options.batchSize as number : 1;
-				if (itemIndex % batchSize === 1) {
+				if (itemIndex % batchSize === 0) {
 					await new Promise(resolve => setTimeout(resolve, options.batchInterval as number));
 				}
 			}
@@ -681,6 +688,10 @@ export class HttpRequest implements INodeType {
 			}
 			if (options.timeout !== undefined) {
 				requestOptions.timeout = options.timeout as number;
+			}
+
+			if (options.useQueryString === true) {
+				requestOptions.useQuerystring = true;
 			}
 
 			if (parametersAreJson === true) {
@@ -927,7 +938,7 @@ export class HttpRequest implements INodeType {
 					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(response!, fileName);
 				}
 
-				items[itemIndex] = newItem;
+				returnItems.push(newItem);
 			} else if (responseFormat === 'string') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 
@@ -980,12 +991,6 @@ export class HttpRequest implements INodeType {
 			}
 		}
 
-		if (responseFormat === 'file') {
-			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
-		} else {
-			// For all other ones does the output items get replaced
-			return this.prepareOutputData(returnItems);
-		}
+		return this.prepareOutputData(returnItems);
 	}
 }

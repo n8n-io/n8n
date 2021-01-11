@@ -1,3 +1,4 @@
+import { URL } from 'url';
 import { sign } from 'aws4';
 import { OptionsWithUri } from 'request';
 import { parseString } from 'xml2js';
@@ -9,6 +10,21 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
+import {
+	ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
+
+function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
+	let endpoint;
+	if (service === "lambda" && credentials.lambdaEndpoint) {
+		endpoint = credentials.lambdaEndpoint;
+	} else if (service === "sns" && credentials.snsEndpoint) {
+		endpoint = credentials.snsEndpoint;
+	} else {
+		endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
+	}
+	return (endpoint as string).replace('{region}', credentials.region as string);
+}
 
 export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
 	const credentials = this.getCredentials('aws');
@@ -16,23 +32,25 @@ export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | I
 		throw new Error('No credentials got returned!');
 	}
 
-	const endpoint = `${service}.${credentials.region}.amazonaws.com`;
+	// Concatenate path and instantiate URL object so it parses correctly query strings
+	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint, method, path, body };
+	const signOpts = { headers: headers || {}, host: endpoint.host, method, path: endpoint.pathname, body };
 	sign(signOpts, { accessKeyId: `${credentials.accessKeyId}`.trim(), secretAccessKey: `${credentials.secretAccessKey}`.trim() });
+
 
 	const options: OptionsWithUri = {
 		headers: signOpts.headers,
 		method,
-		uri: `https://${endpoint}${signOpts.path}`,
+		uri: endpoint.href,
 		body: signOpts.body,
 	};
 
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message || error.message;
+		const errorMessage = (error.response && error.response.body.message) || (error.response && error.response.body.Message) || error.message;
 
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
