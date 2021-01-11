@@ -352,9 +352,8 @@ export class Beeminder implements INodeType {
 					Object.assign(data, options);
 
 					if (data.timestamp) {
-						data.timestamp = moment.tz(data.timestamp, timezone) .unix();
+						data.timestamp = moment.tz(data.timestamp, timezone).unix();
 					}
-					console.log(data);
 					results = await createDatapoint.call(this, data);
 				}
 				else if (operation === 'getAll') {
@@ -380,7 +379,7 @@ export class Beeminder implements INodeType {
 					};
 					Object.assign(data, options);
 					if (data.timestamp) {
-						data.timestamp = moment.tz(data.timestamp, timezone) .unix();
+						data.timestamp = moment.tz(data.timestamp, timezone).unix();
 					}
 					results = await updateDatapoint.call(this, data);
 				}
