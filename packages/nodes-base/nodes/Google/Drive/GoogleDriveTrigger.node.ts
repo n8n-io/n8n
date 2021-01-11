@@ -1,5 +1,3 @@
-// import { google } from 'googleapis';
-
 import {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -18,9 +16,6 @@ import {
 
 import * as uuid from 'uuid/v4';
 import moment = require('moment');
-
-// import { getAuthenticationClient } from './GoogleApi';
-
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -94,7 +89,7 @@ export class GoogleDriveTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 
-				console.log(webhookData);
+				// console.log(webhookData);
 
 				// Google Drive API does not have an endpoint to list all webhooks
 				if (webhookData.webhookId === undefined) {
@@ -111,7 +106,7 @@ export class GoogleDriveTrigger implements INodeType {
 					id: uuid(),
 					type: 'web_hook',
 					address: this.getNodeWebhookUrl('default'),
-					expiration: moment().add('2', 'hours').valueOf(),
+					expiration: moment().add('2', 'hours').valueOf(), // TODO: Change expiration
 				};
 
 				let response: any; // tslint:disable-line:no-any
@@ -153,13 +148,13 @@ export class GoogleDriveTrigger implements INodeType {
 					return false;
 				}
 
+				const stopEndpoint = 'https://www.googleapis.com/drive/v3/channels/stop'
+				const body = {
+					id: webhookData.webhookId,
+					resourceId: webhookData.resourceId,
+				}
+
 				try {
-					// https://developers.google.com/drive/api/v3/push#stopping
-					const stopEndpoint = 'https://www.googleapis.com/drive/v3/channels/stop'
-					const body = {
-						id: webhookData.webhookId,
-						resourceId: webhookData.resourceId,
-					}
 					await googleApiRequest.call(this, 'POST', '', body, {}, stopEndpoint);
 				} catch (error) {
 					return false;
@@ -175,6 +170,7 @@ export class GoogleDriveTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const headerData = this.getHeaderData() as IDataObject;
+		const bodyData = this.getBodyData() as IDataObject;
 
 		console.log('WEBHOOK CALL RECEIVED'); // TODO: Delete
 
@@ -188,8 +184,6 @@ export class GoogleDriveTrigger implements INodeType {
 		// }
 
 		// PENDING: Inspect regular (non-sync) webhook call and return it properly
-
-		console.log(JSON.stringify(headerData, null, 2));
 
 		const returnData: IDataObject[] = [];
 
