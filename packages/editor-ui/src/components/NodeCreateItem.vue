@@ -34,7 +34,7 @@ export default Vue.extend({
 			};
 		},
 		nodeName (): string {
-			return this.nodeType.name.replace("n8n-nodes-base.", "");
+			return this.nodeType.name;
 		},
 	},
 	methods: {
