@@ -7,6 +7,7 @@ import {
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	ITriggerFunctions,
 } from 'n8n-core';
 
 import {

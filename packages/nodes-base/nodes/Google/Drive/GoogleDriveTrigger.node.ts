@@ -15,10 +15,7 @@ import {
 import {
 	createWebhook,
 	deleteWebhook,
-	googleApiRequest
 } from './GenericFunctions';
-
-import moment = require('moment');
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -130,13 +127,22 @@ export class GoogleDriveTrigger implements INodeType {
 	}
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		console.log(this);
 
 		const executeTrigger = () => {
-			// delete webook
-			// create webook again
+			console.log("------------------ RENEW TRIGGER ------------------");
+			deleteWebhook.call(this);
+			createWebhook.call(this);
 		};
 
-		const intervalTime = 82_800_000 + 3_540_000; // 23 hours 59 minutes in ms
+		const resource = this.getNodeParameter('resource', 0);
+		const intervals = {
+			changes: 6 * 24 * 60 * 60 * 1000, 						// 6 days 23 hours 59 minutes in ms
+			files: 23 * 60 * 60 * 1000 + 59 * 60 * 1000, 	// 23 hours 59 minutes in ms
+		};
+
+		// const intervalTime = intervals[resource];
+		const intervalTime = 10_000; // TEMP FOR DEBUGGING
 		const intervalObject = setInterval(executeTrigger, intervalTime);
 
 		async function closeFunction() {
@@ -148,5 +154,3 @@ export class GoogleDriveTrigger implements INodeType {
 		};
 	}
 }
-
-
