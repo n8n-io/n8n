@@ -1,0 +1,28 @@
+{
+  "node": "n8n-nodes-base.set",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Utility"],
+  "resources": {
+    "primaryDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.set/" }
+    ],
+    "generic": [
+      {
+        "label": "Smart Factory Automation using IoT and Sensor Data with n8n",
+        "icon": "🏭",
+        "url": "https://medium.com/n8n-io/smart-factory-automation-using-iot-and-sensor-data-with-n8n-27675de9943b"
+      },
+      {
+        "label": "Effortless video collaboration with Whereby, Mattermost, and n8n",
+        "icon": "📹",
+        "url": "https://medium.com/n8n-io/effortless-video-collaboration-with-whereby-mattermost-and-n8n-8fc397feb9cb"
+      },
+      {
+        "label": "Database Monitoring and Alerting with n8n",
+        "icon": "📡",
+        "url": "https://medium.com/n8n-io/database-monitoring-and-alerting-with-n8n-f5082df7bdb2"
+      }
+    ]
+  }
+}

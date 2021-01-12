@@ -1,0 +1,26 @@
+{
+  "node": "n8n-nodes-base.pagerDuty",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Communication", "Development"],
+  "resources": {
+    "credentialDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/credentials/pagerDuty" }
+    ],
+    "primaryDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.pagerDuty/" }
+    ],
+    "generic": [
+      {
+        "label": "Smart Factory Automation using IoT and Sensor Data with n8n",
+        "icon": "🏭",
+        "url": "https://medium.com/n8n-io/smart-factory-automation-using-iot-and-sensor-data-with-n8n-27675de9943b"
+      },
+      {
+        "label": "Creating Custom Incident Response Workflows with n8n",
+        "icon": "🚨",
+        "url": "https://medium.com/n8n-io/creating-custom-incident-response-workflows-with-n8n-9baef0bbedb9"
+      }
+    ]
+  }
+}

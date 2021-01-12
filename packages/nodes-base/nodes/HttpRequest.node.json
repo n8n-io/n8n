@@ -1,0 +1,36 @@
+{
+  "node": "n8n-nodes-base.httpRequest",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Utility", "Development"],
+  "resources": {
+    "primaryDocumentation": [
+      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.httpRequest/" }
+    ],
+    "generic": [
+      {
+        "label": "Creating scheduled text affirmations with n8n",
+        "icon": "🤟",
+        "url": "https://medium.com/n8n-io/creating-scheduled-text-affirmations-with-n8n-1c4189efae19"
+      },
+      {
+        "label": "HTTP Request Node — The Swiss Army Knife",
+        "url": "https://medium.com/n8n-io/http-request-node-the-swiss-army-knife-b14e22283383"
+      },
+      {
+        "label": "Cross-posting content automatically with n8n",
+        "icon": "✍️",
+        "url": "https://medium.com/n8n-io/automating-cross-posting-blog-posts-using-n8n-%EF%B8%8F-af2a89601810"
+      },
+      {
+        "label": "Automate Designs with Bannerbear and n8n",
+        "url": "https://medium.com/n8n-io/automate-designs-with-bannerbear-and-n8n-2b64c94b54db"
+      },
+      {
+        "label": "Webhooks Fun with n8n and Mattermost",
+        "icon": "🍸",
+        "url": "https://medium.com/n8n-io/webhooks-fun-with-n8n-and-mattermost-4ebf7e2b4d2a"
+      }
+    ]
+  }
+}
