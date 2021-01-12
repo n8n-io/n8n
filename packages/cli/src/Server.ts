@@ -423,10 +423,6 @@ class App {
 		// Healthcheck
 		// ----------------------------------------
 
-		this.app.get("/google694e48b862200f1c.html", (req: express.Request, res: express.Response) => {
-			res.send('google-site-verification: google694e48b862200f1c.html');
-		});
-
 		// Does very basic health check
 		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
 
