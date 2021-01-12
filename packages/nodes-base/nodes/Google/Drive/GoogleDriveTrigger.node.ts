@@ -89,8 +89,6 @@ export class GoogleDriveTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 
-				// console.log(webhookData);
-
 				// Google Drive API does not have an endpoint to list all webhooks
 				if (webhookData.webhookId === undefined) {
 					return false;
@@ -101,7 +99,6 @@ export class GoogleDriveTrigger implements INodeType {
 
 			async create(this: IHookFunctions): Promise<boolean> {
 				const resource = this.getNodeParameter('resource', 0);
-
 				const body: IDataObject = {
 					id: uuid(),
 					type: 'web_hook',
@@ -170,30 +167,23 @@ export class GoogleDriveTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const headerData = this.getHeaderData() as IDataObject;
-		const bodyData = this.getBodyData() as IDataObject;
-
+		console.log(headerData);
 		console.log('WEBHOOK CALL RECEIVED'); // TODO: Delete
-		console.log(bodyData);
 
-		// TODO: Uncomment
-		// If the webhook call is a sync message, do not start the workflow
-		// https://developers.google.com/drive/api/v3/push#sync-message
+		// if the webhook call is a sync message, do not start the workflow
 		// if (headerData['x-goog-resource-state'] === 'sync') {
 		// 	return {
 		// 		webhookResponse: 'OK',
 		// 	};
 		// }
 
-		// PENDING: Inspect regular (non-sync) webhook call and return it properly
-
 		const returnData: IDataObject[] = [];
 
-		returnData.push(
-			{
-				headers: headerData,
-				query: this.getQueryData(),
-			},
-		);
+		// changes: 'sync' and 'change'
+		// files: 'sync', 'update', 'add', 'remove', 'trash', 'untrash'
+		returnData.push({
+			headers: headerData,
+		});
 
 		return {
 			workflowData: [
