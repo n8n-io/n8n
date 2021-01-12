@@ -20,7 +20,7 @@ export async function createDatapoint(this: IExecuteFunctions | IWebhookFunction
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	
+
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints.json`;
 
 	return await beeminderApiRequest.call(this, 'POST', endpoint, data);
@@ -32,14 +32,14 @@ export async function getAllDatapoints(this: IExecuteFunctions | IHookFunctions 
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	
+
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints.json`;
 
 	if (data.count !== undefined) {
-		return beeminderApiRequest.call(this, 'GET', endpoint, {}, data); 
+		return beeminderApiRequest.call(this, 'GET', endpoint, {}, data);
 	}
 
-	return await beeminderpiRequestAllItems.call(this, 'GET', endpoint, {}, data); 
+	return await beeminderpiRequestAllItems.call(this, 'GET', endpoint, {}, data);
 }
 
 export async function updateDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, data: IDataObject) {
@@ -48,7 +48,7 @@ export async function updateDatapoint(this: IExecuteFunctions | IWebhookFunction
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	
+
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
 	return await beeminderApiRequest.call(this, 'PUT', endpoint, data);
@@ -60,7 +60,7 @@ export async function deleteDatapoint(this: IExecuteFunctions | IWebhookFunction
 	if (credentials === undefined) {
 		throw new Error('No credentials got returned!');
 	}
-	
+
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
 	return await beeminderApiRequest.call(this, 'DELETE', endpoint);

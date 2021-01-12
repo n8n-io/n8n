@@ -1,4 +1,4 @@
-import { 
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -106,7 +106,7 @@ export class Beeminder implements INodeType {
 					},
 				},
 				default: '',
-				description: 'Goal name',
+				description: 'The name of the goal.',
 				required: true,
 			},
 			{
@@ -215,7 +215,7 @@ export class Beeminder implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: 'Defaults to "now" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created',
+						description: 'Defaults to "now" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created.',
 					},
 					{
 						displayName: 'Request ID',
@@ -292,7 +292,7 @@ export class Beeminder implements INodeType {
 						type: 'dateTime',
 						default: '',
 						placeholder: '',
-						description: 'Defaults to "now" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created',
+						description: 'Defaults to "now" if none is passed in, or the existing timestamp if the datapoint is being updated rather than created.',
 					},
 				],
 			},
@@ -310,9 +310,9 @@ export class Beeminder implements INodeType {
 				if (credentials === undefined) {
 					throw new Error('No credentials got returned!');
 				}
-				
+
 				const endpoint = `/users/${credentials.user}/goals.json`;
-			
+
 				const returnData: INodePropertyOptions[] = [];
 				const goals = await beeminderApiRequest.call(this, 'GET', endpoint);
 				for (const goal of goals) {
@@ -352,7 +352,7 @@ export class Beeminder implements INodeType {
 					Object.assign(data, options);
 
 					if (data.timestamp) {
-						data.timestamp = moment.tz(data.timestamp, timezone) .unix();
+						data.timestamp = moment.tz(data.timestamp, timezone).unix();
 					}
 					console.log(data);
 					results = await createDatapoint.call(this, data);
@@ -380,7 +380,7 @@ export class Beeminder implements INodeType {
 					};
 					Object.assign(data, options);
 					if (data.timestamp) {
-						data.timestamp = moment.tz(data.timestamp, timezone) .unix();
+						data.timestamp = moment.tz(data.timestamp, timezone).unix();
 					}
 					results = await updateDatapoint.call(this, data);
 				}

@@ -1,6 +1,6 @@
 import {
 	OptionsWithUri,
- } from 'request';
+} from 'request';
 
 import {
 	IExecuteFunctions,
@@ -16,11 +16,11 @@ import {
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
 
 export async function beeminderApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	
+
 	const credentials = this.getCredentials('beeminderApi') as IDataObject;
 
 	Object.assign(body, { auth_token: credentials.authToken });
-	
+
 	const options: OptionsWithUri = {
 		method,
 		body,
@@ -40,9 +40,9 @@ export async function beeminderApiRequest(this: IExecuteFunctions | IWebhookFunc
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-	if (error?.message) {
-		throw new Error(`Beeminder error response [${error.statusCode}]: ${error.message}`);
-	}
+		if (error?.message) {
+			throw new Error(`Beeminder error response [${error.statusCode}]: ${error.message}`);
+		}
 		throw error;
 	}
 }
