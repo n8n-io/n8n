@@ -186,7 +186,13 @@ export async function init(): Promise<IDatabaseCollections> {
 		// This specific migration changes database metadata.
 		// A field is now nullable. We need to reconnect so that
 		// n8n knows it has changed. Happens only on sqlite.
-		const migrations = await connection.query(`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`);
+		let migrations = [];
+		try {
+			migrations = await connection.query(`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`);
+		} catch(error) {
+			// Migration table does not exist yet - it will be created after migrations run for the first time.
+		}
+		
 		
 		// If you remove this call, remember to turn back on the
 		// setting to run migrations automatically above.
