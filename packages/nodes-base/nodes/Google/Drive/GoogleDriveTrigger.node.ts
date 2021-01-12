@@ -1,5 +1,6 @@
 import {
 	IHookFunctions,
+	ITriggerFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
 
@@ -7,6 +8,7 @@ import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
+	ITriggerResponse,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -103,13 +105,14 @@ export class GoogleDriveTrigger implements INodeType {
 					id: uuid(),
 					type: 'web_hook',
 					address: this.getNodeWebhookUrl('default'),
-					expiration: moment().add('2', 'hours').valueOf(), // TODO: Change expiration
+					expiration: moment().add(23, 'hours').add(59, 'minutes').valueOf(),
 				};
 
 				let response: any; // tslint:disable-line:no-any
 
 				if (resource === 'changes') {
 
+					// 'sync' and 'change'
 					// https://developers.google.com/drive/api/v3/reference/changes/watch
 
 					const startPageEndpoint = 'https://www.googleapis.com/drive/v3/changes/startPageToken';
@@ -119,6 +122,7 @@ export class GoogleDriveTrigger implements INodeType {
 
 				} else if (resource === 'files') {
 
+					// 'sync', 'update', 'add', 'remove', 'trash', 'untrash'
 					// https://developers.google.com/drive/api/v3/reference/files/watch
 
 					const fileId = this.getNodeParameter('fileId', 0);
@@ -179,8 +183,6 @@ export class GoogleDriveTrigger implements INodeType {
 
 		const returnData: IDataObject[] = [];
 
-		// changes: 'sync' and 'change'
-		// files: 'sync', 'update', 'add', 'remove', 'trash', 'untrash'
 		returnData.push({
 			headers: headerData,
 		});
@@ -189,6 +191,25 @@ export class GoogleDriveTrigger implements INodeType {
 			workflowData: [
 				this.helpers.returnJsonArray(returnData),
 			],
+		};
+	}
+
+	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+
+		const executeTrigger = () => {
+			// delete webook
+			// create webook again
+		};
+
+		const intervalTime = 82_800_000 + 3_540_000; // 23 hours 59 minutes in ms
+		const intervalObject = setInterval(executeTrigger, intervalTime);
+
+		async function closeFunction() {
+			clearInterval(intervalObject);
+		}
+
+		return {
+			closeFunction,
 		};
 	}
 }
