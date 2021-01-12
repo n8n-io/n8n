@@ -5,13 +5,13 @@ import {
 
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
-  googleApiRequest
+	googleApiRequest
 } from './GenericFunctions';
 
 import * as uuid from 'uuid/v4';
@@ -35,7 +35,7 @@ export class GoogleDriveTrigger implements INodeType {
 			{
 				name: 'googleDriveOAuth2Api',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -125,7 +125,7 @@ export class GoogleDriveTrigger implements INodeType {
 					// https://developers.google.com/drive/api/v3/reference/files/watch
 
 					const fileId = this.getNodeParameter('fileId', 0);
-					const watchEndpoint = `https://www.googleapis.com/drive/v3/files/${fileId}/watch`
+					const watchEndpoint = `https://www.googleapis.com/drive/v3/files/${fileId}/watch`;
 					response = await googleApiRequest.call(this, 'POST', '', body, {}, watchEndpoint);
 
 				}
@@ -138,8 +138,8 @@ export class GoogleDriveTrigger implements INodeType {
 				webhookData.webhookId = response.id; // Google Drive channel ID
 				webhookData.resourceId = response.resourceId;
 				console.log("WEBHOOK CREATED");
-        return true;
-      },
+				return true;
+			},
 
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
@@ -148,11 +148,11 @@ export class GoogleDriveTrigger implements INodeType {
 					return false;
 				}
 
-				const stopEndpoint = 'https://www.googleapis.com/drive/v3/channels/stop'
+				const stopEndpoint = 'https://www.googleapis.com/drive/v3/channels/stop';
 				const body = {
 					id: webhookData.webhookId,
 					resourceId: webhookData.resourceId,
-				}
+				};
 
 				try {
 					await googleApiRequest.call(this, 'POST', '', body, {}, stopEndpoint);
@@ -173,6 +173,7 @@ export class GoogleDriveTrigger implements INodeType {
 		const bodyData = this.getBodyData() as IDataObject;
 
 		console.log('WEBHOOK CALL RECEIVED'); // TODO: Delete
+		console.log(bodyData);
 
 		// TODO: Uncomment
 		// If the webhook call is a sync message, do not start the workflow
@@ -191,12 +192,12 @@ export class GoogleDriveTrigger implements INodeType {
 			{
 				headers: headerData,
 				query: this.getQueryData(),
-			}
+			},
 		);
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(returnData)
+				this.helpers.returnJsonArray(returnData),
 			],
 		};
 	}
