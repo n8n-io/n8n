@@ -105,7 +105,6 @@ export class GoogleDriveTrigger implements INodeType {
 					id: uuid(),
 					type: 'web_hook',
 					address: this.getNodeWebhookUrl('default'),
-					expiration: moment().add(23, 'hours').add(59, 'minutes').valueOf(),
 				};
 
 				let response: any; // tslint:disable-line:no-any
@@ -118,6 +117,7 @@ export class GoogleDriveTrigger implements INodeType {
 					const startPageEndpoint = 'https://www.googleapis.com/drive/v3/changes/startPageToken';
 					const watchEndpoint = 'https://www.googleapis.com/drive/v3/changes/watch';
 					const { startPageToken } = await googleApiRequest.call(this, 'GET', '', {}, {}, startPageEndpoint);
+					body.expiration = moment().add(6, 'days').add(23, 'hours').add(59, 'minutes').valueOf();
 					response = await googleApiRequest.call(this, 'POST', '', body, { pageToken: startPageToken }, watchEndpoint);
 
 				} else if (resource === 'files') {
@@ -127,6 +127,7 @@ export class GoogleDriveTrigger implements INodeType {
 
 					const fileId = this.getNodeParameter('fileId', 0);
 					const watchEndpoint = `https://www.googleapis.com/drive/v3/files/${fileId}/watch`;
+					body.expiration = moment().add(23, 'hours').add(59, 'minutes').valueOf();
 					response = await googleApiRequest.call(this, 'POST', '', body, {}, watchEndpoint);
 
 				}
