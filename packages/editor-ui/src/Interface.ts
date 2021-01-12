@@ -117,6 +117,14 @@ export interface INodeTypesMaxCount {
 	};
 }
 
+export interface IExternalHooksMetadata {
+	[key: string]: string | number;
+}
+
+export interface IExternalHooks {
+	onExternalHookEvent(eventName: string, metadata: IExternalHooksMetadata): Promise<void>;
+}
+
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined >;

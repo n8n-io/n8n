@@ -118,6 +118,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 
@@ -172,6 +173,7 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
+	externalHooks,
 )
 	.extend({
 		name: 'NodeView',
@@ -374,6 +376,8 @@ export default mixins(
 				await this.addNodes(data.nodes, data.connections);
 
 				this.$store.commit('setStateDirty', false);
+
+				this.externalHooks().onExternalHookEvent('onWorkflowOpened', { workflow_id: workflowId, workflow_name: data.name });
 
 				return data;
 			},

@@ -17,6 +17,8 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
+import { onExternalHookEvent } from './components/mixins/externalHooks';
+
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
@@ -172,6 +174,11 @@ library.add(faUsers);
 Vue.component('font-awesome-icon', FontAwesomeIcon);
 
 Vue.config.productionTip = false;
+
+router.afterEach(to => {
+	onExternalHookEvent("onRouteChange", { page: to.path });
+});
+
 
 new Vue({
 	router,

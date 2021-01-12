@@ -24,6 +24,7 @@
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { restApi } from '@/components/mixins/restApi';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import {
@@ -37,6 +38,7 @@ export default mixins(
 	restApi,
 	showMessage,
 	workflowHelpers,
+	externalHooks,
 )
 	.extend(
 		{
@@ -129,6 +131,7 @@ export default mixins(
 
 					if (newActiveState === true) {
 						this.$store.commit('setWorkflowActive', this.workflowId);
+						this.externalHooks().onExternalHookEvent('onWorkflowActivated', { workflow_id: this.workflowId, workflow_name: this.$store.getters.workflowName });
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
