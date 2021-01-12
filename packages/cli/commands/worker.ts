@@ -7,6 +7,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	INodeTypes,
 	IRun,
 	IWorkflowExecuteHooks,
@@ -220,7 +221,9 @@ export class Worker extends Command {
 
 				// Connect to bull-queue
 				const prefix = config.get('queue.bull.prefix') as string;
-				const redisOptions = config.get('queue.bull.redis') as object;
+				const redisOptions = config.get('queue.bull.redis') as IDataObject;
+				const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+				redisOptions.enableReadyCheck = false;
 				Worker.jobQueue = new Bull('jobs', { prefix, redis: redisOptions });
 				Worker.jobQueue.process(flags.concurrency, (job) => this.runJob(job, nodeTypes));
 
@@ -242,6 +245,34 @@ export class Worker extends Command {
 							Worker.runningJobs[jobId].cancel();
 							delete Worker.runningJobs[jobId];
 						}
+					}
+				});
+
+				let lastTimer = 0, cumulativeTimeout = 0;
+				Worker.jobQueue.on('error', (error: Error) => {
+					if (error.toString().includes('ECONNREFUSED') === true) {
+						const now = Date.now();
+						if (now - lastTimer > 30000) {
+							// Means we had no timeout at all or last timeout was temporary and we recovered
+							lastTimer = now;
+							cumulativeTimeout = 0;
+						} else {
+							cumulativeTimeout += now - lastTimer;
+							lastTimer = now;
+							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
+								console.error('Unable to connect to Redis after ' + redisConnectionTimeoutLimit + ". Exiting process.");
+								process.exit(1);
+							}
+						}
+						console.warn('Redis unavailable - trying to reconnect...');
+					} else if (error.toString().includes('Error initializing Lua scripts') === true) {
+						// This is a non-recoverable error
+						// Happens when worker starts and Redis is unavailable
+						// Even if Redis comes back online, worker will be zombie
+						console.error('Error initializing worker.');
+						process.exit(2);
+					} else {
+						console.error('Error from queue: ', error);
 					}
 				});
 			} catch (error) {

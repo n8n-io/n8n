@@ -279,6 +279,12 @@ const config = convict({
 					default: 6379,
 					env: 'QUEUE_BULL_REDIS_PORT',
 				},
+				timeoutThreshold: {
+					doc: 'Redis timeout threshold',
+					format: Number,
+					default: 10000,
+					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
+				},
 			},
 		},
 	},

@@ -23,6 +23,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	IExecutionError,
 	IRun,
 	Workflow,
@@ -55,7 +56,8 @@ export class WorkflowRunner {
 			// Connect to bull-queue
 			const prefix = config.get('queue.bull.prefix') as string;
 			const redisOptions = config.get('queue.bull.redis') as object;
-			this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions });
+			// @ts-ignore
+			this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
 		}
 	}
 
