@@ -18,7 +18,7 @@ import * as moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
 import * as uuid from 'uuid/v4';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | ITriggerFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
 
 	let options: OptionsWithUri = {
@@ -43,7 +43,7 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			if (credentials === undefined) {
 				throw new Error('No credentials got returned!');
 			}
-
+			//@ts-ignore
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
@@ -143,7 +143,7 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	return this.helpers.request(options);
 }
 
-export async function createWebhook(this: IHookFunctions): Promise<boolean> {
+export async function createWebhook(this: ITriggerFunctions): Promise<boolean> {
 	const resource = this.getNodeParameter('resource', 0);
 	const body: IDataObject = {
 		id: uuid(),
@@ -187,7 +187,7 @@ export async function createWebhook(this: IHookFunctions): Promise<boolean> {
 	return true;
 }
 
-export async function deleteWebhook(this: IHookFunctions): Promise<boolean> {
+export async function deleteWebhook(this: ITriggerFunctions): Promise<boolean> {
 	const webhookData = this.getWorkflowStaticData('node');
 
 	if (webhookData.webhookId === undefined) {

@@ -294,6 +294,7 @@ export interface ITriggerFunctions {
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getNodeParameter(parameterName: string, fallbackValue?: any): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object; //tslint:disable-line:no-any
+	getNodeWebhookUrl: (name: string) => string | undefined;
 	getRestApiUrl(): string;
 	getTimezone(): string;
 	getWorkflow(): IWorkflowMetadata;

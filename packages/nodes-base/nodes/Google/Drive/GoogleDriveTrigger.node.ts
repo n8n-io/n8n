@@ -103,8 +103,8 @@ export class GoogleDriveTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const headerData = this.getHeaderData() as IDataObject;
+		console.log('WEBHOOK CALL RECEIVED\nCONTENTS:');
 		console.log(headerData);
-		console.log('WEBHOOK CALL RECEIVED'); // TODO: Delete
 
 		// if the webhook call is a sync message, do not start the workflow
 		// if (headerData['x-goog-resource-state'] === 'sync') {
@@ -113,11 +113,11 @@ export class GoogleDriveTrigger implements INodeType {
 		// 	};
 		// }
 
-		const returnData: IDataObject[] = [];
-
-		returnData.push({
-			headers: headerData,
-		});
+		const returnData: IDataObject[] = [
+			{
+				headers: headerData,
+			},
+		];
 
 		return {
 			workflowData: [
@@ -127,12 +127,11 @@ export class GoogleDriveTrigger implements INodeType {
 	}
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		console.log(this);
-
-		const executeTrigger = () => {
-			console.log("------------------ RENEW TRIGGER ------------------");
-			deleteWebhook.call(this);
-			createWebhook.call(this);
+		const executeTrigger = async () => {
+			console.log("------------------ RENEWAL START ------------------");
+			await deleteWebhook.call(this);
+			await createWebhook.call(this);
+			console.log("------------------ RENEWAL END ------------------");
 		};
 
 		const resource = this.getNodeParameter('resource', 0);
@@ -142,7 +141,7 @@ export class GoogleDriveTrigger implements INodeType {
 		};
 
 		// const intervalTime = intervals[resource];
-		const intervalTime = 10_000; // TEMP FOR DEBUGGING
+		const intervalTime = 30_000; // TEMP FOR DEBUGGING
 		const intervalObject = setInterval(executeTrigger, intervalTime);
 
 		async function closeFunction() {
