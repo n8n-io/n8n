@@ -20,7 +20,7 @@ import {
 	parseQuery,
 	parseScripts,
 	parseSort,
-} from "./GenericFunctions";
+} from './GenericFunctions';
 
 export class FileMaker implements INodeType {
 	description: INodeTypeDescription = {
