@@ -703,6 +703,10 @@ export class WorkflowExecute {
 					this.runExecutionData.resultData.runData[executionNode.name].push(taskData);
 
 					if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode && this.runExecutionData.startData.destinationNode === executionNode.name) {
+						// Before stopping, make sure we are executing hooks so
+						// That frontend is notified for example for manual executions.
+						await this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData.executionData!.nodeExecutionStack]);
+
 						// If destination node is defined and got executed stop execution
 						continue;
 					}
@@ -735,7 +739,8 @@ export class WorkflowExecute {
 						}
 					}
 
-					
+					// If we got here, it means that we did not stop executing from manual executions / destination.
+					// Execute hooks now to make sure that all hooks are executed properly
 					// Await is needed to make sure that we don't fall into concurrency problems
 					// When saving node execution data
 					await this.executeHook('nodeExecuteAfter', [executionNode.name, taskData, this.runExecutionData.executionData!.nodeExecutionStack]);
