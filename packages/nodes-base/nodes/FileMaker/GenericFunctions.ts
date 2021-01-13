@@ -212,11 +212,11 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		pass: password as string,
 	};
 	requestOptions.body = {
-		"fmDataSource": [
+		'fmDataSource': [
 			{
-				"database": host,
-				"username": login as string,
-				"password": password as string,
+				'database': host,
+				'username': login as string,
+				'password': password as string,
 			},
 		],
 	};

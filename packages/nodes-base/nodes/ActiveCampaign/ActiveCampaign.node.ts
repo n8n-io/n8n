@@ -50,32 +50,32 @@ import {
 import {
 	accountFields,
 	accountOperations
-} from "./AccountDescription";
+} from './AccountDescription';
 
 import {
 	tagFields,
 	tagOperations
-} from "./TagDescription";
+} from './TagDescription';
 
 import {
 	accountContactFields,
 	accountContactOperations
-} from "./AccountContactDescription";
+} from './AccountContactDescription';
 
 import {
 	contactListFields,
 	contactListOperations,
-} from "./ContactListDescription";
+} from './ContactListDescription';
 
 import {
 	contactTagFields,
 	contactTagOperations,
-} from "./ContactTagDescription";
+} from './ContactTagDescription';
 
 import {
 	listFields,
 	listOperations,
-} from "./ListDescription";
+} from './ListDescription';
 
 interface CustomProperty {
 	name: string;

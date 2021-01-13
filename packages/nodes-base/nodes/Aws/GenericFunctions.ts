@@ -16,9 +16,9 @@ import {
 
 function getEndpointForService(service: string, credentials: ICredentialDataDecryptedObject): string {
 	let endpoint;
-	if (service === "lambda" && credentials.lambdaEndpoint) {
+	if (service === 'lambda' && credentials.lambdaEndpoint) {
 		endpoint = credentials.lambdaEndpoint;
-	} else if (service === "sns" && credentials.snsEndpoint) {
+	} else if (service === 'sns' && credentials.snsEndpoint) {
 		endpoint = credentials.snsEndpoint;
 	} else {
 		endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
