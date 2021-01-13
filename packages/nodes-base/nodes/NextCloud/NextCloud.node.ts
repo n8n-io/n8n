@@ -88,6 +88,10 @@ export class NextCloud implements INodeType {
 						name: 'Folder',
 						value: 'folder',
 					},
+					{
+						name: 'User',
+						value: 'user',
+					},
 				],
 				default: 'file',
 				description: 'The resource to operate on.',
@@ -182,7 +186,27 @@ export class NextCloud implements INodeType {
 				description: 'The operation to perform.',
 			},
 
-
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+					},
+				},
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Add a user to a NextCloud organization',
+					},
+				],
+				default: 'add',
+				description: 'The operation to perform.',
+			},
 
 			// ----------------------------------
 			//         file
@@ -478,6 +502,76 @@ export class NextCloud implements INodeType {
 				description: 'The path of which to list the content.',
 			},
 
+			// ----------------------------------
+			//         user
+			// ----------------------------------
+
+			// ----------------------------------
+			//         user:add
+			// ----------------------------------
+			{
+				displayName: 'User ID',
+				name: 'userId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'add',
+						],
+					},
+				},
+				placeholder: 'john',
+				description: 'The user to add.',
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'add',
+						],
+					},
+				},
+				placeholder: 'john@email.com',
+				description: 'The email of the user to add.',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: [
+							'user',
+						],
+						operation: [
+							'add',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Display name',
+						name: 'displayName',
+						type: 'string',
+						default: '',
+						description: 'The display name of the user to add.',
+					},
+				],
+			},
 		],
 	};
 
@@ -506,7 +600,7 @@ export class NextCloud implements INodeType {
 		let requestMethod = '';
 		let responseData: any; // tslint:disable-line:no-any
 
-		let body: string | Buffer = '';
+		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};
 
 		for (let i = 0; i < items.length; i++) {
@@ -598,6 +692,32 @@ export class NextCloud implements INodeType {
 					headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 
 				}
+
+			} else if (resource === 'user') {
+
+				if (operation === 'add') {
+					// ----------------------------------
+					//         user:add
+					// ----------------------------------
+					requestMethod = 'POST';
+
+					endpoint = `/ocs/v1.php/cloud/users`;
+
+					headers['OCS-APIRequest'] = true;
+					headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+					const userid = this.getNodeParameter('userId', i) as string;
+					const email = this.getNodeParameter('email', i) as string;
+
+					body = `userid=${userid}&email=${email}`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+
+					if (additionalFields.displayName) {
+						body += `&displayName=${additionalFields.displayName}`;
+					}
+				}
+
 			} else {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
