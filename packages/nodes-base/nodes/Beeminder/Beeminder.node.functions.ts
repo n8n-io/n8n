@@ -11,7 +11,7 @@ import {
 
 import {
 	beeminderApiRequest,
-	beeminderpiRequestAllItems,
+	beeminderApiRequestAllItems,
 } from './GenericFunctions';
 
 export async function createDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, data: IDataObject) {
@@ -39,7 +39,7 @@ export async function getAllDatapoints(this: IExecuteFunctions | IHookFunctions 
 		return beeminderApiRequest.call(this, 'GET', endpoint, {}, data);
 	}
 
-	return await beeminderpiRequestAllItems.call(this, 'GET', endpoint, {}, data);
+	return await beeminderApiRequestAllItems.call(this, 'GET', endpoint, {}, data);
 }
 
 export async function updateDatapoint(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, data: IDataObject) {
