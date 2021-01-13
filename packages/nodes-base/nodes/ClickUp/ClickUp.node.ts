@@ -355,7 +355,6 @@ export class ClickUp implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const { tags } = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
 				for (const tag of tags) {
-					console.log(tag);
 					const tagName = tag.name;
 					const tagId = tag.name;
 					returnData.push({

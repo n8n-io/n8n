@@ -354,7 +354,6 @@ export class Beeminder implements INodeType {
 					if (data.timestamp) {
 						data.timestamp = moment.tz(data.timestamp, timezone).unix();
 					}
-					console.log(data);
 					results = await createDatapoint.call(this, data);
 				}
 				else if (operation === 'getAll') {
