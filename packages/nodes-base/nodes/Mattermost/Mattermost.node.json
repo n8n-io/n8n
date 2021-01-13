@@ -30,6 +30,21 @@
         "label": "Webhooks Fun with n8n and Mattermost",
         "icon": "🍸",
         "url": "https://medium.com/n8n-io/webhooks-fun-with-n8n-and-mattermost-4ebf7e2b4d2a"
+      },
+      {
+        "label": "Supercharging your conference registration process with n8n",
+        "icon": "🎫",
+        "url": "https://medium.com/n8n-io/supercharging-your-conference-registration-process-with-n8n-2831cdff37f9"
+      },
+      {
+        "label": "How to host virtual coffee breaks with n8n",
+        "icon": "☕️",
+        "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/"
+      },
+      {
+        "label": "Creating triggers for n8n workflows using polling",
+        "icon": "⏲",
+        "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/"
       }
     ]
   }

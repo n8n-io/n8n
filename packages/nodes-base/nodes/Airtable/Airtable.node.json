@@ -14,6 +14,21 @@
       {
         "label": "Automating Conference Organization Processes with n8n",
         "url": "https://medium.com/n8n-io/automating-conference-organization-processes-with-n8n-ab8f64a7a520"
+      },
+      {
+        "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n",
+        "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+        "icon":"📱"
+      },
+      {
+          "label":"Why this Product Manager loves n8n",
+          "url":"https://medium.com/n8n-io/why-this-product-manager-loves-n8n-215dc273d86a",
+          "icon":"🧠"
+      },
+      {
+          "label":"Building an expense tracking app in 10 minutes",
+          "url":"https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+          "icon":"📱"
       }
     ]
   }
