@@ -33,6 +33,22 @@ export interface IActivationError {
 	};
 }
 
+export interface IBullJobData {
+	destinationNode?: string;
+	executionId: string;
+	executionMode: WorkflowExecuteMode;
+	executionData?: IRunExecutionData;
+	loadStaticData: boolean;
+	runData?: IRunData;
+	retryOf?: number | string | ObjectID;
+	startNodes?: string[];
+	workflowData: IWorkflowBase;
+}
+
+export interface IBullJobResponse {
+	runData: IRun;
+}
+
 export interface ICustomRequest extends Request {
 	parsedUrl: Url | undefined;
 }

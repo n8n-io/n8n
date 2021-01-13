@@ -159,6 +159,13 @@ const config = convict({
 			env: 'EXECUTIONS_PROCESS',
 		},
 
+		mode: {
+			doc: 'If it should run executions directly or via queue',
+			format: ['regular', 'queue'],
+			default: 'regular',
+			env: 'EXECUTIONS_MODE',
+		},
+
 		// A Workflow times out and gets canceled after this time (seconds).
 		// If the workflow is executed in the main process a soft timeout
 		// is executed (takes effect after the current node finishes).
@@ -245,6 +252,48 @@ const config = convict({
 		},
 	},
 
+	queue: {
+		bull: {
+			prefix: {
+				doc: 'Prefix for all queue keys',
+				format: String,
+				default: '',
+				env: 'QUEUE_BULL_PREFIX',
+			},
+			redis: {
+				db: {
+					doc: 'Redis DB',
+					format: Number,
+					default: 0,
+					env: 'QUEUE_BULL_REDIS_DB',
+				},
+				host: {
+					doc: 'Redis Host',
+					format: String,
+					default: 'localhost',
+					env: 'QUEUE_BULL_REDIS_HOST',
+				},
+				password: {
+					doc: 'Redis Password',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_PASSWORD',
+				},
+				port: {
+					doc: 'Redis Port',
+					format: Number,
+					default: 6379,
+					env: 'QUEUE_BULL_REDIS_PORT',
+				},
+				timeoutThreshold: {
+					doc: 'Redis timeout threshold',
+					format: Number,
+					default: 10000,
+					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
+				},
+			},
+		},
+	},
 	generic: {
 		// The timezone to use. Is important for nodes like "Cron" which start the
 		// workflow automatically at a specified time. This setting can also be

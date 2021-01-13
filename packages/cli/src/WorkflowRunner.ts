@@ -3,6 +3,8 @@ import {
 	CredentialsOverwrites,
 	CredentialTypes,
 	ExternalHooks,
+	IBullJobData,
+	IBullJobResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
 	IProcessMessageDataHook,
@@ -21,6 +23,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	IExecutionError,
 	IRun,
 	Workflow,
@@ -33,17 +36,29 @@ import * as PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
+import * as Bull from 'bull';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
 	credentialsOverwrites: ICredentialsOverwrite;
 	push: Push.Push;
+	jobQueue: Bull.Queue;
 
 
 	constructor() {
 		this.push = Push.getInstance();
 		this.activeExecutions = ActiveExecutions.getInstance();
 		this.credentialsOverwrites = CredentialsOverwrites().getAll();
+
+		const executionsMode = config.get('executions.mode') as string;
+
+		if (executionsMode === 'queue') {
+			// Connect to bull-queue
+			const prefix = config.get('queue.bull.prefix') as string;
+			const redisOptions = config.get('queue.bull.redis') as object;
+			// @ts-ignore
+			this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+		}
 	}
 
 
@@ -99,11 +114,16 @@ export class WorkflowRunner {
 	 * @returns {Promise<string>}
 	 * @memberof WorkflowRunner
 	 */
-	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean): Promise<string> {
+	async run(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean): Promise<string> {
 		const executionsProcess = config.get('executions.process') as string;
+		const executionsMode = config.get('executions.mode') as string;
 
 		let executionId: string;
-		if (executionsProcess === 'main') {
+		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
+			// Do not run "manual" executions in bull because sending events to the
+			// frontend would not be possible
+			executionId = await this.runBull(data, loadStaticData, realtime);
+		} else if (executionsProcess === 'main') {
 			executionId = await this.runMainProcess(data, loadStaticData);
 		} else {
 			executionId = await this.runSubprocess(data, loadStaticData);
@@ -190,6 +210,89 @@ export class WorkflowRunner {
 
 		return executionId;
 	}
+
+	async runBull(data: IWorkflowExecutionDataProcess, loadStaticData?: boolean, realtime?: boolean): Promise<string> {
+
+		// TODO: If "loadStaticData" is set to true it has to load data new on worker
+
+		// Register the active execution
+		const executionId = this.activeExecutions.add(data, undefined);
+
+		const jobData: IBullJobData = {
+			destinationNode: data.destinationNode,
+			executionId,
+			executionMode: data.executionMode,
+			executionData: data.executionData,
+			loadStaticData: !!loadStaticData,
+			retryOf: data.retryOf,
+			runData: data.runData,
+			startNodes: data.startNodes,
+			workflowData: data.workflowData,
+		};
+
+		let priority = 100;
+		if (realtime === true) {
+			// Jobs which require a direct response get a higher priority
+			priority = 50;
+		}
+		// TODO: For realtime jobs should probably also not do retry or not retry if they are older than x seconds.
+		//       Check if they get retried by default and how often.
+		const jobOptions = {
+			priority,
+			removeOnComplete: true,
+			removeOnFail: true,
+		};
+		const job = await this.jobQueue.add(jobData, jobOptions);
+		console.log('Started with ID: ' + job.id.toString());
+
+		const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(data.executionMode, executionId, data.workflowData, { retryOf: data.retryOf ? data.retryOf.toString() : undefined });
+
+		// Normally also workflow should be supplied here but as it only used for sending
+		// data to editor-UI is not needed.
+		hooks.executeHookFunctions('workflowExecuteBefore', []);
+
+		const workflowExecution: PCancelable<IRun> = new PCancelable(async (resolve, reject, onCancel) => {
+			onCancel.shouldReject = false;
+			onCancel(async () => {
+				if (await job.isActive()) {
+					// Job is already running so tell it to stop
+					await job.progress(-1);
+				} else {
+					// Job did not get started yet so remove from queue
+					await job.remove();
+
+					const fullRunData: IRun = {
+						data: {
+							resultData: {
+								error: {
+									message: 'Workflow has been canceled!',
+								} as IExecutionError,
+								runData: {},
+							},
+						},
+						mode: data.executionMode,
+						startedAt: new Date(),
+						stoppedAt: new Date(),
+					};
+
+					this.activeExecutions.remove(executionId, fullRunData);
+					resolve(fullRunData);
+				}
+			});
+
+			const jobData: IBullJobResponse = await job.finished();
+			this.activeExecutions.remove(executionId, jobData.runData);
+			// Normally also static data should be supplied here but as it only used for sending
+			// data to editor-UI is not needed.
+			hooks.executeHookFunctions('workflowExecuteAfter', [jobData.runData]);
+
+			resolve(jobData.runData);
+		});
+
+		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+		return executionId;
+	}
+
 
 	/**
 	 * Run the workflow

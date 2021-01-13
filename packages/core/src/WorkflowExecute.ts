@@ -615,7 +615,7 @@ export class WorkflowExecute {
 									//       be executed in the meantime
 									await new Promise((resolve) => {
 										setTimeout(() => {
-											resolve();
+											resolve(undefined);
 										}, waitBetweenTries);
 									});
 								}
