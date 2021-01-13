@@ -134,3 +134,55 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 	//@ts-ignore
 	return this.helpers.request(options);
 }
+
+export function getConditions(options: IDataObject) {
+	const conditions = (options.conditionsUi as IDataObject || {}).conditionValues as IDataObject[];
+	let data = undefined;
+	if (Array.isArray(conditions) && conditions.length !== 0) {
+		data = conditions.map((condition: IDataObject) => `${condition.field}${(condition.operation) === 'equal' ? '=' : condition.operation}${getValue(condition.value)}`);
+		console.log(data);
+		data = `WHERE ${data.join(' AND ')}`;
+	}
+	return data;
+}
+
+export function getDefaultFields(sobject: string) {
+	return (
+		{
+			'Account': 'id,name,type',
+			'Lead': 'id,company,firstname,lastname,street,postalCode,city,email,status',
+			'Contact': 'id,firstname,lastname,email',
+			'Opportunity': 'id,accountId,amount,probability,type',
+			'Case': 'id,accountId,contactId,priority,status,subject,type',
+			'Task': 'id,subject,status,priority',
+			'Attachment': 'id,name',
+			'User': 'id,name,email',
+		} as IDataObject
+	)[sobject];
+}
+
+export function getQuery(options: IDataObject, sobject: string, returnAll: boolean, limit = 0) {
+	const fields: string[] = [];
+	if (options.fields) {
+		fields.push.apply(fields, (options.fields as string).split(','));
+	} else {
+		fields.push.apply(fields, (getDefaultFields(sobject) as string || 'id').split(','));
+	}
+	const conditions = getConditions(options);
+
+	let query = `SELECT ${fields.join(',')} FROM ${sobject} ${(conditions ? conditions : '')}`;
+
+	if (returnAll === false) {
+		query = `SELECT ${fields.join(',')} FROM ${sobject} ${(conditions ? conditions : '')} LIMIT ${limit}`;
+	}
+
+	return query;
+}
+
+export function getValue(value: any) {
+	if (typeof value === 'string') {
+		return `'${value}'`;
+	} else {
+		return value;
+	}
+}
