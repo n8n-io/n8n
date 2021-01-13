@@ -641,13 +641,13 @@ export function getNodeParameters(nodePropertiesArray: INodeProperties[], nodeVa
 				}
 			}
 
-			// Itterate over all collections
+			// Iterate over all collections
 			for (const itemName of Object.keys(propertyValues || {})) {
 				if (nodeProperties.typeOptions !== undefined && nodeProperties.typeOptions.multipleValues === true) {
 					// Multiple can be set so will be an array
 
 					const tempArrayValue: INodeParameters[] = [];
-					// Itterate over all items as it contains multiple ones
+					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[itemName] as INodeParameters[]) {
 						nodePropertyOptions = nodeProperties!.options!.find((nodePropertyOptions) => nodePropertyOptions.name === itemName) as INodePropertyCollection;
 
@@ -883,6 +883,10 @@ export function getNodeWebhookPath(workflowId: string, node: INode, path: string
  * @returns {string}
  */
 export function getNodeWebhookUrl(baseUrl: string, workflowId: string, node: INode, path: string, isFullPath?: boolean): string {
+	if (path.includes('/:') && node.webhookId) {
+		// setting this to false to prefix the webhookId
+		isFullPath = false;
+	}
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
