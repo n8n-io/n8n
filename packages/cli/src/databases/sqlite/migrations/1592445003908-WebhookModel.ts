@@ -5,7 +5,7 @@ import {
 
 import * as config from '../../../../config';
 
-export class WebhookModel1592445003908 implements MigrationInterface {
+export default class WebhookModel1592445003908 implements MigrationInterface {
 	name = 'WebhookModel1592445003908';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
