@@ -3,12 +3,22 @@ import { IExternalHooks, IExternalHooksMetadata } from "@/Interface";
 
 export async function onExternalHookEvent(
 	eventName: string,
-	metadata: IExternalHooksMetadata,
+	metadata?: IExternalHooksMetadata,
 ) {
 	// @ts-ignore
-	const hookMethod = window.externalHooks[eventName];
-	if (hookMethod) {
-		hookMethod(metadata);
+	if (!window.externalHooks) {
+		return;
+	}
+
+	const [resource, operator] = eventName.split(".");
+
+	// @ts-ignore
+	if (window.externalHooks[resource] && window.externalHooks[resource][operator]) {
+		// @ts-ignore
+		const hookMethods = window.externalHooks[resource][operator];
+		for (const hookmethod of hookMethods) {
+			hookmethod(metadata);
+		}
 	}
 }
 

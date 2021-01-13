@@ -118,7 +118,7 @@ export interface INodeTypesMaxCount {
 }
 
 export interface IExternalHooksMetadata {
-	[key: string]: string | number;
+	[key: string]: string | number | undefined;
 }
 
 export interface IExternalHooks {

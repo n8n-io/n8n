@@ -377,7 +377,7 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 
-				this.externalHooks().onExternalHookEvent('onWorkflowOpened', { workflow_id: workflowId, workflow_name: data.name });
+				this.externalHooks().onExternalHookEvent('workflow.onWorkflowOpened', { workflow_id: workflowId, workflow_name: data.name });
 
 				return data;
 			},

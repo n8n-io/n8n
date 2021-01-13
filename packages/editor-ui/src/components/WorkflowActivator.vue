@@ -131,7 +131,7 @@ export default mixins(
 
 					if (newActiveState === true) {
 						this.$store.commit('setWorkflowActive', this.workflowId);
-						this.externalHooks().onExternalHookEvent('onWorkflowActivated', { workflow_id: this.workflowId, workflow_name: this.$store.getters.workflowName });
+						this.externalHooks().onExternalHookEvent('workflow.onWorkflowActivated', { workflow_id: this.workflowId, workflow_name: this.$store.getters.workflowName });
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}

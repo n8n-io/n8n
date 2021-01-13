@@ -176,7 +176,7 @@ Vue.component('font-awesome-icon', FontAwesomeIcon);
 Vue.config.productionTip = false;
 
 router.afterEach(to => {
-	onExternalHookEvent("onRouteChange", { page: to.path });
+	onExternalHookEvent("main.onRouteChange", { page: to.path });
 });
 
 
@@ -200,3 +200,5 @@ if (process.env.NODE_ENV !== 'production') {
 		console.error(error); // eslint-disable-line no-console
 	};
 }
+
+onExternalHookEvent("main.onAppLoad", { user_id: process.env.N8N_USER_ID });
