@@ -178,7 +178,7 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 	return query;
 }
 
-export function getValue(value: any) {
+export function getValue(value: any) { // tslint:disable-line:no-any
 	if (typeof value === 'string') {
 		return `'${value}'`;
 	} else {
