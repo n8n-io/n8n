@@ -48,9 +48,9 @@ export const customObjectOperations = [
 
 export const customObjectFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                customObject:create                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                customObject:create                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Custom Object',
 		name: 'customObject',
@@ -70,7 +70,7 @@ export const customObjectFields = [
 				],
 			},
 		},
-		description: 'Name of the custom object',
+		description: 'Name of the custom object.',
 	},
 	{
 		displayName: 'Fields',
@@ -90,7 +90,7 @@ export const customObjectFields = [
 				],
 			},
 		},
-		description: 'Filter by custom fields ',
+		description: 'Filter by custom fields.',
 		default: {},
 		options: [
 			{
@@ -121,9 +121,10 @@ export const customObjectFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 customObject:update                        */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 customObject:update                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Custom Object',
 		name: 'customObject',
@@ -161,7 +162,7 @@ export const customObjectFields = [
 				],
 			},
 		},
-		description: 'Record id to be updated',
+		description: 'Record ID to be updated.',
 	},
 	{
 		displayName: 'Fields',
@@ -212,9 +213,10 @@ export const customObjectFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  customObject:get                          */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  customObject:get                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Custom Object',
 		name: 'customObject',
@@ -252,11 +254,12 @@ export const customObjectFields = [
 				],
 			},
 		},
-		description: 'Record id to be retrieved',
+		description: 'Record ID to be retrieved.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  customObject:delete                       */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  customObject:delete                       */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Custom Object',
 		name: 'customObject',
@@ -276,7 +279,7 @@ export const customObjectFields = [
 				],
 			},
 		},
-		description: 'Name of the custom object',
+		description: 'Name of the custom object.',
 	},
 	{
 		displayName: 'Record ID',
@@ -294,11 +297,12 @@ export const customObjectFields = [
 				],
 			},
 		},
-		description: 'Record id to be deleted',
+		description: 'Record ID to be deleted.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 customObject:getAll                        */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 customObject:getAll                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Custom Object',
 		name: 'customObject',
@@ -404,7 +408,7 @@ export const customObjectFields = [
 									],
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions',
+								description: 'For date, number, or boolean, please use expressions.',
 							},
 							{
 								displayName: 'Operation',

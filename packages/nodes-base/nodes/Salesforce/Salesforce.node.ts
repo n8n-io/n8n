@@ -1048,7 +1048,7 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Lead', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1057,7 +1057,7 @@ export class Salesforce implements INodeType {
 					const leadId = this.getNodeParameter('leadId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/lead/${leadId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1336,7 +1336,7 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Contact', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1345,7 +1345,7 @@ export class Salesforce implements INodeType {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/contact/${contactId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1438,7 +1438,7 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, customObject, returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1447,7 +1447,7 @@ export class Salesforce implements INodeType {
 					const recordId = this.getNodeParameter('recordId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/${customObject}/${recordId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1584,7 +1584,7 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Opportunity', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1593,7 +1593,7 @@ export class Salesforce implements INodeType {
 					const opportunityId = this.getNodeParameter('opportunityId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/opportunity/${opportunityId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1822,7 +1822,7 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Account', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1831,7 +1831,7 @@ export class Salesforce implements INodeType {
 					const accountId = this.getNodeParameter('accountId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/account/${accountId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1982,7 +1982,7 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Case', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -1991,7 +1991,7 @@ export class Salesforce implements INodeType {
 					const caseId = this.getNodeParameter('caseId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/case/${caseId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2209,7 +2209,7 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Task', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2218,7 +2218,7 @@ export class Salesforce implements INodeType {
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/task/${taskId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2301,7 +2301,7 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'Attachment', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2310,7 +2310,7 @@ export class Salesforce implements INodeType {
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 					try {
 						responseData = await salesforceApiRequest.call(this, 'DELETE', `/sobjects/attachment/${attachmentId}`);
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}
@@ -2338,7 +2338,7 @@ export class Salesforce implements INodeType {
 							qs.q = getQuery(options, 'User', returnAll, limit) as string;
 							responseData = await salesforceApiRequestAllItems.call(this, 'records', 'GET', '/query', {}, qs);
 						}
-					} catch(err) {
+					} catch (err) {
 						throw new Error(`Salesforce Error: ${err}`);
 					}
 				}

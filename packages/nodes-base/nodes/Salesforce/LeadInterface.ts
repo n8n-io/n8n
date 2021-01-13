@@ -1,4 +1,3 @@
-
 export interface ILead {
 	Company?: string;
 	LastName?: string;

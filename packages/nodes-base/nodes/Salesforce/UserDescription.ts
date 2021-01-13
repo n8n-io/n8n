@@ -1,5 +1,5 @@
 import {
-	 INodeProperties,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export const userOperations = [
@@ -32,6 +32,7 @@ export const userOperations = [
 ] as INodeProperties[];
 
 export const userFields = [
+
 	/* -------------------------------------------------------------------------- */
 	/*                                  user:get                                  */
 	/* -------------------------------------------------------------------------- */
@@ -51,8 +52,9 @@ export const userFields = [
 				],
 			},
 		},
-		description: 'Id of user that needs to be fetched',
+		description: 'ID of user that needs to be fetched.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -137,7 +139,7 @@ export const userFields = [
 									loadOptionsMethod: 'getUserFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions',
+								description: 'For date, number, or boolean, please use expressions.',
 							},
 							{
 								displayName: 'Operation',
