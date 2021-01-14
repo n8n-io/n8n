@@ -33,19 +33,8 @@ export let collections: IDatabaseCollections = {
 };
 
 import postgresMigrations from './databases/postgresdb/migrations';
-
-import {
-	CreateIndexStoppedAt1594910478695,
-	InitialMigration1587563438936,
-	WebhookModel1592679094242,
-} from './databases/mongodb/migrations';
-
-import {
-	CreateIndexStoppedAt1594902918301,
-	InitialMigration1588157391238,
-	WebhookModel1592447867632,
-} from './databases/mysqldb/migrations';
-
+import mongodbMigrations from './databases/mongodb/migrations';
+import mysqlMigrations from './databases/mysqldb/migrations';
 import sqliteMigrations from './databases/sqlite/migrations';
 
 import * as path from 'path';
@@ -67,11 +56,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				entityPrefix,
 				url: await GenericHelpers.getConfigValue('database.mongodb.connectionUrl') as string,
 				useNewUrlParser: true,
-				migrations: [
-					InitialMigration1587563438936,
-					WebhookModel1592679094242,
-					CreateIndexStoppedAt1594910478695,
-				],
+				migrations: mongodbMigrations,
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
@@ -123,11 +108,7 @@ export async function init(): Promise<IDatabaseCollections> {
 				password: await GenericHelpers.getConfigValue('database.mysqldb.password') as string,
 				port: await GenericHelpers.getConfigValue('database.mysqldb.port') as number,
 				username: await GenericHelpers.getConfigValue('database.mysqldb.user') as string,
-				migrations: [
-					InitialMigration1588157391238,
-					WebhookModel1592447867632,
-					CreateIndexStoppedAt1594902918301,
-				],
+				migrations: mysqlMigrations,
 				migrationsRun: true,
 				migrationsTableName: `${entityPrefix}migrations`,
 			};
