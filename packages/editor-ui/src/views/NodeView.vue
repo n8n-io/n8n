@@ -1960,7 +1960,6 @@ export default mixins(
 				this.$store.commit('setActiveWorkflows', activeWorkflows);
 			},
 			async loadSettings (): Promise<void> {
-				console.log('loadSettings');
 				const settings = await this.restApi().getSettings() as IN8nUISettings;
 
 				this.$store.commit('setUrlBaseWebhook', settings.urlBaseWebhook);
