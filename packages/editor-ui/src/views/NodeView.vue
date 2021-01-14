@@ -114,11 +114,11 @@ import { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, Endpoint, OnConnectionBindInfo } from 'jsplumb';
 import { NODE_NAME_PREFIX, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
-import { externalHooks } from '@/components/mixins/externalHooks';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 
@@ -165,6 +165,7 @@ import {
 
 export default mixins(
 	copyPaste,
+	externalHooks,
 	genericHelpers,
 	mouseSelect,
 	moveNodeWorkflow,
@@ -173,7 +174,6 @@ export default mixins(
 	titleChange,
 	workflowHelpers,
 	workflowRun,
-	externalHooks,
 )
 	.extend({
 		name: 'NodeView',
@@ -377,7 +377,7 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 
-				this.externalHooks().onExternalHookEvent('workflow.onWorkflowOpened', { workflow_id: workflowId, workflow_name: data.name });
+				this.externalHooks().callExternalHook('workflow.onWorkflowOpened', { workflow_id: workflowId, workflow_name: data.name });
 
 				return data;
 			},
@@ -2039,7 +2039,7 @@ export default mixins(
 				this.stopLoading();
 			});
 			
-			this.externalHooks().onExternalHookEvent('nodeView.mounted', this.$store.state);
+			this.externalHooks().callExternalHook('nodeView.mounted');
 		},
 
 		destroyed () {

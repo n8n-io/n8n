@@ -175,7 +175,7 @@ Vue.component('font-awesome-icon', FontAwesomeIcon);
 
 Vue.config.productionTip = false;
 router.afterEach((to, from) => {
-	runExternalHook("main.onRouteChange", store.state, { to, from });
+	runExternalHook("main.onRouteChange", store, { to, from });
 });
 
 new Vue({

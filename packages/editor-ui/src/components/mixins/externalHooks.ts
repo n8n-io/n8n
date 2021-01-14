@@ -1,26 +1,27 @@
-import Vue from "vue";
-import { IExternalHooks } from "@/Interface";
-import { IDataObject } from "n8n-workflow";
+import { IExternalHooks } from '@/Interface';
+import { IDataObject } from 'n8n-workflow';
+import Vue from 'vue';
+import { Store } from 'vuex';
 
 export async function runExternalHook(
 	eventName: string,
-	// tslint:disable-next-line: no-any
-	state: any,
+	store: Store<IDataObject>,
 	metadata?: IDataObject,
 ) {
 	// @ts-ignore
-	if (!window.externalHooks) {
+	if (!window.n8nExternalHooks) {
 		return;
 	}
 
-	const [resource, operator] = eventName.split(".");
+	const [resource, operator] = eventName.split('.');
 
 	// @ts-ignore
-	if (window.externalHooks[resource] && window.externalHooks[resource][operator]) {
+	if (window.n8nExternalHooks[resource] && window.n8nExternalHooks[resource][operator]) {
 		// @ts-ignore
-		const hookMethods = window.externalHooks[resource][operator];
+		const hookMethods = window.n8nExternalHooks[resource][operator];
+
 		for (const hookmethod of hookMethods) {
-			hookmethod(state, metadata);
+			await hookmethod(store, metadata);
 		}
 	}
 }
@@ -29,8 +30,8 @@ export const externalHooks = Vue.extend({
 	methods: {
 		externalHooks(): IExternalHooks {
 			return {
-				onExternalHookEvent: (eventName: string, metadata?: IDataObject): void => {
-					runExternalHook(eventName, this.$store.state, metadata);
+				callExternalHook: async (eventName: string, metadata?: IDataObject): Promise<void> => {
+					await runExternalHook.call(this, eventName, this.$store, metadata);
 				},
 			};
 		},
