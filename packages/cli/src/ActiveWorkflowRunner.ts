@@ -253,6 +253,10 @@ export class ActiveWorkflowRunner {
 				method: webhookData.httpMethod,
 			} as IWebhookDb;
 
+			if (webhook.webhookPath.includes('/:') && node.webhookId) {
+				webhook.webhookId = node.webhookId;
+			}
+
 			try {
 
 				await Db.collections.Webhook?.insert(webhook);
