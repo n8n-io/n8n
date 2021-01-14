@@ -116,12 +116,24 @@ export class ActiveWorkflowRunner {
 			throw new ResponseHelper.ResponseError('The "activeWorkflows" instance did not get initialized yet.', 404, 404);
 		}
 
-		const webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
+		let webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
+		let webhookId: string;
+
+		if (webhook === undefined) {
+			const pathElements = path.split('/');
+			webhookId = pathElements[0];
+			webhook = await Db.collections.Webhook?.findOne({ webhookId, method: httpMethod }) as IWebhookDb;
+			// write params to req.params
+		}
 
 		// check if something exist
 		if (webhook === undefined) {
 			// The requested webhook is not registered
 			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+		}
+
+		if (webhookId) {
+			path = webhook.webhookPath;
 		}
 
 		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId);
@@ -277,11 +289,13 @@ export class ActiveWorkflowRunner {
 				let errorMessage = '';
 
 				// if it's a workflow from the the insert
-				// TODO check if there is standard error code for deplicate key violation that works
+				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'MongoError' || error.name === 'QueryFailedError') {
-
-					errorMessage = `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
+					console.log(error);
+					errorMessage = error.parameters.length === 5
+					? `Node [${webhook.node}] can't be saved, please duplicate [${webhook.node}] and delete the currently existing one.`
+					: `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
 
 				} else if (error.detail) {
 					// it's a error runnig the webhook methods (checkExists, create)
