@@ -15,6 +15,13 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.youTube/"
 			}
+		],
+		"generic": [
+			{
+				"label": "Using Automation to Boost Productivity in the Workplace",
+				"icon": "💪",
+				"url": "https://medium.com/n8n-io/using-automation-to-boost-productivity-in-the-workplace-c5a4973cb097"
+			}
 		]
 	}
 }

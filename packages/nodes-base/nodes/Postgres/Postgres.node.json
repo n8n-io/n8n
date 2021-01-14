@@ -16,6 +16,13 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.postgres/"
 			}
+		],
+		"generic": [
+			{
+				"label": "Database Monitoring and Alerting with n8n",
+				"icon": "📡",
+				"url": "https://medium.com/n8n-io/database-monitoring-and-alerting-with-n8n-f5082df7bdb2"
+			}
 		]
 	}
 }

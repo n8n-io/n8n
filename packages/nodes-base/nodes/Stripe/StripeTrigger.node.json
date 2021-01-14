@@ -16,6 +16,13 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.stripeTrigger/"
 			}
+		],
+		"generic": [
+			{
+				"label": "Maxime Jumelle talks about using n8n at Blent.ai",
+				"icon": "🚀",
+				"url": "https://medium.com/n8n-io/maxime-jumelle-talks-about-using-n8n-at-blent-ai-c47d3fca6141"
+			}
 		]
 	}
 }

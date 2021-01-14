@@ -15,6 +15,13 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googleDrive/"
 			}
+		],
+		"generic": [
+			{
+				"label": "Why this Product Manager loves n8n",
+				"icon": "🧠",
+				"url": "https://medium.com/n8n-io/why-this-product-manager-loves-n8n-215dc273d86a"
+			}
 		]
 	}
 }

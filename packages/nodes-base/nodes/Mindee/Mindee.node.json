@@ -15,6 +15,13 @@
 			{
 				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mindee/"
 			}
+		],
+		"generic": [
+			{
+				"label": "Building an expense tracking app in 10 minutes",
+				"icon": "📱",
+				"url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/"
+			}
 		]
 	}
 }
