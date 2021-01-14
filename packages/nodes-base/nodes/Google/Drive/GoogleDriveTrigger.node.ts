@@ -88,14 +88,15 @@ export class GoogleDriveTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
+				// const webhookData = this.getWorkflowStaticData('node');
 
-				// Google Drive API does not have an endpoint to list all webhooks
-				if (webhookData.webhookId === undefined) {
-					return false;
-				}
+				// // Google Drive API does not have an endpoint to list all webhooks
+				// if (webhookData.webhookId === undefined) {
+				// 	return false;
+				// }
 
-				return true;
+				// return true;
+				return false;
 			},
 			create: createWebhook,
 			delete: deleteWebhook,
