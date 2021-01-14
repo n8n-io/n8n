@@ -2,6 +2,7 @@ import {
 	Column,
 	Entity,
 	PrimaryColumn,
+	Index,
 } from 'typeorm';
 
 import {
@@ -9,6 +10,7 @@ import {
  } from '../../Interfaces';
 
 @Entity()
+@Index(["webhookId", "method"], { unique: true })
 export class WebhookEntity implements IWebhookDb {
 
 	@Column()
@@ -22,4 +24,7 @@ export class WebhookEntity implements IWebhookDb {
 
 	@Column()
 	node: string;
+
+	@Column({ nullable: true })
+	webhookId: string;
 }
