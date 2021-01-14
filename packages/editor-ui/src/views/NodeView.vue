@@ -1974,6 +1974,7 @@ export default mixins(
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
+				this.$store.commit('setN8nMetadata', settings.n8nMetadata);
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();
@@ -2038,6 +2039,8 @@ export default mixins(
 				}
 				this.stopLoading();
 			});
+			
+			this.externalHooks().onExternalHookEvent('nodeView.mounted', this.$store.state);
 		},
 
 		destroyed () {

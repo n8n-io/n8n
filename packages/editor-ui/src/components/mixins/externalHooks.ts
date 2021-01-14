@@ -1,11 +1,12 @@
 import Vue from "vue";
-import { IExternalHooks, IExternalHooksMetadata } from "@/Interface";
+import { IExternalHooks } from "@/Interface";
+import { IDataObject } from "n8n-workflow";
 
 export async function runExternalHook(
 	eventName: string,
 	// tslint:disable-next-line: no-any
 	state: any,
-	metadata?: IExternalHooksMetadata,
+	metadata?: IDataObject,
 ) {
 	// @ts-ignore
 	if (!window.externalHooks) {
@@ -28,7 +29,7 @@ export const externalHooks = Vue.extend({
 	methods: {
 		externalHooks(): IExternalHooks {
 			return {
-				onExternalHookEvent: (eventName: string, metadata?: IExternalHooksMetadata): void => {
+				onExternalHookEvent: (eventName: string, metadata?: IDataObject): void => {
 					runExternalHook(eventName, this.$store.state, metadata);
 				},
 			};

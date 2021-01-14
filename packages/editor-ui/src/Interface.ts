@@ -117,12 +117,8 @@ export interface INodeTypesMaxCount {
 	};
 }
 
-export interface IExternalHooksMetadata {
-	[key: string]: string | number | undefined;
-}
-
 export interface IExternalHooks {
-	onExternalHookEvent(eventName: string, metadata?: IExternalHooksMetadata): void;
+	onExternalHookEvent(eventName: string, metadata?: IDataObject): void;
 }
 
 export interface IRestApi {
