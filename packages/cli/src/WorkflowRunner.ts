@@ -216,7 +216,7 @@ export class WorkflowRunner {
 		// TODO: If "loadStaticData" is set to true it has to load data new on worker
 
 		// Register the active execution
-		const executionId = this.activeExecutions.add(data, undefined);
+		const executionId = await this.activeExecutions.add(data, undefined);
 
 		const jobData: IBullJobData = {
 			destinationNode: data.destinationNode,

@@ -21,6 +21,7 @@ import {
 	INodeType,
 	INodeTypeData,
 	IRun,
+	IRunExecutionData,
 	ITaskData,
 	IWorkflowExecuteHooks,
 	Workflow,
@@ -151,8 +152,8 @@ export class WorkflowRunnerProcess {
 				},
 			],
 			nodeExecuteAfter: [
-				async (nodeName: string, data: ITaskData, executionStack: IExecuteData[]): Promise<void> => {
-					this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data, executionStack]);
+				async (nodeName: string, data: ITaskData, executionData: IRunExecutionData): Promise<void> => {
+					this.sendHookToParentProcess('nodeExecuteAfter', [nodeName, data, executionData]);
 				},
 			],
 			workflowExecuteBefore: [

@@ -1529,9 +1529,15 @@ class App {
 			if (lastNodeExecuted) {
 				// Remove the old error and the data of the last run of the node that it can be replaced
 				delete data!.executionData!.resultData.error;
-				data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+				const length = data!.executionData!.resultData.runData[lastNodeExecuted].length;
+				if (length > 0 && data!.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined) {
+					// Remove results only if it is an error. 
+					// If we are retrying due to a crash, the information is simply success info from last node
+					data!.executionData!.resultData.runData[lastNodeExecuted].pop();
+					// Stack will determine what to run next
+				}
 			}
-			
+
 			if (req.body.loadWorkflow === true) {
 				// Loads the currently saved workflow to execute instead of the
 				// one saved at the time of the execution.

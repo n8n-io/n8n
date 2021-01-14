@@ -223,7 +223,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 			},
 		],
 		nodeExecuteAfter: [
-			async function (nodeName: string, data: ITaskData, executionStack: IExecuteData[]): Promise<void> {
+			async function (nodeName: string, data: ITaskData, executionData: IRunExecutionData): Promise<void> {
 				if (this.workflowData.settings !== undefined) {
 					if (this.workflowData.settings.saveExecutionProgress === false) {
 						return;
@@ -274,14 +274,14 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					fullExecutionData.data.resultData.runData[nodeName] = [data];
 				}
 
-				fullExecutionData.data.executionData!.nodeExecutionStack = executionStack;
+				fullExecutionData.data.executionData = executionData.executionData;
 
 				// Set last executed node so that it may resume on failure
 				fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
 				
-				const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
+				const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
-				await Db.collections.Execution!.update(this.executionId, executionData as IExecutionFlattedDb);
+				await Db.collections.Execution!.update(this.executionId, flattenedExecutionData as IExecutionFlattedDb);
 			},
 		],
 	};
