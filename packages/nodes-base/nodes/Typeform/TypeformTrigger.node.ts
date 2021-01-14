@@ -217,7 +217,7 @@ export class TypeformTrigger implements INodeType {
 			// Create a dictionary to get the field title by its ID
 			const defintitionsById: { [key: string]: string; } = {};
 			for (const field of definition.fields) {
-				defintitionsById[field.id] = field.title.replace(/\{\{/g, "[").replace(/\}\}/g, "]");
+				defintitionsById[field.id] = field.title.replace(/\{\{/g, '[').replace(/\}\}/g, ']');
 			}
 
 			// Convert the answers to key -> value pair
