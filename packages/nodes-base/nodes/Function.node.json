@@ -1,43 +1,16 @@
 {
-  "node": "n8n-nodes-base.function",
-  "nodeVersion": "1.0",
-  "codexVersion": "1.0",
-  "categories": ["Development", "Utility"],
-  "resources": {
-    "primaryDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.function/" }
-    ],
-    "generic": [
-      {
-        "label": "Nathan: Your n8n Virtual Assistant",
-        "icon": "👦",
-        "url": "https://medium.com/n8n-io/nathan-your-n8n-virtual-assistant-98ac611ee7a7"
-      },
-      {
-        "label": "Smart Factory Automation using IoT and Sensor Data with n8n",
-        "icon": "🏭",
-        "url": "https://medium.com/n8n-io/smart-factory-automation-using-iot-and-sensor-data-with-n8n-27675de9943b"
-      },
-      {
-        "label": "Giving kudos to contributors with GitHub, Slack, and n8n",
-        "icon": "👏",
-        "url": "https://medium.com/n8n-io/giving-kudos-to-contributors-with-github-slack-and-n8n-b3f5f4a653a6"
-      },
-      {
-        "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n",
-        "icon": "🗓",
-        "url": "https://medium.com/n8n-io/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n-a5d00f77da8c"
-      },
-      {
-        "label": "Creating Error Workflows in n8n",
-        "icon": "🌪",
-        "url": "https://medium.com/n8n-io/creating-error-workflows-in-n8n-6e03c9ecbc0f"
-      },
-      {
-        "label": "Database Monitoring and Alerting with n8n",
-        "icon": "📡",
-        "url": "https://medium.com/n8n-io/database-monitoring-and-alerting-with-n8n-f5082df7bdb2"
-      }
-    ]
-  }
+	"node": "n8n-nodes-base.function",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Development",
+		"Utility"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.function/"
+			}
+		]
+	}
 }

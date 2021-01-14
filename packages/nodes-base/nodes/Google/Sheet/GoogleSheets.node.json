@@ -1,56 +1,21 @@
 {
-  "node": "n8n-nodes-base.googleSheets",
-  "nodeVersion": "1.0",
-  "codexVersion": "1.0",
-  "categories": ["Data & Storage", "Productivity"],
-  "resources": {
-    "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/credentials/google" }
-    ],
-    "primaryDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.googleSheets/" }
-    ],
-    "generic": [
-      {
-        "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n",
-        "icon":"🧾",
-        "url": "https://medium.com/n8n-io/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n-c47eb2f8d7a5"
-      },
-      {
-        "label": "Supercharging your conference registration process with n8n",
-        "url": "https://medium.com/n8n-io/supercharging-your-conference-registration-process-with-n8n-2831cdff37f9",
-        "icon":"🎫"
-      },
-      {
-        "label": "Love at first sight: Ricardo’s n8n journey",
-        "url": "https://medium.com/n8n-io/love-at-first-sight-ricardos-n8n-journey-%EF%B8%8F-93b2c6d15f19",
-        "icon":"❤️"
-      },
-      {
-          "label":"Why this Product Manager loves n8n",
-          "url":"https://medium.com/n8n-io/why-this-product-manager-loves-n8n-215dc273d86a",
-          "icon":"🧠"
-      },
-      {
-          "label":"Why this CEO loves n8n",
-          "url":"https://medium.com/n8n-io/why-this-ceo-loves-n8n-ee7d102b0948",
-          "icon":"🧬"
-      },
-      {
-          "label":"Migrating Community Metrics to Orbit using n8n",
-          "url":"https://medium.com/n8n-io/migrating-community-metrics-to-orbit-using-n8n-b293372e8daf",
-          "icon":"📈"
-      },
-      {
-          "label":"Sending Automated Congratulations with Google Sheets, Twilio, and n8n ",
-          "url":"https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
-          "icon":"🙌"
-      },
-      {
-          "label":"Creating triggers for n8n workflows using polling",
-          "url":"https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
-          "icon":"⏲"
-      }
-    ]
-  }
+	"node": "n8n-nodes-base.googleSheets",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Data & Storage",
+		"Productivity"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/google"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.googleSheets/"
+			}
+		]
+	}
 }

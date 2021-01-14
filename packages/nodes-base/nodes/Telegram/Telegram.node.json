@@ -1,25 +1,20 @@
 {
-  "node": "n8n-nodes-base.telegram",
-  "nodeVersion": "1.0",
-  "codexVersion": "1.0",
-  "categories": ["Communication"],
-  "resources": {
-    "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/credentials/telegram" }
-    ],
-    "primaryDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.telegram/" }
-    ],
-    "generic": [
-      {
-        "label": "Creating scheduled text affirmations with n8n",
-        "icon": "🤟",
-        "url": "https://medium.com/n8n-io/creating-scheduled-text-affirmations-with-n8n-1c4189efae19"
-      },
-      {
-        "label": "Creating Telegram Bots with n8n, a No-Code Platform",
-        "url": "https://medium.com/n8n-io/creating-telegram-bots-with-n8n-a-no-code-platform-fdf1f0928da7"
-      }
-    ]
-  }
+	"node": "n8n-nodes-base.telegram",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Communication"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/telegram"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.telegram/"
+			}
+		]
+	}
 }

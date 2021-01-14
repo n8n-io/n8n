@@ -1,19 +1,19 @@
 {
-	"node": "n8n-nodes-base.mattermost",
+	"node": "n8n-nodes-base.yourls",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Communication"
+		"Utility"
 	],
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/mattermost"
+				"url": "https://docs.n8n.io/credentials/yourls"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.mattermost/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.yourls/"
 			}
 		]
 	}
