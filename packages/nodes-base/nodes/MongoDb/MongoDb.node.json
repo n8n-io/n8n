@@ -5,7 +5,7 @@
   "categories": ["Development", "Data & Storage"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/mongoDb" }
+      { "url": "https://docs.n8n.io/credentials/mongoDb" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.mongoDb/" }

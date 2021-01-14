@@ -5,7 +5,7 @@
   "categories": ["Sales"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/gumroad" }
+      { "url": "https://docs.n8n.io/credentials/gumroad" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.gumroadTrigger/" }

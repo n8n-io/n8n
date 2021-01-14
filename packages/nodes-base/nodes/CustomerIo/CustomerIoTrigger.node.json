@@ -5,7 +5,7 @@
   "categories": ["Communication", "Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/customerIo" }
+      { "url": "https://docs.n8n.io/credentials/customerIo" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.customerIoTrigger/" }

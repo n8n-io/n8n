@@ -5,7 +5,7 @@
   "categories": ["Communication"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/slack" }
+      { "url": "https://docs.n8n.io/credentials/slack" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.slack/" }

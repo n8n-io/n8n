@@ -5,7 +5,7 @@
   "categories": ["Sales"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/uplead" }
+      { "url": "https://docs.n8n.io/credentials/uplead" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.uplead/" }

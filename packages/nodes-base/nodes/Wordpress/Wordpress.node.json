@@ -5,7 +5,7 @@
   "categories": ["Marketing & Content"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/wordpress" }
+      { "url": "https://docs.n8n.io/credentials/wordpress" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.wordpress/" }

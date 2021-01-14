@@ -5,7 +5,7 @@
   "categories": ["Development", "Data & Storage"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/mySql" }
+      { "url": "https://docs.n8n.io/credentials/mySql" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.mySql/" }

@@ -5,7 +5,7 @@
   "categories": ["Marketing & Content", "Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/contentful" }
+      { "url": "https://docs.n8n.io/credentials/contentful" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.contentful/" }

@@ -5,7 +5,7 @@
   "categories": ["Communication", "Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/msg91" }
+      { "url": "https://docs.n8n.io/credentials/msg91" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.msg91/" }

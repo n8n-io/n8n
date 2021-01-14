@@ -5,7 +5,7 @@
   "categories": ["Communication", "Utility"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/smtp" }
+      { "url": "https://docs.n8n.io/credentials/smtp" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.emailSend/" }

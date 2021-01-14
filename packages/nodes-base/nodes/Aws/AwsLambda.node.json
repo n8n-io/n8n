@@ -5,7 +5,7 @@
   "categories": ["Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/aws" }
+      { "url": "https://docs.n8n.io/credentials/aws" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.awsLambda/" }

@@ -5,7 +5,7 @@
   "categories": ["Sales", "Communication"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/keap" }
+      { "url": "https://docs.n8n.io/credentials/keap" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.keap/" }

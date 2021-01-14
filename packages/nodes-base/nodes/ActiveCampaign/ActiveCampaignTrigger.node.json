@@ -5,7 +5,7 @@
   "categories": ["Marketing & Content"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/activeCampaign" }
+      { "url": "https://docs.n8n.io/credentials/activeCampaign" }
     ],
     "primaryDocumentation": [
       {

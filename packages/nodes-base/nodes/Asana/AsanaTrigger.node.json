@@ -5,7 +5,7 @@
   "categories": ["Productivity"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/asana" }
+      { "url": "https://docs.n8n.io/credentials/asana" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.asanaTrigger/" }

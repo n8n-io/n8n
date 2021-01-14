@@ -5,7 +5,7 @@
   "categories": ["Marketing & Content", "Communication"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/linkedIn" }
+      { "url": "https://docs.n8n.io/credentials/linkedIn" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.linkedIn/" }

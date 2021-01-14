@@ -5,7 +5,7 @@
   "categories": ["Sales"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/clearbit" }
+      { "url": "https://docs.n8n.io/credentials/clearbit" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.clearbit/" }

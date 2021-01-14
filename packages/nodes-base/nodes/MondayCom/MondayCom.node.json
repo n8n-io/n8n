@@ -5,7 +5,7 @@
   "categories": ["Productivity"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/mondayCom" }
+      { "url": "https://docs.n8n.io/credentials/mondayCom" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.mondayCom/" }

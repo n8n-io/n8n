@@ -5,7 +5,7 @@
   "categories": ["Communication", "Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/twilio" }
+      { "url": "https://docs.n8n.io/credentials/twilio" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.twilio/" }

@@ -5,7 +5,7 @@
   "categories": ["Marketing & Content"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/twitter" }
+      { "url": "https://docs.n8n.io/credentials/twitter" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.twitter/" }

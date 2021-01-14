@@ -5,7 +5,7 @@
   "categories": ["Development", "Data & Storage"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/postgres" }
+      { "url": "https://docs.n8n.io/credentials/postgres" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.postgres/" }

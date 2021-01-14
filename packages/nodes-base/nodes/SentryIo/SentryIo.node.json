@@ -5,7 +5,7 @@
   "categories": ["Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/sentryIo" }
+      { "url": "https://docs.n8n.io/credentials/sentryIo" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.sentryIo/" }

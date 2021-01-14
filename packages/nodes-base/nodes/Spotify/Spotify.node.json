@@ -5,7 +5,7 @@
   "categories": ["Miscellaneous "],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/spotify" }
+      { "url": "https://docs.n8n.io/credentials/spotify" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.spotify/" }

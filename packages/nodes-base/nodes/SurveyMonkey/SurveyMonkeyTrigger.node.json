@@ -5,7 +5,7 @@
   "categories": ["Marketing & Content", "Communication"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/surveyMonkey" }
+      { "url": "https://docs.n8n.io/credentials/surveyMonkey" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.surveyMonkeyTrigger/" }

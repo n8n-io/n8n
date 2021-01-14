@@ -5,7 +5,7 @@
   "categories": ["Communication"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/helpScout" }
+      { "url": "https://docs.n8n.io/credentials/helpScout" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.helpScoutTrigger/" }

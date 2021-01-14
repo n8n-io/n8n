@@ -5,7 +5,7 @@
   "categories": ["Data & Storage", "Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/questDb" }
+      { "url": "https://docs.n8n.io/credentials/questDb" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.questDb/" }

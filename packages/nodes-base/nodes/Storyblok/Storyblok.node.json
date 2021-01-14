@@ -7,7 +7,7 @@
         "credentialDocumentation":
         [
             {
-                "url": "https://docs.n8n.io/nodes/credentials/storyblok"
+                "url": "https://docs.n8n.io/credentials/storyblok"
             }
         ],
         "primaryDocumentation":[

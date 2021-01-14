@@ -5,7 +5,7 @@
   "categories": ["Development", "Data & Storage"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/crateDb" }
+      { "url": "https://docs.n8n.io/credentials/crateDb" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.crateDb/" }

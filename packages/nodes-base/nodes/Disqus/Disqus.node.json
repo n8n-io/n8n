@@ -5,7 +5,7 @@
   "categories": ["Communication"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/disqus" }
+      { "url": "https://docs.n8n.io/credentials/disqus" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.disqus/" }

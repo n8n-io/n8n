@@ -5,7 +5,7 @@
   "categories": ["Communication"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/discord" }
+      { "url": "https://docs.n8n.io/credentials/discord" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.discord/" }

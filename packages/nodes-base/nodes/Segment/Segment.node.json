@@ -5,7 +5,7 @@
   "categories": ["Analytics", "Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/segment" }
+      { "url": "https://docs.n8n.io/credentials/segment" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.segment/" }

@@ -5,7 +5,7 @@
   "categories": ["Development", "Data & Storage"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/redis" }
+      { "url": "https://docs.n8n.io/credentials/redis" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.redis/" }

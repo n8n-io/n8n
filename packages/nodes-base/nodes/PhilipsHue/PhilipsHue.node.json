@@ -5,7 +5,7 @@
   "categories": ["Miscellaneous "],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/philipsHue" }
+      { "url": "https://docs.n8n.io/credentials/philipsHue" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.philipsHue/" }

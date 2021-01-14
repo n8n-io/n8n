@@ -5,7 +5,7 @@
   "categories": ["Communication"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/typeform" }
+      { "url": "https://docs.n8n.io/credentials/typeform" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.typeformTrigger/" }

@@ -5,7 +5,7 @@
   "categories": ["Communication", "Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/mandrill" }
+      { "url": "https://docs.n8n.io/credentials/mandrill" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.mandrill/" }

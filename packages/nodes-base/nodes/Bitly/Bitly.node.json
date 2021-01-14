@@ -5,7 +5,7 @@
   "categories": ["Utility"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/bitly" }
+      { "url": "https://docs.n8n.io/credentials/bitly" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.bitly/" }

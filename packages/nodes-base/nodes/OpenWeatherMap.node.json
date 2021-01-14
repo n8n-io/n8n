@@ -5,7 +5,7 @@
   "categories": ["Miscellaneous ", "Utility"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/openWeatherMap" }
+      { "url": "https://docs.n8n.io/credentials/openWeatherMap" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.openWeatherMap/" }
@@ -14,7 +14,7 @@
       {
         "label": "Creating Telegram Bots with n8n, a No-Code Platform",
         "url": "https://medium.com/n8n-io/creating-telegram-bots-with-n8n-a-no-code-platform-fdf1f0928da7"
-      }  
+      }
     ]
   }
 }

@@ -5,7 +5,7 @@
   "categories": ["Data & Storage"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/box" }
+      { "url": "https://docs.n8n.io/credentials/box" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.box/" }

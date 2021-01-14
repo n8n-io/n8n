@@ -5,7 +5,7 @@
   "categories": ["Marketing & Content", "Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/cockpit" }
+      { "url": "https://docs.n8n.io/credentials/cockpit" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.cockpit/" }

@@ -5,7 +5,7 @@
   "categories": ["Productivity"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/acuityScheduling" }
+      { "url": "https://docs.n8n.io/credentials/acuityScheduling" }
     ],
     "primaryDocumentation": [
       {

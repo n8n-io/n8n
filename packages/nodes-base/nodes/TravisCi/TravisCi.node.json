@@ -5,7 +5,7 @@
   "categories": ["Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/travisCi" }
+      { "url": "https://docs.n8n.io/credentials/travisCi" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.travisCi/" }

@@ -5,7 +5,7 @@
   "categories": ["Productivity"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/todoist" }
+      { "url": "https://docs.n8n.io/credentials/todoist" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.todoist/" }

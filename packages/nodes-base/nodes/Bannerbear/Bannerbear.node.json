@@ -5,7 +5,7 @@
   "categories": ["Marketing & Content"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/bannerbear" }
+      { "url": "https://docs.n8n.io/credentials/bannerbear" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.bannerbear/" }

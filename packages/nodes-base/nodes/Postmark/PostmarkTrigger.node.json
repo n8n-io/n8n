@@ -5,7 +5,7 @@
   "categories": ["Communication", "Development"],
   "resources": {
     "credentialDocumentation": [
-      { "url": "https://docs.n8n.io/nodes/credentials/postmark" }
+      { "url": "https://docs.n8n.io/credentials/postmark" }
     ],
     "primaryDocumentation": [
       { "url": "https://docs.n8n.io/nodes/n8n-nodes-base.postmarkTrigger/" }
