@@ -1,0 +1,22 @@
+{
+	"node": "n8n-nodes-base.cron",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Utility"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.cron/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Database Monitoring and Alerting with n8n",
+				"icon": "📡",
+				"url": "https://medium.com/n8n-io/database-monitoring-and-alerting-with-n8n-f5082df7bdb2"
+			}
+		]
+	}
+}

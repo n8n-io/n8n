@@ -1,0 +1,21 @@
+{
+	"node": "n8n-nodes-base.start",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Utility"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.start/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Automating Conference Organization Processes with n8n",
+				"url": "https://medium.com/n8n-io/automating-conference-organization-processes-with-n8n-ab8f64a7a520"
+			}
+		]
+	}
+}
