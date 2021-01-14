@@ -1,0 +1,28 @@
+{
+	"node": "n8n-nodes-base.emailSend",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Communication",
+		"Utility"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/credentials/smtp"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.emailSend/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Nathan: Your n8n Virtual Assistant",
+				"icon": "👦",
+				"url": "https://medium.com/n8n-io/nathan-your-n8n-virtual-assistant-98ac611ee7a7"
+			}
+		]
+	}
+}

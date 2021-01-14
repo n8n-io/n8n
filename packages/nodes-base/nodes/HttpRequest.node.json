@@ -1,0 +1,23 @@
+{
+	"node": "n8n-nodes-base.httpRequest",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Utility",
+		"Development"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.httpRequest/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Webhooks Fun with n8n and Mattermost",
+				"icon": "🍸",
+				"url": "https://medium.com/n8n-io/webhooks-fun-with-n8n-and-mattermost-4ebf7e2b4d2a"
+			}
+		]
+	}
+}

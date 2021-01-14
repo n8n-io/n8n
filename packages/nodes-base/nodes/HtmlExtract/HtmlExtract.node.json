@@ -1,0 +1,21 @@
+{
+	"node": "n8n-nodes-base.htmlExtract",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Utility"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.htmlExtract/"
+			}
+		],
+		"generic": [
+			{
+				"label": "HTTP Request Node — The Swiss Army Knife",
+				"url": "https://medium.com/n8n-io/http-request-node-the-swiss-army-knife-b14e22283383"
+			}
+		]
+	}
+}

@@ -1,0 +1,22 @@
+{
+	"node": "n8n-nodes-base.interval",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Utility"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.interval/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Smart Factory Automation using IoT and Sensor Data with n8n",
+				"icon": "🏭",
+				"url": "https://medium.com/n8n-io/smart-factory-automation-using-iot-and-sensor-data-with-n8n-27675de9943b"
+			}
+		]
+	}
+}

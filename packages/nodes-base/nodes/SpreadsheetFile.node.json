@@ -1,0 +1,23 @@
+{
+	"node": "n8n-nodes-base.spreadsheetFile",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Utility",
+		"Data & Storage"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.spreadsheetFile/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Nathan: Your n8n Virtual Assistant",
+				"icon": "👦",
+				"url": "https://medium.com/n8n-io/nathan-your-n8n-virtual-assistant-98ac611ee7a7"
+			}
+		]
+	}
+}
