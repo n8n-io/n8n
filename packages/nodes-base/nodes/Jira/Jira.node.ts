@@ -361,11 +361,19 @@ export class Jira implements INodeType {
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
+				const operation = this.getCurrentNodeParameter('operation') as string;
+				let projectId;
+				if (operation === 'create') {
+					projectId = this.getCurrentNodeParameter('project');
+				} else {
+					const issueKey = this.getCurrentNodeParameter('issueKey');
+					const { fields: { project: { id } } } = await jiraSoftwareCloudApiRequest.call(this, `/api/2/issue/${issueKey}`, 'GET', {}, {});
+					projectId = id;
+				}
 
 				const fields = await jiraSoftwareCloudApiRequest.call(this, `/api/2/field`, 'GET');
-
 				for (const field of fields) {
-					if (field.custom === true) {
+					if (field.custom === true && field.scope && field.scope.project && field.scope.project.id === projectId) {
 						returnData.push({
 							name: field.name,
 							value: field.id,

@@ -186,6 +186,9 @@ export const issueFields = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
+									loadOptionsDependsOn: [
+										'project',
+									],
 								},
 								description: 'ID of the field to set.',
 								default: '',
@@ -345,6 +348,9 @@ export const issueFields = [
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
+									loadOptionsDependsOn: [
+										'issueKey',
+									],
 								},
 								description: 'ID of the field to set.',
 								default: '',
