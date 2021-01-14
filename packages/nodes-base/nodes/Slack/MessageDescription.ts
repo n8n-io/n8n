@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -37,25 +37,6 @@ export const messageFields = [
 	/*                                message:post                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ephemeral',
-		name: 'ephemeral',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: `Ephemeral messages behave differently from regular messages on Slack.<br/>
-		They disappear when Slack reloads and won’t show up again when Slack is opened in a <br/>
-		new browser window or on a different device`,
-	},
-	{
 		displayName: 'Channel',
 		name: 'channel',
 		type: 'string',
@@ -88,9 +69,6 @@ export const messageFields = [
 				resource: [
 					'message',
 				],
-				ephemeral: [
-					true,
-				],
 			},
 		},
 		required: true,
@@ -115,46 +93,6 @@ export const messageFields = [
 			},
 		},
 		description: 'The text to send.',
-	},
-	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Post the message as authenticated user instead of bot. Works only with user token.',
-	},
-	{
-		displayName: 'User Name',
-		name: 'username',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				as_user: [
-					false,
-				],
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Set the bot\'s user name. This field will be ignored if you are using a user token.',
 	},
 	{
 		displayName: 'JSON parameters',
@@ -391,9 +329,6 @@ export const messageFields = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/as_user': [
-							false,
-						],
 						'/operation': [
 							'post',
 						],
@@ -411,9 +346,6 @@ export const messageFields = [
 				type: 'string',
 				displayOptions: {
 					show: {
-						'/as_user': [
-							false,
-						],
 						'/operation': [
 							'post',
 						],
@@ -452,9 +384,6 @@ export const messageFields = [
 						'/resource': [
 							'message',
 						],
-						'/ephemeral': [
-							false,
-						],
 					},
 				},
 				description: 'Use Slack Markdown parsing.',
@@ -471,9 +400,6 @@ export const messageFields = [
 						],
 						'/resource': [
 							'message',
-						],
-						'/ephemeral': [
-							false,
 						],
 					},
 				},
@@ -492,9 +418,6 @@ export const messageFields = [
 						'/resource': [
 							'message',
 						],
-						'/ephemeral': [
-							false,
-						],
 					},
 				},
 				description: 'Pass true to enable unfurling of primarily text-based content.',
@@ -512,12 +435,45 @@ export const messageFields = [
 						'/resource': [
 							'message',
 						],
-						'/ephemeral': [
-							false,
-						],
 					},
 				},
 				description: 'Pass false to disable unfurling of media content.',
+			},
+			{
+				displayName: 'Ephemeral',
+				name: 'ephemeral',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'/operation': [
+							'post',
+						],
+						'/resource': [
+							'message',
+						],
+					},
+				},
+				description: `Ephemeral messages behave differently from regular messages on Slack.<br/>
+				They disappear when Slack reloads and won’t show up again when Slack is opened in a <br/>
+				new browser window or on a different device`,
+			},
+			{
+				displayName: 'Send as user',
+				name: 'sendAsUser',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'/operation': [
+							'post',
+						],
+						'/resource': [
+							'message',
+						],
+					},
+				},
+				description: 'The message will be sent from this username (i.e. as if this individual sent the message).',
 			},
 		],
 	},
@@ -581,26 +537,6 @@ export const messageFields = [
 			},
 		},
 		description: `Timestamp of the message to be updated.`,
-	},
-	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'update',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Pass true to update the message as the authed user. Works only with user token.',
 	},
 	{
 		displayName: 'Update Fields',
