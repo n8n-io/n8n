@@ -2,6 +2,23 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.102.0
+
+### What changed?
+If you have a question in Typeform that uses a previously answered question as part of its text, the question text would look like this in the Typeform Trigger node:
+
+`You have chosen {{field:23234242}} as your answer. Is this correct?`
+
+Those curly braces broke the expression editor. The change makes it now display like this:
+
+`You have chosen [field:23234242] as your answer. Is this correct?`
+
+### When is action necessary?
+If you are using the Typeform Trigger node with questions using the [Recall information](https://help.typeform.com/hc/en-us/articles/360050447072-What-is-Recall-information-) feature.
+
+### How to upgrade:
+In workflows using the Typeform Trigger node, nodes that reference such key names (questions that use a previously answered question as part of its text) will need to be updated.
+
 ## 0.95.0
 
 ### What changed?
