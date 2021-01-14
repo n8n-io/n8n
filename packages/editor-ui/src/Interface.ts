@@ -122,7 +122,7 @@ export interface IExternalHooksMetadata {
 }
 
 export interface IExternalHooks {
-	onExternalHookEvent(eventName: string, metadata: IExternalHooksMetadata): Promise<void>;
+	onExternalHookEvent(eventName: string, metadata?: IExternalHooksMetadata): void;
 }
 
 export interface IRestApi {
@@ -414,6 +414,9 @@ export interface IN8nUISettings {
 	};
 	urlBaseWebhook: string;
 	versionCli: string;
+	n8nMetadata?: {
+		[key: string]: string | number | undefined;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

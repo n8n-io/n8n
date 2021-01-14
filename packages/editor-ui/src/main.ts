@@ -17,7 +17,7 @@ import './n8n-theme.scss';
 import App from '@/App.vue';
 import router from './router';
 
-import { onExternalHookEvent } from './components/mixins/externalHooks';
+import { runExternalHook } from './components/mixins/externalHooks';
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import {
@@ -176,9 +176,8 @@ Vue.component('font-awesome-icon', FontAwesomeIcon);
 Vue.config.productionTip = false;
 
 router.afterEach(to => {
-	onExternalHookEvent("main.onRouteChange", { page: to.path });
+	runExternalHook("main.onRouteChange", store.state);
 });
-
 
 new Vue({
 	router,
@@ -201,4 +200,4 @@ if (process.env.NODE_ENV !== 'production') {
 	};
 }
 
-onExternalHookEvent("main.onAppLoad", { user_id: process.env.N8N_USER_ID });
+runExternalHook("main.onAppLoad", store.state, { });

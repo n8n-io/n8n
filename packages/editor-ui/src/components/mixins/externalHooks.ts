@@ -1,8 +1,10 @@
 import Vue from "vue";
 import { IExternalHooks, IExternalHooksMetadata } from "@/Interface";
 
-export async function onExternalHookEvent(
+export async function runExternalHook(
 	eventName: string,
+	// tslint:disable-next-line: no-any
+	state: any,
 	metadata?: IExternalHooksMetadata,
 ) {
 	// @ts-ignore
@@ -17,7 +19,7 @@ export async function onExternalHookEvent(
 		// @ts-ignore
 		const hookMethods = window.externalHooks[resource][operator];
 		for (const hookmethod of hookMethods) {
-			hookmethod(metadata);
+			hookmethod(state, metadata);
 		}
 	}
 }
@@ -26,7 +28,9 @@ export const externalHooks = Vue.extend({
 	methods: {
 		externalHooks(): IExternalHooks {
 			return {
-				onExternalHookEvent,
+				onExternalHookEvent: (eventName: string, metadata?: IExternalHooksMetadata): void => {
+					runExternalHook(eventName, this.$store.state, metadata);
+				},
 			};
 		},
 	},
