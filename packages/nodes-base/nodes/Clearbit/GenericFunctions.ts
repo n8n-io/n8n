@@ -18,7 +18,7 @@ export async function clearbitApiRequest(this: IHookFunctions | IExecuteFunction
 		qs,
 		body,
 		uri: uri ||`https://${api}-stream.clearbit.com${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

@@ -1,7 +1,7 @@
 import {
 	IExecuteFunctions,
+	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions
 } from 'n8n-core';
 
 import {
@@ -9,7 +9,6 @@ import {
 } from 'n8n-workflow';
 
 import {OptionsWithUri} from 'request';
-import {Url} from "url";
 
 interface ScriptsOptions {
 	script?: any; //tslint:disable-line:no-any
@@ -49,7 +48,7 @@ export async function layoutsApiRequest(this: ILoadOptionsFunctions | IExecuteFu
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -101,7 +100,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> { // 
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -138,7 +137,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> { //
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -173,7 +172,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> { //
 		},
 		method: 'GET',
 		uri: url,
-		json: true
+		json: true,
 	};
 
 	try {
@@ -205,7 +204,7 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		uri: url,
 		headers: {},
 		method: 'POST',
-		json: true
+		json: true,
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 	requestOptions.auth = {
@@ -213,13 +212,13 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 		pass: password as string,
 	};
 	requestOptions.body = {
-		"fmDataSource": [
+		'fmDataSource': [
 			{
-				"database": host,
-				"username": login as string,
-				"password": password as string
-			}
-		]
+				'database': host,
+				'username': login as string,
+				'password': password as string,
+			},
+		],
 	};
 
 	try {
@@ -231,8 +230,6 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions |
 
 		return response.response.token;
 	} catch (error) {
-		console.error(error);
-
 		let errorMessage;
 		if (error.response) {
 			errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
@@ -263,7 +260,7 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 		uri: url,
 		headers: {},
 		method: 'DELETE',
-		json: true
+		json: true,
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 
@@ -276,8 +273,6 @@ export async function logout(this: ILoadOptionsFunctions | IExecuteFunctions | I
 
 		return response;
 	} catch (error) {
-		console.error(error);
-
 		const errorMessage = error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
 
 		if (errorMessage !== undefined) {
@@ -301,7 +296,7 @@ export function parseSort(this: IExecuteFunctions, i: number): object | null {
 				// @ts-ignore
 				sort.push({
 					'fieldName': parameterData!.name as string,
-					'sortOrder': parameterData!.value
+					'sortOrder': parameterData!.value,
 				});
 			}
 		}

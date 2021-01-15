@@ -1,9 +1,9 @@
 import { OptionsWithUri } from 'request';
 
 import {
+	BINARY_ENCODING,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	BINARY_ENCODING
 } from 'n8n-core';
 
 import { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
@@ -29,7 +29,7 @@ export async function affinityApiRequest(this: IExecuteFunctions | IWebhookFunct
 		body,
 		qs: query,
 		uri: uri || `${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;

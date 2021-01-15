@@ -44,19 +44,24 @@
 					<el-button title="Connect OAuth Credentials" circle :disabled="true">
 						<font-awesome-icon icon="redo" />
 					</el-button>
-					Not all required credential properties are filled
+					Enter all required properties
 				</span>
 				<span v-else-if="isOAuthConnected === true">
 					<el-button title="Reconnect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
 						<font-awesome-icon icon="redo" />
 					</el-button>
-					Is connected
+					Connected
 				</span>
 				<span v-else>
-					<el-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
-						<font-awesome-icon icon="sign-in-alt" />
-					</el-button>
-					Is NOT connected
+					<span v-if="isGoogleOAuthType">
+						<img :src="basePath + 'google-signin.png'" class="google-icon clickable" alt="Sign in with Google" @click.stop="oAuthCredentialAuthorize()" />
+					</span>
+					<span v-else>
+						<el-button title="Connect OAuth Credentials" @click.stop="oAuthCredentialAuthorize()" circle>
+							<font-awesome-icon icon="sign-in-alt" />
+						</el-button>
+						Not connected
+					</span>
 				</span>
 
 				<div v-if="credentialProperties.length">
@@ -91,7 +96,7 @@
 
 				<div v-if="nodesAccess.length === 0" class="no-nodes-access">
 					<strong>
-						Important!
+						Important
 					</strong><br />
 					Add at least one node which has access to the credentials!
 				</div>
@@ -160,11 +165,12 @@ export default mixins(
 	},
 	data () {
 		return {
+			basePath: this.$store.getters.getBaseUrl,
 			isMinimized: true,
 			helpTexts: {
 				credentialsData: 'The credentials to set.',
-				credentialsName: 'The name the credentials should be saved as. Use a name<br />which makes it clear to what exactly they give access to.<br />For credentials of an Email account that could be the Email address itself.',
-				nodesWithAccess: 'The nodes which allowed to use this credentials.',
+				credentialsName: 'A recognizable label for the credentials. Descriptive names work <br />best here, so you can easily select it from a list later.',
+				nodesWithAccess: 'Nodes with access to these credentials.',
 			},
 			credentialDataTemp: null as ICredentialsDecryptedResponse | null,
 			nodesAccess: [] as string[],
@@ -218,6 +224,13 @@ export default mixins(
 
 			return this.credentialDataTemp;
 		},
+		isGoogleOAuthType (): boolean {
+			if (this.credentialTypeData.name === 'googleOAuth2Api') {
+				return true;
+			}
+			const types = this.parentTypes(this.credentialTypeData.name);
+			return types.includes('googleOAuth2Api');
+		},
 		isOAuthType (): boolean {
 			if (['oAuth1Api', 'oAuth2Api'].includes(this.credentialTypeData.name)) {
 				return true;
@@ -235,7 +248,7 @@ export default mixins(
 		oAuthCallbackUrl (): string {
 			const types = this.parentTypes(this.credentialTypeData.name);
 			const oauthType = (this.credentialTypeData.name === 'oAuth2Api' || types.includes('oAuth2Api')) ? 'oauth2' : 'oauth1';
-			return this.$store.getters.getWebhookBaseUrl + `rest/${oauthType}-credential/callback`;
+			return this.$store.getters.oauthCallbackUrls[oauthType];
 		},
 		requiredPropertiesFilled (): boolean {
 			for (const property of this.credentialProperties) {
@@ -256,7 +269,7 @@ export default mixins(
 
 			this.$showMessage({
 				title: 'Copied',
-				message: `The callback URL got copied!`,
+				message: `Callback URL was successfully copied!`,
 				type: 'success',
 			});
 		},
@@ -401,13 +414,14 @@ export default mixins(
 
 					this.$showMessage({
 						title: 'Connected',
-						message: 'Got connected!',
+						message: 'Connected successfully!',
 						type: 'success',
 					});
+
+					// Make sure that the event gets removed again
+					window.removeEventListener('message', receiveMessage, false);
 				}
 
-				// Make sure that the event gets removed again
-				window.removeEventListener('message', receiveMessage, false);
 			};
 
 			window.addEventListener('message', receiveMessage, false);
@@ -530,6 +544,10 @@ export default mixins(
 	.oauth-information {
 		line-height: 2.5em;
 		margin: 2em 0;
+
+		.google-icon {
+			width: 191px;
+		}
 	}
 
 	.parameter-wrapper {

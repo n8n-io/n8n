@@ -62,7 +62,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The name of the organization.',
@@ -80,7 +80,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'create',
-				]
+				],
 			},
 		},
 		description: 'The domain name of the organization.',
@@ -130,7 +130,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the organization.',
@@ -176,7 +176,7 @@ export const organizationFields = [
 				default: [],
 				description: 'Persons that the new organization will be associated with.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 organization:get                           */
@@ -194,7 +194,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the organization.',
@@ -223,7 +223,7 @@ export const organizationFields = [
 				default: false,
 				description: 'When true, interaction dates will be present on the returned resources.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 organization:getAll                        */
@@ -300,7 +300,7 @@ export const organizationFields = [
 				default: false,
 				description: 'When true, interaction dates will be present on the returned resources.',
 			},
-		]
+		],
 	},
 /* -------------------------------------------------------------------------- */
 /*                                 organization:delete                        */
@@ -318,7 +318,7 @@ export const organizationFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
 		description: 'Unique identifier for the organization.',

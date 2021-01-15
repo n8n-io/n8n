@@ -36,9 +36,9 @@ export const fileOperations = [
 
 export const fileFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                file:upload                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                file:upload                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Binary Data',
 		name: 'binaryData',
@@ -47,7 +47,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -64,13 +64,13 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
 				],
 				binaryData: [
-					false
+					false,
 				],
 			},
 
@@ -87,13 +87,13 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
 				],
 				binaryData: [
-					true
+					true,
 				],
 			},
 
@@ -108,7 +108,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'upload'
+					'upload',
 				],
 				resource: [
 					'file',
@@ -159,9 +159,10 @@ export const fileFields = [
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 file:getAll                             */
-/* ----------------------------------------------------------------------- */
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 file:getAll                             */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -210,7 +211,7 @@ export const fileFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'getAll'
+					'getAll',
 				],
 				resource: [
 					'file',
@@ -261,28 +262,28 @@ export const fileFields = [
 						value: 'all',
 					},
 					{
-						name: 'Spaces',
-						value: 'spaces',
-					},
-					{
-						name: 'Snippets',
-						value: 'snippets',
+						name: 'Google Docs',
+						value: 'gdocs',
 					},
 					{
 						name: 'Images',
 						value: 'images',
 					},
 					{
-						name: 'Google Docs',
-						value: 'gdocs',
+						name: 'Snippets',
+						value: 'snippets',
 					},
 					{
-						name: 'Zips',
-						value: 'zips',
+						name: 'Spaces',
+						value: 'spaces',
 					},
 					{
 						name: 'pdfs',
 						value: 'pdfs',
+					},
+					{
+						name: 'Zips',
+						value: 'zips',
 					},
 				],
 				default: ['all'],
@@ -300,9 +301,10 @@ export const fileFields = [
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 file:get                                */
-/* ----------------------------------------------------------------------- */
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 file:get                                */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'File ID',
 		name: 'fileId',

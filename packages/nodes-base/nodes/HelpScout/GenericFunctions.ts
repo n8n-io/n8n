@@ -1,8 +1,8 @@
 import { OptionsWithUri } from 'request';
 import {
-	IHookFunctions,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 import {
@@ -22,7 +22,7 @@ export async function helpscoutApiRequest(this: IExecuteFunctions | IExecuteSing
 		body,
 		qs,
 		uri: uri || `https://api.helpscout.net${resource}`,
-		json: true
+		json: true,
 	};
 	try {
 		if (Object.keys(option).length !== 0) {

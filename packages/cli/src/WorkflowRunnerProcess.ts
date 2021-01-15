@@ -2,6 +2,7 @@
 import {
 	CredentialsOverwrites,
 	CredentialTypes,
+	ExternalHooks,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
 	WorkflowExecuteAdditionalData,
@@ -19,6 +20,7 @@ import {
 	INodeTypeData,
 	IRun,
 	ITaskData,
+	IWorkflowExecuteHooks,
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
@@ -66,7 +68,11 @@ export class WorkflowRunnerProcess {
 
 		// Load the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();
-		await credentialsOverwrites.init();
+		await credentialsOverwrites.init(inputData.credentialsOverwrite);
+
+		// Load all external hooks
+		const externalHooks = ExternalHooks();
+		await externalHooks.init();
 
 		this.workflow = new Workflow({ id: this.data.workflowData.id as string | undefined, name: this.data.workflowData.name, nodes: this.data.workflowData!.nodes, connections: this.data.workflowData!.connections, active: this.data.workflowData!.active, nodeTypes, staticData: this.data.workflowData!.staticData, settings: this.data.workflowData!.settings});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(this.data.credentials);
@@ -121,7 +127,7 @@ export class WorkflowRunnerProcess {
 	 * @returns
 	 */
 	getProcessForwardHooks(): WorkflowHooks {
-		const hookFunctions = {
+		const hookFunctions: IWorkflowExecuteHooks = {
 			nodeExecuteBefore: [
 				async (nodeName: string): Promise<void> => {
 					this.sendHookToParentProcess('nodeExecuteBefore', [nodeName]);
@@ -135,14 +141,19 @@ export class WorkflowRunnerProcess {
 			workflowExecuteBefore: [
 				async (): Promise<void> => {
 					this.sendHookToParentProcess('workflowExecuteBefore', []);
-				}
+				},
 			],
 			workflowExecuteAfter: [
 				async (fullRunData: IRun, newStaticData?: IDataObject): Promise<void> => {
 					this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
 				},
-			]
+			],
 		};
+
+		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();
+		for (const key of Object.keys(preExecuteFunctions)) {
+			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+		}
 
 		return new WorkflowHooks(hookFunctions, this.data!.executionMode, this.data!.executionId, this.data!.workflowData, { sessionId: this.data!.sessionId, retryOf: this.data!.retryOf as string });
 	}
@@ -190,17 +201,18 @@ process.on('message', async (message: IProcessMessage) => {
 
 			// Once the workflow got executed make sure the process gets killed again
 			process.exit();
-		} else if (message.type === 'stopExecution') {
+		} else if (message.type === 'stopExecution' || message.type === 'timeout') {
 			// The workflow execution should be stopped
 			let runData: IRun;
 
 			if (workflowRunner.workflowExecute !== undefined) {
 				// Workflow started already executing
-
 				runData = workflowRunner.workflowExecute.getFullRunData(workflowRunner.startedAt);
 
-				// If there is any data send it to parent process
-				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!);
+				const timeOutError = message.type === 'timeout' ? { message: 'Workflow execution timed out!' } as IExecutionError : undefined;
+
+				// If there is any data send it to parent process, if execution timedout add the error
+				await workflowRunner.workflowExecute.processSuccessExecution(workflowRunner.startedAt, workflowRunner.workflow!, timeOutError);
 			} else {
 				// Workflow did not get started yet
 				runData = {
@@ -209,7 +221,7 @@ process.on('message', async (message: IProcessMessage) => {
 							runData: {},
 						},
 					},
-					finished: true,
+					finished: message.type !== 'timeout',
 					mode: workflowRunner.data!.executionMode,
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
@@ -218,7 +230,7 @@ process.on('message', async (message: IProcessMessage) => {
 				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
 			}
 
-			await sendToParentProcess('end', {
+			await sendToParentProcess(message.type === 'timeout' ? message.type : 'end', {
 				runData,
 			});
 

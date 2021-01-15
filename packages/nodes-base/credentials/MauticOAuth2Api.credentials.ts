@@ -9,6 +9,7 @@ export class MauticOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Mautic OAuth2 API';
+	documentationUrl = 'mautic';
 	properties = [
 		{
 			displayName: 'URL',
@@ -49,7 +50,7 @@ export class MauticOAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'header',
+			default: 'body',
 		},
 	];
 }

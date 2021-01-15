@@ -3,20 +3,21 @@ import {
 } from 'n8n-core';
 import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 import {
-	payoutOperations,
-	payoutItemOperations,
 	payoutFields,
 	payoutItemFields,
+	payoutItemOperations,
+	payoutOperations,
 } from './PaymentDescription';
 import {
+	IAmount,
+	IItem,
 	IPaymentBatch,
 	ISenderBatchHeader,
-	IItem, IAmount,
 	RecipientType,
 	RecipientWallet,
  } from './PaymentInteface';
@@ -45,7 +46,7 @@ export class PayPal implements INodeType {
 			{
 				name: 'payPalApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{

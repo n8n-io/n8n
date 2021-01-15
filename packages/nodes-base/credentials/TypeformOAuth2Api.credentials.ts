@@ -16,6 +16,7 @@ export class TypeformOAuth2Api implements ICredentialType {
 		'oAuth2Api',
 	];
 	displayName = 'Typeform OAuth2 API';
+	documentationUrl = 'typeform';
 	properties = [
 		{
 			displayName: 'Authorization URL',

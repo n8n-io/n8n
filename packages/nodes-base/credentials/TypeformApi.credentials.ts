@@ -7,6 +7,7 @@ import {
 export class TypeformApi implements ICredentialType {
 	name = 'typeformApi';
 	displayName = 'Typeform API';
+	documentationUrl = 'typeform';
 	properties = [
 		{
 			displayName: 'Access Token',

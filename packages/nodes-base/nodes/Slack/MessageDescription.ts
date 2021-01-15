@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import {
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const messageOperations = [
 	{
@@ -19,6 +21,11 @@ export const messageOperations = [
 				description: 'Post a message into a channel',
 			},
 			{
+				name: 'Post (Ephemeral)',
+				value: 'postEphemeral',
+				description: 'Post an ephemeral message to a user in channel',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Updates a message.',
@@ -31,9 +38,9 @@ export const messageOperations = [
 
 export const messageFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                message:post                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                          message:post/postEphemeral                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channel',
@@ -44,6 +51,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -52,6 +60,25 @@ export const messageFields = [
 		},
 		required: true,
 		description: 'The channel to send the message to.',
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		type: 'string',
+		default: '',
+		placeholder: 'User ID',
+		displayOptions: {
+			show: {
+				operation: [
+					'postEphemeral',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		required: true,
+		description: 'The user ID to send the message to.',
 	},
 	{
 		displayName: 'Text',
@@ -65,6 +92,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -74,46 +102,6 @@ export const messageFields = [
 		description: 'The text to send.',
 	},
 	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'post'
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Post the message as authenticated user instead of bot.',
-	},
-	{
-		displayName: 'User Name',
-		name: 'username',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				as_user: [
-					false,
-				],
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Set the bot\'s user name. This field will be ignored if you are using a user token.',
-	},
-	{
 		displayName: 'JSON parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
@@ -121,7 +109,8 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -141,6 +130,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -318,10 +308,10 @@ export const messageFields = [
 								default: true,
 								description: 'If items can be displayed next to each other.',
 							},
-						]
+						],
 					},
 				],
-			}
+			},
 		],
 	},
 	{
@@ -331,7 +321,8 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -346,19 +337,6 @@ export const messageFields = [
 				displayName: 'Icon Emoji',
 				name: 'icon_emoji',
 				type: 'string',
-				displayOptions: {
-					show: {
-						'/as_user': [
-							false
-						],
-						'/operation': [
-							'post'
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				default: '',
 				description: 'Emoji to use as the icon for this message. Overrides icon_url.',
 			},
@@ -366,21 +344,15 @@ export const messageFields = [
 				displayName: 'Icon URL',
 				name: 'icon_url',
 				type: 'string',
-				displayOptions: {
-					show: {
-						'/as_user': [
-							false
-						],
-						'/operation': [
-							'post'
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				default: '',
 				description: 'URL to an image to use as the icon for this message.',
+			},
+			{
+				displayName: 'Link Names',
+				name: 'link_names',
+				type: 'boolean',
+				default: false,
+				description: 'Find and link channel names and usernames.',
 			},
 			{
 				displayName: 'Make Reply',
@@ -388,20 +360,6 @@ export const messageFields = [
 				type: 'string',
 				default: '',
 				description: 'Provide another message\'s ts value to make this message a reply.',
-			},
-			{
-				displayName: 'Unfurl Links',
-				name: 'unfurl_links',
-				type: 'boolean',
-				default: false,
-				description: 'Pass true to enable unfurling of primarily text-based content.',
-			},
-			{
-				displayName: 'Unfurl Media',
-				name: 'unfurl_media',
-				type: 'boolean',
-				default: true,
-				description: 'Pass false to disable unfurling of media content.',
 			},
 			{
 				displayName: 'Markdown',
@@ -418,17 +376,39 @@ export const messageFields = [
 				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
 			},
 			{
-				displayName: 'Link Names',
-				name: 'link_names',
+				displayName: 'Unfurl Links',
+				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
-				description: 'Find and link channel names and usernames.',
+				description: 'Pass true to enable unfurling of primarily text-based content.',
+			},
+			{
+				displayName: 'Unfurl Media',
+				name: 'unfurl_media',
+				type: 'boolean',
+				default: true,
+				description: 'Pass false to disable unfurling of media content.',
+			},
+			{
+				displayName: 'Send as User',
+				name: 'sendAsUser',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/authentication': [
+							'accessToken',
+						],
+					},
+				},
+				default: '',
+				description: 'The message will be sent from this username (i.e. as if this individual sent the message).',
 			},
 		],
 	},
-/* ----------------------------------------------------------------------- */
-/*                                 message:update                          */
-/* ----------------------------------------------------------------------- */
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:update                          */
+	/* ----------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
 		name: 'channelId',
@@ -445,7 +425,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Channel containing the message to be updated.',
@@ -463,7 +443,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: `New text for the message, using the default formatting rules. It's not required when presenting attachments.`,
@@ -481,7 +461,7 @@ export const messageFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: `Timestamp of the message to be updated.`,
@@ -544,7 +524,7 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post'
+					'post',
 				],
 				resource: [
 					'message',
@@ -1467,7 +1447,7 @@ export const messageFields = [
 					false,
 				],
 				operation: [
-					'update'
+					'update',
 				],
 				resource: [
 					'message',
@@ -1645,10 +1625,10 @@ export const messageFields = [
 								default: true,
 								description: 'If items can be displayed next to each other.',
 							},
-						]
+						],
 					},
 				],
-			}
+			},
 		],
 	},
 ] as INodeProperties[];

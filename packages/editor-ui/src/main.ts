@@ -5,6 +5,8 @@ import Vue from 'vue';
 import 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'vue-prism-editor/dist/VuePrismEditor.css';
+import 'vue-json-pretty/lib/styles.css';
+import Vue2TouchEvents from 'vue2-touch-events';
 
 import * as ElementUI from 'element-ui';
 // @ts-ignore
@@ -71,6 +73,7 @@ import {
 	faSave,
 	faSearchMinus,
 	faSearchPlus,
+	faServer,
 	faSignInAlt,
 	faSlidersH,
 	faSpinner,
@@ -90,6 +93,9 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 import { store } from './store';
+
+Vue.use(Vue2TouchEvents);
+
 Vue.use(ElementUI, { locale });
 
 library.add(faAngleDoubleLeft);
@@ -146,6 +152,7 @@ library.add(faRss);
 library.add(faSave);
 library.add(faSearchMinus);
 library.add(faSearchPlus);
+library.add(faServer);
 library.add(faSignInAlt);
 library.add(faSlidersH);
 library.add(faSpinner);

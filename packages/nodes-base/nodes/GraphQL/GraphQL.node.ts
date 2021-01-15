@@ -187,11 +187,11 @@ export class GraphQL implements INodeType {
 								default: '',
 								description: 'Value to set for the header.',
 							},
-						]
+						],
 					},
 				],
 			},
-		]
+		],
 	};
 
 
@@ -212,13 +212,13 @@ export class GraphQL implements INodeType {
 				.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
 			const headerParameters = (parameter || []).reduce((result, item) => ({
 				...result,
-				[item.name]: item.value
+				[item.name]: item.value,
 			}), {});
 
 			requestOptions = {
 				headers: {
 					'content-type': `application/${requestFormat}`,
-					...headerParameters
+					...headerParameters,
 				},
 				method: requestMethod,
 				uri: endpoint,
@@ -229,7 +229,7 @@ export class GraphQL implements INodeType {
 			const gqlQuery = this.getNodeParameter('query', itemIndex, '') as string;
 			if (requestMethod === 'GET') {
 				requestOptions.qs = {
-					query: gqlQuery
+					query: gqlQuery,
 				};
 			} else {
 				if (requestFormat === 'json') {
@@ -240,9 +240,9 @@ export class GraphQL implements INodeType {
 					};
 					if (typeof requestOptions.body.variables === 'string') {
 						try {
-							requestOptions.body.variables = JSON.parse(requestOptions.body.variables);
-						} catch {
-							requestOptions.body.variables = {};
+							requestOptions.body.variables = JSON.parse(requestOptions.body.variables || '{}');
+						} catch (e) {
+							throw new Error('Using variables failed:\n' + requestOptions.body.variables + '\n\nWith error message:\n' + e);
 						}
 					}
 					if (requestOptions.body.operationName === '') {
@@ -261,7 +261,7 @@ export class GraphQL implements INodeType {
 				returnItems.push({
 					json: {
 						[dataPropertyName]: response,
-					}
+					},
 				});
 			} else {
 				if (typeof response === 'string') {

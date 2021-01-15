@@ -62,11 +62,11 @@ export class RenameKeys implements INodeType {
 								placeholder: 'newKey',
 								description: 'the name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey"',
 							},
-						]
+						],
 					},
 				],
-			}
-		]
+			},
+		],
 	};
 
 
@@ -96,8 +96,8 @@ export class RenameKeys implements INodeType {
 			}
 
 			renameKeys.forEach((renameKey) => {
-				if (renameKey.currentKey === '' || renameKey.newKey === '') {
-					// Ignore all which do not have all the values set
+				if (renameKey.currentKey === '' || renameKey.newKey === '' || renameKey.currentKey === renameKey.newKey) {
+					// Ignore all which do not have all the values set or if the new key is equal to the current key
 					return;
 				}
 				value = get(item.json, renameKey.currentKey as string);

@@ -4,10 +4,10 @@ import {
 } from 'n8n-core';
 
 import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
 
 import {
@@ -52,10 +52,10 @@ export class AffinityTrigger implements INodeType {
 				options: [
 					{
 						name: 'file.created',
-						value: 'file.deleted',
+						value: 'file.created',
 					},
 					{
-						name: 'file.created',
+						name: 'file.deleted',
 						value: 'file.deleted',
 					},
 					{
@@ -136,7 +136,7 @@ export class AffinityTrigger implements INodeType {
 					},
 					{
 						name: 'opportunity.deleted',
-						value: 'organization.deleted',
+						value: 'opportunity.deleted',
 					},
 					{
 						name: 'person.created',

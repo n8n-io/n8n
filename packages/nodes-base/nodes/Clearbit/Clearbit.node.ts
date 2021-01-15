@@ -15,8 +15,8 @@ import {
 	companyOperations,
 } from './CompanyDescription';
 import {
-	personOperations,
 	personFields,
+	personOperations,
 } from './PersonDescription';
 
 export class Clearbit implements INodeType {
@@ -38,7 +38,7 @@ export class Clearbit implements INodeType {
 			{
 				name: 'clearbitApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
@@ -55,7 +55,7 @@ export class Clearbit implements INodeType {
 						name: 'Person',
 						value: 'person',
 						description: `The Person API lets you retrieve social information associated with an email address,<br/>
-						such as a person’s name, location and Twitter handle.`
+						such as a person’s name, location and Twitter handle.`,
 					},
 				],
 				default: 'company',

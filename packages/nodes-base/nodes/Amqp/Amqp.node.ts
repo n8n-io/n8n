@@ -1,7 +1,8 @@
 import { ContainerOptions, Delivery } from 'rhea';
 
-import { IExecuteSingleFunctions } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -41,23 +42,45 @@ export class Amqp implements INodeType {
 				type: 'json',
 				default: '',
 				description: 'Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info.',
-			}
-		]
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Data as Object',
+						name: 'dataAsObject',
+						type: 'boolean',
+						default: false,
+						description: 'Send the data as an object.',
+					},
+					{
+						displayName: 'Send property',
+						name: 'sendOnlyProperty',
+						type: 'string',
+						default: '',
+						description: 'The only property to send. If empty the whole item will be sent.',
+					},
+				],
+			},
+		],
 	};
 
-	async executeSingle(this: IExecuteSingleFunctions): Promise<INodeExecutionData> {
-		const item = this.getInputData();
-
+	async execute(this: IExecuteFunctions): Promise < INodeExecutionData[][] > {
 		const credentials = this.getCredentials('amqp');
 		if (!credentials) {
 			throw new Error('Credentials are mandatory!');
 		}
 
-		const sink = this.getNodeParameter('sink', '') as string;
-		const applicationProperties = this.getNodeParameter('headerParametersJson', {}) as string | object;
+		const sink = this.getNodeParameter('sink', 0, '') as string;
+		const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as string | object;
+		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 		let headerProperties = applicationProperties;
-		if(typeof applicationProperties === 'string' && applicationProperties !== '') {
+		if (typeof applicationProperties === 'string' && applicationProperties !== '') {
 			headerProperties = JSON.parse(applicationProperties);
 		}
 
@@ -69,33 +92,58 @@ export class Amqp implements INodeType {
 
 		const connectOptions: ContainerOptions = {
 			host: credentials.hostname,
+			hostname: credentials.hostname,
 			port: credentials.port,
 			reconnect: true,		// this id the default anyway
-			reconnect_limit: 50,	// try for max 50 times, based on a back-off algorithm
+			reconnect_limit: 50, 	// try for max 50 times, based on a back-off algorithm
 		};
 		if (credentials.username || credentials.password) {
 			container.options.username = credentials.username;
 			container.options.password = credentials.password;
+			connectOptions.username = credentials.username;
+			connectOptions.password = credentials.password;
+		}
+		if (credentials.transportType !== '') {
+			connectOptions.transport = credentials.transportType;
 		}
 
-		const allSent = new Promise(( resolve ) => {
-			container.on('sendable', (context: any) => { // tslint:disable-line:no-any
+		const conn = container.connect(connectOptions);
+		const sender = conn.open_sender(sink);
 
-				const message = {
-					application_properties: headerProperties,
-					body: JSON.stringify(item)
-				};
+		const responseData: IDataObject[] = await new Promise((resolve) => {
+			container.once('sendable', (context: any) => { // tslint:disable-line:no-any
+				const returnData = [];
 
-				const sendResult = context.sender.send(message);
+				const items = this.getInputData();
+				for (let i = 0; i < items.length; i++) {
+					const item = items[i];
 
-				resolve(sendResult);
+					let body: IDataObject | string = item.json;
+					const sendOnlyProperty = options.sendOnlyProperty as string;
+
+					if (sendOnlyProperty) {
+						body = body[sendOnlyProperty] as string;
+					}
+
+					if (options.dataAsObject !== true) {
+						body = JSON.stringify(body);
+					}
+
+					const result = context.sender.send({
+						application_properties: headerProperties,
+						body,
+					});
+
+					returnData.push({ id: result.id });
+				}
+
+				resolve(returnData);
 			});
 		});
 
-		container.connect(connectOptions).open_sender(sink);
+		sender.close();
+		conn.close();
 
-		const sendResult: Delivery = await allSent as Delivery;	// sendResult has a a property that causes circular reference if returned
-
-		return { json: { id: sendResult.id } } as INodeExecutionData;
+		return [this.helpers.returnJsonArray(responseData)];
 	}
 }

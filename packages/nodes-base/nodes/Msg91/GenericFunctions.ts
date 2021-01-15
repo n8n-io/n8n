@@ -33,7 +33,7 @@ export async function msg91ApiRequest(this: IHookFunctions | IExecuteFunctions, 
 		form: body,
 		qs: query,
 		uri: `https://api.msg91.com/api${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	try {

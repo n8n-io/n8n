@@ -6,6 +6,7 @@ import {
 export class ShopifyApi implements ICredentialType {
 	name = 'shopifyApi';
 	displayName = 'Shopify API';
+	documentationUrl = 'shopify';
 	properties = [
 		{
 			displayName: 'API Key',
@@ -27,6 +28,7 @@ export class ShopifyApi implements ICredentialType {
 			required: true,
 			type: 'string' as NodePropertyTypes,
 			default: '',
+			description: 'Only the subdomain without .myshopify.com',
 		},
 		{
 			displayName: 'Shared Secret',

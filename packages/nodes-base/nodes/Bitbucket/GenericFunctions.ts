@@ -21,7 +21,7 @@ export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctio
 		qs,
 		body,
 		uri: uri ||`https://api.bitbucket.org/2.0${resource}`,
-		json: true
+		json: true,
 	};
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body).length === 0) {

@@ -36,7 +36,7 @@ export const caseOperations = [
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: `Returns an overview of case's metadata.`,
+				description: `Returns an overview of case's metadata`,
 			},
 			{
 				name: 'Delete',
@@ -56,16 +56,16 @@ export const caseOperations = [
 
 export const caseFields = [
 
-/* -------------------------------------------------------------------------- */
-/*                                case:create                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                case:create                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Type',
 		name: 'type',
 		type: 'options',
 		required: true,
 		typeOptions: {
-			loadOptionsMethod:  'getCaseTypes',
+			loadOptionsMethod: 'getCaseTypes',
 		},
 		displayOptions: {
 			show: {
@@ -98,18 +98,18 @@ export const caseFields = [
 		},
 		options: [
 			{
-				displayName: 'Account Id',
+				displayName: 'Account ID',
 				name: 'accountId',
 				type: 'string',
 				default: '',
 				description: 'ID of the account associated with this case.',
 			},
 			{
-				displayName: 'Contact Id',
+				displayName: 'Contact ID',
 				name: 'contactId',
 				type: 'string',
 				default: '',
-				description: 'IID of the associated Contact.',
+				description: 'ID of the associated Contact.',
 			},
 			{
 				displayName: 'Description',
@@ -130,7 +130,7 @@ export const caseFields = [
 				name: 'origin',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:  'getCaseOrigins',
+					loadOptionsMethod: 'getCaseOrigins',
 				},
 				default: '',
 				description: 'The source of the case, such as Email, Phone, or Web. Label is Case Origin.',
@@ -146,7 +146,7 @@ export const caseFields = [
 				description: 'The owner of the case.',
 			},
 			{
-				displayName: 'Parent Id',
+				displayName: 'Parent ID',
 				name: 'ParentId',
 				type: 'string',
 				default: '',
@@ -167,7 +167,7 @@ export const caseFields = [
 				name: 'reason',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:  'getCaseReasons',
+					loadOptionsMethod: 'getCaseReasons',
 				},
 				default: '',
 				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
@@ -177,7 +177,7 @@ export const caseFields = [
 				name: 'status',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:  'getCaseStatuses',
+					loadOptionsMethod: 'getCaseStatuses',
 				},
 				default: '',
 				description: 'The status of the case, such as “New,” “Closed,” or “Escalated.” This field directly controls the IsClosed flag',
@@ -219,9 +219,10 @@ export const caseFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 case:update                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 case:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
@@ -235,7 +236,7 @@ export const caseFields = [
 				],
 				operation: [
 					'update',
-				]
+				],
 			},
 		},
 		description: 'Id of case that needs to be fetched',
@@ -262,7 +263,7 @@ export const caseFields = [
 				name: 'type',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:  'getCaseTypes',
+					loadOptionsMethod: 'getCaseTypes',
 				},
 				default: '',
 				description: 'The type of case',
@@ -272,7 +273,7 @@ export const caseFields = [
 				name: 'origin',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:  'getCaseOrigins',
+					loadOptionsMethod: 'getCaseOrigins',
 				},
 				default: '',
 				description: 'The source of the case, such as Email, Phone, or Web. Label is Case Origin.',
@@ -282,7 +283,7 @@ export const caseFields = [
 				name: 'reason',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:  'getCaseReasons',
+					loadOptionsMethod: 'getCaseReasons',
 				},
 				default: '',
 				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training.',
@@ -292,7 +293,7 @@ export const caseFields = [
 				name: 'status',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod:  'getCaseStatuses',
+					loadOptionsMethod: 'getCaseStatuses',
 				},
 				default: '',
 				description: 'The status of the case, such as “New,” “Closed,” or “Escalated.” This field directly controls the IsClosed flag',
@@ -315,7 +316,7 @@ export const caseFields = [
 				description: 'The subject of the case. Limit: 255 characters.',
 			},
 			{
-				displayName: 'Parent Id',
+				displayName: 'Parent ID',
 				name: 'ParentId',
 				type: 'string',
 				default: '',
@@ -332,18 +333,18 @@ export const caseFields = [
 				description: 'The importance or urgency of the case, such as High, Medium, or Low.',
 			},
 			{
-				displayName: 'Account Id',
+				displayName: 'Account ID',
 				name: 'accountId',
 				type: 'string',
 				default: '',
 				description: 'ID of the account associated with this case.',
 			},
 			{
-				displayName: 'Contact Id',
+				displayName: 'Contact ID',
 				name: 'contactId',
 				type: 'string',
 				default: '',
-				description: 'IID of the associated Contact.',
+				description: 'ID of the associated Contact.',
 			},
 			{
 				displayName: 'Description',
@@ -390,9 +391,9 @@ export const caseFields = [
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  case:get                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  case:get                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
@@ -406,14 +407,15 @@ export const caseFields = [
 				],
 				operation: [
 					'get',
-				]
+				],
 			},
 		},
-		description: 'Id of case that needs to be fetched',
+		description: 'ID of case that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  case:delete                               */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  case:delete                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
@@ -427,14 +429,15 @@ export const caseFields = [
 				],
 				operation: [
 					'delete',
-				]
+				],
 			},
 		},
-		description: 'Id of case that needs to be fetched',
+		description: 'ID of case that needs to be fetched.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 case:getAll                                */
-/* -------------------------------------------------------------------------- */
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 case:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -494,18 +497,81 @@ export const caseFields = [
 		},
 		options: [
 			{
+				displayName: 'Conditions',
+				name: 'conditionsUi',
+				placeholder: 'Add Condition',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				description: 'The condition to set.',
+				default: {},
+				options: [
+					{
+						name: 'conditionValues',
+						displayName: 'Condition',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'field',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getCaseFields',
+								},
+								default: '',
+								description: 'For date, number, or boolean, please use expressions.',
+							},
+							{
+								displayName: 'Operation',
+								name: 'operation',
+								type: 'options',
+								options: [
+									{
+										name: '=',
+										value: 'equal',
+									},
+									{
+										name: '>',
+										value: '>',
+									},
+									{
+										name: '<',
+										value: '<',
+									},
+									{
+										name: '>=',
+										value: '>=',
+									},
+									{
+										name: '<=',
+										value: '<=',
+									},
+								],
+								default: 'equal',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
 				description: 'Fields to include separated by ,',
 			},
-		]
+		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                               case:addComment                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               case:addComment                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Case ID',
 		name: 'caseId',
@@ -519,10 +585,10 @@ export const caseFields = [
 				],
 				operation: [
 					'addComment',
-				]
+				],
 			},
 		},
-		description: 'Id of case that needs to be fetched',
+		description: 'ID of case that needs to be fetched.',
 	},
 	{
 		displayName: 'Options',
@@ -558,6 +624,6 @@ export const caseFields = [
 				default: false,
 				description: 'Indicates whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false). ',
 			},
-		]
+		],
 	},
 ] as INodeProperties[];

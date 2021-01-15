@@ -250,7 +250,7 @@ export default mixins(
 			 * @returns
 			 * @memberof Workflow
 			 */
-			getNodeOutputData (runData: IRunData, nodeName: string, filterText: string, itemIndex = 0, runIndex = 0, inputName = 'main', outputIndex = 0): IVariableSelectorOption[] | null {
+			getNodeOutputData (runData: IRunData, nodeName: string, filterText: string, itemIndex = 0, runIndex = 0, inputName = 'main', outputIndex = 0, useShort = false): IVariableSelectorOption[] | null {
 				if (!runData.hasOwnProperty(nodeName)) {
 					// No data found for node
 					return null;
@@ -291,9 +291,12 @@ export default mixins(
 
 				// Get json data
 				if (outputData.hasOwnProperty('json')) {
+
+					const jsonPropertyPrefix = useShort === true ? '$json' : `$node["${nodeName}"].json`;
+
 					const jsonDataOptions: IVariableSelectorOption[] = [];
 					for (const propertyName of Object.keys(outputData.json)) {
-						jsonDataOptions.push.apply(jsonDataOptions, this.jsonDataToFilterOption(outputData.json[propertyName], `$node["${nodeName}"].json`, propertyName, filterText));
+						jsonDataOptions.push.apply(jsonDataOptions, this.jsonDataToFilterOption(outputData.json[propertyName], jsonPropertyPrefix, propertyName, filterText));
 					}
 
 					if (jsonDataOptions.length) {
@@ -308,6 +311,9 @@ export default mixins(
 
 				// Get binary data
 				if (outputData.hasOwnProperty('binary')) {
+
+					const binaryPropertyPrefix = useShort === true ? '$binary' : `$node["${nodeName}"].binary`;
+
 					const binaryData = [];
 					let binaryPropertyData = [];
 
@@ -326,7 +332,7 @@ export default mixins(
 							binaryPropertyData.push(
 								{
 									name: propertyName,
-									key: `$node["${nodeName}"].binary.${dataPropertyName}.${propertyName}`,
+									key: `${binaryPropertyPrefix}.${dataPropertyName}.${propertyName}`,
 									value: outputData.binary![dataPropertyName][propertyName],
 								},
 							);
@@ -336,7 +342,7 @@ export default mixins(
 							binaryData.push(
 								{
 									name: dataPropertyName,
-									key: `$node["${nodeName}"].binary.${dataPropertyName}`,
+									key: `${binaryPropertyPrefix}.${dataPropertyName}`,
 									options: this.sortOptions(binaryPropertyData),
 									allowParentSelect: true,
 								},
@@ -347,7 +353,7 @@ export default mixins(
 						returnData.push(
 							{
 								name: 'Binary',
-								key: `$node["${nodeName}"].binary`,
+								key: binaryPropertyPrefix,
 								options: this.sortOptions(binaryData),
 								allowParentSelect: true,
 							},
@@ -474,7 +480,7 @@ export default mixins(
 					// (example "IF" node. If node is connected to "true" or to "false" output)
 					const outputIndex = this.workflow.getNodeConnectionOutputIndex(activeNode.name, parentNode[0], 'main');
 
-					tempOutputData = this.getNodeOutputData(runData, parentNode[0], filterText, itemIndex, 0, 'main', outputIndex) as IVariableSelectorOption[];
+					tempOutputData = this.getNodeOutputData(runData, parentNode[0], filterText, itemIndex, 0, 'main', outputIndex, true) as IVariableSelectorOption[];
 
 					if (tempOutputData) {
 						if (JSON.stringify(tempOutputData).length < 102400) {

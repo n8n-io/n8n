@@ -4,9 +4,8 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
-	INodeTypeDescription,
 	INodeType,
+	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
@@ -14,7 +13,7 @@ import {
 	apiRequest,
 } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+// import { createHmac } from 'crypto';
 
 
 export class TrelloTrigger implements INodeType {
@@ -69,12 +68,6 @@ export class TrelloTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				if (this.getWebhookName() === 'setup') {
-					// Is setup-webhook which only gets used once when
-					// the webhook gets created so nothing to do.
-					return true;
-				}
-
 				const credentials = this.getCredentials('trelloApi');
 
 				if (credentials === undefined) {
@@ -102,12 +95,6 @@ export class TrelloTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				if (this.getWebhookName() === 'setup') {
-					// Is setup-webhook which only gets used once when
-					// the webhook gets created so nothing to do.
-					return true;
-				}
-
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
 				const credentials = this.getCredentials('trelloApi');
@@ -138,12 +125,6 @@ export class TrelloTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				if (this.getWebhookName() === 'setup') {
-					// Is setup-webhook which only gets used once when
-					// the webhook gets created so nothing to do.
-					return true;
-				}
-
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {

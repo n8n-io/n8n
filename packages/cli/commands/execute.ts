@@ -10,6 +10,7 @@ import {
 import {
 	ActiveExecutions,
 	CredentialsOverwrites,
+	CredentialTypes,
 	Db,
 	ExternalHooks,
 	GenericHelpers,
@@ -116,6 +117,8 @@ export class Execute extends Command {
 		// Add the found types to an instance other parts of the application can use
 		const nodeTypes = NodeTypes();
 		await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
+		const credentialTypes = CredentialTypes();
+		await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;

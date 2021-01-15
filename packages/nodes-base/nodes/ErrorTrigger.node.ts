@@ -21,7 +21,7 @@ export class ErrorTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
-		properties: []
+		properties: [],
 	};
 
 
@@ -49,15 +49,15 @@ export class ErrorTrigger implements INodeType {
 					retryOf: '34',
 					error: {
 						message: 'Example Error Message',
-						stack: 'Stacktrace'
+						stack: 'Stacktrace',
 					},
 					lastNodeExecuted: 'Node With Error',
-					mode: 'manual'
+					mode: 'manual',
 				},
 				workflow: {
 					id: '1',
-					name: 'Example Workflow'
-				}
+					name: 'Example Workflow',
+				},
 			};
 		}
 
