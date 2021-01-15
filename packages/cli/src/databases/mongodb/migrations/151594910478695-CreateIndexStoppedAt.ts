@@ -5,7 +5,7 @@ import {
 
 import * as config from '../../../../config';
 
-export default class CreateIndexStoppedAt1594910478695 implements MigrationInterface {
+export class CreateIndexStoppedAt1594910478695 implements MigrationInterface {
 	name = 'CreateIndexStoppedAt1594910478695';
 
 	async up(queryRunner: MongoQueryRunner): Promise<void> {
