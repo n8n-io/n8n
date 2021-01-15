@@ -45,6 +45,12 @@ export class RedditOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
+			default: 'grant_type=authorization_code',
+		},
+		{
+			displayName: 'Auth URI Query Parameters',
+			name: 'authQueryParameters',
+			type: 'hidden' as NodePropertyTypes,
 			default: 'duration=permanent',
 		},
 		{
