@@ -5,6 +5,21 @@ This list shows all the versions which include breaking changes and how to upgra
 ## 0.102.0
 
 ### What changed?
+- The `As User` property  and the `User Name` field got combined and renamed to `Send as User`. It also got moved under “Add Options”.
+- The `Ephemeral` property got removed. To send an ephemeral message, you have to select the "Post (Ephemeral)" operation.
+
+### When is action necessary?
+If you are using the following fields or properties in the Slack node:
+- As User
+- Ephemeral
+- User Name
+
+### How to upgrade:
+Open the Slack node and set them again to the appropriate values.
+
+----------------------------
+
+### What changed?
 If you have a question in Typeform that uses a previously answered question as part of its text, the question text would look like this in the Typeform Trigger node:
 
 `You have chosen {{field:23234242}} as your answer. Is this correct?`
