@@ -377,7 +377,7 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 
-				this.externalHooks().callExternalHook('workflow.onWorkflowOpened', { workflow_id: workflowId, workflow_name: data.name });
+				this.externalHooks().callExternalHook('workflow.onWorkflowOpened', { workflowId, workflowName: data.name });
 
 				return data;
 			},
@@ -1973,7 +1973,7 @@ export default mixins(
 				this.$store.commit('setMaxExecutionTimeout', settings.maxExecutionTimeout);
 				this.$store.commit('setVersionCli', settings.versionCli);
 				this.$store.commit('setOauthCallbackUrls', settings.oauthCallbackUrls);
-				this.$store.commit('setN8nMetadata', settings.n8nMetadata);
+				this.$store.commit('setN8nMetadata', settings.n8nMetadata || {});
 			},
 			async loadNodeTypes (): Promise<void> {
 				const nodeTypes = await this.restApi().getNodeTypes();

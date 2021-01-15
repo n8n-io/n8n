@@ -123,15 +123,17 @@ export default mixins(
 					}
 
 					const currentWorkflowId = this.$store.getters.workflowId;
+					let activationEventName = 'workflow.onWorkflowActivated';
 					if (currentWorkflowId === this.workflowId) {
 						// If the status of the current workflow got changed
 						// commit it specifically
 						this.$store.commit('setActive', newActiveState);
+						activationEventName = 'workflow.onCurrentWorkflowActivated';
 					}
 
 					if (newActiveState === true) {
 						this.$store.commit('setWorkflowActive', this.workflowId);
-						this.externalHooks().callExternalHook('workflow.onWorkflowActivated', { workflowId: this.workflowId, workflowName: this.$store.getters.workflowName });
+						this.externalHooks().callExternalHook(activationEventName, { workflowId: this.workflowId });
 					} else {
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}

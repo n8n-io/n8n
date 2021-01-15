@@ -27,6 +27,7 @@ import {
 	XYPositon,
 } from '../../Interface';
 
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -36,6 +37,7 @@ import { isEqual } from 'lodash';
 import mixins from 'vue-typed-mixins';
 
 export const workflowHelpers = mixins(
+	externalHooks,
 	nodeHelpers,
 	restApi,
 	showMessage,
@@ -441,6 +443,7 @@ export const workflowHelpers = mixins(
 						message: `The workflow "${workflowData.name}" got saved!`,
 						type: 'success',
 					});
+					this.externalHooks().callExternalHook('workflow.onWorkflowSaved', { workflowData });
 				} catch (e) {
 					this.$store.commit('removeActiveAction', 'workflowSaving');
 
