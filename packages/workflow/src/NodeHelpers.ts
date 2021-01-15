@@ -883,7 +883,7 @@ export function getNodeWebhookPath(workflowId: string, node: INode, path: string
  * @returns {string}
  */
 export function getNodeWebhookUrl(baseUrl: string, workflowId: string, node: INode, path: string, isFullPath?: boolean): string {
-	if (path.includes('/:') && node.webhookId) {
+	if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
 		// setting this to false to prefix the webhookId
 		isFullPath = false;
 	}
