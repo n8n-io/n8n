@@ -567,6 +567,7 @@ export interface IWebhookData {
 	webhookDescription: IWebhookDescription;
 	workflowId: string;
 	workflowExecuteAdditionalData: IWorkflowExecuteAdditionalData;
+	webhookId?: string;
 }
 
 export interface IWebhookDescription {

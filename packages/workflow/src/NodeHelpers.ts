@@ -779,6 +779,11 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			continue;
 		}
 
+		let webhookId: string | undefined;
+		if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+			webhookId = node.webhookId
+		}
+
 		returnData.push({
 			httpMethod: httpMethod.toString() as WebhookHttpMethod,
 			node: node.name,
@@ -786,6 +791,7 @@ export function getNodeWebhooks(workflow: Workflow, node: INode, additionalData:
 			webhookDescription,
 			workflowId,
 			workflowExecuteAdditionalData: additionalData,
+			webhookId,
 		});
 	}
 

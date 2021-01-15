@@ -35,7 +35,7 @@ export class ActiveWebhooks {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
 
-		const webhookKey = this.getWebhookKey(webhookData.httpMethod, webhookData.path);
+		const webhookKey = this.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
 
 		//check that there is not a webhook already registed with that path/method
 		if (this.webhookUrls[webhookKey] !== undefined) {
@@ -72,11 +72,12 @@ export class ActiveWebhooks {
 	 *
 	 * @param {WebhookHttpMethod} httpMethod
 	 * @param {string} path
+	 * @param {(string | undefined)} webhookId
 	 * @returns {(IWebhookData | undefined)}
 	 * @memberof ActiveWebhooks
 	 */
-	get(httpMethod: WebhookHttpMethod, path: string): IWebhookData | undefined {
-		const webhookKey = this.getWebhookKey(httpMethod, path);
+	get(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): IWebhookData | undefined {
+		const webhookKey = this.getWebhookKey(httpMethod, path, webhookId);
 		if (this.webhookUrls[webhookKey] === undefined) {
 			return undefined;
 		}
@@ -116,10 +117,14 @@ export class ActiveWebhooks {
 	 *
 	 * @param {WebhookHttpMethod} httpMethod
 	 * @param {string} path
+	 * @param {(string | undefined)} webhookId
 	 * @returns {string}
 	 * @memberof ActiveWebhooks
 	 */
-	getWebhookKey(httpMethod: WebhookHttpMethod, path: string): string {
+	getWebhookKey(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): string {
+		if (webhookId) {
+			return `${httpMethod}|${webhookId}`;
+		}
 		return `${httpMethod}|${path}`;
 	}
 
@@ -147,7 +152,7 @@ export class ActiveWebhooks {
 		for (const webhookData of webhooks) {
 			await workflow.runWebhookMethod('delete', webhookData, NodeExecuteFunctions, mode, this.testWebhooks);
 
-			delete this.webhookUrls[this.getWebhookKey(webhookData.httpMethod, webhookData.path)];
+			delete this.webhookUrls[this.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId)];
 		}
 
 		// Remove also the workflow-webhook entry

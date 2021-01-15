@@ -120,26 +120,26 @@ export class ActiveWorkflowRunner {
 		let webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
 		let webhookId: string | undefined;
 
+		// check if path is dynamic
 		if (webhook === undefined) {
 			// check if a dynamic webhook path exists
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
 			webhook = await Db.collections.Webhook?.findOne({ webhookId, method: httpMethod }) as IWebhookDb;
-			if (webhook) {
-				path = webhook.webhookPath;
-				// extracting params from path
-				const webhookPathParams: IDataObject = {};
-				webhook.webhookPath.split('/').forEach((ele, index) => {
-					if (ele.startsWith(':')) {
-						webhookPathParams[ele.slice(1)] = pathElements[index];
-					}
-				});
-				// write params to req.params
-				Object.assign(req.params, webhookPathParams);
-			} else {
+			if (webhook === undefined) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
+			path = webhook.webhookPath;
+			// extracting params from path
+			const webhookPathParams: IDataObject = {};
+			webhook.webhookPath.split('/').forEach((ele, index) => {
+				if (ele.startsWith(':')) {
+					webhookPathParams[ele.slice(1)] = pathElements[index];
+				}
+			});
+			// write params to req.params
+			Object.assign(req.params, webhookPathParams);
 		}
 
 		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId);

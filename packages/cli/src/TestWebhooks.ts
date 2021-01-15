@@ -18,6 +18,7 @@ import {
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
+	IDataObject,
 } from 'n8n-workflow';
 
 
@@ -54,14 +55,30 @@ export class TestWebhooks {
 	 * @memberof TestWebhooks
 	 */
 	async callTestWebhook(httpMethod: WebhookHttpMethod, path: string, request: express.Request, response: express.Response): Promise<IResponseCallbackData> {
-		const webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
+		let webhookData: IWebhookData | undefined = this.activeWebhooks!.get(httpMethod, path);
 
+		// check if path is dynamic
 		if (webhookData === undefined) {
-			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			const pathElements = path.split('/');
+			const webhookId = pathElements.shift();
+			webhookData = this.activeWebhooks!.get(httpMethod, path, webhookId);
+			if (webhookData === undefined) {
+				// The requested webhook is not registered
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			}
+			path = webhookData.path;
+			// extracting params from path
+			const webhookPathParams: IDataObject = {};
+			path.split('/').forEach((ele, index) => {
+				if (ele.startsWith(':')) {
+					webhookPathParams[ele.slice(1)] = pathElements[index];
+				}
+			});
+			// write params to req.params
+			Object.assign(request.params, webhookPathParams);
 		}
 
-		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
+		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
 
 		// TODO: Clean that duplication up one day and improve code generally
 		if (this.testWebhookData[webhookKey] === undefined) {
@@ -158,7 +175,7 @@ export class TestWebhooks {
 		let key: string;
 		const activatedKey: string[] = [];
 		for (const webhookData of webhooks) {
-			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path);
+			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
 
 			activatedKey.push(key);
 
