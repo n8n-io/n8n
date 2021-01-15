@@ -112,6 +112,10 @@
 							<font-awesome-icon icon="spinner" spin />
 							<execution-time :start-time="scope.row.startedAt"/>
 						</span>
+						<!-- stoppedAt will be null if process crashed -->
+						<span v-else-if="scope.row.stoppedAt === null">
+							--
+						</span>
 						<span v-else>
 							{{ displayTimer(new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(), true) }}
 						</span>
