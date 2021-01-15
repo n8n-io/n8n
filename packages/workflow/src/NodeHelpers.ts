@@ -893,6 +893,9 @@ export function getNodeWebhookUrl(baseUrl: string, workflowId: string, node: INo
 		// setting this to false to prefix the webhookId
 		isFullPath = false;
 	}
+	if (path.startsWith('/')) {
+		path = path.slice(1);
+	}
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
