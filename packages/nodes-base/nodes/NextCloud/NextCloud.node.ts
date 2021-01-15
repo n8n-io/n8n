@@ -526,7 +526,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: 'john',
-				description: 'The user to add.',
+				description: 'The ID of the user to add.',
 			},
 			{
 				displayName: 'Email',
@@ -701,7 +701,7 @@ export class NextCloud implements INodeType {
 					// ----------------------------------
 					requestMethod = 'POST';
 
-					endpoint = `/ocs/v1.php/cloud/users`;
+					endpoint = 'ocs/v1.php/cloud/users';
 
 					headers['OCS-APIRequest'] = true;
 					headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -737,6 +737,7 @@ export class NextCloud implements INodeType {
 
 			try {
 				responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding);
+				console.log(responseData);
 			} catch (error) {
 				if (this.continueOnFail() === true) {
 					returnData.push({ error });
