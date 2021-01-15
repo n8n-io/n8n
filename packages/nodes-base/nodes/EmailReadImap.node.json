@@ -3,8 +3,8 @@
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": [
-		"Utility",
-		"Communication"
+		"Communication",
+		"Core Nodes"
 	],
 	"resources": {
 		"credentialDocumentation": [
