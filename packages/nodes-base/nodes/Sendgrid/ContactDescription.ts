@@ -16,9 +16,9 @@ export const contactOperations = [
 		},
 		options: [
 			{
-				name: 'Upsert',
+				name: 'Create/Update',
 				value: 'upsert',
-				description: 'Add or update a contact',
+				description: 'Create/update a contact',
 			},
 			{
 				name: 'Delete',
@@ -43,58 +43,57 @@ export const contactOperations = [
 
 export const contactFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 contacts: getALL                               */
+	/*                                 contact:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-						show: {
-								resource: [
-										'contact',
-								],
-								operation: [
-										'getAll',
-								],
-						},
-				},
-				default: false,
-				description: 'If set to true, all the results will be returned',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
 		},
-		{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-						show: {
-								resource: [
-										'contact',
-								],
-								operation: [
-										'getAll',
-								],
-								returnAll: [
-										false,
-								],
-						},
-				},
-				typeOptions: {
-						minValue: 1,
-						maxValue: 1000,
-				},
-				default: 100,
-				description: 'How many results to return.',
+		default: false,
+		description: 'If set to true, all the results will be returned',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
 		},
-
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 contacts:create                               */
+	/*                                 contact:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
-		required:true,
+		required: true,
 		displayOptions: {
 			show: {
 				operation: [
@@ -105,8 +104,8 @@ export const contactFields = [
 				],
 			},
 		},
-		default:'',
-		description:'Primary email for the contact',
+		default: '',
+		description: 'Primary email for the contact',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -261,54 +260,53 @@ export const contactFields = [
 			},
 		],
 	},
-
 	/* -------------------------------------------------------------------------- */
-	/*                                 contacts:delete                               */
+	/*                                 contact:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-				displayName: 'Delete All',
-				name: 'deleteAll',
-				type: 'boolean',
-				displayOptions: {
-						show: {
-								resource: [
-										'contact',
-								],
-								operation: [
-										'delete',
-								],
-						},
-				},
-				default: false,
-				description: 'If set to true, all contacts will be deleted',
+		displayName: 'Contact IDs',
+		name: 'ids',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'delete',
+				],
+				deleteAll: [
+					false,
+				],
+			},
 		},
-		{
-				displayName: 'IDs',
-				name: 'ids',
-				type: 'string',
-				displayOptions: {
-						show: {
-								resource: [
-										'contact',
-								],
-								operation: [
-										'delete',
-								],
-								deleteAll: [
-										false,
-								],
-						},
-				},
-				description: 'ID of the contact. Multiple can be added separated by comma.',
+		description: 'ID of the contact. Multiple can be added separated by comma.',
+	},
+	{
+		displayName: 'Delete All',
+		name: 'deleteAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'delete',
+				],
+			},
 		},
+		default: false,
+		description: 'If set to true, all contacts will be deleted',
+	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 contacts:get                                  */
+	/*                                 contact:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Contact ID',
 		name: 'contactId',
 		type: 'string',
-		required:true,
+		required: true,
 		displayOptions: {
 			show: {
 				operation: [
@@ -319,7 +317,7 @@ export const contactFields = [
 				],
 			},
 		},
-		default:'',
-		description:'ID of the contact',
+		default: '',
+		description: 'ID of the contact',
 	},
 ] as INodeProperties[];

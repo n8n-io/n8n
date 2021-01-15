@@ -35,11 +35,6 @@ export const listOperations = [
 				value: 'getAll',
 				description: 'Get all lists',
 			},
-			// {
-			// 	name: 'Remove Contact',
-			// 	value: 'removeContact',
-			// 	description: 'Remove contacts from a list',
-						// },
 			{
 				name: 'Update',
 				value: 'update',
@@ -53,76 +48,91 @@ export const listOperations = [
 
 export const listFields = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 list:getAll                               */
+	/*                                 list:getAll                                */
 	/* -------------------------------------------------------------------------- */
 	{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				displayOptions: {
-						show: {
-								resource: [
-										'list',
-								],
-								operation: [
-										'getAll',
-								],
-						},
-				},
-				default: false,
-				description: 'If set to true, all the results will be returned',
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'getAll',
+				],
+			},
 		},
-		{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				displayOptions: {
-						show: {
-								resource: [
-										'list',
-								],
-								operation: [
-										'getAll',
-								],
-								returnAll: [
-										false,
-								],
-						},
-				},
-				typeOptions: {
-						minValue: 1,
-						maxValue: 1000,
-				},
-				default: 100,
-				description: 'How many results to return.',
+		default: false,
+		description: 'If set to true, all the results will be returned',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: [
+					'list',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					false,
+				],
+			},
 		},
-
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		default: 100,
+		description: 'How many results to return.',
+	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 list:create                               */
+	/*                                 list:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
 		type: 'string',
-		required:true,
+		required: true,
 		displayOptions: {
 			show: {
 				operation: [
 					'create',
-					'update',
 				],
 				resource: [
 					'list',
 				],
 			},
 		},
-		default:'',
-		description:'Name of your list',
+		default: '',
+		description: 'Name of your list',
 	},
-
 	/* -------------------------------------------------------------------------- */
-	/*                                 list:delete                               */
+	/*                                 list:delete                                */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'List ID',
+		name: 'listId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'delete',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		default: '',
+		description: 'ID of your list',
+	},
 	{
 		displayName: 'Delete Contacts',
 		name: 'deleteContacts',
@@ -141,27 +151,25 @@ export const listFields = [
 		description: 'Indicates that all contacts on the list are also to be deleted',
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 list:get                                  */
+	/*                                 list:get                                   */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'List ID',
 		name: 'listId',
 		type: 'string',
-		required:true,
+		required: true,
 		displayOptions: {
 			show: {
 				operation: [
 					'get',
-					'delete',
-					'update',
 				],
 				resource: [
 					'list',
 				],
 			},
 		},
-		default:'',
-		description:'ID of your list',
+		default: '',
+		description: 'ID of your list',
 	},
 	{
 		displayName: 'Contact Sample',
@@ -179,5 +187,44 @@ export const listFields = [
 			},
 		},
 		description: 'Setting this parameter to the true will cause the contact_sample to be returned',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 list:update                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'List ID',
+		name: 'listId',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		default: '',
+		description: 'ID of your list',
+	},
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'update',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		default: '',
+		description: 'Name of your list',
 	},
 ] as INodeProperties[];

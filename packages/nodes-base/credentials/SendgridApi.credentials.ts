@@ -3,10 +3,9 @@ import {
 	NodePropertyTypes,
 } from 'n8n-workflow';
 
-
-export class SendgridApi implements ICredentialType {
-	name = 'sendgridApi';
-	displayName = 'SendGrid Api';
+export class SendGridApi implements ICredentialType {
+	name = 'sendGridApi';
+	displayName = 'SendGrid API';
 	documentationUrl = 'sendgrid';
 	properties = [
 		{
