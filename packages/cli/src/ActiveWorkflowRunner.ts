@@ -20,6 +20,7 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	IExecuteData,
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
@@ -117,23 +118,28 @@ export class ActiveWorkflowRunner {
 		}
 
 		let webhook = await Db.collections.Webhook?.findOne({ webhookPath: path, method: httpMethod }) as IWebhookDb;
-		let webhookId: string;
+		let webhookId: string | undefined;
 
 		if (webhook === undefined) {
+			// check if a dynamic webhook path exists
 			const pathElements = path.split('/');
-			webhookId = pathElements[0];
+			webhookId = pathElements.shift();
 			webhook = await Db.collections.Webhook?.findOne({ webhookId, method: httpMethod }) as IWebhookDb;
-			// write params to req.params
-		}
-
-		// check if something exist
-		if (webhook === undefined) {
-			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
-		}
-
-		if (webhookId) {
-			path = webhook.webhookPath;
+			if (webhook) {
+				path = webhook.webhookPath;
+				// extracting params from path
+				const webhookPathParams: IDataObject = {};
+				webhook.webhookPath.split('/').forEach((ele, index) => {
+					if (ele.startsWith(':')) {
+						webhookPathParams[ele.slice(1)] = pathElements[index];
+					}
+				});
+				// write params to req.params
+				Object.assign(req.params, webhookPathParams);
+			} else {
+				// The requested webhook is not registered
+				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+			}
 		}
 
 		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId);
@@ -265,8 +271,12 @@ export class ActiveWorkflowRunner {
 				method: webhookData.httpMethod,
 			} as IWebhookDb;
 
-			if (webhook.webhookPath.includes('/:') && node.webhookId) {
+			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
 				webhook.webhookId = node.webhookId;
+			}
+
+			if (webhook.webhookPath.charAt(0) === '/') {
+				webhook.webhookPath = webhook.webhookPath.slice(1);
 			}
 
 			try {
