@@ -172,11 +172,6 @@ export const restApi = Vue.extend({
 					return self.restApi().makeRestApiRequest('DELETE', `/test-webhook/${workflowId}`);
 				},
 
-				// @ts-ignore
-				getDomainVerification: async (): Promise<string> => {
-					return self.restApi().makeRestApiRequest('GET', '/domain-verification');
-				},
-
 				// Execute a workflow
 				runWorkflow: async (startRunData: IStartRunData): Promise<IExecutionPushResponse> => {
 					return self.restApi().makeRestApiRequest('POST', `/workflows/run`, startRunData);
