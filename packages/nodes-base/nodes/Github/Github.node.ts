@@ -12,19 +12,25 @@ import {
 import {
 	getFileSha,
 	githubApiRequest,
+	githubApiRequestAllItems,
 } from './GenericFunctions';
+
+import {
+	snakeCase,
+} from 'change-case';
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
 		name: 'github',
-		icon: 'file:github.png',
+		icon: 'file:github.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Retrieve data from GitHub API.',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume GitHub API.',
 		defaults: {
 			name: 'GitHub',
-			color: '#665533',
+			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -92,8 +98,8 @@ export class Github implements INodeType {
 						value: 'release',
 					},
 					{
-						name: 'Pull Request',
-						value: 'pullRequest',
+						name: 'Review',
+						value: 'review',
 					},
 					{
 						name: 'User',
@@ -286,27 +292,35 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						resource: [
-							'pullRequest',
+							'review',
 						],
 					},
 				},
 				options: [
 					{
-						name: 'Get reviews',
-						value: 'getReviews',
-						description: 'Gets all reviews for a pull request',
-					},
-					{
 						name: 'Create',
-						value: 'createReview',
+						value: 'create',
 						description: 'Creates a new review',
 					},
+					{
+						name: 'Get',
+						value: 'get',
+						description: 'Get a review for a pull request',
+					},
+					{
+						name: 'Get All',
+						value: 'getAll',
+						description: 'Get all reviews for a pull request',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update a review',
+					},
 				],
-				default: 'createReview',
+				default: 'create',
 				description: 'The operation to perform.',
 			},
-
-
 
 			// ----------------------------------
 			//         shared
@@ -1147,13 +1161,13 @@ export class Github implements INodeType {
 
 
 			// ----------------------------------
-			//         pullRequest
+			//         rerview
 			// ----------------------------------
 			// ----------------------------------
-			//         pullRequest:getReviews
+			//         review:getAll
 			// ----------------------------------
 			{
-				displayName: 'Pull Request Number',
+				displayName: 'PR Number',
 				name: 'pullRequestNumber',
 				type: 'number',
 				default: 0,
@@ -1161,20 +1175,41 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'getReviews',
+							'get',
+							'update',
 						],
 						resource: [
-							'pullRequest',
+							'review',
 						],
 					},
 				},
 				description: 'The number of the pull request.',
 			},
+			{
+				displayName: 'Review ID',
+				name: 'reviewId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'get',
+							'update',
+						],
+						resource: [
+							'review',
+						],
+					},
+				},
+				description: 'ID of the review',
+			},
+
 			// ----------------------------------
-			//         pullRequest:createReview
+			//         review:getAll
 			// ----------------------------------
 			{
-				displayName: 'Pull Request Number',
+				displayName: 'PR Number',
 				name: 'pullRequestNumber',
 				type: 'number',
 				default: 0,
@@ -1182,10 +1217,72 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createReview',
+							'getAll',
 						],
 						resource: [
-							'pullRequest',
+							'review',
+						],
+					},
+				},
+				description: 'The number of the pull request.',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: [
+							'review',
+						],
+						operation: [
+							'getAll',
+						],
+					},
+				},
+				default: false,
+				description: 'If all results should be returned or only up to a given limit.',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: [
+							'review',
+						],
+						operation: [
+							'getAll',
+						],
+						returnAll: [
+							false,
+						],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'How many results to return.',
+			},
+			// ----------------------------------
+			//         review:create
+			// ----------------------------------
+			{
+				displayName: 'PR Number',
+				name: 'pullRequestNumber',
+				type: 'number',
+				default: 0,
+				required: true,
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'review',
 						],
 					},
 				},
@@ -1198,69 +1295,111 @@ export class Github implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
-							'createReview',
+							'create',
 						],
 						resource: [
-							'pullRequest',
+							'review',
 						],
 					},
 				},
 				options: [
 					{
 						name: 'Approve',
-						value: 'APPROVE',
+						value: 'approve',
 						description: 'Approve the pull request',
 					},
 					{
 						name: 'Request Change',
-						value: 'REQUEST_CHANGES',
+						value: 'requestChanges',
 						description: 'Request code changes',
 					},
 					{
 						name: 'Comment',
-						value: 'COMMENT',
+						value: 'comment',
 						description: 'Add a comment without approval or change requests',
 					},
-				],
-				default: 'APPROVE',
-				description: 'The review action you want to perform.',
-			},
-			{
-				displayName: 'Commit ID',
-				name: 'commitId',
-				type: 'string',
-				displayOptions: {
-					show: {
-						operation: [
-							'createReview',
-						],
-						resource: [
-							'pullRequest',
-						],
+					{
+						name: 'Pending',
+						value: 'pending',
+						description: 'You will need to submit the pull request review when you are ready.',
 					},
-				},
-				default: '',
-				description: 'The number of the issue on which to create the comment on.',
+				],
+				default: 'approve',
+				description: 'The review action you want to perform.',
 			},
 			{
 				displayName: 'Body',
 				name: 'body',
 				type: 'string',
 				typeOptions: {
-					rows: 5,
+					alwaysOpenEditWindow: true,
 				},
 				displayOptions: {
 					show: {
 						operation: [
-							'createReview',
+							'create',
 						],
 						resource: [
-							'pullRequest',
+							'review',
+						],
+						event: [
+							'requestChanges',
+							'comment',
 						],
 					},
 				},
 				default: '',
 				description: 'The body of the review (required for events Request Changes or Comment).',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				placeholder: 'Add Field',
+				description: 'Additional fields.',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: [
+							'create',
+						],
+						resource: [
+							'review',
+						],
+					},
+				},
+				options: [
+					{
+						displayName: 'Commit ID',
+						name: 'commitId',
+						type: 'string',
+						default: '',
+						description: 'The number of the issue on which to create the comment on.',
+					},
+				],
+			},
+			// ----------------------------------
+			//         review:update
+			// ----------------------------------
+			{
+				displayName: 'Body',
+				name: 'body',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				displayOptions: {
+					show: {
+						operation: [
+							'update',
+						],
+						resource: [
+							'review',
+						],
+					},
+				},
+				default: '',
+				description: 'The body of the review',
 			},
 		],
 	};
@@ -1269,6 +1408,10 @@ export class Github implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
+
+		let returnAll = false;
+
+		let responseData;
 
 		// Operations which overwrite the returned data
 		const overwriteDataOperations = [
@@ -1284,8 +1427,9 @@ export class Github implements INodeType {
 			'repository:get',
 			'repository:getLicense',
 			'repository:getProfile',
-			'pullRequest:getReviews',
-			'pullRequest:createReview',
+			'review:create',
+			'review:get',
+			'review:update',
 		];
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
@@ -1294,6 +1438,7 @@ export class Github implements INodeType {
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
+			'review:getAll',
 		];
 
 
@@ -1536,32 +1681,62 @@ export class Github implements INodeType {
 
 					endpoint = `/repos/${owner}/${repository}/issues`;
 				}
-			} else if (resource === 'pullRequest') {
-				if (operation === 'getReviews') {
+			} else if (resource === 'review') {
+				if (operation === 'get') {
 					// ----------------------------------
-					//         getReviews
+					//         get
 					// ----------------------------------
 					requestMethod = 'GET';
 
+					const reviewId = this.getNodeParameter('reviewId', i) as string;
+
 					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
 
-					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
-				} else if (operation === 'createReview') {
+					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
+
+				} else if (operation === 'getAll') {
 					// ----------------------------------
-					//         createReview
+					//         getAll
+					// ----------------------------------
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+
+					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+
+					if (returnAll === false) {
+						qs.per_page = this.getNodeParameter('limit', 0) as number;
+					}
+
+					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
+				} else if (operation === 'create') {
+					// ----------------------------------
+					//         create
 					// ----------------------------------
 					requestMethod = 'POST';
 
 					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-					const commitId = this.getNodeParameter('commitId', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(body, additionalFields);
 
-					if (commitId !== '') {
-						body.commit_id = commitId;
+					body.event = snakeCase(this.getNodeParameter('event', i) as string).toUpperCase();
+					if (body.event === 'REQUEST_CHANGES' || body.event === 'COMMENT') {
+						body.body = this.getNodeParameter('body', i) as string;
 					}
-					body.event = this.getNodeParameter('event', i) as string;
-					body.body = this.getNodeParameter('body', i) as string;
 
 					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
+				} else if (operation === 'update') {
+					// ----------------------------------
+					//         update
+					// ----------------------------------
+					requestMethod = 'PUT';
+
+					const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
+					const reviewId = this.getNodeParameter('reviewId', i) as string;
+
+					body.body = this.getNodeParameter('body', i) as string;
+				
+					endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 				}
 			} else if (resource === 'user') {
 				if (operation === 'getRepositories') {
@@ -1577,7 +1752,11 @@ export class Github implements INodeType {
 				throw new Error(`The resource "${resource}" is not known!`);
 			}
 
-			const responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
+			if (returnAll === true) {
+				responseData = await githubApiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
+			} else {
+				responseData = await githubApiRequest.call(this, requestMethod, endpoint, body, qs);
+			}
 
 			if (fullOperation === 'file:get') {
 				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
@@ -1620,6 +1799,5 @@ export class Github implements INodeType {
 			// For all other ones simply return the unchanged items
 			return this.prepareOutputData(items);
 		}
-
 	}
 }
