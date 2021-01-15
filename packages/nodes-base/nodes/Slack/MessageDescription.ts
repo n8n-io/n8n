@@ -1,4 +1,4 @@
-import { 
+import {
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -21,6 +21,11 @@ export const messageOperations = [
 				description: 'Post a message into a channel',
 			},
 			{
+				name: 'Post (Ephemeral)',
+				value: 'postEphemeral',
+				description: 'Post an ephemeral message to a user in channel',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Updates a message.',
@@ -34,27 +39,8 @@ export const messageOperations = [
 export const messageFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                message:post                                */
+	/*                          message:post/postEphemeral                        */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Ephemeral',
-		name: 'ephemeral',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: `Ephemeral messages behave differently from regular messages on Slack.<br/>
-		They disappear when Slack reloads and won’t show up again when Slack is opened in a <br/>
-		new browser window or on a different device`,
-	},
 	{
 		displayName: 'Channel',
 		name: 'channel',
@@ -65,6 +51,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -83,13 +70,10 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
-				],
-				ephemeral: [
-					true,
 				],
 			},
 		},
@@ -108,6 +92,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -115,46 +100,6 @@ export const messageFields = [
 			},
 		},
 		description: 'The text to send.',
-	},
-	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Post the message as authenticated user instead of bot. Works only with user token.',
-	},
-	{
-		displayName: 'User Name',
-		name: 'username',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				as_user: [
-					false,
-				],
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Set the bot\'s user name. This field will be ignored if you are using a user token.',
 	},
 	{
 		displayName: 'JSON parameters',
@@ -165,6 +110,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -184,6 +130,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -375,6 +322,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -389,19 +337,6 @@ export const messageFields = [
 				displayName: 'Icon Emoji',
 				name: 'icon_emoji',
 				type: 'string',
-				displayOptions: {
-					show: {
-						'/as_user': [
-							false,
-						],
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				default: '',
 				description: 'Emoji to use as the icon for this message. Overrides icon_url.',
 			},
@@ -409,19 +344,6 @@ export const messageFields = [
 				displayName: 'Icon URL',
 				name: 'icon_url',
 				type: 'string',
-				displayOptions: {
-					show: {
-						'/as_user': [
-							false,
-						],
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				default: '',
 				description: 'URL to an image to use as the icon for this message.',
 			},
@@ -444,19 +366,6 @@ export const messageFields = [
 				name: 'mrkdwn',
 				type: 'boolean',
 				default: true,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-						'/ephemeral': [
-							false,
-						],
-					},
-				},
 				description: 'Use Slack Markdown parsing.',
 			},
 			{
@@ -464,19 +373,6 @@ export const messageFields = [
 				name: 'reply_broadcast',
 				type: 'boolean',
 				default: false,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-						'/ephemeral': [
-							false,
-						],
-					},
-				},
 				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
 			},
 			{
@@ -484,19 +380,6 @@ export const messageFields = [
 				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-						'/ephemeral': [
-							false,
-						],
-					},
-				},
 				description: 'Pass true to enable unfurling of primarily text-based content.',
 			},
 			{
@@ -504,20 +387,21 @@ export const messageFields = [
 				name: 'unfurl_media',
 				type: 'boolean',
 				default: true,
+				description: 'Pass false to disable unfurling of media content.',
+			},
+			{
+				displayName: 'Send as User',
+				name: 'sendAsUser',
+				type: 'string',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-						'/ephemeral': [
-							false,
+						'/authentication': [
+							'accessToken',
 						],
 					},
 				},
-				description: 'Pass false to disable unfurling of media content.',
+				default: '',
+				description: 'The message will be sent from this username (i.e. as if this individual sent the message).',
 			},
 		],
 	},
@@ -581,26 +465,6 @@ export const messageFields = [
 			},
 		},
 		description: `Timestamp of the message to be updated.`,
-	},
-	{
-		displayName: 'As User',
-		name: 'as_user',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				authentication: [
-					'accessToken',
-				],
-				operation: [
-					'update',
-				],
-				resource: [
-					'message',
-				],
-			},
-		},
-		description: 'Pass true to update the message as the authed user. Works only with user token.',
 	},
 	{
 		displayName: 'Update Fields',
