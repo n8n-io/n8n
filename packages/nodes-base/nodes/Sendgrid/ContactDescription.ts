@@ -86,6 +86,32 @@ export const contactFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'contact',
+				],
+				operation: [
+					'getAll',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				description: 'The query field accepts valid  <a href="https://sendgrid.com/docs/for-developers/sending-email/segmentation-query-language/" target="_blank">SGQL</a> for searching for a contact.',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -299,6 +325,7 @@ export const contactFields = [
 		default: false,
 		description: 'If set to true, all contacts will be deleted',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:get                                */
 	/* -------------------------------------------------------------------------- */

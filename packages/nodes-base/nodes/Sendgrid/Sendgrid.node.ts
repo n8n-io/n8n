@@ -121,14 +121,14 @@ export class SendGrid implements INodeType {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					let endpoint = '/marketing/contacts';
+					let method = 'GET';
 					const body: IDataObject = {};
 					if (filters.query && filters.query !== '') {
 						endpoint = '/marketing/contacts/search';
-						const body: IDataObject = {
-							query: filters.query,
-						}
+						method = 'POST';
+						Object.assign(body, { query: filters.query });
 					}
-					responseData = await sendgridApiRequestAllItems.call(this, endpoint, 'GET', 'result', body, qs);
+					responseData = await sendgridApiRequestAllItems.call(this, endpoint, method, 'result', body, qs);
 					if (returnAll === false) {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
