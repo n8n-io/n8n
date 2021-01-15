@@ -21,6 +21,11 @@ export const messageOperations = [
 				description: 'Post a message into a channel',
 			},
 			{
+				name: 'Post (Ephemeral)',
+				value: 'postEphemeral',
+				description: 'Post an ephemeral message to a user in channel',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Updates a message.',
@@ -34,7 +39,7 @@ export const messageOperations = [
 export const messageFields = [
 
 	/* -------------------------------------------------------------------------- */
-	/*                                message:post                                */
+	/*                          message:post/postEphemeral                        */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Channel',
@@ -46,6 +51,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -64,7 +70,7 @@ export const messageFields = [
 		displayOptions: {
 			show: {
 				operation: [
-					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -86,6 +92,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -103,6 +110,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -122,6 +130,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -313,6 +322,7 @@ export const messageFields = [
 			show: {
 				operation: [
 					'post',
+					'postEphemeral',
 				],
 				resource: [
 					'message',
@@ -327,16 +337,6 @@ export const messageFields = [
 				displayName: 'Icon Emoji',
 				name: 'icon_emoji',
 				type: 'string',
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				default: '',
 				description: 'Emoji to use as the icon for this message. Overrides icon_url.',
 			},
@@ -344,16 +344,6 @@ export const messageFields = [
 				displayName: 'Icon URL',
 				name: 'icon_url',
 				type: 'string',
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				default: '',
 				description: 'URL to an image to use as the icon for this message.',
 			},
@@ -376,16 +366,6 @@ export const messageFields = [
 				name: 'mrkdwn',
 				type: 'boolean',
 				default: true,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				description: 'Use Slack Markdown parsing.',
 			},
 			{
@@ -393,16 +373,6 @@ export const messageFields = [
 				name: 'reply_broadcast',
 				type: 'boolean',
 				default: false,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
 			},
 			{
@@ -410,16 +380,6 @@ export const messageFields = [
 				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				description: 'Pass true to enable unfurling of primarily text-based content.',
 			},
 			{
@@ -427,52 +387,20 @@ export const messageFields = [
 				name: 'unfurl_media',
 				type: 'boolean',
 				default: true,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
 				description: 'Pass false to disable unfurling of media content.',
 			},
 			{
-				displayName: 'Ephemeral',
-				name: 'ephemeral',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
-						],
-					},
-				},
-				description: `Ephemeral messages behave differently from regular messages on Slack.<br/>
-				They disappear when Slack reloads and won’t show up again when Slack is opened in a <br/>
-				new browser window or on a different device`,
-			},
-			{
-				displayName: 'Send as user',
+				displayName: 'Send as User',
 				name: 'sendAsUser',
 				type: 'string',
-				default: '',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'post',
-						],
-						'/resource': [
-							'message',
+						'/authentication': [
+							'accessToken',
 						],
 					},
 				},
+				default: '',
 				description: 'The message will be sent from this username (i.e. as if this individual sent the message).',
 			},
 		],

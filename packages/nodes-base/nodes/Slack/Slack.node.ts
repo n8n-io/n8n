@@ -514,9 +514,9 @@ export class Slack implements INodeType {
 			}
 			if (resource === 'message') {
 				//https://api.slack.com/methods/chat.postMessage
-				if (operation === 'post') {
+				if (['post', 'postEphemeral'].includes(operation)) {
 					const channel = this.getNodeParameter('channel', i) as string;
-					const { ephemeral, sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
+					const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 					const text = this.getNodeParameter('text', i) as string;
 					const body: IDataObject = {
 						channel,
@@ -525,7 +525,7 @@ export class Slack implements INodeType {
 
 					let action = 'postMessage';
 
-					if (ephemeral) {
+					if (operation === 'postEphemeral') {
 						body.user = this.getNodeParameter('user', i) as string;
 						action = 'postEphemeral';
 					}
