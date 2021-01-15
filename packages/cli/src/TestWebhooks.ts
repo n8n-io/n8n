@@ -98,7 +98,7 @@ export class TestWebhooks {
 		return new Promise(async (resolve, reject) => {
 			try {
 				const executionMode = 'manual';
-				const executionId = await WebhookHelpers.executeWebhook(workflow, webhookData, this.testWebhookData[webhookKey].workflowData, workflowStartNode, executionMode, this.testWebhookData[webhookKey].sessionId, request, response, (error: Error | null, data: IResponseCallbackData) => {
+				const executionId = await WebhookHelpers.executeWebhook(workflow, webhookData!, this.testWebhookData[webhookKey].workflowData, workflowStartNode, executionMode, this.testWebhookData[webhookKey].sessionId, request, response, (error: Error | null, data: IResponseCallbackData) => {
 					if (error !== null) {
 						return reject(error);
 					}
@@ -115,7 +115,7 @@ export class TestWebhooks {
 				// Inform editor-ui that webhook got received
 				if (this.testWebhookData[webhookKey].sessionId !== undefined) {
 					const pushInstance = Push.getInstance();
-					pushInstance.send('testWebhookReceived', { workflowId: webhookData.workflowId, executionId }, this.testWebhookData[webhookKey].sessionId!);
+					pushInstance.send('testWebhookReceived', { workflowId: webhookData!.workflowId, executionId }, this.testWebhookData[webhookKey].sessionId!);
 				}
 
 			} catch (error) {
