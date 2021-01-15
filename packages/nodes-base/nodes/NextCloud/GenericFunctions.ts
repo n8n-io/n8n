@@ -45,7 +45,7 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 			};
 
 			options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
-
+			console.log(options);
 			return await this.helpers.request(options);
 		} else {
 			const credentials = this.getCredentials('nextCloudOAuth2Api');
@@ -58,6 +58,7 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 			return await this.helpers.requestOAuth2!.call(this, 'nextCloudOAuth2Api', options);
 		}
 	} catch (error) {
+		console.log(error);
 		throw new Error(`NextCloud Error. Status Code: ${error.statusCode}. Message: ${error.message}`);
 	}
 }
