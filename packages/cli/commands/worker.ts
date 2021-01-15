@@ -28,8 +28,11 @@ import {
 	GenericHelpers,
 	IBullJobData,
 	IBullJobResponse,
+	IExecutionFlattedDb,
+	IExecutionResponse,
 	LoadNodesAndCredentials,
 	NodeTypes,
+	ResponseHelper,
 	WorkflowCredentials,
 	WorkflowExecuteAdditionalData,
 } from "../src";
@@ -105,60 +108,48 @@ export class Worker extends Command {
 		process.exit(Worker.processExistCode);
 	}
 
-	getWorkflowHooks(jobData: IBullJobData, executionId: string): WorkflowHooks {
-		const hookFunctions: IWorkflowExecuteHooks = {};
-
-		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();
-		for (const key of Object.keys(preExecuteFunctions)) {
-			if (hookFunctions[key] === undefined) {
-				hookFunctions[key] = [];
-			}
-			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-		}
-
-		return new WorkflowHooks(hookFunctions, jobData.executionMode, executionId, jobData.workflowData, { retryOf: jobData.retryOf as string });
-	}
-
-
 	async runJob(job: Bull.Job, nodeTypes: INodeTypes): Promise<IBullJobResponse> {
 		const jobData = job.data as IBullJobData;
+		const executionDb = await Db.collections.Execution!.findOne(jobData.executionId) as IExecutionFlattedDb;
+		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
+		
 
-		console.log(`Start job: ${job.id} (Workflow ID: ${jobData.workflowData.id})`);
+		console.log(`Start job: ${job.id} (Workflow ID: ${currentExecutionDb.workflowData.id})`);
 		// TODO: Can in the future query most of that data from the DB to lighten redis load
 
-		let staticData = jobData.workflowData!.staticData;
+		let staticData = currentExecutionDb.workflowData!.staticData;
 		if (jobData.loadStaticData === true) {
 			const findOptions = {
 				select: ['id', 'staticData'],
 			} as FindOneOptions;
-			const workflowData = await Db.collections!.Workflow!.findOne(jobData.workflowData.id, findOptions);
+			const workflowData = await Db.collections!.Workflow!.findOne(currentExecutionDb.workflowData.id, findOptions);
 			if (workflowData === undefined) {
-				throw new Error(`The workflow with the ID "${jobData.workflowData.id}" could not be found`);
+				throw new Error(`The workflow with the ID "${currentExecutionDb.workflowData.id}" could not be found`);
 			}
 			staticData = workflowData.staticData;
 		}
 
-		const workflow = new Workflow({ id: jobData.workflowData.id as string, name: jobData.workflowData.name, nodes: jobData.workflowData!.nodes, connections: jobData.workflowData!.connections, active: jobData.workflowData!.active, nodeTypes, staticData, settings: jobData.workflowData!.settings });
+		const workflow = new Workflow({ id: currentExecutionDb.workflowData.id as string, name: currentExecutionDb.workflowData.name, nodes: currentExecutionDb.workflowData!.nodes, connections: currentExecutionDb.workflowData!.connections, active: currentExecutionDb.workflowData!.active, nodeTypes, staticData, settings: currentExecutionDb.workflowData!.settings });
 
-		const credentials = await WorkflowCredentials(jobData.workflowData.nodes);
+		const credentials = await WorkflowCredentials(currentExecutionDb.workflowData.nodes);
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(credentials);
-		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksIntegrated(jobData.executionMode, job.data.executionId, jobData.workflowData, { retryOf: jobData.retryOf as string });
+		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksIntegrated(currentExecutionDb.mode, job.data.executionId, currentExecutionDb.workflowData, { retryOf: currentExecutionDb.retryOf as string });
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
-		if (jobData.executionData !== undefined) {
-			workflowExecute = new WorkflowExecute(additionalData, jobData.executionMode, jobData.executionData);
+		if (currentExecutionDb.data !== undefined) {
+			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode, currentExecutionDb.data);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else if (jobData.runData === undefined || jobData.startNodes === undefined || jobData.startNodes.length === 0 || jobData.destinationNode === undefined) {
 			// Execute all nodes
 
 			// Can execute without webhook so go on
-			workflowExecute = new WorkflowExecute(additionalData, jobData.executionMode);
+			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode);
 			workflowRun = workflowExecute.run(workflow, undefined, jobData.destinationNode);
 		} else {
 			// Execute only the nodes between start and destination nodes
-			workflowExecute = new WorkflowExecute(additionalData, jobData.executionMode);
+			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode);
 			workflowRun = workflowExecute.runPartialWorkflow(workflow, jobData.runData, jobData.startNodes, jobData.destinationNode);
 		}
 
@@ -170,7 +161,7 @@ export class Worker extends Command {
 		delete Worker.runningJobs[job.id];
 
 		return {
-			runData,
+			success: true,
 		};
 	}
 
@@ -223,6 +214,10 @@ export class Worker extends Command {
 				const prefix = config.get('queue.bull.prefix') as string;
 				const redisOptions = config.get('queue.bull.redis') as IDataObject;
 				const redisConnectionTimeoutLimit = config.get('queue.bull.redis.timeoutThreshold');
+				// Disabling ready check is necessary as it allows worker to 
+				// quickly reconnect to Redis if Redis crashes or is unreachable
+				// for some time. With it enabled, worker might take minutes to realize
+				// redis is back up and resume working.
 				redisOptions.enableReadyCheck = false;
 				Worker.jobQueue = new Bull('jobs', { prefix, redis: redisOptions });
 				Worker.jobQueue.process(flags.concurrency, (job) => this.runJob(job, nodeTypes));

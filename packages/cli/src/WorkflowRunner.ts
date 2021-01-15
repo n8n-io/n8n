@@ -2,17 +2,21 @@ import {
 	ActiveExecutions,
 	CredentialsOverwrites,
 	CredentialTypes,
+	Db,
 	ExternalHooks,
 	IBullJobData,
 	IBullJobResponse,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
+	IExecutionFlattedDb,
+	IExecutionResponse,
 	IProcessMessageDataHook,
 	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 	NodeTypes,
 	Push,
+	ResponseHelper,
 	WorkflowExecuteAdditionalData,
 	WorkflowHelpers,
 } from './';
@@ -221,13 +225,9 @@ export class WorkflowRunner {
 		const jobData: IBullJobData = {
 			destinationNode: data.destinationNode,
 			executionId,
-			executionMode: data.executionMode,
-			executionData: data.executionData,
 			loadStaticData: !!loadStaticData,
-			retryOf: data.retryOf,
 			runData: data.runData,
 			startNodes: data.startNodes,
-			workflowData: data.workflowData,
 		};
 
 		let priority = 100;
@@ -281,12 +281,23 @@ export class WorkflowRunner {
 			});
 
 			const jobData: IBullJobResponse = await job.finished();
-			this.activeExecutions.remove(executionId, jobData.runData);
+			const executionDb = await Db.collections.Execution!.findOne(executionId) as IExecutionFlattedDb;
+			const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb) as IExecutionResponse;
+			const runData = {
+				data: fullExecutionData.data,
+				finished: fullExecutionData.finished,
+				mode: fullExecutionData.mode,
+				startedAt: fullExecutionData.startedAt,
+				stoppedAt: fullExecutionData.stoppedAt,
+			} as IRun;
+
+
+			this.activeExecutions.remove(executionId, runData);
 			// Normally also static data should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
-			hooks.executeHookFunctions('workflowExecuteAfter', [jobData.runData]);
+			hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
 
-			resolve(jobData.runData);
+			resolve(runData);
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
