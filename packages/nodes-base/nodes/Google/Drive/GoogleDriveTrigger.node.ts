@@ -81,6 +81,86 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Resolve data',
+				name: 'resolveData',
+				type: 'boolean',
+				default: false,
+				description: 'Return information on the file that changed',
+				displayOptions: {
+					show: {
+						resource: [
+							'changes',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Filter by file type',
+				name: 'filterByFileType',
+				type: 'boolean',
+				default: false,
+				description: 'Filter resolved data by file type',
+				displayOptions: {
+					show: {
+						resource: [
+							'changes',
+						],
+						resolveData: [
+							true,
+						],
+					},
+				},
+			},
+			{
+				displayName: 'File type',
+				name: 'fileType',
+				type: 'options',
+				default: 'application/vnd.google-apps.folder',
+				options: [
+					{
+						name: 'Directory',
+						value: 'application/vnd.google-apps.folder',
+					},
+					{
+						name: 'Google Docs file',
+						value: 'application/vnd.google-apps.document',
+					},
+					{
+						name: 'Google Forms file',
+						value: 'application/vnd.google-apps.form',
+					},
+					{
+						name: 'Google Sheets file',
+						value: 'application/vnd.google-apps.spreadsheet',
+					},
+					{
+						name: 'Google Slides file',
+						value: 'application/vnd.google-apps.presentation',
+					},
+					{
+						name: 'PDF file',
+						value: 'application/pdf',
+					},
+					{
+						name: 'ZIP file',
+						value: 'application/zip',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'changes',
+						],
+						resolveData: [
+							true,
+						],
+						filterByFileType: [
+							true,
+						],
+					},
+				},
+			},
 		],
 	};
 
@@ -105,25 +185,40 @@ export class GoogleDriveTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const headerData = this.getHeaderData() as IDataObject;
-		console.log('WEBHOOK CALL RECEIVED\nCONTENTS:');
-		console.log(headerData);
+		console.log("------------------------------------------");
+		console.log('WEBHOOK CALL RECEIVED');
 
-		// if the webhook call is a sync message, do not start the workflow
-		// if (headerData['x-goog-resource-state'] === 'sync') {
-		// 	return {
-		// 		webhookResponse: 'OK',
-		// 	};
-		// }
+		// ignore sync message
+		if (headerData['x-goog-resource-state'] === 'sync') {
+			return {
+				webhookResponse: 'OK',
+			};
+		}
 
-		const returnData: IDataObject[] = [
-			{
-				headers: headerData,
-			},
-		];
+		const resource = this.getNodeParameter('resource', 0);
+		const resolveData = this.getNodeParameter('resolveData', 0);
+
+		if (resource === 'changes' && resolveData) {
+			const { changes } = await googleApiRequest.call(this, 'GET', '', {}, {}, headerData['x-goog-resource-uri'] as string);
+			console.log(changes);
+
+			const filterByFileType = this.getNodeParameter('filterByFileType', 0);
+			if (filterByFileType) {
+				const fileType = this.getNodeParameter('fileType', 0);
+				// ignore based on file type
+				if (changes[0].file.mimeType !== fileType) {
+					return {
+						webhookResponse: 'OK',
+					};
+				}
+			}
+		}
 
 		return {
 			workflowData: [
-				this.helpers.returnJsonArray(returnData),
+				this.helpers.returnJsonArray({
+					headers: headerData,
+				}),
 			],
 		};
 	}

@@ -8,6 +8,7 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	ITriggerFunctions,
+	IWebhookFunctions,
 } from 'n8n-core';
 
 import {
@@ -18,7 +19,7 @@ import * as moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
 import * as uuid from 'uuid/v4';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | ITriggerFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | ITriggerFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
 
 	let options: OptionsWithUri = {
