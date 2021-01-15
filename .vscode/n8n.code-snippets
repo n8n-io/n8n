@@ -1,0 +1,48 @@
+{
+    "Add a field with string datatype": {
+    "prefix": "component-string",
+    "body": [
+      "{",
+      "    displayName: 'Field Name',",
+      "    name: 'fieldName',",
+      "    type: 'string',",
+      "    default: '',",
+      "    required: true,",
+      "    displayOptions: {",
+      "        show: {",
+      "            resource: [",
+      "                'resource',",
+      "            ],",
+      "            operation: [",
+      "                'operation',",
+      "            ],",
+      "        },",
+      "    },",
+      "},"
+    ],
+    "description": "Add a UI component with the string datatype"
+  },
+  "Add a field with boolean datatype": {
+    "prefix": "component-boolean",
+    "body": [
+      "{",
+      "    displayName: 'Field Name',",
+      "    name: 'fieldName',",
+      "    type: 'boolean',",
+      "    displayOptions: {",
+      "        show: {",
+      "            resource: [",
+      "                'resource',",
+      "            ],",
+      "            operation: [",
+      "                'operation',",
+      "            ],",
+      "        },",
+      "    },",
+      "    default: false,",
+      "    description: '',",
+      "},"
+    ],
+    "description": "Add a UI component with the boolean datatype"
+  }
+}
