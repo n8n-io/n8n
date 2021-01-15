@@ -5,6 +5,7 @@ import {
 
 import {
 	IDataObject,
+	IOAuth2Options,
 } from 'n8n-workflow';
 
 import {
@@ -28,9 +29,12 @@ export async function redditApiRequest(
 	qs?: IDataObject,
 ): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
+		headers: {
+			'user-agent': 'n8n',
+		},
 		method,
 		qs,
-		uri: `https://www.reddit.com/api/v1/${endpoint}`,
+		uri: `https://oauth.reddit.com/api/v1/${endpoint}`,
 		json: true,
 	};
 
@@ -38,13 +42,17 @@ export async function redditApiRequest(
 		delete options.qs;
 	}
 
-	console.log(options);
+	const oAuth2Options: IOAuth2Options = {
+		tokenType: 'Bearer',
+	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options, oAuth2Options);
 	} catch (error) {
-
-		// ...
+		if (error.message) {
+			const errorObject = JSON.parse(error.message.match(/{.*}/)[0]);
+			throw new Error(`Reddit error response [${errorObject.error}]: ${errorObject.message}`);
+		}
 		throw error;
 	}
 }
