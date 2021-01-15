@@ -275,7 +275,7 @@ export class ActiveWorkflowRunner {
 				webhook.webhookId = node.webhookId;
 			}
 
-			if (webhook.webhookPath.charAt(0) === '/') {
+			if (webhook.webhookPath.startsWith('/')) {
 				webhook.webhookPath = webhook.webhookPath.slice(1);
 			}
 
@@ -302,7 +302,6 @@ export class ActiveWorkflowRunner {
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'MongoError' || error.name === 'QueryFailedError') {
-					console.log(error);
 					errorMessage = error.parameters.length === 5
 					? `Node [${webhook.node}] can't be saved, please duplicate [${webhook.node}] and delete the currently existing one.`
 					: `The webhook path [${webhook.webhookPath}] and method [${webhook.method}] already exist.`;
