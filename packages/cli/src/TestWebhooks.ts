@@ -13,12 +13,12 @@ import {
 } from 'n8n-core';
 
 import {
+	IDataObject,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	WebhookHttpMethod,
 	Workflow,
 	WorkflowExecuteMode,
-	IDataObject,
 } from 'n8n-workflow';
 
 
