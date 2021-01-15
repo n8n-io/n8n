@@ -161,6 +161,63 @@ export class GoogleDriveTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Filter by event type',
+				name: 'filterByEventType',
+				type: 'boolean',
+				default: false,
+				description: 'Filter webhook calls by event type',
+				displayOptions: {
+					show: {
+						resource: [
+							'files',
+						],
+					},
+				},
+			},
+			{
+				displayName: 'Event type',
+				name: 'eventType',
+				type: 'options',
+				default: 'update',
+				options: [
+					{
+						name: 'Add or share',
+						value: 'add',
+						description: 'File added or shared',
+					},
+					{
+						name: 'Delete or unshare',
+						value: 'remove',
+						description: 'File deleted or unshared',
+					},
+					{
+						name: 'Trash',
+						value: 'trash',
+						description: 'File moved to trash',
+					},
+					{
+						name: 'Trash',
+						value: 'untrash',
+						description: 'File restored from trash',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'File properties updated',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: [
+							'files',
+						],
+						filterByEventType: [
+							true,
+						],
+					},
+				},
+			},
 		],
 	};
 
@@ -205,12 +262,28 @@ export class GoogleDriveTrigger implements INodeType {
 			const filterByFileType = this.getNodeParameter('filterByFileType', 0);
 			if (filterByFileType) {
 				const fileType = this.getNodeParameter('fileType', 0);
-				// ignore based on file type
 				if (changes[0].file.mimeType !== fileType) {
 					return {
 						webhookResponse: 'OK',
 					};
+				} else {
+					return {
+						workflowData: [
+							this.helpers.returnJsonArray(changes),
+						],
+					};
 				}
+			}
+		}
+
+		const filterByEventType = this.getNodeParameter('filterByEventType', 0);
+
+		if (resource === 'files' && filterByEventType) {
+			const eventType = this.getNodeParameter('eventType', 0);
+			if (headerData["x-goog-resource-state"] !== eventType) {
+				return {
+					webhookResponse: 'OK',
+				};
 			}
 		}
 
