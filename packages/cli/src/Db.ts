@@ -32,10 +32,10 @@ export let collections: IDatabaseCollections = {
 	Webhook: null,
 };
 
-import postgresMigrations from './databases/postgresdb/migrations';
-import mongodbMigrations from './databases/mongodb/migrations';
-import mysqlMigrations from './databases/mysqldb/migrations';
-import sqliteMigrations from './databases/sqlite/migrations';
+import { postgresMigrations } from './databases/postgresdb/migrations';
+import { mongodbMigrations } from './databases/mongodb/migrations';
+import { mysqlMigrations } from './databases/mysqldb/migrations';
+import { sqliteMigrations } from './databases/sqlite/migrations';
 
 import * as path from 'path';
 

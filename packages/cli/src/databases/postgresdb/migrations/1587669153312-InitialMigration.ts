@@ -3,7 +3,7 @@ import {
 
 import * as config from '../../../../config';
 
-export default class InitialMigration1587669153312 implements MigrationInterface {
+export class InitialMigration1587669153312 implements MigrationInterface {
 	name = 'InitialMigration1587669153312';
 
 	async up(queryRunner: QueryRunner): Promise<void> {

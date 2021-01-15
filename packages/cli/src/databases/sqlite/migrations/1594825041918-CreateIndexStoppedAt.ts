@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 import * as config from '../../../../config';
 
-export default class CreateIndexStoppedAt1594825041918 implements MigrationInterface {
+export class CreateIndexStoppedAt1594825041918 implements MigrationInterface {
 	name = 'CreateIndexStoppedAt1594825041918';
 
 	async up(queryRunner: QueryRunner): Promise<void> {

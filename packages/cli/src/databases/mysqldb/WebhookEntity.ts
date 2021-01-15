@@ -1,8 +1,8 @@
 import {
 	Column,
 	Entity,
-	PrimaryColumn,
 	Index,
+	PrimaryColumn,
 } from 'typeorm';
 
 import {

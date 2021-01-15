@@ -8,7 +8,7 @@ import {
 	MongoQueryRunner,
 } from 'typeorm/driver/mongodb/MongoQueryRunner';
 
-export default class WebhookModel1592679094242 implements MigrationInterface {
+export class WebhookModel1592679094242 implements MigrationInterface {
 	name = 'WebhookModel1592679094242';
 
 	async up(queryRunner: MongoQueryRunner): Promise<void> {
