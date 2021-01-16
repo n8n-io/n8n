@@ -26,6 +26,7 @@ export async function redditApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
+	body?: IDataObject,
 	qs?: IDataObject,
 ): Promise<any> { // tslint:disable-line:no-any
 	const options: OptionsWithUri = {
@@ -37,6 +38,10 @@ export async function redditApiRequest(
 		uri: `https://oauth.reddit.com/api/v1/${endpoint}`,
 		json: true,
 	};
+
+	if (options.body === undefined) {
+		delete options.body;
+	}
 
 	if (options.qs === undefined) {
 		delete options.qs;
