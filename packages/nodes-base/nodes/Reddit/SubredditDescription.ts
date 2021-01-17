@@ -30,6 +30,9 @@ export const subredditOperations = [
 ] as INodeProperties[];
 
 export const subredditFields = [
+	// ----------------------------------
+	//         get: subreddit
+	// ----------------------------------
 	{
 		displayName: 'Content',
 		name: 'content',
@@ -146,6 +149,68 @@ export const subredditFields = [
 					'hot',
 					'new',
 					'rising',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//         search: subreddit
+	// ----------------------------------
+	{
+		displayName: 'Keyword',
+		name: 'keyword',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The keyword for the subreddit name search',
+		displayOptions: {
+			show: {
+				resource: [
+					'subreddit',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results',
+		displayOptions: {
+			show: {
+				resource: [
+					'subreddit',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 5,
+		description: 'The number of results to return',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'subreddit',
+				],
+				operation: [
+					'search',
 				],
 				returnAll: [
 					false,

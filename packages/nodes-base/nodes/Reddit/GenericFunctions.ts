@@ -10,6 +10,7 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
+import { queryString } from '../TheHive/QueryFunctions';
 
 
 /**
@@ -101,7 +102,9 @@ export async function handleListing(
 		return await redditApiRequestAllItems.call(this, 'GET', endpoint, {}, {}, true);
 	}
 
-	const qs: IDataObject = { limit: this.getNodeParameter('limit', i) };
+	const qs: IDataObject = {
+		limit: this.getNodeParameter('limit', i),
+	};
 	responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, true);
 	responseData = responseData.splice(0, qs.limit);
 

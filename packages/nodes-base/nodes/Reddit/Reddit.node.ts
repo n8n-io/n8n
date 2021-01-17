@@ -210,6 +210,15 @@ export class Reddit implements INodeType {
 
 					}
 
+				} else if (operation === 'search') {
+
+					const endpoint = `api/search_reddit_names.json`;
+					const qs: IDataObject = {
+						query: this.getNodeParameter('keyword', i),
+					};
+
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {}, true);
+
 				}
 			}
 
