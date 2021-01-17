@@ -117,7 +117,7 @@ export class Reddit implements INodeType {
 						trophies: 'me/trophies',
 					};
 
-					responseData = await redditApiRequest.call(this, 'GET', endpoints[details]);
+					responseData = await redditApiRequest.call(this, 'GET', endpoints[details], {}, {}, false);
 
 					if (details === 'identity') {
 						responseData = responseData.features;
@@ -145,7 +145,7 @@ export class Reddit implements INodeType {
 						body.resubmit = true;
 					}
 
-					responseData = await redditApiRequest.call(this, 'POST', 'submit', body);
+					responseData = await redditApiRequest.call(this, 'POST', 'submit', {}, body, false);
 
 				}
 
@@ -162,9 +162,23 @@ export class Reddit implements INodeType {
 
 					} else if (type === 'best') {
 
-						const endpoint = 'best.json';
-						responseData = await redditApiRequest.call(this, 'GET', endpoint, {}, {}, true);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
+						if (returnAll) {
+
+							const endpoint = 'best.json';
+							responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, {}, {}, true);
+
+						} else {
+
+							const qs: IDataObject = {
+								limit: this.getNodeParameter('limit', i),
+							};
+							const endpoint = 'best.json';
+							responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, true);
+							responseData = responseData.splice(0, qs.limit);
+
+						}
 					}
 
 				}

@@ -5,7 +5,6 @@ import {
 
 import {
 	IDataObject,
-	IOAuth2Options,
 } from 'n8n-workflow';
 
 import {
@@ -14,21 +13,15 @@ import {
 
 
 /**
- * Make an API request to Reddit
- *
- * @param { IHookFunctions } this
- * @param { string } method
- * @param { string } endpoint
- * @param { IDataObject } qs
- * @returns { Promise<any> }
+ * Make an API request to Reddit.
  */
 export async function redditApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body?: IDataObject,
-	qs?: IDataObject,
-	noAuthRequired?: boolean,
+	qs: IDataObject,
+	body: IDataObject,
+	noAuth: boolean,
 ): Promise<any> { // tslint:disable-line:no-any
 
 	const options: OptionsWithUri = {
@@ -36,20 +29,22 @@ export async function redditApiRequest(
 			'user-agent': 'n8n',
 		},
 		method,
-		uri: noAuthRequired ? `https://www.reddit.com/${endpoint}` : `https://oauth.reddit.com/api/v1/${endpoint}`,
+		uri: noAuth ? `https://www.reddit.com/${endpoint}` : `https://oauth.reddit.com/api/v1/${endpoint}`,
+		qs,
+		body,
 		json: true,
 	};
 
-	if (body && Object.keys(body).length) {
-		options.body = body;
+	if (!Object.keys(body).length) {
+		delete options.body;
 	}
 
-	if (qs && Object.keys(qs).length) {
-		options.qs = qs;
+	if (!Object.keys(qs).length) {
+		delete options.qs;
 	}
 
 	try {
-		return noAuthRequired
+		return noAuth
 			? await this.helpers.request.call(this, options)
 			: await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
 	} catch (error) {
@@ -59,26 +54,34 @@ export async function redditApiRequest(
 		}
 		throw error;
 	}
-
 }
 
 
 /**
- * Make an API request to Reddit and return all results
- *
- * @export
- * @param { (IHookFunctions | IExecuteFunctions) } this
- * @param { string } method
- * @param { string } endpoint
- * @param { IDataObject } qs
- * @returns { Promise<any> }
+ * Make an API request to Reddit and return all results.
  */
 export async function redditApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
+	body: IDataObject,
+	noAuth: boolean,
 ): Promise<any> { // tslint:disable-line:no-any
 
-	// ...
+	let responseData;
+	const returnData: IDataObject[] = [];
+
+	do {
+		responseData = await redditApiRequest.call(this, method, endpoint, qs, body, noAuth);
+		qs.after = responseData.after;
+		responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
+
+		if (qs.limit && returnData.length >= qs.limit) {
+			return returnData;
+		}
+
+	} while (responseData.after);
+
+	return returnData;
 }
