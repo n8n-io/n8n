@@ -10,7 +10,6 @@ import {
 import {
 	OptionsWithUri,
 } from 'request';
-import { queryString } from '../TheHive/QueryFunctions';
 
 
 /**
@@ -22,15 +21,17 @@ export async function redditApiRequest(
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
-	noAuth: boolean,
 ): Promise<any> { // tslint:disable-line:no-any
+
+	const resource = this.getNodeParameter('resource', 0) as string;
+	const requiresAuth = ['myAccount', 'submission'].includes(resource);
 
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
 		},
 		method,
-		uri: noAuth ? `https://www.reddit.com/${endpoint}` : `https://oauth.reddit.com/api/v1/${endpoint}`,
+		uri: requiresAuth ? `https://oauth.reddit.com/api/v1/${endpoint}` : `https://www.reddit.com/${endpoint}`,
 		qs,
 		body,
 		json: true,
@@ -45,9 +46,10 @@ export async function redditApiRequest(
 	}
 
 	try {
-		return noAuth
-			? await this.helpers.request.call(this, options)
-			: await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
+		return requiresAuth
+			? await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options)
+			: await this.helpers.request.call(this, options);
+
 	} catch (error) {
 		if (error.message) {
 			const errorObject = JSON.parse(error.message.match(/{.*}/)[0]);
@@ -67,14 +69,13 @@ export async function redditApiRequestAllItems(
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
-	noAuth: boolean,
 ): Promise<any> { // tslint:disable-line:no-any
 
 	let responseData;
 	const returnData: IDataObject[] = [];
 
 	do {
-		responseData = await redditApiRequest.call(this, method, endpoint, qs, body, noAuth);
+		responseData = await redditApiRequest.call(this, method, endpoint, qs, body);
 		qs.after = responseData.after;
 		responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
 
@@ -99,13 +100,13 @@ export async function handleListing(
 
 	const returnAll = this.getNodeParameter('returnAll', i);
 	if (returnAll) {
-		return await redditApiRequestAllItems.call(this, 'GET', endpoint, {}, {}, true);
+		return await redditApiRequestAllItems.call(this, 'GET', endpoint, {}, {});
 	}
 
 	const qs: IDataObject = {
 		limit: this.getNodeParameter('limit', i),
 	};
-	responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, true);
+	responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
 	responseData = responseData.splice(0, qs.limit);
 
 	return responseData;

@@ -12,7 +12,6 @@ import {
 import {
 	handleListing,
 	redditApiRequest,
-	redditApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -129,7 +128,7 @@ export class Reddit implements INodeType {
 				if (information === 'trending') {
 
 					const endpoint = 'api/trending_subreddits.json';
-					responseData = await redditApiRequest.call(this, 'GET', endpoint, {}, {}, true);
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				} else {
 
@@ -153,7 +152,7 @@ export class Reddit implements INodeType {
 					};
 
 					const details = this.getNodeParameter('details', i) as string;
-					responseData = await redditApiRequest.call(this, 'GET', endpoints[details], {}, {}, false);
+					responseData = await redditApiRequest.call(this, 'GET', endpoints[details], {}, {});
 
 					if (details === 'identity') {
 						responseData = responseData.features;
@@ -181,7 +180,7 @@ export class Reddit implements INodeType {
 						body.resubmit = true;
 					}
 
-					responseData = await redditApiRequest.call(this, 'POST', 'submit', {}, body, false);
+					responseData = await redditApiRequest.call(this, 'POST', 'submit', {}, body);
 
 				}
 
@@ -197,7 +196,7 @@ export class Reddit implements INodeType {
 					if (['about', 'rules', 'sidebar', 'sticky'].includes(content)) {
 
 						const endpoint = `r/${subreddit}/about/${content}.json`;
-						responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {}, true);
+						responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {});
 
 						if (content === 'rules') {
 							responseData = responseData.rules;
@@ -217,7 +216,7 @@ export class Reddit implements INodeType {
 						query: this.getNodeParameter('keyword', i),
 					};
 
-					responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {}, true);
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {});
 
 				}
 			}
