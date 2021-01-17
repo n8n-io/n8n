@@ -7,13 +7,8 @@ export const submissionOperations = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
-		displayOptions: {
-			show: {
-				resource: [
-					'submission',
-				],
-			},
-		},
+		default: 'post',
+		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Post',
@@ -21,8 +16,13 @@ export const submissionOperations = [
 				description: 'Post a submission to a subreddit',
 			},
 		],
-		default: 'post',
-		description: 'Operation to perform',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+			},
+		},
 	},
 ] as INodeProperties[];
 
