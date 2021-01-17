@@ -34,6 +34,11 @@ export const listOperations = [
 				description: 'Get the data of a list',
 			},
 			{
+				name: 'GetCards',
+				value: 'getCards',
+				description: 'Get the cards in a list',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a list',
@@ -159,6 +164,53 @@ export const listFields = [
 		],
 	},
 
+	// ----------------------------------
+	//         list:getCards
+	// ----------------------------------
+	{
+		displayName: 'List ID',
+		name: 'id',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'getCards',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		description: 'The ID of the list to get cards.',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'getCards',
+				],
+				resource: [
+					'list',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: 'all',
+				description: 'Fields to return. Either "all" or a comma-separated list of fields.',
+			},
+		],
+	},
 	// ----------------------------------
 	//         list:get
 	// ----------------------------------
