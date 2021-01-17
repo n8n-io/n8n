@@ -54,6 +54,14 @@ export class Reddit implements INodeType {
 			{
 				name: 'redditOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						resource: [
+							'myAccount',
+							'submission',
+						],
+					},
+				},
 			},
 		],
 		properties: [
