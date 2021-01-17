@@ -77,5 +77,4 @@ export const myAccountFields = [
 			},
 		},
 	},
-
 ] as INodeProperties[];

@@ -15,6 +15,11 @@ import {
 } from './GenericFunctions';
 
 import {
+	listingFields,
+	listingOperations,
+} from './ListingDescription';
+
+import {
 	myAccountFields,
 	myAccountOperations,
 } from './MyAccountDescription';
@@ -23,15 +28,6 @@ import {
 	submissionFields,
 	submissionOperations,
 } from './SubmissionDescription';
-
-import {
-	listingFields,
-	listingOperations,
-} from './ListingDescription';
-
-import {
-	snakeCase,
-} from 'change-case';
 
 export class Reddit implements INodeType {
 	description: INodeTypeDescription = {
@@ -106,8 +102,6 @@ export class Reddit implements INodeType {
 
 				if (operation === 'get') {
 
-					const details = this.getNodeParameter('details', i) as string;
-
 					const endpoints: {[key: string]: string} = {
 						identity: 'me',
 						blockedUsers: 'me/blocked',
@@ -117,6 +111,7 @@ export class Reddit implements INodeType {
 						trophies: 'me/trophies',
 					};
 
+					const details = this.getNodeParameter('details', i) as string;
 					responseData = await redditApiRequest.call(this, 'GET', endpoints[details], {}, {}, false);
 
 					if (details === 'identity') {
