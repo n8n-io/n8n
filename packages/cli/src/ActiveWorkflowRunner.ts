@@ -20,7 +20,6 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
 	IExecuteData,
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
@@ -132,14 +131,13 @@ export class ActiveWorkflowRunner {
 			}
 			path = webhook.webhookPath;
 			// extracting params from path
-			const webhookPathParams: IDataObject = {};
+			req.params = {};
 			webhook.webhookPath.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
-					webhookPathParams[ele.slice(1)] = pathElements[index];
+					// write params to req.params
+					req.params[ele.slice(1)] = pathElements[index];
 				}
 			});
-			// write params to req.params
-			Object.assign(req.params, webhookPathParams);
 		}
 
 		const workflowData = await Db.collections.Workflow!.findOne(webhook.workflowId);

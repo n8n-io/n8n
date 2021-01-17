@@ -68,14 +68,13 @@ export class TestWebhooks {
 			}
 			path = webhookData.path;
 			// extracting params from path
-			const webhookPathParams: IDataObject = {};
+			request.params = {};
 			path.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
-					webhookPathParams[ele.slice(1)] = pathElements[index];
+					// write params to req.params
+					request.params[ele.slice(1)] = pathElements[index];
 				}
 			});
-			// write params to req.params
-			Object.assign(request.params, webhookPathParams);
 		}
 
 		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
