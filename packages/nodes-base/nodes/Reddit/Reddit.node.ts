@@ -15,6 +15,7 @@ import {
 } from './GenericFunctions';
 
 import {
+	myAccountFields,
 	myAccountOperations,
 } from './MyAccountDescription';
 
@@ -78,6 +79,7 @@ export class Reddit implements INodeType {
 
 			// myAccount
 			...myAccountOperations,
+			...myAccountFields,
 
 			// submission
 			...submissionOperations,
@@ -102,22 +104,24 @@ export class Reddit implements INodeType {
 
 			if (resource === 'myAccount') {
 
-				if (operation === 'getIdentity') {
+				if (operation === 'get') {
 
-					responseData = await redditApiRequest.call(this, 'GET', 'me');
-					responseData = responseData.features;
-
-				} else {
+					const details = this.getNodeParameter('details', i) as string;
 
 					const endpoints: {[key: string]: string} = {
-						getBlockedUsers: 'blocked',
-						getFriends: 'friends',
-						getKarma: 'karma',
-						getPrefs: 'prefs',
-						getTrophies: 'trophies',
+						identity: 'me',
+						blockedUsers: 'me/blocked',
+						friends: 'me/friends',
+						karma: 'me/karma',
+						prefs: 'me/prefs',
+						trophies: 'me/trophies',
 					};
 
-					responseData = await redditApiRequest.call(this, 'GET', `me/${endpoints[operation]}`);
+					responseData = await redditApiRequest.call(this, 'GET', endpoints[details]);
+
+					if (details === 'identity') {
+						responseData = responseData.features;
+					}
 
 				}
 

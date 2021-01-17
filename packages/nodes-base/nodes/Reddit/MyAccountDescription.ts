@@ -16,37 +16,66 @@ export const myAccountOperations = [
 		},
 		options: [
 			{
-				name: 'Get identity',
-				value: 'getIdentity',
-				description: 'Return the identity of the logged-in user',
-			},
-			{
-				name: 'Get blocked users',
-				value: 'getBlockedUsers',
-				description: 'Return the identity of the logged-in user',
-			},
-			{
-				name: 'Get friends',
-				value: 'getFriends',
-				description: 'Return a list of friends for the logged-in user',
-			},
-			{
-				name: 'Get karma',
-				value: 'getKarma',
-				description: 'Return a breakdown of subreddit karma',
-			},
-			{
-				name: 'Get preferences',
-				value: 'getPrefs',
-				description: 'Return the preference settings of the logged-in user',
-			},
-			{
-				name: 'Get trophies',
-				value: 'getTrophies',
-				description: 'Return a list of trophies for the logged-in user',
+				name: 'Get',
+				value: 'get',
 			},
 		],
-		default: 'getIdentity',
+		default: 'get',
 		description: 'Operation to perform',
 	},
+] as INodeProperties[];
+
+
+export const myAccountFields = [
+	{
+		displayName: 'Details',
+		name: 'details',
+		type: 'options',
+		required: true,
+		default: 'identity',
+		description: 'Details of my account to retrieve',
+		options: [
+			{
+				name: 'Identity',
+				value: 'identity',
+				description: 'Return the identity of the logged-in user',
+			},
+			{
+				name: 'Blocked users',
+				value: 'blockedUsers',
+				description: 'Return the blocked users of the logged-in user',
+			},
+			{
+				name: 'Friends',
+				value: 'friends',
+				description: 'Return the friends of the logged-in user',
+			},
+			{
+				name: 'Karma',
+				value: 'karma',
+				description: 'Return the subreddit karma for the logged-in user',
+			},
+			{
+				name: 'preferences',
+				value: 'prefs',
+				description: 'Return the settings preferences of the logged-in user',
+			},
+			{
+				name: 'Trophies',
+				value: 'trophies',
+				description: 'Return the trophies of the logged-in user',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'myAccount',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+
 ] as INodeProperties[];
