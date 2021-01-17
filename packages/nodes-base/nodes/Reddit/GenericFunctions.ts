@@ -28,31 +28,30 @@ export async function redditApiRequest(
 	endpoint: string,
 	body?: IDataObject,
 	qs?: IDataObject,
+	noAuthRequired?: boolean,
 ): Promise<any> { // tslint:disable-line:no-any
+
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
 		},
 		method,
-		qs,
-		uri: `https://oauth.reddit.com/api/v1/${endpoint}`,
+		uri: noAuthRequired ? `https://www.reddit.com/${endpoint}` : `https://oauth.reddit.com/api/v1/${endpoint}`,
 		json: true,
 	};
 
-	if (options.body === undefined) {
-		delete options.body;
+	if (body && Object.keys(body).length) {
+		options.body = body;
 	}
 
-	if (options.qs === undefined) {
-		delete options.qs;
+	if (qs && Object.keys(qs).length) {
+		options.qs = qs;
 	}
-
-	const oAuth2Options: IOAuth2Options = {
-		tokenType: 'Bearer',
-	};
 
 	try {
-		return await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options, oAuth2Options);
+		return noAuthRequired
+			? await this.helpers.request.call(this, options)
+			: await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options);
 	} catch (error) {
 		if (error.message) {
 			const errorObject = JSON.parse(error.message.match(/{.*}/)[0]);
@@ -60,6 +59,7 @@ export async function redditApiRequest(
 		}
 		throw error;
 	}
+
 }
 
 
