@@ -470,6 +470,7 @@ export default mixins(
 							type: 'success',
 						});
 					}
+					this.$titleReset();
 				} else if (key === 'credentials-open') {
 					this.credentialOpenDialogVisible = true;
 				} else if (key === 'credentials-new') {
