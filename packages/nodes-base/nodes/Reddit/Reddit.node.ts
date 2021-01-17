@@ -10,14 +10,15 @@ import {
 } from 'n8n-workflow';
 
 import {
+	handleListing,
 	redditApiRequest,
 	redditApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
-	listingFields,
-	listingOperations,
-} from './ListingDescription';
+	allRedditFields,
+	allRedditOperations,
+} from './AllRedditDescription';
 
 import {
 	myAccountFields,
@@ -28,6 +29,11 @@ import {
 	submissionFields,
 	submissionOperations,
 } from './SubmissionDescription';
+
+import {
+	subredditFields,
+	subredditOperations,
+} from './SubredditDescription';
 
 export class Reddit implements INodeType {
 	description: INodeTypeDescription = {
@@ -57,6 +63,10 @@ export class Reddit implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'All Reddit',
+						value: 'allReddit',
+					},
+					{
 						name: 'My Account',
 						value: 'myAccount',
 					},
@@ -65,13 +75,17 @@ export class Reddit implements INodeType {
 						value: 'submission',
 					},
 					{
-						name: 'Listing',
-						value: 'listing',
+						name: 'Subreddit',
+						value: 'subreddit',
 					},
 				],
 				default: 'myAccount',
 				description: 'Resource to consume',
 			},
+
+			// allReddit
+			...allRedditOperations,
+			...allRedditFields,
 
 			// myAccount
 			...myAccountOperations,
@@ -81,9 +95,9 @@ export class Reddit implements INodeType {
 			...submissionOperations,
 			...submissionFields,
 
-			// listing
-			...listingOperations,
-			...listingFields,
+			// subreddit
+			...subredditOperations,
+			...subredditFields,
 		],
 	};
 
@@ -98,7 +112,26 @@ export class Reddit implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 
-			if (resource === 'myAccount') {
+		if (resource === 'allReddit') {
+
+			if (operation === 'get') {
+
+				const information = this.getNodeParameter('information', i) as string;
+
+				if (information === 'trending') {
+
+					const endpoint = 'api/trending_subreddits.json';
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, {}, {}, true);
+
+				} else {
+
+					const endpoint = 'best.json';
+					responseData = await handleListing.call(this, i, endpoint);
+
+				}
+			}
+
+		} else if (resource === 'myAccount') {
 
 				if (operation === 'get') {
 
@@ -144,34 +177,31 @@ export class Reddit implements INodeType {
 
 				}
 
-			} else if (resource === 'listing') {
+			} else if (resource === 'subreddit') {
 
 				if (operation === 'get') {
 
-					const type = this.getNodeParameter('type', i) as string;
+					const qs: IDataObject = {};
 
-					if (type === 'trending') {
+					const content = this.getNodeParameter('content', i) as string;
+					const subreddit = this.getNodeParameter('subreddit', i);
 
-						const endpoint = 'api/trending_subreddits.json';
-						responseData = await redditApiRequest.call(this, 'GET', endpoint, {}, {}, true);
+					if (['about', 'rules', 'sidebar', 'sticky'].includes(content)) {
 
-					} else {
+						const endpoint = `r/${subreddit}/about/${content}.json`;
+						responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {}, true);
 
-						const endpoint = type === 'best'
-							? 'best.json'
-							: `r/${this.getNodeParameter('subreddit', i)}/${type}.json`;
-
-						const returnAll = this.getNodeParameter('returnAll', i);
-
-						if (returnAll) {
-							responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, {}, {}, true);
-						} else {
-							const qs: IDataObject = { limit: this.getNodeParameter('limit', i) };
-							responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, true);
-							responseData = responseData.splice(0, qs.limit);
+						if (content === 'rules') {
+							responseData = responseData.rules;
 						}
 
+					} else if (['top', 'hot', 'new', 'rising'].includes(content)) {
+
+						const endpoint = `r/${subreddit}/${content}.json`;
+						responseData = await handleListing.call(this, i, endpoint);
+
 					}
+
 				}
 			}
 

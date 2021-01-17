@@ -85,3 +85,25 @@ export async function redditApiRequestAllItems(
 
 	return returnData;
 }
+
+/**
+ * Handles a large Reddit listing by returning all items or up to a limit.
+ */
+export async function handleListing(
+	this: IExecuteFunctions,
+	i: number,
+	endpoint: string,
+): Promise<any> { // tslint:disable-line:no-any
+	let responseData;
+
+	const returnAll = this.getNodeParameter('returnAll', i);
+	if (returnAll) {
+		return await redditApiRequestAllItems.call(this, 'GET', endpoint, {}, {}, true);
+	}
+
+	const qs: IDataObject = { limit: this.getNodeParameter('limit', i) };
+	responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, true);
+	responseData = responseData.splice(0, qs.limit);
+
+	return responseData;
+}
