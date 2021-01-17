@@ -160,29 +160,24 @@ export class Reddit implements INodeType {
 						const endpoint = 'api/trending_subreddits.json';
 						responseData = await redditApiRequest.call(this, 'GET', endpoint, {}, {}, true);
 
-					} else if (type === 'best') {
+					} else {
+
+						const endpoint = type === 'best'
+							? 'best.json'
+							: `r/${this.getNodeParameter('subreddit', i)}/${type}.json`;
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
-
-							const endpoint = 'best.json';
 							responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, {}, {}, true);
-
 						} else {
-
-							const qs: IDataObject = {
-								limit: this.getNodeParameter('limit', i),
-							};
-							const endpoint = 'best.json';
+							const qs: IDataObject = { limit: this.getNodeParameter('limit', i) };
 							responseData = await redditApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, true);
 							responseData = responseData.splice(0, qs.limit);
-
 						}
+
 					}
-
 				}
-
 			}
 
 			Array.isArray(responseData)

@@ -37,10 +37,32 @@ export const listingFields = [
 			{
 				name: 'Trending',
 				value: 'trending',
+				description: 'Currently trending subreddits',
 			},
 			{
 				name: 'Best',
 				value: 'best',
+				description: 'Top posts in all of Reddit',
+			},
+			{
+				name: 'Top',
+				value: 'top',
+				description: 'Top posts in a specifc subreddit',
+			},
+			{
+				name: 'Hot',
+				value: 'hot',
+				description: 'Hot posts in a specifc subreddit',
+			},
+			{
+				name: 'New',
+				value: 'new',
+				description: 'New posts in a specifc subreddit',
+			},
+			{
+				name: 'Rising',
+				value: 'rising',
+				description: 'Rising posts in a specifc subreddit',
 			},
 		],
 		displayOptions: {
@@ -70,6 +92,10 @@ export const listingFields = [
 				],
 				type: [
 					'best',
+					'top',
+					'hot',
+					'new',
+					'rising',
 				],
 			},
 		},
@@ -94,9 +120,37 @@ export const listingFields = [
 				],
 				type: [
 					'best',
+					'top',
+					'hot',
+					'new',
+					'rising',
 				],
 				returnAll: [
 					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Subreddit',
+		name: 'subreddit',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The subreddit to retrieve the listing from',
+		displayOptions: {
+			show: {
+				resource: [
+					'listing',
+				],
+				operation: [
+					'get',
+				],
+				type: [
+					'top',
+					'hot',
+					'new',
+					'rising',
 				],
 			},
 		},
