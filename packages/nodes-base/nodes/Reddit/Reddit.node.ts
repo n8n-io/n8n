@@ -23,6 +23,15 @@ import {
 	submissionOperations,
 } from './SubmissionDescription';
 
+import {
+	listingFields,
+	listingOperations,
+} from './ListingDescription';
+
+import {
+	snakeCase,
+} from 'change-case';
+
 export class Reddit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Reddit',
@@ -58,6 +67,10 @@ export class Reddit implements INodeType {
 						name: 'Submission',
 						value: 'submission',
 					},
+					{
+						name: 'Listing',
+						value: 'listing',
+					},
 				],
 				default: 'myAccount',
 				description: 'Resource to consume',
@@ -67,8 +80,12 @@ export class Reddit implements INodeType {
 			...myAccountOperations,
 
 			// submission
-			...submissionFields,
 			...submissionOperations,
+			...submissionFields,
+
+			// listing
+			...listingOperations,
+			...listingFields,
 		],
 	};
 
@@ -104,9 +121,9 @@ export class Reddit implements INodeType {
 
 				}
 
-			} else if (resource === 'post') {
+			} else if (resource === 'submission') {
 
-				if (operation === 'submit') {
+				if (operation === 'post') {
 
 					const body: IDataObject = {
 						title: this.getNodeParameter('title', i),
@@ -125,6 +142,26 @@ export class Reddit implements INodeType {
 					}
 
 					responseData = await redditApiRequest.call(this, 'POST', 'submit', body);
+
+				}
+
+			} else if (resource === 'listing') {
+
+				if (operation === 'get') {
+
+					const type = this.getNodeParameter('type', i) as string;
+
+					if (type === 'trending') {
+
+						const endpoint = 'api/trending_subreddits.json';
+						responseData = await redditApiRequest.call(this, 'GET', endpoint, {}, {}, true);
+
+					} else if (type === 'best') {
+
+						const endpoint = 'best.json';
+						responseData = await redditApiRequest.call(this, 'GET', endpoint, {}, {}, true);
+
+					}
 
 				}
 
