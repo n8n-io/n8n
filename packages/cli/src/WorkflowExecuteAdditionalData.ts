@@ -574,6 +574,12 @@ export function getWorkflowHooksWorkerMain(mode: WorkflowExecuteMode, executionI
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
+
+	// When running with worker mode, main process executes
+	// Only workflowExecuteBefore + workflowExecuteAfter
+	// So to avoid confusion, we are removing other hooks.
+	hookFunctions.nodeExecuteBefore = [];
+	hookFunctions.nodeExecuteAfter = [];
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
