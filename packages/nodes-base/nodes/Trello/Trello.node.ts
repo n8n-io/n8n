@@ -369,24 +369,24 @@ export class Trello implements INodeType {
 					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'getAll') {
-						// ----------------------------------
-						//         getAll
-						// ----------------------------------
-	
-						requestMethod = 'GET';
-	
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
-	
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
-						}
-	
-						const id = this.getNodeParameter('id', i) as string;
-	
-						endpoint = `boards/${id}/lists`;
-	
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						Object.assign(qs, additionalFields);
+					// ----------------------------------
+					//         getAll
+					// ----------------------------------
+
+					requestMethod = 'GET';
+
+					returnAll = this.getNodeParameter('returnAll', i) as boolean;
+
+					if (returnAll === false) {
+						qs.limit = this.getNodeParameter('limit', i) as number;
+					}
+
+					const id = this.getNodeParameter('id', i) as string;
+
+					endpoint = `boards/${id}/lists`;
+
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					Object.assign(qs, additionalFields);
 
 				} else if (operation === 'getCards') {
 					// ----------------------------------
@@ -592,7 +592,7 @@ export class Trello implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					Object.assign(qs, additionalFields);
 
-				} else if (operation ==='completedCheckItems') {
+				} else if (operation === 'completedCheckItems') {
 					// ----------------------------------
 					//         completedCheckItems
 					// ----------------------------------
