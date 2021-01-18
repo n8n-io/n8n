@@ -737,7 +737,6 @@ export class NextCloud implements INodeType {
 
 			try {
 				responseData = await nextCloudApiRequest.call(this, requestMethod, endpoint, body, headers, encoding);
-				console.log(responseData);
 			} catch (error) {
 				if (this.continueOnFail() === true) {
 					returnData.push({ error });
