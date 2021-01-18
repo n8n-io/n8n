@@ -25,7 +25,6 @@ export async function redditApiRequest(
 
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
-	// const requiresAuth = ['myAccount', 'submission'].includes(resource);
 	const requiresAuth = resource === 'myAccount' ||
 		(resource === 'submission' && ['post', 'comment'].includes(operation));
 
@@ -49,7 +48,6 @@ export async function redditApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return requiresAuth
 			? await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options)
 			: await this.helpers.request.call(this, options);
