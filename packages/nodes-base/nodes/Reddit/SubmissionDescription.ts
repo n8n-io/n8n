@@ -15,6 +15,16 @@ export const submissionOperations = [
 				value: 'post',
 				description: 'Post a submission to a subreddit',
 			},
+			{
+				name: 'Comment',
+				value: 'comment',
+				description: 'Comment on a submission in a subreddit',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search for a submission in a subreddit',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -27,6 +37,9 @@ export const submissionOperations = [
 ] as INodeProperties[];
 
 export const submissionFields = [
+	// ----------------------------------
+	//         post submission
+	// ----------------------------------
 	{
 		displayName: 'Title',
 		name: 'title',
@@ -89,7 +102,7 @@ export const submissionFields = [
 				value: 'videogif',
 			},
 		],
-		default: 'text',
+		default: 'self',
 		description: 'The kind of the submission to be posted',
 		displayOptions: {
 			show: {
@@ -166,6 +179,84 @@ export const submissionFields = [
 					'image',
 					'video',
 					'videogif',
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//       comment on submission
+	// ----------------------------------
+	{
+		displayName: 'Target',
+		name: 'target',
+		type: 'string',
+		default: '',
+		description: 'ID of the target of the comment. The target can be either<br>the top-level submission or a reply in that submission.',
+		placeholder: 't3_15bfi0',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'comment',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Text',
+		name: 'text',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'Text content of the comment (Markdown supported)',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'comment',
+				],
+			},
+		},
+	},
+	// ----------------------------------
+	//       search for submission
+	// ----------------------------------
+	{
+		displayName: 'Subreddit',
+		name: 'subreddit',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'Subreddit to search for posts',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Keyword',
+		name: 'keyword',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The keyword for the subreddit post search',
+		displayOptions: {
+			show: {
+				resource: [
+					'submission',
+				],
+				operation: [
+					'search',
 				],
 			},
 		},

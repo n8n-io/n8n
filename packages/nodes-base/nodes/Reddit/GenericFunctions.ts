@@ -24,14 +24,17 @@ export async function redditApiRequest(
 ): Promise<any> { // tslint:disable-line:no-any
 
 	const resource = this.getNodeParameter('resource', 0) as string;
-	const requiresAuth = ['myAccount', 'submission'].includes(resource);
+	const operation = this.getNodeParameter('operation', 0) as string;
+	// const requiresAuth = ['myAccount', 'submission'].includes(resource);
+	const requiresAuth = resource === 'myAccount' ||
+		(resource === 'submission' && ['post', 'comment'].includes(operation));
 
 	const options: OptionsWithUri = {
 		headers: {
 			'user-agent': 'n8n',
 		},
 		method,
-		uri: requiresAuth ? `https://oauth.reddit.com/api/v1/${endpoint}` : `https://www.reddit.com/${endpoint}`,
+		uri: requiresAuth ? `https://oauth.reddit.com/${endpoint}` : `https://www.reddit.com/${endpoint}`,
 		qs,
 		body,
 		json: true,
@@ -46,6 +49,7 @@ export async function redditApiRequest(
 	}
 
 	try {
+		console.log(options);
 		return requiresAuth
 			? await this.helpers.requestOAuth2.call(this, 'redditOAuth2Api', options)
 			: await this.helpers.request.call(this, options);

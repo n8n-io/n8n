@@ -165,7 +165,7 @@ export class Reddit implements INodeType {
 					};
 
 					const details = this.getNodeParameter('details', i) as string;
-					responseData = await redditApiRequest.call(this, 'GET', endpoints[details], {}, {});
+					responseData = await redditApiRequest.call(this, 'GET', `api/v1/${endpoints[details]}`, {}, {});
 
 					if (details === 'identity') {
 						responseData = responseData.features;
@@ -177,23 +177,43 @@ export class Reddit implements INodeType {
 
 				if (operation === 'post') {
 
-					const body: IDataObject = {
+					const qs: IDataObject = {
 						title: this.getNodeParameter('title', i),
 						sr: this.getNodeParameter('subreddit', i),
 						kind: this.getNodeParameter('kind', i),
 					};
 
-					body.kind === 'self'
-						? body.text = this.getNodeParameter('text', i)
-						: body.url = this.getNodeParameter('url', i);
+					qs.kind === 'self'
+						? qs.text = this.getNodeParameter('text', i)
+						: qs.url = this.getNodeParameter('url', i);
 
-					const resubmit = this.getNodeParameter('resubmit', i);
-
-					if (resubmit) {
-						body.resubmit = true;
+					if (qs.url) {
+						qs.resubmit = this.getNodeParameter('resubmit', i);
 					}
 
-					responseData = await redditApiRequest.call(this, 'POST', 'submit', {}, body);
+					responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs, {});
+
+				} else if (operation === 'comment') {
+
+					const qs: IDataObject = {
+						thing_id: this.getNodeParameter('target', i),
+						text: this.getNodeParameter('text', i),
+					};
+
+					responseData = await redditApiRequest.call(this, 'POST', 'api/comment', qs, {});
+
+				} else if (operation === 'search') {
+
+					const subreddit = this.getNodeParameter('subreddit', i);
+
+					const qs: IDataObject = {
+						q: this.getNodeParameter('keyword', i),
+						restrict_sr: 'on',
+					};
+
+					const endpoint = `r/${subreddit}/search.json`;
+
+					responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {});
 
 				}
 
