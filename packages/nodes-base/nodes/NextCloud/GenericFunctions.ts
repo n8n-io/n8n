@@ -49,10 +49,9 @@ export async function nextCloudApiRequest(this: IHookFunctions | IExecuteFunctio
 			const resource = this.getNodeParameter('resource', 0);
 			const operation = this.getNodeParameter('operation', 0);
 
-			if (resource === 'user' && operation === 'add') {
+			if (resource === 'user' && operation === 'create') {
 				options.uri = options.uri.replace('/remote.php/webdav', '');
 			}
-			console.log(options);
 			return await this.helpers.request(options);
 		} else {
 			const credentials = this.getCredentials('nextCloudOAuth2Api');
