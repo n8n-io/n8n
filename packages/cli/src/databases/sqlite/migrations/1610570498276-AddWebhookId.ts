@@ -17,7 +17,7 @@ export class AddWebhookId1610570498276 implements MigrationInterface {
 		await queryRunner.query(`DROP TABLE "${tablePrefix}webhook_entity"`);
 		await queryRunner.query(`ALTER TABLE "temporary_webhook_entity" RENAME TO "${tablePrefix}webhook_entity"`);
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_${tablePrefix}e1dddabccea3081178199d6004" ON "${tablePrefix}webhook_entity" ("webhookId", "method") `
+			`CREATE INDEX "IDX_${tablePrefix}e1dddabccea3081178199d6004" ON "${tablePrefix}webhook_entity" ("webhookId", "method") `
 		);
 	}
 

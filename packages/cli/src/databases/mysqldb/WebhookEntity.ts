@@ -10,7 +10,7 @@ import {
  } from '../../Interfaces';
 
 @Entity()
-@Index(["webhookId", "method"], { unique: true })
+@Index(["webhookId", "method"])
 export class WebhookEntity implements IWebhookDb {
 
 	@Column()
