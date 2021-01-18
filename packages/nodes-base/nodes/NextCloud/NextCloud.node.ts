@@ -199,12 +199,12 @@ export class NextCloud implements INodeType {
 				},
 				options: [
 					{
-						name: 'Add',
-						value: 'add',
-						description: 'Add a user to a NextCloud organization',
+						name: 'Create',
+						value: 'Create',
+						description: 'Invite a user to a NextCloud organization',
 					},
 				],
-				default: 'add',
+				default: 'create',
 				description: 'The operation to perform.',
 			},
 
@@ -507,7 +507,7 @@ export class NextCloud implements INodeType {
 			// ----------------------------------
 
 			// ----------------------------------
-			//         user:add
+			//         user:create
 			// ----------------------------------
 			{
 				displayName: 'User ID',
@@ -521,12 +521,12 @@ export class NextCloud implements INodeType {
 							'user',
 						],
 						operation: [
-							'add',
+							'create',
 						],
 					},
 				},
 				placeholder: 'john',
-				description: 'The ID of the user to add.',
+				description: 'The ID of the user to invite.',
 			},
 			{
 				displayName: 'Email',
@@ -540,12 +540,12 @@ export class NextCloud implements INodeType {
 							'user',
 						],
 						operation: [
-							'add',
+							'create',
 						],
 					},
 				},
 				placeholder: 'john@email.com',
-				description: 'The email of the user to add.',
+				description: 'The email of the user to invite.',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -558,7 +558,7 @@ export class NextCloud implements INodeType {
 							'user',
 						],
 						operation: [
-							'add',
+							'create',
 						],
 					},
 				},
@@ -568,7 +568,7 @@ export class NextCloud implements INodeType {
 						name: 'displayName',
 						type: 'string',
 						default: '',
-						description: 'The display name of the user to add.',
+						description: 'The display name of the user to invite.',
 					},
 				],
 			},
@@ -695,9 +695,9 @@ export class NextCloud implements INodeType {
 
 			} else if (resource === 'user') {
 
-				if (operation === 'add') {
+				if (operation === 'create') {
 					// ----------------------------------
-					//         user:add
+					//         user:create
 					// ----------------------------------
 					requestMethod = 'POST';
 
@@ -766,7 +766,7 @@ export class NextCloud implements INodeType {
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
 
-			} else if (resource === 'user' && operation === 'add') {
+			} else if (resource === 'user' && operation === 'create') {
 
 				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 					parseString(responseData, { explicitArray: false }, (err, data) => {
