@@ -296,30 +296,30 @@ export class GoogleDriveTrigger implements INodeType {
 		};
 	}
 
-	// async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-	// 	const executeTrigger = async () => {
-	// 		console.log("------------------ RENEWAL START ------------------");
-	// 		await deleteWebhook.call(this);
-	// 		await createWebhook.call(this);
-	// 		console.log("------------------ RENEWAL END ------------------");
-	// 	};
+	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const executeTrigger = async () => {
+			console.log("------------------ RENEWAL START ------------------");
+			await deleteWebhook.call(this);
+			await createWebhook.call(this);
+			console.log("------------------ RENEWAL END ------------------");
+		};
 
-	// 	const resource = this.getNodeParameter('resource', 0);
-	// 	const intervals = {
-	// 		changes: 6 * 24 * 60 * 60 * 1000, 						// 6 days 23 hours 59 minutes in ms
-	// 		files: 23 * 60 * 60 * 1000 + 59 * 60 * 1000, 	// 23 hours 59 minutes in ms
-	// 	};
+		const resource = this.getNodeParameter('resource', 0);
+		const intervals = {
+			changes: 6 * 24 * 60 * 60 * 1000, 						// 6 days 23 hours 59 minutes in ms
+			files: 23 * 60 * 60 * 1000 + 59 * 60 * 1000, 	// 23 hours 59 minutes in ms
+		};
 
-	// 	// const intervalTime = intervals[resource];
-	// 	const intervalTime = 60_000; // TEMP FOR DEBUGGING
-	// 	const intervalObject = setInterval(executeTrigger, intervalTime);
+		// const intervalTime = intervals[resource];
+		const intervalTime = 60_000; // TEMP FOR DEBUGGING
+		const intervalObject = setInterval(executeTrigger, intervalTime);
 
-	// 	async function closeFunction() {
-	// 		clearInterval(intervalObject);
-	// 	}
+		async function closeFunction() {
+			clearInterval(intervalObject);
+		}
 
-	// 	return {
-	// 		closeFunction,
-	// 	};
-	// }
+		return {
+			closeFunction,
+		};
+	}
 }
