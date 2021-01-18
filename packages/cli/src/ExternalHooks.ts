@@ -1,6 +1,7 @@
 import {
 	Db,
 	IExternalHooksClass,
+	IExternalHooksFileData,
 	IExternalHooksFunctions,
 } from './';
 
@@ -26,9 +27,14 @@ class ExternalHooksClass implements IExternalHooksClass {
 	}
 
 
-	async reload() {
+	async reload(externalHooks?: IExternalHooksFileData) {
 		this.externalHooks = {};
-		await this.loadHooksFiles(true);
+
+		if (externalHooks === undefined) {
+			await this.loadHooksFiles(true);
+		} else {
+			this.loadHooks(externalHooks);
+		}
 	}
 
 
@@ -45,23 +51,27 @@ class ExternalHooksClass implements IExternalHooksClass {
 						delete require.cache[require.resolve(hookFilePath)];
 					}
 
-					const hookFile = require(hookFilePath);
-
-					for (const resource of Object.keys(hookFile)) {
-						for (const operation of Object.keys(hookFile[resource])) {
-							// Save all the hook functions directly under their string
-							// format in an array
-							const hookString = `${resource}.${operation}`;
-							if (this.externalHooks[hookString] === undefined) {
-								this.externalHooks[hookString] = [];
-							}
-
-							this.externalHooks[hookString].push.apply(this.externalHooks[hookString], hookFile[resource][operation]);
-						}
-					}
+					const hookFile = require(hookFilePath) as IExternalHooksFileData;
+					this.loadHooks(hookFile);
 				} catch (error) {
 					throw new Error(`Problem loading external hook file "${hookFilePath}": ${error.message}`);
 				}
+			}
+		}
+	}
+
+
+	loadHooks(hookFileData: IExternalHooksFileData) {
+		for (const resource of Object.keys(hookFileData)) {
+			for (const operation of Object.keys(hookFileData[resource])) {
+				// Save all the hook functions directly under their string
+				// format in an array
+				const hookString = `${resource}.${operation}`;
+				if (this.externalHooks[hookString] === undefined) {
+					this.externalHooks[hookString] = [];
+				}
+
+				this.externalHooks[hookString].push.apply(this.externalHooks[hookString], hookFileData[resource][operation]);
 			}
 		}
 	}

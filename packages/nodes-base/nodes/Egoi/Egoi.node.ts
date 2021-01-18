@@ -26,15 +26,15 @@ import * as moment from 'moment-timezone';
 
 export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'e-goi',
+		displayName: 'E-goi',
 		name: 'egoi',
 		icon: 'file:egoi.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume e-goi API',
+		description: 'Consume E-goi API',
 		defaults: {
-			name: 'e-goi',
+			name: 'E-goi',
 			color: '#4cacd6',
 		},
 		inputs: ['main'],

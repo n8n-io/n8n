@@ -1,4 +1,6 @@
-import { INodeProperties } from 'n8n-workflow';
+import { 
+	INodeProperties,
+} from 'n8n-workflow';
 
 export const messageOperations = [
 	{
@@ -35,6 +37,25 @@ export const messageFields = [
 	/*                                message:post                                */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Ephemeral',
+		name: 'ephemeral',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				operation: [
+					'post',
+				],
+				resource: [
+					'message',
+				],
+			},
+		},
+		description: `Ephemeral messages behave differently from regular messages on Slack.<br/>
+		They disappear when Slack reloads and won’t show up again when Slack is opened in a <br/>
+		new browser window or on a different device`,
+	},
+	{
 		displayName: 'Channel',
 		name: 'channel',
 		type: 'string',
@@ -52,6 +73,28 @@ export const messageFields = [
 		},
 		required: true,
 		description: 'The channel to send the message to.',
+	},
+	{
+		displayName: 'User',
+		name: 'user',
+		type: 'string',
+		default: '',
+		placeholder: 'User ID',
+		displayOptions: {
+			show: {
+				operation: [
+					'post',
+				],
+				resource: [
+					'message',
+				],
+				ephemeral: [
+					true,
+				],
+			},
+		},
+		required: true,
+		description: 'The user ID to send the message to.',
 	},
 	{
 		displayName: 'Text',
@@ -401,6 +444,19 @@ export const messageFields = [
 				name: 'mrkdwn',
 				type: 'boolean',
 				default: true,
+				displayOptions: {
+					show: {
+						'/operation': [
+							'post',
+						],
+						'/resource': [
+							'message',
+						],
+						'/ephemeral': [
+							false,
+						],
+					},
+				},
 				description: 'Use Slack Markdown parsing.',
 			},
 			{
@@ -408,6 +464,19 @@ export const messageFields = [
 				name: 'reply_broadcast',
 				type: 'boolean',
 				default: false,
+				displayOptions: {
+					show: {
+						'/operation': [
+							'post',
+						],
+						'/resource': [
+							'message',
+						],
+						'/ephemeral': [
+							false,
+						],
+					},
+				},
 				description: 'Used in conjunction with thread_ts and indicates whether reply should be made visible to everyone in the channel or conversation.',
 			},
 			{
@@ -415,6 +484,19 @@ export const messageFields = [
 				name: 'unfurl_links',
 				type: 'boolean',
 				default: false,
+				displayOptions: {
+					show: {
+						'/operation': [
+							'post',
+						],
+						'/resource': [
+							'message',
+						],
+						'/ephemeral': [
+							false,
+						],
+					},
+				},
 				description: 'Pass true to enable unfurling of primarily text-based content.',
 			},
 			{
@@ -422,6 +504,19 @@ export const messageFields = [
 				name: 'unfurl_media',
 				type: 'boolean',
 				default: true,
+				displayOptions: {
+					show: {
+						'/operation': [
+							'post',
+						],
+						'/resource': [
+							'message',
+						],
+						'/ephemeral': [
+							false,
+						],
+					},
+				},
 				description: 'Pass false to disable unfurling of media content.',
 			},
 		],

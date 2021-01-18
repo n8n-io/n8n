@@ -13,6 +13,7 @@ import {
 	ActiveWorkflowRunner,
 	CredentialsOverwrites,
 	CredentialTypes,
+	DatabaseType,
 	Db,
 	ExternalHooks,
 	GenericHelpers,
@@ -211,6 +212,15 @@ export class Start extends Command {
 							console.warn('Error with Redis: ', error);
 						}
 					});
+				}
+				
+				const dbType = await GenericHelpers.getConfigValue('database.type') as DatabaseType;
+
+				if (dbType === 'sqlite') {
+					const shouldRunVacuum = config.get('database.sqlite.executeVacuumOnStartup') as number;
+					if (shouldRunVacuum) {
+						Db.collections.Execution!.query("VACUUM;");
+					}
 				}
 
 				if (flags.tunnel === true) {

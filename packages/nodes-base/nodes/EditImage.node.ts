@@ -968,6 +968,11 @@ export class EditImage implements INodeType {
 				'blur',
 				'sigma',
 			],
+			border: [
+				'borderColor',
+				'borderWidth',
+				'borderHeight',
+			],
 			create: [
 				'backgroundColor',
 				'height',
