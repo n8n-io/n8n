@@ -34,6 +34,11 @@ import {
 	subredditOperations,
 } from './SubredditDescription';
 
+import {
+	userFields,
+	userOperations,
+} from './UserDescription';
+
 export class Reddit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Reddit',
@@ -85,6 +90,10 @@ export class Reddit implements INodeType {
 						name: 'Subreddit',
 						value: 'subreddit',
 					},
+					{
+						name: 'User',
+						value: 'user',
+					},
 				],
 				default: 'myAccount',
 				description: 'Resource to consume',
@@ -105,6 +114,10 @@ export class Reddit implements INodeType {
 			// subreddit
 			...subredditOperations,
 			...subredditFields,
+
+			// user
+			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -219,6 +232,21 @@ export class Reddit implements INodeType {
 					responseData = await redditApiRequest.call(this, 'GET', endpoint, qs, {});
 
 				}
+
+			} else if (resource === 'user') {
+
+				if (operation === 'get') {
+
+					const username = this.getNodeParameter('username', i) as string;
+					const details = this.getNodeParameter('details', i) as string;
+					const endpoint = `user/${username}/${details}.json`;
+
+					responseData = ['about', 'gilded'].includes(details)
+						? await redditApiRequest.call(this, 'GET', endpoint, {}, {})
+						: await handleListing.call(this, i, endpoint);
+
+				}
+
 			}
 
 			Array.isArray(responseData)

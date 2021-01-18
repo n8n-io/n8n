@@ -13,7 +13,7 @@ import {
 
 
 /**
- * Make an API request to Reddit.
+ * Make an authenticated or unauthenticated API request to Reddit.
  */
 export async function redditApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
@@ -61,7 +61,7 @@ export async function redditApiRequest(
 
 
 /**
- * Make an API request to Reddit and return all results.
+ * Make an unauthenticated API request to Reddit and return all results.
  */
 export async function redditApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
