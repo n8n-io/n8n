@@ -766,6 +766,20 @@ export class NextCloud implements INodeType {
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 				items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(responseData, endpoint);
+
+			} else if (resource === 'user' && operation === 'add') {
+
+				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
+					parseString(responseData, { explicitArray: false }, (err, data) => {
+						if (err) {
+							return reject(err);
+						}
+						resolve(data as IDataObject);
+					});
+				});
+
+				returnData.push(jsonResponseData as IDataObject);
+
 			} else if (resource === 'folder' && operation === 'list') {
 
 				const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
