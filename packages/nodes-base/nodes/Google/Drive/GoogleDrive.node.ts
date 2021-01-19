@@ -979,7 +979,7 @@ export class GoogleDrive implements INodeType {
 								],
 							},
 						},
-						default: '',
+						default: false,
 						description: 'Whether to send a notification email when sharing to users or groups',
 					},
 					{
