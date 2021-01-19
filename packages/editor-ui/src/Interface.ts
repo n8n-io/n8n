@@ -117,6 +117,10 @@ export interface INodeTypesMaxCount {
 	};
 }
 
+export interface IExternalHooks {
+	run(eventName: string, metadata?: IDataObject): Promise<void>;
+}
+
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
 	getActivationError(id: string): Promise<IActivationError | undefined >;
@@ -406,6 +410,9 @@ export interface IN8nUISettings {
 	};
 	urlBaseWebhook: string;
 	versionCli: string;
+	n8nMetadata?: {
+		[key: string]: string | number | undefined;
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
