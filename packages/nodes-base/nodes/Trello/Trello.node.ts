@@ -727,7 +727,7 @@ export class Trello implements INodeType {
 				responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 			} else {
 				responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-				if (returnAll === false) {
+				if (returnAll === false && qs.limit) {
 					responseData = responseData.splice(0, qs.limit);
 				}
 			}
