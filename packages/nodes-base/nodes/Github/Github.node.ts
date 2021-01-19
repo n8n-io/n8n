@@ -293,9 +293,6 @@ export class Github implements INodeType {
 				required: true,
 				displayOptions: {
 					hide: {
-						resource: [
-							'user',
-						],
 						operation: [
 							'invite',
 						],
