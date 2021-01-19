@@ -9,6 +9,10 @@ import {
 import {
 	OptionsWithUri,
  } from 'request';
+ 
+const https = require('https')
+
+//import * as https from 'https';
 
 /**
  * Make an API request to SIGNL4
@@ -18,17 +22,18 @@ import {
  * @returns {Promise<any>}
  */
 
-export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, contentType: string, body: string, query: IDataObject = {}, teamSecret?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
 
 	let options: OptionsWithUri = {
 		headers: {
 			'Accept': '*/*',
+			'Content-Type': contentType
 		},
 		method,
 		body,
 		qs: query,
-		uri: uri || ``,
-		json: true,
+		uri: "https://connect.signl4.com/webhook/" + teamSecret,
+		json: false,
 	};
 
 	if (!Object.keys(body).length) {
