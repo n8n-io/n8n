@@ -65,6 +65,11 @@ export class Reddit implements INodeType {
 							'submission',
 						],
 					},
+					hide: {
+						operation: [
+							'search',
+						],
+					},
 				},
 			},
 		],

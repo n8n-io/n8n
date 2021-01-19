@@ -56,7 +56,7 @@ export const myAccountFields = [
 				description: 'Return the subreddit karma for the logged-in user',
 			},
 			{
-				name: 'preferences',
+				name: 'Preferences',
 				value: 'prefs',
 				description: 'Return the settings preferences of the logged-in user',
 			},

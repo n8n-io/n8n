@@ -3,9 +3,6 @@ import {
 } from 'n8n-workflow';
 
 export const userOperations = [
-	// ----------------------------------
-	//            get: user
-	// ----------------------------------
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -21,10 +18,6 @@ export const userOperations = [
 			{
 				name: 'Get',
 				value: 'get',
-			},
-			{
-				name: 'Search',
-				value: 'search',
 			},
 		],
 		default: 'get',
