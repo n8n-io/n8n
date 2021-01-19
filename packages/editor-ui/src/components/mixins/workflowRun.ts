@@ -84,7 +84,7 @@ export const workflowRun = mixins(
 							duration: 0,
 						});
 						this.$titleSet(workflow.name as string, 'ERROR');
-						this.$externalHooks().run('workflow.onWorkflowRunError', { errorMessages });
+						this.$externalHooks().run('workflow.runError', { errorMessages });
 						return;
 					}
 				}

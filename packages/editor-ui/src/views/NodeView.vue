@@ -377,7 +377,7 @@ export default mixins(
 
 				this.$store.commit('setStateDirty', false);
 
-				this.$externalHooks().run('workflow.onWorkflowOpened', { workflowId, workflowName: data.name });
+				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 
 				return data;
 			},
@@ -2038,8 +2038,8 @@ export default mixins(
 				}
 				this.stopLoading();
 			});
-			
-			this.$externalHooks().run('nodeView.mounted');
+
+			this.$externalHooks().run('nodeView.mount');
 		},
 
 		destroyed () {
