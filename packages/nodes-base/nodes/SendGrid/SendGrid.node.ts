@@ -1,4 +1,4 @@
-import { 
+import {
 	IExecuteFunctions,
 } from 'n8n-core';
 
@@ -21,11 +21,10 @@ import {
 	contactOperations
 } from './ContactDescription';
 
-import { 
-	sendgridApiRequest,
-	sendgridApiRequestAllItems,
+import {
+	sendGridApiRequest,
+	sendGridApiRequestAllItems,
 } from './GenericFunctions';
-import { response } from 'express';
 
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {
@@ -81,7 +80,7 @@ export class SendGrid implements INodeType {
 			// Get custom fields to display to user so that they can select them easily
 			async getCustomFields(this: ILoadOptionsFunctions,):Promise<INodePropertyOptions[]>{
 				const returnData: INodePropertyOptions[] = [];
-				const { custom_fields } = await sendgridApiRequest.call(this, '/marketing/field_definitions', 'GET', {}, {});
+				const { custom_fields } = await sendGridApiRequest.call(this, '/marketing/field_definitions', 'GET', {}, {});
 				if (custom_fields !== undefined) {
 					for (const customField of custom_fields){
 						returnData.push({
@@ -95,7 +94,7 @@ export class SendGrid implements INodeType {
 			// Get lists to display to user so that they can select them easily
 			async getListIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await sendgridApiRequestAllItems.call(this, `/marketing/lists`, 'GET', 'result', {}, {});
+				const lists = await sendGridApiRequestAllItems.call(this, `/marketing/lists`, 'GET', 'result', {}, {});
 				for (const list of lists) {
 					returnData.push({
 						name: list.name,
@@ -129,7 +128,7 @@ export class SendGrid implements INodeType {
 						method = 'POST';
 						Object.assign(body, { query: filters.query });
 					}
-					responseData = await sendgridApiRequestAllItems.call(this, endpoint, method, 'result', body, qs);
+					responseData = await sendGridApiRequestAllItems.call(this, endpoint, method, 'result', body, qs);
 					if (returnAll === false) {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
@@ -153,7 +152,7 @@ export class SendGrid implements INodeType {
 						method = 'POST';
 						Object.assign(body, { query: `email LIKE '${email}' `});
 					}
-					responseData = await sendgridApiRequest.call(this, endpoint, method, body, qs);
+					responseData = await sendGridApiRequest.call(this, endpoint, method, body, qs);
 					responseData = responseData.result || responseData;
 					if (Array.isArray(responseData)) {
 						responseData = responseData[0];
@@ -169,7 +168,7 @@ export class SendGrid implements INodeType {
 						'additionalFields',
 						i,
 					) as IDataObject;
-					const contact: IDataObject = { 
+					const contact: IDataObject = {
 						email,
 					};
 					if (additionalFields.addressUi) {
@@ -225,8 +224,13 @@ export class SendGrid implements INodeType {
 					}
 					contacts.push(contact);
 				}
-				responseData = await sendgridApiRequest.call(this, '/marketing/contacts', 'PUT', { contacts }, qs);
-				returnData.push.apply(responseData);
+				responseData = await sendGridApiRequest.call(this, '/marketing/contacts', 'PUT', { contacts }, qs);
+
+				console.log('contacts');
+				console.log(contacts);
+				console.log('responseData');
+				console.log(responseData);
+				returnData.push(responseData);
 			}
 			if (operation === 'delete') {
 				for (let i = 0; i < length; i++) {
@@ -235,16 +239,16 @@ export class SendGrid implements INodeType {
 						qs.delete_all_contacts = 'true';
 					}
 					qs.ids = (this.getNodeParameter('ids',i) as string).replace(/\s/g, '');
-					responseData = await sendgridApiRequest.call(this, `/marketing/contacts`, 'DELETE', {}, qs);
+					responseData = await sendGridApiRequest.call(this, `/marketing/contacts`, 'DELETE', {}, qs);
 					returnData.push(responseData);
 				}
 			}
-		}	
+		}
 		if (resource === 'list') {
 			if (operation === 'getAll'){
 				for (let i = 0; i < length; i++) {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					responseData = await sendgridApiRequestAllItems.call(this, `/marketing/lists`, 'GET', 'result', {}, qs);
+					responseData = await sendGridApiRequestAllItems.call(this, `/marketing/lists`, 'GET', 'result', {}, qs);
 					if (returnAll === false) {
 						const limit = this.getNodeParameter('limit', i) as number;
 						responseData = responseData.splice(0, limit);
@@ -256,14 +260,14 @@ export class SendGrid implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const listId = this.getNodeParameter('listId',i) as string;
 					qs.contact_sample = this.getNodeParameter('contactSample', i) as boolean;
-					responseData = await sendgridApiRequest.call(this, `/marketing/lists/${listId}`, 'GET', {}, qs);
+					responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'GET', {}, qs);
 					returnData.push(responseData);
 				}
 			}
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					const name = this.getNodeParameter('name',i) as string;
-					responseData = await sendgridApiRequest.call(this, '/marketing/lists', 'POST', { name }, qs);
+					responseData = await sendGridApiRequest.call(this, '/marketing/lists', 'POST', { name }, qs);
 					returnData.push(responseData);
 				}
 			}
@@ -271,7 +275,7 @@ export class SendGrid implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const listId = this.getNodeParameter('listId',i) as string;
 					qs.delete_contacts = this.getNodeParameter('deleteContacts', i) as boolean;
-					responseData = await sendgridApiRequest.call(this, `/marketing/lists/${listId}`, 'DELETE', {}, qs);
+					responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'DELETE', {}, qs);
 					responseData = { success: true };
 					returnData.push(responseData);
 				}
@@ -280,11 +284,11 @@ export class SendGrid implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const name = this.getNodeParameter('name',i) as string;
 					const listId = this.getNodeParameter('listId',i) as string;
-					responseData = await sendgridApiRequest.call(this, `/marketing/lists/${listId}`, 'PATCH', { name }, qs);
+					responseData = await sendGridApiRequest.call(this, `/marketing/lists/${listId}`, 'PATCH', { name }, qs);
 					returnData.push(responseData);
 				}
 			}
-		}	
+		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

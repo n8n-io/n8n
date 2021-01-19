@@ -60,7 +60,7 @@ export const contactFields = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned',
+		description: 'If set to true, all the results will be returned.',
 	},
 	{
 		displayName: 'Limit',
@@ -112,6 +112,7 @@ export const contactFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -131,7 +132,7 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Primary email for the contact',
+		description: 'Primary email for the contact.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -286,6 +287,7 @@ export const contactFields = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:delete                             */
 	/* -------------------------------------------------------------------------- */
@@ -323,7 +325,7 @@ export const contactFields = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all contacts will be deleted',
+		description: 'If set to true, all contacts will be deleted.',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -355,7 +357,7 @@ export const contactFields = [
 			},
 		},
 		default: 'id',
-		description: 'Search user by',
+		description: 'Search the user by ID or email.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -376,7 +378,7 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'ID of the contact',
+		description: 'ID of the contact.',
 	},
 	{
 		displayName: 'Email',
@@ -397,6 +399,6 @@ export const contactFields = [
 			},
 		},
 		default: '',
-		description: 'Email of the contact',
+		description: 'Email of the contact.',
 	},
 ] as INodeProperties[];

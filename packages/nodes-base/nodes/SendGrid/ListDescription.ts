@@ -65,7 +65,7 @@ export const listFields = [
 			},
 		},
 		default: false,
-		description: 'If set to true, all the results will be returned',
+		description: 'If set to true, all the results will be returned.',
 	},
 	{
 		displayName: 'Limit',
@@ -91,6 +91,7 @@ export const listFields = [
 		default: 100,
 		description: 'How many results to return.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -110,8 +111,9 @@ export const listFields = [
 			},
 		},
 		default: '',
-		description: 'Name of your list',
+		description: 'Name of the list.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:delete                                */
 	/* -------------------------------------------------------------------------- */
@@ -131,7 +133,7 @@ export const listFields = [
 			},
 		},
 		default: '',
-		description: 'ID of your list',
+		description: 'ID of the list.',
 	},
 	{
 		displayName: 'Delete Contacts',
@@ -148,8 +150,9 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'Delete all contacts on the list',
+		description: 'Delete all contacts on the list.',
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -169,7 +172,7 @@ export const listFields = [
 			},
 		},
 		default: '',
-		description: 'ID of your list',
+		description: 'ID of the list.',
 	},
 	{
 		displayName: 'Contact Sample',
@@ -186,7 +189,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'Return the contact sample',
+		description: 'Return the contact sample.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:update                                */
@@ -207,7 +210,7 @@ export const listFields = [
 			},
 		},
 		default: '',
-		description: 'ID of your list',
+		description: 'ID of the list.',
 	},
 	{
 		displayName: 'Name',
@@ -225,6 +228,6 @@ export const listFields = [
 			},
 		},
 		default: '',
-		description: 'Name of your list',
+		description: 'Name of the list.',
 	},
 ] as INodeProperties[];
