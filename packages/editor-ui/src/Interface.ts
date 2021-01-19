@@ -118,7 +118,7 @@ export interface INodeTypesMaxCount {
 }
 
 export interface IExternalHooks {
-	callExternalHook(eventName: string, metadata?: IDataObject): Promise<void>;
+	run(eventName: string, metadata?: IDataObject): Promise<void>;
 }
 
 export interface IRestApi {

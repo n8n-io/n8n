@@ -338,7 +338,7 @@ export default mixins(
 
 			this.$emit('credentialsCreated', {data: result, options: { closeDialog }});
 
-			this.externalHooks().callExternalHook('credential.onCredentialCreated', { credentialTypeData: this.credentialTypeData });
+			this.$externalHooks().run('credential.onCredentialCreated', { credentialTypeData: this.credentialTypeData });
 
 			return result;
 		},

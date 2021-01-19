@@ -137,7 +137,7 @@ export default mixins(
 						this.$store.commit('setWorkflowInactive', this.workflowId);
 					}
 
-					this.externalHooks().callExternalHook(activationEventName, { workflowId: this.workflowId, active: newActiveState });
+					this.$externalHooks().run(activationEventName, { workflowId: this.workflowId, active: newActiveState });
 
 					this.$emit('workflowActiveChanged', { id: this.workflowId, active: newActiveState });
 					this.loading = false;

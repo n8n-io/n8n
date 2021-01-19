@@ -28,9 +28,9 @@ export async function runExternalHook(
 
 export const externalHooks = Vue.extend({
 	methods: {
-		externalHooks(): IExternalHooks {
+		$externalHooks(): IExternalHooks {
 			return {
-				callExternalHook: async (eventName: string, metadata?: IDataObject): Promise<void> => {
+				run: async (eventName: string, metadata?: IDataObject): Promise<void> => {
 					await runExternalHook.call(this, eventName, this.$store, metadata);
 				},
 			};
