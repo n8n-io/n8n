@@ -424,6 +424,7 @@ export const workflowHelpers = mixins(
 						this.$store.commit('setWorkflowId', workflowData.id);
 						this.$store.commit('setWorkflowName', {newName: workflowData.name, setStateDirty: false});
 						this.$store.commit('setWorkflowSettings', workflowData.settings || {});
+						this.$store.commit('setStateDirty', false);
 					} else {
 						// Workflow exists already so update it
 						await this.restApi().updateWorkflow(currentWorkflow, workflowData);
