@@ -124,11 +124,33 @@ export class ActiveWorkflowRunner {
 			// check if a dynamic webhook path exists
 			const pathElements = path.split('/');
 			webhookId = pathElements.shift();
-			webhook = await Db.collections.Webhook?.findOne({ webhookId, method: httpMethod }) as IWebhookDb;
-			if (webhook === undefined) {
+			const dynamicWebhooks = await Db.collections.Webhook?.find({ webhookId, method: httpMethod, pathLength: pathElements.length });
+			if (dynamicWebhooks === undefined) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
+			// set webhook to the first webhook result
+			// if more results have been returned choose the one with the most route-matches
+			webhook = dynamicWebhooks[0];
+			if (dynamicWebhooks.length > 1) {
+				let matches = 0;
+				const pathElementsSet = new Set(pathElements);
+				dynamicWebhooks.forEach(dynamicWebhook => {
+					const intersection =
+						dynamicWebhook.webhookPath
+						.split('/')
+						.reduce((acc, element) => pathElementsSet.has(element) ? acc += 1 : acc, 0);
+
+					if (intersection > matches) {
+						matches = intersection;
+						webhook = dynamicWebhook;
+					}
+				});
+				if (matches === 0) {
+					throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
+				}
+			}
+
 			path = webhook.webhookPath;
 			// extracting params from path
 			req.params = {};
@@ -269,12 +291,13 @@ export class ActiveWorkflowRunner {
 				method: webhookData.httpMethod,
 			} as IWebhookDb;
 
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
-				webhook.webhookId = node.webhookId;
-			}
-
 			if (webhook.webhookPath.startsWith('/')) {
 				webhook.webhookPath = webhook.webhookPath.slice(1);
+			}
+
+			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+				webhook.webhookId = node.webhookId;
+				webhook.pathLength = webhook.webhookPath.split('/').length;
 			}
 
 			try {

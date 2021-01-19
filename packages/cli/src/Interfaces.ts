@@ -58,6 +58,7 @@ export interface IWebhookDb {
 	method: string;
 	node: string;
 	webhookId?: string;
+	pathLength?: number;
 }
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
