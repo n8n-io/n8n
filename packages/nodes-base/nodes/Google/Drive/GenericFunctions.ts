@@ -82,6 +82,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 
 	let responseData;
 	query.maxResults = 100;
+	query.pageSize = 100;
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
