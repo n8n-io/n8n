@@ -265,36 +265,71 @@ export class Signl4 implements INodeType {
 				if (operation === 'send') {
 					const message = this.getNodeParameter('message', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields',i) as IDataObject;
+					
+					let data = "";
 
-					const data: IDataObject = {
-						message,
-					};
+					// Message
+					data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+					data += "Content-Disposition: form-data; name=\"message\"\r\n\r\n";
+					data += message + "\r\n";
 
-					if (additionalFields.alertingScenario) {
-						data['X-S4-AlertingScenario'] = additionalFields.alertingScenario as string;
+					// Title
+					if (additionalFields.title) {
+						data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+						data += "Content-Disposition: form-data; name=\"title\"\r\n\r\n";
+						data += additionalFields.title as string + "\r\n";
 					}
-					if (additionalFields.externalId) {
-						data['X-S4-ExternalID'] = additionalFields.externalId as string;
+
+					// X-S4-Service
+					if (additionalFields.service) {
+						data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+						data += "Content-Disposition: form-data; name=\"X-S4-Service\"\r\n\r\n";
+						data += additionalFields.service as string + "\r\n";
 					}
-					if (additionalFields.filtering) {
-						data['X-S4-Filtering'] = (additionalFields.filtering as boolean).toString();
-					}
+
+					// X-S4-Location
 					if (additionalFields.locationFieldsUi) {
 						const locationUi = (additionalFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
 						if (locationUi) {
-							data['X-S4-Location'] = `${locationUi.latitude},${locationUi.longitude}`;
+							data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+							data += "Content-Disposition: form-data; name=\"X-S4-Location\"\r\n\r\n";
+							data += `${locationUi.latitude},${locationUi.longitude}` + "\r\n";
 						}
 					}
-					if (additionalFields.service) {
-						data['X-S4-Service'] = additionalFields.service as string;
-					}
-					data['X-S4-Status'] = 'new';
-					if (additionalFields.title) {
-						data['title'] = additionalFields.title as string;
+
+					// X-S4-AlertingScenario
+					if (additionalFields.alertingScenario) {
+						data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+						data += "Content-Disposition: form-data; name=\"X-S4-AlertingScenario\"\r\n\r\n";
+						data += additionalFields.alertingScenario as string + "\r\n";
 					}
 
+					// X-S4-Filtering
+					if (additionalFields.filtering) {
+						data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+						data += "Content-Disposition: form-data; name=\"X-S4-Filtering\"\r\n\r\n";
+						data += (additionalFields.filtering as boolean).toString() + "\r\n";
+					}
+
+					// X-S4-ExternalID
+					if (additionalFields.externalId) {
+						data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+						data += "Content-Disposition: form-data; name=\"X-S4-ExternalID\"\r\n\r\n";
+						data += additionalFields.externalId as string + "\r\n";
+					}
+
+					// Status
+					data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+					data += "Content-Disposition: form-data; name=\"X-S4-Status\"\r\n\r\n";
+					data += "new\r\n";
+
+					// Source System
+					data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+					data += "Content-Disposition: form-data; name=\"X-S4-SourceSystem\"\r\n\r\n";
+					data += "n8n\r\n";
+
+					// Attachments
 					const attachments = additionalFields.attachmentsUi as IDataObject;
-
 					if (attachments) {
 						if (attachments.attachmentsBinary && items[i].binary) {
 
@@ -304,38 +339,39 @@ export class Signl4 implements INodeType {
 
 							if (binaryProperty) {
 
-								const supportedFileExtension = ['png', 'jpg', 'txt'];
+								const supportedFileExtension = ['png', 'jpg', 'bmp', 'gif', 'mp3', 'wav'];
 
 								if (!supportedFileExtension.includes(binaryProperty.fileExtension as string)) {
 
 									throw new Error(`Invalid extension, just ${supportedFileExtension.join(',')} are supported}`);
 								}
 
-								data['file'] = {
-									value: Buffer.from(binaryProperty.data, BINARY_ENCODING),
-									options: {
-										filename: binaryProperty.fileName,
-										contentType: binaryProperty.mimeType,
-									},
-								};
+								data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513\r\n";
+								data += "Content-Disposition: form-data; name=\"" + binaryProperty.fileName + "\"; filename=\"" + binaryProperty.fileName + "\"\r\n";
+								data += "Content-Type: " + binaryProperty.mimeType + "\r\n";
+								data += "Content-Transfer-Encoding: base64\r\n\r\n";
+
+								data += Buffer.from(binaryProperty.data, 'base64').toString('base64') + "\r\n";
 
 							} else {
 								throw new Error(`Binary property ${propertyName} does not exist on input`);
 							}
 						}
 					}
+					
+					data += "------Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513--\r\n";
 
 					const credentials = this.getCredentials('signl4Api');
 
-					const endpoint = `https://connect.signl4.com/webhook/${credentials?.teamSecret}`;
+					const teamSecret = credentials?.teamSecret as string;
 
 					responseData = await SIGNL4ApiRequest.call(
 						this,
 						'POST',
-						'',
+						'multipart/form-data; boundary=----Boundary-cc2050af-c42f-4cda-a0c3-ede7eaa89513',
 						data,
 						{},
-						endpoint,
+						teamSecret,
 						{},
 					);
 				}
@@ -347,18 +383,21 @@ export class Signl4 implements INodeType {
 					data['X-S4-ExternalID'] = this.getNodeParameter('externalId', i) as string;
 
 					data['X-S4-Status'] = 'resolved';
+					
+					// Source system
+					data['X-S4-SourceSystem'] = 'n8n';
 
 					const credentials = this.getCredentials('signl4Api');
 
-					const endpoint = `https://connect.signl4.com/webhook/${credentials?.teamSecret}`;
+					const teamSecret = credentials?.teamSecret as string;
 
 					responseData = await SIGNL4ApiRequest.call(
 						this,
 						'POST',
-						'',
-						data,
+						'application/json',
+						JSON.stringify(data),
 						{},
-						endpoint,
+						teamSecret,
 						{},
 					);
 				}
