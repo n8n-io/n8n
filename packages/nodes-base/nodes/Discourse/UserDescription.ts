@@ -248,10 +248,6 @@ export const userFields: INodeProperties[] = [
 				name: 'Suspect',
 				value: 'suspect',
 			},
-			{
-				name: 'Suspect',
-				value: 'Suspended',
-			},
 		],
 		displayOptions: {
 			show: {

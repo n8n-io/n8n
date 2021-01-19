@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -116,32 +117,29 @@ export class Discourse implements INodeType {
 		],
 	};
 
-	// methods = {
-	// 	loadOptions: {
-	// 		// Get all the calendars to display them to user so that he can
-	// 		// select them easily
-	// 		async getGroups(
-	// 			this: ILoadOptionsFunctions,
-	// 		): Promise<INodePropertyOptions[]> {
-	// 			const returnData: INodePropertyOptions[] = [];
-	// 			const groups = await googleApiRequestAllItems.call(
-	// 				this,
-	// 				'contactGroups',
-	// 				'GET',
-	// 				`/contactGroups`,
-	// 			);
-	// 			for (const group of groups) {
-	// 				const groupName = group.name;
-	// 				const groupId = group.resourceName;
-	// 				returnData.push({
-	// 					name: groupName,
-	// 					value: groupId,
-	// 				});
-	// 			}
-	// 			return returnData;
-	// 		},
-	// 	},
-	// };
+	methods = {
+		loadOptions: {
+			// Get all the calendars to display them to user so that he can
+			// select them easily
+			async getCategories(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const { category_list } = await discourseApiRequest.call(
+					this,
+					'GET',
+					`/categories.json`,
+				);
+				for (const category of category_list.categories) {
+					returnData.push({
+						name: category.name,
+						value: category.id,
+					});
+				}
+				return returnData;
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -286,13 +284,16 @@ export class Discourse implements INodeType {
 			if (resource === 'post') {
 				//https://docs.discourse.org/#tag/Posts/paths/~1posts.json/post
 				if (operation === 'create') {
-					const  topicId = this.getNodeParameter('topicId', i) as string;
 					const content = this.getNodeParameter('content', i) as string;
+					const title = this.getNodeParameter('title', i) as string;
+					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const body: IDataObject = {
-						topic_id: topicId,
+						title,
 						raw: content,
 					};
+
+					Object.assign(body, additionalFields);
 
 					responseData = await discourseApiRequest.call(
 						this,
@@ -350,8 +351,10 @@ export class Discourse implements INodeType {
 						this,
 						'PUT',
 						`/posts/${postId}.json`,
-						{},
+						body,
 					);
+
+					responseData = responseData.post;
 				}
 			}
 			// TODO figure how to paginate the results

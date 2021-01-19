@@ -47,10 +47,9 @@ export const postFields: INodeProperties[] = [
 	/*                                post:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Topic ID',
-		name: 'topicId',
+		displayName: 'Title',
+		name: 'title',
 		type: 'string',
-		required: true,
 		displayOptions: {
 			show: {
 				resource: [
@@ -62,13 +61,16 @@ export const postFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'ID of the post',
+		description: 'Title of the post',
 	},
 	{
 		displayName: 'Content',
 		name: 'content',
 		type: 'string',
 		required: true,
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
 		displayOptions: {
 			show: {
 				resource: [
@@ -81,6 +83,49 @@ export const postFields: INodeProperties[] = [
 		},
 		default: '',
 		description: 'Content of the post',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				operation: [
+					'create',
+				],
+				resource: [
+					'post',
+				],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Category ID',
+				name: 'category',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getCategories',
+				},
+				default: '',
+				description: 'ID of the category',
+			},
+			{
+				displayName: 'Reply To Post Number',
+				name: 'reply_to_post_number',
+				type: 'string',
+				default: '',
+				description: 'The number of the post to reply to',
+			},
+			{
+				displayName: 'Topic ID',
+				name: 'topic_id',
+				type: 'string',
+				default: '',
+				description: 'ID of the topic',
+			},
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                post:get                                    */
@@ -172,6 +217,9 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Content',
 		name: 'content',
 		type: 'string',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
 		required: true,
 		displayOptions: {
 			show: {
@@ -208,14 +256,12 @@ export const postFields: INodeProperties[] = [
 				name: 'edit_reason',
 				type: 'string',
 				default: '',
-				description: 'The ID of the issue status.',
 			},
 			{
 				displayName: 'Cooked',
 				name: 'cooked',
 				type: 'boolean',
 				default: false,
-				description: 'The ID of the issue status.',
 			},
 		],
 	},

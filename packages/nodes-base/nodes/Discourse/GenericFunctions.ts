@@ -28,7 +28,6 @@ export async function discourseApiRequest(this: IExecuteFunctions | IExecuteSing
 		json: true,
 	};
 
-	//console.log(options);
 	try {
 		if (Object.keys(body).length === 0) {
 			delete options.body;
@@ -56,7 +55,6 @@ export async function discourseApiRequestAllItems(this: IExecuteFunctions | ILoa
 	query.page = 1;
 	do {
 		responseData = await discourseApiRequest.call(this, method, endpoint, body, query);
-		console.log(responseData);
 		returnData.push.apply(returnData, responseData);
 		query.page++;
 	} while (
