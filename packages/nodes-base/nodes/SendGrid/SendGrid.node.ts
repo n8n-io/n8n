@@ -226,10 +226,6 @@ export class SendGrid implements INodeType {
 				}
 				responseData = await sendGridApiRequest.call(this, '/marketing/contacts', 'PUT', { contacts }, qs);
 
-				console.log('contacts');
-				console.log(contacts);
-				console.log('responseData');
-				console.log(responseData);
 				returnData.push(responseData);
 			}
 			if (operation === 'delete') {
