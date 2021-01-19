@@ -10,8 +10,6 @@ import {
 	OptionsWithUri,
  } from 'request';
  
-const https = require('https')
-
 //import * as https from 'https';
 
 /**
