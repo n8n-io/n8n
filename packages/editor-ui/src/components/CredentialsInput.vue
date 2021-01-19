@@ -119,6 +119,7 @@
 import Vue from 'vue';
 
 import { copyPaste } from '@/components/mixins/copyPaste';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { restApi } from '@/components/mixins/restApi';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -147,6 +148,7 @@ import mixins from 'vue-typed-mixins';
 
 export default mixins(
 	copyPaste,
+	externalHooks,
 	nodeHelpers,
 	restApi,
 	showMessage,
@@ -335,6 +337,8 @@ export default mixins(
 			this.$store.commit('addCredentials', result);
 
 			this.$emit('credentialsCreated', {data: result, options: { closeDialog }});
+
+			this.$externalHooks().run('credentials.create', { credentialTypeData: this.credentialTypeData });
 
 			return result;
 		},
