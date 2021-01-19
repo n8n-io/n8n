@@ -12,6 +12,7 @@ import {
 
 import {
 	hubspotApiRequest,
+	propertyEvents,
 } from './GenericFunctions';
 
 import {
@@ -22,10 +23,9 @@ export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot Trigger',
 		name: 'hubspotTrigger',
-		icon: 'file:hubspot.png',
+		icon: 'file:hubspot.svg',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{($parameter["appId"]) ? $parameter["event"] : ""}}',
 		description: 'Starts the workflow when HubSpot events occur.',
 		defaults: {
 			name: 'Hubspot Trigger',
@@ -55,87 +55,97 @@ export class HubspotTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'App ID',
-				name: 'appId',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'App ID',
-			},
-			{
-				displayName: 'Event',
-				name: 'event',
-				type: 'options',
+				displayName: 'Events',
+				name: 'eventsUi',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Event',
+				default: {},
 				options: [
 					{
-						name: 'contact.creation',
-						value: 'contact.creation',
-						description: `To get notified if any contact is created in a customer's account.`,
-					},
-					{
-						name: 'contact.deletion',
-						value: 'contact.deletion',
-						description: `To get notified if any contact is deleted in a customer's account.`,
-					},
-					{
-						name: 'contact.privacyDeletion',
-						value: 'contact.privacyDeletion',
-						description: `To get notified if a contact is deleted for privacy compliance reasons. `,
-					},
-					{
-						name: 'contact.propertyChange',
-						value: 'contact.propertyChange',
-						description: `to get notified if a specified property is changed for any contact in a customer's account. `,
-					},
-					{
-						name: 'company.creation',
-						value: 'company.creation',
-						description: `To get notified if any company is created in a customer's account.`,
-					},
-					{
-						name: 'company.deletion',
-						value: 'company.deletion',
-						description: `To get notified if any company is deleted in a customer's account.`,
-					},
-					{
-						name: 'company.propertyChange',
-						value: 'company.propertyChange',
-						description: `To get notified if a specified property is changed for any company in a customer's account.`,
-					},
-					{
-						name: 'deal.creation',
-						value: 'deal.creation',
-						description: `To get notified if any deal is created in a customer's account.`,
-					},
-					{
-						name: 'deal.deletion',
-						value: 'deal.deletion',
-						description: `To get notified if any deal is deleted in a customer's account.`,
-					},
-					{
-						name: 'deal.propertyChange',
-						value: 'deal.propertyChange',
-						description: `To get notified if a specified property is changed for any deal in a customer's account.`,
-					},
-				],
-				default: 'contact.creation',
-				required: true,
-			},
-			{
-				displayName: 'Property',
-				name: 'property',
-				type: 'string',
-				displayOptions: {
-					show: {
-						event: [
-							'contact.propertyChange',
-							'company.propertyChange',
-							'deal.propertyChange',
+						displayName: 'Event',
+						name: 'eventValues',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'options',
+								options: [
+									{
+										name: 'Contact Created',
+										value: 'contact.creation',
+										description: `To get notified if any contact is created in a customer's account.`,
+									},
+									{
+										name: 'Contact Deleted',
+										value: 'contact.deletion',
+										description: `To get notified if any contact is deleted in a customer's account.`,
+									},
+									{
+										name: 'Contact Privacy Deleted',
+										value: 'contact.privacyDeletion',
+										description: `To get notified if a contact is deleted for privacy compliance reasons. `,
+									},
+									{
+										name: 'Contact Property Changed',
+										value: 'contact.propertyChange',
+										description: `to get notified if a specified property is changed for any contact in a customer's account. `,
+									},
+									{
+										name: 'Company Created',
+										value: 'company.creation',
+										description: `To get notified if any company is created in a customer's account.`,
+									},
+									{
+										name: 'Company Deleted',
+										value: 'company.deletion',
+										description: `To get notified if any company is deleted in a customer's account.`,
+									},
+									{
+										name: 'Company Property Changed',
+										value: 'company.propertyChange',
+										description: `To get notified if a specified property is changed for any company in a customer's account.`,
+									},
+									{
+										name: 'Deal Created',
+										value: 'deal.creation',
+										description: `To get notified if any deal is created in a customer's account.`,
+									},
+									{
+										name: 'Deal Deleted',
+										value: 'deal.deletion',
+										description: `To get notified if any deal is deleted in a customer's account.`,
+									},
+									{
+										name: 'Deal Property Changed',
+										value: 'deal.propertyChange',
+										description: `To get notified if a specified property is changed for any deal in a customer's account.`,
+									},
+								],
+								default: 'contact.creation',
+								required: true,
+							},
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'string',
+								displayOptions: {
+									show: {
+										name: [
+											'contact.propertyChange',
+											'deal.propertyChange',
+											'company.propertyChange',
+										],
+									},
+								},
+								default: '',
+								required: true,
+							},
 						],
 					},
-				},
-				default: '',
-				required: true,
+				],
 			},
 			{
 				displayName: 'Additional Fields',
@@ -156,8 +166,34 @@ export class HubspotTrigger implements INodeType {
 				],
 			},
 		],
-
 	};
+
+	// methods = {
+	// 	loadOptions: {
+	// 		// Get all the available accounts to display them to user so that he can
+	// 		// select them easily
+	// 		async getProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	// 			const returnData: INodePropertyOptions[] = [];
+	// 			const name = this.getCurrentNodeParameter('name') as string;
+	// 			const resources: IDataObject = {
+	// 				'contact': 'contacts',
+	// 				'deals': 'deals',
+	// 				'company': 'companies',
+	// 			};
+	// 			const endpoint = `/properties/v2/${resources[name]}/properties`;
+	// 			const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+	// 			for (const property of properties) {
+	// 				const propertyName = property.label;
+	// 				const propertyId = property.name;
+	// 				returnData.push({
+	// 					name: propertyName,
+	// 					value: propertyId,
+	// 				});
+	// 			}
+	// 			return returnData;
+	// 		},
+	// 	},
+	// };
 
 	// @ts-ignore (because of request)
 	webhookMethods = {
@@ -165,80 +201,78 @@ export class HubspotTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const app = parseInt(this.getNodeParameter('appId') as string, 10);
-				const event = this.getNodeParameter('event') as string;
-				const webhookUrlUi = this.getNodeWebhookUrl('default') as string;
-				let endpoint = `/webhooks/v1/${app}/settings`;
-				const { webhookUrl , appId } = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				endpoint = `/webhooks/v1/${app}/subscriptions`;
-				const subscriptions = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-				for (const subscription of subscriptions) {
-					if (webhookUrl === webhookUrlUi
-					&& appId === app
-					&& subscription.subscriptionDetails.subscriptionType === event
-					&& subscription.enabled === true) {
-						return true;
+				const currentWebhookUrl = this.getNodeWebhookUrl('default') as string;
+				const { appId } = this.getCredentials('hubspotDeveloperApi') as IDataObject;
+
+				try {
+					const { targetUrl } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/settings`, {});
+					if (targetUrl !== currentWebhookUrl) {
+						throw new Error(`The APP ID ${appId} already has a target url ${targetUrl}. Delete it or use another APP ID before executing the trigger. Due to Hubspot API limitations, you can have just one trigger per APP.`);
+					}
+				} catch (error) {
+					if (error.statusCode === 404) {
+						return false;
 					}
 				}
+				// if the app is using the current webhook url. Delete everything and create it again with the current events
+				
+				const { results: subscriptions } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/subscriptions`, {});
+
+				// delete all subscriptions
+				for (const subscription of subscriptions) {
+					await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/subscriptions/${subscription.id}`, {});
+				}
+
+				await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/settings`, {});
+
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const app = this.getNodeParameter('appId') as string;
-				const event = this.getNodeParameter('event') as string;
+				const { appId } = this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				const events = (this.getNodeParameter('eventsUi') as IDataObject || {}).eventValues as IDataObject[] || [];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
-				const propertyEvents = [
-					'contact.propertyChange',
-					'company.propertyChange',
-					'deal.propertyChange',
-				];
-				let endpoint = `/webhooks/v1/${app}/settings`;
+				let endpoint = `/webhooks/v3/${appId}/settings`;
 				let body: IDataObject = {
-					webhookUrl,
+					targetUrl: webhookUrl,
 					maxConcurrentRequests: additionalFields.maxConcurrentRequests || 5,
 				};
+				
 				await hubspotApiRequest.call(this, 'PUT', endpoint, body);
 
-				endpoint = `/webhooks/v1/${app}/subscriptions`;
-				body = {
-					subscriptionDetails: {
-						subscriptionType: event,
-					},
-					enabled: true,
-				};
-				if (propertyEvents.includes(event)) {
-					const property = this.getNodeParameter('property') as string;
-					//@ts-ignore
-					body.subscriptionDetails.propertyName = property;
+				endpoint = `/webhooks/v3/${appId}/subscriptions`;
+
+				if (Array.isArray(events) && events.length === 0) {
+					throw new Error(`You must define at least one event`);
 				}
 
-				const responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
-
-				if (responseData.id === undefined) {
-					// Required data is missing so was not successful
-					return false;
+				for (const event of events) {
+					body = {
+						eventType: event.name,
+						active: true,
+					};
+					if (propertyEvents.includes(event.name as string)) {
+						const property = event.property;
+						body.propertyName = property;
+					}
+					await hubspotApiRequest.call(this, 'POST', endpoint, body);
 				}
 
-				const webhookData = this.getWorkflowStaticData('node');
-				webhookData.webhookId = responseData.id as string;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
-				const app = this.getNodeParameter('appId') as string;
-				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/v1/${app}/subscriptions/${webhookData.webhookId}`;
+				const { appId } = this.getCredentials('hubspotDeveloperApi') as IDataObject;
+				
+				const { results: subscriptions } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/subscriptions`, {});
 
-					const body = {};
+				for (const subscription of subscriptions) {
+					await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/subscriptions/${subscription.id}`, {});
+				}
 
-					try {
-						await hubspotApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
-						return false;
-					}
-					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
-					delete webhookData.webhookId;
+				try {
+					await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/settings`, {});
+				} catch (e) {
+					return false;
 				}
 				return true;
 			},

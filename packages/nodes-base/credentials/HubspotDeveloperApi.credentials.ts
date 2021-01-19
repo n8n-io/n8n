@@ -20,5 +20,13 @@ export class HubspotDeveloperApi implements ICredentialType {
 			type: 'string' as NodePropertyTypes,
 			default: '',
 		},
+		{
+			displayName: 'APP ID',
+			name: 'appId',
+			type: 'string' as NodePropertyTypes,
+			required: true,
+			default: '',
+			description: 'APP ID',
+		},
 	];
 }

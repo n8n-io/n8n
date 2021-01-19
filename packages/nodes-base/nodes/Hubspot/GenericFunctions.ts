@@ -112,3 +112,9 @@ export function validateJSON(json: string | undefined): any { // tslint:disable-
 	}
 	return result;
 }
+
+export const propertyEvents = [
+	'contact.propertyChange',
+	'company.propertyChange',
+	'deal.propertyChange',
+];

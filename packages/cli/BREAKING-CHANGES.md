@@ -2,6 +2,17 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.103.0
+
+### What changed?
+In the Hubspot Trigger, now multiple events can be provided and the field `APP ID` was moved to the credentials.
+
+### When is action necessary?
+If you are using the Hubspot Trigger node.
+
+### How to upgrade:
+Open the Hubspot Trigger and set the events again. Also open the credentials `Hubspot Developer API` and set your APP ID.
+
 ## 0.102.0
 
 ### What changed?
