@@ -21,14 +21,14 @@ export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Drive',
 		name: 'googleDrive',
-		icon: 'file:googleDrive.png',
+		icon: 'file:googleDrive.svg',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Access data on Google Drive',
 		defaults: {
 			name: 'Google Drive',
-			color: '#3f87f2',
+			color: '#4285F4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -1047,8 +1047,7 @@ export class GoogleDrive implements INodeType {
 							},
 						},
 						default: false,
-						description: `Issue the request as a domain administrator; if set to true, then the requester will be granted access if the file ID parameter<br>
-						refers to a shared drive and the requester is an administrator of the domain to which the shared drive belongs.`,
+						description: `Perform the operation as domain administrator, i.e. if you are an administrator of the domain to which the shared drive belongs, you will be granted access automatically`,
 					},
 
 					{
@@ -1728,7 +1727,7 @@ export class GoogleDrive implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-			const options = this.getNodeParameter('options', i) as IDataObject;
+			const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 			let queryFields = 'id, name';
 			if (options && options.fields) {
@@ -1765,9 +1764,9 @@ export class GoogleDrive implements INodeType {
 
 					const driveId = this.getNodeParameter('driveId', i) as string;
 
-					const response = await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
+					await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
 
-					returnData.push(response as IDataObject);
+					returnData.push({ success: true });
 				}
 				if (operation === 'get') {
 					// ----------------------------------
