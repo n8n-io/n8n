@@ -226,7 +226,7 @@ export const contactFields = [
 				displayName: 'List IDs',
 				name: 'listIdsUi',
 				placeholder: 'List IDs',
-				description: 'Adds a custom fields to set also values which have not been predefined.',
+				description: 'Adds a custom field to set also values which have not been predefined.',
 				type: 'fixedCollection',
 				default: {},
 				options: [
@@ -330,6 +330,34 @@ export const contactFields = [
 	/*                                 contact:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'By',
+		name: 'by',
+		type: 'options',
+		options: [
+			{
+				name: 'ID',
+				value: 'id',
+			},
+			{
+				name: 'Email',
+				value: 'email',
+			},
+		],
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'contact',
+				],
+			},
+		},
+		default: 'id',
+		description: 'Search user by',
+	},
+	{
 		displayName: 'Contact ID',
 		name: 'contactId',
 		type: 'string',
@@ -342,9 +370,33 @@ export const contactFields = [
 				resource: [
 					'contact',
 				],
+				by: [
+					'id',
+				],
 			},
 		},
 		default: '',
 		description: 'ID of the contact',
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [
+					'get',
+				],
+				resource: [
+					'contact',
+				],
+				by: [
+					'email',
+				],
+			},
+		},
+		default: '',
+		description: 'Email of the contact',
 	},
 ] as INodeProperties[];

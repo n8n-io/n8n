@@ -25,6 +25,7 @@ import {
 	sendgridApiRequest,
 	sendgridApiRequestAllItems,
 } from './GenericFunctions';
+import { response } from 'express';
 
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {
@@ -137,9 +138,26 @@ export class SendGrid implements INodeType {
 				}
 			}
 			if (operation === 'get') {
+				const by = this.getNodeParameter('by', 0) as string;
+				let endpoint;
+				let method;
+				const body: IDataObject = {};
 				for (let i = 0; i < length; i++) {
-					const contactId = this.getNodeParameter('contactId',i) as string;
-					responseData = await sendgridApiRequest.call(this, `/marketing/contacts/${contactId}`, 'GET', {}, qs);
+					if (by === 'id') {
+						method = 'GET';
+						const contactId = this.getNodeParameter('contactId', i) as string;
+						endpoint = `/marketing/contacts/${contactId}`;
+					} else {
+						const email = this.getNodeParameter('email', i) as string;
+						endpoint = '/marketing/contacts/search';
+						method = 'POST';
+						Object.assign(body, { query: `email LIKE '${email}' `});
+					}
+					responseData = await sendgridApiRequest.call(this, endpoint, method, body, qs);
+					responseData = responseData.result || responseData;
+					if (Array.isArray(responseData)) {
+						responseData = responseData[0];
+					}
 					returnData.push(responseData);
 				}
 			}
@@ -267,6 +285,6 @@ export class SendGrid implements INodeType {
 				}
 			}
 		}	
-		return [this.helpers.returnJsonArray(responseData)];
+		return [this.helpers.returnJsonArray(returnData)];
 	}
 }

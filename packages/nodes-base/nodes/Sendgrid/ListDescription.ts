@@ -148,7 +148,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'Indicates that all contacts on the list are also to be deleted',
+		description: 'Delete all contacts on the list',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:get                                   */
@@ -186,7 +186,7 @@ export const listFields = [
 				],
 			},
 		},
-		description: 'Setting this parameter to the true will cause the contact_sample to be returned',
+		description: 'Return the contact sample',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:update                                */
