@@ -1374,7 +1374,7 @@ export class Github implements INodeType {
 						name: 'commitId',
 						type: 'string',
 						default: '',
-						description: 'The number of the issue on which to create the comment on.',
+						description: 'The SHA of the commit that needs a review, if different from the latest',
 					},
 				],
 			},
