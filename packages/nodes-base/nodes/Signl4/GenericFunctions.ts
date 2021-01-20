@@ -10,8 +10,6 @@ import {
 	OptionsWithUri,
  } from 'request';
  
-//import * as https from 'https';
-
 /**
  * Make an API request to SIGNL4
  *
