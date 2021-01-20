@@ -1,9 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-
+import {MigrationInterface, QueryRunner} from "typeorm";
 import * as config from '../../../../config';
 
-export class AddWebhookId1610632462428 implements MigrationInterface {
-	name = 'AddWebhookId1610632462428';
+export class AddWebhookId1611144599516 implements MigrationInterface {
+	name = 'AddWebhookId1611144599516';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		let tablePrefix = config.get('database.tablePrefix');
@@ -14,9 +13,8 @@ export class AddWebhookId1610632462428 implements MigrationInterface {
 		}
 
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity ADD "webhookId" character varying`);
-		await queryRunner.query(
-			`CREATE INDEX "IDX_${tablePrefixPure}5c698bcd4092bc271cabdf7814" ON ${tablePrefix}webhook_entity ("webhookId", "method") `
-		);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity ADD "pathLength" integer`);
+		await queryRunner.query(`CREATE INDEX IF NOT EXISTS IDX_${tablePrefixPure}16f4436789e804e3e1c9eeb240 ON ${tablePrefix}webhook_entity ("webhookId", "method", "pathLength") `);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
@@ -27,7 +25,9 @@ export class AddWebhookId1610632462428 implements MigrationInterface {
 			tablePrefix = schema + '.' + tablePrefix;
 		}
 
-		await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}5c698bcd4092bc271cabdf7814`);
+		await queryRunner.query(`DROP INDEX IDX_${tablePrefixPure}16f4436789e804e3e1c9eeb240`);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity DROP COLUMN "pathLength"`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}webhook_entity DROP COLUMN "webhookId"`);
 	}
+
 }
