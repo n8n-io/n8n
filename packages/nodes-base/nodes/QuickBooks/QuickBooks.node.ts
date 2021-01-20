@@ -53,26 +53,6 @@ export class QuickBooks implements INodeType {
 				default: 'customer',
 				description: 'Resource to consume',
 			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				default: 'get',
-				description: 'Operation to perform',
-				options: [
-					{
-						name: 'Get',
-						value: 'get',
-					},
-				],
-				displayOptions: {
-					show: {
-						resource: [
-							'customer',
-						],
-					},
-				},
-			},
 
 			// customer
 			...customerOperations,
@@ -97,15 +77,26 @@ export class QuickBooks implements INodeType {
 
 				const { companyId } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
 				const customerId = this.getNodeParameter('customerId', i);
-				const endpoint = `/v3/company/${companyId}/customer/${customerId}?minorversion=55`;
+				const endpoint = `/v3/company/${companyId}/customer/${customerId}`;
 				responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
 
-				}
+			} else if (operation === 'search') {
+
+				const qs = {
+					query: this.getNodeParameter('selectStatement', i),
+				};
+				const { companyId } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
+				const endpoint = `/v3/company/${companyId}/query`;
+				responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, qs, {});
+				responseData = responseData.QueryResponse;
+
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+		}
+
+		Array.isArray(responseData)
+			? returnData.push(...responseData)
+			: returnData.push(responseData);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
