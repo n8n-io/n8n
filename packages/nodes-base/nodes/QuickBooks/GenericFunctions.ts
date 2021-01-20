@@ -53,6 +53,7 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
+		console.log(options);
 		return await this.helpers.requestOAuth2.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 		throw error;

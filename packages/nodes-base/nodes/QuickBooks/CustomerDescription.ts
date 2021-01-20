@@ -11,6 +11,10 @@ export const customerOperations = [
 		description: 'Operation to perform',
 		options: [
 			{
+				name: 'Create',
+				value: 'create',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 			},
@@ -30,6 +34,76 @@ export const customerOperations = [
 ] as INodeProperties[];
 
 export const customerFields = [
+	// ----------------------------------
+	//         customer: create
+	// ----------------------------------
+	{
+		displayName: 'Display Name',
+		name: 'displayName',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The display name of the customer to create',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Family name',
+				name: 'familyName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Given name',
+				name: 'givenName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Middle name',
+				name: 'middleName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Suffix',
+				name: 'suffix',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
 	// ----------------------------------
 	//         customer: get
 	// ----------------------------------
