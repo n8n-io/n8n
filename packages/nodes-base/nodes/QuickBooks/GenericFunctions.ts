@@ -53,10 +53,8 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
-		console.log(options);
 		return await this.helpers.requestOAuth2.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
-		// console.log(error);
 		throw error;
 	}
 }
@@ -70,45 +68,25 @@ export async function quickBooksApiRequestAllItems(
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
+	limit?: number,
 ): Promise<any> { // tslint:disable-line:no-any
 
 	let responseData;
+	let startPosition = 1;
 	const returnData: IDataObject[] = [];
 
 	do {
+		qs.query += `MAXRESULTS 1000 STARTPOSITION ${startPosition}`;
 		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
-		qs.after = responseData.after;
-		responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
+		returnData.push(...responseData.QueryResponse.Customer);
 
-		if (qs.limit && returnData.length >= qs.limit) {
+		if (limit && returnData.length >= limit) {
 			return returnData;
 		}
 
-	} while (responseData.after);
+		startPosition = responseData.maxResults + 1;
+
+	} while (responseData.maxResults > returnData.length);
 
 	return returnData;
-}
-
-/**
- * Handles a large QuickBooks listing by returning all items or up to a limit.
- */
-export async function handleListing(
-	this: IExecuteFunctions,
-	i: number,
-	endpoint: string,
-): Promise<any> { // tslint:disable-line:no-any
-	let responseData;
-
-	const returnAll = this.getNodeParameter('returnAll', i);
-	if (returnAll) {
-		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, {}, {});
-	}
-
-	const qs: IDataObject = {
-		limit: this.getNodeParameter('limit', i),
-	};
-	responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
-	responseData = responseData.splice(0, qs.limit);
-
-	return responseData;
 }

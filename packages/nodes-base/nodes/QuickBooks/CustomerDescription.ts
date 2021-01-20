@@ -30,6 +30,9 @@ export const customerOperations = [
 ] as INodeProperties[];
 
 export const customerFields = [
+	// ----------------------------------
+	//         customer: get
+	// ----------------------------------
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
@@ -48,6 +51,9 @@ export const customerFields = [
 			},
 		},
 	},
+	// ----------------------------------
+	//         customer: search
+	// ----------------------------------
 	{
 		displayName: 'Select statement',
 		name: 'selectStatement',
@@ -69,4 +75,46 @@ export const customerFields = [
 			},
 		},
 	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Return all results',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'search',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		default: 5,
+		description: 'The number of results to return',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 1000,
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'search',
+				],
+				returnAll: [
+					false,
+				],
+			},
+		},
+	},
+
 ] as INodeProperties[];

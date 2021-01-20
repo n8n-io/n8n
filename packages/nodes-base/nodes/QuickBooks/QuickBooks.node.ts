@@ -16,6 +16,7 @@ import {
 
 import {
 	quickBooksApiRequest,
+	quickBooksApiRequestAllItems,
 } from './GenericFunctions';
 
 export class QuickBooks implements INodeType {
@@ -82,13 +83,21 @@ export class QuickBooks implements INodeType {
 
 			} else if (operation === 'search') {
 
+				const { companyId } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
+				const endpoint = `/v3/company/${companyId}/query`;
 				const qs = {
 					query: this.getNodeParameter('selectStatement', i),
 				};
-				const { companyId } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
-				const endpoint = `/v3/company/${companyId}/query`;
-				responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, qs, {});
-				responseData = responseData.QueryResponse;
+
+				const returnAll = this.getNodeParameter('returnAll', i);
+
+				if (returnAll) {
+					responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
+				} else {
+					const limit = this.getNodeParameter('limit', i) as number;
+					responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, limit);
+					responseData = responseData.splice(0, limit);
+				}
 
 			}
 
