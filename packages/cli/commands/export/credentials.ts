@@ -20,20 +20,20 @@ export class ExportCredentialsCommand extends Command {
 
 	static examples = [
 		`$ n8n export:credentials --all`,
-		`$ n8n export:credentials --id=5`,
+		`$ n8n export:credentials --id=5 --output=file.txt`,
 	];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
 		all: flags.boolean({
-			description: 'Operate on all workflows',
+			description: 'Export all credentials',
 		}),
 		id: flags.string({
-			description: 'The ID of the workflow to operate on',
+			description: 'The ID of the credential to export',
 		}),
-        output: flags.string({
-            description: 'Output file name',
-        }),
+		output: flags.string({
+			description: 'Output file name',
+		}),
 	};
 
 	async run() {
@@ -45,7 +45,7 @@ export class ExportCredentialsCommand extends Command {
 		}
 
 		if (flags.all && flags.id) {
-			GenericHelpers.logOutput(`Either something else on top should be "--all" or "--id" can be set never both!`);
+			GenericHelpers.logOutput(`You should either use "--all" or "--id" but never both!`);
 			return;
 		}
 
