@@ -1693,6 +1693,7 @@ class App {
 
 			let response;
 			try {
+				delete req.params[0];
 				response = await this.activeWorkflowRunner.executeWebhook('HEAD', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
@@ -1734,6 +1735,7 @@ class App {
 
 			let response;
 			try {
+				delete req.params[0];
 				response = await this.activeWorkflowRunner.executeWebhook('GET', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
@@ -1755,6 +1757,7 @@ class App {
 
 			let response;
 			try {
+				delete req.params[0];
 				response = await this.activeWorkflowRunner.executeWebhook('POST', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
@@ -1776,6 +1779,7 @@ class App {
 
 			let response;
 			try {
+				delete req.params[0];
 				response = await this.testWebhooks.callTestWebhook('HEAD', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
@@ -1817,6 +1821,7 @@ class App {
 
 			let response;
 			try {
+				delete req.params[0];
 				response = await this.testWebhooks.callTestWebhook('GET', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);
@@ -1838,6 +1843,7 @@ class App {
 
 			let response;
 			try {
+				delete req.params[0];
 				response = await this.testWebhooks.callTestWebhook('POST', requestUrl, req, res);
 			} catch (error) {
 				ResponseHelper.sendErrorResponse(res, error);

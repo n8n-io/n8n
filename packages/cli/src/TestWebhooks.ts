@@ -13,7 +13,6 @@ import {
 } from 'n8n-core';
 
 import {
-	IDataObject,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	WebhookHttpMethod,
@@ -61,14 +60,13 @@ export class TestWebhooks {
 		if (webhookData === undefined) {
 			const pathElements = path.split('/');
 			const webhookId = pathElements.shift();
-			webhookData = this.activeWebhooks!.get(httpMethod, path, webhookId);
+			webhookData = this.activeWebhooks!.get(httpMethod, pathElements.join('/'), webhookId);
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
 				throw new ResponseHelper.ResponseError(`The requested webhook "${httpMethod} ${path}" is not registered.`, 404, 404);
 			}
 			path = webhookData.path;
 			// extracting params from path
-			request.params = {};
 			path.split('/').forEach((ele, index) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
@@ -77,7 +75,7 @@ export class TestWebhooks {
 			});
 		}
 
-		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
+		const webhookKey = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId) + `|${webhookData.workflowId}`;
 
 		// TODO: Clean that duplication up one day and improve code generally
 		if (this.testWebhookData[webhookKey] === undefined) {
@@ -174,7 +172,7 @@ export class TestWebhooks {
 		let key: string;
 		const activatedKey: string[] = [];
 		for (const webhookData of webhooks) {
-			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId);
+			key = this.activeWebhooks!.getWebhookKey(webhookData.httpMethod, webhookData.path, webhookData.webhookId) + `|${workflowData.id}`;
 
 			activatedKey.push(key);
 
