@@ -14,7 +14,12 @@ import {
  * Make an API request to SIGNL4
  *
  * @param {IHookFunctions | IExecuteFunctions} this
- * @param {object} message
+ * @param {string} method
+ * @param {string} contentType
+ * @param {string} body
+ * @param {object} query
+ * @param {string} teamSecret
+ * @param {object} options
  * @returns {Promise<any>}
  */
 
