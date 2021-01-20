@@ -143,7 +143,8 @@ export const customerAdditionalFields = [
 		type: 'string',
 		default: '',
 	},
-	{ displayName: 'Job',
+	{
+		displayName: 'Job',
 		name: 'Job',
 		type: 'string',
 		default: '',
