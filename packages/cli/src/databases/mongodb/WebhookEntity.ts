@@ -32,4 +32,7 @@ export class WebhookEntity implements IWebhookDb {
 
 	@Column()
 	webhookId: string;
+
+	@Column({ nullable: true })
+	pathLength: number;
 }
