@@ -6,9 +6,6 @@ import {
 const scopes = [
 	'com.intuit.quickbooks.accounting',
 	'com.intuit.quickbooks.payment',
-	'com.intuit.quickbooks.payroll',
-	'com.intuit.quickbooks.payroll.timetracking',
-	'com.intuit.quickbooks.payroll.benefits',
 ];
 
 // https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization
@@ -25,21 +22,8 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden' as NodePropertyTypes,
-			default: 'response_type=code',
+			default: '',
 		},
-		{
-			displayName: 'Auth URI Query Parameters',
-			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
-			default: 'state=n8n', // TODO: Remove?
-		},
-		// {
-		// 	displayName: 'Auth URI Query Parameters',
-		// 	name: 'authQueryParameters',
-		// 	type: 'hidden' as NodePropertyTypes,
-		// 	default: 'grant_type=authorization_code',
-		// },
-		// {
 		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
@@ -63,6 +47,13 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 			name: 'authentication',
 			type: 'hidden' as NodePropertyTypes,
 			default: 'header',
+		},
+		{
+			displayName: 'Company ID',
+			name: 'companyId',
+			type: 'string' as NodePropertyTypes,
+			default: '',
+			required: true,
 		},
 	];
 }
