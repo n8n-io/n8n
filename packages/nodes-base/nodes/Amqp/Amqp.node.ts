@@ -1,4 +1,5 @@
-import { ContainerOptions, Delivery } from 'rhea';
+import { ContainerOptions, Dictionary, EventContext } from 'rhea';
+import rhea = require('rhea');
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -64,6 +65,27 @@ export class Amqp implements INodeType {
 						default: '',
 						description: 'The only property to send. If empty the whole item will be sent.',
 					},
+					{
+						displayName: 'Container ID',
+						name: 'containerID',
+						type: 'string',
+						default: '',
+						description: 'Will be used to pass to the RHEA Backend as container_id',
+					},
+					{
+						displayName: 'Reconnect',
+						name: 'reconnect',
+						type: 'boolean',
+						default: true,
+						description: 'If on, the library will automatically attempt to reconnect if disconnected',
+					},
+					{
+						displayName: 'Reconnect limit',
+						name: 'reconnectLimit',
+						type: 'number',
+						default: 50,
+						description: 'maximum number of reconnect attempts',
+					},				
 				],
 			},
 		],
@@ -78,40 +100,44 @@ export class Amqp implements INodeType {
 		const sink = this.getNodeParameter('sink', 0, '') as string;
 		const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as string | object;
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const container_id = options.containerID as string;
+		const containerReconnect = options.reconnect as boolean || true ;
+		const containerReconnectLimit = options.reconnectLimit as number || 50;
 
-		let headerProperties = applicationProperties;
+		let headerProperties : Dictionary<any>;
 		if (typeof applicationProperties === 'string' && applicationProperties !== '') {
 			headerProperties = JSON.parse(applicationProperties);
-		}
+		} else {
+			headerProperties = applicationProperties as object;
+		} 
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
 		}
 
-		const container = require('rhea');
+		const container = rhea.create_container();
 
+		/*
+			Values are documentet here: https://github.com/amqp/rhea#container
+		 */
 		const connectOptions: ContainerOptions = {
 			host: credentials.hostname,
 			hostname: credentials.hostname,
 			port: credentials.port,
-			reconnect: true,		// this id the default anyway
-			reconnect_limit: 50, 	// try for max 50 times, based on a back-off algorithm
+			reconnect: containerReconnect,			    
+			reconnect_limit: containerReconnectLimit,
+			username: credentials.username ? credentials.username : undefined,
+			password: credentials.password ? credentials.password : undefined,
+			transport: credentials.transportType ? credentials.transportType : undefined,
+			container_id: container_id ? container_id : undefined,
+			id: container_id ? container_id : undefined,
 		};
-		if (credentials.username || credentials.password) {
-			container.options.username = credentials.username;
-			container.options.password = credentials.password;
-			connectOptions.username = credentials.username;
-			connectOptions.password = credentials.password;
-		}
-		if (credentials.transportType !== '') {
-			connectOptions.transport = credentials.transportType;
-		}
-
 		const conn = container.connect(connectOptions);
+
 		const sender = conn.open_sender(sink);
 
 		const responseData: IDataObject[] = await new Promise((resolve) => {
-			container.once('sendable', (context: any) => { // tslint:disable-line:no-any
+			container.once('sendable', (context: EventContext) => { 
 				const returnData = [];
 
 				const items = this.getInputData();
@@ -129,12 +155,12 @@ export class Amqp implements INodeType {
 						body = JSON.stringify(body);
 					}
 
-					const result = context.sender.send({
+					const result = context.sender?.send({
 						application_properties: headerProperties,
 						body,
 					});
 
-					returnData.push({ id: result.id });
+					returnData.push({ id: result?.id });
 				}
 
 				resolve(returnData);
