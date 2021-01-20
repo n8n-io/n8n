@@ -21,6 +21,7 @@ import {
  * @param {string} teamSecret
  * @param {object} options
  * @returns {Promise<any>}
+ * 
  */
 
 export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, contentType: string, body: string, query: IDataObject = {}, teamSecret?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
