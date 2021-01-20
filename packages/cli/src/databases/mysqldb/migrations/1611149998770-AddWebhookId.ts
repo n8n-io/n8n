@@ -2,7 +2,7 @@ import {MigrationInterface, QueryRunner} from "typeorm";
 import * as config from '../../../../config';
 
 export class AddWebhookId1611149998770 implements MigrationInterface {
-	name = 'AddWebhookId1611149998770'
+	name = 'AddWebhookId1611149998770';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.get('database.tablePrefix');
