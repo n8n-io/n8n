@@ -2,6 +2,10 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import {
+	customerAdditionalFields,
+} from './CustomerAdditionalFields';
+
 export const customerOperations = [
 	{
 		displayName: 'Operation',
@@ -21,6 +25,10 @@ export const customerOperations = [
 			{
 				name: 'Search',
 				value: 'search',
+			},
+			{
+				name: 'Update',
+				value: 'update',
 			},
 		],
 		displayOptions: {
@@ -71,38 +79,7 @@ export const customerFields = [
 				],
 			},
 		},
-		options: [
-			{
-				displayName: 'Family name',
-				name: 'familyName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Given name',
-				name: 'givenName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Middle name',
-				name: 'middleName',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Suffix',
-				name: 'suffix',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				default: '',
-			},
-		],
+		options: customerAdditionalFields,
 	},
 	// ----------------------------------
 	//         customer: get
@@ -190,5 +167,52 @@ export const customerFields = [
 			},
 		},
 	},
-
+	// ----------------------------------
+	//         customer: update
+	// ----------------------------------
+	{
+		displayName: 'Customer ID',
+		name: 'customerId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the customer to update',
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'update',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Display name',
+				name: 'displayName',
+				type: 'string',
+				default: '',
+			},
+			...customerAdditionalFields,
+		],
+	},
 ] as INodeProperties[];

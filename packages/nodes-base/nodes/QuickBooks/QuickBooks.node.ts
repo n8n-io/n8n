@@ -19,9 +19,7 @@ import {
 	quickBooksApiRequestAllItems,
 } from './GenericFunctions';
 
-import {
-	pascalCase,
-} from 'change-case';
+import { isEmpty } from 'lodash';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
@@ -89,7 +87,7 @@ export class QuickBooks implements INodeType {
 					} as IDataObject;
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					Object.keys(additionalFields).forEach(key => body[pascalCase(key)] = additionalFields[key]);
+					Object.keys(additionalFields).forEach(key => body[key] = additionalFields[key]);
 
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
@@ -104,7 +102,7 @@ export class QuickBooks implements INodeType {
 					const endpoint = `/v3/company/${companyId}/query`;
 					const qs = {
 						query: this.getNodeParameter('selectStatement', i),
-					};
+					} as IDataObject;
 
 					const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -115,6 +113,42 @@ export class QuickBooks implements INodeType {
 						responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, limit);
 						responseData = responseData.splice(0, limit);
 					}
+
+				} else if (operation === 'update') {
+
+					const customerId = this.getNodeParameter('customerId', i);
+					const getEndpoint = `/v3/company/${companyId}/customer/${customerId}`;
+					const { Customer: { SyncToken } } = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
+
+					const updateEndpoint = `/v3/company/${companyId}/customer`;
+					const body = {
+						Id: this.getNodeParameter('customerId', i),
+						SyncToken,
+						sparse: true,
+					} as IDataObject;
+
+					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+
+					if (isEmpty(updateFields)) {
+						throw new Error('Please enter at least one field to update for the customer.');
+					}
+
+					Object.keys(updateFields).forEach(key => {
+						if (key === 'PrimaryEmailAddr') {
+							body[key] = {
+								Address: updateFields[key],
+							};
+						} else if (key.startsWith('bill')) {
+							const parsedKey = key.replace('bill', '');
+							body.BillAddr = {
+								[parsedKey]: updateFields[key],
+							};
+						} else {
+							body[key] = updateFields[key];
+						}
+					});
+
+					responseData = await quickBooksApiRequest.call(this, 'POST', updateEndpoint, {}, body);
 
 				}
 
