@@ -19,12 +19,6 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 	documentationUrl = 'quickbooks';
 	properties = [
 		{
-			displayName: 'Auth URI Query Parameters',
-			name: 'authQueryParameters',
-			type: 'hidden' as NodePropertyTypes,
-			default: '',
-		},
-		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden' as NodePropertyTypes,
@@ -41,12 +35,6 @@ export class QuickBooksOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden' as NodePropertyTypes,
 			default: scopes.join(' '),
-		},
-		{
-			displayName: 'Authentication',
-			name: 'authentication',
-			type: 'hidden' as NodePropertyTypes,
-			default: 'header',
 		},
 		{
 			displayName: 'Company ID',
