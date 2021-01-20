@@ -1,4 +1,9 @@
-import { ContainerOptions, Delivery } from 'rhea';
+import {
+	create_container,
+	ContainerOptions,
+	Dictionary,
+	EventContext,
+} from 'rhea';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -51,11 +56,32 @@ export class Amqp implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Container ID',
+						name: 'containerId',
+						type: 'string',
+						default: '',
+						description: 'Will be used to pass to the RHEA Backend as container_id',
+					},
+					{
 						displayName: 'Data as Object',
 						name: 'dataAsObject',
 						type: 'boolean',
 						default: false,
 						description: 'Send the data as an object.',
+					},
+					{
+						displayName: 'Reconnect',
+						name: 'reconnect',
+						type: 'boolean',
+						default: true,
+						description: 'Automatically reconnect if disconnected',
+					},
+					{
+						displayName: 'Reconnect Limit',
+						name: 'reconnectLimit',
+						type: 'number',
+						default: 50,
+						description: 'Maximum number of reconnect attempts',
 					},
 					{
 						displayName: 'Send property',
@@ -69,7 +95,7 @@ export class Amqp implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise < INodeExecutionData[][] > {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = this.getCredentials('amqp');
 		if (!credentials) {
 			throw new Error('Credentials are mandatory!');
@@ -78,40 +104,44 @@ export class Amqp implements INodeType {
 		const sink = this.getNodeParameter('sink', 0, '') as string;
 		const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as string | object;
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const containerId = options.containerId as string;
+		const containerReconnect = options.reconnect as boolean || true;
+		const containerReconnectLimit = options.reconnectLimit as number || 50;
 
-		let headerProperties = applicationProperties;
+		let headerProperties: Dictionary<any>; // tslint:disable-line:no-any
 		if (typeof applicationProperties === 'string' && applicationProperties !== '') {
 			headerProperties = JSON.parse(applicationProperties);
+		} else {
+			headerProperties = applicationProperties as object;
 		}
 
 		if (sink === '') {
 			throw new Error('Queue or Topic required!');
 		}
 
-		const container = require('rhea');
+		const container = create_container();
 
+		/*
+			Values are documentet here: https://github.com/amqp/rhea#container
+		 */
 		const connectOptions: ContainerOptions = {
 			host: credentials.hostname,
 			hostname: credentials.hostname,
 			port: credentials.port,
-			reconnect: true,		// this id the default anyway
-			reconnect_limit: 50, 	// try for max 50 times, based on a back-off algorithm
+			reconnect: containerReconnect,
+			reconnect_limit: containerReconnectLimit,
+			username: credentials.username ? credentials.username : undefined,
+			password: credentials.password ? credentials.password : undefined,
+			transport: credentials.transportType ? credentials.transportType : undefined,
+			container_id: containerId ? containerId : undefined,
+			id: containerId ? containerId : undefined,
 		};
-		if (credentials.username || credentials.password) {
-			container.options.username = credentials.username;
-			container.options.password = credentials.password;
-			connectOptions.username = credentials.username;
-			connectOptions.password = credentials.password;
-		}
-		if (credentials.transportType !== '') {
-			connectOptions.transport = credentials.transportType;
-		}
-
 		const conn = container.connect(connectOptions);
+
 		const sender = conn.open_sender(sink);
 
 		const responseData: IDataObject[] = await new Promise((resolve) => {
-			container.once('sendable', (context: any) => { // tslint:disable-line:no-any
+			container.once('sendable', (context: EventContext) => {
 				const returnData = [];
 
 				const items = this.getInputData();
@@ -129,12 +159,12 @@ export class Amqp implements INodeType {
 						body = JSON.stringify(body);
 					}
 
-					const result = context.sender.send({
+					const result = context.sender?.send({
 						application_properties: headerProperties,
 						body,
 					});
 
-					returnData.push({ id: result.id });
+					returnData.push({ id: result?.id });
 				}
 
 				resolve(returnData);
