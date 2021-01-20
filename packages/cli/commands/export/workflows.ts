@@ -13,14 +13,16 @@ import {
 
 import { stringify } from 'flatted';
 
-import {writeFile} from 'fs';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class ExportWorkflowsCommand extends Command {
 	static description = 'Export workflows';
 	
 	static examples = [
 		`$ n8n export:workflows --all`,
-		`$ n8n export:workflows --id=5 --output=file.txt`,
+		`$ n8n export:workflows --id=5 --output=file.json`,
+		`$ n8n export:workflows --all --output=backups/latest/`,
 	];
 	
 	static flags = {
@@ -32,7 +34,10 @@ export class ExportWorkflowsCommand extends Command {
 			description: 'The ID of the workflow to export',
 		}),
 		output: flags.string({
-			description: 'Output file name',
+			description: 'Output file name or directory if using multiple files',
+		}),
+		multiple: flags.boolean({
+			description: 'Exports one file per workflow (useful for versioning). Must inform a directory via --output.',
 		}),
 	};
 	
@@ -49,6 +54,37 @@ export class ExportWorkflowsCommand extends Command {
 			return;
 		}
 		
+		if (flags.multiple) {
+			try {
+				if(!flags.output) {
+					GenericHelpers.logOutput(`You must inform an output directory via --output when using --multiple`);
+					return;
+				}
+				
+				if (fs.existsSync(flags.output)) {
+					if (!fs.lstatSync(flags.output).isDirectory()) {
+						GenericHelpers.logOutput(`The paramenter --output must be a directory`);
+						return;
+					}
+				} else {
+					fs.mkdirSync(flags.output, { recursive: true });
+				}
+			} catch (e) {
+				console.error('\nFILESYSTEM ERROR');
+				console.log('====================================');
+				console.error(e.message);
+				console.error(e.stack);
+				this.exit(1);
+			}
+		} else if (flags.output) {
+			if (fs.existsSync(flags.output)) {
+				if (fs.lstatSync(flags.output).isDirectory()) {
+					GenericHelpers.logOutput(`The paramenter --output must be a writeble file`);
+					return;
+				}
+			}
+		}
+		
 		try {
 			await Db.init();
 			
@@ -58,23 +94,29 @@ export class ExportWorkflowsCommand extends Command {
 			}
 			
 			const workflows = await Db.collections.Workflow!.find(findQuery);
-			const fileContents = stringify(workflows);
-			
-			if (flags.output) {
-				await new Promise((resolve, reject) => {
-					writeFile(flags.output!, fileContents, (err) => {
-						if (err) { 
-							console.error('Failed writing file.');
-							reject(err);
-							return;
-						}
-						console.log("Data exported");
-						resolve(true);
-					});
-				});
-			} else {
-				console.log(fileContents);
+
+			if (workflows.length === 0) {
+				throw new Error('No workflows found with specified filters.');
 			}
+			
+			if (flags.multiple) {
+				let fileContents: string, i: number;
+				for (i = 0; i < workflows.length; i++) {
+					fileContents = stringify(workflows[i]);
+					const filename = (flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) + workflows[i].id + ".json";
+					fs.writeFileSync(filename, fileContents);
+				}
+				console.log('Successfully exported', i, 'workflows.');
+			} else {
+				const fileContents = stringify(workflows);
+				if (flags.output) {
+					fs.writeFileSync(flags.output!, fileContents);
+					console.log('Successfully exported', workflows.length, 'workflows.');
+				} else {
+					console.log(fileContents);
+				}
+			}
+			
 			
 			
 		} catch (e) {
