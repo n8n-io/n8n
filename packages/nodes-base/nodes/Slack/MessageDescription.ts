@@ -30,6 +30,11 @@ export const messageOperations = [
 				value: 'update',
 				description: 'Updates a message.',
 			},
+			{
+				name: 'GetPermalink',
+				value: 'getPermalink',
+				description: 'Get Permanent Link of a message',
+			},
 		],
 		default: 'post',
 		description: 'The operation to perform.',
@@ -1630,5 +1635,48 @@ export const messageFields = [
 				],
 			},
 		],
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:getPermaLink
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: 'Channel containing the message to be updated.',
+	},
+	{
+		displayName: 'TS',
+		name: 'messageTs',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'message',
+				],
+				operation: [
+					'getPermalink',
+				],
+			},
+		},
+		description: `Timestamp of the message to get permanent link.`,
 	},
 ] as INodeProperties[];
