@@ -23,8 +23,8 @@ export const customerOperations = [
 				value: 'get',
 			},
 			{
-				name: 'Search',
-				value: 'search',
+				name: 'Get All',
+				value: 'getAll',
 			},
 			{
 				name: 'Update',
@@ -103,29 +103,8 @@ export const customerFields = [
 		},
 	},
 	// ----------------------------------
-	//         customer: search
+	//         customer: getAll
 	// ----------------------------------
-	{
-		displayName: 'Select statement',
-		name: 'selectStatement',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The SQL statement to select customers with. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">"Search for shared drives"</a> guide for supported syntax.',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'search',
-				],
-			},
-		},
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -138,7 +117,7 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 			},
 		},
@@ -159,10 +138,40 @@ export const customerFields = [
 					'customer',
 				],
 				operation: [
-					'search',
+					'getAll',
 				],
 				returnAll: [
 					false,
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		options: [
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
+				description: 'The condition for selecting customers. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries" target="_blank">guide</a> for supported syntax.',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: [
+					'customer',
+				],
+				operation: [
+					'getAll',
 				],
 			},
 		},
