@@ -1,5 +1,6 @@
 import {
-	Command, flags,
+	Command,
+	flags,
 } from '@oclif/command';
 
 import {
