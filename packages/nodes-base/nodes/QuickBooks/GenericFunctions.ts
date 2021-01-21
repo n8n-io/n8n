@@ -11,6 +11,9 @@ import {
 	OptionsWithUri,
 } from 'request';
 
+import {
+	pascalCase
+} from 'change-case';
 
 /**
  * Make an authenticated API request to QuickBooks.
@@ -69,6 +72,7 @@ export async function quickBooksApiRequestAllItems(
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
+	resource: string,
 	limit?: number,
 ): Promise<any> { // tslint:disable-line:no-any
 
@@ -77,9 +81,10 @@ export async function quickBooksApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	do {
-		qs.query += `MAXRESULTS 1000 STARTPOSITION ${startPosition}`;
+		qs.query += ` MAXRESULTS 1000 STARTPOSITION ${startPosition}`;
 		responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, body);
-		returnData.push(...responseData.QueryResponse.Customer);
+		console.log(responseData);
+		returnData.push(...responseData.QueryResponse[pascalCase(resource)]);
 
 		if (limit && returnData.length >= limit) {
 			return returnData;
@@ -90,4 +95,37 @@ export async function quickBooksApiRequestAllItems(
 	} while (responseData.maxResults > returnData.length);
 
 	return returnData;
+}
+
+/**
+ * Handles a QuickBooks listing by returning all items or up to a limit.
+ */
+export async function handleListing(
+	this: IExecuteFunctions,
+	i: number,
+	endpoint: string,
+	resource: string,
+): Promise<any> { // tslint:disable-line:no-any
+	let responseData;
+
+	const qs = {
+		query: `SELECT * FROM ${resource}`,
+	} as IDataObject;
+
+	const filters = this.getNodeParameter('filters', i) as IDataObject;
+	if (filters.query) {
+		qs.query += ` ${filters.query}`;
+	}
+
+	const returnAll = this.getNodeParameter('returnAll', i);
+
+	if (returnAll) {
+		responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+	} else {
+		const limit = this.getNodeParameter('limit', i) as number;
+		responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource, limit);
+		responseData = responseData.splice(0, limit);
+	}
+
+	return responseData;
 }
