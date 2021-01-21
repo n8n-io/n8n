@@ -12,12 +12,12 @@ import * as fs from 'fs';
 import * as glob from 'glob-promise';
 import * as path from 'path';
 
-export class ImportCredentialsCommand extends Command {
-	static description = 'Import credentials';
+export class ImportWorkflowsCommand extends Command {
+	static description = 'Import workflows';
 
 	static examples = [
-		`$ n8n import:credentials --input=file.json`,
-		`$ n8n import:credentials --separate --input=backups/latest/`,
+		`$ n8n import:workflow --input=file.json`,
+		`$ n8n import:workflow --separate --input=backups/latest/`,
 	];
 
 	static flags = {
@@ -32,7 +32,7 @@ export class ImportCredentialsCommand extends Command {
 	};
 
 	async run() {
-		const { flags } = this.parse(ImportCredentialsCommand);
+		const { flags } = this.parse(ImportWorkflowsCommand);
 
 		if (!flags.input) {
 			GenericHelpers.logOutput(`An input file or directory with --input must be provided`);
@@ -54,21 +54,22 @@ export class ImportCredentialsCommand extends Command {
 			if (flags.separate) {
 				const files = await glob((flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep) + '*.json');
 				for (i = 0; i < files.length; i++) {
-					const credential = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
-					await Db.collections.Credentials!.save(credential);
+					const workflow = JSON.parse(fs.readFileSync(files[i], { encoding: 'utf8' }));
+					await Db.collections.Workflow!.save(workflow);
 				}
 			} else {
 				const fileContents = JSON.parse(fs.readFileSync(flags.input, { encoding: 'utf8' }));
 
 				if (!Array.isArray(fileContents)) {
-					throw new Error(`File does not seem to contain credentials.`);
+					throw new Error(`File does not seem to contain workflows.`);
 				}
 
 				for (i = 0; i < fileContents.length; i++) {
-					await Db.collections.Credentials!.save(fileContents[i]);
+					await Db.collections.Workflow!.save(fileContents[i]);
 				}
 			}
-			console.log('Successfully imported', i, 'credentials.');
+
+			console.log('Successfully imported', i, i === 1 ? 'workflow.' : 'workflows.');
 		} catch (error) {
 			this.error(error.message);
 			this.exit(1);
