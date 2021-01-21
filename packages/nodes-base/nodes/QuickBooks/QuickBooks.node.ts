@@ -15,11 +15,18 @@ import {
 } from './CustomerDescription';
 
 import {
+	estimateFields,
+	estimateOperations,
+} from './EstimateDescription';
+
+import {
+	handleListing,
 	quickBooksApiRequest,
-	quickBooksApiRequestAllItems,
 } from './GenericFunctions';
 
-import { isEmpty } from 'lodash';
+import {
+	isEmpty,
+} from 'lodash';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,6 +59,10 @@ export class QuickBooks implements INodeType {
 						name: 'Customer',
 						value: 'customer',
 					},
+					{
+						name: 'Estimate',
+						value: 'estimate',
+					},
 				],
 				default: 'customer',
 				description: 'Resource to consume',
@@ -60,6 +71,10 @@ export class QuickBooks implements INodeType {
 			// customer
 			...customerOperations,
 			...customerFields,
+
+			// estimate
+			...estimateOperations,
+			...estimateFields,
 		],
 	};
 
@@ -97,22 +112,10 @@ export class QuickBooks implements INodeType {
 					const endpoint = `/v3/company/${companyId}/customer/${customerId}`;
 					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
 
-				} else if (operation === 'search') {
+				} else if (operation === 'getAll') {
 
 					const endpoint = `/v3/company/${companyId}/query`;
-					const qs = {
-						query: this.getNodeParameter('selectStatement', i),
-					} as IDataObject;
-
-					const returnAll = this.getNodeParameter('returnAll', i);
-
-					if (returnAll) {
-						responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {});
-					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
-						responseData = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, limit);
-						responseData = responseData.splice(0, limit);
-					}
+					responseData = await handleListing.call(this, i, endpoint, resource);
 
 				} else if (operation === 'update') {
 
@@ -149,6 +152,21 @@ export class QuickBooks implements INodeType {
 					});
 
 					responseData = await quickBooksApiRequest.call(this, 'POST', updateEndpoint, {}, body);
+
+				}
+
+			} else if (resource === 'estimate') {
+
+				if (operation === 'get') {
+
+					const estimateId = this.getNodeParameter('estimateId', i);
+					const endpoint = `/v3/company/${companyId}/estimate/${estimateId}`;
+					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+
+				} else if (operation === 'getAll') {
+
+					const endpoint = `/v3/company/${companyId}/query`;
+					responseData = await handleListing.call(this, i, endpoint, resource);
 
 				}
 
