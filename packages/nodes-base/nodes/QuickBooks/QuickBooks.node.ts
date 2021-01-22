@@ -25,7 +25,6 @@ import {
 } from './GenericFunctions';
 
 import {
-	identity,
 	isEmpty,
 	pickBy,
 } from 'lodash';
@@ -147,7 +146,7 @@ export class QuickBooks implements INodeType {
 							body.PrimaryEmailAddr = { Address: value };
 						} else if (key === 'billingAddress') {
 							const { details } = updateFields[key] as CustomerBillingAddress;
-							body.BillAddr = pickBy(details[0], v => v !== '');
+							body.BillAddr = pickBy(details, d => d !== '');
 						} else {
 							body[key] = value;
 						}

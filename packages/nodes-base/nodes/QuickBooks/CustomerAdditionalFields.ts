@@ -291,15 +291,13 @@ export const customerAdditionalFields = [
 ];
 
 export interface CustomerBillingAddress {
-	details: [
-		{
-			[key: string]: string;
-			City: string,
-			Line1: string,
-			PostalCode: string,
-			Lat: string,
-			Long: string,
-			CountrySubDivisionCode: string,
-		}
-	];
+	details: {
+		[key: string]: string;
+		City: string,
+		Line1: string,
+		PostalCode: string,
+		Lat: string,
+		Long: string,
+		CountrySubDivisionCode: string,
+	};
 }
