@@ -4,7 +4,9 @@ import {
 
 import {
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -22,6 +24,7 @@ import {
 import {
 	handleListing,
 	quickBooksApiRequest,
+	quickBooksApiRequestAllItems,
 } from './GenericFunctions';
 
 import {
@@ -72,15 +75,38 @@ export class QuickBooks implements INodeType {
 				default: 'customer',
 				description: 'Resource to consume',
 			},
-
-			// customer
 			...customerOperations,
 			...customerFields,
-
-			// estimate
 			...estimateOperations,
 			...estimateFields,
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getCustomers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const resource = 'customer';
+				const returnData: INodePropertyOptions[] = [];
+
+				const qs = {
+					query: `SELECT * FROM ${resource}`,
+				} as IDataObject;
+
+				const { companyId } = this.getCredentials('quickBooksOAuth2Api') as IDataObject;
+				const endpoint = `/v3/company/${companyId}/query`;
+
+				const customers = await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+
+				customers.forEach((customer: any) => { // tslint:disable-line:no-any
+					returnData.push({
+						name: customer.DisplayName as string,
+						value: customer.DisplayName as string,
+					});
+				});
+
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -98,6 +124,10 @@ export class QuickBooks implements INodeType {
 
 			if (resource === 'customer') {
 
+				// ----------------------------------
+				//         customer: create
+				// ----------------------------------
+
 				if (operation === 'create') {
 
 					const endpoint = `/v3/company/${companyId}/customer`;
@@ -111,16 +141,28 @@ export class QuickBooks implements INodeType {
 
 					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
+				// ----------------------------------
+				//         customer: get
+				// ----------------------------------
+
 				} else if (operation === 'get') {
 
 					const customerId = this.getNodeParameter('customerId', i);
 					const endpoint = `/v3/company/${companyId}/customer/${customerId}`;
 					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
 
+				// ----------------------------------
+				//         customer: getAll
+				// ----------------------------------
+
 				} else if (operation === 'getAll') {
 
 					const endpoint = `/v3/company/${companyId}/query`;
 					responseData = await handleListing.call(this, i, endpoint, resource);
+
+				// ----------------------------------
+				//         customer: update
+				// ----------------------------------
 
 				} else if (operation === 'update') {
 
@@ -144,8 +186,8 @@ export class QuickBooks implements INodeType {
 					Object.entries(updateFields).forEach(([key, value]) => {
 						if (key === 'PrimaryEmailAddr') {
 							body.PrimaryEmailAddr = { Address: value };
-						} else if (key === 'billingAddress') {
-							const { details } = updateFields[key] as CustomerBillingAddress;
+						} else if (key === 'BillingAddress') {
+							const { details } = value as CustomerBillingAddress;
 							body.BillAddr = pickBy(details, d => d !== '');
 						} else {
 							body[key] = value;
@@ -158,11 +200,27 @@ export class QuickBooks implements INodeType {
 
 			} else if (resource === 'estimate') {
 
-				if (operation === 'get') {
+				// ----------------------------------
+				//         estimate: create
+				// ----------------------------------
+
+				if (operation === 'create') {
+
+					// ...
+
+				// ----------------------------------
+				//         estimate: get
+				// ----------------------------------
+
+				} else if (operation === 'get') {
 
 					const estimateId = this.getNodeParameter('estimateId', i);
 					const endpoint = `/v3/company/${companyId}/estimate/${estimateId}`;
 					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+
+				// ----------------------------------
+				//         estimate: getAll
+				// ----------------------------------
 
 				} else if (operation === 'getAll') {
 

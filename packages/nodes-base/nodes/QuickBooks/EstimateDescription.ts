@@ -2,6 +2,10 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import {
+	estimateAdditionalFields,
+} from './EstimateAdditionalFields';
+
 export const estimateOperations = [
 	{
 		displayName: 'Operation',
@@ -45,42 +49,116 @@ export const estimateFields = [
 	// ----------------------------------
 	//         estimate: create
 	// ----------------------------------
-	// {
-	// 	displayName: 'Line',
-	// 	name: 'line',
-	// 	type: 'string',
-	// 	required: true,
-	// 	default: '',
-	// 	description: 'The display name of the customer to create',
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'estimate',
-	// 			],
-	// 			operation: [
-	// 				'create',
-	// 			],
-	// 		},
-	// 	},
-	// },
-	// {
-	// 	displayName: 'Additional Fields',
-	// 	name: 'additionalFields',
-	// 	type: 'collection',
-	// 	placeholder: 'Add Field',
-	// 	default: {},
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: [
-	// 				'customer',
-	// 			],
-	// 			operation: [
-	// 				'create',
-	// 			],
-	// 		},
-	// 	},
-	// 	options: customerAdditionalFields,
-	// },
+	{
+		displayName: 'For Customer',
+		name: 'CustomerRef',
+		type: 'options',
+		required: true,
+		description: 'The customer who the estimate is for',
+		default: '', // TODO: What to set here?
+		typeOptions: {
+			loadOptionsMethod: 'getCustomers',
+		},
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Estimate Line',
+		name: 'Line',
+		type: 'collection',
+		placeholder: 'Add Line Item Property',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Type',
+				name: 'DetailType',
+				type: 'options',
+				default: 'DescriptionOnlyLine',
+				options: [
+					{
+						name: 'Description Only Line',
+						value: 'DescriptionOnlyLine',
+					},
+					{
+						name: 'Discount Line',
+						value: 'DiscountLine',
+					},
+					{
+						name: 'Group Line',
+						value: 'GroupLine',
+					},
+					{
+						name: 'Sales Item Line',
+						value: 'SalesItemLine',
+					},
+					{
+						name: 'Subtotal Line',
+						value: 'SubTotalLine',
+					},
+				],
+			},
+			{
+				displayName: 'Amount',
+				name: 'amount',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Position',
+				name: 'LineNum',
+				type: 'number',
+				default: 1,
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'create',
+				],
+			},
+		},
+		options: estimateAdditionalFields,
+	},
 	// ----------------------------------
 	//         estimate: get
 	// ----------------------------------

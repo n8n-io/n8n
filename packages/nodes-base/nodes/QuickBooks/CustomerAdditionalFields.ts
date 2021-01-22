@@ -31,7 +31,7 @@ export const customerAdditionalFields = [
 	},
 	{
 		displayName: 'Billing Address',
-		name: 'billingAddress',
+		name: 'BillingAddress',
 		placeholder: 'Add Billing Address Fields',
 		type: 'fixedCollection',
 		default: {},
