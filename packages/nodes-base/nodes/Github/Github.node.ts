@@ -1186,6 +1186,7 @@ export class Github implements INodeType {
 			'repository:get',
 			'repository:getLicense',
 			'repository:getProfile',
+			'user:invite',
 		];
 		// Operations which overwrite the returned data and return arrays
 		// and has so to be merged with the data of other items
