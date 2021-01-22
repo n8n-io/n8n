@@ -31,6 +31,10 @@ export const estimateOperations = [
 				value: 'getAll',
 			},
 			{
+				name: 'Get PDF',
+				value: 'getPdf',
+			},
+			{
 				name: 'Send',
 				value: 'send',
 			},
@@ -110,6 +114,7 @@ export const estimateFields = [
 				],
 				operation: [
 					'get',
+					'getPdf',
 				],
 			},
 		},

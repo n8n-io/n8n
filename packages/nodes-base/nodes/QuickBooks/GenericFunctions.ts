@@ -48,6 +48,10 @@ export async function quickBooksApiRequest(
 		options.headers!['Content-Type'] = 'text/plain';
 	}
 
+	if (resource === 'estimate' && operation === 'getPdf') {
+		options.headers!['Accept'] = 'application/pdf';
+	}
+
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}

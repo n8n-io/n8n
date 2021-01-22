@@ -227,6 +227,24 @@ export class QuickBooks implements INodeType {
 					const endpoint = `/v3/company/${companyId}/query`;
 					responseData = await handleListing.call(this, i, endpoint, resource);
 
+				// ----------------------------------
+				//         estimate: getPdf
+				// ----------------------------------
+
+				} else if (operation === 'getPdf') {
+
+				const estimateId = this.getNodeParameter('estimateId', i);
+				const endpoint = `/v3/company/${companyId}/estimate/${estimateId}/pdf`;
+				responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+
+				// ----------------------------------
+				//         estimate: update
+				// ----------------------------------
+
+				} else if (operation === 'update') {
+
+					// ...
+
 				}
 
 			}
