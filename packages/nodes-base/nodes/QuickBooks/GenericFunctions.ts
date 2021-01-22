@@ -25,7 +25,16 @@ export async function quickBooksApiRequest(
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
+	option: IDataObject = {},
 ): Promise<any> { // tslint:disable-line:no-any
+
+	const resource = this.getNodeParameter('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
+
+	let isPdfEstimate = false;
+	if (resource === 'estimate' && operation === 'get') {
+		isPdfEstimate = this.getNodeParameter('download', 0) as boolean;
+	}
 
 	const productionUrl = 'https://quickbooks.api.intuit.com';
 	const sandboxUrl = 'https://sandbox-quickbooks.api.intuit.com';
@@ -38,19 +47,8 @@ export async function quickBooksApiRequest(
 		uri: `${sandboxUrl}${endpoint}`,
 		qs,
 		body,
-		json: true,
+		json: !isPdfEstimate,
 	};
-
-	const resource = this.getNodeParameter('resource', 0);
-	const operation = this.getNodeParameter('operation', 0);
-
-	if (resource === 'customer' && operation === 'search') {
-		options.headers!['Content-Type'] = 'text/plain';
-	}
-
-	if (resource === 'estimate' && operation === 'getPdf') {
-		options.headers!['Accept'] = 'application/pdf';
-	}
 
 	if (!Object.keys(body).length) {
 		delete options.body;
@@ -58,6 +56,14 @@ export async function quickBooksApiRequest(
 
 	if (!Object.keys(qs).length) {
 		delete options.qs;
+	}
+
+	if (Object.keys(option)) {
+		Object.assign(options, option);
+	}
+
+	if (isPdfEstimate) {
+		options.headers!['Accept'] = 'application/pdf';
 	}
 
 	try {
@@ -132,4 +138,12 @@ export async function handleListing(
 	}
 
 	return responseData;
+}
+
+export async function getSyncToken(this: IExecuteFunctions, i: number, companyId: string, resource: string) {
+	const resourceId = this.getNodeParameter(`${resource}Id`, i);
+	const getEndpoint = `/v3/company/${companyId}/${resource}/${resourceId}`;
+	const propertyName = pascalCase(resource);
+	const { [propertyName]: { SyncToken } } = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
+	return SyncToken;
 }

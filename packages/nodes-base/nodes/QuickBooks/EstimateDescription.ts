@@ -31,10 +31,6 @@ export const estimateOperations = [
 				value: 'getAll',
 			},
 			{
-				name: 'Get PDF',
-				value: 'getPdf',
-			},
-			{
 				name: 'Send',
 				value: 'send',
 			},
@@ -114,7 +110,45 @@ export const estimateFields = [
 				],
 				operation: [
 					'get',
-					'getPdf',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Download',
+		name: 'download',
+		type: 'boolean',
+		required: true,
+		default: false,
+		description: 'Download estimate as PDF file',
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'get',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Binary Property',
+		name: 'binaryProperty',
+		type: 'string',
+		required: true,
+		default: 'data',
+		description: 'Name of the binary property to which to write to',
+		displayOptions: {
+			show: {
+				resource: [
+					'estimate',
+				],
+				operation: [
+					'get',
+				],
+				download: [
+					true,
 				],
 			},
 		},

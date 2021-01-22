@@ -22,6 +22,7 @@ import {
 } from './EstimateDescription';
 
 import {
+	getSyncToken,
 	handleListing,
 	quickBooksApiRequest,
 	quickBooksApiRequestAllItems,
@@ -35,6 +36,10 @@ import {
 import {
 	CustomerBillingAddress,
 } from './CustomerAdditionalFields';
+
+import {
+	pascalCase
+} from 'change-case';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
@@ -166,14 +171,14 @@ export class QuickBooks implements INodeType {
 
 				} else if (operation === 'update') {
 
-					const customerId = this.getNodeParameter('customerId', i);
-					const getEndpoint = `/v3/company/${companyId}/customer/${customerId}`;
-					const { Customer: { SyncToken } } = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
+					// const customerId = this.getNodeParameter('customerId', i);
+					// const getEndpoint = `/v3/company/${companyId}/customer/${customerId}`;
+					// const { Customer: { SyncToken } } = await quickBooksApiRequest.call(this, 'GET', getEndpoint, {}, {});
 
-					const updateEndpoint = `/v3/company/${companyId}/customer`;
+					const endpoint = `/v3/company/${companyId}/customer`;
 					const body = {
 						Id: this.getNodeParameter('customerId', i),
-						SyncToken,
+						SyncToken: await getSyncToken.call(this, i, (companyId as string), resource),
 						sparse: true,
 					} as IDataObject;
 
@@ -194,7 +199,7 @@ export class QuickBooks implements INodeType {
 						}
 					});
 
-					responseData = await quickBooksApiRequest.call(this, 'POST', updateEndpoint, {}, body);
+					responseData = await quickBooksApiRequest.call(this, 'POST', endpoint, {}, body);
 
 				}
 
@@ -215,8 +220,35 @@ export class QuickBooks implements INodeType {
 				} else if (operation === 'get') {
 
 					const estimateId = this.getNodeParameter('estimateId', i);
-					const endpoint = `/v3/company/${companyId}/estimate/${estimateId}`;
-					responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+					const download = this.getNodeParameter('download', i);
+
+					if (download) {
+
+						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const endpoint = `/v3/company/${companyId}/estimate/${estimateId}/pdf`;
+						const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
+
+						const newItem: INodeExecutionData = {
+							json: items[i].json,
+							binary: {},
+						};
+
+						if (items[i].binary !== undefined) {
+							Object.assign(newItem.binary, items[i].binary);
+						}
+
+						items[i] = newItem;
+
+						items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+
+						return this.prepareOutputData(items);
+
+					} else {
+
+						const endpoint = `/v3/company/${companyId}/estimate/${estimateId}`;
+						responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
+
+					}
 
 				// ----------------------------------
 				//         estimate: getAll
@@ -226,16 +258,6 @@ export class QuickBooks implements INodeType {
 
 					const endpoint = `/v3/company/${companyId}/query`;
 					responseData = await handleListing.call(this, i, endpoint, resource);
-
-				// ----------------------------------
-				//         estimate: getPdf
-				// ----------------------------------
-
-				} else if (operation === 'getPdf') {
-
-				const estimateId = this.getNodeParameter('estimateId', i);
-				const endpoint = `/v3/company/${companyId}/estimate/${estimateId}/pdf`;
-				responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {});
 
 				// ----------------------------------
 				//         estimate: update
@@ -249,61 +271,61 @@ export class QuickBooks implements INodeType {
 
 			} else if (resource === 'invoice') {
 
-					// ----------------------------------
-					//         invoice: create
-					// ----------------------------------
+				// ----------------------------------
+				//         invoice: create
+				// ----------------------------------
 
-					if (operation === 'create') {
+				if (operation === 'create') {
 
-						// ...
+					// ...
 
-					// ----------------------------------
-					//         invoice: delete
-					// ----------------------------------
+				// ----------------------------------
+				//         invoice: delete
+				// ----------------------------------
 
-					} else if (operation === 'delete') {
+				} else if (operation === 'delete') {
 
-						// ...
+					// ...
 
-					// ----------------------------------
-					//         invoice: get
-					// ----------------------------------
+				// ----------------------------------
+				//         invoice: get
+				// ----------------------------------
 
-					} else if (operation === 'get') {
+				} else if (operation === 'get') {
 
-						// ...
+					// ...
 
-					// ----------------------------------
-					//         invoice: getAll
-					// ----------------------------------
+				// ----------------------------------
+				//         invoice: getAll
+				// ----------------------------------
 
-					} else if (operation === 'getAll') {
+				} else if (operation === 'getAll') {
 
-						// ...
+					// ...
 
-					// ----------------------------------
-					//         invoice: send
-					// ----------------------------------
+				// ----------------------------------
+				//         invoice: send
+				// ----------------------------------
 
-					} else if (operation === 'send') {
+				} else if (operation === 'send') {
 
-						// ...
+					// ...
 
-					// ----------------------------------
-					//         invoice: update
-					// ----------------------------------
+				// ----------------------------------
+				//         invoice: update
+				// ----------------------------------
 
-					} else if (operation === 'update') {
+				} else if (operation === 'update') {
 
-						// ...
+					// ...
 
-					// ----------------------------------
-					//         invoice: void
-					// ----------------------------------
+				// ----------------------------------
+				//         invoice: void
+				// ----------------------------------
 
-					} else if (operation === 'void') {
+				} else if (operation === 'void') {
 
-						// ...
+					// ...
 
 				}
 			}
