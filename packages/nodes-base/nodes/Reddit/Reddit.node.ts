@@ -139,6 +139,10 @@ export class Reddit implements INodeType {
 
 		if (resource === 'allReddit') {
 
+			// ----------------------------------
+			//         allReddit: get
+			// ----------------------------------
+
 			if (operation === 'get') {
 
 				const information = this.getNodeParameter('information', i) as string;
@@ -157,6 +161,10 @@ export class Reddit implements INodeType {
 			}
 
 		} else if (resource === 'myAccount') {
+
+			// ----------------------------------
+			//         myAccount: get
+			// ----------------------------------
 
 				if (operation === 'get') {
 
@@ -180,6 +188,10 @@ export class Reddit implements INodeType {
 
 			} else if (resource === 'submission') {
 
+			// ----------------------------------
+			//         submission: post
+			// ----------------------------------
+
 				if (operation === 'post') {
 
 					const qs: IDataObject = {
@@ -197,6 +209,10 @@ export class Reddit implements INodeType {
 					}
 
 					responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs, {});
+
+			// ----------------------------------
+			//        submission: comment
+			// ----------------------------------
 
 				} else if (operation === 'comment') {
 
@@ -223,6 +239,10 @@ export class Reddit implements INodeType {
 				}
 
 			} else if (resource === 'subreddit') {
+
+			// ----------------------------------
+			//        subreddit: get
+			// ----------------------------------
 
 				if (operation === 'get') {
 
@@ -259,6 +279,10 @@ export class Reddit implements INodeType {
 				}
 
 			} else if (resource === 'user') {
+
+			// ----------------------------------
+			//           user: get
+			// ----------------------------------
 
 				if (operation === 'get') {
 
